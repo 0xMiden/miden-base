@@ -58,6 +58,7 @@ const RESOURCE_EXHAUSTED_CODE: u16 = 8;
 /// - `Ok(())` if the global subscriber is successfully set up.
 /// - `Err(String)` describing the failure if any step (creating the exporter or setting the
 ///   subscriber) fails.
+#[allow(dead_code)]
 pub(crate) fn setup_tracing() -> Result<(), String> {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_tonic()
@@ -157,6 +158,7 @@ pub async fn create_response_with_error_message(
 /// # Returns
 /// * `Ok(TcpListener)` if the port is available.
 /// * `Err(ProvingServiceError::PortAlreadyInUse)` if the port is already in use.
+#[allow(dead_code)]
 pub fn check_port_availability(
     port: u16,
     service: &str,

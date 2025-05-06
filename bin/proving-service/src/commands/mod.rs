@@ -10,6 +10,7 @@ pub mod proxy;
 pub mod update_workers;
 pub mod worker;
 
+#[allow(dead_code)]
 pub(crate) const PROXY_HOST: &str = "0.0.0.0";
 
 #[derive(Debug, Parser)]
