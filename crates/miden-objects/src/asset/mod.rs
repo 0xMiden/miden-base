@@ -146,7 +146,7 @@ impl Asset {
     }
 
     /// Returns the inner non-fungible asset, or panics if the asset is fungible.
-    pub fn unwrap_non_fungible(&mut self) -> NonFungibleAsset {
+    pub fn unwrap_non_fungible(&self) -> NonFungibleAsset {
         match self {
             Asset::Fungible(_) => panic!("the asset is fungible"),
             Asset::NonFungible(asset) => *asset,
