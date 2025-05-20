@@ -2,7 +2,7 @@ use std::{
     env,
     fs::{self},
     io::Write,
-    path::PathBuf,
+    path::{Path, PathBuf},
     process::Command,
 };
 
@@ -25,7 +25,7 @@ pub fn cargo_target_directory() -> Option<PathBuf> {
     })
 }
 
-pub fn process_benchmark_data(benchmark_path: &PathBuf) -> JsonResult<Value> {
+pub fn process_benchmark_data(benchmark_path: &Path) -> JsonResult<Value> {
     let mut benchmark_data = json!({});
 
     // Process benchmark.json
@@ -78,7 +78,7 @@ pub fn process_benchmark_data(benchmark_path: &PathBuf) -> JsonResult<Value> {
     Ok(benchmark_data)
 }
 
-pub fn save_json_to_file(data: &Value, file_path: &PathBuf) -> std::io::Result<()> {
+pub fn save_json_to_file(data: &Value, file_path: &Path) -> std::io::Result<()> {
     let mut file = fs::File::create(file_path)?;
     let json_string = serde_json::to_string_pretty(data)?;
     file.write_all(json_string.as_bytes())?;

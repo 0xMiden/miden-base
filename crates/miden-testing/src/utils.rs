@@ -1,12 +1,12 @@
-use miden_lib::transaction::{TransactionKernel, memory};
+use miden_lib::transaction::{memory, TransactionKernel};
 use miden_objects::{
-    Felt, Word, ZERO,
     account::AccountId,
     asset::FungibleAsset,
     crypto::utils::Serializable,
     note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, NoteType},
     testing::account_id::ACCOUNT_ID_SENDER,
     transaction::{ExecutedTransaction, ProvenTransaction},
+    Felt, Word, ZERO,
 };
 use miden_tx::{
     LocalTransactionProver, ProvingOptions, TransactionProver, TransactionVerifier,
@@ -19,25 +19,6 @@ use vm_processor::utils::Deserializable;
 
 pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
     memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
-}
-
-#[macro_export]
-macro_rules! assert_transaction_executor_error {
-    ($execution_result:expr, $expected_err_code:expr) => {
-        match $execution_result {
-            Err(miden_tx::TransactionExecutorError::TransactionProgramExecutionFailed(
-                vm_processor::ExecutionError::FailedAssertion { clk: _, err_code, err_msg: _ }
-            )) => {
-                assert!(
-                    err_code == $expected_err_code,
-                    "Execution failed on assertion with an unexpected error code (Actual err_code: {}, expected {}).",
-                    err_code, $expected_err_code
-                );
-            },
-            Ok(_) => panic!("Execution was unexpectedly successful"),
-            Err(other) => panic!("Execution error was not as expected: {}", other),
-        }
-    };
 }
 
 pub fn prove_and_verify_transaction(

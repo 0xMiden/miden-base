@@ -11,10 +11,12 @@ use miden_objects::{
     transaction::{OutputNote, TransactionScript},
 };
 use miden_testing::{
-    Auth, MockChain, MockFungibleFaucet, assert_transaction_executor_error,
+    Auth, MockChain, MockFungibleFaucet,
     utils::{get_note_with_fungible_asset_and_script, prove_and_verify_transaction},
 };
 use miden_tx::utils::word_to_masm_push_string;
+
+use crate::assert_transaction_executor_error;
 
 // TESTS MINT FUNGIBLE ASSET
 // ================================================================================================
