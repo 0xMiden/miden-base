@@ -6,7 +6,8 @@ use crate::{
     account::AccountHeader,
     block::BlockNumber,
     note::{
-        Note, NoteAssets, NoteHeader, NoteId, NoteMetadata, PartialNote, compute_note_commitment,
+        Note, NoteAssets, NoteHeader, NoteId, NoteMetadata, NoteRecipient, PartialNote,
+        compute_note_commitment,
     },
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -194,7 +195,18 @@ impl OutputNote {
         }
     }
 
-    /// Value that represents under which condition a note can be consumed.
+    /// Note's recipient.
+    ///
+    /// See [crate::note::NoteRecipient] for more details.
+    pub fn recipient(&self) -> Option<&NoteRecipient> {
+        match self {
+            OutputNote::Full(note) => Some(note.recipient()),
+            OutputNote::Partial(_) => None,
+            OutputNote::Header(_) => None,
+        }
+    }
+
+    /// Digest of the note's recipient.
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient_digest(&self) -> Option<Digest> {

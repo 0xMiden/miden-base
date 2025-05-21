@@ -579,7 +579,7 @@ fn executed_transaction_output_notes() {
     let serial_num_2 = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
     let note_script_2 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler()).unwrap();
-    let inputs_2 = NoteInputs::new(vec![]).unwrap();
+    let inputs_2 = NoteInputs::new(vec![ONE]).unwrap();
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2).unwrap();
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4]).unwrap();
@@ -590,7 +590,7 @@ fn executed_transaction_output_notes() {
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler()).unwrap();
-    let inputs_3 = NoteInputs::new(vec![]).unwrap();
+    let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)]).unwrap();
     let metadata_3 = NoteMetadata::new(
         account_id,
         note_type3,
@@ -737,26 +737,40 @@ fn executed_transaction_output_notes() {
     // --------------------------------------------------------------------------------------------
     let output_notes = executed_transaction.output_notes();
 
-    // assert that the expected output note is present
+    // check the total number of notes
     // NOTE: the mock state already contains 3 output notes
     assert_eq!(output_notes.num_notes(), 6);
 
-    let output_note_id_3 = executed_transaction.output_notes().get_note(3).id();
-    let recipient_3 = Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
-    let note_assets_3 = NoteAssets::new(vec![combined_asset]).unwrap();
-    let expected_note_id_3 = NoteId::new(recipient_3, note_assets_3.commitment());
-    assert_eq!(output_note_id_3, expected_note_id_3);
+    // assert that the expected output note 1 is present
+    let output_note_1 = executed_transaction.output_notes().get_note(3);
+    let recipient_1 = Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
+    let note_assets_1 = NoteAssets::new(vec![combined_asset]).unwrap();
+    let expected_note_id_1 = NoteId::new(recipient_1, note_assets_1.commitment());
+    assert_eq!(output_note_1.id(), expected_note_id_1);
 
     // assert that the expected output note 2 is present
-    let output_note = executed_transaction.output_notes().get_note(4);
+    let output_note_2 = executed_transaction.output_notes().get_note(4);
     let note_id = expected_output_note_2.id();
     let note_metadata = expected_output_note_2.metadata();
-    assert_eq!(NoteHeader::from(output_note), NoteHeader::new(note_id, *note_metadata));
+    assert_eq!(NoteHeader::from(output_note_2), NoteHeader::new(note_id, *note_metadata));
 
     // assert that the expected output note 3 is present and has no assets
     let output_note_3 = executed_transaction.output_notes().get_note(5);
     assert_eq!(expected_output_note_3.id(), output_note_3.id());
     assert_eq!(expected_output_note_3.assets(), output_note_3.assets().unwrap());
+
+    // make sure that the number of note inputs remains the same
+    let note_2_recipient = output_note_2.recipient().expect("output note 2 is not full");
+    assert_eq!(
+        note_2_recipient.inputs().num_values(),
+        expected_output_note_2.inputs().num_values()
+    );
+
+    let note_3_recipient = output_note_3.recipient().expect("output note 3 is not full");
+    assert_eq!(
+        note_3_recipient.inputs().num_values(),
+        expected_output_note_3.inputs().num_values()
+    );
 }
 
 #[allow(clippy::arc_with_non_send_sync)]
