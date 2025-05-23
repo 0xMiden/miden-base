@@ -573,12 +573,11 @@ end
 #! Note:
 #! - We assume that index has been validated and is within bounds.
 #!
-#! Inputs:  [index, KEY, NEW_VALUE, OLD_ROOT]
+#! Inputs:  [index, KEY, NEW_VALUE]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
 #!
 #! Where:
 #! - index is the index of the storage slot which contains the map root.
-#! - OLD_ROOT is the root of the map to set the KEY NEW_VALUE pair.
 #! - NEW_VALUE is the value to set under KEY.
 #! - KEY is the key to set.
 #! - OLD_MAP_VALUE is the previous value of the item.
@@ -589,7 +588,10 @@ end
 #! - no map is found for ROOT.
 export.set_map_item.12
     # store index for later
-    dup loc_store.0
+    dup loc_store.0 exec.get_item
+    # => [OLD_ROOT, KEY, NEW_VALUE, ...]
+
+    movdnw.2 loc_load.0
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
     # check if storage type is map
@@ -1031,7 +1033,7 @@ export.get_account_data_ptr
     dup.1 eq.0 dup.1 eq.0 and not assert.err=ERR_FOREIGN_ACCOUNT_ID_IS_ZERO
     # => [foreign_account_id_prefix, foreign_account_id_suffix]
 
-    # move pointer one account block back so that the first account pointer in the cycle will point 
+    # move pointer one account block back so that the first account pointer in the cycle will point
     # to the native account
     exec.memory::get_native_account_data_ptr exec.memory::get_account_data_length sub
     # => [curr_account_ptr, foreign_account_id_prefix, foreign_account_id_suffix]
@@ -1119,6 +1121,6 @@ end
 #! Inputs:  [KEY]
 #! Outputs: [HASHED_KEY]
 proc.hash_map_key
-  hash
-  # => [HASHED_KEY]
+    hash
+    # => [HASHED_KEY]
 end
