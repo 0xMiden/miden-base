@@ -2,6 +2,8 @@
 
 ## 0.10.0 (TBD)
 
+- Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
+
 ## 0.9.0 (2025-05-20)
 
 ### Features
