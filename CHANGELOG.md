@@ -2,6 +2,8 @@
 
 ## 0.10.0 (TBD)
 
+- [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
+
 ## 0.9.0 (2025-05-20)
 
 ### Features
