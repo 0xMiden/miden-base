@@ -1,11 +1,12 @@
 use miden_objects::{
-    AccountError, Felt, FieldElement, FungibleFaucetError, Word,
+    AccountError, Felt, FieldElement, TokenSymbolError, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountIdAnchor, AccountStorage,
         AccountStorageMode, AccountType, StorageSlot,
     },
     asset::{FungibleAsset, TokenSymbol},
 };
+use thiserror::Error;
 
 use super::{
     AuthScheme,
@@ -168,7 +169,7 @@ pub fn create_basic_fungible_faucet(
     max_supply: Felt,
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
-) -> Result<(Account, Word), AccountError> {
+) -> Result<(Account, Word), FungibleFaucetError> {
     // Atm we only have RpoFalcon512 as authentication scheme and this is also the default in the
     // faucet contract.
     let auth_component: RpoFalcon512 = match auth_scheme {
@@ -180,13 +181,33 @@ pub fn create_basic_fungible_faucet(
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(account_storage_mode)
         .with_component(auth_component)
-        .with_component(
-            BasicFungibleFaucet::new(symbol, decimals, max_supply)
-                .map_err(AccountError::FungibleFaucetError)?,
-        )
-        .build()?;
+        .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply)?)
+        .build()
+        .map_err(FungibleFaucetError::AccountError)?;
 
     Ok((account, account_seed))
+}
+
+// FUNGIBLE FAUCET ERROR
+// ================================================================================================
+
+/// Basic fungible faucet related errors.
+#[derive(Debug, Error)]
+pub enum FungibleFaucetError {
+    #[error("faucet metadata decimals is {actual} which exceeds max value of {max}")]
+    TooManyDecimals { actual: u64, max: u8 },
+    #[error("faucet metadata max supply is {actual} which exceeds max value of {max}")]
+    MaxSupplyTooLarge { actual: u64, max: u64 },
+    #[error(
+        "account interface provided for faucet creation does not have basic fungible faucet component"
+    )]
+    NoAvailableInterface,
+    #[error("storage offset `{0}` is invalid")]
+    InvalidStorageOffset(u8),
+    #[error("invalid token symbol")]
+    InvalidTokenSymbol(#[source] TokenSymbolError),
+    #[error("account creation failed")]
+    AccountError(#[source] AccountError),
 }
 
 // TESTS
@@ -196,7 +217,7 @@ pub fn create_basic_fungible_faucet(
 mod tests {
     use assert_matches::assert_matches;
     use miden_objects::{
-        Digest, FieldElement, FungibleFaucetError, ONE, Word, ZERO,
+        Digest, FieldElement, ONE, Word, ZERO,
         block::BlockHeader,
         crypto::dsa::rpo_falcon512::{self, PublicKey},
         digest,
@@ -204,7 +225,7 @@ mod tests {
 
     use super::{
         AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
-        TokenSymbol, create_basic_fungible_faucet,
+        FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
     };
     use crate::account::auth::RpoFalcon512;
 

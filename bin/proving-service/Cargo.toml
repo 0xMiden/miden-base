@@ -1,7 +1,7 @@
 [package]
 name = "miden-proving-service"
-version = "0.9.0"
-description = "Miden rollup proving service"
+version = "0.10.0"
+description = "Miden blockchain proving service"
 readme = "README.md"
 keywords = ["miden", "proving", "service"]
 license.workspace = true
@@ -26,13 +26,9 @@ bytes = "1.0"
 clap = { version = "4.5", features = ["derive", "env"] }
 miden-block-prover = { workspace = true, default-features = false }
 miden-lib = { workspace = true, default-features = false }
-miden-objects = { workspace = true, default-features = false, features = [
-    "std",
-] }
+miden-objects = { workspace = true, default-features = false, features = ["std"] }
 miden-tx = { workspace = true, default-features = false, features = ["std"] }
-miden-tx-batch-prover = { workspace = true, default-features = false, features = [
-    "std",
-] }
+miden-tx-batch-prover = { workspace = true, default-features = false, features = ["std"] }
 opentelemetry = { version = "0.29", features = ["metrics", "trace"] }
 opentelemetry-otlp = { version = "0.29", features = ["grpc-tonic"] }
 opentelemetry_sdk = { version = "0.29", features = ["metrics", "rt-tokio"] }
@@ -59,23 +55,13 @@ tonic-health = { version = "0.12" }
 tonic-web = { version = "0.12" }
 tracing = { version = "0.1" }
 tracing-opentelemetry = "0.30"
-tracing-subscriber = { version = "0.3", features = [
-    "fmt",
-    "json",
-    "env-filter",
-] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "json", "env-filter"] }
 uuid = { version = "1.16", features = ["v4"] }
 
 [dev-dependencies]
-miden-lib = { workspace = true, default-features = false, features = [
-    "testing",
-] }
-miden-objects = { workspace = true, default-features = false, features = [
-    "testing",
-] }
-miden-tx = { workspace = true, default-features = false, features = [
-    "testing",
-] }
+miden-lib = { workspace = true, default-features = false, features = ["testing"] }
+miden-objects = { workspace = true, default-features = false, features = ["testing"] }
+miden-tx = { workspace = true, default-features = false, features = ["testing"] }
 miden-testing = { workspace = true, default-features = false }
 
 [build-dependencies]

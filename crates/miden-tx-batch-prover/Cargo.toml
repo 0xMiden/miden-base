@@ -1,7 +1,7 @@
 [package]
 name = "miden-tx-batch-prover"
-version = "0.9.0"
-description = "Miden rollup transaction batch executor and prover"
+version = "0.10.0"
+description = "Miden blockchain transaction batch executor and prover"
 readme = "README.md"
 categories = ["no-std"]
 keywords = ["miden", "batch", "prover"]

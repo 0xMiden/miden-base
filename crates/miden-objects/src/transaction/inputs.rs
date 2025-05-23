@@ -359,7 +359,7 @@ pub enum InputNote {
     Authenticated { note: Note, proof: NoteInclusionProof },
 
     /// Input notes whose existence in the chain is not verified by the transaction kernel, but
-    /// instead is delegated to the rollup kernels.
+    /// instead is delegated to the protocol kernels.
     Unauthenticated { note: Note },
 }
 

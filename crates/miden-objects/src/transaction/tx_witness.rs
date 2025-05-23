@@ -4,7 +4,7 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 // TRANSACTION WITNESS
 // ================================================================================================
 
-/// Transaction witness contains all the data required to execute and prove a Miden rollup
+/// Transaction witness contains all the data required to execute and prove a Miden blockchain
 /// transaction.
 ///
 /// The main purpose of the transaction witness is to enable stateless re-execution and proving

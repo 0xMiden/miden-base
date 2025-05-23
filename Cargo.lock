@@ -1916,7 +1916,7 @@ dependencies = [
 
 [[package]]
 name = "miden-block-prover"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "miden-lib",
  "miden-objects",
@@ -1974,7 +1974,7 @@ dependencies = [
 
 [[package]]
 name = "miden-lib"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "assert_matches",
  "miden-assembly",
@@ -2030,7 +2030,7 @@ dependencies = [
 
 [[package]]
 name = "miden-objects"
-version = "0.9.1"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -2086,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "miden-proving-service"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "async-trait",
  "axum 0.8.4",
@@ -2130,7 +2130,7 @@ dependencies = [
 
 [[package]]
 name = "miden-proving-service-client"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "async-trait",
  "getrandom 0.3.3",
@@ -2160,7 +2160,7 @@ dependencies = [
 
 [[package]]
 name = "miden-testing"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -2180,7 +2180,7 @@ dependencies = [
 
 [[package]]
 name = "miden-tx"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "anyhow",
  "assert_matches",
@@ -2199,7 +2199,7 @@ dependencies = [
 
 [[package]]
 name = "miden-tx-batch-prover"
-version = "0.9.0"
+version = "0.10.0"
 dependencies = [
  "miden-objects",
  "miden-tx",
@@ -3185,9 +3185,9 @@ dependencies = [
 
 [[package]]
 name = "prost-reflect"
-version = "0.15.2"
+version = "0.15.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ebb644dd3ad12d7cf62a18234d385ea5511ac6abb208704c18098e7e3a5e1b69"
+checksum = "37587d5a8a1b3dc9863403d084fc2254b91ab75a702207098837950767e2260b"
 dependencies = [
  "logos 0.15.0",
  "miette",
@@ -3254,7 +3254,7 @@ dependencies = [
  "bytes",
  "miette",
  "prost",
- "prost-reflect 0.15.2",
+ "prost-reflect 0.15.3",
  "prost-types",
  "protox-parse 0.8.0",
  "thiserror 2.0.12",
