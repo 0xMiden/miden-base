@@ -9,7 +9,8 @@ members = [
   "crates/miden-objects",
   "crates/miden-proving-service-client",
   "crates/miden-testing",
-  "crates/miden-tx", "bin/bench-prover",
+  "crates/miden-tx",
+  "bin/bench-prover",
 ]
 
 [workspace.package]

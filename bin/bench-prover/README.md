@@ -44,10 +44,15 @@ Example `consolidated_benchmarks.json` structure:
 {
   "prove_consume_note_with_new_account": {
     "id": "miden_proving/prove_consume_note_with_new_account",
+    // average time per trial in seconds
     "mean_sec": 2.9489723874,
+    // lower bound of 95% confidence interval for mean
     "mean_lower_bound_sec": 2.924891996,
+    // upper bound of 95% confidence interval for mean
     "mean_upper_bound_sec": 2.9777331873,
+    // standard deviation of time per trial
     "std_dev_sec": 0.04551027448900068,
+    // denotes time for each trial
     "times_sec": [
       2.98336025,
       3.051340166,
@@ -60,6 +65,7 @@ Example `consolidated_benchmarks.json` structure:
       2.9041745,
       2.936116375
     ],
+    // total number of trials benchmark completed
     "trial_count": 10
   },
   "prove_consume_multiple_notes": {

@@ -13,14 +13,13 @@ pub fn prove_consume_note_with_new_account() {
     // Create assets
     let fungible_asset: Asset = FungibleAsset::mock(123);
 
-    // Create faucet account and target account
-    let faucet_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    // Create target account
     let target_account = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
 
     // Create the note
     let note = mock_chain
         .add_pending_p2id_note(
-            faucet_account.id(),
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
             target_account.id(),
             &[fungible_asset],
             NoteType::Public,

@@ -10,13 +10,13 @@ repository.workspace = true
 exclude.workspace = true
 
 [dependencies]
-miden-lib = { workspace = true, features = ["testing"] }
 miden-objects = { workspace = true, features = ["testing"] }
-miden-tx = { workspace = true, features = ["testing"] }
 miden-testing = { workspace = true }
 vm-processor = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
+anyhow = "1.0"
+
 
 [dev-dependencies]
 criterion = { version = "0.5", features = ["html_reports"] }

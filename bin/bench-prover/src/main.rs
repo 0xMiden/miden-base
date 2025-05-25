@@ -12,7 +12,7 @@ fn main() -> std::io::Result<()> {
 
     println!("Looking for benchmark results in: {}", base_path.display());
 
-    let benchmarks = vec![BENCH_CONSUME_NOTE_NEW_ACCOUNT, BENCH_CONSUME_MULTIPLE_NOTES];
+    let benchmarks = [BENCH_CONSUME_NOTE_NEW_ACCOUNT, BENCH_CONSUME_MULTIPLE_NOTES];
 
     let mut consolidated_results = json!({});
 
@@ -37,6 +37,8 @@ fn main() -> std::io::Result<()> {
     }
 
     let output_path = target_dir.join("criterion").join("consolidated_benchmarks.json");
+    println!("Writing consolidated file to {}", output_path.display());
+
     if let Err(err) = save_json_to_file(&consolidated_results, &output_path) {
         println!("Error saving JSON file: {err}");
     }

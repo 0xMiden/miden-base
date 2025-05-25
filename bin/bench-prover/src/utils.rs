@@ -6,8 +6,9 @@ use std::{
     process::Command,
 };
 
+use anyhow::{Context, Result};
 use serde::Deserialize;
-use serde_json::{Result as JsonResult, Value, json};
+use serde_json::{Value, json};
 
 pub fn cargo_target_directory() -> Option<PathBuf> {
     #[derive(Deserialize)]
@@ -24,63 +25,91 @@ pub fn cargo_target_directory() -> Option<PathBuf> {
         Some(metadata.target_directory)
     })
 }
+const NANOS_PER_SEC: f64 = 1_000_000_000.0;
 
-pub fn process_benchmark_data(benchmark_path: &Path) -> JsonResult<Value> {
+/// Processes Criterion benchmark output files (benchmark.json, estimates.json, sample.json)
+/// and extracts relevant performance metrics into a single JSON structure.
+/// Converts nanosecond measurements to seconds and includes mean, confidence intervals,
+/// standard deviation, and individual sample times.
+pub fn process_benchmark_data(benchmark_path: &Path) -> Result<Value> {
     let mut benchmark_data = json!({});
 
     // Process benchmark.json
-    let benchmark_content =
-        fs::read_to_string(benchmark_path.join("benchmark.json")).unwrap_or_default();
-    if !benchmark_content.is_empty() {
-        let json: Value = serde_json::from_str(&benchmark_content).unwrap_or_default();
-        benchmark_data["id"] = json["full_id"].clone();
-    }
+    let benchmark_file = benchmark_path.join("benchmark.json");
+    let benchmark_content = fs::read_to_string(&benchmark_file)
+        .with_context(|| format!("Failed to read benchmark file at {:?}", benchmark_file))?;
+
+    let json: Value = serde_json::from_str(&benchmark_content)
+        .with_context(|| format!("Failed to parse benchmark.json at {:?}", benchmark_file))?;
+    benchmark_data["id"] = json["full_id"].clone();
 
     // Process estimates.json
-    let estimates_content =
-        fs::read_to_string(benchmark_path.join("estimates.json")).unwrap_or_default();
-    if !estimates_content.is_empty() {
-        let json: Value = serde_json::from_str(&estimates_content).unwrap_or_default();
+    let estimates_file = benchmark_path.join("estimates.json");
+    let estimates_content = fs::read_to_string(&estimates_file)
+        .with_context(|| format!("Failed to read estimates file at {:?}", estimates_file))?;
 
-        // Extract metrics directly with unwrap
-        let mean = json["mean"]["point_estimate"].as_f64().unwrap_or(0.0);
-        benchmark_data["mean_sec"] = json!(mean / 1_000_000_000.0);
+    let json: Value = serde_json::from_str(&estimates_content)
+        .with_context(|| format!("Failed to parse estimates.json at {:?}", estimates_file))?;
 
-        let lower = json["mean"]["confidence_interval"]["lower_bound"].as_f64().unwrap_or(0.0);
-        benchmark_data["mean_lower_bound_sec"] = json!(lower / 1_000_000_000.0);
+    // Extract metrics
+    let mean = json["mean"]["point_estimate"]
+        .as_f64()
+        .with_context(|| "Missing or invalid mean point estimate in estimates.json")?;
+    benchmark_data["mean_sec"] = json!(mean / NANOS_PER_SEC);
 
-        let upper = json["mean"]["confidence_interval"]["upper_bound"].as_f64().unwrap_or(0.0);
-        benchmark_data["mean_upper_bound_sec"] = json!(upper / 1_000_000_000.0);
+    let lower = json["mean"]["confidence_interval"]["lower_bound"]
+        .as_f64()
+        .with_context(|| "Missing or invalid lower bound in estimates.json")?;
+    benchmark_data["mean_lower_bound_sec"] = json!(lower / NANOS_PER_SEC);
 
-        let std_dev = json["std_dev"]["point_estimate"].as_f64().unwrap_or(0.0);
-        benchmark_data["std_dev_sec"] = json!(std_dev / 1_000_000_000.0);
-    }
+    let upper = json["mean"]["confidence_interval"]["upper_bound"]
+        .as_f64()
+        .with_context(|| "Missing or invalid upper bound in estimates.json")?;
+    benchmark_data["mean_upper_bound_sec"] = json!(upper / NANOS_PER_SEC);
 
-    let sample_content = fs::read_to_string(benchmark_path.join("sample.json")).unwrap_or_default();
-    if !sample_content.is_empty() {
-        let json: Value = serde_json::from_str(&sample_content).unwrap_or_default();
+    let std_dev = json["std_dev"]["point_estimate"]
+        .as_f64()
+        .with_context(|| "Missing or invalid std_dev point estimate in estimates.json")?;
+    benchmark_data["std_dev_sec"] = json!(std_dev / NANOS_PER_SEC);
 
-        let empty_vec = Vec::new();
-        let times_array = json["times"].as_array().unwrap_or(&empty_vec);
+    // Process sample.json
+    let sample_file = benchmark_path.join("sample.json");
+    let sample_content = fs::read_to_string(&sample_file)
+        .with_context(|| format!("Failed to read sample file at {:?}", sample_file))?;
 
-        let times_sec: Vec<f64> = times_array
-            .iter()
-            .map(|v| v.as_f64().unwrap_or(0.0) / 1_000_000_000.0)
-            .collect();
+    let json: Value = serde_json::from_str(&sample_content)
+        .with_context(|| format!("Failed to parse sample.json at {:?}", sample_file))?;
 
-        benchmark_data["times_sec"] = json!(times_sec);
+    let times_array = json["times"]
+        .as_array()
+        .with_context(|| "Missing or invalid time values in sample.json")?;
 
-        // Do the same for trials
-        let trials_array = json["iters"].as_array().unwrap_or(&empty_vec);
-        benchmark_data["trial_count"] = json!(trials_array.len());
-    }
+    let times_sec: Vec<f64> = times_array
+        .iter()
+        .map(|v| v.as_f64().ok_or_else(|| anyhow::anyhow!("Invalid time values")))
+        .collect::<Result<Vec<f64>>>()?
+        .into_iter()
+        .map(|t| t / NANOS_PER_SEC)
+        .collect();
+
+    benchmark_data["times_sec"] = json!(times_sec);
+
+    // Do the same for trials
+    let trials_array = json["iters"]
+        .as_array()
+        .with_context(|| "Missing or invalid iters array in sample.json")?;
+    benchmark_data["trial_count"] = json!(trials_array.len());
 
     Ok(benchmark_data)
 }
 
-pub fn save_json_to_file(data: &Value, file_path: &Path) -> std::io::Result<()> {
-    let mut file = fs::File::create(file_path)?;
-    let json_string = serde_json::to_string_pretty(data)?;
-    file.write_all(json_string.as_bytes())?;
+// Update signature for save_json_to_file to use anyhow
+pub fn save_json_to_file(data: &Value, file_path: &Path) -> Result<()> {
+    let mut file = fs::File::create(file_path)
+        .with_context(|| format!("Failed to create file at {:?}", file_path))?;
+    let json_string =
+        serde_json::to_string_pretty(data).context("Failed to convert data to JSON string")?;
+    file.write_all(json_string.as_bytes())
+        .with_context(|| format!("Failed to write JSON to file at {:?}", file_path))?;
     Ok(())
 }
