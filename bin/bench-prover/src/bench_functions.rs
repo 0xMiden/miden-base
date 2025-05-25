@@ -1,13 +1,15 @@
+use anyhow::Result;
 use miden_objects::{
     Felt,
     account::Account,
     asset::{Asset, AssetVault, FungibleAsset},
     note::NoteType,
     testing::account_id::ACCOUNT_ID_SENDER,
+    transaction::ExecutedTransaction,
 };
-use miden_testing::{Auth, MockChain, utils::prove_and_verify_transaction};
+use miden_testing::{Auth, MockChain};
 
-pub fn prove_consume_note_with_new_account() {
+pub fn setup_consume_note_with_new_account() -> Result<ExecutedTransaction> {
     let mut mock_chain = MockChain::new();
 
     // Create assets
@@ -52,10 +54,11 @@ pub fn prove_consume_note_with_new_account() {
         executed_transaction.final_account().commitment(),
         target_account_after.commitment()
     );
-    prove_and_verify_transaction(executed_transaction).unwrap();
+
+    Ok(executed_transaction)
 }
 
-pub fn prove_consume_multiple_notes() {
+pub fn setup_consume_multiple_notes() -> Result<ExecutedTransaction> {
     let mut mock_chain = MockChain::new();
     let mut account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
 
@@ -97,5 +100,5 @@ pub fn prove_consume_multiple_notes() {
         panic!("Resulting asset should be fungible");
     }
 
-    prove_and_verify_transaction(executed_transaction).unwrap();
+    Ok(executed_transaction)
 }
