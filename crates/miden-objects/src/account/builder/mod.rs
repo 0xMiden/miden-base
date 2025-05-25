@@ -6,8 +6,8 @@ use vm_processor::Digest;
 use crate::{
     AccountError, Felt, Word,
     account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountIdAnchor, AccountIdV0,
-        AccountIdVersion, AccountStorage, AccountStorageMode, AccountType,
+        Account, AccountCode, AccountComponent, AccountId, AccountIdV0, AccountIdVersion,
+        AccountStorage, AccountStorageMode, AccountType,
     },
     asset::AssetVault,
 };
@@ -29,14 +29,10 @@ use crate::{
 /// The methods that are required to be called are:
 ///
 /// - [`AccountBuilder::with_component`], which must be called at least once.
-/// - [`AccountBuilder::anchor`].
-///
-/// The latter methods set the anchor block commitment and epoch which will be used for the
-/// generation of the account's ID. See [`AccountId`] for details on its generation and anchor
-/// blocks.
 ///
 /// Under the `testing` feature, it is possible to:
-/// - Change the `nonce` to build an existing account.
+/// - Build an existing account using [`AccountBuilder::build_existing`] which will set the
+///   account's nonce to `1`.
 /// - Add assets to the account's vault, however this will only succeed when using
 ///   [`AccountBuilder::build_existing`].
 #[derive(Debug, Clone)]
@@ -46,7 +42,6 @@ pub struct AccountBuilder {
     components: Vec<AccountComponent>,
     account_type: AccountType,
     storage_mode: AccountStorageMode,
-    id_anchor: Option<AccountIdAnchor>,
     init_seed: [u8; 32],
     id_version: AccountIdVersion,
 }
@@ -61,18 +56,11 @@ impl AccountBuilder {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
             components: vec![],
-            id_anchor: None,
             init_seed,
             account_type: AccountType::RegularAccountUpdatableCode,
             storage_mode: AccountStorageMode::Private,
             id_version: AccountIdVersion::Version0,
         }
-    }
-
-    /// Sets the [`AccountIdAnchor`] used for the generation of the account ID.
-    pub fn anchor(mut self, anchor: AccountIdAnchor) -> Self {
-        self.id_anchor = Some(anchor);
-        self
     }
 
     /// Sets the [`AccountIdVersion`] of the account ID.
@@ -132,7 +120,6 @@ impl AccountBuilder {
         version: AccountIdVersion,
         code_commitment: Digest,
         storage_commitment: Digest,
-        block_commitment: Digest,
     ) -> Result<Word, AccountError> {
         let seed = AccountIdV0::compute_account_seed(
             init_seed,
@@ -141,7 +128,6 @@ impl AccountBuilder {
             version,
             code_commitment,
             storage_commitment,
-            block_commitment,
         )
         .map_err(|err| {
             AccountError::BuildError("account seed generation failed".into(), Some(Box::new(err)))
@@ -167,10 +153,6 @@ impl AccountBuilder {
     pub fn build(self) -> Result<(Account, Word), AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
-        let id_anchor = self
-            .id_anchor
-            .ok_or_else(|| AccountError::BuildError("anchor must be set".into(), None))?;
-
         #[cfg(any(feature = "testing", test))]
         if !vault.is_empty() {
             return Err(AccountError::BuildError(
@@ -184,12 +166,10 @@ impl AccountBuilder {
             self.id_version,
             code.commitment(),
             storage.commitment(),
-            id_anchor.block_commitment(),
         )?;
 
         let account_id = AccountId::new(
             seed,
-            id_anchor,
             AccountIdVersion::Version0,
             code.commitment(),
             storage.commitment(),
@@ -251,7 +231,7 @@ mod tests {
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::{account::StorageSlot, block::BlockNumber};
+    use crate::account::StorageSlot;
 
     const CUSTOM_CODE1: &str = "
           export.foo
@@ -315,14 +295,7 @@ mod tests {
         let storage_slot1 = 12;
         let storage_slot2 = 42;
 
-        let anchor_block_commitment = Digest::new([Felt::new(42); 4]);
-        let anchor_block_number = 1 << 16;
-        let id_anchor =
-            AccountIdAnchor::new(BlockNumber::from(anchor_block_number), anchor_block_commitment)
-                .unwrap();
-
         let (account, seed) = Account::builder([5; 32])
-            .anchor(id_anchor)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
                 slot0: storage_slot1,
@@ -336,7 +309,6 @@ mod tests {
 
         let computed_id = AccountId::new(
             seed,
-            id_anchor,
             AccountIdVersion::Version0,
             account.code.commitment(),
             account.storage.commitment(),
@@ -390,9 +362,7 @@ mod tests {
     fn account_builder_non_empty_vault_on_new_account() {
         let storage_slot0 = 25;
 
-        let anchor = AccountIdAnchor::new_unchecked(5, Digest::default());
         let build_error = Account::builder([0xff; 32])
-            .anchor(anchor)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_assets(AssetVault::mock().assets())
             .build()

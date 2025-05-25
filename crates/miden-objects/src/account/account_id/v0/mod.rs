@@ -9,7 +9,7 @@ use bech32::{Bech32m, primitives::decode::CheckedHrpstring};
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
 use vm_core::{
-    Felt, Word,
+    EMPTY_WORD, Felt, Word,
     utils::{ByteReader, Deserializable, Serializable},
 };
 use vm_processor::{DeserializationError, Digest};
@@ -17,7 +17,7 @@ use vm_processor::{DeserializationError, Digest};
 use crate::{
     AccountError, Hasher,
     account::{
-        AccountIdAnchor, AccountIdVersion, AccountStorageMode, AccountType,
+        AccountIdVersion, AccountStorageMode, AccountType,
         account_id::{
             NetworkId,
             account_type::{
@@ -57,10 +57,6 @@ impl AccountIdV0 {
     /// The least significant nibble determines the account version.
     const VERSION_MASK: u64 = 0b1111;
 
-    /// The two most significant bytes of the suffix encdode the anchor epoch.
-    const ANCHOR_EPOCH_MASK: u64 = 0xffff << Self::ANCHOR_EPOCH_SHIFT;
-    const ANCHOR_EPOCH_SHIFT: u64 = 48;
-
     /// The higher two bits of the second least significant nibble encode the account storage
     /// mode.
     pub(crate) const STORAGE_MODE_MASK: u8 = 0b11 << Self::STORAGE_MODE_SHIFT;
@@ -75,20 +71,17 @@ impl AccountIdV0 {
     /// See [`AccountId::new`](super::AccountId::new) for details.
     pub fn new(
         seed: Word,
-        anchor: AccountIdAnchor,
         code_commitment: Digest,
         storage_commitment: Digest,
     ) -> Result<Self, AccountIdError> {
-        let seed_digest =
-            compute_digest(seed, code_commitment, storage_commitment, anchor.block_commitment());
+        let seed_digest = compute_digest(seed, code_commitment, storage_commitment);
 
         let mut felts: [Felt; 2] = seed_digest.as_elements()[0..2]
             .try_into()
             .expect("we should have sliced off 2 elements");
 
-        felts[1] = shape_suffix(felts[1], anchor.epoch())?;
+        felts[1] = shape_suffix(felts[1]);
 
-        // This will validate that the anchor_epoch we have just written is not u16::MAX.
         account_id_from_felts(felts)
     }
 
@@ -133,10 +126,15 @@ impl AccountIdV0 {
         // Overwrite first 7 bytes, leaving the 8th byte 0 (which will be cleared by
         // shape_suffix anyway).
         suffix_bytes[..7].copy_from_slice(&bytes[8..]);
+
         // If the value is too large modular reduction is performed, which is fine here.
         let mut suffix = Felt::new(u64::from_be_bytes(suffix_bytes));
 
-        suffix = shape_suffix(suffix, 0).expect("anchor epoch is not u16::MAX");
+        // Clear the most significant bit of the suffix.
+        suffix = Felt::try_from(suffix.as_int() & 0x7fff_ffff_ffff_ffff)
+            .expect("no bits were set so felt should still be valid");
+
+        suffix = shape_suffix(suffix);
 
         let account_id = account_id_from_felts([prefix, suffix])
             .expect("we should have shaped the felts to produce a valid id");
@@ -155,7 +153,6 @@ impl AccountIdV0 {
         version: AccountIdVersion,
         code_commitment: Digest,
         storage_commitment: Digest,
-        anchor_block_commitment: Digest,
     ) -> Result<Word, AccountError> {
         crate::account::account_id::seed::compute_account_seed(
             init_seed,
@@ -164,7 +161,6 @@ impl AccountIdV0 {
             version,
             code_commitment,
             storage_commitment,
-            anchor_block_commitment,
         )
     }
 
@@ -201,11 +197,6 @@ impl AccountIdV0 {
     pub fn version(&self) -> AccountIdVersion {
         extract_version(self.prefix().as_u64())
             .expect("account ID should have been constructed with a valid version")
-    }
-
-    /// See [`AccountId::anchor_epoch`](super::AccountId::anchor_epoch) for details.
-    pub fn anchor_epoch(&self) -> u16 {
-        extract_anchor_epoch(self.suffix().as_int())
     }
 
     /// See [`AccountId::from_hex`](super::AccountId::from_hex) for details.
@@ -440,13 +431,14 @@ pub(crate) fn validate_prefix(
 }
 
 /// Checks that the suffix:
-/// - has an anchor_epoch that is not [`u16::MAX`].
+/// - has its most significant bit set to zero.
 /// - has its lower 8 bits set to zero.
 const fn validate_suffix(suffix: Felt) -> Result<(), AccountIdError> {
     let suffix = suffix.as_int();
 
-    if extract_anchor_epoch(suffix) == u16::MAX {
-        return Err(AccountIdError::AnchorEpochMustNotBeU16Max);
+    // Validate most significant bit is zero.
+    if suffix >> 63 != 0 {
+        return Err(AccountIdError::AccountIdSuffixMostSignificantBitMustBeZero);
     }
 
     // Validate lower 8 bits of second felt are zero.
@@ -490,28 +482,16 @@ pub(crate) const fn extract_type(prefix: u64) -> AccountType {
     }
 }
 
-const fn extract_anchor_epoch(suffix: u64) -> u16 {
-    ((suffix & AccountIdV0::ANCHOR_EPOCH_MASK) >> AccountIdV0::ANCHOR_EPOCH_SHIFT) as u16
-}
-
-/// Shapes the suffix so it meets the requirements of the account ID, by overwriting the
-/// upper 16 bits with the epoch and setting the lower 8 bits to zero.
-fn shape_suffix(suffix: Felt, anchor_epoch: u16) -> Result<Felt, AccountIdError> {
-    if anchor_epoch == u16::MAX {
-        return Err(AccountIdError::AnchorEpochMustNotBeU16Max);
-    }
-
+/// Shapes the suffix so it meets the requirements of the account ID, by setting the lower 8 bits to
+/// zero.
+fn shape_suffix(suffix: Felt) -> Felt {
     let mut suffix = suffix.as_int();
 
-    // Clear upper 16 epoch bits and the lower 8 bits.
-    suffix &= 0x0000_ffff_ffff_ff00;
+    // Clear the lower 8 bits.
+    suffix &= 0xffff_ffff_ffff_ff00;
 
-    // Set the upper 16 anchor epoch bits.
-    suffix |= (anchor_epoch as u64) << AccountIdV0::ANCHOR_EPOCH_SHIFT;
-
-    // SAFETY: We disallow u16::MAX which would be all 1 bits, so at least one of the most
-    // significant bits will always be zero.
-    Ok(Felt::try_from(suffix).expect("epoch is never all ones so felt should be valid"))
+    // SAFETY: Felt was previously valid and we only cleared bits, so it must still be valid.
+    Felt::try_from(suffix).expect("no bits were set so felt should still be valid")
 }
 
 // COMMON TRAIT IMPLS
@@ -541,13 +521,12 @@ pub(crate) fn compute_digest(
     seed: Word,
     code_commitment: Digest,
     storage_commitment: Digest,
-    anchor_block_commitment: Digest,
 ) -> Digest {
     let mut elements = Vec::with_capacity(16);
     elements.extend(seed);
     elements.extend(*code_commitment);
     elements.extend(*storage_commitment);
-    elements.extend(*anchor_block_commitment);
+    elements.extend(EMPTY_WORD);
     Hasher::hash_elements(&elements)
 }
 
@@ -568,43 +547,18 @@ mod tests {
     };
 
     #[test]
-    fn test_account_id_from_seed_with_epoch() {
-        let code_commitment: Digest = Digest::default();
-        let storage_commitment: Digest = Digest::default();
-        let anchor_block_commitment: Digest = Digest::default();
-
-        let seed = AccountIdV0::compute_account_seed(
-            [10; 32],
-            AccountType::FungibleFaucet,
-            AccountStorageMode::Public,
-            AccountIdVersion::Version0,
-            code_commitment,
-            storage_commitment,
-            anchor_block_commitment,
-        )
-        .unwrap();
-
-        for anchor_epoch in [0, u16::MAX - 1, 5000] {
-            let anchor = AccountIdAnchor::new_unchecked(anchor_epoch, anchor_block_commitment);
-            let id = AccountIdV0::new(seed, anchor, code_commitment, storage_commitment).unwrap();
-            assert_eq!(id.anchor_epoch(), anchor_epoch, "failed for account ID: {id}");
-        }
-    }
-
-    #[test]
-    fn account_id_from_felts_with_high_pop_count() {
-        let valid_suffix = Felt::try_from(0xfffe_ffff_ffff_ff00u64).unwrap();
-        let valid_prefix = Felt::try_from(0x7fff_ffff_ffff_ff00u64).unwrap();
+    fn account_id_from_felts_with_max_pop_count() {
+        let valid_suffix = Felt::try_from(0x7fff_ffff_ffff_ff00u64).unwrap();
+        let valid_prefix = Felt::try_from(0x7fff_ffff_ffff_ff70u64).unwrap();
 
         let id1 = AccountIdV0::new_unchecked([valid_prefix, valid_suffix]);
-        assert_eq!(id1.account_type(), AccountType::RegularAccountImmutableCode);
-        assert_eq!(id1.storage_mode(), AccountStorageMode::Public);
+        assert_eq!(id1.account_type(), AccountType::NonFungibleFaucet);
+        assert_eq!(id1.storage_mode(), AccountStorageMode::Network);
         assert_eq!(id1.version(), AccountIdVersion::Version0);
-        assert_eq!(id1.anchor_epoch(), u16::MAX - 1);
     }
 
     #[test]
-    fn account_id_construction() {
+    fn account_id_dummy_construction() {
         // Use the highest possible input to check if the constructed id is a valid Felt in that
         // scenario.
         // Use the lowest possible input to check whether the constructor produces valid IDs with
@@ -621,7 +575,6 @@ mod tests {
                     assert_eq!(id.account_type(), account_type);
                     assert_eq!(id.storage_mode(), storage_mode);
                     assert_eq!(id.version(), AccountIdVersion::Version0);
-                    assert_eq!(id.anchor_epoch(), 0);
 
                     // Do a serialization roundtrip to ensure validity.
                     let serialized_id = id.to_bytes();

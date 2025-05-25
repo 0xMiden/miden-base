@@ -2,9 +2,7 @@ use alloc::string::ToString;
 
 use miden_objects::{
     AccountError, Word,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountIdAnchor, AccountStorageMode, AccountType,
-    },
+    account::{Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType},
 };
 
 use super::AuthScheme;
@@ -53,7 +51,6 @@ impl From<BasicWallet> for AccountComponent {
 /// authentication scheme.
 pub fn create_basic_wallet(
     init_seed: [u8; 32],
-    id_anchor: AccountIdAnchor,
     auth_scheme: AuthScheme,
     account_type: AccountType,
     account_storage_mode: AccountStorageMode,
@@ -69,7 +66,6 @@ pub fn create_basic_wallet(
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
-        .anchor(id_anchor)
         .account_type(account_type)
         .storage_mode(account_storage_mode)
         .with_component(auth_component)
@@ -85,25 +81,16 @@ pub fn create_basic_wallet(
 #[cfg(test)]
 mod tests {
 
-    use miden_objects::{ONE, block::BlockHeader, crypto::dsa::rpo_falcon512, digest};
+    use miden_objects::{ONE, crypto::dsa::rpo_falcon512};
     use vm_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
 
     #[test]
     fn test_create_basic_wallet() {
-        let anchor_block_header_mock = BlockHeader::mock(
-            0,
-            Some(digest!("0xaa")),
-            Some(digest!("0xbb")),
-            &[],
-            digest!("0xcc"),
-        );
-
         let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
         let wallet = create_basic_wallet(
             [1; 32],
-            (&anchor_block_header_mock).try_into().unwrap(),
             AuthScheme::RpoFalcon512 { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
@@ -116,18 +103,9 @@ mod tests {
 
     #[test]
     fn test_serialize_basic_wallet() {
-        let anchor_block_header_mock = BlockHeader::mock(
-            0,
-            Some(digest!("0xaa")),
-            Some(digest!("0xbb")),
-            &[],
-            digest!("0xcc"),
-        );
-
         let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
         let wallet = create_basic_wallet(
             [1; 32],
-            (&anchor_block_header_mock).try_into().unwrap(),
             AuthScheme::RpoFalcon512 { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,

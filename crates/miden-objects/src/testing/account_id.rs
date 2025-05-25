@@ -97,7 +97,6 @@ pub const ACCOUNT_ID_MAX_ZEROES: u128 =
 /// Produces a valid account ID with the given account type and storage mode.
 ///
 /// - Version is set to 0.
-/// - Anchor epoch is set to 0.
 ///
 /// Finally, distributes the given `random` value over the ID to produce non-trivial values for
 /// testing. This is easiest explained with an example. Suppose `random` is `0xaabb_ccdd`,
@@ -105,7 +104,7 @@ pub const ACCOUNT_ID_MAX_ZEROES: u128 =
 ///
 /// ```text
 /// prefix: [0xaa | 5 zero bytes | 0xbb | metadata byte]
-/// suffix: [2 zero bytes (epoch) | 0xcc | 3 zero bytes | 0xdd | zero byte]
+/// suffix: [2 zero bytes | 0xcc | 3 zero bytes | 0xdd | zero byte]
 /// ```
 pub const fn account_id(
     account_type: AccountType,
