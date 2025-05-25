@@ -612,6 +612,15 @@ impl AccountUpdateAggregator {
         batch_id: BatchId,
         update: BatchAccountUpdate,
     ) -> Result<(), ProposedBlockError> {
+        // As a special case, a NOOP transaction (i.e. one where the initial and final state
+        // commitment is the same) can just be ignored without changing the outcome.
+        // Without this early return, such a transaction would conflict with other state-updating
+        // transactions, because there would be two transactions that update the account from
+        // the same initial state commitment.
+        if update.initial_state_commitment() == update.final_state_commitment() {
+            return Ok(());
+        };
+
         if let Some((conflicting_update, conflicting_batch_id)) = self
             .updates
             .entry(account_id)

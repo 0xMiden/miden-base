@@ -151,15 +151,10 @@ pub enum AccountIdError {
     AccountIdHexParseError(#[source] HexParseError),
     #[error("`{0}` is not a known account ID version")]
     UnknownAccountIdVersion(u8),
-    #[error("anchor epoch in account ID must not be u16::MAX ({})", u16::MAX)]
-    AnchorEpochMustNotBeU16Max,
+    #[error("most significant bit of account ID suffix must be zero")]
+    AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
-    #[error(
-        "anchor block must be an epoch block, that is, its block number must be a multiple of 2^{}",
-        BlockNumber::EPOCH_LENGTH_EXPONENT
-    )]
-    AnchorBlockMustBeEpochBlock,
     #[error("failed to decode bech32 string into account ID")]
     Bech32DecodeError(#[source] Bech32Error),
 }
@@ -471,11 +466,6 @@ pub enum TransactionInputError {
     AccountSeedNotProvidedForNewAccount,
     #[error("account seed must not be provided for existing accounts")]
     AccountSeedProvidedForExistingAccount,
-    #[error(
-      "anchor block header for epoch {0} (block number = {block_number}) must be provided in the partial blockchain for the new account",
-      block_number = BlockNumber::from_epoch(*.0),
-    )]
-    AnchorBlockHeaderNotProvidedForNewAccount(u16),
     #[error("transaction input note with nullifier {0} is a duplicate")]
     DuplicateInputNote(Nullifier),
     #[error(
