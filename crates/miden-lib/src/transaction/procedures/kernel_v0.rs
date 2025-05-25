@@ -40,9 +40,9 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_has_non_fungible_asset
     digest!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
     // faucet_mint_asset
-    digest!("0x0233b98c65ba26e46438cc1eb88bf35be5a89768630af7b09a35147ac31fa2ea"),
+    digest!("0x816b3c87726fc809c15005211d5365d66485e11ae5813e70ca1cc9d49de1cbf6"),
     // faucet_burn_asset
-    digest!("0x888f3db6fec51abd079d851d4633c80ab0a6d64cc149f7f5e3d52410200a35f8"),
+    digest!("0x7022cca81527fbb7da6849d1c256c65fef3519f849ca57b50ead8e5db05eda97"),
     // faucet_get_total_fungible_asset_issuance
     digest!("0xd2ee4bd330f989165ee2be0f121a4db916f95e58f6fd2d040d57672f2f0cef63"),
     // faucet_is_non_fungible_asset_issued
