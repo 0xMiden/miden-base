@@ -329,14 +329,19 @@ fn test_get_inputs() {
 /// the `get_inputs` procedure, see the
 /// [issue #1363](https://github.com/0xMiden/miden-base/issues/1363) for more details.
 #[test]
-fn test_get_exactly_8_inputs() {
-    let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
-    let target_id = ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into().unwrap();
+fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
+    let sender_id = ACCOUNT_ID_SENDER
+        .try_into()
+        .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
+    let target_id = ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into().context(
+        "failed to convert ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE to account ID",
+    )?;
 
     // prepare note data
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(target_id, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(target_id, NoteExecutionMode::Local)
+        .context("failed to create note tag from account ID")?;
     let metadata = NoteMetadata::new(
         sender_id,
         NoteType::Public,
@@ -344,9 +349,10 @@ fn test_get_exactly_8_inputs() {
         NoteExecutionHint::always(),
         Default::default(),
     )
-    .unwrap();
-    let vault = NoteAssets::new(vec![]).unwrap();
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler()).unwrap();
+    .context("failed to create metadata")?;
+    let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
+    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler())
+        .context("failed to compile note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
     // values
@@ -363,7 +369,7 @@ fn test_get_exactly_8_inputs() {
             Felt::new(7),
             Felt::new(8),
         ])
-        .unwrap(),
+        .context("failed to create note inputs")?,
     );
     let input_note = Note::new(vault.clone(), metadata, recipient);
 
@@ -381,13 +387,19 @@ fn test_get_exactly_8_inputs() {
 
                 # execute the `get_inputs` procedure to trigger note inputs number assertion
                 push.0 exec.note::get_inputs
+                # => [num_inputs, 0]
+
+                # assert that the number if inputs is 8
+                push.8 assert_eq.err=\"number of inputs should be equal to 8\"
 
                 # clean the stack
-                drop drop
+                drop
             end
         ";
 
-    tx_context.execute_code(tx_code).unwrap();
+    tx_context.execute_code(tx_code).context("transaction execution failed")?;
+
+    Ok(())
 }
 
 #[test]

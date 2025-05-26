@@ -742,33 +742,42 @@ fn executed_transaction_output_notes() {
     assert_eq!(output_notes.num_notes(), 6);
 
     // assert that the expected output note 1 is present
-    let output_note_1 = executed_transaction.output_notes().get_note(3);
-    let recipient_1 = Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
-    let note_assets_1 = NoteAssets::new(vec![combined_asset]).unwrap();
-    let expected_note_id_1 = NoteId::new(recipient_1, note_assets_1.commitment());
-    assert_eq!(output_note_1.id(), expected_note_id_1);
+    let resulting_output_note_1 = executed_transaction.output_notes().get_note(3);
+
+    let expected_recipient_1 =
+        Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
+    let expected_note_assets_1 = NoteAssets::new(vec![combined_asset]).unwrap();
+    let expected_note_id_1 = NoteId::new(expected_recipient_1, expected_note_assets_1.commitment());
+    assert_eq!(resulting_output_note_1.id(), expected_note_id_1);
 
     // assert that the expected output note 2 is present
-    let output_note_2 = executed_transaction.output_notes().get_note(4);
-    let note_id = expected_output_note_2.id();
-    let note_metadata = expected_output_note_2.metadata();
-    assert_eq!(NoteHeader::from(output_note_2), NoteHeader::new(note_id, *note_metadata));
+    let resulting_output_note_2 = executed_transaction.output_notes().get_note(4);
+
+    let expected_note_id_2 = expected_output_note_2.id();
+    let expected_note_metadata_2 = expected_output_note_2.metadata();
+    assert_eq!(
+        NoteHeader::from(resulting_output_note_2),
+        NoteHeader::new(expected_note_id_2, *expected_note_metadata_2)
+    );
 
     // assert that the expected output note 3 is present and has no assets
-    let output_note_3 = executed_transaction.output_notes().get_note(5);
-    assert_eq!(expected_output_note_3.id(), output_note_3.id());
-    assert_eq!(expected_output_note_3.assets(), output_note_3.assets().unwrap());
+    let resulting_output_note_3 = executed_transaction.output_notes().get_note(5);
+
+    assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
+    assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
 
     // make sure that the number of note inputs remains the same
-    let note_2_recipient = output_note_2.recipient().expect("output note 2 is not full");
+    let resulting_note_2_recipient =
+        resulting_output_note_2.recipient().expect("output note 2 is not full");
     assert_eq!(
-        note_2_recipient.inputs().num_values(),
+        resulting_note_2_recipient.inputs().num_values(),
         expected_output_note_2.inputs().num_values()
     );
 
-    let note_3_recipient = output_note_3.recipient().expect("output note 3 is not full");
+    let resulting_note_3_recipient =
+        resulting_output_note_3.recipient().expect("output note 3 is not full");
     assert_eq!(
-        note_3_recipient.inputs().num_values(),
+        resulting_note_3_recipient.inputs().num_values(),
         expected_output_note_3.inputs().num_values()
     );
 }

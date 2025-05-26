@@ -134,22 +134,22 @@ export.get_inputs
 
     # calculate the number of words required to store the inputs
     dup.4 u32divmod.4 neq.0 add
-    # => [num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # round up the number of words the next multiple of 2
+    # round up the number of words to the next multiple of 2
     dup is_odd add
-    # => [even_num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [even_num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # calculate the start and end pointer for reading to memory
     mul.4 dup.6 add dup.6
-    # => [start_ptr, end_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # OS => [start_ptr, end_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
     # check the input data matches the commitment, and write it to memory.
     exec.write_advice_data_to_memory
-    # => [num_inputs, dest_ptr]
+    # OS => [num_inputs, dest_ptr]
     # AS => []
 end
 

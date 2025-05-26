@@ -299,7 +299,7 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
 // - ASSETS_HASH is the key to look up note assets in the advice map.
 //
-// Notice that note input values are not loaded to the memory, only their length. On order to obtain
+// Notice that note input values are not loaded to the memory, only their length. In order to obtain
 // the input values the advice map should be used: they are stored there as 
 // `INPUTS_COMMITMENT -> INPUTS || PADDING`. 
 // 

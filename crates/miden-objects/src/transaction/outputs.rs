@@ -195,7 +195,7 @@ impl OutputNote {
         }
     }
 
-    /// Note's recipient.
+    /// Returns the output note's recipient.
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient(&self) -> Option<&NoteRecipient> {
@@ -206,7 +206,7 @@ impl OutputNote {
         }
     }
 
-    /// Digest of the note's recipient.
+    /// Returns the digest of the output note's recipient.
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient_digest(&self) -> Option<Digest> {
