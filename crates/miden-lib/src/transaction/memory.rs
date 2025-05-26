@@ -298,6 +298,13 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
 // - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
 // - ASSETS_HASH is the key to look up note assets in the advice map.
+//
+// Notice that note input values are not loaded to the memory, only their length. On order to obtain
+// the input values the advice map should be used: they are stored there as 
+// `INPUTS_COMMITMENT -> INPUTS || PADDING`. 
+// 
+// As opposed to the asset values, input values are never used in kernel memory, so their presence 
+// there is unnecessary. 
 
 /// The memory address at which the input note section begins.
 pub const INPUT_NOTE_SECTION_PTR: MemoryAddress = 4_194_304;
