@@ -13,19 +13,22 @@ use miden_lib::{
     transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
 };
 use miden_objects::{
-    Digest, WORD_SIZE,
+    Digest, EMPTY_WORD, ONE, WORD_SIZE,
     account::{AccountBuilder, AccountId},
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteScript, NoteTag, NoteType,
     },
-    testing::{account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, note::NoteBuilder},
+    testing::{
+        account_id::{ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER},
+        note::NoteBuilder,
+    },
     transaction::{AccountInputs, OutputNote, TransactionArgs},
 };
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{EMPTY_WORD, ONE, ProcessState, Word};
+use vm_processor::{ProcessState, Word};
 
 use super::{Felt, Process, ZERO, word_to_masm_push_string};
 use crate::{
@@ -317,6 +320,74 @@ fn test_get_inputs() {
     );
 
     tx_context.execute_code(&code).unwrap();
+}
+
+/// This test checks the scenario when an input note has exactly 8 input values, and the transaction
+/// script attempts to load the inputs to memory using the `miden::note::get_inputs` procedure.
+///
+/// Previously this setup was leading to the incorrect number of note input values computed during
+/// the `get_inputs` procedure, see the
+/// [issue #1363](https://github.com/0xMiden/miden-base/issues/1363) for more details.
+#[test]
+fn test_get_exactly_8_inputs() {
+    let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
+    let target_id = ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into().unwrap();
+
+    // prepare note data
+    let serial_num =
+        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let tag = NoteTag::from_account_id(target_id, NoteExecutionMode::Local).unwrap();
+    let metadata = NoteMetadata::new(
+        sender_id,
+        NoteType::Public,
+        tag,
+        NoteExecutionHint::always(),
+        Default::default(),
+    )
+    .unwrap();
+    let vault = NoteAssets::new(vec![]).unwrap();
+    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler()).unwrap();
+
+    // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
+    // values
+    let recipient = NoteRecipient::new(
+        serial_num,
+        note_script,
+        NoteInputs::new(vec![
+            ONE,
+            Felt::new(2),
+            Felt::new(3),
+            Felt::new(4),
+            Felt::new(5),
+            Felt::new(6),
+            Felt::new(7),
+            Felt::new(8),
+        ])
+        .unwrap(),
+    );
+    let input_note = Note::new(vault.clone(), metadata, recipient);
+
+    // provide this input note to the transaction context
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+        .input_notes(vec![input_note])
+        .build();
+
+    let tx_code = "
+            use.kernel::prologue
+            use.miden::note
+
+            begin
+                exec.prologue::prepare_transaction
+
+                # execute the `get_inputs` procedure to trigger note inputs number assertion
+                push.0 exec.note::get_inputs
+
+                # clean the stack
+                drop drop
+            end
+        ";
+
+    tx_context.execute_code(tx_code).unwrap();
 }
 
 #[test]
