@@ -4,10 +4,11 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
     account::AccountId,
+    assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::NoteId,
     transaction::{
-        ExecutedTransaction, ForeignAccountInputs, InputNote, InputNotes, TransactionArgs,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
     vm::StackOutputs,
@@ -28,7 +29,7 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 // TRANSACTION EXECUTOR
 // ================================================================================================
 
-/// The transaction executor is responsible for executing Miden rollup transactions.
+/// The transaction executor is responsible for executing Miden blockchain transactions.
 ///
 /// Transaction execution consists of the following steps:
 /// - Fetch the data required to execute a transaction from the [DataStore].
@@ -74,7 +75,7 @@ impl TransactionExecutor {
     /// account code) will be compiled and executed in debug mode. This will ensure that all debug
     /// instructions present in the original source code are executed.
     pub fn with_debug_mode(mut self) -> Self {
-        self.exec_options = self.exec_options.with_debugging();
+        self.exec_options = self.exec_options.with_debugging(true);
         self
     }
 
@@ -92,15 +93,26 @@ impl TransactionExecutor {
     // --------------------------------------------------------------------------------------------
 
     /// Prepares and executes a transaction specified by the provided arguments and returns an
-    /// [ExecutedTransaction].
+    /// [`ExecutedTransaction`].
     ///
-    /// The method first fetches the data required to execute the transaction from the [DataStore]
-    /// and compile the transaction into an executable program. Then, it executes the transaction
-    /// program and creates an [ExecutedTransaction] object.
+    /// The method first fetches the data required to execute the transaction from the [`DataStore`]
+    /// and compile the transaction into an executable program. In particular, it fetches the
+    /// account identified by the account ID from the store as well as `block_ref`, the header of
+    /// the reference block of the transaction and the set of headers from the blocks in which the
+    /// provided `notes` were created. Then, it executes the transaction program and creates an
+    /// [`ExecutedTransaction`].
+    ///
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the source manager from the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
+    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
+    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
     /// # Errors:
+    ///
     /// Returns an error if:
-    /// - If required data can not be fetched from the [DataStore].
+    /// - If required data can not be fetched from the [`DataStore`].
     /// - If the transaction arguments contain foreign account data not anchored in the reference
     ///   block.
     /// - If any input notes were created in block numbers higher than the reference block.
@@ -111,6 +123,7 @@ impl TransactionExecutor {
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
+        source_manager: Arc<dyn SourceManager>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -145,6 +158,7 @@ impl TransactionExecutor {
             stack_inputs,
             &mut host,
             self.exec_options,
+            source_manager,
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
@@ -156,6 +170,13 @@ impl TransactionExecutor {
 
     /// Executes an arbitrary script against the given account and returns the stack state at the
     /// end of execution.
+    ///
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the source manager from the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
+    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
+    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
     /// # Errors:
     /// Returns an error if:
@@ -169,7 +190,8 @@ impl TransactionExecutor {
         block_ref: BlockNumber,
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
-        foreign_account_inputs: Vec<ForeignAccountInputs>,
+        foreign_account_inputs: Vec<AccountInputs>,
+        source_manager: Arc<dyn SourceManager>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
@@ -205,7 +227,8 @@ impl TransactionExecutor {
             TransactionKernel::tx_script_main().kernel().clone(),
             stack_inputs,
             self.exec_options,
-        );
+        )
+        .with_source_manager(source_manager);
         let stack_outputs = process
             .execute(&TransactionKernel::tx_script_main(), &mut host)
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
@@ -220,6 +243,13 @@ impl TransactionExecutor {
     /// if all notes has been consumed successfully and [NoteAccountExecution::Failure] if some note
     /// returned an error.
     ///
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the source manager from the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
+    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
+    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
+    ///
     /// # Errors:
     /// Returns an error if:
     /// - If required data can not be fetched from the [DataStore].
@@ -232,6 +262,7 @@ impl TransactionExecutor {
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
+        source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -266,6 +297,7 @@ impl TransactionExecutor {
             stack_inputs,
             &mut host,
             self.exec_options,
+            source_manager,
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
@@ -365,7 +397,7 @@ fn validate_account_inputs(
     ref_block: &BlockHeader,
 ) -> Result<(), TransactionExecutorError> {
     // Validate that foreign account inputs are anchored in the reference block
-    for foreign_account in tx_args.foreign_accounts() {
+    for foreign_account in tx_args.foreign_account_inputs() {
         let computed_account_root = foreign_account.compute_account_root().map_err(|err| {
             TransactionExecutorError::InvalidAccountWitness(foreign_account.id(), err)
         })?;

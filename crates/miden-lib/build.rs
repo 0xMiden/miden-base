@@ -4,7 +4,6 @@ use std::{
     fmt::Write,
     fs::{self},
     io::{self},
-    ops::Range,
     path::{Path, PathBuf},
     sync::Arc,
 };
@@ -43,7 +42,6 @@ const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
 const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
 
-const ERROR_CATEGORIES: [ErrorCategory; 2] = [ErrorCategory::TxKernel, ErrorCategory::NoteScript];
 const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 11] = [
     TxKernelErrorCategory::Kernel,
     TxKernelErrorCategory::Prologue,
@@ -475,32 +473,26 @@ fn is_masm_file(path: &Path) -> io::Result<bool> {
 // ================================================================================================
 
 /// Reads all MASM files from the `asm_source_dir` and extracts its error constants and their
-/// associated comment as the error message and generates a Rust file for each category of errors.
+/// associated error message and generates a Rust file for each category of errors.
 /// For example:
 ///
 /// ```text
-/// # New account must have an empty vault
-/// const.ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY=0x00020000
+/// const.ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY="new account must have an empty vault"
 /// ```
 ///
 /// would generate a Rust file for transaction kernel errors (since the error belongs to that
-/// category, identified by its range) with - roughly - the following content:
+/// category, identified by the category extracted from `ERR_<CATEGORY>`) with - roughly - the
+/// following content:
 ///
 /// ```rust
-/// pub const ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY: u32 = 0x00020000;
+/// pub const ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY: MasmError =
+///     MasmError::from_static_str("new account must have an empty vault");
 /// ```
 ///
-/// and add an entry in the constant -> error mapping array:
+/// and add the constant to the error constants array.
 ///
-/// ```rust
-/// (ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY, "New account must have an empty vault"),
-/// ```
-///
-/// The caveats are that only the comment line directly above the constant is considered an error
-/// message. This could be extended if needed, but for now all errors can be described in one line.
-///
-/// We also ensure that a constant is not defined twice, except if their error code is the same.
-/// This can happen across multiple files.
+/// The function ensures that a constant is not defined twice, except if their error message is the
+/// same. This can happen across multiple files.
 ///
 /// Because the error files will be written to ./src/errors, this should be a no-op if ./src is
 /// read-only. To enable writing to ./src, set the `BUILD_GENERATED_FILES_IN_SRC` environment
@@ -513,10 +505,7 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
     let categories =
         extract_all_masm_errors(asm_source_dir).context("failed to extract all masm errors")?;
 
-    for (category, mut errors) in categories {
-        // Sort by error code.
-        errors.sort_by_key(|error| error.code);
-
+    for (category, errors) in categories {
         // Generate the errors file.
         let error_file_content = generate_error_file_content(category, errors)?;
         std::fs::write(category.error_file_name(), error_file_content).into_diagnostic()?;
@@ -528,8 +517,8 @@ fn generate_error_constants(asm_source_dir: &Path) -> Result<()> {
 /// Extract all masm errors from the given path and returns a map by error category.
 fn extract_all_masm_errors(asm_source_dir: &Path) -> Result<ErrorCategoryMap> {
     // We use a BTree here to order the errors by their categories which is the first part after the
-    // ERR_ prefix and to allow for the same error code to be defined multiple times in
-    // different files (as long as the constant names match).
+    // ERR_ prefix and to allow for the same error to be defined multiple times in different files
+    // (as long as the constant name and error messages match).
     let mut errors = BTreeMap::new();
 
     // Walk all files of the kernel source directory.
@@ -542,75 +531,17 @@ fn extract_all_masm_errors(asm_source_dir: &Path) -> Result<ErrorCategoryMap> {
         extract_masm_errors(&mut errors, &file_contents)?;
     }
 
-    // Check if any error code is used twice with different error names.
-    let mut error_codes = BTreeMap::new();
-    for (error_name, error) in errors.iter() {
-        if let Some(existing_error_name) = error_codes.get(&error.code) {
-            return Err(Report::msg(format!(
-                "Transaction kernel error code 0x{} is used multiple times; Non-exhaustive list: ERR_{existing_error_name}, ERR_{error_name}",
-                error.code
-            )));
-        }
-
-        error_codes.insert(error.code.clone(), error_name);
-    }
-
     let mut category_map: BTreeMap<ErrorCategory, Vec<NamedError>> = BTreeMap::new();
+
     for (error_name, error) in errors.into_iter() {
-        let error_num = u32::from_str_radix(&error.code, 16)
-            .into_diagnostic()
-            .context("failed to parse error code into u32")?;
+        let category = ErrorCategory::match_category(&error_name)?;
 
-        let category = ERROR_CATEGORIES
-            .iter()
-            .find(|category| category.err_code_range().contains(&error_num))
-            .ok_or_else(|| {
-                Report::msg(format!("error num {error_num} does not lie in a known range"))
-            })?;
+        let named_error = NamedError { name: error_name, message: error.message };
 
-        validate_error_category(*category, error_num, &error_name)?;
-
-        let named_error = NamedError {
-            name: error_name,
-            code: error_num,
-            message: error.message,
-        };
-
-        category_map.entry(*category).or_default().push(named_error);
+        category_map.entry(category).or_default().push(named_error);
     }
 
     Ok(category_map)
-}
-
-/// Validates that an error's category, implied from its error code, and the category of its name
-/// match.
-fn validate_error_category(
-    category: ErrorCategory,
-    error_num: u32,
-    error_name: &ErrorName,
-) -> Result<()> {
-    if category == ErrorCategory::TxKernel {
-        let tx_kernel_error_category = TX_KERNEL_ERROR_CATEGORIES
-            .iter()
-            .find(|tx_kernel_category| tx_kernel_category.error_code_range().contains(&error_num))
-            .copied()
-            .ok_or_else(|| {
-                Report::msg(format!(
-                    "error num {error_num} does not lie in a known tx kernel error range"
-                ))
-            })?;
-
-        if !error_name.starts_with(tx_kernel_error_category.category_name()) {
-            return Err(Report::msg(format!(
-                "expected error with code {} to be in category {}, but its name {} does not start with the category name",
-                error_num,
-                tx_kernel_error_category.category_name(),
-                error_name
-            )));
-        }
-    }
-
-    Ok(())
 }
 
 /// Extracts the errors from a single masm file and inserts them into the provided map.
@@ -618,9 +549,7 @@ fn extract_masm_errors(
     errors: &mut BTreeMap<ErrorName, ExtractedError>,
     file_contents: &str,
 ) -> Result<()> {
-    let regex =
-        Regex::new(r"(# (?<message>.*)\n)?const\.ERR_(?<name>.*)=0x(?<code>[\dABCDEFabcdef]*)")
-            .unwrap();
+    let regex = Regex::new(r#"const\.ERR_(?<name>.*)="(?<message>.*)""#).unwrap();
 
     for capture in regex.captures_iter(file_contents) {
         let error_name = capture
@@ -629,31 +558,31 @@ fn extract_masm_errors(
             .as_str()
             .trim()
             .to_owned();
-        let error_code = capture
-            .name("code")
+        let error_message = capture
+            .name("message")
             .expect("error code should be captured")
             .as_str()
             .trim()
             .to_owned();
 
-        let error_message = match capture.name("message") {
-            Some(message) => message.as_str().trim().to_owned(),
-            None => {
+        if let Some(ExtractedError { message: existing_error_message, .. }) =
+            errors.get(&error_name)
+        {
+            if existing_error_message != &error_message {
                 return Err(Report::msg(format!(
-                    "error message for constant ERR_{error_name} not found; add a comment above the constant to add an error message"
-                )));
-            },
-        };
-
-        if let Some(ExtractedError { code: existing_error_code, .. }) = errors.get(&error_name) {
-            if existing_error_code != &error_code {
-                return Err(Report::msg(format!(
-                    "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error code is different"
+                    "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
                 )));
             }
         }
 
-        errors.insert(error_name, ExtractedError { code: error_code, message: error_message });
+        // Enforce the "no trailing punctuation" rule from the Rust error guidelines on MASM errors.
+        if error_message.ends_with(".") {
+            return Err(Report::msg(format!(
+                "Error messages should not end with a period: `ERR_{error_name}: {error_message}`"
+            )));
+        }
+
+        errors.insert(error_name, ExtractedError { message: error_message });
     }
 
     Ok(())
@@ -680,6 +609,8 @@ fn is_new_error_category<'a>(last_error: &mut Option<&'a str>, current_error: &'
 fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>) -> Result<String> {
     let mut output = String::new();
 
+    writeln!(output, "use crate::errors::MasmError;\n").unwrap();
+
     writeln!(
         output,
         "// This file is generated by build.rs, do not modify manually.
@@ -688,13 +619,9 @@ fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>)
 // To add a new error, define a constant in masm of the pattern `const.ERR_<CATEGORY>_...`.
 // Try to fit the error into a pre-existing category if possible (e.g. Account, Prologue,
 // Non-Fungible-Asset, ...).
-//
-// The comment directly above the constant will be interpreted as the error message for that error.
 "
     )
     .unwrap();
-
-    writeln!(output, "{}", category.category_info()).unwrap();
 
     writeln!(
         output,
@@ -707,38 +634,20 @@ fn generate_error_file_content(category: ErrorCategory, errors: Vec<NamedError>)
 
     let mut last_error = None;
     for named_error in errors.iter() {
-        let NamedError { name, code, message } = named_error;
+        let NamedError { name, message } = named_error;
 
         // Group errors into blocks separate by newlines.
         if is_new_error_category(&mut last_error, name) {
             writeln!(output).into_diagnostic()?;
         }
 
-        writeln!(output, "/// {message}").into_diagnostic()?;
-        writeln!(output, "pub const ERR_{name}: u32 = 0x{code:x};").into_diagnostic()?;
+        writeln!(output, "/// Error Message: \"{message}\"").into_diagnostic()?;
+        writeln!(
+            output,
+            r#"pub const ERR_{name}: MasmError = MasmError::from_static_str("{message}");"#
+        )
+        .into_diagnostic()?;
     }
-    writeln!(output).into_diagnostic()?;
-
-    writeln!(
-        output,
-        "pub const {}: [(u32, &str); {}] = [",
-        category.array_name(),
-        errors.len()
-    )
-    .into_diagnostic()?;
-
-    let mut last_error = None;
-    for named_error in errors.iter() {
-        let NamedError { name, message, .. } = named_error;
-
-        // Group errors into blocks separate by newlines.
-        if is_new_error_category(&mut last_error, name) {
-            writeln!(output).into_diagnostic()?;
-        }
-        writeln!(output, r#"    (ERR_{name}, "{message}"),"#).into_diagnostic()?;
-    }
-
-    writeln!(output, "];").into_diagnostic()?;
 
     Ok(output)
 }
@@ -747,20 +656,15 @@ type ErrorName = String;
 
 #[derive(Debug, Clone)]
 struct ExtractedError {
-    code: String,
     message: String,
 }
 
 #[derive(Debug, Clone)]
 struct NamedError {
     name: ErrorName,
-    code: u32,
     message: String,
 }
 
-// Later we can extend this with:
-// batch kernel: 0x2_4000..0x2_8000
-// block kernel: 0x2_8000..0x2_c000
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 enum ErrorCategory {
     TxKernel,
@@ -768,13 +672,6 @@ enum ErrorCategory {
 }
 
 impl ErrorCategory {
-    pub const fn err_code_range(&self) -> Range<u32> {
-        match self {
-            ErrorCategory::TxKernel => 0x2_0000..0x2_4000,
-            ErrorCategory::NoteScript => 0x2_c000..0x3_0000,
-        }
-    }
-
     pub const fn error_file_name(&self) -> &'static str {
         match self {
             ErrorCategory::TxKernel => TX_KERNEL_ERRORS_FILE,
@@ -789,42 +686,15 @@ impl ErrorCategory {
         }
     }
 
-    pub fn category_info(&self) -> String {
-        let mut output = String::new();
-        match self {
-            ErrorCategory::TxKernel => {
-                writeln!(
-                    output,
-                    "// Transaction Kernel errors are in range 0x{:x}..0x{:x}.
-// Its sub categories are:",
-                    self.err_code_range().start,
-                    self.err_code_range().end,
-                )
-                .unwrap();
-
-                TX_KERNEL_ERROR_CATEGORIES.iter().for_each(|category| {
-                    writeln!(
-                        output,
-                        "// {} is in range 0x{:x}..0x{:x}",
-                        category.category_name(),
-                        category.error_code_range().start,
-                        category.error_code_range().end
-                    )
-                    .unwrap()
-                });
-            },
-            ErrorCategory::NoteScript => {
-                writeln!(
-                    output,
-                    "// Note Script errors are in range 0x{:x}..0x{:x}.",
-                    self.err_code_range().start,
-                    self.err_code_range().end,
-                )
-                .unwrap();
-            },
+    pub fn match_category(error_name: &ErrorName) -> Result<Self> {
+        for kernel_category in TX_KERNEL_ERROR_CATEGORIES {
+            if error_name.starts_with(kernel_category.category_name()) {
+                return Ok(ErrorCategory::TxKernel);
+            }
         }
 
-        output
+        // If the error is not a tx kernel error, consider it a note script error.
+        Ok(ErrorCategory::NoteScript)
     }
 }
 
@@ -844,22 +714,6 @@ enum TxKernelErrorCategory {
 }
 
 impl TxKernelErrorCategory {
-    pub const fn error_code_range(&self) -> Range<u32> {
-        match self {
-            TxKernelErrorCategory::Kernel => 0x2_0000..0x2_0040,
-            TxKernelErrorCategory::Prologue => 0x2_0040..0x2_0080,
-            TxKernelErrorCategory::Epilogue => 0x2_0080..0x2_00c0,
-            TxKernelErrorCategory::Tx => 0x2_00c0..0x2_0100,
-            TxKernelErrorCategory::Note => 0x2_0100..0x2_0140,
-            TxKernelErrorCategory::Account => 0x2_0140..0x2_0180,
-            TxKernelErrorCategory::ForeignAccount => 0x2_0180..0x2_01c0,
-            TxKernelErrorCategory::Faucet => 0x2_01c0..0x2_0200,
-            TxKernelErrorCategory::FungibleAsset => 0x2_0200..0x2_0240,
-            TxKernelErrorCategory::NonFungibleAsset => 0x2_0240..0x2_0280,
-            TxKernelErrorCategory::Vault => 0x2_0280..0x2_02c0,
-        }
-    }
-
     pub const fn category_name(&self) -> &'static str {
         match self {
             TxKernelErrorCategory::Kernel => "KERNEL",

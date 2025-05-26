@@ -20,17 +20,13 @@ use.kernel::tx
 # ERRORS
 # =================================================================================================
 
-# For faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item
-const.ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED=0x000201c7
+const.ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED="for faucets the FAUCET_STORAGE_DATA_SLOT storage slot is reserved and can not be used with set_account_item"
 
-# The faucet_get_total_fungible_asset_issuance procedure can only be called on a fungible faucet
-const.ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET=0x000201c8
+const.ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the faucet_get_total_fungible_asset_issuance procedure can only be called on a fungible faucet"
 
-# The faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet
-const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET=0x000201c3
+const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 
-# Provided kernel procedure offset is out of bounds
-const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS=0x00020000
+const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
 
 # EVENTS
 # =================================================================================================
@@ -345,7 +341,7 @@ end
 #! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
-export.account_set_map_item.1
+export.account_set_map_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [index, KEY, NEW_VALUE, pad(7)]
@@ -358,16 +354,8 @@ export.account_set_map_item.1
     exec.account::apply_storage_offset
     # => [index_with_offset, KEY, NEW_VALUE, pad(7)]
 
-    # store index for later
-    dup loc_store.0
-    # => [index, KEY, NEW_VALUE, pad(7)]
-
-    # fetch the account storage item, which is ROOT of the map
-    exec.account::get_item movdnw.2
-    # => [KEY, NEW_VALUE, OLD_MAP_ROOT, pad(7)]
-
     # set the new map item
-    loc_load.0 exec.account::set_map_item
+    exec.account::set_map_item
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 
@@ -734,22 +722,26 @@ export.note_get_serial_number
     # => [SERIAL_NUMBER, pad(12)]
 end
 
-#! Returns the current note's inputs commitment.
+#! Returns the current note's inputs commitment and length.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [NOTE_INPUTS_COMMITMENT, pad(12)]
+#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 #!
 #! Where:
 #! - NOTE_INPUTS_COMMITMENT is the current note's inputs commitment.
+#! - num_inputs is the number of input values of the current note.
 #!
 #! Invocation: dynexec
-export.note_get_inputs_commitment
+export.note_get_inputs_commitment_and_len
+    exec.memory::get_input_note_num_inputs
+    # => [num_inputs, pad(16)]
+
     exec.note::get_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT, pad(16)]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
-    swapw dropw
-    # => [NOTE_INPUTS_COMMITMENT, pad(12)]
+    swapdw dropw dropw
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 end
 
 #! Returns the sender of the note currently being processed.
@@ -952,7 +944,7 @@ end
 #! - STORAGE_ROOT is the commitment of the foreign account's storage.
 #! - STORAGE_SLOT_DATA is the data contained in the storage slot which is constructed as follows:
 #!   [SLOT_VALUE, slot_type, 0, 0, 0].
-#! - CODE_ROOT is the commitment of the foreign account's code.
+#! - CODE_COMMITMENT is the commitment of the foreign account's code.
 #! - ACCOUNT_PROCEDURE_DATA is the information about account procedure which is constructed as
 #!   follows: [PROCEDURE_MAST_ROOT, storage_offset, 0, 0, 0].
 #!

@@ -288,13 +288,14 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // Each nullifier occupies a single word. A data section for each note consists of exactly 512
 // words and is laid out like so:
 //
-// ┌──────┬────────┬────────┬────────┬────────┬──────┬───────┬────────┬───────┬─────┬───────┬─────────┬
-// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │ ASSETS │ META │ NOTE  │   NUM  │ ASSET │ ... │ ASSET │ PADDING │
-// │  ID  │  NUM   │  ROOT  │  HASH  │  HASH  │ DATA │ ARGS  │ ASSETS │   0   │     │   n   │         │
-// ├──────┼────────┼────────┼────────┼────────┼──────┼───────┼────────┼───────┼─────┼───────┼─────────┤
-// 0      4        8        12       16       20     24      28       32 + 4n
+// ┌──────┬────────┬────────┬────────┬────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
+// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │ ASSETS │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
+// │  ID  │  NUM   │  ROOT  │  HASH  │  HASH  │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
+// ├──────┼────────┼────────┼────────┼────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
+// 0      4        8        12       16       20     24      28       32       36 + 4n
 //
-// - NUM_ASSETS is encoded [num_assets, 0, 0, 0].
+// - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
+// - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
 // - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
 // - ASSETS_HASH is the key to look up note assets in the advice map.
 
@@ -318,8 +319,9 @@ pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const INPUT_NOTE_ASSETS_HASH_OFFSET: MemoryOffset = 16;
 pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 20;
 pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 24;
-pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 28;
-pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 28;
+pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
 
 // OUTPUT NOTES DATA
 // ------------------------------------------------------------------------------------------------

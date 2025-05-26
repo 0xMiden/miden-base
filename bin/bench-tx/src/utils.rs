@@ -1,7 +1,8 @@
 extern crate alloc;
 pub use alloc::{collections::BTreeMap, string::String};
-use std::sync::Arc;
+use std::fs::{read_to_string, write};
 
+use anyhow::Context;
 use miden_lib::account::{auth::RpoFalcon512, wallets::BasicWallet};
 use miden_objects::{
     account::{Account, AccountBuilder, AccountStorageMode, AccountType, AuthSecretKey},
@@ -9,12 +10,12 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     transaction::TransactionMeasurements,
 };
-use miden_tx::auth::{BasicAuthenticator, TransactionAuthenticator};
+use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::{ChaCha20Rng, rand_core::SeedableRng};
 use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 
-use super::{Benchmark, Path, read_to_string, write};
+use super::{Benchmark, Path};
 
 // CONSTANTS
 // ================================================================================================
@@ -78,7 +79,7 @@ pub fn get_account_with_basic_authenticated_wallet(
         .unwrap()
 }
 
-pub fn get_new_pk_and_authenticator() -> (PublicKey, Arc<dyn TransactionAuthenticator>) {
+pub fn get_new_pk_and_authenticator() -> (PublicKey, BasicAuthenticator<ChaCha20Rng>) {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
     let pub_key = sec_key.public_key();
@@ -88,20 +89,22 @@ pub fn get_new_pk_and_authenticator() -> (PublicKey, Arc<dyn TransactionAuthenti
         rng,
     );
 
-    (pub_key, Arc::new(authenticator) as Arc<dyn TransactionAuthenticator>)
+    (pub_key, authenticator)
 }
 
 pub fn write_bench_results_to_json(
     path: &Path,
     tx_benchmarks: Vec<(Benchmark, MeasurementsPrinter)>,
-) -> Result<(), String> {
+) -> anyhow::Result<()> {
     // convert benchmark file internals to the JSON Value
-    let benchmark_file = read_to_string(path).map_err(|e| e.to_string())?;
-    let mut benchmark_json: Value = from_str(&benchmark_file).map_err(|e| e.to_string())?;
+    let benchmark_file = read_to_string(path).context("failed to read benchmark file")?;
+    let mut benchmark_json: Value =
+        from_str(&benchmark_file).context("failed to convert benchmark contents to json")?;
 
     // fill benchmarks JSON with results of each benchmark
     for (bench_type, tx_progress) in tx_benchmarks {
-        let tx_benchmark_json = serde_json::to_value(tx_progress).map_err(|e| e.to_string())?;
+        let tx_benchmark_json = serde_json::to_value(tx_progress)
+            .context("failed to convert tx measurements to json")?;
 
         benchmark_json[bench_type.to_string()] = tx_benchmark_json;
     }
@@ -111,7 +114,7 @@ pub fn write_bench_results_to_json(
         path,
         to_string_pretty(&benchmark_json).expect("failed to convert json to String"),
     )
-    .map_err(|e| e.to_string())?;
+    .context("failed to write benchmark results to file")?;
 
     Ok(())
 }

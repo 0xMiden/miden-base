@@ -3,7 +3,7 @@
 ###############
 # Remove miden-prover-proxy installs
 ##############
-sudo rm -f /lib/systemd/system/miden-prover-proxy.service
+sudo rm -f /lib/systemd/system/miden-prover-proxy.*
 sudo rm -rf /opt/miden/miden-prover-proxy/
 sudo deluser miden-prover-proxy
 sudo systemctl daemon-reload

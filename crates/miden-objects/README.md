@@ -1,6 +1,6 @@
 # Miden Objects
 
-This crates contains core components defining the Miden rollup protocol.
+This crates contains core components defining the Miden protocol.
 
 ## Modules
 
@@ -22,7 +22,7 @@ Structures used to define fungible and non-fungible assets. Accounts own assets 
 
 ### Block
 
-Structures used to define a block. These objects contain authentication structures, merkle trees, used to represent the state of the rollup at a given point in time.
+Structures used to define a block. These objects contain authentication structures, merkle trees, used to represent the state of the chain at a given point in time.
 
 ### Notes
 
@@ -32,7 +32,7 @@ Structures used to define notes. Notes are messages that contain code and assets
 
 ### Transaction
 
-Structures used to define Miden rollup transactions. Transactions describe changes to an account, and may include consumption and production of notes. The objects in this module allow for the representation of transactions at multiple stages of its lifecycle, from creation, to data aggregation, execution with trace collection, and finally an executed transaction with a corresponding STARK proof.
+Structures used to define Miden blockchain transactions. Transactions describe changes to an account, and may include consumption and production of notes. The objects in this module allow for the representation of transactions at multiple stages of its lifecycle, from creation, to data aggregation, execution with trace collection, and finally an executed transaction with a corresponding STARK proof.
 
 [Documentation](https://0xMiden.github.io/miden-base/transaction.html).
 

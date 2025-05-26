@@ -28,7 +28,6 @@ impl MockAccount {
         MockAccount { account, seed, authenticator }
     }
 
-    #[allow(dead_code)]
     pub fn apply_delta(&mut self, delta: &AccountDelta) -> Result<(), AccountError> {
         self.account.apply_delta(delta)
     }

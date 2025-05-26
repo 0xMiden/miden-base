@@ -58,7 +58,7 @@ pub enum NoteExecutionMode {
 ///   should be consumed by the network. These notes will be further validated and if possible
 ///   consumed by it.
 /// - Target describes how to further interpret the bits in the tag.
-///   - For tags with an account target, the rest of the tag is interpreted as a partial
+///   - For tags with a specific target, the rest of the tag is interpreted as a partial
 ///     [`AccountId`]. For network accounts these are the first 30 bits of the ID while for local
 ///     account targets, the first 14 bits are used - a trade-off between privacy and uniqueness.
 ///   - For use case values, the meaning of the rest of the tag is not specified by the protocol and
@@ -114,9 +114,8 @@ impl NoteTag {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - [`NoteExecutionMode::Network`] is provided but the storage mode of the account_id is not
-    ///   [`AccountStorageMode::Public`](crate::account::AccountStorageMode::Public) and the
-    ///   [`NetworkAccount`](crate::account::NetworkAccount) configuration is enabled.
+    /// - [`NoteExecutionMode::Network`] is provided but the storage mode of the `account_id` is not
+    ///   [`AccountStorageMode::Network`](crate::account::AccountStorageMode::Network).
     pub fn from_account_id(
         account_id: AccountId,
         execution: NoteExecutionMode,
@@ -393,7 +392,7 @@ mod tests {
             assert_matches!(
                 NoteTag::from_account_id(account_id, NoteExecutionMode::Network).unwrap_err(),
                 NoteError::NetworkExecutionRequiresNetworkAccount,
-                "Tag generation must fail if network execution and private account ID are mixed"
+                "tag generation must fail if network execution is attempted with private or public account ID"
             )
         }
 
@@ -481,23 +480,20 @@ mod tests {
         let expected_public_local_tag = 0b11101010_10010101_00000000_00000000u32;
 
         /// Network Account ID with the following bit pattern in the first and second byte:
-        /// 0b10101010_11001100_01110111_11000100
+        /// 0b10101010_11001100_01110111_11001100
         ///   ^^^^^^^^ ^^^^^^^^ ^^^^^^^^ ^^^^^^  <- 30 bits of the network tag.
         ///   ^^^^^^^^ ^^^^^^  <- 14 bits of the local tag.
-        ///
-        /// Note that the 30th most significant bit is the enabled network flag.
         const NETWORK_ACCOUNT_INT: u128 = ACCOUNT_ID_REGULAR_NETWORK_ACCOUNT_IMMUTABLE_CODE
-            | 0x00cc_77c0_0000_0000_0000_0000_0000_0000;
+            | 0x00cc_77cc_0000_0000_0000_0000_0000_0000;
         let network_account_id = AccountId::try_from(NETWORK_ACCOUNT_INT).unwrap();
 
         // Expected network tag with `NoteTag::LocalAny` prefix.
         let expected_network_local_tag = 0b11101010_10110011_00000000_00000000u32;
 
         // Expected network tag with `NoteTag::NetworkAccount` for network execution.
-        let expected_network_network_tag = 0b00101010_10110011_00011101_11110001u32;
+        let expected_network_network_tag = 0b00101010_10110011_00011101_11110011u32;
 
-        // Public and Private account modes (without network flag) with NoteExecutionMode::Network
-        // should fail.
+        // Public and Private storage modes with NoteExecutionMode::Network should fail.
         // ----------------------------------------------------------------------------------------
 
         assert_matches!(

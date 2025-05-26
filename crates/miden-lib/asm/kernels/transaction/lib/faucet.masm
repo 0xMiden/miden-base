@@ -8,20 +8,15 @@ use.kernel::memory
 # ERRORS
 # =================================================================================================
 
-# Asset mint operation would cause the new total supply to exceed the maximum allowed asset amount
-const.ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT=0x000201c4
+const.ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT="asset mint operation would cause the new total supply to exceed the maximum allowed asset amount"
 
-# Asset amount to burn can not exceed the existing total supply
-const.ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY=0x000201c0
+const.ERR_FAUCET_BURN_CANNOT_EXCEED_EXISTING_TOTAL_SUPPLY="asset amount to burn can not exceed the existing total supply"
 
-# Failed to mint new non-fungible asset because it was already issued
-const.ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED=0x000201c5
+const.ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED="failed to mint new non-fungible asset because it was already issued"
 
-# The burn_non_fungible_asset procedure can only be called on a non-fungible faucet
-const.ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET=0x000201c1
+const.ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the burn_non_fungible_asset procedure can only be called on a non-fungible faucet"
 
-# Failed to burn non-existent non-fungible asset in the vault
-const.ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND=0x000201c6
+const.ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND="failed to burn non-existent non-fungible asset in the vault"
 
 # FUNGIBLE ASSETS
 # ==================================================================================================
@@ -148,13 +143,13 @@ proc.mint_non_fungible_asset
     exec.account::get_id swap drop exec.asset::validate_non_fungible_asset_origin
     # => [ASSET]
 
-    # fetch the root of the SMT containing the non-fungible assets
-    dupw exec.account::get_faucet_storage_data_slot dup movdn.5 exec.account::get_item
-    # => [SMT_ROOT, ASSET, faucet_storage_data_slot, ASSET]
+    # duplicate the asset on the stack and get the non-fungible asset key
+    dupw dupw exec.asset_vault::build_non_fungible_asset_vault_key
+    # => [ASSET_KEY, ASSET, ASSET]
 
-    # prepare stack for insert of non-fungible asset into tracking SMT
-    swapw dupw exec.asset_vault::build_non_fungible_asset_vault_key movup.12
-    # => [faucet_storage_data_slot, ASSET_KEY, ASSET, SMT_ROOT, ASSET]
+    # get the faucet storage data slot
+    exec.account::get_faucet_storage_data_slot
+    # => [faucet_storage_data_slot, ASSET_KEY, ASSET, ASSET]
 
     # insert the non-fungible asset into the tracking SMT
     exec.account::set_map_item dropw
@@ -192,17 +187,17 @@ proc.burn_non_fungible_asset
     assert.err=ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET
     # => [ASSET]
 
-    # duplicate asset
-    dupw
-    # => [ASSET, ASSET]
+    # get the non-fungible asset key
+    dupw exec.asset_vault::build_non_fungible_asset_vault_key
+    # => [ASSET_KEY, ASSET]
 
-    # fetch the root of the SMT containing the non-fungible assets
-    exec.account::get_faucet_storage_data_slot dup movdn.5 exec.account::get_item
-    # => [SMT_ROOT, ASSET, faucet_storage_data_slot, ASSET]
+    # add an empty word to the stack to overwrite the old value with
+    padw swapw
+    # => [ASSET_KEY, EMPTY_WORD, ASSET]
 
-    # prepare stack for removal of non-fungible asset from tracking SMT
-    swapw exec.asset_vault::build_non_fungible_asset_vault_key padw swapw movup.12
-    # => [faucet_storage_data_slot, ASSET_KEY, EMPTY_WORD, SMT_ROOT, ASSET]
+    # get the faucet storage data slot
+    exec.account::get_faucet_storage_data_slot
+    # => [faucet_storage_data_slot, ASSET_KEY, EMPTY_WORD, ASSET]
 
     # remove the non-fungible asset from the tracking SMT
     exec.account::set_map_item dropw

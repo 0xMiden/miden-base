@@ -17,10 +17,11 @@ impl ProvenTransactionExt for ProvenTransaction {
         let block_reference = executed_tx.block_header();
         let account_delta = executed_tx.account_delta().clone();
         let initial_account = executed_tx.initial_account().clone();
-        let account_update_details = if initial_account.is_public() {
+
+        let account_update_details = if initial_account.is_onchain() {
             if initial_account.is_new() {
                 let mut account = initial_account;
-                account.apply_delta(&account_delta).expect("account delta should be applyable");
+                account.apply_delta(&account_delta).expect("account delta should be appliable");
 
                 AccountUpdateDetails::New(account)
             } else {

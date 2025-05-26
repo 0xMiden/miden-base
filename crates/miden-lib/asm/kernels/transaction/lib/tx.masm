@@ -21,20 +21,15 @@ const.EXPIRY_UPPER_LIMIT=0xFFFF+1
 # The note type must be PUBLIC, unless the high bits are `0b11`. (See the table below.)
 const.LOCAL_ANY_PREFIX=3 # 0b11
 
-# The note tag prefix for network execution mode with a specific target. (See the table below.)
-const.NETWORK_EXECUTION_SPECIFIC_TARGET=0 # 0b00
-
 # Max U32 value, used for initializing the expiration block number
 const.MAX_BLOCK_NUM=0xFFFFFFFF
 
 # ERRORS
 # =================================================================================================
 
-# Number of output notes in the transaction exceeds the maximum limit of 1024
-const.ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT=0x000200c1
+const.ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT="number of output notes in the transaction exceeds the maximum limit of 1024"
 
-# Invalid note type
-const.ERR_NOTE_INVALID_TYPE=0x00020107
+const.ERR_NOTE_INVALID_TYPE="invalid note type"
 
 # The 2 highest bits in the u32 tag have the following meaning:
 #
@@ -56,26 +51,19 @@ const.ERR_NOTE_INVALID_TYPE=0x00020107
 # users won't see the note 2. generate slightly more load as extra validation is performed for the
 # invalid tags. None of these scenarios have any significant impact.
 
-# Invalid note type for the given note tag prefix
-const.ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX=0x00020106
+const.ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX="invalid note type for the given note tag prefix"
 
-# The note's tag must fit into a u32 so the 32 most significant bits must be zero.
-const.ERR_NOTE_TAG_MUST_BE_U32=0x00020109
+const.ERR_NOTE_TAG_MUST_BE_U32="the note's tag must fit into a u32 so the 32 most significant bits must be zero"
 
-# Adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807
-const.ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED=0x00020104
+const.ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED="adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"
 
-# Non-fungible asset that already exists in the note cannot be added again
-const.ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS=0x00020240
+const.ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS="non-fungible asset that already exists in the note cannot be added again"
 
-# Failed to find note at the given index; index must be within [0, num_of_notes]
-const.ERR_NOTE_INVALID_INDEX=0x00020105
+const.ERR_NOTE_INVALID_INDEX="failed to find note at the given index; index must be within [0, num_of_notes]"
 
-# Network execution mode with a specific target can only target network accounts.
-const.ERR_NOTE_NETWORK_EXECUTION_DOES_NOT_TARGET_NETWORK_ACCOUNT=0x0002010a
+const.ERR_NOTE_NETWORK_EXECUTION_DOES_NOT_TARGET_NETWORK_ACCOUNT="network execution mode with a specific target can only target network accounts"
 
-# Transaction expiration block delta must be within 0x1 and 0xFFFF.
-const.ERR_TX_INVALID_EXPIRATION_DELTA=0x000200c0
+const.ERR_TX_INVALID_EXPIRATION_DELTA="transaction expiration block delta must be within 0x1 and 0xFFFF"
 
 # EVENTS
 # =================================================================================================
@@ -401,29 +389,9 @@ export.build_note_metadata
     # => [tag, note_type, public_note, note_type, tag, aux, note_type, execution_hint]
 
     # enforce the note type depending on the tag' bits
-    u32shr.30 dup movdn.4
-    # => [tag_prefix, note_type, public_note, note_type, tag_prefix, tag, aux, note_type, execution_hint]
-
-    push.LOCAL_ANY_PREFIX eq cdrop
+    u32shr.30 push.LOCAL_ANY_PREFIX eq cdrop
     assert_eq.err=ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX
-    # => [tag_prefix, tag, aux, note_type, execution_hint]
-
-    # Validate that network execution mode with specific target only targets network accounts.
-    # --------------------------------------------------------------------------------------------
-
-    # enforce that notes with network execution mode target a network account
-    # assert that !(is_network_execution_mode_specific && !is_network_account_target)
-    push.NETWORK_EXECUTION_SPECIFIC_TARGET eq
-    # => [is_network_execution_mode_specific, tag, aux, note_type, execution_hint]
-
-    # NOTE: note tag is already validated to be u32
-    # extract the 30th bit which indicates whether the target is a network account
-    # note that the value we extract does not matter if the tag does not have the
-    # NETWORK_EXECUTION_SPECIFIC_TARGET prefix
-    dup.1 u32and.1 not
-
-    # => [!is_network_account_target, is_network_execution_mode_specific, tag, aux, note_type, execution_hint]
-    and assertz.err=ERR_NOTE_NETWORK_EXECUTION_DOES_NOT_TARGET_NETWORK_ACCOUNT
+    # => [tag, aux, note_type, execution_hint]
 
     # Split execution hint into its tag and payload parts as they are encoded in separate elements
     # of the metadata.

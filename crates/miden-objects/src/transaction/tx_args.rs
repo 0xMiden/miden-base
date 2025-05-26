@@ -7,7 +7,7 @@ use alloc::{
 use assembly::{Assembler, Compile};
 use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{Digest, Felt, ForeignAccountInputs, Word};
+use super::{AccountInputs, Digest, Felt, Word};
 use crate::{
     MastForest, MastNodeId, TransactionScriptError,
     note::{NoteId, NoteRecipient},
@@ -26,12 +26,13 @@ use crate::{
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.
 /// - Advice inputs: Provides data needed by the runtime, like the details of public output notes.
+/// - Account inputs: Provides account data that will be accessed in the transaction.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
-    foreign_account_inputs: Vec<ForeignAccountInputs>,
+    foreign_account_inputs: Vec<AccountInputs>,
 }
 
 impl TransactionArgs {
@@ -47,7 +48,7 @@ impl TransactionArgs {
         tx_script: Option<TransactionScript>,
         note_args: Option<BTreeMap<NoteId, Word>>,
         advice_map: AdviceMap,
-        foreign_account_inputs: Vec<ForeignAccountInputs>,
+        foreign_account_inputs: Vec<AccountInputs>,
     ) -> Self {
         let mut advice_inputs = AdviceInputs::default().with_map(advice_map);
         // add transaction script inputs to the advice inputs' map
@@ -78,16 +79,6 @@ impl TransactionArgs {
         self
     }
 
-    /// Returns the modified [TransactionArgs] with the provided foreign account inputs.
-    #[must_use]
-    pub fn with_foreign_account_inputs(
-        mut self,
-        foreign_account_inputs: Vec<ForeignAccountInputs>,
-    ) -> Self {
-        self.foreign_account_inputs = foreign_account_inputs;
-        self
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -107,15 +98,15 @@ impl TransactionArgs {
     }
 
     /// Returns a reference to the foreign account inputs in the transaction args.
-    pub fn foreign_accounts(&self) -> &[ForeignAccountInputs] {
+    pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
         &self.foreign_account_inputs
     }
 
     /// Collects and returns a set containing all code commitments from foreign accounts.
     pub fn foreign_account_code_commitments(&self) -> BTreeSet<Digest> {
-        self.foreign_accounts()
+        self.foreign_account_inputs()
             .iter()
-            .map(|acc| acc.account_code().commitment())
+            .map(|acc| acc.code().commitment())
             .collect()
     }
 
@@ -136,7 +127,7 @@ impl TransactionArgs {
         let script_encoded: Vec<Felt> = script.into();
 
         let new_elements = [
-            (note_recipient.digest(), note_recipient.to_elements()),
+            (note_recipient.digest(), note_recipient.format_for_advice()),
             (inputs.commitment(), inputs.format_for_advice()),
             (script.root(), script_encoded),
         ];
@@ -191,13 +182,13 @@ impl Deserializable for TransactionArgs {
         let tx_script = Option::<TransactionScript>::read_from(source)?;
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
-        let foreign_accounts = Vec::<ForeignAccountInputs>::read_from(source)?;
+        let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
 
         Ok(Self {
             tx_script,
             note_args,
             advice_inputs,
-            foreign_account_inputs: foreign_accounts,
+            foreign_account_inputs,
         })
     }
 }

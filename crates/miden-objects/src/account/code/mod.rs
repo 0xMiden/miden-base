@@ -352,15 +352,15 @@ impl PrettyPrint for AccountCode {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Converts given procedures into field elements
-fn procedures_as_elements(procedures: &[AccountProcedureInfo]) -> Vec<Felt> {
-    procedures.iter().flat_map(|procedure| <[Felt; 8]>::from(*procedure)).collect()
-}
-
 /// Computes the commitment to the given procedures
-fn build_procedure_commitment(procedures: &[AccountProcedureInfo]) -> Digest {
+pub(crate) fn build_procedure_commitment(procedures: &[AccountProcedureInfo]) -> Digest {
     let elements = procedures_as_elements(procedures);
     Hasher::hash_elements(&elements)
+}
+
+/// Converts given procedures into field elements
+pub(crate) fn procedures_as_elements(procedures: &[AccountProcedureInfo]) -> Vec<Felt> {
+    procedures.iter().flat_map(|procedure| <[Felt; 8]>::from(*procedure)).collect()
 }
 
 // TESTS

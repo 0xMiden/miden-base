@@ -7,8 +7,10 @@ WantedBy=multi-user.target
 
 [Service]
 Type=exec
-ExecStart=/usr/bin/miden-proving-service start-worker --host 0.0.0.0 --port 50052 --tx-prover
+EnvironmentFile=/lib/systemd/system/miden-prover.env
+ExecStart=/usr/bin/miden-proving-service start-worker
 WorkingDirectory=/opt/miden-prover
 User=miden-prover
 RestartSec=5
 Restart=always
+TimeoutStopSec=10

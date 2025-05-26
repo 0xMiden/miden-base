@@ -6,8 +6,8 @@ use vm_processor::Digest;
 use crate::{
     AccountError, Felt, Word,
     account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountIdAnchor, AccountIdV0,
-        AccountIdVersion, AccountStorage, AccountStorageMode, AccountType, NetworkAccount,
+        Account, AccountCode, AccountComponent, AccountId, AccountIdV0, AccountIdVersion,
+        AccountStorage, AccountStorageMode, AccountType,
     },
     asset::AssetVault,
 };
@@ -25,19 +25,14 @@ use crate::{
 /// - The `account_type` set to [`AccountType::RegularAccountUpdatableCode`].
 /// - The `storage_mode` set to [`AccountStorageMode::Private`].
 /// - The `version` set to [`AccountIdVersion::Version0`].
-/// - The `network_account` set to [`NetworkAccount::Disabled`].
 ///
 /// The methods that are required to be called are:
 ///
 /// - [`AccountBuilder::with_component`], which must be called at least once.
-/// - [`AccountBuilder::anchor`].
-///
-/// The latter methods set the anchor block commitment and epoch which will be used for the
-/// generation of the account's ID. See [`AccountId`] for details on its generation and anchor
-/// blocks.
 ///
 /// Under the `testing` feature, it is possible to:
-/// - Change the `nonce` to build an existing account.
+/// - Build an existing account using [`AccountBuilder::build_existing`] which will set the
+///   account's nonce to `1`.
 /// - Add assets to the account's vault, however this will only succeed when using
 ///   [`AccountBuilder::build_existing`].
 #[derive(Debug, Clone)]
@@ -47,8 +42,6 @@ pub struct AccountBuilder {
     components: Vec<AccountComponent>,
     account_type: AccountType,
     storage_mode: AccountStorageMode,
-    network_account: NetworkAccount,
-    id_anchor: Option<AccountIdAnchor>,
     init_seed: [u8; 32],
     id_version: AccountIdVersion,
 }
@@ -63,19 +56,11 @@ impl AccountBuilder {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
             components: vec![],
-            id_anchor: None,
             init_seed,
             account_type: AccountType::RegularAccountUpdatableCode,
             storage_mode: AccountStorageMode::Private,
-            network_account: NetworkAccount::Disabled,
             id_version: AccountIdVersion::Version0,
         }
-    }
-
-    /// Sets the [`AccountIdAnchor`] used for the generation of the account ID.
-    pub fn anchor(mut self, anchor: AccountIdAnchor) -> Self {
-        self.id_anchor = Some(anchor);
-        self
     }
 
     /// Sets the [`AccountIdVersion`] of the account ID.
@@ -93,12 +78,6 @@ impl AccountBuilder {
     /// Sets the storage mode of the account.
     pub fn storage_mode(mut self, storage_mode: AccountStorageMode) -> Self {
         self.storage_mode = storage_mode;
-        self
-    }
-
-    /// Sets the network flag of the account.
-    pub fn network_account(mut self, network_account: NetworkAccount) -> Self {
-        self.network_account = network_account;
         self
     }
 
@@ -141,17 +120,14 @@ impl AccountBuilder {
         version: AccountIdVersion,
         code_commitment: Digest,
         storage_commitment: Digest,
-        block_commitment: Digest,
     ) -> Result<Word, AccountError> {
         let seed = AccountIdV0::compute_account_seed(
             init_seed,
             self.account_type,
             self.storage_mode,
-            self.network_account,
             version,
             code_commitment,
             storage_commitment,
-            block_commitment,
         )
         .map_err(|err| {
             AccountError::BuildError("account seed generation failed".into(), Some(Box::new(err)))
@@ -166,7 +142,6 @@ impl AccountBuilder {
     ///
     /// Returns an error if:
     /// - The init seed is not set.
-    /// - The account network flag is set but the account is not public.
     /// - Any of the components does not support the set account type.
     /// - The number of procedures in all merged components is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`](crate::account::AccountCode::MAX_NUM_PROCEDURES).
@@ -177,17 +152,6 @@ impl AccountBuilder {
     /// - If the vault is not empty on new accounts (only under the `testing` feature).
     pub fn build(self) -> Result<(Account, Word), AccountError> {
         let (vault, code, storage) = self.build_inner()?;
-
-        let id_anchor = self
-            .id_anchor
-            .ok_or_else(|| AccountError::BuildError("anchor must be set".into(), None))?;
-
-        if self.network_account.is_enabled() && !self.storage_mode.is_public() {
-            return Err(AccountError::BuildError(
-                "account with the network flag set to `true` must have public storage mode".into(),
-                None,
-            ));
-        }
 
         #[cfg(any(feature = "testing", test))]
         if !vault.is_empty() {
@@ -202,12 +166,10 @@ impl AccountBuilder {
             self.id_version,
             code.commitment(),
             storage.commitment(),
-            id_anchor.block_commitment(),
         )?;
 
         let account_id = AccountId::new(
             seed,
-            id_anchor,
             AccountIdVersion::Version0,
             code.commitment(),
             storage.commitment(),
@@ -216,7 +178,6 @@ impl AccountBuilder {
 
         debug_assert_eq!(account_id.account_type(), self.account_type);
         debug_assert_eq!(account_id.storage_mode(), self.storage_mode);
-        debug_assert_eq!(account_id.network_account(), self.network_account);
 
         let account = Account::from_parts(account_id, vault, storage, code, Felt::ZERO);
 
@@ -251,7 +212,6 @@ impl AccountBuilder {
                 AccountIdVersion::Version0,
                 self.account_type,
                 self.storage_mode,
-                self.network_account,
             )
         };
 
@@ -264,14 +224,14 @@ impl AccountBuilder {
 
 #[cfg(test)]
 mod tests {
-    use std::{string::ToString, sync::LazyLock};
+    use std::sync::LazyLock;
 
     use assembly::{Assembler, Library};
     use assert_matches::assert_matches;
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::{account::StorageSlot, block::BlockNumber};
+    use crate::account::StorageSlot;
 
     const CUSTOM_CODE1: &str = "
           export.foo
@@ -335,14 +295,7 @@ mod tests {
         let storage_slot1 = 12;
         let storage_slot2 = 42;
 
-        let anchor_block_commitment = Digest::new([Felt::new(42); 4]);
-        let anchor_block_number = 1 << 16;
-        let id_anchor =
-            AccountIdAnchor::new(BlockNumber::from(anchor_block_number), anchor_block_commitment)
-                .unwrap();
-
         let (account, seed) = Account::builder([5; 32])
-            .anchor(id_anchor)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
                 slot0: storage_slot1,
@@ -356,7 +309,6 @@ mod tests {
 
         let computed_id = AccountId::new(
             seed,
-            id_anchor,
             AccountIdVersion::Version0,
             account.code.commitment(),
             account.storage.commitment(),
@@ -410,37 +362,13 @@ mod tests {
     fn account_builder_non_empty_vault_on_new_account() {
         let storage_slot0 = 25;
 
-        let anchor = AccountIdAnchor::new_unchecked(5, Digest::default());
         let build_error = Account::builder([0xff; 32])
-            .anchor(anchor)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_assets(AssetVault::mock().assets())
             .build()
             .unwrap_err();
 
         assert_matches!(build_error, AccountError::BuildError(msg, _) if msg == "account asset vault must be empty on new accounts")
-    }
-
-    #[test]
-    fn account_builder_fails_on_non_public_network_account() {
-        let anchor_block_commitment = Digest::new([Felt::new(42); 4]);
-        let anchor_block_number = 1 << 16;
-        let id_anchor =
-            AccountIdAnchor::new(BlockNumber::from(anchor_block_number), anchor_block_commitment)
-                .unwrap();
-
-        let err = Account::builder([5; 32])
-            .anchor(id_anchor)
-            .with_component(CustomComponent1 { slot0: 0 })
-            .storage_mode(AccountStorageMode::Private)
-            .network_account(NetworkAccount::Enabled)
-            .build()
-            .unwrap_err();
-
-        assert!(
-            err.to_string().contains("network flag")
-                && err.to_string().contains("public storage mode")
-        )
     }
 
     // TODO: Test that a BlockHeader with a number which is not a multiple of 2^16 returns an error.

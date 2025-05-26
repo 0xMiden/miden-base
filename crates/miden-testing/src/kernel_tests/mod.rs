@@ -97,6 +97,7 @@ fn transaction_executor_witness() {
         stack_inputs,
         &mut host,
         Default::default(),
+        Arc::new(DefaultSourceManager::default()),
     )
     .unwrap();
 
@@ -758,11 +759,13 @@ fn executed_transaction_output_notes() {
     assert_eq!(expected_output_note_3.assets(), output_note_3.assets().unwrap());
 }
 
+#[allow(clippy::arc_with_non_send_sync)]
 #[test]
 fn prove_witness_and_verify() {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
+    let source_manager = tx_context.source_manager();
 
     let account_id = tx_context.tx_inputs().account().id();
 
@@ -770,8 +773,9 @@ fn prove_witness_and_verify() {
     let notes = tx_context.tx_inputs().input_notes().clone();
     let tx_args = tx_context.tx_args().clone();
     let executor = TransactionExecutor::new(Arc::new(tx_context), None);
-    let executed_transaction =
-        executor.execute_transaction(account_id, block_ref, notes, tx_args).unwrap();
+    let executed_transaction = executor
+        .execute_transaction(account_id, block_ref, notes, tx_args, Arc::clone(&source_manager))
+        .unwrap();
     let executed_transaction_id = executed_transaction.id();
 
     let proof_options = ProvingOptions::default();
@@ -838,12 +842,13 @@ fn test_tx_script() {
 /// `tx script -> account code -> external library`
 #[test]
 fn transaction_executor_account_code_using_custom_library() {
-    const EXTERNAL_LIBRARY_CODE: &str = "
+    const EXTERNAL_LIBRARY_CODE: &str = r#"
       use.miden::account
 
       export.incr_nonce_by_four
-        dup eq.4 assert.err=42 exec.account::incr_nonce
-      end";
+        dup eq.4 assert.err="nonce increment is not 4"
+        exec.account::incr_nonce
+      end"#;
 
     const ACCOUNT_COMPONENT_CODE: &str = "
       use.external_library::external_module
@@ -915,6 +920,7 @@ fn transaction_executor_account_code_using_custom_library() {
     assert_eq!(executed_tx.account_delta().nonce().unwrap(), Felt::new(5));
 }
 
+#[allow(clippy::arc_with_non_send_sync)]
 #[test]
 fn test_execute_program() {
     let test_module_source = "
@@ -926,6 +932,7 @@ fn test_execute_program() {
     ";
 
     let assembler = TransactionKernel::assembler();
+    let source_manager = assembler.source_manager();
     let test_module = Module::parser(assembly::ast::ModuleKind::Library)
         .parse_str(
             LibraryPath::new("test::module_1").unwrap(),
@@ -959,12 +966,20 @@ fn test_execute_program() {
     let executor = TransactionExecutor::new(Arc::new(tx_context), None);
 
     let stack_outputs = executor
-        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs, Vec::default())
+        .execute_tx_view_script(
+            account_id,
+            block_ref,
+            tx_script,
+            advice_inputs,
+            Vec::default(),
+            source_manager,
+        )
         .unwrap();
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
 }
 
+#[allow(clippy::arc_with_non_send_sync)]
 #[test]
 fn test_check_note_consumability() {
     // Success (well known notes)
@@ -993,6 +1008,7 @@ fn test_check_note_consumability() {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .input_notes(vec![p2id_note, p2idr_note])
         .build();
+    let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
     let target_account_id = tx_context.account().id();
@@ -1004,7 +1020,13 @@ fn test_check_note_consumability() {
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(target_account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(
+            target_account_id,
+            block_ref,
+            input_notes,
+            tx_args,
+            source_manager,
+        )
         .unwrap();
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
@@ -1013,6 +1035,7 @@ fn test_check_note_consumability() {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
+    let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
@@ -1024,7 +1047,7 @@ fn test_check_note_consumability() {
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
         .unwrap();
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
@@ -1052,6 +1075,7 @@ fn test_check_note_consumability() {
         .with_mock_notes_preserved()
         .input_notes(vec![failing_note_1, failing_note_2.clone()])
         .build();
+    let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
     let input_note_ids =
@@ -1064,9 +1088,8 @@ fn test_check_note_consumability() {
         TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    // let notes_checker = NoteConsumptionChecker::new(account_id, input_notes.clone().into_vec());
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
         .unwrap();
 
     assert_matches!(execution_check_result, NoteAccountExecution::Failure {
@@ -1075,7 +1098,9 @@ fn test_check_note_consumability() {
         error: Some(e)} => {
             assert_eq!(failed_note_id, failing_note_2.id());
             assert_eq!(successful_notes, input_note_ids[..2].to_vec());
-            assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(ExecutionError::DivideByZero(_)));
+            assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(
+              ExecutionError::DivideByZero { .. }
+            ));
         }
     );
 }

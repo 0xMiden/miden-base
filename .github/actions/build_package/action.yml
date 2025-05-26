@@ -31,26 +31,24 @@ runs:
             packaging/deb/$pkg/DEBIAN \
             packaging/deb/$pkg/usr/bin \
             packaging/deb/$pkg/lib/systemd/system \
-            packaging/deb/$pkg/etc/opt/$pkg \
             packaging/deb/$pkg/opt/$pkg
         done
 
-    # TODO(sergerad): Enable this after our first release which includes the packaging files.
-    ## These have to be downloaded as the current repo source isn't necessarily the target git reference.
-    #- name: Copy package install scripts
-    #  shell: bash
-    #  run: |
-    #    git show ${{ steps.git-sha.outputs.sha }}:packaging/prover/miden-prover.service   > packaging/deb/miden-prover/lib/systemd/system/miden-prover.service
-    #    git show ${{ steps.git-sha.outputs.sha }}:packaging/prover/postinst               > packaging/deb/miden-prover/DEBIAN/postinst
-    #    git show ${{ steps.git-sha.outputs.sha }}:packaging/prover/postrm                 > packaging/deb/miden-prover/DEBIAN/postrm
-    #    git show ${{ steps.git-sha.outputs.sha }}:packaging/prover-proxy/miden-prover-proxy.service > packaging/deb/miden-prover-proxy/lib/systemd/system/miden-prover-proxy.service
-    #    git show ${{ steps.git-sha.outputs.sha }}:packaging/prover-proxy/postinst                   > packaging/deb/miden-prover-proxy/DEBIAN/postinst
-    #    git show ${{ steps.git-sha.outputs.sha }}:packaging/prover-proxy/postrm                     > packaging/deb/miden-prover-proxy/DEBIAN/postrm
-
-    #    chmod 0775 packaging/deb/miden-prover/DEBIAN/postinst
-    #    chmod 0775 packaging/deb/miden-prover/DEBIAN/postrm
-    #    chmod 0775 packaging/deb/miden-prover-proxy/DEBIAN/postinst
-    #    chmod 0775 packaging/deb/miden-prover-proxy/DEBIAN/postrm
+    - name: Copy package install scripts
+      shell: bash
+      run: |
+        git show ${{ steps.git-sha.outputs.sha }}:bin/proving-service/.env                > packaging/deb/miden-prover/lib/systemd/system/miden-prover.env
+        git show ${{ steps.git-sha.outputs.sha }}:packaging/prover/miden-prover.service   > packaging/deb/miden-prover/lib/systemd/system/miden-prover.service
+        git show ${{ steps.git-sha.outputs.sha }}:packaging/prover/postinst               > packaging/deb/miden-prover/DEBIAN/postinst
+        git show ${{ steps.git-sha.outputs.sha }}:packaging/prover/postrm                 > packaging/deb/miden-prover/DEBIAN/postrm
+        git show ${{ steps.git-sha.outputs.sha }}:bin/proving-service/.env                          > packaging/deb/miden-prover-proxy/lib/systemd/system/miden-prover-proxy.env
+        git show ${{ steps.git-sha.outputs.sha }}:packaging/prover-proxy/miden-prover-proxy.service > packaging/deb/miden-prover-proxy/lib/systemd/system/miden-prover-proxy.service
+        git show ${{ steps.git-sha.outputs.sha }}:packaging/prover-proxy/postinst                   > packaging/deb/miden-prover-proxy/DEBIAN/postinst
+        git show ${{ steps.git-sha.outputs.sha }}:packaging/prover-proxy/postrm                     > packaging/deb/miden-prover-proxy/DEBIAN/postrm
+        chmod 0775 packaging/deb/miden-prover/DEBIAN/postinst
+        chmod 0775 packaging/deb/miden-prover/DEBIAN/postrm
+        chmod 0775 packaging/deb/miden-prover-proxy/DEBIAN/postinst
+        chmod 0775 packaging/deb/miden-prover-proxy/DEBIAN/postrm
 
     - name: Create control files
       shell: bash

@@ -57,9 +57,18 @@ impl NoteRecipient {
         self.digest
     }
 
-    /// Returns the recipient encoded as [Felt]s.
-    pub fn to_elements(&self) -> Vec<Felt> {
-        let mut result = Vec::with_capacity(12);
+    /// Returns the recipient formatted to be used with the advice map.
+    ///
+    /// The format is `inputs_length || INPUTS_COMMITMENT || SCRIPT_ROOT || SERIAL_NUMBER`
+    ///
+    /// Where:
+    /// - inputs_length is the length of the note inputs
+    /// - INPUTS_COMMITMENT is the commitment of the note inputs
+    /// - SCRIPT_ROOT is the commitment of the note script (i.e., the script's MAST root)
+    /// - SERIAL_NUMBER is the recipient's serial number
+    pub fn format_for_advice(&self) -> Vec<Felt> {
+        let mut result = Vec::with_capacity(13);
+        result.push(self.inputs.num_values().into());
         result.extend(self.inputs.commitment());
         result.extend(self.script.root());
         result.extend(self.serial_num);

@@ -6,8 +6,8 @@ use crate::{
 
 mod account_id;
 pub use account_id::{
-    AccountId, AccountIdAnchor, AccountIdPrefix, AccountIdPrefixV0, AccountIdV0, AccountIdVersion,
-    AccountStorageMode, AccountType, AddressType, NetworkAccount, NetworkId,
+    AccountId, AccountIdPrefix, AccountIdPrefixV0, AccountIdV0, AccountIdVersion,
+    AccountStorageMode, AccountType, AddressType, NetworkId,
 };
 
 pub mod auth;
@@ -20,7 +20,7 @@ pub use builder::AccountBuilder;
 pub mod code;
 pub use code::{AccountCode, procedure::AccountProcedureInfo};
 
-mod component;
+pub mod component;
 pub use component::{
     AccountComponent, AccountComponentMetadata, AccountComponentTemplate, FeltRepresentation,
     InitStorageData, MapEntry, MapRepresentation, PlaceholderTypeRequirement, StorageEntry,
@@ -34,13 +34,18 @@ pub use delta::{
 };
 
 mod storage;
-pub use storage::{AccountStorage, AccountStorageHeader, StorageMap, StorageSlot, StorageSlotType};
+pub use storage::{
+    AccountStorage, AccountStorageHeader, PartialStorage, StorageMap, StorageSlot, StorageSlotType,
+};
 
 mod header;
 pub use header::AccountHeader;
 
 mod file;
 pub use file::AccountFile;
+
+mod partial;
+pub use partial::PartialAccount;
 
 // ACCOUNT
 // ================================================================================================
@@ -221,9 +226,25 @@ impl Account {
         self.id.is_regular_account()
     }
 
-    /// Returns true if this account is public.
+    /// Returns `true` if the full state of the account is on chain, i.e. if the storage modes are
+    /// [`AccountStorageMode::Public`] or [`AccountStorageMode::Network`], `false` otherwise.
+    pub fn is_onchain(&self) -> bool {
+        self.id().is_onchain()
+    }
+
+    /// Returns `true` if the storage mode is [`AccountStorageMode::Public`], `false` otherwise.
     pub fn is_public(&self) -> bool {
-        self.id.is_public()
+        self.id().is_public()
+    }
+
+    /// Returns `true` if the storage mode is [`AccountStorageMode::Private`], `false` otherwise.
+    pub fn is_private(&self) -> bool {
+        self.id().is_private()
+    }
+
+    /// Returns `true` if the storage mode is [`AccountStorageMode::Network`], `false` otherwise.
+    pub fn is_network(&self) -> bool {
+        self.id().is_network()
     }
 
     /// Returns true if the account is new (i.e. it has not been initialized yet).

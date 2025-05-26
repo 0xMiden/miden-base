@@ -24,7 +24,7 @@ use miden_objects::{
         storage::prepare_assets,
     },
     transaction::{
-        ForeignAccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
+        AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
     },
     vm::AdviceMap,
 };
@@ -75,7 +75,7 @@ pub struct TransactionContextBuilder {
     advice_inputs: AdviceInputs,
     authenticator: Option<MockAuthenticator>,
     expected_output_notes: Vec<Note>,
-    foreign_account_inputs: Vec<ForeignAccountInputs>,
+    foreign_account_inputs: Vec<AccountInputs>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
     note_args: BTreeMap<NoteId, Word>,
@@ -171,7 +171,7 @@ impl TransactionContextBuilder {
     }
 
     /// Set foreign account codes that are used by the transaction
-    pub fn foreign_accounts(mut self, inputs: Vec<ForeignAccountInputs>) -> Self {
+    pub fn foreign_accounts(mut self, inputs: Vec<AccountInputs>) -> Self {
         self.foreign_account_inputs = inputs;
         self
     }
@@ -630,6 +630,8 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> TransactionContext {
+        let source_manager = self.assembler.source_manager();
+
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
@@ -684,6 +686,7 @@ impl TransactionContextBuilder {
             mast_store,
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
+            source_manager,
         }
     }
 }

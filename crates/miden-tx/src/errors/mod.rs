@@ -3,7 +3,8 @@ use core::error::Error;
 
 use miden_objects::{
     AccountError, Felt, ProvenTransactionError, TransactionInputError, TransactionOutputError,
-    account::AccountId, block::BlockNumber, crypto::merkle::SmtProofError, note::NoteId,
+    account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic, block::BlockNumber,
+    crypto::merkle::SmtProofError, note::NoteId,
 };
 use miden_verifier::VerificationError;
 use thiserror::Error;
@@ -40,8 +41,10 @@ pub enum TransactionExecutorError {
     TransactionHostCreationFailed(#[source] TransactionHostError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
-    #[error("failed to execute transaction kernel program")]
-    TransactionProgramExecutionFailed(#[source] ExecutionError),
+    // Print the diagnostic directly instead of returning the source error. In the source error
+    // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
+    #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
+    TransactionProgramExecutionFailed(ExecutionError),
 }
 
 // TRANSACTION PROVER ERROR
@@ -57,8 +60,10 @@ pub enum TransactionProverError {
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]
     ProvenTransactionBuildFailed(#[source] ProvenTransactionError),
-    #[error("failed to execute transaction kernel program")]
-    TransactionProgramExecutionFailed(#[source] ExecutionError),
+    // Print the diagnostic directly instead of returning the source error. In the source error
+    // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
+    #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
+    TransactionProgramExecutionFailed(ExecutionError),
     #[error("failed to create transaction host")]
     TransactionHostCreationFailed(#[source] TransactionHostError),
     /// Custom error variant for errors not covered by the other variants.

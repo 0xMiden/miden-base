@@ -47,7 +47,7 @@ impl BlockAccountUpdate {
         self.final_state_commitment
     }
 
-    /// Returns the description of the updates for public accounts.
+    /// Returns the description of the updates for on-chain accounts.
     ///
     /// These descriptions can be used to build the new account state from the previous account
     /// state.

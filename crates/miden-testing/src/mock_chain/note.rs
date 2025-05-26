@@ -8,6 +8,7 @@ use miden_objects::{
 // ================================================================================================
 
 /// Represents a note that is stored in the mock chain.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum MockChainNote {
     /// Details for a private note only include its [`NoteMetadata`] and [`NoteInclusionProof`].

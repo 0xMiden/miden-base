@@ -5,11 +5,11 @@ use.std::mem
 # ERRORS
 # =================================================================================================
 
-# Note data does not match the commitment
-const.ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT=0x00020103
+const.ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
 
-# Number of note inputs exceeded the maximum limit of 128
-const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT=0x0002004e
+const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
+
+const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note inputs does not match the actual number"
 
 #! Writes the data currently on the advice stack into the memory at the specified location and
 #! verifies that the hash of the written data is equal to the provided hash.
@@ -86,15 +86,14 @@ end
 #!
 #! Inputs:
 #!   Stack: [dest_ptr]
-#!   Advice Map: { INPUTS_COMMITMENT: [inputs_len, INPUTS] }
+#!   Advice Map: { INPUTS_COMMITMENT: [INPUTS] }
 #! Outputs:
 #!   Stack: [num_inputs, dest_ptr]
 #!
 #! Where:
 #! - dest_ptr is the memory address to write the inputs.
-#! - INPUTS_COMMITMENT, sequential hash of the padded note's inputs.
-#! - inputs_len, the note's input count.
-#! - INPUTS, the data corresponding to the note's inputs.
+#! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - INPUTS is the data corresponding to the note's inputs.
 #!
 #! Invocation: exec
 export.get_inputs
@@ -102,30 +101,34 @@ export.get_inputs
     padw padw padw push.0.0.0
     # => [pad(15), dest_ptr]
 
-    exec.kernel_proc_offsets::note_get_inputs_commitment_offset
+    exec.kernel_proc_offsets::note_get_inputs_commitment_and_len_offset
     # => [offset, pad(15), dest_ptr]
 
     syscall.exec_kernel_proc
-    # => [INPUTS_COMMITMENT, pad(12), dest_ptr]
+    # => [INPUTS_COMMITMENT, num_inputs, pad(11), dest_ptr]
 
     # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [INPUTS_COMMITMENT, dest_ptr]
+    swapdw dropw dropw
+    movup.5 drop movup.5 drop movup.5 drop
+    # => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
     # load the inputs from the advice map to the advice stack
-    adv.push_mapval
-    # => [INPUTS_COMMITMENT, dest_ptr]
+    adv.push_mapvaln
+    # => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
-    adv_push.1
-    # => [num_inputs, INPUTS_COMMITMENT, dest_ptr]
+    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
+    # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
+    adv_push.1 dup.5
+    # => [num_inputs, advice_num_inputs, INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
-    # validate the input length
-    dup exec.get_max_inputs_per_note lte
-    assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
-    # => [num_inputs, INPUTS_COMMITMENT, dest_ptr]
+    push.8 add dup u32mod.8 sub
+    # => [rounded_up_num_inputs, advice_num_inputs, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+
+    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS
+    # => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
     # calculate the number of words required to store the inputs
-    dup movdn.5 u32divmod.4 neq.0 add
+    dup.4 u32divmod.4 neq.0 add
     # => [num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
     # round up the number of words the next multiple of 2

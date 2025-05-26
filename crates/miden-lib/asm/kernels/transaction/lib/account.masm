@@ -10,71 +10,45 @@ use.kernel::memory
 # ERRORS
 # =================================================================================================
 
-# Account nonce cannot be increased by a greater than u32 value.
-const.ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32=0x0002014a
+const.ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32="account nonce cannot be increased by a greater than u32 value"
 
-# Account code must be updatable for it to be possible to set new code.
-const.ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE=0x00020142
+const.ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE="account code must be updatable for it to be possible to set new code"
 
-# Anchor block commitment must not be empty.
-const.ERR_ACCOUNT_ANCHOR_BLOCK_COMMITMENT_MUST_NOT_BE_EMPTY=0x00020140
+const.ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH="ID of the new account does not match the ID computed from the seed and commitments"
 
-# ID of the new account does not match the ID computed from the seed and anchor block commitment.
-const.ERR_ACCOUNT_SEED_ANCHOR_BLOCK_COMMITMENT_DIGEST_MISMATCH=0x0002014e
+const.ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT="failed to write an account value item to a non-value storage slot"
 
-# Failed to write an account value item to a non-value storage slot.
-const.ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT=0x00020150
+const.ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT="failed to write an account map item to a non-map storage slot"
 
-# Failed to write an account map item to a non-map storage slot.
-const.ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT=0x0002014f
+const.ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE="account procedure is not part of the account code"
 
-# Account procedure is not part of the account code.
-const.ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE=0x0002014c
+const.ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS="provided procedure index is out of bounds"
 
-# Provided procedure index is out of bounds.
-const.ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS=0x0002014b
+const.ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS="provided storage slot index is out of bounds"
 
-# Provided storage slot index is out of bounds.
-const.ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS=0x00020152
+const.ERR_FAUCET_INVALID_STORAGE_OFFSET="storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets)"
 
-# Storage offset is invalid for a faucet account (0 is prohibited as it is the reserved data slot for faucets).
-const.ERR_FAUCET_INVALID_STORAGE_OFFSET=0x000201c2
+const.ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH="computed account code commitment does not match recorded account code commitment"
 
-# Computed account code commitment does not match recorded account code commitment.
-const.ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH=0x00020141
+const.ERR_ACCOUNT_TOO_MANY_PROCEDURES="number of account procedures exceeds the maximum limit of 256"
 
-# Number of account procedures exceeds the maximum limit of 256.
-const.ERR_ACCOUNT_TOO_MANY_PROCEDURES=0x00020153
+const.ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS="number of account storage slots exceeds the maximum limit of 255"
 
-# Number of account storage slots exceeds the maximum limit of 255.
-const.ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS=0x00020154
+const.ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH="computed account storage commitment does not match recorded account storage commitment"
 
-# Computed account storage commitment does not match recorded account storage commitment.
-const.ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH=0x00020151
+const.ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE="storage size can only be zero if storage offset is also zero"
 
-# Storage size can only be zero if storage offset is also zero.
-const.ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE=0x00020147
+const.ERR_FOREIGN_ACCOUNT_ID_IS_ZERO="ID of the provided foreign account equals zero"
 
-# ID of the provided foreign account equals zero.
-const.ERR_FOREIGN_ACCOUNT_ID_IS_ZERO=0x00020181
+const.ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED="maximum allowed number of foreign account to be loaded (64) was exceeded"
 
-# Maximum allowed number of foreign account to be loaded (64) was exceeded.
-const.ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED=0x00020183
+const.ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT="commitment of the foreign account in the advice provider does not match the commitment in the account tree"
 
-# Commitment of the foreign account in the advice provider does not match the commitment in the account tree.
-const.ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT=0x00020182
+const.ERR_ACCOUNT_ID_UNKNOWN_VERSION="unknown version in account ID"
 
-# Unknown version in account ID.
-const.ERR_ACCOUNT_ID_UNKNOWN_VERSION=0x00020146
+const.ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE="unknown account storage mode in account ID"
 
-# Epoch must be less than u16::MAX (0xffff).
-const.ERR_ACCOUNT_ID_EPOCH_MUST_BE_LESS_THAN_U16_MAX=0x00020143
-
-# Unknown account storage mode in account ID.
-const.ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE=0x00020145
-
-# Failed to read an account map item from a non-map storage slot.
-const.ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT=0x0002014d
+const.ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT="failed to read an account map item from a non-map storage slot"
 
 # CONSTANTS
 # =================================================================================================
@@ -336,7 +310,7 @@ export.::kernel::util::account_id::is_immutable_account
 export.::kernel::util::account_id::is_equal->is_id_equal
 
 #! Validates an account ID. Note that this does not validate anything about the account type,
-#! since any bit pattern is a valid account type.
+#! since any 2-bit pattern is a valid account type.
 #!
 #! Inputs:  [account_id_prefix, account_id_suffix]
 #! Outputs: []
@@ -346,8 +320,8 @@ export.::kernel::util::account_id::is_equal->is_id_equal
 #!
 #! Panics if:
 #! - account_id_prefix does not contain version zero.
-#! - account_id_prefix does not contain either the public or private storage mode.
-#! - account_id_suffix contains an anchor epoch that is greater or equal to 2^16.
+#! - account_id_prefix does not contain either the public, network or private storage mode.
+#! - account_id_suffix does not have its most significant bit set to zero.
 #! - account_id_suffix does not have its lower 8 bits set to zero.
 export.::kernel::util::account_id::validate->validate_id
 
@@ -595,12 +569,11 @@ end
 #! Note:
 #! - We assume that index has been validated and is within bounds.
 #!
-#! Inputs:  [index, KEY, NEW_VALUE, OLD_ROOT]
+#! Inputs:  [index, KEY, NEW_VALUE]
 #! Outputs: [OLD_MAP_ROOT, OLD_MAP_VALUE]
 #!
 #! Where:
 #! - index is the index of the storage slot which contains the map root.
-#! - OLD_ROOT is the root of the map to set the KEY NEW_VALUE pair.
 #! - NEW_VALUE is the value to set under KEY.
 #! - KEY is the key to set.
 #! - OLD_MAP_VALUE is the previous value of the item.
@@ -611,7 +584,10 @@ end
 #! - no map is found for ROOT.
 export.set_map_item.12
     # store index for later
-    dup loc_store.0
+    dup loc_store.0 exec.get_item
+    # => [OLD_ROOT, KEY, NEW_VALUE, ...]
+
+    movdnw.2 loc_load.0
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
     # check if storage type is map
@@ -742,68 +718,48 @@ end
 #! Validates that the account seed, provided via the advice map, satisfies the seed requirements.
 #!
 #! Validation is performed via the following steps:
-#! 1. Retrieve the anchor block commitment by computing the block number of the anchor block and
-#!    retrieving it from the partial blockchain.
-#! 2. Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, ANCHOR_BLOCK_COMMITMENT).
-#! 3. Assert the two least significant elements of the digest are equal to the account ID of the
+#! 1. Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, EMPTY_WORD).
+#! 2. Assert the two least significant elements of the digest are equal to the account ID of the
 #!    account the transaction is being executed against.
 #!
 #! Inputs:  []
 #! Outputs: []
 export.validate_seed
-    # Load the block commitment of the anchor block from the partial blockchain.
-    # This is the block commitment to which the account ID is anchored and is derived from.
+    # Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, EMPTY_WORD).
     # ---------------------------------------------------------------------------------------------
 
-    # prepare the advice map key for the seed for later
+    # push an empty word as padding for account ID hashing
+    padw
+    # => [EMPTY_WORD]
+
+    # push the advice map key at which the seed is located
     exec.memory::get_account_id push.0.0
-    # => [0, 0, account_id_prefix, account_id_suffix]
-
-    # get the anchor block's number
-    dup.3 exec.account_id::id_anchor_block_num
-    # => [anchor_block_num, 0, 0, account_id_prefix, account_id_suffix]
-
-    exec.memory::get_partial_blockchain_ptr swap
-    # => [anchor_block_num, partial_blockchain_ptr, 0, 0, account_id_prefix, account_id_suffix]
-
-    exec.mmr::get
-    # => [ANCHOR_BLOCK_COMMITMENT, 0, 0, account_id_prefix, account_id_suffix]
-
-    # assert that the anchor block commitment is not the empty word
-    padw eqw not assert.err=ERR_ACCOUNT_ANCHOR_BLOCK_COMMITMENT_MUST_NOT_BE_EMPTY dropw
-    # => [ANCHOR_BLOCK_COMMITMENT, 0, 0, account_id_prefix, account_id_suffix]
-
-    # Compute the hash of (SEED, CODE_COMMITMENT, STORAGE_COMMITMENT, ANCHOR_BLOCK_COMMITMENT).
-    # ---------------------------------------------------------------------------------------------
-
-    # prepare advice push_mapval
-    swapw
-    # => [0, 0, account_id_prefix, account_id_suffix, ANCHOR_BLOCK_COMMITMENT]
+    # => [0, 0, account_id_prefix, account_id_suffix, EMPTY_WORD]
 
     # populate first four elements of the rate with the account ID seed
     adv.push_mapval adv_loadw
-    # => [SEED, ANCHOR_BLOCK_COMMITMENT]
+    # => [SEED, EMPTY_WORD]
 
     # pad capacity element of hasher
     padw swapw
-    # => [SEED, 0, 0, 0, 0, ANCHOR_BLOCK_COMMITMENT]
+    # => [SEED, 0, 0, 0, 0, EMPTY_WORD]
 
     # populate last four elements of the hasher rate with the code commitment
     exec.memory::get_acct_code_commitment
-    # => [CODE_COMMITMENT, SEED, 0, 0, 0, 0, ANCHOR_BLOCK_COMMITMENT]
+    # => [CODE_COMMITMENT, SEED, 0, 0, 0, 0, EMPTY_WORD]
 
     # perform first permutation of seed and code_commitment (from advice stack)
     # perm(seed, code_commitment)
     hperm
-    # => [RATE, RATE, PERM, ANCHOR_BLOCK_COMMITMENT]
+    # => [RATE, RATE, PERM, EMPTY_WORD]
 
     # clear rate elements
     dropw dropw
-    # => [PERM, ANCHOR_BLOCK_COMMITMENT]
+    # => [PERM, EMPTY_WORD]
 
     # perform second permutation perm(storage_commitment, 0, 0, 0, 0)
     swapw exec.memory::get_acct_storage_commitment swapw
-    # => [ANCHOR_BLOCK_COMMITMENT, STORAGE_COMMITMENT, PERM]
+    # => [EMPTY_WORD, STORAGE_COMMITMENT, PERM]
 
     hperm
     # => [RATE, RATE, CAP]
@@ -812,26 +768,22 @@ export.validate_seed
     exec.rpo::squeeze_digest
     # => [DIGEST]
 
-    # Shape suffix to add the anchor epoch and compare computed and provided ID.
+    # Shape suffix to set the lower 8 bits to zero and compare the computed and provided ID.
     # ---------------------------------------------------------------------------------------------
 
     # extract account ID from digest
     drop drop swap
     # => [hashed_account_id_prefix, hashed_account_id_suffix]
 
-    exec.memory::get_account_id movdn.3
-    # => [account_id_suffix, hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix]
+    exec.memory::get_account_id movdn.3 movdn.3
+    # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
 
-    # extract anchor epoch from ID of the new account
-    dup movdn.4 exec.account_id::id_anchor_epoch
-    # => [anchor_epoch, hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
-
-    # shape suffix of hashed id, adding the anchor epoch and setting the lower 8 bits to zero
-    movup.2 exec.account_id::shape_suffix swap
+    # shape suffix of hashed id by setting the lower 8 bits to zero
+    swap exec.account_id::shape_suffix swap
     # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
 
     # assert the account ID matches the account ID of the new account
-    exec.is_id_equal assert.err=ERR_ACCOUNT_SEED_ANCHOR_BLOCK_COMMITMENT_DIGEST_MISMATCH
+    exec.is_id_equal assert.err=ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH
     # => []
 end
 
@@ -1053,7 +1005,7 @@ export.get_account_data_ptr
     dup.1 eq.0 dup.1 eq.0 and not assert.err=ERR_FOREIGN_ACCOUNT_ID_IS_ZERO
     # => [foreign_account_id_prefix, foreign_account_id_suffix]
 
-    # move pointer one account block back so that the first account pointer in the cycle will point 
+    # move pointer one account block back so that the first account pointer in the cycle will point
     # to the native account
     exec.memory::get_native_account_data_ptr exec.memory::get_account_data_length sub
     # => [curr_account_ptr, foreign_account_id_prefix, foreign_account_id_suffix]
@@ -1141,6 +1093,6 @@ end
 #! Inputs:  [KEY]
 #! Outputs: [HASHED_KEY]
 proc.hash_map_key
-  hash
-  # => [HASHED_KEY]
+    hash
+    # => [HASHED_KEY]
 end

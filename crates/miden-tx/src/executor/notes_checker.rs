@@ -1,8 +1,11 @@
+use alloc::sync::Arc;
+
 use miden_lib::{
     account::interface::NoteAccountCompatibility, note::well_known_note::WellKnownNote,
 };
 use miden_objects::{
     account::AccountId,
+    assembly::SourceManager,
     block::BlockNumber,
     note::NoteId,
     transaction::{InputNote, InputNotes, TransactionArgs},
@@ -42,6 +45,7 @@ impl<'a> NoteConsumptionChecker<'a> {
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
+        source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         // Check input notes
         // ----------------------------------------------------------------------------------------
@@ -91,7 +95,13 @@ impl<'a> NoteConsumptionChecker<'a> {
 
         // Execute transaction
         // ----------------------------------------------------------------------------------------
-        maybe_await!(self.0.try_execute_notes(target_account_id, block_ref, input_notes, tx_args))
+        maybe_await!(self.0.try_execute_notes(
+            target_account_id,
+            block_ref,
+            input_notes,
+            tx_args,
+            source_manager
+        ))
     }
 }
 

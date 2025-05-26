@@ -1,20 +1,19 @@
 use anyhow::Context;
+use assembly::diagnostics::{WrapErr, miette};
 use miden_lib::{
     errors::tx_kernel_errors::{
-        ERR_ACCOUNT_ID_EPOCH_MUST_BE_LESS_THAN_U16_MAX,
-        ERR_ACCOUNT_ID_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
-        ERR_ACCOUNT_ID_NON_PUBLIC_NETWORK_ACCOUNT, ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
-        ERR_ACCOUNT_ID_UNKNOWN_VERSION, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
-        ERR_FAUCET_INVALID_STORAGE_OFFSET, TX_KERNEL_ERRORS,
+        ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
+        ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
+        ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+        ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
     account::{
-        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdAnchor,
-        AccountIdVersion, AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType,
-        NetworkAccount, StorageSlot,
+        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
+        AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
     assembly::Library,
     asset::AssetVault,
@@ -131,38 +130,27 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
         (ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, None),
         (ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET, None),
         (
-            // Set network flag to true while storage mode is public.
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE | (1 << 98),
-            None,
-        ),
-        (
             // Set version to a non-zero value (10).
             ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE | (0x0a << 64),
             Some(ERR_ACCOUNT_ID_UNKNOWN_VERSION),
         ),
         (
-            // Set epoch to u16::MAX.
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET | (0xffff << 48),
-            Some(ERR_ACCOUNT_ID_EPOCH_MUST_BE_LESS_THAN_U16_MAX),
+            // Set most significant bit to `1`.
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET | (0x80 << 56),
+            Some(ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO),
         ),
         (
-            // Set storage mode to an unknown value (0b01).
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE | (0b01 << (64 + 6)),
+            // Set storage mode to an unknown value (0b11).
+            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE | (0b11 << (64 + 6)),
             Some(ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE),
-        ),
-        (
-            // Set network flag to true while storage mode is private.
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE | (1 << 98),
-            Some(ERR_ACCOUNT_ID_NON_PUBLIC_NETWORK_ACCOUNT),
         ),
         (
             // Set lower 8 bits to a non-zero value (1).
             ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET | 1,
-            Some(ERR_ACCOUNT_ID_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO),
+            Some(ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO),
         ),
     ];
 
-    let error_map = alloc::collections::BTreeMap::from(TX_KERNEL_ERRORS);
     for (account_id, expected_error) in test_cases.iter() {
         // Manually split the account ID into prefix and suffix since we can't use AccountId methods
         // on invalid ids.
@@ -184,14 +172,13 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
         match (result, expected_error) {
             (Ok(_), None) => (),
             (Ok(_), Some(err)) => {
-                anyhow::bail!("expected error {} but validation was successful", error_map[err])
+                anyhow::bail!("expected error {err} but validation was successful")
             },
-            (Err(ExecutionError::FailedAssertion { err_code, .. }), Some(err)) => {
-                if err_code != *err {
+            (Err(ExecutionError::FailedAssertion { err_code, err_msg, .. }), Some(err)) => {
+                if err_code != err.code() {
                     anyhow::bail!(
-                        "actual error {err_code} ({}) did not match expected error {err} ({})",
-                        error_map[&err_code],
-                        error_map[err]
+                        "actual error \"{}\" (code: {err_code}) did not match expected error {err}",
+                        err_msg.as_ref().map(AsRef::as_ref).unwrap_or("<no message>")
                     );
                 }
             },
@@ -208,7 +195,7 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_is_faucet_procedure() {
+fn test_is_faucet_procedure() -> miette::Result<()> {
     let test_cases = [
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -237,7 +224,7 @@ fn test_is_faucet_procedure() {
 
         let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
             .run(&code)
-            .unwrap();
+            .wrap_err("failed to execute is_faucet procedure")?;
 
         let is_faucet = account_id.is_faucet();
         assert_eq!(
@@ -247,6 +234,8 @@ fn test_is_faucet_procedure() {
             account_id
         );
     }
+
+    Ok(())
 }
 
 // ACCOUNT STORAGE TESTS
@@ -670,10 +659,8 @@ fn test_account_component_storage_offset() {
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
         let mock_chain = MockChain::new();
-        let anchor_block = mock_chain.block_header(0);
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
-            .anchor(AccountIdAnchor::try_from(&anchor_block)?)
             .with_component(
                 AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                     .unwrap(),
@@ -700,8 +687,7 @@ fn create_procedure_metadata_test_account(
     storage_size: u8,
 ) -> anyhow::Result<Result<ExecutedTransaction, ExecutionError>> {
     let mock_chain = MockChain::new();
-    let anchor_block = mock_chain.block_header(0);
-    let anchor = AccountIdAnchor::try_from(&anchor_block)?;
+
     let version = AccountIdVersion::Version0;
 
     let mock_code = AccountCode::mock();
@@ -722,14 +708,12 @@ fn create_procedure_metadata_test_account(
         [9; 32],
         account_type,
         AccountStorageMode::Private,
-        NetworkAccount::Disabled,
         version,
         code.commitment(),
         storage.commitment(),
-        anchor.block_commitment(),
     )
     .context("failed to compute seed")?;
-    let id = AccountId::new(seed, anchor, version, code.commitment(), storage.commitment())
+    let id = AccountId::new(seed, version, code.commitment(), storage.commitment())
         .context("failed to compute ID")?;
 
     let account = Account::from_parts(id, AssetVault::default(), storage, code, Felt::from(0u32));

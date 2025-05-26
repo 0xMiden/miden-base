@@ -10,7 +10,7 @@ use vm_processor::DeserializationError;
 use super::{
     Digest, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
     account::AccountId,
-    asset::{FungibleAsset, NonFungibleAsset},
+    asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
     crypto::merkle::MerkleError,
     note::NoteId,
 };
@@ -95,10 +95,8 @@ pub enum AccountError {
     AssetVaultUpdateError(#[source] AssetVaultError),
     #[error("account build error: {0}")]
     BuildError(String, #[source] Option<Box<AccountError>>),
-    #[error("faucet metadata decimals is {actual} which exceeds max value of {max}")]
-    FungibleFaucetTooManyDecimals { actual: u8, max: u8 },
-    #[error("faucet metadata max supply is {actual} which exceeds max value of {max}")]
-    FungibleFaucetMaxSupplyTooLarge { actual: u64, max: u64 },
+    #[error("failed to parse account ID from final account header")]
+    FinalAccountHeaderIdParsingFailed(#[source] AccountIdError),
     #[error("account header data has length {actual} but it must be of length {expected}")]
     HeaderDataIncorrectLength { actual: usize, expected: usize },
     #[error("new account nonce {new} is less than the current nonce {current}")]
@@ -130,8 +128,6 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
-    #[error("failed to parse account ID from final account header")]
-    FinalAccountHeaderIdParsingFailed(#[source] AccountIdError),
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("assumption violated: {0}")]
@@ -155,17 +151,10 @@ pub enum AccountIdError {
     AccountIdHexParseError(#[source] HexParseError),
     #[error("`{0}` is not a known account ID version")]
     UnknownAccountIdVersion(u8),
-    #[error("anchor epoch in account ID must not be u16::MAX ({})", u16::MAX)]
-    AnchorEpochMustNotBeU16Max,
+    #[error("most significant bit of account ID suffix must be zero")]
+    AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
-    #[error("accounts that have the network flag enabled must be public")]
-    NetworkAccountMustBePublic,
-    #[error(
-        "anchor block must be an epoch block, that is, its block number must be a multiple of 2^{}",
-        BlockNumber::EPOCH_LENGTH_EXPONENT
-    )]
-    AnchorBlockMustBeEpochBlock,
     #[error("failed to decode bech32 string into account ID")]
     Bech32DecodeError(#[source] Bech32Error),
 }
@@ -324,8 +313,21 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
-    #[error("{0}")]
-    TokenSymbolError(String),
+}
+
+// TOKEN SYMBOL ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TokenSymbolError {
+    #[error("token symbol value {0} cannot exceed {max}", max = TokenSymbol::MAX_ENCODED_VALUE)]
+    ValueTooLarge(u64),
+    #[error("token symbol should have length between 1 and 6 characters, but {0} was provided")]
+    InvalidLength(usize),
+    #[error("token symbol `{0}` contains characters that are not uppercase ASCII")]
+    InvalidCharacter(String),
+    #[error("token symbol data left after decoding the specified number of characters")]
+    DataNotFullyDecoded,
 }
 
 // ASSET VAULT ERROR
@@ -387,7 +389,7 @@ pub enum NoteError {
         node_index_in_block: u16,
         highest_index: usize,
     },
-    #[error("note network execution requires a public account with the network flag enabled")]
+    #[error("note network execution requires the target to be a network account")]
     NetworkExecutionRequiresNetworkAccount,
     #[error("note network execution requires a public note but note is of type {0:?}")]
     NetworkExecutionRequiresPublicNote(NoteType),
@@ -464,11 +466,6 @@ pub enum TransactionInputError {
     AccountSeedNotProvidedForNewAccount,
     #[error("account seed must not be provided for existing accounts")]
     AccountSeedProvidedForExistingAccount,
-    #[error(
-      "anchor block header for epoch {0} (block number = {block_number}) must be provided in the partial blockchain for the new account",
-      block_number = BlockNumber::from_epoch(*.0),
-    )]
-    AnchorBlockHeaderNotProvidedForNewAccount(u16),
     #[error("transaction input note with nullifier {0} is a duplicate")]
     DuplicateInputNote(Nullifier),
     #[error(
@@ -544,14 +541,14 @@ pub enum ProvenTransactionError {
     InputNotesError(TransactionInputError),
     #[error("private account {0} should not have account details")]
     PrivateAccountWithDetails(AccountId),
-    #[error("public account {0} is missing its account details")]
-    PublicAccountMissingDetails(AccountId),
-    #[error("new public account {0} is missing its account details")]
-    NewPublicAccountRequiresFullDetails(AccountId),
+    #[error("on-chain account {0} is missing its account details")]
+    OnChainAccountMissingDetails(AccountId),
+    #[error("new on-chain account {0} is missing its account details")]
+    NewOnChainAccountRequiresFullDetails(AccountId),
     #[error(
-        "existing public account {0} should only provide delta updates instead of full details"
+        "existing on-chain account {0} should only provide delta updates instead of full details"
     )]
-    ExistingPublicAccountRequiresDeltaDetails(AccountId),
+    ExistingOnChainAccountRequiresDeltaDetails(AccountId),
     #[error("failed to construct output notes for proven transaction")]
     OutputNotesError(TransactionOutputError),
     #[error(

@@ -1,4 +1,5 @@
 use alloc::{
+    boxed::Box,
     collections::{BTreeMap, BTreeSet},
     vec::Vec,
 };
@@ -14,8 +15,8 @@ use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, ProposedBatchError,
     ProposedBlockError,
     account::{
-        Account, AccountBuilder, AccountHeader, AccountId, AccountIdAnchor, AccountStorageMode,
-        AccountType, StorageSlot, delta::AccountUpdateDetails,
+        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
+        delta::AccountUpdateDetails,
     },
     asset::{Asset, TokenSymbol},
     batch::{ProposedBatch, ProvenBatch},
@@ -27,9 +28,9 @@ use miden_objects::{
     note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
     testing::account_code::DEFAULT_AUTH_SCRIPT,
     transaction::{
-        ExecutedTransaction, ForeignAccountInputs, InputNote, InputNotes,
-        OrderedTransactionHeaders, OutputNote, PartialBlockchain, ProvenTransaction,
-        TransactionHeader, TransactionInputs, TransactionScript,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, OrderedTransactionHeaders,
+        OutputNote, PartialBlockchain, ProvenTransaction, TransactionHeader, TransactionInputs,
+        TransactionScript,
     },
 };
 use rand::{Rng, SeedableRng};
@@ -620,20 +621,6 @@ impl MockChain {
             input_notes.push(input_note);
         }
 
-        // If the account is new, add the anchor block's header from which the account ID is derived
-        // to the MMR.
-        if account.is_new() {
-            let epoch_block_num = BlockNumber::from_epoch(account.id().anchor_epoch());
-            // The reference block of the transaction is added to the MMR in
-            // prologue::process_chain_data so we can skip adding it to the block headers here.
-            if epoch_block_num != block.header().block_num() {
-                block_headers_map.insert(
-                    epoch_block_num,
-                    self.blocks.get(epoch_block_num.as_usize()).unwrap().header().clone(),
-                );
-            }
-        }
-
         for note in unauthenticated_notes {
             input_notes.push(InputNote::Unauthenticated { note: note.clone() })
         }
@@ -676,7 +663,7 @@ impl MockChain {
     }
 
     /// Gets foreign account inputs to execute FPI transactions.
-    pub fn get_foreign_account_inputs(&self, account_id: AccountId) -> ForeignAccountInputs {
+    pub fn get_foreign_account_inputs(&self, account_id: AccountId) -> AccountInputs {
         let account = self.committed_account(account_id);
 
         let account_witness = self.account_tree().open(account_id);
@@ -691,13 +678,7 @@ impl MockChain {
             }
         }
 
-        ForeignAccountInputs::new(
-            AccountHeader::from(account),
-            account.storage().get_header(),
-            account.code().clone(),
-            account_witness,
-            storage_map_proofs,
-        )
+        AccountInputs::new(account.into(), account_witness)
     }
 
     /// Gets the inputs for a block for the provided batches.
@@ -1006,12 +987,6 @@ impl MockChain {
         };
 
         let (account, seed) = if let AccountState::New = account_state {
-            let epoch_block_number = self.latest_block_header().epoch_block_num();
-            let account_id_anchor =
-                self.blocks.get(epoch_block_number.as_usize()).unwrap().header();
-            account_builder =
-                account_builder.anchor(AccountIdAnchor::try_from(account_id_anchor).unwrap());
-
             account_builder.build().map(|(account, seed)| (account, Some(seed))).unwrap()
         } else {
             account_builder.build_existing().map(|account| (account, None)).unwrap()
@@ -1459,7 +1434,7 @@ pub enum AccountState {
 pub enum TxContextInput {
     AccountId(AccountId),
     Account(Account),
-    ExecutedTransaction(ExecutedTransaction),
+    ExecutedTransaction(Box<ExecutedTransaction>),
 }
 
 impl From<AccountId> for TxContextInput {
@@ -1476,7 +1451,7 @@ impl From<Account> for TxContextInput {
 
 impl From<ExecutedTransaction> for TxContextInput {
     fn from(tx: ExecutedTransaction) -> Self {
-        Self::ExecutedTransaction(tx)
+        Self::ExecutedTransaction(Box::new(tx))
     }
 }
 

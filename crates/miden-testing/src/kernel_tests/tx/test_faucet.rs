@@ -45,7 +45,7 @@ fn test_mint_fungible_asset_succeeds() {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
 
     let code = format!(
-        "
+        r#"
         use.test::account
         use.kernel::asset_vault
         use.kernel::memory
@@ -59,15 +59,15 @@ fn test_mint_fungible_asset_succeeds() {
 
             # assert the correct asset is returned
             push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
-            assert_eqw.err=9998
+            assert_eqw.err="minted asset does not match expected asset"
 
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
             push.{suffix}.{prefix}
             exec.asset_vault::get_balance
-            push.{FUNGIBLE_ASSET_AMOUNT} assert_eq.err=9999
+            push.{FUNGIBLE_ASSET_AMOUNT} assert_eq.err="input vault should contain minted asset"
         end
-        ",
+        "#,
         prefix = faucet_id.prefix().as_felt(),
         suffix = faucet_id.suffix(),
     );
@@ -200,7 +200,7 @@ fn test_mint_non_fungible_asset_succeeds() {
     let asset_vault_key = non_fungible_asset.vault_key();
 
     let code = format!(
-        "
+        r#"
         use.std::collections::smt
 
         use.kernel::account
@@ -217,13 +217,13 @@ fn test_mint_non_fungible_asset_succeeds() {
 
             # assert the correct asset is returned
             push.{non_fungible_asset}
-            assert_eqw.err=9997
+            assert_eqw.err="minted asset does not match expected asset"
 
             # assert the input vault has been updated.
             exec.memory::get_input_vault_root_ptr
             push.{non_fungible_asset}
             exec.asset_vault::has_non_fungible_asset
-            assert.err=9998
+            assert.err="vault should contain asset"
 
             # assert the non-fungible asset has been added to the faucet smt
             push.{FAUCET_STORAGE_DATA_SLOT}
@@ -231,10 +231,10 @@ fn test_mint_non_fungible_asset_succeeds() {
             push.{asset_vault_key}
             exec.smt::get
             push.{non_fungible_asset}
-            assert_eqw.err=9999
+            assert_eqw.err="minted asset should have been added to faucet SMT"
             dropw
         end
-        ",
+        "#,
         non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into()),
         asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key.into())),
     );
@@ -352,20 +352,21 @@ fn test_burn_fungible_asset_succeeds() {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).unwrap();
 
     let code = format!(
-        "
+        r#"
         use.test::account
         use.kernel::asset_vault
         use.kernel::memory
         use.kernel::prologue
 
         begin
-            # mint asset
+            # burn asset
             exec.prologue::prepare_transaction
             push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
             call.account::burn
+
             # assert the correct asset is returned
             push.{FUNGIBLE_ASSET_AMOUNT}.0.{suffix}.{prefix}
-            assert_eqw.err=9998
+            assert_eqw.err="burnt asset does not match expected asset"
 
             # assert the input vault has been updated
             exec.memory::get_input_vault_root_ptr
@@ -373,9 +374,9 @@ fn test_burn_fungible_asset_succeeds() {
             push.{suffix}.{prefix}
             exec.asset_vault::get_balance
             
-            push.{final_input_vault_asset_amount} assert_eq.err=9999
+            push.{final_input_vault_asset_amount} assert_eq.err="vault balance does not match expected balance"
         end
-        ",
+        "#,
         prefix = faucet_id.prefix().as_felt(),
         suffix = faucet_id.suffix(),
         final_input_vault_asset_amount = CONSUMED_ASSET_1_AMOUNT - FUNGIBLE_ASSET_AMOUNT,
@@ -516,7 +517,7 @@ fn test_burn_non_fungible_asset_succeeds() {
     let burnt_asset_vault_key = non_fungible_asset_burnt.vault_key();
 
     let code = format!(
-        "
+        r#"
         use.std::collections::smt
 
         use.kernel::account
@@ -538,13 +539,13 @@ fn test_burn_non_fungible_asset_succeeds() {
 
             # assert the correct asset is returned
             push.{non_fungible_asset}
-            assert_eqw.err=9997
+            assert_eqw.err="burnt asset does not match expected asset"
 
             # assert the input vault has been updated.
             exec.memory::get_input_vault_root_ptr
             push.{non_fungible_asset}
             exec.asset_vault::has_non_fungible_asset
-            not assert.err=9998
+            not assert.err="input vault should contain minted asset"
 
             # assert the non-fungible asset has been removed from the faucet smt
             push.{FAUCET_STORAGE_DATA_SLOT}
@@ -552,10 +553,10 @@ fn test_burn_non_fungible_asset_succeeds() {
             push.{burnt_asset_vault_key}
             exec.smt::get
             padw
-            assert_eqw.err=9999
+            assert_eqw.err="burnt asset should have been removed from faucet SMT"
             dropw
         end
-        ",
+        "#,
         non_fungible_asset = word_to_masm_push_string(&non_fungible_asset_burnt.into()),
         burnt_asset_vault_key = word_to_masm_push_string(&burnt_asset_vault_key),
     );
@@ -687,7 +688,7 @@ fn test_is_non_fungible_asset_issued_succeeds() {
     let non_fungible_asset_2 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
     let code = format!(
-        "
+        r#"
         use.kernel::prologue
         use.miden::faucet
 
@@ -698,17 +699,17 @@ fn test_is_non_fungible_asset_issued_succeeds() {
             push.{non_fungible_asset_2}
             exec.faucet::is_non_fungible_asset_issued
 
-            # use error code 9998 to assert that NON_FUNGIBLE_ASSET_DATA_2 is issued
-            eq.1 assert.err=9998
+            # assert that NON_FUNGIBLE_ASSET_DATA_2 is issued
+            eq.1 assert.err="non fungible asset data 2 should have been issued"
 
             # check that NON_FUNGIBLE_ASSET_DATA was not issued yet
             push.{non_fungible_asset_1}
             exec.faucet::is_non_fungible_asset_issued
 
-            # use error code 9999 to assert that NON_FUNGIBLE_ASSET_DATA is not issued
-            eq.0 assert.err=9999
+            # assert that NON_FUNGIBLE_ASSET_DATA is not issued
+            eq.0 assert.err="non fungible asset data should have been issued"
         end
-        ",
+        "#,
         non_fungible_asset_1 = word_to_masm_push_string(&non_fungible_asset_1.into()),
         non_fungible_asset_2 = word_to_masm_push_string(&non_fungible_asset_2.into()),
     );
@@ -734,7 +735,7 @@ fn test_get_total_issuance_succeeds() {
     .build();
 
     let code = format!(
-        "
+        r#"
         use.kernel::prologue
         use.miden::faucet
 
@@ -746,10 +747,10 @@ fn test_get_total_issuance_succeeds() {
             # => [total_issuance]
 
             # assert the correct balance is returned
-            push.{FUNGIBLE_FAUCET_INITIAL_BALANCE} assert_eq.err=9999
+            push.{FUNGIBLE_FAUCET_INITIAL_BALANCE} assert_eq.err="total issuance did not match expected value"
             # => []
         end
-        ",
+        "#,
     );
 
     tx_context

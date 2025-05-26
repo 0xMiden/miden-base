@@ -113,9 +113,9 @@ impl AccountStorageHeader {
     }
 }
 
-impl From<AccountStorage> for AccountStorageHeader {
-    fn from(value: AccountStorage) -> Self {
-        value.get_header()
+impl From<&AccountStorage> for AccountStorageHeader {
+    fn from(value: &AccountStorage) -> Self {
+        value.to_header()
     }
 }
 
@@ -166,14 +166,14 @@ mod tests {
         let expected_header = AccountStorageHeader { slots };
         let account_storage = AccountStorage::mock();
 
-        assert_eq!(expected_header, AccountStorageHeader::from(account_storage))
+        assert_eq!(expected_header, AccountStorageHeader::from(&account_storage))
     }
 
     #[test]
     fn test_serde_account_storage_header() {
         // create new storage header
         let storage = AccountStorage::mock();
-        let storage_header = AccountStorageHeader::from(storage);
+        let storage_header = AccountStorageHeader::from(&storage);
 
         // serde storage header
         let bytes = storage_header.to_bytes();

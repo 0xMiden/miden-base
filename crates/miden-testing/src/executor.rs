@@ -1,4 +1,7 @@
+use alloc::sync::Arc;
+
 use miden_lib::transaction::TransactionKernel;
+use miden_objects::assembly::SourceManager;
 use vm_processor::{
     AdviceInputs, AdviceProvider, DefaultHost, ExecutionError, Host, Process, Program, StackInputs,
 };
@@ -36,13 +39,20 @@ impl<H: Host> CodeExecutor<H> {
 
     /// Compiles and runs the desired code in the host and returns the [Process] state
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
-        let program = TransactionKernel::testing_assembler().assemble_program(code).unwrap();
-        self.execute_program(program)
+        let assembler = TransactionKernel::testing_assembler();
+        let source_manager = assembler.source_manager();
+        let program = assembler.assemble_program(code).unwrap();
+        self.execute_program(program, source_manager)
     }
 
-    pub fn execute_program(mut self, program: Program) -> Result<Process, ExecutionError> {
+    pub fn execute_program(
+        mut self,
+        program: Program,
+        source_manager: Arc<dyn SourceManager>,
+    ) -> Result<Process, ExecutionError> {
         let mut process =
-            Process::new_debug(program.kernel().clone(), self.stack_inputs.unwrap_or_default());
+            Process::new_debug(program.kernel().clone(), self.stack_inputs.unwrap_or_default())
+                .with_source_manager(source_manager);
         process.execute(&program, &mut self.host)?;
 
         Ok(process)

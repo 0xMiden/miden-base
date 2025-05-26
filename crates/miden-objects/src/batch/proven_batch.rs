@@ -34,7 +34,6 @@ impl ProvenBatch {
     ///
     /// Returns an error if the batch expiration block number is not greater than the reference
     /// block number.
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         id: BatchId,
         reference_block_commitment: Digest,
