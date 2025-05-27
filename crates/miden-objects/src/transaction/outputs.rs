@@ -195,7 +195,8 @@ impl OutputNote {
         }
     }
 
-    /// Returns the output note's recipient.
+    /// Returns the recipient of the precessed [`Full`](OutputNote::Full) output note. Returns
+    /// [`None`] if the note type is not [`Full`](OutputNote::Full).
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient(&self) -> Option<&NoteRecipient> {
@@ -206,7 +207,9 @@ impl OutputNote {
         }
     }
 
-    /// Returns the digest of the output note's recipient.
+    /// Returns the recipient digest of the processed [`Full`](OutputNote::Full) or
+    /// [`Partial`](OutputNote::Partial) output note. Returns [`None`] if the note type is
+    /// [`Header`](OutputNote::Header).
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient_digest(&self) -> Option<Digest> {
