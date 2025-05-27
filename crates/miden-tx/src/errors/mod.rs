@@ -26,7 +26,10 @@ pub enum TransactionExecutorError {
         input_id: AccountId,
         output_id: AccountId,
     },
-    #[error("expected account nonce {expected:?}, found {actual:?}")]
+    #[error("expected account nonce delta to be {}, found {}",
+        expected.as_ref().map(Felt::as_int).unwrap_or(0),
+        actual.as_ref().map(Felt::as_int).unwrap_or(0)
+    )]
     InconsistentAccountNonceDelta {
         expected: Option<Felt>,
         actual: Option<Felt>,

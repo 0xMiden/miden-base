@@ -19,9 +19,10 @@ pub type StorageSlot = u8;
 // | Bookkeeping       | 0 (0)                                 | 287 (71)                            |                                             |
 // | Global inputs     | 400 (100)                             | 423 (105)                           |                                             |
 // | Block header      | 800 (200)                             | 835 (208)                           |                                             |
-// | Partial blockchain         | 1_200 (300)                           | 1_331? (332?)                       |                                             |
+// | Partial blockchain| 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data       | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
 // | Accounts data     | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
+// | Account delta     | 532_480 (133_120)                     | TODO (TODO)                         |                                             |
 // | Input notes       | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes      | 16_777_216 (4_194_304)                | ?                                   |                                             |
 
@@ -31,7 +32,7 @@ pub type StorageSlot = u8;
 //
 // | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
 // | ----------------- | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
-// | Id and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
+// | ID and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
 // | Vault root        | 4 (1)                                 | 7 (1)                               |                                     |
 // | Storage root      | 8 (2)                                 | 11 (2)                              |                                     |
 // | Code root         | 12 (3)                                | 15 (3)                              |                                     |
@@ -264,6 +265,20 @@ pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2088;
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
+
+/// ```text
+/// ┌──────────────┬──────────────────┬──────────────────────┬──────────────┬─────┬────────────────┐
+/// │ ID AND NONCE │ FUNG VAULT DELTA │ NON-FUNG VAULT DELTA │ SLOT 0 DELTA │ ... │ SLOT 255 DELTA │
+/// ├──────────────┼──────────────────┼──────────────────────┼──────────────┼─────┼────────────────┤
+///      532_480          532_484             532_488            532_492               534_532
+/// ```
+///
+/// TODO: Document vault layout?
+///
+/// The slot delta is either:
+/// - value slots: the new value.
+/// - map slots: a ptr to a map that contains the updated key-value pairs.
+pub const ACCOUNT_DELTA_PTR: MemoryAddress = 532_480;
 
 // NOTES DATA
 // ================================================================================================

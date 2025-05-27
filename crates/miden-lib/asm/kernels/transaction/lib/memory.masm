@@ -155,6 +155,14 @@ const.ACCT_PROCEDURES_SECTION_OFFSET=32
 const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2084
 const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 
+# NATIVE ACCOUNT DELTA
+# -------------------------------------------------------------------------------------------------
+
+# The pointer at which the ID of the account and the delta of the nonce is stored.
+# Note that the ID is included because it should be part of the account delta commitment.
+# Layout: [account_nonce, 0, account_id_prefix, account_id_suffix]
+const.ACCOUNT_ID_AND_NONCE_DELTA_PTR=532480
+
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -1081,6 +1089,30 @@ end
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
 export.get_acct_storage_slots_section_ptr
     exec.get_current_account_data_ptr push.ACCT_STORAGE_SLOTS_SECTION_OFFSET add
+end
+
+### ACCOUNT DELTA #################################################
+
+#! Sets the delta of the account's nonce.
+#!
+#! Inputs:  [nonce_delta]
+#! Outputs: []
+#!
+#! Where:
+#! - nonce_delta is the value by which the nonce changed.
+export.incr_account_nonce_delta
+    exec.get_account_nonce_delta add mem_store.ACCOUNT_ID_AND_NONCE_DELTA_PTR
+end
+
+#! Returns the delta of the account's nonce.
+#!
+#! Inputs:  []
+#! Outputs: [nonce_delta]
+#!
+#! Where:
+#! - nonce_delta is the value by which the nonce changed.
+export.get_account_nonce_delta
+    mem_load.ACCOUNT_ID_AND_NONCE_DELTA_PTR
 end
 
 # INPUT NOTES

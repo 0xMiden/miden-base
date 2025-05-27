@@ -1,9 +1,9 @@
 use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::{TransactionKernel, memory::ACCOUNT_DELTA_PTR};
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
-    account::AccountId,
+    AccountDeltaError, Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
+    account::{AccountDelta, AccountId, AccountStorageDelta, AccountVaultDelta},
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::NoteId,
@@ -14,7 +14,10 @@ use miden_objects::{
     vm::StackOutputs,
 };
 pub use vm_processor::MastForestStore;
-use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{
+    AdviceInputs, ContextId, ExecutionOptions, MemAdviceProvider, Process, ProcessState,
+    RecAdviceProvider,
+};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
@@ -153,16 +156,27 @@ impl TransactionExecutor {
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         // Execute the transaction kernel
-        let result = vm_processor::execute(
-            &TransactionKernel::main(),
-            stack_inputs,
-            &mut host,
-            self.exec_options,
-            source_manager,
-        )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        // This is essentially a copy of vm_processor::execute but allows us to access the Process
+        // afterwards.
+        let program = TransactionKernel::main();
+        let mut process = Process::new(program.kernel().clone(), stack_inputs, self.exec_options)
+            .with_source_manager(source_manager);
+        let stack_outputs = process
+            .execute(&program, &mut host)
+            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
-        build_executed_transaction(tx_args, tx_inputs, result.stack_outputs().clone(), host)
+        let account_delta = build_account_delta(&process).expect("TODO");
+
+        let trace = vm_processor::ExecutionTrace::new(process, stack_outputs);
+        assert_eq!(&program.hash(), trace.program_hash(), "inconsistent program hash");
+
+        build_executed_transaction(
+            tx_args,
+            tx_inputs,
+            trace.stack_outputs().clone(),
+            host,
+            account_delta,
+        )
     }
 
     // SCRIPT EXECUTION
@@ -335,14 +349,31 @@ impl TransactionExecutor {
 // HELPER FUNCTIONS
 // ================================================================================================
 
+/// Builds the account delta from the process' memory.
+fn build_account_delta(process: &Process) -> Result<AccountDelta, AccountDeltaError> {
+    let state: ProcessState = process.into();
+    let root_ctx = ContextId::root();
+
+    // TODO: Get the ID as well so the account delta is self-contained and its commitment can be
+    // computed.
+    let nonce = state.get_mem_value(root_ctx, ACCOUNT_DELTA_PTR);
+
+    let storage_delta = AccountStorageDelta::default();
+    let vault_delta = AccountVaultDelta::default();
+
+    AccountDelta::new(storage_delta, vault_delta, nonce)
+}
+
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction(
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
     host: TransactionHost<RecAdviceProvider>,
+    account_delta: AccountDelta,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (advice_recorder, account_delta, output_notes, generated_signatures, tx_progress) =
+    // TODO: Remove old.
+    let (advice_recorder, _old_account_delta, output_notes, generated_signatures, tx_progress) =
         host.into_parts();
 
     let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
@@ -371,9 +402,9 @@ fn build_executed_transaction(
                 actual: account_delta.nonce(),
             });
         }
-    } else if final_account.nonce() != account_delta.nonce().unwrap_or_default() {
+    } else if nonce_delta != account_delta.nonce().unwrap_or_default() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: Some(final_account.nonce()),
+            expected: Some(nonce_delta),
             actual: account_delta.nonce(),
         });
     }

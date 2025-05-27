@@ -14,6 +14,7 @@ use miden_objects::{
 use vm_processor::{ContextId, Process, ProcessState};
 
 mod test_account;
+mod test_account_delta;
 mod test_asset;
 mod test_asset_vault;
 mod test_epilogue;

@@ -197,22 +197,31 @@ export.get_current_commitment
     movup.4 drop
 end
 
-#! Increments the account nonce by the provided value.
+#! Increments the account nonce by the provided increment.
 #!
-#! Inputs:  [value]
+#! Inputs:  [nonce_increment]
 #! Outputs: []
 #!
 #! Where:
-#! - value is the value to increment the nonce by. value can be at most 2^32 - 1 otherwise this
-#!   procedure panics.
+#! - nonce_increment is the u32 value to increment the nonce by.
+#!
+#! Panics if:
+#! - the nonce_increment exceeds 2^32 - 1.
 export.incr_nonce
     u32assert.err=ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32
+    # => [nonce_increment]
+
+    dup exec.memory::incr_account_nonce_delta
+    # => [nonce_increment]
 
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT
 
     exec.memory::get_acct_nonce add
+    # => [new_nonce]
+
     exec.memory::set_acct_nonce
+    # => []
 
     emit.ACCOUNT_AFTER_INCREMENT_NONCE_EVENT
 end
