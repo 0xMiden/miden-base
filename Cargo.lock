@@ -375,6 +375,7 @@ dependencies = [
  "miden-objects",
  "miden-processor",
  "miden-testing",
+ "miden-tx",
  "serde",
  "serde_json",
 ]

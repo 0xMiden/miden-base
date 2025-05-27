@@ -10,6 +10,8 @@ use anyhow::{Context, Result};
 use serde::Deserialize;
 use serde_json::{Value, json};
 
+// replicating this function from the criterion lib:
+// https://github.com/bheisler/criterion.rs/blob/ccccbcc15237233af22af4c76751a7aa184609b3/src/lib.rs#L366.
 pub fn cargo_target_directory() -> Option<PathBuf> {
     #[derive(Deserialize)]
     struct Metadata {
@@ -36,20 +38,24 @@ pub fn process_benchmark_data(benchmark_path: &Path) -> Result<Value> {
 
     // Process benchmark.json
     let benchmark_file = benchmark_path.join("benchmark.json");
-    let benchmark_content = fs::read_to_string(&benchmark_file)
-        .with_context(|| format!("Failed to read benchmark file at {:?}", benchmark_file))?;
+    let benchmark_content = fs::read_to_string(&benchmark_file).with_context(|| {
+        format!("Failed to read benchmark file at {}", benchmark_file.display())
+    })?;
 
-    let json: Value = serde_json::from_str(&benchmark_content)
-        .with_context(|| format!("Failed to parse benchmark.json at {:?}", benchmark_file))?;
+    let json: Value = serde_json::from_str(&benchmark_content).with_context(|| {
+        format!("Failed to parse benchmark.json at {}", benchmark_file.display())
+    })?;
     benchmark_data["id"] = json["full_id"].clone();
 
     // Process estimates.json
     let estimates_file = benchmark_path.join("estimates.json");
-    let estimates_content = fs::read_to_string(&estimates_file)
-        .with_context(|| format!("Failed to read estimates file at {:?}", estimates_file))?;
+    let estimates_content = fs::read_to_string(&estimates_file).with_context(|| {
+        format!("Failed to read estimates file at {}", estimates_file.display())
+    })?;
 
-    let json: Value = serde_json::from_str(&estimates_content)
-        .with_context(|| format!("Failed to parse estimates.json at {:?}", estimates_file))?;
+    let json: Value = serde_json::from_str(&estimates_content).with_context(|| {
+        format!("Failed to parse estimates.json at {}", estimates_file.display())
+    })?;
 
     // Extract metrics
     let mean = json["mean"]["point_estimate"]
@@ -75,10 +81,10 @@ pub fn process_benchmark_data(benchmark_path: &Path) -> Result<Value> {
     // Process sample.json
     let sample_file = benchmark_path.join("sample.json");
     let sample_content = fs::read_to_string(&sample_file)
-        .with_context(|| format!("Failed to read sample file at {:?}", sample_file))?;
+        .with_context(|| format!("Failed to read sample file at {}", sample_file.display()))?;
 
     let json: Value = serde_json::from_str(&sample_content)
-        .with_context(|| format!("Failed to parse sample.json at {:?}", sample_file))?;
+        .with_context(|| format!("Failed to parse sample.json at {}", sample_file.display()))?;
 
     let times_array = json["times"]
         .as_array()
@@ -106,10 +112,10 @@ pub fn process_benchmark_data(benchmark_path: &Path) -> Result<Value> {
 // Update signature for save_json_to_file to use anyhow
 pub fn save_json_to_file(data: &Value, file_path: &Path) -> Result<()> {
     let mut file = fs::File::create(file_path)
-        .with_context(|| format!("Failed to create file at {:?}", file_path))?;
+        .with_context(|| format!("Failed to create file at {}", file_path.display()))?;
     let json_string =
         serde_json::to_string_pretty(data).context("Failed to convert data to JSON string")?;
     file.write_all(json_string.as_bytes())
-        .with_context(|| format!("Failed to write JSON to file at {:?}", file_path))?;
+        .with_context(|| format!("Failed to write JSON to file at {}", file_path.display()))?;
     Ok(())
 }

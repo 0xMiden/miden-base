@@ -13,6 +13,7 @@ exclude.workspace = true
 miden-objects = { workspace = true, features = ["testing"] }
 miden-testing = { workspace = true }
 vm-processor = { workspace = true }
+miden-tx = { workspace = true }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 anyhow = "1.0"

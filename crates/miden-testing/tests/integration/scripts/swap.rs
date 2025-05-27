@@ -7,8 +7,10 @@ use miden_objects::{
     note::{Note, NoteDetails, NoteType},
     transaction::{OutputNote, TransactionScript},
 };
-use miden_testing::{Auth, MockChain, utils::prove_and_verify_transaction};
+use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
+
+use crate::prove_and_verify_transaction;
 
 // Creates a swap note and sends it with send_asset
 #[test]

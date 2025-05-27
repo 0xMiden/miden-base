@@ -10,13 +10,13 @@ use miden_objects::{
     note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
     transaction::{OutputNote, TransactionScript},
 };
-use miden_testing::{
-    Auth, MockChain, MockFungibleFaucet,
-    utils::{get_note_with_fungible_asset_and_script, prove_and_verify_transaction},
-};
+use miden_testing::{Auth, MockChain, MockFungibleFaucet};
 use miden_tx::utils::word_to_masm_push_string;
 
-use crate::assert_transaction_executor_error;
+use crate::{
+    assert_transaction_executor_error, get_note_with_fungible_asset_and_script,
+    prove_and_verify_transaction,
+};
 
 // TESTS MINT FUNGIBLE ASSET
 // ================================================================================================
