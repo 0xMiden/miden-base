@@ -1,0 +1,92 @@
+use.std::collections::smt
+
+#! Initializes a new map at the given ptr.
+#! The pointer should point to a WORD-sized location at which map metadata will be stored.
+#!
+#! Inputs:  [map_ptr]
+#! Outputs: []
+#!
+#! Where:
+#! - map_ptr is a pointer at which the map will be initialized.
+export.new
+    push.15321474589252129342.17373224439259377994.15071539326562317628.3312677166725950353
+    # => [EMPTY_SMT_ROOT, map_ptr]
+
+    movup.4 mem_storew dropw
+    # => []
+end
+
+#! Inserts the specified key-value pair into the map, or updates the existing key if the pair
+#! already exists.
+#!
+#! Inputs:  [map_ptr, KEY, NEW_VALUE]
+#! Outputs: [OLD_VALUE]
+#!
+#! Where:
+#! - map_ptr is a pointer to the map.
+#! - KEY is the key that will be set in the map.
+#! - NEW_VALUE is the value that will be set under KEY. If NEW_VALUE is the EMPTY_WORD then the
+#!   pair is removed from the map.
+#! - OLD_VALUE is the value that was previously stored at KEY. It will be the EMPTY_WORD if the
+#!   value was not previously set.
+#!
+#! Panics if:
+#! - the map ptr does not point to a valid map.
+export.set.1
+    # store map ptr for later
+    dup loc_store.0
+    # => [map_ptr, KEY, NEW_VALUE]
+
+    # load map root from ptr
+    padw movup.4 mem_loadw
+    # => [SMT_ROOT, KEY, NEW_VALUE]
+
+    swapw.2
+    # => [NEW_VALUE, KEY, SMT_ROOT]
+
+    exec.smt::set
+    # => [OLD_VALUE, NEW_SMT_ROOT]
+
+    swapw loc_load.0
+    # => [map_ptr, NEW_SMT_ROOT, OLD_VALUE]
+
+    mem_storew dropw
+    # => [OLD_VALUE]
+end
+
+#! Returns the VALUE located at KEY in the given map.
+#!
+#! Inputs:  [map_ptr, KEY]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - map_ptr is a pointer to the map.
+#! - KEY is the key that will be fetched from the map.
+#! - VALUE is the value fetched from the map. If no value was previously set for KEY, the
+#!   EMPTY_WORD is returned.
+#!
+#! Panics if:
+#! - the map ptr does not point to a valid map.
+export.get
+    padw movup.4 mem_loadw
+    # => [SMT_ROOT, KEY]
+
+    swapw
+    # => [KEY, SMT_ROOT]
+
+    exec.smt::get
+    # => [VALUE, SMT_ROOT]
+
+    swapw dropw
+    # => [VALUE]
+end
+
+#! Computes a commitment of the map over all contained key-value pairs.
+#!
+#! Inputs:  [map_ptr]
+#! Outputs: [MAP_COMMITMENT]
+export.compute_commitment
+    # while we use an SMT as the underlying implementation, the root is the commitment.
+    padw movup.4 mem_loadw
+    # => [SMT_ROOT]
+end
