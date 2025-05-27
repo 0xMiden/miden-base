@@ -36,8 +36,8 @@ const.ERR_NOTE_INVALID_TYPE="invalid note type"
 # | Prefix | Name                   | [`NoteExecutionMode`] | Target                   | Allowed [`NoteType`] |
 # | :----: | :--------------------: | :-------------------: | :----------------------: | :------------------: |
 # | `0b00` | `NetworkAccount`       | Network               | Network Account          | [`NoteType::Public`] |
-# | `0b01` | `NetworkPublicUseCase` | Network               | Use case                 | [`NoteType::Public`] |
-# | `0b10` | `LocalPublicUseCase`   | Local                 | Use case                 | [`NoteType::Public`] |
+# | `0b01` | `NetworkUseCase`       | Network               | Use case                 | [`NoteType::Public`] |
+# | `0b10` | `LocalPublicAny`       | Local                 | Any                      | [`NoteType::Public`] |
 # | `0b11` | `LocalAny`             | Local                 | Any                      | Any                  |
 #
 # Execution: Is a hint for the network, to check if the note can be consumed by a network controlled
