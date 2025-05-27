@@ -144,8 +144,8 @@ end
 #! Outputs: [note_script_root_ptr, NOTE_ARGS]
 #!
 #! Where:
-#! - note_script_root_ptr, the memory address where note's script root is stored.
-#! - NOTE_ARGS, the note's arguments.
+#! - note_script_root_ptr is the memory address where note's script root is stored.
+#! - NOTE_ARGS is the note's arguments.
 export.prepare_note
     exec.memory::get_current_input_note_ptr
     # => [note_ptr]

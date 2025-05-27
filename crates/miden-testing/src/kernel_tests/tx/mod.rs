@@ -19,6 +19,7 @@ mod test_asset_vault;
 mod test_epilogue;
 mod test_faucet;
 mod test_fpi;
+mod test_link_map;
 mod test_note;
 mod test_prologue;
 mod test_tx;
