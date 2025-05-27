@@ -113,7 +113,7 @@ impl TransactionContext {
             .map(|auth| Arc::new(auth) as Arc<dyn TransactionAuthenticator>);
 
         let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(Arc::new(self), authenticator);
+        let tx_executor = TransactionExecutor::new(Arc::new(self), authenticator).with_debug_mode();
 
         maybe_await!(tx_executor.execute_transaction(
             account_id,

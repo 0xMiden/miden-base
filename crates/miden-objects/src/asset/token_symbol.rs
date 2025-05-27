@@ -5,7 +5,7 @@ use super::{Felt, TokenSymbolError};
 /// Represents a string token symbol (e.g. "POL", "ETH") as a single [`Felt`] value.
 ///
 /// Token Symbols can consists of up to 6 capital Latin characters, e.g. "C", "ETH", "MIDENC".
-#[derive(Default, Clone, Copy, Debug)]
+#[derive(Default, Clone, Copy, Debug, PartialEq)]
 pub struct TokenSymbol(Felt);
 
 impl TokenSymbol {

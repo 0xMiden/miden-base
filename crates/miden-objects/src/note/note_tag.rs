@@ -56,7 +56,7 @@ pub enum NoteExecutionMode {
 /// - Target describes how to further interpret the bits in the tag. For tags with a specific
 ///   target, the rest of the tag is interpreted as a partial [`AccountId`]. For use case values,
 ///   the meaning of the rest of the tag is not specified by the protocol and can be used by
-///   applications built on top of the rollup.
+///   applications built on top of the chain.
 ///
 /// The note type is the only value enforced by the protocol. The rationale is that any note
 /// intended to be consumed by the network must be public to have all the details available. The

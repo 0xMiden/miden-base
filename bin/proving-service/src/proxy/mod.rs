@@ -19,7 +19,7 @@ use pingora::{
 };
 use pingora_core::{Result, upstreams::peer::HttpPeer};
 use pingora_limits::rate::Rate;
-use pingora_proxy::{ProxyHttp, Session};
+use pingora_proxy::{FailToProxy, ProxyHttp, Session};
 use tokio::sync::RwLock;
 use tracing::{Span, debug, error, info, info_span, warn};
 use uuid::Uuid;
@@ -576,7 +576,7 @@ impl ProxyHttp for LoadBalancer {
         _session: &mut Session,
         _upstream_response: &mut ResponseHeader,
         ctx: &mut Self::CTX,
-    ) {
+    ) -> Result<()> {
         ProxyHttpDefaultImpl.upstream_response_filter(_session, _upstream_response, &mut ())
     }
 
@@ -602,7 +602,7 @@ impl ProxyHttp for LoadBalancer {
         _body: &mut Option<Bytes>,
         _end_of_stream: bool,
         ctx: &mut Self::CTX,
-    ) {
+    ) -> Result<()> {
         ProxyHttpDefaultImpl.upstream_response_body_filter(_session, _body, _end_of_stream, &mut ())
     }
 
@@ -621,7 +621,12 @@ impl ProxyHttp for LoadBalancer {
     }
 
     #[tracing::instrument(name = "proxy:fail_to_proxy", parent = &ctx.parent_span, skip(session))]
-    async fn fail_to_proxy(&self, session: &mut Session, e: &Error, ctx: &mut Self::CTX) -> u16
+    async fn fail_to_proxy(
+        &self,
+        session: &mut Session,
+        e: &Error,
+        ctx: &mut Self::CTX,
+    ) -> FailToProxy
     where
         Self::CTX: Send + Sync,
     {

@@ -26,11 +26,14 @@ pub enum AccountComponentInterface {
     BasicWallet,
     /// Exposes procedures from the
     /// [`BasicFungibleFaucet`][crate::account::faucets::BasicFungibleFaucet] module.
-    BasicFungibleFaucet,
+    ///
+    /// Internal value holds the storage slot index where faucet metadata is stored. This metadata
+    /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
+    BasicFungibleFaucet(u8),
     /// Exposes procedures from the
     /// [`RpoFalcon512`][crate::account::auth::RpoFalcon512] module.
     ///
-    /// Internal value holds the storage index where the public key for the RpoFalcon512
+    /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
     RpoFalcon512(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
@@ -49,7 +52,9 @@ impl AccountComponentInterface {
     pub fn name(&self) -> String {
         match self {
             AccountComponentInterface::BasicWallet => "Basic Wallet".to_string(),
-            AccountComponentInterface::BasicFungibleFaucet => "Basic Fungible Faucet".to_string(),
+            AccountComponentInterface::BasicFungibleFaucet(_) => {
+                "Basic Fungible Faucet".to_string()
+            },
             AccountComponentInterface::RpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
@@ -97,13 +102,17 @@ impl AccountComponentInterface {
             .procedure_digests()
             .all(|proc_digest| procedures.contains_key(&proc_digest))
         {
+            let mut storage_offset = Default::default();
             basic_fungible_faucet_library().mast_forest().procedure_digests().for_each(
                 |component_procedure| {
-                    procedures.remove(&component_procedure);
+                    if let Some(proc_info) = procedures.remove(&component_procedure) {
+                        storage_offset = proc_info.storage_offset();
+                    }
                 },
             );
 
-            component_interface_vec.push(AccountComponentInterface::BasicFungibleFaucet);
+            component_interface_vec
+                .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset));
         }
 
         // RPO Falcon 512
@@ -209,7 +218,7 @@ impl AccountComponentInterface {
             // stack => [tag, aux, note_type, execution_hint, RECIPIENT]
 
             match self {
-                AccountComponentInterface::BasicFungibleFaucet => {
+                AccountComponentInterface::BasicFungibleFaucet(_) => {
                     if partial_note.assets().num_assets() != 1 {
                         return Err(AccountInterfaceError::FaucetNoteWithoutAsset);
                     }

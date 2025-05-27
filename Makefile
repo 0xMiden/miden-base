@@ -74,8 +74,8 @@ test: ## Run all tests
 
 
 .PHONY: test-dev
-test-dev: ## Run default tests excluding slow tests (prove and ID anchor block tests) in debug mode intended to be run locally
-	$(BACKTRACE) cargo nextest run --profile default --features concurrent,testing --filter-expr "not test(prove) & not test(create_accounts_with_non_zero_anchor_block)"
+test-dev: ## Run default tests excluding slow prove tests in debug mode intended to be run locally
+	$(BACKTRACE) cargo nextest run --profile default --features concurrent,testing --filter-expr "not test(prove)"
 
 
 .PHONY: test-docs
@@ -130,4 +130,4 @@ bench-prover: ## Run prover benchmarks and consolidate results.
 
 .PHONY: install-proving-service
 install-proving-service: ## Install proving service's CLI
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo install --path bin/proving-service --bin miden-proving-service --locked --features concurrent
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo install --path bin/proving-service --bin miden-proving-service --features concurrent

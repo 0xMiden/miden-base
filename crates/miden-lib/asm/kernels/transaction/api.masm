@@ -341,7 +341,7 @@ end
 #! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
-export.account_set_map_item.1
+export.account_set_map_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [index, KEY, NEW_VALUE, pad(7)]
@@ -354,16 +354,8 @@ export.account_set_map_item.1
     exec.account::apply_storage_offset
     # => [index_with_offset, KEY, NEW_VALUE, pad(7)]
 
-    # store index for later
-    dup loc_store.0
-    # => [index, KEY, NEW_VALUE, pad(7)]
-
-    # fetch the account storage item, which is ROOT of the map
-    exec.account::get_item movdnw.2
-    # => [KEY, NEW_VALUE, OLD_MAP_ROOT, pad(7)]
-
     # set the new map item
-    loc_load.0 exec.account::set_map_item
+    exec.account::set_map_item
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 

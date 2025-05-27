@@ -2,19 +2,18 @@ use anyhow::Context;
 use assembly::diagnostics::{WrapErr, miette};
 use miden_lib::{
     errors::tx_kernel_errors::{
-        ERR_ACCOUNT_ID_EPOCH_MUST_BE_LESS_THAN_U16_MAX,
-        ERR_ACCOUNT_ID_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO, ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
-        ERR_ACCOUNT_ID_UNKNOWN_VERSION, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
-        ERR_FAUCET_INVALID_STORAGE_OFFSET,
+        ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
+        ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
+        ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+        ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
     account::{
-        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdAnchor,
-        AccountIdVersion, AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType,
-        StorageSlot,
+        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
+        AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
     assembly::Library,
     asset::AssetVault,
@@ -136,9 +135,9 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
             Some(ERR_ACCOUNT_ID_UNKNOWN_VERSION),
         ),
         (
-            // Set epoch to u16::MAX.
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET | (0xffff << 48),
-            Some(ERR_ACCOUNT_ID_EPOCH_MUST_BE_LESS_THAN_U16_MAX),
+            // Set most significant bit to `1`.
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET | (0x80 << 56),
+            Some(ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO),
         ),
         (
             // Set storage mode to an unknown value (0b11).
@@ -148,7 +147,7 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
         (
             // Set lower 8 bits to a non-zero value (1).
             ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET | 1,
-            Some(ERR_ACCOUNT_ID_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO),
+            Some(ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO),
         ),
     ];
 
@@ -660,10 +659,8 @@ fn test_account_component_storage_offset() {
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
         let mock_chain = MockChain::new();
-        let anchor_block = mock_chain.block_header(0);
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
-            .anchor(AccountIdAnchor::try_from(&anchor_block)?)
             .with_component(
                 AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                     .unwrap(),
@@ -690,8 +687,7 @@ fn create_procedure_metadata_test_account(
     storage_size: u8,
 ) -> anyhow::Result<Result<ExecutedTransaction, ExecutionError>> {
     let mock_chain = MockChain::new();
-    let anchor_block = mock_chain.block_header(0);
-    let anchor = AccountIdAnchor::try_from(&anchor_block)?;
+
     let version = AccountIdVersion::Version0;
 
     let mock_code = AccountCode::mock();
@@ -715,10 +711,9 @@ fn create_procedure_metadata_test_account(
         version,
         code.commitment(),
         storage.commitment(),
-        anchor.block_commitment(),
     )
     .context("failed to compute seed")?;
-    let id = AccountId::new(seed, anchor, version, code.commitment(), storage.commitment())
+    let id = AccountId::new(seed, version, code.commitment(), storage.commitment())
         .context("failed to compute ID")?;
 
     let account = Account::from_parts(id, AssetVault::default(), storage, code, Felt::from(0u32));

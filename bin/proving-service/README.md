@@ -1,8 +1,5 @@
 # Miden proving service
 
-> [!IMPORTANT]
-> **Due to a transitive dependency compilation error, the only way to install the binary is using `--locked`.**
-
 A service for generating Miden proofs on-demand. The binary enables spawning workers and a proxy for Miden's remote proving service. It currently supports proving individual transactions, transaction batches, and blocks.
 
 A worker is a gRPC service that can receive transaction witnesses, proposed batches, or proposed blocks, prove them, and return the generated proofs. It can handle only one request at a time and will return an error if it is already in use. Each worker is specialized on startup to handle exactly one type of proof requests - transactions, batches, or blocks.

@@ -6,7 +6,7 @@ use crate::{
 
 mod account_id;
 pub use account_id::{
-    AccountId, AccountIdAnchor, AccountIdPrefix, AccountIdPrefixV0, AccountIdV0, AccountIdVersion,
+    AccountId, AccountIdPrefix, AccountIdPrefixV0, AccountIdV0, AccountIdVersion,
     AccountStorageMode, AccountType, AddressType, NetworkId,
 };
 
@@ -20,7 +20,7 @@ pub use builder::AccountBuilder;
 pub mod code;
 pub use code::{AccountCode, procedure::AccountProcedureInfo};
 
-mod component;
+pub mod component;
 pub use component::{
     AccountComponent, AccountComponentMetadata, AccountComponentTemplate, FeltRepresentation,
     InitStorageData, MapEntry, MapRepresentation, PlaceholderTypeRequirement, StorageEntry,

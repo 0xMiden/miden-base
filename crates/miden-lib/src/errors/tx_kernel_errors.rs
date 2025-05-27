@@ -10,18 +10,16 @@ use crate::errors::MasmError;
 // TX KERNEL ERRORS
 // ================================================================================================
 
-/// Error Message: "anchor block commitment must not be empty"
-pub const ERR_ACCOUNT_ANCHOR_BLOCK_COMMITMENT_MUST_NOT_BE_EMPTY: MasmError = MasmError::from_static_str("anchor block commitment must not be empty");
 /// Error Message: "computed account code commitment does not match recorded account code commitment"
 pub const ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account code commitment does not match recorded account code commitment");
 /// Error Message: "account code must be updatable for it to be possible to set new code"
 pub const ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE: MasmError = MasmError::from_static_str("account code must be updatable for it to be possible to set new code");
-/// Error Message: "epoch must be less than u16::MAX (0xffff)"
-pub const ERR_ACCOUNT_ID_EPOCH_MUST_BE_LESS_THAN_U16_MAX: MasmError = MasmError::from_static_str("epoch must be less than u16::MAX (0xffff)");
-/// Error Message: "least significant byte of the account ID suffix must be zero"
-pub const ERR_ACCOUNT_ID_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO: MasmError = MasmError::from_static_str("least significant byte of the account ID suffix must be zero");
 /// Error Message: "the account ID must have storage mode public if the network flag is set"
 pub const ERR_ACCOUNT_ID_NON_PUBLIC_NETWORK_ACCOUNT: MasmError = MasmError::from_static_str("the account ID must have storage mode public if the network flag is set");
+/// Error Message: "least significant byte of the account ID suffix must be zero"
+pub const ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO: MasmError = MasmError::from_static_str("least significant byte of the account ID suffix must be zero");
+/// Error Message: "most significant bit of the account ID suffix must be zero"
+pub const ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO: MasmError = MasmError::from_static_str("most significant bit of the account ID suffix must be zero");
 /// Error Message: "unknown account storage mode in account ID"
 pub const ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE: MasmError = MasmError::from_static_str("unknown account storage mode in account ID");
 /// Error Message: "unknown version in account ID"
@@ -40,8 +38,8 @@ pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_stat
 pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("account procedure is not part of the account code");
 /// Error Message: "failed to read an account map item from a non-map storage slot"
 pub const ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT: MasmError = MasmError::from_static_str("failed to read an account map item from a non-map storage slot");
-/// Error Message: "ID of the new account does not match the ID computed from the seed and anchor block commitment"
-pub const ERR_ACCOUNT_SEED_ANCHOR_BLOCK_COMMITMENT_DIGEST_MISMATCH: MasmError = MasmError::from_static_str("ID of the new account does not match the ID computed from the seed and anchor block commitment");
+/// Error Message: "ID of the new account does not match the ID computed from the seed and commitments"
+pub const ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH: MasmError = MasmError::from_static_str("ID of the new account does not match the ID computed from the seed and commitments");
 /// Error Message: "failed to write an account map item to a non-map storage slot"
 pub const ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT: MasmError = MasmError::from_static_str("failed to write an account map item to a non-map storage slot");
 /// Error Message: "failed to write an account value item to a non-value storage slot"

@@ -131,7 +131,7 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_wallet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::BasicFungibleFaucet => {
+                AccountComponentInterface::BasicFungibleFaucet(_) => {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
@@ -271,8 +271,10 @@ impl AccountInterface {
         &self,
         output_notes: &[PartialNote],
     ) -> Result<String, AccountInterfaceError> {
-        if self.components().contains(&AccountComponentInterface::BasicFungibleFaucet) {
-            AccountComponentInterface::BasicFungibleFaucet.send_note_body(*self.id(), output_notes)
+        if let Some(basic_fungible_faucet) = self.components().iter().find(|component_interface| {
+            matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet(_))
+        }) {
+            basic_fungible_faucet.send_note_body(*self.id(), output_notes)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {
