@@ -163,6 +163,18 @@ const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 # Layout: [account_nonce, 0, account_id_prefix, account_id_suffix]
 const.ACCOUNT_ID_AND_NONCE_DELTA_PTR=532480
 
+# The pointer at which the map is stored that holds the updated fungible assets.
+# The layout of each fungible asset is: `[amount_hi, amount_lo, faucet_id_suffix, faucet_id_prefix]`,
+# where `amount_hi` and `amount_lo` are the limbs of a u64 which is interpreted as an i64 to
+# represent whether `amount` is negative (1) or positive (0).
+# const.ACCOUNT_FUNGIBLE_ASSET_DELTA_PTR=532484
+
+# const.ACCOUNT_NON_FUNGIBLE_ASSET_DELTA_PTR=532488
+
+# The pointer to the storage delta.
+# TODO: Document layout
+# const.ACCOUNT_STORAGE_DELTA_PTR=532492
+
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -1093,7 +1105,9 @@ end
 
 ### ACCOUNT DELTA #################################################
 
-#! Sets the delta of the account's nonce.
+#! Increments the delta of the account's nonce.
+#!
+#! TODO: Add example.
 #!
 #! Inputs:  [nonce_delta]
 #! Outputs: []
