@@ -172,8 +172,13 @@ const.ACCOUNT_ID_AND_NONCE_DELTA_PTR=532480
 # const.ACCOUNT_NON_FUNGIBLE_ASSET_DELTA_PTR=532488
 
 # The pointer to the storage delta.
-# TODO: Document layout
-# const.ACCOUNT_STORAGE_DELTA_PTR=532492
+#
+# Layout: [VALUE_OR_MAP_DELTA_0, VALUE_OR_MAP_DELTA_1, ...]
+#
+# Where VALUE_OR_MAP_DELTA is:
+# - value slots: the new value.
+# - map slots: the pointer to the map delta at offset 0.
+const.ACCOUNT_STORAGE_DELTA_PTR=532492
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -1127,6 +1132,20 @@ end
 #! - nonce_delta is the value by which the nonce changed.
 export.get_account_nonce_delta
     mem_load.ACCOUNT_ID_AND_NONCE_DELTA_PTR
+end
+
+#! Sets the delta of a value storage slot.
+#!
+#! Note: Assumes the storage slot at the index is of type value.
+#!
+#! Inputs:  [index, NEW_VALUE]
+#! Outputs: []
+#!
+#! Where:
+#! - index is the index of the storage slot.
+#! - NEW_VALUE is the new value in the storage slot.
+export.set_value_item_delta
+    mul.4 add.ACCOUNT_STORAGE_DELTA_PTR mem_storew dropw
 end
 
 # INPUT NOTES

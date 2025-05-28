@@ -280,6 +280,9 @@ pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
 /// - map slots: a ptr to a map that contains the updated key-value pairs.
 pub const ACCOUNT_DELTA_PTR: MemoryAddress = 532_480;
 
+/// TODO
+pub const ACCOUNT_STORAGE_DELTA_PTR: MemoryAddress = 532492;
+
 // NOTES DATA
 // ================================================================================================
 

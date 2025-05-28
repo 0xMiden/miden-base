@@ -525,6 +525,12 @@ export.set_item
     exec.set_item_raw
     # => [V, V', index]
 
+    dupw.1 dup.12
+    # => [index, V', V, V', index]
+
+    exec.memory::set_value_item_delta
+    # => [V, V', index]
+
     # emit event to signal that an account storage item is being updated
     swapw movup.8
     emit.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT drop dropw
