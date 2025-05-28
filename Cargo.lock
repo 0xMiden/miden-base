@@ -1887,7 +1887,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "miden-core",
  "thiserror 2.0.12",
@@ -1898,7 +1898,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -1939,7 +1939,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "lock_api",
  "loom",
@@ -2072,7 +2072,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -2085,7 +2085,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "miden-air",
  "miden-processor",
@@ -2161,7 +2161,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "miden-assembly",
  "miden-core",
@@ -2217,7 +2217,7 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.14.0"
-source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#100b61e630a0e0670017b7f895b39b8467a9b032"
+source = "git+https://github.com/lambdaclass/miden-vm?branch=tomasarrachea-notes-migration#0c5b91c96b4e8facb81415e2f591d7e0b3056ff5"
 dependencies = [
  "miden-air",
  "miden-core",
