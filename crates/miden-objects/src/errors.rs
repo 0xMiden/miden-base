@@ -403,6 +403,8 @@ pub enum NoteError {
     TooManyAssets(usize),
     #[error("note contains {0} inputs which exceeds the maximum of {max}", max = MAX_INPUTS_PER_NOTE)]
     TooManyInputs(usize),
+    #[error("note tag requires a public note but the note is of type {0:?}")]
+    PublicNoteRequired(NoteType),
 }
 
 // PARTIAL BLOCKCHAIN ERROR

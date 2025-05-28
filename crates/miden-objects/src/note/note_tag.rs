@@ -68,6 +68,16 @@ pub enum NoteExecutionMode {
 /// intended to be consumed by the network must be public to have all the details available. The
 /// public note for local execution is intended to allow users to search for notes that can be
 /// consumed right away, without requiring an off-band communication channel.
+///
+/// **Note on Type Safety**
+///
+/// Each enum variant contains the raw encoding of the note tag, where the first two bits
+/// _should_ correspond to the variant's prefix (as defined in the table above). However, because
+/// enum variants are always public, it is possible to instantiate this enum where this invariant
+/// does not hold, e.g. `NoteTag::NetworkAccount(0b11...)`. For that reason, the enum variants
+/// should take precedence in case of such a mismatch and the inner value **should not be accessed
+/// directly**. Instead, only rely on [`NoteTag::as_u32`] to access the encoded value, which will
+/// always return the correct value.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
 pub enum NoteTag {
     /// Represents a tag for a note intended for network execution, targeted at a network account.
@@ -257,16 +267,22 @@ impl NoteTag {
             return Err(NoteError::NetworkExecutionRequiresPublicNote(note_type));
         }
 
-        // If the use case is public, the note must be public as well.
-        if self.is_public_use_case() && note_type != NoteType::Public {
-            Err(NoteError::PublicUseCaseRequiresPublicNote(note_type))
+        // Ensure the note is public if the note tag requires it.
+        if self.requires_public_note() && note_type != NoteType::Public {
+            Err(NoteError::PublicNoteRequired(note_type))
         } else {
             Ok(*self)
         }
     }
 
-    fn is_public_use_case(&self) -> bool {
-        matches!(self, NoteTag::NetworkUseCase(_, _) | NoteTag::LocalPublicAny(_, _))
+    /// Returns `true` if the note tag requires a public note.
+    fn requires_public_note(&self) -> bool {
+        matches!(
+            self,
+            NoteTag::NetworkAccount(_)
+                | NoteTag::NetworkUseCase(_, _)
+                | NoteTag::LocalPublicAny(_, _)
+        )
     }
 }
 
@@ -569,11 +585,11 @@ mod tests {
         tag.validate(NoteType::Public).unwrap();
         assert_matches!(
             tag.validate(NoteType::Private).unwrap_err(),
-            NoteError::PublicUseCaseRequiresPublicNote(NoteType::Private)
+            NoteError::PublicNoteRequired(NoteType::Private)
         );
         assert_matches!(
             tag.validate(NoteType::Encrypted).unwrap_err(),
-            NoteError::PublicUseCaseRequiresPublicNote(NoteType::Encrypted)
+            NoteError::PublicNoteRequired(NoteType::Encrypted)
         );
 
         let tag = NoteTag::for_public_use_case(0b0, 0b1, NoteExecutionMode::Local).unwrap();
