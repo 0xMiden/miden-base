@@ -60,6 +60,13 @@ pub(crate) struct ProxyConfig {
     /// statuses, as well as the supported prover type and version of the proxy.
     #[arg(long, default_value = "8084", env = "MPS_STATUS_PORT")]
     pub(crate) status_port: u16,
+    /// Grace period in seconds before starting the final step of the graceful shutdown after
+    /// signaling shutdown.
+    #[arg(long, default_value = "20", env = "MPS_GRACE_PERIOD_SECONDS")]
+    pub(crate) grace_period_seconds: u64,
+    /// Timeout in seconds of the final step for the graceful shutdown.
+    #[arg(long, default_value = "5", env = "MPS_GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS")]
+    pub(crate) graceful_shutdown_timeout_seconds: u64,
 }
 
 #[derive(Debug, Clone, clap::Parser)]
