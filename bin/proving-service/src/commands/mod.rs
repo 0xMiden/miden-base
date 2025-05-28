@@ -62,10 +62,10 @@ pub(crate) struct ProxyConfig {
     pub(crate) status_port: u16,
     /// Grace period in seconds before starting the final step of the graceful shutdown after
     /// signaling shutdown.
-    #[arg(long, default_value = "0", env = "MPS_GRACE_PERIOD_SECONDS")]
+    #[arg(long, default_value = "20", env = "MPS_GRACE_PERIOD_SECONDS")]
     pub(crate) grace_period_seconds: u64,
     /// Timeout in seconds of the final step for the graceful shutdown.
-    #[arg(long, default_value = "0", env = "MPS_GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS")]
+    #[arg(long, default_value = "5", env = "MPS_GRACEFUL_SHUTDOWN_TIMEOUT_SECONDS")]
     pub(crate) graceful_shutdown_timeout_seconds: u64,
 }
 
