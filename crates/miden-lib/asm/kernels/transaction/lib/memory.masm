@@ -75,6 +75,9 @@ const.INIT_NONCE_PTR=416
 # The memory address at which the transaction script mast root is stored.
 const.TX_SCRIPT_ROOT_PTR=420
 
+# The memory address at which the commitment of the transaction script arguments is stored.
+const.TX_SCRIPT_ARGS_COMMITMENT_PTR=424
+
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -461,6 +464,32 @@ end
 #! - TX_SCRIPT_ROOT is the transaction script root.
 export.set_tx_script_root
     push.TX_SCRIPT_ROOT_PTR
+    mem_storew
+end
+
+#! Returns the transaction script arguments commitment.
+#!
+#! Inputs:  []
+#! Outputs: [TX_SCRIPT_ARGS_COMMITMENT]
+#!
+#! Where:
+#! - TX_SCRIPT_ARGS_COMMITMENT is the commitment of the transaction script arguments which could be
+#!   used as a key to obtain the arguments from the advice map.
+export.get_tx_script_args_commitment
+    padw push.TX_SCRIPT_ARGS_COMMITMENT_PTR
+    mem_loadw
+end
+
+#! Sets the transaction script arguments commitment.
+#!
+#! Inputs:  [TX_SCRIPT_ARGS_COMMITMENT]
+#! Outputs: [TX_SCRIPT_ARGS_COMMITMENT]
+#!
+#! Where:
+#! - TX_SCRIPT_ARGS_COMMITMENT is the commitment of the transaction script arguments which could be
+#!   used as a key to obtain the arguments from the advice map.
+export.set_tx_script_args_commitment
+    push.TX_SCRIPT_ARGS_COMMITMENT_PTR
     mem_storew
 end
 

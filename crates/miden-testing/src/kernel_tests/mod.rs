@@ -9,6 +9,7 @@ use ::assembly::{
     LibraryPath,
     ast::{Module, ModuleKind},
 };
+use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -817,22 +818,22 @@ fn prove_witness_and_verify() {
 // ================================================================================================
 
 #[test]
-fn test_tx_script() {
+fn test_tx_script_inputs() {
     let tx_script_input_key = [Felt::new(9999), Felt::new(8888), Felt::new(9999), Felt::new(8888)];
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
         "
-    begin
-        # push the tx script input key onto the stack
-        push.{key}
+        begin
+            # push the tx script input key onto the stack
+            push.{key}
 
-        # load the tx script input value from the map and read it onto the stack
-        adv.push_mapval adv_loadw
+            # load the tx script input value from the map and read it onto the stack
+            adv.push_mapval adv_loadw
 
-        # assert that the value is correct
-        push.{value} assert_eqw
-    end
-",
+            # assert that the value is correct
+            push.{value} assert_eqw
+        end
+        ",
         key = word_to_masm_push_string(&tx_script_input_key),
         value = word_to_masm_push_string(&tx_script_input_value)
     );
@@ -845,7 +846,6 @@ fn test_tx_script() {
     .unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
         .tx_script(tx_script)
         .build();
 
@@ -856,6 +856,35 @@ fn test_tx_script() {
         "Transaction execution failed {:?}",
         executed_transaction,
     );
+}
+
+#[test]
+fn test_tx_script_args() -> anyhow::Result<()> {
+    let tx_script_src = r#"
+        begin
+            # => [TX_SCRIPT_ARGS_COMMITMENT]
+            # Load the tx arguments onto the stack. It consists of 4 Felts, so we could use 
+            # `adv_loadw` instruction
+            adv.push_mapval dropw adv_loadw
+            # => [[tx_args]]
+
+            # assert that the args array (word) is correct
+            push.1.2.3.4
+            assert_eqw.err="obtained transaction args array is incorrect"
+        end"#;
+
+    let tx_script =
+        TransactionScript::compile(tx_script_src, [], TransactionKernel::testing_assembler())
+            .context("failed to compile transaction script")?
+            .with_script_args(&[ONE, Felt::new(2), Felt::new(3), Felt::new(4)]);
+
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+        .tx_script(tx_script)
+        .build();
+
+    tx_context.execute().context("failed to execute transaction")?;
+
+    Ok(())
 }
 
 /// Tests that an account can call code in a custom library when loading that library into the
