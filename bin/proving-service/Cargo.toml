@@ -1,6 +1,6 @@
 [package]
 name = "miden-proving-service"
-version = "0.9.0"
+version = "0.9.1"
 description = "Miden rollup proving service"
 readme = "README.md"
 keywords = ["miden", "proving", "service"]

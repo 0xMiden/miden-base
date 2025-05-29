@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.1 (TBD)
+
+### Fixes
+
+- Version check always fails in proxy (#1407).
+
 ## 0.9.0 (2025-05-20)
 
 ### Features

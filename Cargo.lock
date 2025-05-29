@@ -2086,7 +2086,7 @@ dependencies = [
 
 [[package]]
 name = "miden-proving-service"
-version = "0.9.0"
+version = "0.9.1"
 dependencies = [
  "async-trait",
  "axum 0.8.4",
