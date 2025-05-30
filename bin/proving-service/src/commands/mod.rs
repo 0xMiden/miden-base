@@ -103,7 +103,14 @@ pub enum Command {
 
 /// CLI entry point
 impl Cli {
-    #[instrument(target = MIDEN_PROVING_SERVICE, name = "cli:execute", skip_all, ret(level = "info"), err)]
+    #[instrument(
+        parent = None,
+        target = MIDEN_PROVING_SERVICE,
+        name = "cli.execute",
+        skip_all,
+        ret(level = "info"),
+        err
+    )]
     pub async fn execute(&self) -> Result<(), String> {
         match &self.action {
             // For the `StartWorker` command, we need to create a new runtime and run the worker
