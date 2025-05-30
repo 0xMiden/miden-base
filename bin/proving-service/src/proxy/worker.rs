@@ -1,6 +1,7 @@
 use std::time::{Duration, Instant};
 
 use pingora::lb::Backend;
+use semver::{Version, VersionReq};
 use serde::Serialize;
 use tonic::transport::Channel;
 use tracing::error;
@@ -304,20 +305,41 @@ async fn create_status_client(
 
 /// Returns whether the worker version is valid.
 ///
-/// The version is valid if it is a semantic version and is greater than or equal to the
-/// current version. We dont check the patch version.
+/// The version is valid if it is a semantic version and the major and minor versions match
+/// the current version. The patch version is ignored.
 /// Returns false if either version string is malformed.
 fn is_valid_version(current_version: &str, received_version: &str) -> bool {
-    // Dont check the patch version.
-    let current_version_parts: Vec<&str> = current_version.split('.').collect();
-    let version_parts: Vec<&str> = received_version.split('.').collect();
+    // Parse current version safely, normalizing it first
+    let current = match Version::parse(&normalize_version(current_version)) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
 
-    // Check if both versions have at least major and minor components
-    if current_version_parts.len() < 2 || version_parts.len() < 2 {
-        return false;
+    // Parse received version safely, normalizing it first
+    let received = match Version::parse(&normalize_version(received_version)) {
+        Ok(v) => v,
+        Err(_) => return false,
+    };
+
+    // Use semver's VersionReq with tilde requirement to check compatibility
+    // ~major.minor allows any patch version
+    let requirement_str = format!("~{}.{}", current.major, current.minor);
+    let requirement = match VersionReq::parse(&requirement_str) {
+        Ok(req) => req,
+        Err(_) => return false,
+    };
+
+    requirement.matches(&received)
+}
+
+// Helper function to normalize version strings
+fn normalize_version(version: &str) -> String {
+    let parts: Vec<&str> = version.split('.').collect();
+    match parts.len() {
+        1 => format!("{}.0.0", parts[0]),
+        2 => format!("{}.{}.0", parts[0], parts[1]),
+        _ => version.to_string(),
     }
-
-    version_parts[0] == current_version_parts[0] && version_parts[1] == current_version_parts[1]
 }
 
 // TESTS
