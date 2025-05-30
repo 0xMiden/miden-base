@@ -455,6 +455,8 @@ impl PartialBlockchainError {
 pub enum TransactionScriptError {
     #[error("failed to assemble transaction script:\n{}", PrintDiagnostic::new(.0))]
     AssemblyError(Report),
+    #[error("invalid script arguments key: entry with key {0} is not found in provided inputs map")]
+    InvalidScriptArgsKey(Digest),
 }
 
 // TRANSACTION INPUT ERROR

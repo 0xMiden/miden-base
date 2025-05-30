@@ -14,16 +14,16 @@ pub type StorageSlot = u8;
 //
 // Here the "end address" is the last memory address occupied by the current data
 //
-// | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
-// | ----------------- | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
-// | Bookkeeping       | 0 (0)                                 | 287 (71)                            |                                             |
-// | Global inputs     | 400 (100)                             | 423 (105)                           |                                             |
-// | Block header      | 800 (200)                             | 835 (208)                           |                                             |
-// | Partial blockchain         | 1_200 (300)                           | 1_331? (332?)                       |                                             |
-// | Kernel data       | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
-// | Accounts data     | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
-// | Input notes       | 4_194_304 (1_048_576)                 | ?                                   |                                             |
-// | Output notes      | 16_777_216 (4_194_304)                | ?                                   |                                             |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
+// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                             |
+// | Global inputs      | 400 (100)                             | 423 (105)                           |                                             |
+// | Block header       | 800 (200)                             | 835 (208)                           |                                             |
+// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
+// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
+// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
+// | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
+// | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
 
 // Relative layout of one account
 //
@@ -115,6 +115,9 @@ pub const INIT_NONCE_PTR: MemoryAddress = 416;
 
 /// The memory address at which the transaction script mast root is store
 pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
+
+/// The memory address at which the commitment of the transaction script arguments is stored.
+pub const TX_SCRIPT_ARGS_COMMITMENT: MemoryAddress = 424;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------
