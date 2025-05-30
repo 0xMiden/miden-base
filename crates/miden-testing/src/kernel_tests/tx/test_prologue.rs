@@ -17,18 +17,20 @@ use miden_lib::{
             INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET, INPUT_NOTE_METADATA_OFFSET,
             INPUT_NOTE_NULLIFIER_SECTION_PTR, INPUT_NOTE_NUM_ASSETS_OFFSET,
             INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR, INPUT_NOTE_SERIAL_NUM_OFFSET,
-            INPUT_NOTES_COMMITMENT_PTR, MemoryOffset, NATIVE_ACCT_CODE_COMMITMENT_PTR,
-            NATIVE_ACCT_ID_AND_NONCE_PTR, NATIVE_ACCT_PROCEDURES_SECTION_PTR,
-            NATIVE_ACCT_STORAGE_COMMITMENT_PTR, NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR,
-            NATIVE_ACCT_VAULT_ROOT_PTR, NATIVE_NUM_ACCT_PROCEDURES_PTR,
-            NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR, NULLIFIER_DB_ROOT_PTR,
-            PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR, PARTIAL_BLOCKCHAIN_PEAKS_PTR,
-            PREV_BLOCK_COMMITMENT_PTR, PROOF_COMMITMENT_PTR, PROTOCOL_VERSION_IDX, TIMESTAMP_IDX,
-            TX_COMMITMENT_PTR, TX_KERNEL_COMMITMENT_PTR, TX_SCRIPT_ROOT_PTR,
+            INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR, MemoryOffset,
+            NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
+            NATIVE_ACCT_PROCEDURES_SECTION_PTR, NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
+            NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR, NATIVE_ACCT_VAULT_ROOT_PTR,
+            NATIVE_NUM_ACCT_PROCEDURES_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR,
+            NULLIFIER_DB_ROOT_PTR, NUM_KERNEL_PROCEDURES_PTR, PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
+            PARTIAL_BLOCKCHAIN_PEAKS_PTR, PREV_BLOCK_COMMITMENT_PTR, PROOF_COMMITMENT_PTR,
+            PROTOCOL_VERSION_IDX, TIMESTAMP_IDX, TX_COMMITMENT_PTR, TX_KERNEL_COMMITMENT_PTR,
+            TX_SCRIPT_ROOT_PTR,
         },
     },
 };
 use miden_objects::{
+    WORD_SIZE,
     account::{
         Account, AccountBuilder, AccountId, AccountIdVersion, AccountProcedureInfo,
         AccountStorageMode, AccountType, StorageSlot,
@@ -66,7 +68,7 @@ fn test_transaction_prologue() {
 
     let mock_tx_script_code = "
         begin
-            push.1.2.3.4 dropw
+            nop
         end
         ";
 
@@ -100,6 +102,7 @@ fn test_transaction_prologue() {
     global_input_memory_assertions(process, &tx_context);
     block_data_memory_assertions(process, &tx_context);
     partial_blockchain_memory_assertions(process, &tx_context);
+    kernel_data_memory_assertions(process);
     account_data_memory_assertions(process, &tx_context);
     input_notes_memory_assertions(process, &tx_context, &note_args);
 }
@@ -238,13 +241,43 @@ fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &Transac
         let peak_idx: u32 = i.try_into().expect(
             "Number of peaks is log2(number_of_leaves), this value won't be larger than 2**32",
         );
-        let word_aligned_peak_idx = peak_idx * 4;
+        let word_aligned_peak_idx = peak_idx * WORD_SIZE as u32;
         assert_eq!(
             read_root_mem_word(
                 &process.into(),
                 PARTIAL_BLOCKCHAIN_PEAKS_PTR + word_aligned_peak_idx
             ),
             Word::from(peak)
+        );
+    }
+}
+
+fn kernel_data_memory_assertions(process: &Process) {
+    // check that the number of kernel procedures stored in the memory is equal to the number of
+    // kernel procedures in the `TransactionKernel` array.
+    //
+    // By default we check procedures of the kernel latest version
+    assert_eq!(
+        read_root_mem_word(&process.into(), NUM_KERNEL_PROCEDURES_PTR)[0].as_int(),
+        TransactionKernel::PROCEDURES
+            .last()
+            .expect("kernel should have at least one version")
+            .len() as u64,
+        "Number of the kernel procedures should be stored at the NUM_KERNEL_PROCEDURES_PTR"
+    );
+
+    // check that the hashes of the kernel procedures stored in the memory is equal to the hashes in
+    // `TransactionKernel`'s procedures array
+    for (i, &proc_hash) in TransactionKernel::PROCEDURES
+        .last()
+        .expect("kernel should have at least one version")
+        .iter()
+        .enumerate()
+    {
+        assert_eq!(
+            read_root_mem_word(&process.into(), KERNEL_PROCEDURES_PTR + (i * WORD_SIZE) as u32),
+            *proc_hash,
+            "Some of the kernel procedure hashes stored in the memory are invalid"
         );
     }
 }
@@ -300,7 +333,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
         assert_eq!(
             read_root_mem_word(
                 &process.into(),
-                NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR + (i as u32) * 4
+                NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR + (i * WORD_SIZE) as u32
             ),
             Word::try_from(elements).unwrap(),
             "The account storage slots should be stored starting at NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR"
@@ -328,7 +361,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
         assert_eq!(
             read_root_mem_word(
                 &process.into(),
-                NATIVE_ACCT_PROCEDURES_SECTION_PTR + (i as u32) * 4
+                NATIVE_ACCT_PROCEDURES_SECTION_PTR + (i * WORD_SIZE) as u32
             ),
             Word::try_from(elements).unwrap(),
             "The account procedures and storage offsets should be stored starting at NATIVE_ACCT_PROCEDURES_SECTION_PTR"
@@ -339,7 +372,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
 fn input_notes_memory_assertions(
     process: &Process,
     inputs: &TransactionContext,
-    note_args: &[[Felt; 4]],
+    note_args: &[[Felt; WORD_SIZE]],
 ) {
     assert_eq!(
         read_root_mem_word(&process.into(), INPUT_NOTE_SECTION_PTR),
@@ -351,7 +384,10 @@ fn input_notes_memory_assertions(
         let note = input_note.note();
 
         assert_eq!(
-            read_root_mem_word(&process.into(), INPUT_NOTE_NULLIFIER_SECTION_PTR + note_idx * 4),
+            read_root_mem_word(
+                &process.into(),
+                INPUT_NOTE_NULLIFIER_SECTION_PTR + note_idx * WORD_SIZE as u32
+            ),
             note.nullifier().as_elements(),
             "note nullifier should be computer and stored at the correct offset"
         );
@@ -407,7 +443,11 @@ fn input_notes_memory_assertions(
         for (asset, asset_idx) in note.assets().iter().cloned().zip(0_u32..) {
             let word: Word = asset.into();
             assert_eq!(
-                read_note_element(process, note_idx, INPUT_NOTE_ASSETS_OFFSET + asset_idx * 4),
+                read_note_element(
+                    process,
+                    note_idx,
+                    INPUT_NOTE_ASSETS_OFFSET + asset_idx * WORD_SIZE as u32
+                ),
                 word,
                 "assets should be stored at (INPUT_NOTES_DATA_OFFSET + note_index * 2048 + 32 + asset_idx * 4)"
             );
@@ -463,7 +503,7 @@ pub fn create_multiple_accounts_test(
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),
-                    vec![StorageSlot::Value([Felt::new(255); 4])],
+                    vec![StorageSlot::Value([Felt::new(255); WORD_SIZE])],
                 )
                 .unwrap(),
             )
@@ -589,7 +629,7 @@ pub fn create_account_invalid_seed() {
     // override the seed with an invalid seed to ensure the kernel fails
     let account_seed_key = [account.id().suffix(), account.id().prefix().as_felt(), ZERO, ZERO];
     let adv_inputs =
-        AdviceInputs::default().with_map([(Digest::from(account_seed_key), vec![ZERO; 4])]);
+        AdviceInputs::default().with_map([(Digest::from(account_seed_key), vec![ZERO; WORD_SIZE])]);
 
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
