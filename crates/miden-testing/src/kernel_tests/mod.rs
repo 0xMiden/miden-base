@@ -863,20 +863,54 @@ fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_src = r#"
         begin
             # => [TX_SCRIPT_ARGS_COMMITMENT]
-            # Load the tx arguments onto the stack. It consists of 4 Felts, so we could use 
-            # `adv_loadw` instruction
-            adv.push_mapval dropw adv_loadw
-            # => [[tx_args]]
+            # `TX_SCRIPT_ARGS_COMMITMENT` value, which is located on the stack at the beginning of 
+            # the execution, is the advice map key which allows to obtain transaction script args 
+            # which were specified during the `TransactionScript` creation (see below). In this
+            # example transaction args is an array of Felts from 1 to 7.
 
-            # assert that the args array (word) is correct
-            push.1.2.3.4
-            assert_eqw.err="obtained transaction args array is incorrect"
+            # move the transaction args from advice map to the advice stack
+            adv.push_mapval
+            # OS => [TX_SCRIPT_ARGS_COMMITMENT]
+            # AS => [7, 6, 5, 4, 3, 2, 1]
+
+            # drop the args commitment
+            dropw
+            # OS => []
+            # AS => [7, 6, 5, 4, 3, 2, 1]
+
+            # Move the transaction arguments array from advice stack to the operand stack. It 
+            # consists of 7 Felts, so we could use `adv_push.7` instruction to load them all at once
+            adv_push.7
+            # OS => [7, 6, 5, 4, 3, 2, 1]
+            # AS => []
+
+            # assert that the transaction arguments array consists of correct values
+            push.4.5.6.7
+            assert_eqw.err="last four values in the transaction args array are incorrect"
+            # OS => [3, 2, 1]
+            # AS => []
+            
+            # To use more convenient `assert_eqw` instruction we should push `0` first, but notice 
+            # that there are only three values from the original array left on the stack. We could 
+            # do so because there are no other elements on the stack left except for the argument 
+            # values (hidden values deeper on the stack are zeros). In case there are some values 
+            # deeper on the stack, we should assert values one by one using `push.n assert_eq`.
+            push.0.1.2.3
+            assert_eqw.err="first three values in the transaction args array are incorrect"
         end"#;
 
     let tx_script =
         TransactionScript::compile(tx_script_src, [], TransactionKernel::testing_assembler())
             .context("failed to compile transaction script")?
-            .with_script_args(&[ONE, Felt::new(2), Felt::new(3), Felt::new(4)]);
+            .with_script_args(&[
+                ONE,
+                Felt::new(2),
+                Felt::new(3),
+                Felt::new(4),
+                Felt::new(5),
+                Felt::new(6),
+                Felt::new(7),
+            ]);
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)

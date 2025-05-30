@@ -290,6 +290,8 @@ impl TransactionScript {
     /// is automatically pushed to the operand stack at the beginning of the transaction script
     /// execution, so user can get access the underlying arguments array just using the
     /// `adv.push_mapval` and `adv_push.n` instructions.
+    ///
+    /// See `test_tx_script_args` test as an example of their usage.
     pub fn with_script_args(mut self, script_args: &[Felt]) -> Self {
         let args_key = Hasher::hash_elements(script_args);
         self.inputs.insert(args_key, script_args.to_vec());

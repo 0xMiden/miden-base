@@ -5,7 +5,7 @@
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
 - Implement map in transaction kernel library (#1396).
-- Implement transaction script arguments for the `TransactionScript` (#1406).
+- [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 
 ## 0.9.0 (2025-05-20)
 
