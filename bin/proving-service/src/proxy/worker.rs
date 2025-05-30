@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use pingora::lb::Backend;
 use serde::Serialize;
 use tonic::transport::Channel;
-use tracing::error;
+use tracing::{error, info};
 
 use super::metrics::WORKER_UNHEALTHY;
 use crate::{
@@ -308,6 +308,9 @@ async fn create_status_client(
 /// current version. We dont check the patch version.
 /// Returns false if either version string is malformed.
 fn is_valid_version(current_version: &str, received_version: &str) -> bool {
+    info!("current version: {}", current_version);
+    info!("received version: {}", received_version);
+
     // Dont check the patch version.
     let current_version_parts: Vec<&str> = current_version.split('.').collect();
     let version_parts: Vec<&str> = received_version.split('.').collect();

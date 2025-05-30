@@ -105,16 +105,22 @@ miden-proving-service start-worker
 To start the proxy service, you will need to run:
 
 ```bash
-miden-proving-service start-proxy --prover-type transaction [worker1] [worker2] ... [workerN]
+miden-proving-service start-proxy --prover-type transaction [worker1],[worker2],...,[workerN]
 ```
 
 For example:
 
 ```bash
-miden-proving-service start-proxy --prover-type transaction 0.0.0.0:8084 0.0.0.0:8085
+miden-proving-service start-proxy --prover-type transaction 0.0.0.0:8084,0.0.0.0:8085
 ```
 
-This command will start the proxy using the workers passed as arguments. The workers should be in the format `host:port`. If no workers are passed, the proxy will start without any workers and will not be able to handle any requests until one is added through the `miden-proving-service add-worker` command.
+This command will start the proxy using the workers passed as arguments. The workers should be in the format `host:port`. Another way to specify the workers is by using the `MPS_PROXY_WORKERS_LIST` environment variable, which can be set to a comma-separated list of worker addresses. For example:
+
+```bash
+export MPS_PROXY_WORKERS_LIST="0.0.0.0:8084,0.0.0.0:8085"
+```
+
+If no workers are passed, the proxy will start without any workers and will not be able to handle any requests until one is added through the `miden-proving-service add-worker` command.
 
 The `--prover-type` flag is required and specifies which type of proof the proxy will handle. The available options are:
 - `transaction`: For transaction proofs
@@ -138,19 +144,27 @@ At the moment, when a worker added to the proxy stops working and can not connec
 
 ## Updating workers on a running proxy
 
-To update the workers on a running proxy, two commands are provided: `add-worker` and `remove-worker`. These commands will update the workers on the proxy and will not require a restart. To use these commands, you will need to run:
+To update the workers on a running proxy, two commands are provided: `add-workers` and `remove-workers`. These commands will update the workers on the proxy and will not require a restart. To use these commands, you will need to run:
 
 ```bash
-miden-proving-service add-worker --control-port <port> [worker1] [worker2] ... [workerN]
-miden-proving-service remove-worker --control-port <port> [worker1] [worker2] ... [workerN]
+miden-proving-service add-workers --control-port <port> [worker1],[worker2],...,[workerN]
+miden-proving-service remove-workers --control-port <port> [worker1],[worker2],...,[workerN]
 ```
 For example:
 
 ```bash
 # To add 0.0.0.0:8085 and 200.58.70.4:50051 to the workers list:
-miden-proving-service add-workers --control-port 8083 0.0.0.0:8085 200.58.70.4:50051
+miden-proving-service add-workers --control-port 8083 0.0.0.0:8085,200.58.70.4:50051
 # To remove 158.12.12.3:8080 and 122.122.6.6:50051 from the workers list:
-miden-proving-service remove-workers --control-port 8083 158.12.12.3:8080 122.122.6.6:50051
+miden-proving-service remove-workers --control-port 8083 158.12.12.3:8080,122.122.6.6:50051
+```
+
+These commands can receive the list of workers to update as a comma-separated list of addresses through the `MPS_PROXY_WORKERS_LIST` environment variable, or as command-line arguments:
+
+```bash
+export MPS_PROXY_WORKERS_LIST="0.0.0.0:8085,200.58.70.4:50051"
+miden-proving-service add-workers --control-port 8083
+miden-proving-service remove-workers --control-port 8083
 ```
 
 The `--control-port` flag is required to specify the port where the proxy is listening for updates. The workers are passed as arguments in the format `host:port`. The port can be specified via the `MPS_CONTROL_PORT` environment variable. For example:
