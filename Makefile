@@ -74,8 +74,8 @@ test: ## Run all tests
 
 
 .PHONY: test-dev
-test-dev: ## Run default tests excluding slow tests (prove and ID anchor block tests) in debug mode intended to be run locally
-	$(BACKTRACE) cargo nextest run --profile default --features concurrent,testing --filter-expr "not test(prove) & not test(create_accounts_with_non_zero_anchor_block)"
+test-dev: ## Run default tests excluding slow prove tests in debug mode intended to be run locally
+	$(BACKTRACE) cargo nextest run --profile default --features concurrent,testing --filter-expr "not test(prove)"
 
 
 .PHONY: test-docs

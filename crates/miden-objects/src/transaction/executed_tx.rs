@@ -14,7 +14,7 @@ use crate::{
 // EXECUTED TRANSACTION
 // ================================================================================================
 
-/// Describes the result of executing a transaction program for the Miden rollup.
+/// Describes the result of executing a transaction program for the Miden protocol.
 ///
 /// Executed transaction serves two primary purposes:
 /// - It contains a complete description of the effects of the transaction. Specifically, it

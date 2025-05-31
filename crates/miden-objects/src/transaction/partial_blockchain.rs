@@ -20,8 +20,7 @@ use crate::{
 ///
 /// [`PartialBlockchain`] contains authentication paths for a limited set of blocks. The intent is
 /// to include only the blocks relevant for execution:
-/// - For transactions: the set of blocks in which all input notes were created and the anchor block
-///   needed to validate the seed of a new account ID, if applicable.
+/// - For transactions: the set of blocks in which all input notes were created.
 /// - For batches: the set of reference blocks of all transactions in the batch and the blocks to
 ///   prove any unauthenticated note's inclusion.
 /// - For blocks: the set of reference blocks of all batches in the block and the blocks to prove
