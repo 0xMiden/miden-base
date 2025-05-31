@@ -77,7 +77,7 @@ impl StartWorker {
     /// The worker includes a health reporter that will mark the service as serving, following the
     /// [gRPC health checking protocol](
     /// https://github.com/grpc/grpc-proto/blob/master/grpc/health/v1/health.proto).
-    #[instrument(target = MIDEN_PROVING_SERVICE, name = "worker:execute")]
+    #[instrument(level = "debug", target = MIDEN_PROVING_SERVICE, name = "worker.execute")]
     pub async fn execute(&self) -> Result<(), String> {
         let host = if self.localhost { "127.0.0.1" } else { "0.0.0.0" };
         let worker_addr = format!("{}:{}", host, self.port);

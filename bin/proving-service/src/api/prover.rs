@@ -53,10 +53,11 @@ impl ProverRpcApi {
     }
 
     #[instrument(
+        level = "debug",
         target = MIDEN_PROVING_SERVICE,
-        name = "proving_service:prove_tx",
+        name = "rpc.prove_tx",
         skip_all,
-        ret(level = "debug"),
+        ret,
         fields(id = tracing::field::Empty),
         err
     )]
@@ -83,10 +84,11 @@ impl ProverRpcApi {
     }
 
     #[instrument(
+        level = "debug",
         target = MIDEN_PROVING_SERVICE,
-        name = "proving_service:prove_batch",
+        name = "rpc.prove_batch",
         skip_all,
-        ret(level = "debug"),
+        ret,
         fields(id = tracing::field::Empty),
         err
     )]
@@ -113,10 +115,11 @@ impl ProverRpcApi {
     }
 
     #[instrument(
+        level = "debug",
         target = MIDEN_PROVING_SERVICE,
-        name = "proving_service:prove_block",
+        name = "rpc.prove_block",
         skip_all,
-        ret(level = "debug"),
+        ret,
         fields(id = tracing::field::Empty),
         err
     )]
@@ -147,8 +150,9 @@ impl ProverRpcApi {
 #[async_trait::async_trait]
 impl ProverApi for ProverRpcApi {
     #[instrument(
+        parent = None,
         target = MIDEN_PROVING_SERVICE,
-        name = "proving_service:prove",
+        name = "rpc.prove",
         skip_all,
         ret(level = "debug"),
         fields(id = tracing::field::Empty),
