@@ -247,7 +247,7 @@ impl NoteTag {
     /// Returns the inner u32 value of this tag.
     pub fn as_u32(&self) -> u32 {
         match self {
-            NoteTag::NetworkAccount(tag) => (*tag & 0x3fffffff) | (0b00 << 30),
+            NoteTag::NetworkAccount(tag) => *tag & 0x3fffffff,
             NoteTag::NetworkUseCase(use_case_bits, payload_bits) => {
                 ((*use_case_bits as u32) << 16 | *payload_bits as u32) | (0b01 << 30)
             },
