@@ -6,6 +6,7 @@ use super::{
     AccountId, ByteReader, ByteWriter, Deserializable, DeserializationError, NoteError, NoteType,
     Serializable,
 };
+use crate::account::AccountStorageMode;
 
 // CONSTANTS
 // ================================================================================================
@@ -76,27 +77,33 @@ impl NoteTag {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [NoteTag] instantiated from the specified account ID and execution mode.
+    /// Returns a new [NoteTag] instantiated from the specified account ID.
     ///
     /// The tag is constructed as follows:
     ///
-    /// - For local execution, the two most significant bits are set to `0b11`, which allows for any
-    ///   note type to be used. The following 14 bits are set to the most significant bits of the
-    ///   account ID, and the remaining 16 bits are set to 0.
-    /// - For network execution, the most significant bits are set to `0b00` and the remaining bits
-    ///   are set to the 30 most significant bits of the account ID.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - [`NoteExecutionMode::Network`] is provided but the storage mode of the `account_id` is not
-    ///   [`AccountStorageMode::Network`](crate::account::AccountStorageMode::Network).
-    pub fn from_account_id(
-        account_id: AccountId,
-        execution: NoteExecutionMode,
-    ) -> Result<Self, NoteError> {
-        match execution {
-            NoteExecutionMode::Local => {
+    /// - For local execution(`AccountStorageMode::Private` or `AccountStorageMode::Public`), the
+    ///   two most significant bits are set to `0b11`, which allows for any note type to be used.
+    ///   The following 14 bits are set to the most significant bits of the account ID, and the
+    ///   remaining 16 bits are set to 0.
+    /// - For network execution (`AccountStorageMode::Network`), the most significant bits are set
+    ///   to `0b00` and the remaining bits are set to the 30 most significant bits of the account
+    ///   ID.
+    pub fn from_account_id(account_id: AccountId) -> Result<Self, NoteError> {
+        match account_id.storage_mode() {
+            AccountStorageMode::Network => {
+                let prefix_id: u64 = account_id.prefix().into();
+
+                // Shift the high bits of the account ID such that they are layed out as:
+                // [34 zero bits | remaining high bits (30 bits)].
+                let high_bits = prefix_id >> 34;
+
+                // This is equivalent to the following layout, interpreted as a u32:
+                // [2 zero bits | remaining high bits (30 bits)].
+                // The two most significant zero bits match the tag we need for network
+                // execution.
+                Ok(Self(high_bits as u32))
+            },
+            AccountStorageMode::Private | AccountStorageMode::Public => {
                 let prefix_id: u64 = account_id.prefix().into();
 
                 // Shift the high bits of the account ID such that they are layed out as:
@@ -114,23 +121,6 @@ impl NoteTag {
 
                 // Set the local execution tag in the two most significant bits.
                 Ok(Self(high_bits | LOCAL_EXECUTION_WITH_ALL_NOTE_TYPES_ALLOWED))
-            },
-            NoteExecutionMode::Network => {
-                if !account_id.is_network() {
-                    Err(NoteError::NetworkExecutionRequiresNetworkAccount)
-                } else {
-                    let prefix_id: u64 = account_id.prefix().into();
-
-                    // Shift the high bits of the account ID such that they are layed out as:
-                    // [34 zero bits | remaining high bits (30 bits)].
-                    let high_bits = prefix_id >> 34;
-
-                    // This is equivalent to the following layout, interpreted as a u32:
-                    // [2 zero bits | remaining high bits (30 bits)].
-                    // The two most significant zero bits match the tag we need for network
-                    // execution.
-                    Ok(Self(high_bits as u32))
-                }
             },
         }
     }
@@ -361,15 +351,11 @@ mod tests {
         ];
 
         for account_id in private_accounts.into_iter().chain(public_accounts) {
-            assert_matches!(
-                NoteTag::from_account_id(account_id, NoteExecutionMode::Network).unwrap_err(),
-                NoteError::NetworkExecutionRequiresNetworkAccount,
-                "tag generation must fail if network execution is attempted with private or public account ID"
-            )
+            assert!(NoteTag::from_account_id(account_id).is_ok())
         }
 
         for account_id in network_accounts {
-            let tag = NoteTag::from_account_id(account_id, NoteExecutionMode::Network)
+            let tag = NoteTag::from_account_id(account_id)
                 .expect("tag generation must work with network execution and network account ID");
             assert!(tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Network);
@@ -387,7 +373,7 @@ mod tests {
         }
 
         for account_id in private_accounts {
-            let tag = NoteTag::from_account_id(account_id, NoteExecutionMode::Local)
+            let tag = NoteTag::from_account_id(account_id)
                 .expect("tag generation must work with local execution and private account ID");
             assert!(!tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
@@ -401,7 +387,7 @@ mod tests {
         }
 
         for account_id in public_accounts {
-            let tag = NoteTag::from_account_id(account_id, NoteExecutionMode::Local)
+            let tag = NoteTag::from_account_id(account_id)
                 .expect("Tag generation must work with local execution and public account ID");
             assert!(!tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
@@ -415,17 +401,21 @@ mod tests {
         }
 
         for account_id in network_accounts {
-            let tag = NoteTag::from_account_id(account_id, NoteExecutionMode::Local)
+            let tag = NoteTag::from_account_id(account_id)
                 .expect("Tag generation must work with local execution and network account ID");
-            assert!(!tag.is_single_target());
-            assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
+            assert!(tag.is_single_target());
+            assert_eq!(tag.execution_mode(), NoteExecutionMode::Network);
 
             tag.validate(NoteType::Public)
                 .expect("local execution should support public notes");
-            tag.validate(NoteType::Private)
-                .expect("local execution should support private notes");
-            tag.validate(NoteType::Encrypted)
-                .expect("local execution should support encrypted notes");
+            assert_matches!(
+                tag.validate(NoteType::Private),
+                Err(NoteError::NetworkExecutionRequiresPublicNote(NoteType::Private))
+            );
+            assert_matches!(
+                tag.validate(NoteType::Encrypted),
+                Err(NoteError::NetworkExecutionRequiresPublicNote(NoteType::Encrypted))
+            );
         }
     }
 
@@ -460,44 +450,19 @@ mod tests {
         let network_account_id = AccountId::try_from(NETWORK_ACCOUNT_INT).unwrap();
 
         // Expected network tag with LOCAL_EXECUTION_WITH_ALL_NOTE_TYPES_ALLOWED.
-        let expected_network_local_tag = NoteTag(0b11101010_10110011_00000000_00000000);
+        let _expected_network_local_tag = NoteTag(0b11101010_10110011_00000000_00000000);
 
         // Expected network tag with leading 00 tag bits for network execution.
         let expected_network_network_tag = NoteTag(0b00101010_10110011_00011101_11110011);
 
-        // Public and Private storage modes with NoteExecutionMode::Network should fail.
-        // ----------------------------------------------------------------------------------------
-
-        assert_matches!(
-            NoteTag::from_account_id(private_account_id, NoteExecutionMode::Network),
-            Err(NoteError::NetworkExecutionRequiresNetworkAccount)
-        );
-        assert_matches!(
-            NoteTag::from_account_id(public_account_id, NoteExecutionMode::Network),
-            Err(NoteError::NetworkExecutionRequiresNetworkAccount)
-        );
-
-        // NoteExecutionMode::Local
-        // ----------------------------------------------------------------------------------------
-
         assert_eq!(
-            NoteTag::from_account_id(private_account_id, NoteExecutionMode::Local).unwrap(),
+            NoteTag::from_account_id(private_account_id).unwrap(),
             expected_private_local_tag,
         );
-        assert_eq!(
-            NoteTag::from_account_id(public_account_id, NoteExecutionMode::Local).unwrap(),
-            expected_public_local_tag,
-        );
-        assert_eq!(
-            NoteTag::from_account_id(network_account_id, NoteExecutionMode::Local).unwrap(),
-            expected_network_local_tag,
-        );
-
-        // NoteExecutionMode::Network
-        // ----------------------------------------------------------------------------------------
+        assert_eq!(NoteTag::from_account_id(public_account_id).unwrap(), expected_public_local_tag,);
 
         assert_eq!(
-            NoteTag::from_account_id(network_account_id, NoteExecutionMode::Network).unwrap(),
+            NoteTag::from_account_id(network_account_id).unwrap(),
             expected_network_network_tag,
         );
     }

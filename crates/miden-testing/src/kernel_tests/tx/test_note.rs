@@ -340,8 +340,8 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     // prepare note data
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(target_id, NoteExecutionMode::Local)
-        .context("failed to create note tag from account ID")?;
+    let tag =
+        NoteTag::from_account_id(target_id).context("failed to create note tag from account ID")?;
     let metadata = NoteMetadata::new(
         sender_id,
         NoteType::Public,
@@ -656,7 +656,7 @@ fn test_build_note_metadata() {
     let test_metadata1 = NoteMetadata::new(
         sender,
         NoteType::Private,
-        NoteTag::from_account_id(receiver, NoteExecutionMode::Local).unwrap(),
+        NoteTag::from_account_id(receiver).unwrap(),
         NoteExecutionHint::after_block(500.into()).unwrap(),
         Felt::try_from(1u64 << 63).unwrap(),
     )
@@ -810,7 +810,7 @@ fn test_public_key_as_note_input() {
 
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id(), NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(target_account.id()).unwrap();
     let metadata = NoteMetadata::new(
         sender_account.id(),
         NoteType::Public,
