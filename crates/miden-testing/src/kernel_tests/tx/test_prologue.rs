@@ -253,31 +253,27 @@ fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &Transac
 }
 
 fn kernel_data_memory_assertions(process: &Process) {
+    let latest_version_procedures = TransactionKernel::PROCEDURES
+        .last()
+        .expect("kernel should have at least one version");
+
     // check that the number of kernel procedures stored in the memory is equal to the number of
     // kernel procedures in the `TransactionKernel` array.
     //
-    // By default we check procedures of the kernel latest version
+    // By default we check procedures of the latest kernel version
     assert_eq!(
         read_root_mem_word(&process.into(), NUM_KERNEL_PROCEDURES_PTR)[0].as_int(),
-        TransactionKernel::PROCEDURES
-            .last()
-            .expect("kernel should have at least one version")
-            .len() as u64,
+        latest_version_procedures.len() as u64,
         "Number of the kernel procedures should be stored at the NUM_KERNEL_PROCEDURES_PTR"
     );
 
     // check that the hashes of the kernel procedures stored in the memory is equal to the hashes in
     // `TransactionKernel`'s procedures array
-    for (i, &proc_hash) in TransactionKernel::PROCEDURES
-        .last()
-        .expect("kernel should have at least one version")
-        .iter()
-        .enumerate()
-    {
+    for (i, &proc_hash) in latest_version_procedures.iter().enumerate() {
         assert_eq!(
             read_root_mem_word(&process.into(), KERNEL_PROCEDURES_PTR + (i * WORD_SIZE) as u32),
             *proc_hash,
-            "Some of the kernel procedure hashes stored in the memory are invalid"
+            "hash of kernel procedure at index `{i}` does not match the hash stored in memory"
         );
     }
 }
