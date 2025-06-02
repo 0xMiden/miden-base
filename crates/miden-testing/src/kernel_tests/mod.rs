@@ -153,7 +153,6 @@ fn executed_transaction_account_delta_new() {
 
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
     )
     .unwrap();
     let tag2 = NoteTag::for_local_use_case(0, 0).unwrap();
@@ -408,7 +407,6 @@ fn test_send_note_proc() {
 
     let tag = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
     )
     .unwrap();
     let aux = Felt::new(27);
@@ -555,7 +553,6 @@ fn executed_transaction_output_notes() {
 
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
     )
     .unwrap();
     let tag2 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
