@@ -360,7 +360,7 @@ pub enum NoteError {
     DuplicateFungibleAsset(AccountId),
     #[error("duplicate non fungible asset {0} in note")]
     DuplicateNonFungibleAsset(NonFungibleAsset),
-    #[error("note type {0:?} is inconsistent with note tag {1}")]
+    #[error("note type {0} is inconsistent with note tag {1}")]
     InconsistentNoteTag(NoteType, u64),
     #[error("adding fungible asset amounts would exceed maximum allowed amount")]
     AddFungibleAssetBalanceError(#[source] AssetError),
@@ -391,13 +391,13 @@ pub enum NoteError {
     },
     #[error("note network execution requires the target to be a network account")]
     NetworkExecutionRequiresNetworkAccount,
-    #[error("note network execution requires a public note but note is of type {0:?}")]
+    #[error("note network execution requires a public note but note is of type {0}")]
     NetworkExecutionRequiresPublicNote(NoteType),
     #[error("failed to assemble note script:\n{}", PrintDiagnostic::new(.0))]
     NoteScriptAssemblyError(Report),
     #[error("failed to deserialize note script")]
     NoteScriptDeserializationError(#[source] DeserializationError),
-    #[error("public use case requires a public note but note is of type {0:?}")]
+    #[error("public use case requires a public note but note is of type {0}")]
     PublicUseCaseRequiresPublicNote(NoteType),
     #[error("note contains {0} assets which exceeds the maximum of {max}", max = NoteAssets::MAX_NUM_ASSETS)]
     TooManyAssets(usize),
