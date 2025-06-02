@@ -22,6 +22,15 @@ pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str(
 /// Error Message: "P2ID script expects exactly 2 note inputs"
 pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID script expects exactly 2 note inputs");
 
+/// Error Message: "Hybrid P2ID script expects exactly 4 note inputs"
+pub const ERR_HYBRID_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID script expects exactly 4 note inputs");
+/// Error Message: "Hybrid P2ID script reclaim account != sender"
+pub const ERR_HYBRID_P2ID_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("P2IDH reclaim account != sender");
+/// Error Message: "Hybrid P2ID script wait until reclaim height"
+pub const ERR_HYBRID_P2ID_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("wait until reclaim height");
+/// Error Message: "Hybrid P2ID script wait until unlock"
+pub const ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED: MasmError = MasmError::from_static_str("wait until unlock");
+
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
 /// Error Message: "SWAP script expects exactly 10 note inputs"
