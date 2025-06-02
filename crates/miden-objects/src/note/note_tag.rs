@@ -88,7 +88,7 @@ pub enum NoteTag {
     NetworkUseCase(u16, u16),
     /// Represents a tag for a note intended for local execution for a public use case. The note
     /// must be public.
-    LocalPublicAny(u16, u16),
+    LocalPublicAny(u32),
     /// Represents a tag for a note intended for local execution.
     ///
     /// This is used for two purposes:
@@ -196,8 +196,9 @@ impl NoteTag {
                 Ok(Self::NetworkUseCase(use_case_bits, payload))
             },
             NoteExecutionMode::Local => {
-                let use_case_bits = (LOCAL_PUBLIC_USECASE >> 16) as u16 | use_case_id;
-                Ok(Self::LocalPublicAny(use_case_bits, payload))
+                // Convert directly to u32: type bits (0b11) + use_case_bits + payload
+                let tag_u32 = (0b10u32 << 30) | ((use_case_id as u32) << 16) | (payload as u32);
+                Ok(Self::LocalPublicAny(tag_u32))
             },
         }
     }
@@ -246,14 +247,12 @@ impl NoteTag {
     /// Returns the inner u32 value of this tag.
     pub fn as_u32(&self) -> u32 {
         match self {
-            NoteTag::NetworkAccount(tag) => (*tag & 0x3FFFFFFF) | (0b00 << 30),
+            NoteTag::NetworkAccount(tag) => (*tag & 0x3fffffff) | (0b00 << 30),
             NoteTag::NetworkUseCase(use_case_bits, payload_bits) => {
                 ((*use_case_bits as u32) << 16 | *payload_bits as u32) | (0b01 << 30)
             },
-            NoteTag::LocalPublicAny(use_case_bits, payload_bits) => {
-                ((*use_case_bits as u32) << 16 | *payload_bits as u32) | (0b10 << 30)
-            },
-            NoteTag::LocalAny(tag) => (*tag & 0x3FFFFFFF) | (0b11 << 30),
+            NoteTag::LocalPublicAny(tag) => (*tag & 0x3fffffff) | (0b10 << 30),
+            NoteTag::LocalAny(tag) => (*tag & 0x3fffffff) | (0b11 << 30),
         }
     }
 
@@ -279,9 +278,7 @@ impl NoteTag {
     fn requires_public_note(&self) -> bool {
         matches!(
             self,
-            NoteTag::NetworkAccount(_)
-                | NoteTag::NetworkUseCase(_, _)
-                | NoteTag::LocalPublicAny(_, _)
+            NoteTag::NetworkAccount(_) | NoteTag::NetworkUseCase(_, _) | NoteTag::LocalPublicAny(_)
         )
     }
 }
@@ -302,7 +299,7 @@ impl From<u32> for NoteTag {
             NETWORK_ACCOUNT => Self::NetworkAccount(value),
             NETWORK_PUBLIC_USECASE => Self::NetworkUseCase((value >> 16) as u16, value as u16),
             LOCAL_ANY => Self::LocalAny(value),
-            LOCAL_PUBLIC_USECASE => Self::LocalPublicAny((value >> 16) as u16, value as u16),
+            LOCAL_PUBLIC_USECASE => Self::LocalPublicAny(value),
             _ => {
                 // This branch should be unreachable because `prefix` is derived from
                 // the top 2 bits of a u32, which can only be 0, 1, 2, or 3.
