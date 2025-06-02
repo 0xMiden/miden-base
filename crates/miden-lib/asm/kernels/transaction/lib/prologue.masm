@@ -1110,7 +1110,7 @@ proc.process_tx_script_data
     # => [TX_SCRIPT_ARGS_KEY]
 
     # store the transaction script args key in memory
-    exec.memory::set_tx_script_args_commitment dropw
+    exec.memory::set_tx_script_args_key dropw
     # => []
 end
 

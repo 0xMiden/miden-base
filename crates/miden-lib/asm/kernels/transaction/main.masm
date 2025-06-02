@@ -135,8 +135,8 @@ proc.main.1
 
     if.true
         # load the transaction script arguments onto the stack
-        exec.memory::get_tx_script_args_commitment movup.4
-        # => [tx_script_root_ptr, TX_SCRIPT_ARGS_COMMITMENT]
+        exec.memory::get_tx_script_args_key movup.4
+        # => [tx_script_root_ptr, TX_SCRIPT_ARGS_KEY]
 
         # execute the transaction script
         dyncall

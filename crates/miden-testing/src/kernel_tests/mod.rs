@@ -17,7 +17,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
+    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
     assembly::DefaultSourceManager,
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
@@ -862,15 +862,15 @@ fn test_tx_script_inputs() {
 fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_src = r#"
         begin
-            # => [TX_SCRIPT_ARGS_COMMITMENT]
-            # `TX_SCRIPT_ARGS_COMMITMENT` value, which is located on the stack at the beginning of 
+            # => [TX_SCRIPT_ARGS_KEY]
+            # `TX_SCRIPT_ARGS_KEY` value, which is located on the stack at the beginning of 
             # the execution, is the advice map key which allows to obtain transaction script args 
             # which were specified during the `TransactionScript` creation (see below). In this
             # example transaction args is an array of Felts from 1 to 7.
 
             # move the transaction args from advice map to the advice stack
             adv.push_mapval
-            # OS => [TX_SCRIPT_ARGS_COMMITMENT]
+            # OS => [TX_SCRIPT_ARGS_KEY]
             # AS => [7, 6, 5, 4, 3, 2, 1]
 
             # drop the args commitment
@@ -902,7 +902,7 @@ fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script =
         TransactionScript::compile(tx_script_src, [], TransactionKernel::testing_assembler())
             .context("failed to compile transaction script")?
-            .with_script_args(&[
+            .with_args(&[
                 ONE,
                 Felt::new(2),
                 Felt::new(3),
@@ -910,13 +910,40 @@ fn test_tx_script_args() -> anyhow::Result<()> {
                 Felt::new(5),
                 Felt::new(6),
                 Felt::new(7),
-            ]);
+            ])?;
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
         .build();
 
     tx_context.execute().context("failed to execute transaction")?;
+
+    Ok(())
+}
+
+#[test]
+fn test_tx_script_args_collision() -> anyhow::Result<()> {
+    let collision_elements = vec![ONE, Felt::new(2), Felt::new(3), Felt::new(4)];
+    let collision_key = Hasher::hash_elements(&collision_elements);
+
+    let script_args_collision_err = TransactionScript::compile(
+        "begin nop end",
+        [(*collision_key, vec![ONE, Felt::new(2)])],
+        TransactionKernel::testing_assembler(),
+    )
+    .context("failed to compile transaction script")?
+    .with_args(&collision_elements)
+    .unwrap_err();
+
+    assert_matches!(script_args_collision_err, TransactionScriptError::ScriptArgsCollision {
+        key,
+        new_value,
+        old_value,
+    } => {
+        assert_eq!(key, collision_key);
+        assert_eq!(new_value, collision_elements);
+        assert_eq!(old_value, [ONE, Felt::new(2)]);
+    });
 
     Ok(())
 }

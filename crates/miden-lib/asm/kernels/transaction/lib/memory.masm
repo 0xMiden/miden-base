@@ -76,7 +76,7 @@ const.INIT_NONCE_PTR=416
 const.TX_SCRIPT_ROOT_PTR=420
 
 # The memory address at which the commitment of the transaction script arguments is stored.
-const.TX_SCRIPT_ARGS_COMMITMENT_PTR=424
+const.TX_SCRIPT_ARGS_KEY_PTR=424
 
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
@@ -467,29 +467,29 @@ export.set_tx_script_root
     mem_storew
 end
 
-#! Returns the transaction script arguments commitment.
+#! Returns the transaction script arguments key.
 #!
 #! Inputs:  []
-#! Outputs: [TX_SCRIPT_ARGS_COMMITMENT]
+#! Outputs: [TX_SCRIPT_ARGS_KEY]
 #!
 #! Where:
-#! - TX_SCRIPT_ARGS_COMMITMENT is the commitment of the transaction script arguments which could be
+#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script arguments which could be
 #!   used as a key to obtain the arguments from the advice map.
-export.get_tx_script_args_commitment
-    padw push.TX_SCRIPT_ARGS_COMMITMENT_PTR
+export.get_tx_script_args_key
+    padw push.TX_SCRIPT_ARGS_KEY_PTR
     mem_loadw
 end
 
-#! Sets the transaction script arguments commitment.
+#! Sets the transaction script arguments key.
 #!
-#! Inputs:  [TX_SCRIPT_ARGS_COMMITMENT]
-#! Outputs: [TX_SCRIPT_ARGS_COMMITMENT]
+#! Inputs:  [TX_SCRIPT_ARGS_KEY]
+#! Outputs: [TX_SCRIPT_ARGS_KEY]
 #!
 #! Where:
-#! - TX_SCRIPT_ARGS_COMMITMENT is the commitment of the transaction script arguments which could be
+#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script arguments which could be
 #!   used as a key to obtain the arguments from the advice map.
-export.set_tx_script_args_commitment
-    push.TX_SCRIPT_ARGS_COMMITMENT_PTR
+export.set_tx_script_args_key
+    push.TX_SCRIPT_ARGS_KEY_PTR
     mem_storew
 end
 
