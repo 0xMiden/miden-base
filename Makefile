@@ -25,7 +25,7 @@ clippy: ## Runs Clippy with configs
 
 .PHONY: clippy-no-std
 clippy-no-std: ## Runs Clippy with configs
-	cargo clippy --no-default-features --target wasm32-unknown-unknown --workspace --lib $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service -- -D warnings
+	cargo clippy --no-default-features --target wasm32-unknown-unknown --workspace --lib $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service  --exclude bench-prover -- -D warnings
 
 
 .PHONY: fix
@@ -103,17 +103,17 @@ build: ## By default we should build in release mode
 
 .PHONY: build-no-std
 build-no-std: ## Build without the standard library
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --lib $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --lib $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service --exclude bench-prover
 
 
 .PHONY: build-no-std-testing
 build-no-std-testing: ## Build without the standard library. Includes the `testing` feature
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service --exclude bench-prover
 
 
 .PHONY: build-async
 build-async: ## Build with the `async` feature enabled (only libraries)
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --lib --release --features async
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --lib --release --features async --workspace --exclude bench-prover
 
 # --- benchmarking --------------------------------------------------------------------------------
 
@@ -121,6 +121,10 @@ build-async: ## Build with the `async` feature enabled (only libraries)
 bench-tx: ## Run transaction benchmarks
 	cargo run --bin bench-tx
 
+.PHONY: bench-prover
+bench-prover: ## Run prover benchmarks and consolidate results.
+	cargo bench --bin bench-prover --bench benches
+	cargo run --bin bench-prover
 
 # --- installing ----------------------------------------------------------------------------------
 
