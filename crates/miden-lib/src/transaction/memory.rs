@@ -364,3 +364,12 @@ pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
 pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
 pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
+
+// LINK MAP
+// ------------------------------------------------------------------------------------------------
+
+/// TODO: Document
+pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33554432;
+pub const LINK_MAP_MEMORY_START_PTR: MemoryAddress = 33554436;
+
+pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 12;

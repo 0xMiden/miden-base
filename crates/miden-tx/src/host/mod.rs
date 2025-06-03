@@ -26,6 +26,9 @@ use vm_processor::{
 mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
+mod link_map;
+pub use link_map::LinkMap;
+
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
@@ -586,6 +589,12 @@ impl<A: AdviceProvider> Host for TransactionHost<A> {
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(())
+            }
+            TransactionEvent::LinkMapSetEvent => {
+                Ok(())
+            },
+            TransactionEvent::LinkMapGetEvent => {
+              Ok(())
             }
         }
         .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;

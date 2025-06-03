@@ -197,6 +197,15 @@ const.OUTPUT_NOTE_ASSETS_HASH_OFFSET=12
 const.OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
 const.OUTPUT_NOTE_ASSETS_OFFSET=20
 
+# LINK MAP MEMORY
+# -------------------------------------------------------------------------------------------------
+
+const.LINK_MAP_MEMORY_CURRENT_OFFSET=33554432
+const.LINK_MAP_MEMORY_START_PTR=33554436
+
+# Each map entry stores three words.
+const.LINK_MAP_ENTRY_SIZE=12
+
 # MEMORY PROCEDURES
 # =================================================================================================
 
@@ -1549,4 +1558,38 @@ end
 #!   stored.
 export.get_kernel_procedures_ptr
     push.KERNEL_PROCEDURES_PTR
+end
+
+# LINK MAP
+# -------------------------------------------------------------------------------------------------
+
+#! Returns the next pointer to an empty link map entry.
+#!
+#! Inputs:  []
+#! Outputs: [entry_ptr]
+export.link_map_malloc
+  # retrieve the current offset
+  mem_load.LINK_MAP_MEMORY_CURRENT_OFFSET dup
+  # => [current_offset, current_offset]
+
+  # store next offset
+  add.LINK_MAP_ENTRY_SIZE
+  # => [next_offset, current_offset]
+
+  mem_store.LINK_MAP_MEMORY_CURRENT_OFFSET
+  # => [current_offset]
+
+  add.LINK_MAP_MEMORY_START_PTR
+  # => [entry_ptr]
+end
+
+#! Asserts that the given entry ptr is for the given map ptr
+#!
+#! Inputs:  [entry_ptr, map_ptr]
+#! Outputs: []
+export.assert_link_map_entry_ptr
+  # TODO:
+  # LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR
+  # assert entry_ptr.map_ptr == map_ptr
+  mem_load assert_eq.err="map ptr stored in entry ptr does not match actual map ptr"
 end

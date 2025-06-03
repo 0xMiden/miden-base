@@ -2,11 +2,14 @@ use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::{
-    Digest,
+    Digest, Felt, Word,
     account::{AccountHeader, AccountVaultDelta},
     assembly::mast::MastNodeExt,
 };
-use miden_tx::{TransactionMastStore, host::AccountProcedureIndexMap};
+use miden_tx::{
+    TransactionMastStore,
+    host::{AccountProcedureIndexMap, LinkMap},
+};
 use vm_processor::{
     AdviceInputs, AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, Host,
     MastForest, MastForestStore, MemAdviceProvider, ProcessState,
@@ -100,6 +103,77 @@ impl Host for MockHost {
         match event {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process, err_ctx)
+            },
+            // Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
+            // Advice stack state after: [is_after_entry_ptr, entry_ptr]
+            TransactionEvent::LinkMapSetEvent => {
+                std::println!("{event}");
+
+                let map_ptr = process.get_stack_item(0);
+                let map_key = [
+                    process.get_stack_item(4),
+                    process.get_stack_item(3),
+                    process.get_stack_item(2),
+                    process.get_stack_item(1),
+                ];
+                let map_value = [
+                    process.get_stack_item(8),
+                    process.get_stack_item(7),
+                    process.get_stack_item(6),
+                    process.get_stack_item(5),
+                ];
+                std::println!("set {map_key:?} to {map_value:?}");
+
+                self.adv_provider.push_stack(AdviceSource::Value(0u32.into()), err_ctx)?;
+                self.adv_provider.push_stack(AdviceSource::Value(map_ptr), err_ctx)?;
+                Ok(())
+            },
+            // Expected operand stack state before: [map_ptr, KEY]
+            // Advice stack state after: [entry_exists, entry_ptr]
+            TransactionEvent::LinkMapGetEvent => {
+                std::println!("{event}");
+                let map_ptr = process.get_stack_item(0);
+                let map_key = [
+                    process.get_stack_item(4),
+                    process.get_stack_item(3),
+                    process.get_stack_item(2),
+                    process.get_stack_item(1),
+                ];
+                // std::println!("ctx {}, ptr {}, key {:?}", process.ctx(), map_ptr, map_key);
+                // std::println!(
+                //     "{:?}",
+                //     process.get_mem_word(ContextId::root(), map_ptr.as_int() as u32).unwrap()
+                // );
+                // std::println!(
+                //     "{:?}",
+                //     process.get_mem_word(ContextId::root(), map_ptr.as_int() as u32 + 4).unwrap()
+                // );
+                // std::println!(
+                //     "{:?}",
+                //     process.get_mem_word(ContextId::root(), map_ptr.as_int() as u32 + 8).unwrap()
+                // );
+
+                let link_map = LinkMap::new(map_ptr, process.into())
+                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+                let entry_ptr = link_map
+                    .find(map_key)
+                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+
+                match entry_ptr {
+                    Some(entry_ptr) => {
+                        std::println!("found key at {entry_ptr}");
+                        // Push 1 to signal that the entry was found.
+                        self.adv_provider.push_stack(AdviceSource::Value(1u32.into()), err_ctx)?;
+                        self.adv_provider
+                            .push_stack(AdviceSource::Value(entry_ptr.into()), err_ctx)?;
+                    },
+                    None => {
+                        self.adv_provider.push_stack(AdviceSource::Value(0u32.into()), err_ctx)?;
+                        self.adv_provider.push_stack(AdviceSource::Value(0u32.into()), err_ctx)?;
+                    },
+                }
+
+                Ok(())
             },
             _ => Ok(()),
         }?;
