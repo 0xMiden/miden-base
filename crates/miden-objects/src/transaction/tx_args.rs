@@ -206,9 +206,9 @@ impl Deserializable for TransactionArgs {
 /// - An executable program defined by a [MastForest] and an associated entrypoint.
 /// - A set of transaction script inputs defined by a map of key-value inputs that are loaded into
 ///   the advice inputs' map such that the transaction script can access them.
-/// - A script arguments key defined as an optional [`Digest`]: if presented, this key will be
-///   automatically placed to the operand stack before the transaction script execution and could be
-///   used to get the script arguments array. See [TransactionScript::with_args] for more info.
+/// - A script arguments key defined as an optional [`Digest`]: if present, this key will be pushed
+///   to the operand stack before the transaction script execution and could be used to get the
+///   script arguments array. See [`TransactionScript::with_args`] for more details.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionScript {
     mast: Arc<MastForest>,
@@ -249,6 +249,10 @@ impl TransactionScript {
 
     /// Returns a new [TransactionScript] instantiated from the provided components.
     ///
+    /// If the `args_key` is present, it's expected that `inputs` map will have it as a key, with
+    /// the value being equal to the provided script arguments array. See
+    /// [`TransactionScript::with_args`] for more details.
+    ///
     /// # Errors
     /// Returns an error if:
     /// - The provided `args_key` is not presented in the `inputs` map.
@@ -266,7 +270,7 @@ impl TransactionScript {
         // check that provided `args_key` is presented in the `inputs` map
         if let Some(args_key) = args_key {
             if !inputs.contains_key(&args_key) {
-                return Err(TransactionScriptError::InvalidScriptArgsKey(args_key));
+                return Err(TransactionScriptError::MissingScriptArgsKeyEntry(args_key));
             }
         }
 
@@ -276,16 +280,14 @@ impl TransactionScript {
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Sets the `args_key` to the commitment of the provided arguments array and extends the
+    /// Sets the `args_key` to the commitment of the provided arguments slice and extends the
     /// `inputs` map with the `COMPUTED_COMMITMENT -> [[script_args]]` entry.
     ///
     /// Script arguments is an optional array of [`Felt`]s which could be easily accessed at the
-    /// beginning of the transaction script execution. Commitment of this array (`args_key`) is
+    /// beginning of the transaction script execution. The commitment of this array (`args_key`) is
     /// automatically pushed to the operand stack at the beginning of the transaction script
-    /// execution, so user can get access the underlying arguments array just using the
-    /// `adv.push_mapval` and `adv_push.n` instructions.
-    ///
-    /// See `test_tx_script_args` test as an example of their usage.
+    /// execution and the underlying arguments can be accessed using the `adv.push_mapval`
+    /// and `adv_push.n` instructions.
     pub fn with_args(mut self, script_args: &[Felt]) -> Result<Self, TransactionScriptError> {
         let args_key = Hasher::hash_elements(script_args);
         let old_map_value = self.inputs.insert(args_key, script_args.to_vec());

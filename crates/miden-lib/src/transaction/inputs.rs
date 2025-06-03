@@ -129,7 +129,7 @@ fn build_advice_stack(
     // push the number of input notes onto the stack
     inputs.extend_stack([Felt::from(tx_inputs.input_notes().num_notes() as u32)]);
 
-    // push the transaction script root and transaction args commitment onto the stack
+    // push the transaction script root and transaction args key onto the stack
     // Note: keep in sync with the `prologue::process_tx_script_data` kernel procedure
     inputs.extend_stack(tx_script.map_or(Word::default(), |script| *script.root()));
     inputs.extend_stack(
