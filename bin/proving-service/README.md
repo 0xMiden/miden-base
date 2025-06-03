@@ -105,13 +105,13 @@ miden-proving-service start-worker
 To start the proxy service, you will need to run:
 
 ```bash
-miden-proving-service start-proxy --prover-type transaction [worker1],[worker2],...,[workerN]
+miden-proving-service start-proxy --prover-type transaction --workers [worker1],[worker2],...,[workerN]
 ```
 
 For example:
 
 ```bash
-miden-proving-service start-proxy --prover-type transaction 0.0.0.0:8084,0.0.0.0:8085
+miden-proving-service start-proxy --prover-type transaction --workers 0.0.0.0:8084,0.0.0.0:8085
 ```
 
 This command will start the proxy using the workers passed as arguments. The workers should be in the format `host:port`. Another way to specify the workers is by using the `MPS_PROXY_WORKERS_LIST` environment variable, which can be set to a comma-separated list of worker addresses. For example:

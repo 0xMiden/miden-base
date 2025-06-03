@@ -27,7 +27,7 @@ pub struct StartProxy {
     /// List of workers as host:port strings.
     ///
     /// Example: `127.0.0.1:8080,192.168.1.1:9090`
-    #[arg(value_name = "WORKERS", env = "MPS_PROXY_WORKERS_LIST", value_delimiter = ',')]
+    #[arg(long, env = "MPS_PROXY_WORKERS_LIST", value_delimiter = ',')]
     workers: Vec<String>,
     /// Proxy configurations.
     #[command(flatten)]
