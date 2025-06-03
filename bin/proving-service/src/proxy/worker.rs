@@ -27,7 +27,7 @@ const MAX_BACKOFF_EXPONENT: usize = 9;
 #[derive(Debug, Clone)]
 pub struct Worker {
     backend: Backend,
-    status_client: StatusApiClient<Channel>,
+    status_client: Option<StatusApiClient<Channel>>,
     is_available: bool,
     health_status: WorkerHealthStatus,
     version: String,
@@ -63,8 +63,7 @@ impl Worker {
     /// Creates a new worker and a gRPC status client for the given worker address.
     ///
     /// # Errors
-    /// - Returns [ProvingServiceError::InvalidURI] if the worker address is invalid.
-    /// - Returns [ProvingServiceError::ConnectionFailed] if the connection to the worker fails.
+    /// - Returns [ProvingServiceError::BackendCreationFailed] if the worker address is invalid.
     pub async fn new(
         worker_addr: String,
         connection_timeout: Duration,
@@ -73,14 +72,32 @@ impl Worker {
         let backend =
             Backend::new(&worker_addr).map_err(ProvingServiceError::BackendCreationFailed)?;
 
-        let status_client =
-            create_status_client(worker_addr, connection_timeout, total_timeout).await?;
+        let (status_client, health_status) = match create_status_client(
+            worker_addr.clone(),
+            connection_timeout,
+            total_timeout,
+        )
+        .await
+        {
+            Ok(client) => (Some(client), WorkerHealthStatus::Unknown),
+            Err(err) => {
+                error!("Failed to create status client for worker {}: {}", worker_addr, err);
+                (
+                    None,
+                    WorkerHealthStatus::Unhealthy {
+                        num_failed_attempts: 1,
+                        first_fail_timestamp: Instant::now(),
+                        reason: format!("Failed to create status client: {}", err),
+                    },
+                )
+            },
+        };
 
         Ok(Self {
             backend,
-            is_available: true,
+            is_available: health_status == WorkerHealthStatus::Unknown,
             status_client,
-            health_status: WorkerHealthStatus::Unknown,
+            health_status,
             version: "".to_string(),
         })
     }
@@ -99,25 +116,52 @@ impl Worker {
             return;
         }
 
+        // If we don't have a status client, try to recreate it
+        if self.status_client.is_none() {
+            let failed_attempts = self.num_failures();
+            self.set_health_status(WorkerHealthStatus::Unhealthy {
+                num_failed_attempts: failed_attempts + 1,
+                first_fail_timestamp: match &self.health_status {
+                    WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                        *first_fail_timestamp
+                    },
+                    _ => Instant::now(),
+                },
+                reason: "No status client available".to_string(),
+            });
+            return;
+        }
+
         let failed_attempts = self.num_failures();
 
-        let worker_status = match self.status_client.status(StatusRequest {}).await {
-            Ok(response) => response.into_inner(),
-            Err(e) => {
-                error!("Failed to check worker status ({}): {}", self.address(), e);
-                self.set_health_status(WorkerHealthStatus::Unhealthy {
-                    num_failed_attempts: failed_attempts + 1,
-                    first_fail_timestamp: Instant::now(),
-                    reason: e.message().to_string(),
-                });
-                return;
-            },
-        };
+        let worker_status =
+            match self.status_client.as_mut().unwrap().status(StatusRequest {}).await {
+                Ok(response) => response.into_inner(),
+                Err(e) => {
+                    error!("Failed to check worker status ({}): {}", self.address(), e);
+                    self.set_health_status(WorkerHealthStatus::Unhealthy {
+                        num_failed_attempts: failed_attempts + 1,
+                        first_fail_timestamp: match &self.health_status {
+                            WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                                *first_fail_timestamp
+                            },
+                            _ => Instant::now(),
+                        },
+                        reason: e.message().to_string(),
+                    });
+                    return;
+                },
+            };
 
         if worker_status.version.is_empty() {
             self.set_health_status(WorkerHealthStatus::Unhealthy {
                 num_failed_attempts: failed_attempts + 1,
-                first_fail_timestamp: Instant::now(),
+                first_fail_timestamp: match &self.health_status {
+                    WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                        *first_fail_timestamp
+                    },
+                    _ => Instant::now(),
+                },
                 reason: "Worker version is empty".to_string(),
             });
             return;
@@ -126,7 +170,12 @@ impl Worker {
         if !is_valid_version(&self.version, &worker_status.version) {
             self.set_health_status(WorkerHealthStatus::Unhealthy {
                 num_failed_attempts: failed_attempts + 1,
-                first_fail_timestamp: Instant::now(),
+                first_fail_timestamp: match &self.health_status {
+                    WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                        *first_fail_timestamp
+                    },
+                    _ => Instant::now(),
+                },
                 reason: "Worker version is invalid".to_string(),
             });
             return;
@@ -145,7 +194,12 @@ impl Worker {
                     );
                     self.set_health_status(WorkerHealthStatus::Unhealthy {
                         num_failed_attempts: failed_attempts + 1,
-                        first_fail_timestamp: Instant::now(),
+                        first_fail_timestamp: match &self.health_status {
+                            WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                                *first_fail_timestamp
+                            },
+                            _ => Instant::now(),
+                        },
                         reason: e.to_string(),
                     });
                     return;
@@ -155,7 +209,12 @@ impl Worker {
         if supported_prover_type != worker_supported_proof_type {
             self.set_health_status(WorkerHealthStatus::Unhealthy {
                 num_failed_attempts: failed_attempts + 1,
-                first_fail_timestamp: Instant::now(),
+                first_fail_timestamp: match &self.health_status {
+                    WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                        *first_fail_timestamp
+                    },
+                    _ => Instant::now(),
+                },
                 reason: format!("Unsupported prover type: {}", worker_supported_proof_type),
             });
             return;
