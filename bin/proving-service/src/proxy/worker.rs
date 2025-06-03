@@ -124,7 +124,7 @@ impl Worker {
             return;
         }
 
-        if !is_valid_version(&self.version, &worker_status.version) {
+        if !is_valid_version(&self.version, &worker_status.version).unwrap_or(false) {
             self.set_health_status(WorkerHealthStatus::Unhealthy {
                 num_failed_attempts: failed_attempts + 1,
                 first_fail_timestamp: Instant::now(),
@@ -308,38 +308,22 @@ async fn create_status_client(
 /// The version is valid if it is a semantic version and the major and minor versions match
 /// the current version. The patch version is ignored.
 /// Returns false if either version string is malformed.
-fn is_valid_version(current_version: &str, received_version: &str) -> bool {
-    // Parse current version safely, normalizing it first
-    let current = match Version::parse(&normalize_version(current_version)) {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
+fn is_valid_version(current_version: &str, received_version: &str) -> Result<bool, String> {
+    // Parse current version directly
+    let current =
+        Version::parse(current_version).map_err(|err| format!("Invalid proxy version: {err}"))?;
 
-    // Parse received version safely, normalizing it first
-    let received = match Version::parse(&normalize_version(received_version)) {
-        Ok(v) => v,
-        Err(_) => return false,
-    };
+    // Parse received version directly
+    let received =
+        Version::parse(received_version).map_err(|err| format!("Invalid worker version: {err}"))?;
 
     // Use semver's VersionReq with tilde requirement to check compatibility
     // ~major.minor allows any patch version
     let requirement_str = format!("~{}.{}", current.major, current.minor);
-    let requirement = match VersionReq::parse(&requirement_str) {
-        Ok(req) => req,
-        Err(_) => return false,
-    };
+    let requirement =
+        VersionReq::parse(&requirement_str).expect("Version should be valid at this point");
 
-    requirement.matches(&received)
-}
-
-// Helper function to normalize version strings
-fn normalize_version(version: &str) -> String {
-    let parts: Vec<&str> = version.split('.').collect();
-    match parts.len() {
-        1 => format!("{}.0.0", parts[0]),
-        2 => format!("{}.{}.0", parts[0], parts[1]),
-        _ => version.to_string(),
-    }
+    Ok(requirement.matches(&received))
 }
 
 // TESTS
@@ -351,16 +335,16 @@ mod tests {
 
     #[test]
     fn test_is_valid_version() {
-        assert!(is_valid_version("1.0.0", "1.0.0"));
-        assert!(is_valid_version("1.0.0", "1.0.1"));
-        assert!(is_valid_version("1.0.12", "1.0.1"));
-        assert!(is_valid_version("1.0.0", "1.0"));
-        assert!(!is_valid_version("1.0.0", "2.0.0"));
-        assert!(!is_valid_version("1.0.0", "1.1.0"));
-        assert!(!is_valid_version("1.0.0", "0.9.0"));
-        assert!(!is_valid_version("1.0.0", "0.9.1"));
-        assert!(!is_valid_version("1.0.0", "0.10.0"));
-        assert!(!is_valid_version("miden", "1.0"));
-        assert!(!is_valid_version("1.0.0", "1.miden.12"));
+        assert!(is_valid_version("1.0.0", "1.0.0").unwrap());
+        assert!(is_valid_version("1.0.0", "1.0.1").unwrap());
+        assert!(is_valid_version("1.0.12", "1.0.1").unwrap());
+        assert!(is_valid_version("1.0.0", "1.0").is_err());
+        assert!(!is_valid_version("1.0.0", "2.0.0").unwrap());
+        assert!(!is_valid_version("1.0.0", "1.1.0").unwrap());
+        assert!(!is_valid_version("1.0.0", "0.9.0").unwrap());
+        assert!(!is_valid_version("1.0.0", "0.9.1").unwrap());
+        assert!(!is_valid_version("1.0.0", "0.10.0").unwrap());
+        assert!(is_valid_version("miden", "1.0").is_err());
+        assert!(is_valid_version("1.0.0", "1.miden.12").is_err());
     }
 }
