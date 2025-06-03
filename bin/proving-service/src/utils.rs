@@ -58,8 +58,7 @@ const RESOURCE_EXHAUSTED_CODE: u16 = 8;
 /// - `Ok(())` if the global subscriber is successfully set up.
 /// - `Err(String)` describing the failure if any step (creating the exporter or setting the
 ///   subscriber) fails.
-#[allow(dead_code)]
-pub(crate) fn setup_tracing() -> Result<(), String> {
+pub fn setup_tracing() -> Result<(), String> {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_tonic()
         .build()

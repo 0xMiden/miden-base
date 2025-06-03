@@ -113,7 +113,7 @@ build-no-std-testing: ## Build without the standard library. Includes the `testi
 
 .PHONY: build-async
 build-async: ## Build with the `async` feature enabled (only libraries)
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --lib --release --features async --workspace --exclude bench-prover
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --lib --release --features async --workspace --exclude bench-prover --exclude miden-proving-service
 
 # --- benchmarking --------------------------------------------------------------------------------
 
