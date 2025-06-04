@@ -2,9 +2,9 @@ use alloc::vec::Vec;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, EMPTY_WORD, Felt, ONE, Word};
+use miden_objects::{Digest, ONE, Word};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
-use rand::{Rng, seq::IteratorRandom};
+use rand::seq::IteratorRandom;
 use vm_processor::{MemAdviceProvider, ProcessState};
 use winter_rand_utils::rand_array;
 
@@ -365,13 +365,23 @@ fn insert_at_head() -> anyhow::Result<()> {
 }
 
 #[test]
-fn set_get_random_entries() -> anyhow::Result<()> {
+fn set_update_get_random_entries() -> anyhow::Result<()> {
     let entries = generate_entries(1000);
+    let update_ops = generate_updates(&entries, 200);
+
+    // Insert all entries into the map.
     let set_ops = generate_set_ops(&entries);
+    // Fetch all values and ensure they are as expected.
     let get_ops = generate_get_ops(&entries);
+    // Update a few of the existing keys.
+    let set_update_ops = generate_set_ops(&update_ops);
+    // Fetch all values and ensure they are as expected, in particular the updated ones.
+    let get_ops2 = generate_get_ops(&entries);
 
     let mut test_operations = set_ops;
     test_operations.extend(get_ops);
+    test_operations.extend(set_update_ops);
+    test_operations.extend(get_ops2);
 
     execute_link_map_test(test_operations)
 }
@@ -484,6 +494,24 @@ fn generate_entries(count: u64) -> Vec<(Digest, Digest)> {
             let key = rand_digest();
             let value = rand_digest();
             (key, value)
+        })
+        .collect()
+}
+
+fn generate_updates(entries: &[(Digest, Digest)], num_updates: usize) -> Vec<(Digest, Digest)> {
+    // TODO: Use non-zero value once remove is implemented.
+    const REMOVAL_PROBABILITY: f64 = 0.0;
+    let mut rng = rand::rng();
+
+    entries
+        .into_iter()
+        .choose_multiple(&mut rng, num_updates)
+        .into_iter()
+        .map(|(key, _)| {
+            let new_value = rand_digest();
+            // TODO: Once remove is implemented:
+            // if rng.random_bool(REMOVAL_PROBABILITY) {
+            (*key, new_value)
         })
         .collect()
 }

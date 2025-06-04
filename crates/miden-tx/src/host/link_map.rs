@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 
-use miden_objects::{Digest, Felt, Word};
+use miden_objects::{Felt, Word};
 use vm_processor::{ContextId, ProcessState};
 
 #[derive(Debug, thiserror::Error)]
