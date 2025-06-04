@@ -17,7 +17,7 @@ const NETWORK_ACCOUNT: u32 = 0;
 // The 2 most significant bits are set to `0b01`.
 const NETWORK_PUBLIC_USECASE: u32 = 0x4000_0000;
 // The 2 most significant bits are set to `0b10`.
-const LOCAL_PUBLIC_USECASE: u32 = 0x8000_0000;
+const LOCAL_PUBLIC_ANY: u32 = 0x8000_0000;
 // The 2 most significant bits are set to `0b11`.
 const LOCAL_ANY: u32 = 0xc000_0000;
 
@@ -86,13 +86,18 @@ pub enum NoteTag {
     /// Represents a tag for a note intended for network execution for a public use case. The note
     /// must be public.
     NetworkUseCase(u16, u16),
-    /// Represents a tag for a note intended for local execution for a public use case. The note
-    /// must be public.
+    /// Represents a tag for a note intended for local execution.
+    ///
+    /// This is used for two purposes:
+    /// - A public use case.
+    /// - A note targeted at any type of account.
+    ///
+    /// In all cases, the note must be **public**.
     LocalPublicAny(u32),
     /// Represents a tag for a note intended for local execution.
     ///
     /// This is used for two purposes:
-    /// - A private use case note can be private/public/encrypted.
+    /// - A private use case.
     /// - A note targeted at any type of account.
     ///
     /// In all cases, the note can be of any type.
@@ -196,8 +201,7 @@ impl NoteTag {
                 Ok(Self::NetworkUseCase(use_case_bits, payload))
             },
             NoteExecutionMode::Local => {
-                // Convert directly to u32: type bits (0b11) + use_case_bits + payload
-                let tag_u32 = (0b10u32 << 30) | ((use_case_id as u32) << 16) | (payload as u32);
+                let tag_u32 = LOCAL_PUBLIC_ANY | ((use_case_id as u32) << 16) | (payload as u32);
                 Ok(Self::LocalPublicAny(tag_u32))
             },
         }
@@ -246,13 +250,19 @@ impl NoteTag {
 
     /// Returns the inner u32 value of this tag.
     pub fn as_u32(&self) -> u32 {
+        // Note that we always set the two most significant bits to the prefix corresponding to the
+        // enum variant. See the note on type safety on the NoteTag docs.
+
+        /// Masks out the two most significant bits, leaving all lower bits untouched.
+        const LOW_BITS_MASK: u32 = 0x3fff_ffff;
         match self {
-            NoteTag::NetworkAccount(tag) => *tag & 0x3fffffff,
+            NoteTag::NetworkAccount(tag) => *tag & LOW_BITS_MASK,
             NoteTag::NetworkUseCase(use_case_bits, payload_bits) => {
-                ((*use_case_bits as u32) << 16 | *payload_bits as u32) | (0b01 << 30)
+                ((*use_case_bits as u32) << 16 | *payload_bits as u32) & LOW_BITS_MASK
+                    | NETWORK_PUBLIC_USECASE
             },
-            NoteTag::LocalPublicAny(tag) => (*tag & 0x3fffffff) | (0b10 << 30),
-            NoteTag::LocalAny(tag) => (*tag & 0x3fffffff) | (0b11 << 30),
+            NoteTag::LocalPublicAny(tag) => (*tag & LOW_BITS_MASK) | LOCAL_PUBLIC_ANY,
+            NoteTag::LocalAny(tag) => (*tag & LOW_BITS_MASK) | LOCAL_ANY,
         }
     }
 
@@ -299,7 +309,7 @@ impl From<u32> for NoteTag {
             NETWORK_ACCOUNT => Self::NetworkAccount(value),
             NETWORK_PUBLIC_USECASE => Self::NetworkUseCase((value >> 16) as u16, value as u16),
             LOCAL_ANY => Self::LocalAny(value),
-            LOCAL_PUBLIC_USECASE => Self::LocalPublicAny(value),
+            LOCAL_PUBLIC_ANY => Self::LocalPublicAny(value),
             _ => {
                 // This branch should be unreachable because `prefix` is derived from
                 // the top 2 bits of a u32, which can only be 0, 1, 2, or 3.
@@ -352,7 +362,10 @@ mod tests {
     use crate::{
         NoteError,
         account::AccountId,
-        note::{NoteType, note_tag::LOCAL_ANY},
+        note::{
+            NoteType,
+            note_tag::{LOCAL_ANY, LOCAL_PUBLIC_ANY, NETWORK_ACCOUNT, NETWORK_PUBLIC_USECASE},
+        },
         testing::account_id::{
             ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET, ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
             ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -642,5 +655,19 @@ mod tests {
           NoteTag::for_local_use_case(1 << 14, 0b0).unwrap_err(),
           NoteError::NoteTagUseCaseTooLarge(use_case) if use_case == 1 << 14
         );
+    }
+
+    /// Tests that as_u32 returns the correct prefix independent of the inner value.
+    #[test]
+    fn test_note_tag_as_u32() {
+        const HIGH_BITS_MASK: u32 = 0xc000_0000;
+
+        assert_eq!(NoteTag::NetworkAccount(u32::MAX).as_u32() & HIGH_BITS_MASK, NETWORK_ACCOUNT);
+        assert_eq!(
+            NoteTag::NetworkUseCase(u16::MAX, u16::MAX).as_u32() & HIGH_BITS_MASK,
+            NETWORK_PUBLIC_USECASE
+        );
+        assert_eq!(NoteTag::LocalPublicAny(u32::MAX).as_u32() & HIGH_BITS_MASK, LOCAL_PUBLIC_ANY);
+        assert_eq!(NoteTag::LocalAny(0).as_u32() & HIGH_BITS_MASK, LOCAL_ANY);
     }
 }
