@@ -141,8 +141,8 @@ proc.insert_into_non_empty_list
       # insert at head
       push.0 assert.err="insert at head unimplemented"
     else
-      # insert as next
-      exec.insert_as_next
+      # insert after existing entry
+      exec.insert_after_entry
       # => []
     end
   end
@@ -152,7 +152,7 @@ end
 #!
 #! Inputs:  [prev_entry_ptr, map_ptr, KEY, VALUE]
 #! Outputs: []
-proc.insert_as_next
+proc.insert_after_entry
   movdn.5
   # => [map_ptr, KEY, prev_entry_ptr, VALUE]
 
@@ -248,6 +248,7 @@ proc.assert_is_lesser
   exec.get_key swapw
   # => [KEY, ENTRY_KEY]
 
+  dropw dropw
   # TODO
   push.1 assert.err="provided key is not lesser than the entry key"
   # => []

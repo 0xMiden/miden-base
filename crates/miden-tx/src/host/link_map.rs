@@ -41,7 +41,7 @@ impl<'process> LinkMap<'process> {
             .expect("address should be word-aligned")
     }
 
-    fn is_empty(&self) -> bool {
+    pub fn is_empty(&self) -> bool {
         self.get_mem_value(self.map_ptr).is_none()
     }
 

@@ -163,13 +163,13 @@ fn set_multiple_entries() -> anyhow::Result<()> {
           # ---------------------------------------------------------------------------------------
 
           # value
-          # push.4.5.6.7
+          push.4.5.6.7
           # key
-          # push.1.2.1.1
-          # push.MAP_PTR
+          push.1.2.1.1
+          push.MAP_PTR
           # => [map_ptr, KEY, NEW_VALUE]
 
-          # exec.link_map::set
+          exec.link_map::set
           # => []
 
           # Fetch value at key [1, 1, 1, 1].
@@ -191,15 +191,15 @@ fn set_multiple_entries() -> anyhow::Result<()> {
           # ---------------------------------------------------------------------------------------
 
           # key
-          # push.1.2.1.1
-          # push.MAP_PTR
+          push.1.2.1.1
+          push.MAP_PTR
           # => [map_ptr, KEY]
 
-          # exec.link_map::get
+          exec.link_map::get
           # => [VALUE]
 
-          # push.4.5.6.7
-          # assert_eqw.err="retrieved value for key [1, 2, 1, 1] should be the previously inserted value"
+          push.4.5.6.7
+          assert_eqw.err="retrieved value for key [1, 2, 1, 1] should be the previously inserted value"
           # => []
 
           # Fetch value at key [1, 3, 1, 1].
@@ -231,8 +231,10 @@ fn link_map_iterator() -> anyhow::Result<()> {
     let map_ptr = 8u32;
     let entry0_key = Digest::from([1, 1, 1, 1u32]);
     let entry0_value = Digest::from([1, 2, 3, 4u32]);
-    let entry1_key = Digest::from([1, 3, 1, 1u32]);
-    let entry1_value = Digest::from([2, 3, 4, 5u32]);
+    let entry1_key = Digest::from([1, 2, 1, 1u32]);
+    let entry1_value = Digest::from([3, 4, 5, 6u32]);
+    let entry2_key = Digest::from([1, 3, 1, 1u32]);
+    let entry2_value = Digest::from([2, 3, 4, 5u32]);
 
     let code = format!(
         r#"
@@ -254,7 +256,20 @@ fn link_map_iterator() -> anyhow::Result<()> {
           exec.link_map::set
           # => []
 
-          # Insert key [1, 3, 1, 1].
+          # Insert key [1, 3, 1, 1] after the previous one.
+          # ---------------------------------------------------------------------------------------
+
+          # value
+          push.{entry2_value}
+          # key
+          push.{entry2_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY, NEW_VALUE]
+
+          exec.link_map::set
+          # => []
+
+          # Insert key [1, 2, 1, 1] in between the first two.
           # ---------------------------------------------------------------------------------------
 
           # value
@@ -272,18 +287,21 @@ fn link_map_iterator() -> anyhow::Result<()> {
         entry0_value = word_to_masm_push_string(&entry0_value),
         entry1_key = word_to_masm_push_string(&entry1_key),
         entry1_value = word_to_masm_push_string(&entry1_value),
+        entry2_key = word_to_masm_push_string(&entry2_key),
+        entry2_value = word_to_masm_push_string(&entry2_value),
     );
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
-
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
     let map = LinkMap::new(map_ptr.into(), state).unwrap();
     let mut map_iter = map.iter();
 
-    let first_entry = map_iter.next().expect("map should have two entries");
-    let second_entry = map_iter.next().expect("map should have two entries");
+    let first_entry = map_iter.next().expect("map should have three entries");
+    let second_entry = map_iter.next().expect("map should have three entries");
+    let third_entry = map_iter.next().expect("map should have three entries");
+    assert!(map_iter.next().is_none(), "map should only have three entries");
 
     assert_eq!(first_entry.metadata.map_ptr, map_ptr);
     assert_eq!(first_entry.metadata.prev_item, 0);
@@ -293,9 +311,15 @@ fn link_map_iterator() -> anyhow::Result<()> {
 
     assert_eq!(second_entry.metadata.map_ptr, map_ptr);
     assert_eq!(second_entry.metadata.prev_item, first_entry.ptr);
-    assert_eq!(second_entry.metadata.next_item, 0);
+    assert_eq!(second_entry.metadata.next_item, third_entry.ptr);
     assert_eq!(second_entry.key, *entry1_key);
     assert_eq!(second_entry.value, *entry1_value);
+
+    assert_eq!(third_entry.metadata.map_ptr, map_ptr);
+    assert_eq!(third_entry.metadata.prev_item, second_entry.ptr);
+    assert_eq!(third_entry.metadata.next_item, 0);
+    assert_eq!(third_entry.key, *entry2_key);
+    assert_eq!(third_entry.value, *entry2_value);
 
     Ok(())
 }

@@ -2,7 +2,7 @@ use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::{
-    Digest, Felt, Word,
+    Digest, Felt,
     account::{AccountHeader, AccountVaultDelta},
     assembly::mast::MastNodeExt,
 };
