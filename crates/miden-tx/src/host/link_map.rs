@@ -101,7 +101,7 @@ impl<'process> LinkMap<'process> {
         let mut last_entry_ptr: u32 = current_head;
 
         for entry in self.iter() {
-            match Digest::from(key).cmp(&Digest::from(entry.key)) {
+            match Self::compare_keys(key, entry.key) {
                 Ordering::Equal => {
                     return (Operation::Update, entry.ptr);
                 },
