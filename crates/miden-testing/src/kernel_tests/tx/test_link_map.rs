@@ -2,8 +2,9 @@ use alloc::vec::Vec;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, ONE, Word};
+use miden_objects::{Digest, EMPTY_WORD, Felt, ONE, Word};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
+use rand::{Rng, seq::IteratorRandom};
 use vm_processor::{MemAdviceProvider, ProcessState};
 use winter_rand_utils::rand_array;
 
@@ -341,10 +342,11 @@ fn link_map_iterator() -> anyhow::Result<()> {
 #[test]
 fn insert_and_update() -> anyhow::Result<()> {
     let operations = vec![
-        TestOperation::insert(digest([1, 0, 0, 0]), digest([1, 2, 3, 4])),
-        TestOperation::insert(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
-        TestOperation::insert(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
-        TestOperation::insert(digest([1, 0, 0, 0]), digest([4, 5, 6, 7])),
+        TestOperation::set(digest([1, 0, 0, 0]), digest([1, 2, 3, 4])),
+        TestOperation::set(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
+        TestOperation::set(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
+        // This key is updated.
+        TestOperation::set(digest([1, 0, 0, 0]), digest([4, 5, 6, 7])),
     ];
 
     execute_link_map_test(operations)
@@ -353,12 +355,25 @@ fn insert_and_update() -> anyhow::Result<()> {
 #[test]
 fn insert_at_head() -> anyhow::Result<()> {
     let operations = vec![
-        TestOperation::insert(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
-        TestOperation::insert(digest([1, 0, 0, 0]), digest([1, 2, 3, 4])),
-        TestOperation::insert(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
+        TestOperation::set(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
+        // These keys are smaller than the existing one, so the head of the map is updated.
+        TestOperation::set(digest([1, 0, 0, 0]), digest([1, 2, 3, 4])),
+        TestOperation::set(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
     ];
 
     execute_link_map_test(operations)
+}
+
+#[test]
+fn set_get_random_entries() -> anyhow::Result<()> {
+    let entries = generate_entries(1000);
+    let set_ops = generate_set_ops(&entries);
+    let get_ops = generate_get_ops(&entries);
+
+    let mut test_operations = set_ops;
+    test_operations.extend(get_ops);
+
+    execute_link_map_test(test_operations)
 }
 
 fn digest(elements: [u32; 4]) -> Digest {
@@ -366,12 +381,16 @@ fn digest(elements: [u32; 4]) -> Digest {
 }
 
 enum TestOperation {
-    Insert { key: Digest, value: Digest },
+    Set { key: Digest, value: Digest },
+    Get { key: Digest },
 }
 
 impl TestOperation {
-    pub fn insert(key: Digest, value: Digest) -> Self {
-        Self::Insert { key, value }
+    pub fn set(key: Digest, value: Digest) -> Self {
+        Self::Set { key, value }
+    }
+    pub fn get(key: Digest) -> Self {
+        Self::Get { key }
     }
 }
 
@@ -381,10 +400,10 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
     for operation in operations {
         match operation {
-            TestOperation::Insert { key, value } => {
+            TestOperation::Set { key, value } => {
                 control_map.insert(key, value);
 
-                let insertion_code = format!(
+                let set_code = format!(
                     "
                   push.{value}.{key}.MAP_PTR
                   # => [map_ptr, KEY, NEW_VALUE]
@@ -394,7 +413,26 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                     key = word_to_masm_push_string(&key),
                     value = word_to_masm_push_string(&value),
                 );
-                test_code.push_str(&insertion_code);
+                test_code.push_str(&set_code);
+            },
+            TestOperation::Get { key } => {
+                let expected_value =
+                    control_map.get(&key).expect("key should exist for get operations");
+
+                let get_code = format!(
+                    r#"
+                  push.{key}.MAP_PTR
+                  # => [map_ptr, KEY]
+                  exec.link_map::get
+                  # => [VALUE]
+                  push.{expected_value}
+                  assert_eqw.err="value returned from get is not the expected value: {expected_value}"
+                "#,
+                    key = word_to_masm_push_string(&key),
+                    expected_value = word_to_masm_push_string(&expected_value)
+                );
+
+                test_code.push_str(&get_code);
             },
         }
     }
@@ -430,4 +468,26 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     }
 
     Ok(())
+}
+
+fn generate_set_ops(entries: &[(Digest, Digest)]) -> Vec<TestOperation> {
+    entries.iter().map(|(key, value)| TestOperation::set(*key, *value)).collect()
+}
+
+fn generate_get_ops(entries: &[(Digest, Digest)]) -> Vec<TestOperation> {
+    entries.iter().map(|(key, _)| TestOperation::get(*key)).collect()
+}
+
+fn generate_entries(count: u64) -> Vec<(Digest, Digest)> {
+    (0..count)
+        .map(|_| {
+            let key = rand_digest();
+            let value = rand_digest();
+            (key, value)
+        })
+        .collect()
+}
+
+fn rand_digest() -> Digest {
+    Digest::new(rand_array())
 }
