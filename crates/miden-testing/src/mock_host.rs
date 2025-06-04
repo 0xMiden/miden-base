@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
 
-use miden_lib::transaction::{TransactionEvent, TransactionEventError};
+use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent, TransactionEventError};
 use miden_objects::{
     Digest,
     account::{AccountHeader, AccountVaultDelta},
@@ -8,8 +8,8 @@ use miden_objects::{
 };
 use miden_tx::{TransactionMastStore, host::AccountProcedureIndexMap};
 use vm_processor::{
-    AdviceInputs, AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, Host,
-    MastForest, MastForestStore, MemAdviceProvider, ProcessState,
+    AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, Host, MastForest,
+    MastForestStore, MemAdviceProvider, ProcessState,
 };
 
 // MOCK HOST
@@ -26,15 +26,16 @@ pub struct MockHost {
 }
 
 impl MockHost {
-    /// Returns a new [MockHost] instance with the provided [AdviceInputs].
+    /// Returns a new [MockHost] instance with the provided
+    /// [AdviceInputs](vm_processor::AdviceInputs).
     pub fn new(
         account: AccountHeader,
-        advice_inputs: AdviceInputs,
+        advice_inputs: TransactionAdviceInputs,
         mast_store: Rc<TransactionMastStore>,
         mut foreign_code_commitments: BTreeSet<Digest>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
-        let adv_provider: MemAdviceProvider = advice_inputs.into();
+        let adv_provider: MemAdviceProvider = advice_inputs.into_inner().into();
         let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, &adv_provider);
 
         Self {

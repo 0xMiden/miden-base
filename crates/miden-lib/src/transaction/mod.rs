@@ -22,6 +22,7 @@ mod events;
 pub use events::TransactionEvent;
 
 mod inputs;
+pub use inputs::TransactionAdviceInputs;
 
 mod outputs;
 pub use outputs::{
@@ -113,7 +114,7 @@ impl TransactionKernel {
         tx_inputs: &TransactionInputs,
         tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
-    ) -> Result<(StackInputs, AdviceInputs), TransactionInputError> {
+    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionInputError> {
         let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
@@ -124,10 +125,12 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let mut advice_inputs = init_advice_inputs.unwrap_or_default();
-        inputs::extend_advice_inputs(tx_inputs, tx_args, &mut advice_inputs)?;
+        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
+        if let Some(init_advice_inputs) = init_advice_inputs {
+            tx_advice_inputs.extend(&init_advice_inputs);
+        }
 
-        Ok((stack_inputs, advice_inputs))
+        Ok((stack_inputs, tx_advice_inputs))
     }
 
     // ASSEMBLER CONSTRUCTOR
