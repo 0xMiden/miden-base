@@ -351,82 +351,6 @@ proc.assert_is_lesser
   # => []
 end
 
-#! Returns true if KEY1 is equal to KEY2, false otherwise.
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_equal]
-export.is_equal
-  exec.arrange_words_adjacent
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-  push.1
-  # => [is_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-  repeat.4
-    swap movup.2
-    # => [2_x, 1_x, is_equal, <remaining_felts>]
-    eq
-    # => [felts_x_equal, is_equal, <remaining_felts>]
-    and
-    # => [is_equal, <remaining_felts>]
-  end
-  # => [is_equal]
-end
-
-#! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
-#!
-#! TODO: Describe logic.
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_greater]
-export.is_greater
-  exec.arrange_words_adjacent
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-  push.1.0
-  # => [is_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-  repeat.4
-    movup.3 movup.3
-    # => [2_x, 1_x, is_greater, continue, <remaining_felts>]
-
-    # check 1_x > 2_x
-    gt
-    # => [is_felt_gt, is_greater, continue, <remaining_felts>]
-
-    dup movdn.2
-    # => [is_felt_gt, is_greater, is_felt_gt, continue, <remaining_felts>]
-    dup.3 u32and
-    # => [is_felt_gt_if_continue, is_greater, is_felt_gt, continue, <remaining_felts>]
-    u32or movdn.2
-    # => [is_felt_gt, continue, is_greater, <remaining_felts>]
-    not u32and
-    # => [continue, is_greater, <remaining_felts>]
-    swap
-    # => [is_greater, continue, <remaining_felts>]
-  end
-  # => [is_greater, continue]
-
-  swap drop
-  # => [is_greater]
-end
-
-#! Arranges the given words such that the corresponding elements are next to each other.
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [key2_3, key1_3, key2_2, key1_2, key2_1, key1_1, key2_0, key1_0]
-proc.arrange_words_adjacent
-  # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
-  movup.3 movup.7
-  # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
-  movup.4 movup.7
-  # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
-  movup.5 movup.7
-  # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
-  movup.6 movup.7
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-end
-
 #! Inserts the key, value into the entry pointer and sets the map ptr to the provided value.
 #!
 #! Inputs:  [entry_ptr, map_ptr, KEY, VALUE]
@@ -557,4 +481,92 @@ end
 #! Outputs: []
 proc.set_value
   add.8 mem_storew dropw
+end
+
+# COMPARISON OPERATIONS
+# -------------------------------------------------------------------------------------------------
+
+#! Returns true if KEY1 is equal to KEY2, false otherwise.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: [is_equal]
+export.is_equal
+  exec.arrange_words_adjacent
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  push.1
+  # => [is_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  repeat.4
+    swap movup.2
+    # => [2_x, 1_x, is_equal, <remaining_felts>]
+    eq
+    # => [felts_x_equal, is_equal, <remaining_felts>]
+    and
+    # => [is_equal, <remaining_felts>]
+  end
+  # => [is_equal]
+end
+
+#! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
+#!
+#! TODO: Describe logic.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: [is_greater]
+export.is_greater
+  exec.arrange_words_adjacent
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  push.1.0
+  # => [is_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  repeat.4
+    movup.3 movup.3
+    # => [2_x, 1_x, is_greater, continue, <remaining_felts>]
+
+    # check 1_x == 2_x; if so, we continue
+    dup dup.2 eq
+    # => [is_felt_eq, 2_x, 1_x, is_greater, continue, <remaining_felts>]
+
+    movdn.3
+    # => [2_x, 1_x, is_greater, is_felt_eq, continue, <remaining_felts>]
+
+    # check 1_x > 2_x
+    gt
+    # => [is_felt_gt, is_greater, is_felt_eq, continue, <remaining_felts>]
+
+    dup.3 u32and
+    # => [is_felt_gt_if_continue, is_greater, is_felt_eq, continue, <remaining_felts>]
+
+    u32or movdn.2
+    # => [is_felt_eq, continue, is_greater, <remaining_felts>]
+
+    # keeps continue at 1 if the felts are equal
+    # sets continue to 0 if the felts are not equal
+    u32and
+    # => [continue, is_greater, <remaining_felts>]
+    swap
+    # => [is_greater, continue, <remaining_felts>]
+  end
+  # => [is_greater, continue]
+
+  swap drop
+  # => [is_greater]
+end
+
+#! Arranges the given words such that the corresponding elements are next to each other.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: [key2_3, key1_3, key2_2, key1_2, key2_1, key1_1, key2_0, key1_0]
+proc.arrange_words_adjacent
+  # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
+  movup.3 movup.7
+  # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
+  movup.4 movup.7
+  # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
+  movup.5 movup.7
+  # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
+  movup.6 movup.7
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 end

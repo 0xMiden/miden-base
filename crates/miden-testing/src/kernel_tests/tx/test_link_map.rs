@@ -2,50 +2,49 @@ use alloc::vec::Vec;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, ONE};
+use miden_objects::{Digest, ONE, Word};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use vm_processor::{MemAdviceProvider, ProcessState};
+use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
 
-fn is_key_greater(d0: Digest, d1: Digest) -> bool {
+fn is_word_greater(w0: Word, w1: Word) -> bool {
     let mut result = 0u8;
     let mut cont = 1;
-    let gt = d0[0].as_int() > d1[0].as_int();
 
-    result |= gt as u8;
-    cont &= !gt as u8;
+    for i in (0..4).rev() {
+        let gt = w0[i].as_int() > w1[i].as_int();
+        let eq = w0[i].as_int() == w1[i].as_int();
 
-    let gt = d0[1].as_int() > d1[1].as_int();
-    result |= gt as u8 & cont;
-    cont &= !gt as u8 & cont;
-
-    let gt = d0[2].as_int() > d1[2].as_int();
-    result |= gt as u8 & cont;
-    cont &= !gt as u8 & cont;
-
-    let gt = d0[3].as_int() > d1[3].as_int();
-    result |= gt as u8 & cont;
+        result |= gt as u8 & cont;
+        cont &= eq as u8;
+    }
 
     result == 1
 }
 
-#[test]
-fn is_greater() -> anyhow::Result<()> {
-    for (key0, key1) in [
-        ([0, 0, 0, 0u32], [0, 0, 0, 0u32]),
-        ([1, 0, 0, 0u32], [0, 0, 0, 0u32]),
-        ([0, 1, 0, 0u32], [0, 0, 0, 0u32]),
-        ([0, 0, 1, 0u32], [0, 0, 0, 0u32]),
-        ([0, 0, 0, 1u32], [0, 0, 0, 0u32]),
-        ([0, 0, 0, 0u32], [1, 0, 0, 0u32]),
-        ([0, 0, 0, 0u32], [0, 1, 0, 0u32]),
-        ([0, 0, 0, 0u32], [0, 0, 1, 0u32]),
-        ([0, 0, 0, 0u32], [0, 0, 0, 1u32]),
-        ([1, 6, 5, 4u32], [0, 9, 8, 7u32]),
-    ]
-    .map(|(key0, key1)| (Digest::from(key0), Digest::from(key1)))
-    {
+enum CompareOperation {
+    Less,
+    Equal,
+    Greater,
+}
+
+impl CompareOperation {
+    fn procedure_name(&self) -> &'static str {
+        match self {
+            CompareOperation::Less => "is_lesser",
+            CompareOperation::Equal => "is_equal",
+            CompareOperation::Greater => "is_greater",
+        }
+    }
+}
+
+fn execute_comparison_test(operation: CompareOperation) -> anyhow::Result<()> {
+    for _ in 0..1000 {
+        let key0 = Word::from(rand_array());
+        let key1 = Word::from(rand_array());
+
         let code = format!(
             r#"
         use.kernel::link_map
@@ -53,67 +52,51 @@ fn is_greater() -> anyhow::Result<()> {
         begin
           push.{KEY_1}
           push.{KEY_0}
-          # checks if KEY_0 > KEY_1
-          exec.link_map::is_greater
+          exec.link_map::{proc_name}
           swap drop
         end
         "#,
             KEY_0 = word_to_masm_push_string(&key0),
             KEY_1 = word_to_masm_push_string(&key1),
+            proc_name = operation.procedure_name(),
         );
 
         let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
             .run(&code)
             .unwrap();
         let compare_result = process.stack.get(0);
-        let expected = if key0 > key1 { 1 } else { 0 };
-        assert_eq!(compare_result.as_int(), expected);
+
+        let expected = match operation {
+            CompareOperation::Less => LinkMap::compare_keys(key0, key1).is_lt(),
+            CompareOperation::Equal => LinkMap::compare_keys(key0, key1).is_eq(),
+            CompareOperation::Greater => LinkMap::compare_keys(key0, key1).is_gt(),
+        };
+
+        let expected_int = if expected { 1 } else { 0 };
+        assert_eq!(
+            compare_result.as_int(),
+            expected_int,
+            "failed for procedure {proc_name} with keys {key0:?}, {key1:?}",
+            proc_name = operation.procedure_name()
+        );
     }
 
     Ok(())
 }
 
 #[test]
+fn is_greater() -> anyhow::Result<()> {
+    execute_comparison_test(CompareOperation::Greater)
+}
+
+#[test]
 fn is_equal() -> anyhow::Result<()> {
-    for (key0, key1) in [
-        ([0, 0, 0, 0u32], [0, 0, 0, 0u32]),
-        ([1, 0, 0, 0u32], [0, 0, 0, 0u32]),
-        ([0, 1, 0, 0u32], [0, 0, 0, 0u32]),
-        ([0, 0, 1, 0u32], [0, 0, 0, 0u32]),
-        ([0, 0, 0, 1u32], [0, 0, 0, 0u32]),
-        ([0, 0, 0, 0u32], [1, 0, 0, 0u32]),
-        ([0, 0, 0, 0u32], [0, 1, 0, 0u32]),
-        ([0, 0, 0, 0u32], [0, 0, 1, 0u32]),
-        ([0, 0, 0, 0u32], [0, 0, 0, 1u32]),
-        ([1, 6, 5, 4u32], [0, 9, 8, 7u32]),
-    ]
-    .map(|(key0, key1)| (Digest::from(key0), Digest::from(key1)))
-    {
-        let code = format!(
-            r#"
-        use.kernel::link_map
+    execute_comparison_test(CompareOperation::Equal)
+}
 
-        begin
-          push.{KEY_1}
-          push.{KEY_0}
-          # checks if KEY_0 == KEY_1
-          exec.link_map::is_equal
-          swap drop
-        end
-        "#,
-            KEY_0 = word_to_masm_push_string(&key0),
-            KEY_1 = word_to_masm_push_string(&key1),
-        );
-
-        let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
-            .run(&code)
-            .unwrap();
-        let compare_result = process.stack.get(0);
-        let expected = if key0 == key1 { 1 } else { 0 };
-        assert_eq!(compare_result.as_int(), expected, "failed for {key0:?} == {key1:?}");
-    }
-
-    Ok(())
+#[test]
+fn is_lesser() -> anyhow::Result<()> {
+    execute_comparison_test(CompareOperation::Less)
 }
 
 #[test]
