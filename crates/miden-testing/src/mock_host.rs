@@ -107,8 +107,6 @@ impl Host for MockHost {
             // Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
             // Advice stack state after: [is_after_entry_ptr, entry_ptr]
             TransactionEvent::LinkMapSetEvent => {
-                std::println!("{event}");
-
                 let map_ptr = process.get_stack_item(0);
                 let map_key = [
                     process.get_stack_item(4),
@@ -116,24 +114,17 @@ impl Host for MockHost {
                     process.get_stack_item(2),
                     process.get_stack_item(1),
                 ];
-                let map_value = [
-                    process.get_stack_item(8),
-                    process.get_stack_item(7),
-                    process.get_stack_item(6),
-                    process.get_stack_item(5),
-                ];
-                std::println!("set {map_key:?} to {map_value:?}");
+                // let map_value = [
+                //     process.get_stack_item(8),
+                //     process.get_stack_item(7),
+                //     process.get_stack_item(6),
+                //     process.get_stack_item(5),
+                // ];
 
                 let link_map = LinkMap::new(map_ptr, process.into())
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
 
                 let (operation, entry_ptr) = link_map.find_insertion(map_key);
-                if entry_ptr != 0 {
-                    let entry = link_map.entry(entry_ptr);
-                    std::println!("insert at entry {entry:?}",);
-                }
-
-                std::println!("operation: {operation:?} at {entry_ptr}");
 
                 self.adv_provider
                     .push_stack(AdviceSource::Value(Felt::from(operation as u8)), err_ctx)?;
@@ -145,7 +136,6 @@ impl Host for MockHost {
             // Expected operand stack state before: [map_ptr, KEY]
             // Advice stack state after: [entry_exists, entry_ptr]
             TransactionEvent::LinkMapGetEvent => {
-                std::println!("{event}");
                 let map_ptr = process.get_stack_item(0);
                 let map_key = [
                     process.get_stack_item(4),
@@ -153,19 +143,6 @@ impl Host for MockHost {
                     process.get_stack_item(2),
                     process.get_stack_item(1),
                 ];
-                // std::println!("ctx {}, ptr {}, key {:?}", process.ctx(), map_ptr, map_key);
-                // std::println!(
-                //     "{:?}",
-                //     process.get_mem_word(ContextId::root(), map_ptr.as_int() as u32).unwrap()
-                // );
-                // std::println!(
-                //     "{:?}",
-                //     process.get_mem_word(ContextId::root(), map_ptr.as_int() as u32 + 4).unwrap()
-                // );
-                // std::println!(
-                //     "{:?}",
-                //     process.get_mem_word(ContextId::root(), map_ptr.as_int() as u32 + 8).unwrap()
-                // );
 
                 let link_map = LinkMap::new(map_ptr, process.into())
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
@@ -173,7 +150,6 @@ impl Host for MockHost {
 
                 match entry_ptr {
                     Some(entry_ptr) => {
-                        std::println!("found key at {entry_ptr}");
                         // Push 1 to signal that the entry was found.
                         self.adv_provider.push_stack(AdviceSource::Value(1u32.into()), err_ctx)?;
                         self.adv_provider

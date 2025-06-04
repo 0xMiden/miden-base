@@ -26,6 +26,7 @@ impl CompareOperation {
     }
 }
 
+/// TODO: Speed up test: Build code first, then execute once.
 fn execute_comparison_test(operation: CompareOperation) -> anyhow::Result<()> {
     for _ in 0..1000 {
         let key0 = Word::from(rand_array());

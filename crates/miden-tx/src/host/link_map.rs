@@ -113,8 +113,6 @@ impl<'process> LinkMap<'process> {
                     break;
                 },
                 Ordering::Greater => {
-                    std::println!("{key:?} > {:?}", entry.key);
-                    std::println!("set last_entry_ptr = {}", entry.ptr);
                     last_entry_ptr = entry.ptr;
                 },
             }
