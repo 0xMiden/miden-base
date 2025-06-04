@@ -9,12 +9,11 @@ help:
 WARNINGS=RUSTDOCFLAGS="-D warnings"
 ALL_FEATURES_BUT_ASYNC=--features concurrent,testing
 # Enable file generation in the `src` directory.
-# This is used in the build scripts of miden-lib, miden-proving-service and miden-proving-service-client.
+# This is used in the build scripts of miden-lib.
 BUILD_GENERATED_FILES_IN_SRC=BUILD_GENERATED_FILES_IN_SRC=1
 # Enable backtraces for tests where we return an anyhow::Result. If enabled, anyhow::Error will
 # then contain a `Backtrace` and print it when a test returns an error.
 BACKTRACE=RUST_BACKTRACE=1
-ALL_REMOTE_PROVER_FEATURES=--features tx-prover,batch-prover,block-prover
 
 # -- linting --------------------------------------------------------------------------------------
 
@@ -25,7 +24,7 @@ clippy: ## Runs Clippy with configs
 
 .PHONY: clippy-no-std
 clippy-no-std: ## Runs Clippy with configs
-	cargo clippy --no-default-features --target wasm32-unknown-unknown --workspace --lib $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service  --exclude bench-prover -- -D warnings
+	cargo clippy --no-default-features --target wasm32-unknown-unknown --workspace --lib --exclude bench-prover -- -D warnings
 
 
 .PHONY: fix
@@ -103,12 +102,12 @@ build: ## By default we should build in release mode
 
 .PHONY: build-no-std
 build-no-std: ## Build without the standard library
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --lib $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service --exclude bench-prover
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --lib --exclude bench-prover
 
 
 .PHONY: build-no-std-testing
 build-no-std-testing: ## Build without the standard library. Includes the `testing` feature
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing $(ALL_REMOTE_PROVER_FEATURES) --exclude miden-proving-service --exclude bench-prover
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing --exclude bench-prover
 
 
 .PHONY: build-async
@@ -125,9 +124,3 @@ bench-tx: ## Run transaction benchmarks
 bench-prover: ## Run prover benchmarks and consolidate results.
 	cargo bench --bin bench-prover --bench benches
 	cargo run --bin bench-prover
-
-# --- installing ----------------------------------------------------------------------------------
-
-.PHONY: install-proving-service
-install-proving-service: ## Install proving service's CLI
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo install --path bin/proving-service --bin miden-proving-service --features concurrent

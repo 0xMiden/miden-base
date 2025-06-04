@@ -1,4 +1,4 @@
-#[cfg(any(feature = "async", target_family = "wasm"))]
+#[cfg(feature = "async")]
 use alloc::boxed::Box;
 use alloc::{collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 

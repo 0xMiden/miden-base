@@ -13,6 +13,7 @@
 - Implement Display for `NoteType` (#1420).
 - [BREAKING] Remove `NoteExecutionMode` from `from_account_id` (#1422).
 - [BREAKING] Refactor transaction kernel advice inputs (#1425).
+- Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
 
 ## 0.9.1 (2025-05-30)
 
