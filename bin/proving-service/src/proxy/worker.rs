@@ -312,7 +312,8 @@ async fn create_status_client(
 ///
 /// The version is valid if it is a semantic version and the major and minor versions match
 /// the current version. The patch version is ignored.
-/// Returns false if either version string is malformed.
+/// Returns false if either version does not match the current version.
+/// Returns an error if the version is malformed.
 fn is_valid_version(current_version: &str, received_version: &str) -> Result<bool, String> {
     // Parse current version directly
     let current =
