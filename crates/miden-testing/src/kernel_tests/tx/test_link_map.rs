@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, string::String};
 use anyhow::Context;
 use miden_objects::{Digest, ONE};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
-use vm_processor::{MemAdviceProvider, Operation, ProcessState};
+use vm_processor::{MemAdviceProvider, ProcessState};
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
 
@@ -377,6 +377,17 @@ fn insert_and_update() -> anyhow::Result<()> {
         TestOperation::insert(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
         TestOperation::insert(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
         TestOperation::insert(digest([1, 0, 0, 0]), digest([4, 5, 6, 7])),
+    ];
+
+    execute_link_map_test(operations)
+}
+
+#[test]
+fn insert_at_head() -> anyhow::Result<()> {
+    let operations = vec![
+        TestOperation::insert(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
+        TestOperation::insert(digest([1, 0, 0, 0]), digest([1, 2, 3, 4])),
+        TestOperation::insert(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
     ];
 
     execute_link_map_test(operations)

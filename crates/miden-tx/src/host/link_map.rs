@@ -124,10 +124,6 @@ impl<'process> LinkMap<'process> {
     }
 
     pub fn find(&self, key: Word) -> Option<u32> {
-        self.iter().for_each(|entry| {
-            std::println!("searching for {key:?} in {entry:?}",);
-        });
-
         self.iter()
             .find_map(|entry| if entry.key == key { Some(entry.ptr) } else { None })
     }

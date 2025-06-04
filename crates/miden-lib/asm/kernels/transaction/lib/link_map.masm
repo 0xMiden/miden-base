@@ -144,14 +144,75 @@ proc.insert_into_non_empty_list
     # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, NEW_VALUE]
 
     if.true
-      # TODO: insert at head
-      push.0 assert.err="insert at head unimplemented"
+      # drop the entry ptr since we can load the head from memory
+      # and that way we don't have to validate it
+      drop
+      # => [map_ptr, KEY, NEW_VALUE]
+      exec.insert_at_head
+      # => []
     else
       # insert after existing entry
       exec.insert_after_entry
       # => []
     end
   end
+end
+
+#! Updates the value in the given entry.
+#!
+#! Inputs:  [map_ptr, KEY, NEW_VALUE]
+#! Outputs: []
+#!
+#! Panics if:
+#! - the key in the entry does not match the provided KEY.
+proc.insert_at_head
+  exec.memory::link_map_malloc
+  # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+  dup movdn.10
+  # => [entry_ptr, map_ptr, KEY, NEW_VALUE, entry_ptr]
+  dup.1 movdn.10
+  # => [entry_ptr, map_ptr, KEY, NEW_VALUE, map_ptr, entry_ptr]
+
+  exec.insert_pair
+  # => [map_ptr, entry_ptr]
+
+  # TODO: consider get_head and checking for 0
+  dup exec.is_empty not
+  # => [is_non_empty, map_ptr, entry_ptr]
+
+  if.true
+    dup.1
+    # => [entry_ptr, map_ptr, entry_ptr]
+
+    dup.1 exec.get_head
+    # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+    # assert that entry_ptr.key < current_head_entry_ptr.key
+    dup.1 exec.get_key
+    # => [ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+    dup.4
+    # => [current_head_entry_ptr, ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+    exec.assert_is_lesser
+    # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+    dup movdn.2
+    # => [current_head_entry_ptr, entry_ptr, current_head_entry_ptr, map_ptr, entry_ptr]
+
+    # set current_head_entry_ptr.prev_item = entry_ptr
+    exec.set_prev_item_ptr
+    # => [current_head_entry_ptr, map_ptr, entry_ptr]
+
+    # set entry_ptr.next_item = current_head_entry_ptr
+    dup.2 exec.set_next_item_ptr
+    # => [map_ptr, entry_ptr]
+  end
+
+  # update the current head of the map to the newly inserted entry
+  exec.set_head
+  # => []
 end
 
 #! Updates the value in the given entry.
@@ -464,6 +525,14 @@ end
 #! Outputs: []
 proc.set_head
   mem_store
+end
+
+#! Returns the entry ptr at the head of the linked list.
+#!
+#! Inputs:  [map_ptr]
+#! Outputs: [entry_ptr]
+proc.get_head
+  mem_load
 end
 
 #! Sets the map ptr of the entry pointer.
