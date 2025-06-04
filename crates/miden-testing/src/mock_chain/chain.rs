@@ -577,7 +577,6 @@ impl MockChain {
         if mock_account.authenticator().is_some() {
             let tx_script = TransactionScript::compile(
                 DEFAULT_AUTH_SCRIPT,
-                vec![],
                 TransactionKernel::testing_assembler_with_mock_account(),
             )
             .unwrap();

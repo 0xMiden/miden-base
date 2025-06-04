@@ -5,7 +5,7 @@ use miden_objects::{
     Digest,
     account::AccountCode,
     assembly::mast::MastForest,
-    transaction::{InputNote, InputNotes, TransactionArgs},
+    transaction::{InputNote, InputNotes, TransactionParams},
 };
 use vm_processor::MastForestStore;
 
@@ -61,7 +61,7 @@ impl TransactionMastStore {
         &self,
         account_code: &AccountCode,
         input_notes: &InputNotes<InputNote>,
-        tx_args: &TransactionArgs,
+        tx_args: &TransactionParams,
     ) {
         // load account code
         self.load_account_code(account_code);

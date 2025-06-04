@@ -3,6 +3,7 @@ resolver = "3"
 members = [
   "bin/bench-tx",
   "bin/proving-service",
+  "bin/bench-prover",
   "crates/miden-block-prover",
   "crates/miden-tx-batch-prover",
   "crates/miden-lib",

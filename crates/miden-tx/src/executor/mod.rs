@@ -8,8 +8,8 @@ use miden_objects::{
     block::{BlockHeader, BlockNumber},
     note::NoteId,
     transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
-        TransactionInputs, TransactionScript,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionInputs,
+        TransactionParams, TransactionScript,
     },
     vm::StackOutputs,
 };
@@ -122,7 +122,7 @@ impl TransactionExecutor {
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
-        tx_args: TransactionArgs,
+        tx_args: TransactionParams,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -197,9 +197,8 @@ impl TransactionExecutor {
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-        let tx_args = TransactionArgs::new(
+        let tx_args = TransactionParams::new(
             Some(tx_script.clone()),
-            None,
             Default::default(),
             foreign_account_inputs,
         );
@@ -261,7 +260,7 @@ impl TransactionExecutor {
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
-        tx_args: TransactionArgs,
+        tx_args: TransactionParams,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -337,7 +336,7 @@ impl TransactionExecutor {
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction(
-    tx_args: TransactionArgs,
+    tx_args: TransactionParams,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
     host: TransactionHost<RecAdviceProvider>,
@@ -393,7 +392,7 @@ fn build_executed_transaction(
 
 /// Validates the account inputs against the reference block header.
 fn validate_account_inputs(
-    tx_args: &TransactionArgs,
+    tx_args: &TransactionParams,
     ref_block: &BlockHeader,
 ) -> Result<(), TransactionExecutorError> {
     // Validate that foreign account inputs are anchored in the reference block
