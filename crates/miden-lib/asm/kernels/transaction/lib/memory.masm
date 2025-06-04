@@ -1583,13 +1583,26 @@ export.link_map_malloc
   # => [entry_ptr]
 end
 
-#! Asserts that the given entry ptr is for the given map ptr
+#! Asserts that the given entry ptr is for the given map ptr.
+#!
+#! Always succeeds if the map is empty.
 #!
 #! Inputs:  [entry_ptr, map_ptr]
 #! Outputs: []
 export.assert_link_map_entry_ptr
   # TODO: LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR
 
-  # assert entry_ptr.map_ptr == map_ptr
-  mem_load assert_eq.err="map ptr stored in entry ptr does not match actual map ptr"
+  # we have to skip the assertion if the map is empty
+  dup.1 mem_load eq.0
+  # => [is_empty_map, entry_ptr, map_ptr]
+
+  movdn.2
+  # => [entry_ptr, map_ptr, is_empty_map]
+
+  # check if entry_ptr.map_ptr == map_ptr
+  mem_load eq
+  # => [entry_contains_map_ptr, is_empty_map]
+
+  # this assertion is effectively always true if is_empty_map is true
+  or assert.err="map ptr stored in entry ptr does not match actual map ptr"
 end

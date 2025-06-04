@@ -3,6 +3,7 @@ use.kernel::memory
 
 # TODO: Document security.
 # TODO: Document terminology.
+# TODO: Document full map layout.
 
 # Layout of each map entry:
 # [map_ptr, prev_item, next_item, 0, KEY, VALUE]
@@ -32,26 +33,51 @@ const.LINK_MAP_GET_EVENT=131099
 export.set
     # TODO: Should we disallow KEY = EMPTY_WORD?
 
-    dup exec.is_empty
-    # => [is_empty, map_ptr, KEY, NEW_VALUE]
+    emit.LINK_MAP_SET_EVENT adv_push.2
+    # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+    # Operation:
+    # Update = 0,
+    # InsertAtHead = 1,
+    # InsertAfterEntry = 2,
+
+    dup.2 dup.2
+    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+    # assert entry ptr validity
+    exec.memory::assert_link_map_entry_ptr
+    # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+    dup eq.0
+    # => [is_update_op, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
 
     if.true
-      # the list is empty; insert a new entry.
-      exec.memory::link_map_malloc
+      # drop operation and map_ptr from stack
+      drop
       # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
 
-      dup movdn.10
-      # => [entry_ptr, map_ptr, KEY, NEW_VALUE, entry_ptr]
-      dup.1 movdn.10
-      # => [entry_ptr, map_ptr, KEY, NEW_VALUE, map_ptr, entry_ptr]
+      swap drop
+      # => [entry_ptr, KEY, NEW_VALUE]
 
-      exec.insert_pair
-      # => [map_ptr, entry_ptr]
-
-      exec.set_head
+      exec.update_entry
       # => []
     else
-      exec.insert_into_non_empty_list
+      # insert new entry
+      eq.1
+      # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+      if.true
+        # drop the entry ptr since we can load the head from memory
+        # and that way we don't have to validate it
+        drop
+        # => [map_ptr, KEY, NEW_VALUE]
+        exec.insert_at_head
+        # => []
+      else
+        # insert after existing entry
+        exec.insert_after_entry
+        # => []
+      end
     end
 end
 
@@ -103,59 +129,6 @@ export.compute_commitment
     # while we use an SMT as the underlying implementation, the root is the commitment.
     padw movup.4 mem_loadw
     # => [SMT_ROOT]
-end
-
-#! Inserts the key value pair into the map ptr which is assumed to be non-empty.
-#!
-#! Inputs:  [map_ptr, KEY, NEW_VALUE]
-#! Outputs: []
-proc.insert_into_non_empty_list
-  # Operation:
-  # Update = 0,
-  # InsertAtHead = 1,
-  # InsertAfterEntry = 2,
-
-  emit.LINK_MAP_SET_EVENT adv_push.2
-  # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-  dup.2 dup.2
-  # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-  # assert entry ptr validity
-  exec.memory::assert_link_map_entry_ptr
-  # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-  dup eq.0
-  # => [is_update_op, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-  if.true
-    # drop operation and map_ptr from stack
-    drop
-    # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-    swap drop
-    # => [entry_ptr, KEY, NEW_VALUE]
-
-    exec.update_entry
-    # => []
-  else
-    # insert new entry
-    eq.1
-    # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-    if.true
-      # drop the entry ptr since we can load the head from memory
-      # and that way we don't have to validate it
-      drop
-      # => [map_ptr, KEY, NEW_VALUE]
-      exec.insert_at_head
-      # => []
-    else
-      # insert after existing entry
-      exec.insert_after_entry
-      # => []
-    end
-  end
 end
 
 #! Updates the value in the given entry.

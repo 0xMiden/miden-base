@@ -499,20 +499,13 @@ fn generate_entries(count: u64) -> Vec<(Digest, Digest)> {
 }
 
 fn generate_updates(entries: &[(Digest, Digest)], num_updates: usize) -> Vec<(Digest, Digest)> {
-    // TODO: Use non-zero value once remove is implemented.
-    const REMOVAL_PROBABILITY: f64 = 0.0;
     let mut rng = rand::rng();
 
     entries
         .into_iter()
         .choose_multiple(&mut rng, num_updates)
         .into_iter()
-        .map(|(key, _)| {
-            let new_value = rand_digest();
-            // TODO: Once remove is implemented:
-            // if rng.random_bool(REMOVAL_PROBABILITY) {
-            (*key, new_value)
-        })
+        .map(|(key, _)| (*key, rand_digest()))
         .collect()
 }
 
