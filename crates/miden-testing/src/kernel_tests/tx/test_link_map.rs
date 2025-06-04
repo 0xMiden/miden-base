@@ -33,7 +33,7 @@ enum CompareOperation {
 impl CompareOperation {
     fn procedure_name(&self) -> &'static str {
         match self {
-            CompareOperation::Less => "is_lesser",
+            CompareOperation::Less => "is_less",
             CompareOperation::Equal => "is_equal",
             CompareOperation::Greater => "is_greater",
         }
@@ -95,7 +95,7 @@ fn is_equal() -> anyhow::Result<()> {
 }
 
 #[test]
-fn is_lesser() -> anyhow::Result<()> {
+fn is_less() -> anyhow::Result<()> {
     execute_comparison_test(CompareOperation::Less)
 }
 

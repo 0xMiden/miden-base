@@ -195,7 +195,7 @@ proc.insert_at_head
     dup.4
     # => [current_head_entry_ptr, ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
 
-    exec.assert_is_lesser
+    exec.assert_is_less
     # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
 
     dup movdn.2
@@ -292,7 +292,7 @@ proc.insert_after_entry
     # => [next_entry_ptr, KEY, next_entry_ptr, entry_ptr]
 
     # assert KEY < next_entry.key
-    exec.assert_is_lesser
+    exec.assert_is_less
     # => [next_entry_ptr, entry_ptr]
 
     dup dup.2
@@ -341,13 +341,11 @@ end
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_is_lesser
+proc.assert_is_less
   exec.get_key swapw
   # => [KEY, ENTRY_KEY]
 
-  dropw dropw
-  # TODO
-  push.1 assert.err="provided key is not lesser than the entry key"
+  exec.is_less assert.err="provided key is not less than the entry key"
   # => []
 end
 
@@ -553,6 +551,54 @@ export.is_greater
 
   swap drop
   # => [is_greater]
+end
+
+#! Returns true if KEY1 is strictly less than KEY2, false otherwise.
+#!
+#! From an implementation standpoint this is exactly the same as `is_greater` except it uses
+#! `lt` rather than `gt`. See its docs for details.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: [is_less]
+export.is_less
+  exec.arrange_words_adjacent
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  push.1.0
+  # => [is_less, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  repeat.4
+    movup.3 movup.3
+    # => [2_x, 1_x, is_less, continue, <remaining_felts>]
+
+    # check 1_x == 2_x; if so, we continue
+    dup dup.2 eq
+    # => [is_felt_eq, 2_x, 1_x, is_less, continue, <remaining_felts>]
+
+    movdn.3
+    # => [2_x, 1_x, is_less, is_felt_eq, continue, <remaining_felts>]
+
+    # check 1_x < 2_x
+    lt
+    # => [is_felt_lt, is_less, is_felt_eq, continue, <remaining_felts>]
+
+    dup.3 u32and
+    # => [is_felt_lt_if_continue, is_less, is_felt_eq, continue, <remaining_felts>]
+
+    u32or movdn.2
+    # => [is_felt_eq, continue, is_less, <remaining_felts>]
+
+    # keeps continue at 1 if the felts are equal
+    # sets continue to 0 if the felts are not equal
+    u32and
+    # => [continue, is_less, <remaining_felts>]
+    swap
+    # => [is_less, continue, <remaining_felts>]
+  end
+  # => [is_less, continue]
+
+  swap drop
+  # => [is_less]
 end
 
 #! Arranges the given words such that the corresponding elements are next to each other.
