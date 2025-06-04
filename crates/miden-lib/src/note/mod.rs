@@ -83,6 +83,44 @@ pub fn create_p2idr_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
+/// Generates a hybrid P2ID note - pay to id with optional recall after a certain block height and
+/// optional timelock.
+///
+/// This script enables the transfer of assets from the sender `sender` account to the `target`
+/// account by specifying the target's account ID. It adds the optional possibility for the
+/// sender to reclaiming the assets if the note has not been consumed by the target within the
+/// specified timeframe and the optional possibility to add a timelock to the asset transfer.
+///
+/// The passed-in `rng` is used to generate a serial number for the note. The returned note's tag
+/// is set to the target's account ID.
+///
+/// # Errors
+/// Returns an error if deserialization or compilation of the `P2ID` script fails.
+pub fn create_p2idh_note<R: FeltRng>(
+    sender: AccountId,
+    target: AccountId,
+    assets: Vec<Asset>,
+    recall_height: Option<BlockNumber>,
+    timelock_height: Option<BlockNumber>,
+    note_type: NoteType,
+    aux: Felt,
+    rng: &mut R,
+) -> Result<Note, NoteError> {
+    let serial_num = rng.draw_word();
+    let recipient = utils::build_p2idh_recipient(
+        target,
+        recall_height.map(|bn| bn.as_u32()),
+        timelock_height.map(|bn| bn.as_u32()),
+        serial_num,
+    )?;
+    let tag = NoteTag::from_account_id(target, NoteExecutionMode::Local)?;
+
+    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
+    let vault = NoteAssets::new(assets)?;
+
+    Ok(Note::new(vault, metadata, recipient))
+}
+
 /// Generates a SWAP note - swap of assets between two accounts - and returns the note as well as
 /// [NoteDetails] for the payback note.
 ///

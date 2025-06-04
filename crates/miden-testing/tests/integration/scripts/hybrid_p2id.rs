@@ -4,15 +4,16 @@ use anyhow::Context;
 use miden_crypto::Word;
 use miden_lib::{
     errors::note_script_errors::{
-        ERR_HYBRID_P2ID_RECLAIM_ACCT_IS_NOT_SENDER, ERR_HYBRID_P2ID_RECLAIM_HEIGHT_NOT_REACHED,
-        ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED, ERR_HYBRID_P2ID_WRONG_NUMBER_OF_INPUTS,
+        ERR_HYBRID_P2ID_RECLAIM_HEIGHT_NOT_REACHED, ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED,
     },
+    note::create_p2idh_note,
     transaction::TransactionKernel,
 };
 use miden_objects::{
-    Felt,
-    account::{Account, AccountId, WordRepresentation},
+    Felt, ONE,
+    account::Account,
     asset::{Asset, AssetVault, FungibleAsset},
+    crypto::rand::RpoRandomCoin,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteScript, NoteTag, NoteType,
@@ -20,7 +21,6 @@ use miden_objects::{
     transaction::OutputNote,
 };
 use miden_testing::{Auth, MockChain};
-use rand::rngs::mock;
 
 use crate::assert_transaction_executor_error;
 
@@ -33,8 +33,57 @@ fn hybrid_p2id_script_success() -> anyhow::Result<()> {
     let sender_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
     let target_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
 
+    let fungible_asset: Asset = FungibleAsset::mock(100);
+
+    let hybrid_p2id = create_p2idh_note(
+        sender_account.id(),
+        target_account.id(),
+        vec![fungible_asset],
+        None,
+        None,
+        NoteType::Public,
+        Felt::new(0),
+        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+    )
+    .unwrap();
+
+    let output_note = OutputNote::Full(hybrid_p2id.clone());
+    mock_chain.add_pending_note(output_note);
+    mock_chain.prove_next_block();
+
+    // CONSTRUCT AND EXECUTE TX (Success - Target Account)
+    let executed_transaction_1 = mock_chain
+        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build()
+        .execute()
+        .unwrap();
+
+    let target_account_after: Account = Account::from_parts(
+        target_account.id(),
+        AssetVault::new(&[fungible_asset]).unwrap(),
+        target_account.storage().clone(),
+        target_account.code().clone(),
+        Felt::new(2),
+    );
+    assert_eq!(
+        executed_transaction_1.final_account().commitment(),
+        target_account_after.commitment()
+    );
+
+    Ok(())
+}
+
+#[test]
+fn hybrid_p2id_script_success_1() -> anyhow::Result<()> {
+    let mut mock_chain = MockChain::new();
+    mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
+
+    // Create sender and target and malicious account
+    let sender_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    let target_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2ID_RT.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2IDH.masm")).unwrap();
 
     let serial_num = Word::default();
     let note_script = NoteScript::compile(code, assembler).unwrap();
@@ -103,7 +152,7 @@ fn hybrid_p2id_script_reclaim_test() -> anyhow::Result<()> {
     // let malicious_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2ID_RT.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2IDH.masm")).unwrap();
     let serial_num = Word::default();
     let note_script = NoteScript::compile(code, assembler).unwrap();
 
@@ -189,7 +238,7 @@ fn hybrid_p2id_script_timelock_test() -> anyhow::Result<()> {
     // let malicious_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2ID_RT.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2IDH.masm")).unwrap();
     let serial_num = Word::default();
     let note_script = NoteScript::compile(code, assembler).unwrap();
 
@@ -275,7 +324,7 @@ fn hybrid_p2id_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     // ── build note script ────────────────────────────────────────────────────
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2ID_RT.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2IDH.masm")).unwrap();
     let note_script = NoteScript::compile(code, assembler).unwrap();
 
     let reclaim_block_height = Felt::new(10);

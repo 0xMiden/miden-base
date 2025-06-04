@@ -1,5 +1,5 @@
 use miden_objects::{
-    NoteError, Word,
+    Felt, NoteError, Word,
     account::AccountId,
     asset::Asset,
     note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType},
@@ -18,6 +18,27 @@ pub fn build_p2id_recipient(
     let note_script = WellKnownNote::P2ID.script();
     let note_inputs = NoteInputs::new(vec![target.suffix(), target.prefix().as_felt()])?;
 
+    Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
+}
+
+/// Creates a [NoteRecipient] for the P2IDH note.
+///
+/// Notes created with this recipient will be P2IDH notes consumable by the specified target
+/// account.
+pub fn build_p2idh_recipient(
+    target: AccountId,
+    reclaim_block_height: Option<u32>,
+    timelock_block_height: Option<u32>,
+    serial_num: Word,
+) -> Result<NoteRecipient, NoteError> {
+    let note_script = WellKnownNote::P2IDH.script();
+    let note_inputs = NoteInputs::new(vec![
+        target.suffix(),
+        target.prefix().into(),
+        Felt::new(reclaim_block_height.unwrap_or(0) as u64),
+        Felt::new(timelock_block_height.unwrap_or(0) as u64),
+    ])
+    .unwrap();
     Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
 }
 
