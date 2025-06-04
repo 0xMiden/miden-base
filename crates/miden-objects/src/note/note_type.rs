@@ -146,6 +146,8 @@ impl Display for NoteType {
 
 #[test]
 fn test_from_str_note_type() {
+    use assert_matches::assert_matches;
+
     use crate::alloc::string::ToString;
 
     for string in ["private", "public", "encrypted"] {
@@ -153,26 +155,12 @@ fn test_from_str_note_type() {
         assert_eq!(parsed_note_type.to_string(), string);
     }
 
-    let public_type_invalid = NoteType::from_str("puBlIc").unwrap_err();
-    assert_eq!(
-        public_type_invalid.to_string(),
-        alloc::string::String::from(
-            "note type puBlIc does not match any of the valid note types public, private or encrypted"
-        )
-    );
+    let public_type_invalid_err = NoteType::from_str("puBlIc").unwrap_err();
+    assert_matches!(public_type_invalid_err, NoteError::UnknownNoteType(_));
+
     let encrypted_type_invalid = NoteType::from_str("eNcrYptEd").unwrap_err();
-    assert_eq!(
-        encrypted_type_invalid.to_string(),
-        alloc::string::String::from(
-            "note type eNcrYptEd does not match any of the valid note types public, private or encrypted"
-        )
-    );
+    assert_matches!(encrypted_type_invalid, NoteError::UnknownNoteType(_));
 
     let invalid_type = NoteType::from_str("invalid").unwrap_err();
-    assert_eq!(
-        invalid_type.to_string(),
-        alloc::string::String::from(
-            "note type invalid does not match any of the valid note types public, private or encrypted"
-        )
-    );
+    assert_matches!(invalid_type, NoteError::UnknownNoteType(_));
 }
