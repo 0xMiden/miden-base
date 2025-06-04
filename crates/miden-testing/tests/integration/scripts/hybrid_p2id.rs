@@ -4,7 +4,7 @@ use anyhow::Context;
 use miden_crypto::Word;
 use miden_lib::{
     errors::note_script_errors::{
-        ERR_HYBRID_P2ID_RECLAIM_HEIGHT_NOT_REACHED, ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED,
+        ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED, ERR_P2IDH_TIMELOCK_NOT_REACHED,
     },
     note::create_p2idh_note,
     transaction::TransactionKernel,
@@ -112,7 +112,7 @@ fn hybrid_p2id_script_success_1() -> anyhow::Result<()> {
     )?;
 
     let fungible_asset: Asset = FungibleAsset::mock(100);
-    let vault = NoteAssets::new(vec![fungible_asset.into()])?;
+    let vault = NoteAssets::new(vec![fungible_asset])?;
     let hybrid_p2id = Note::new(vault, metadata, recipient);
 
     let output_note = OutputNote::Full(hybrid_p2id.clone());
@@ -180,7 +180,7 @@ fn hybrid_p2id_script_reclaim_test() -> anyhow::Result<()> {
     )?;
 
     let fungible_asset: Asset = FungibleAsset::mock(100);
-    let vault = NoteAssets::new(vec![fungible_asset.into()])?;
+    let vault = NoteAssets::new(vec![fungible_asset])?;
     let hybrid_p2id = Note::new(vault, metadata, recipient);
 
     let output_note = OutputNote::Full(hybrid_p2id.clone());
@@ -196,7 +196,7 @@ fn hybrid_p2id_script_reclaim_test() -> anyhow::Result<()> {
 
     assert_transaction_executor_error!(
         executed_transaction_1,
-        ERR_HYBRID_P2ID_RECLAIM_HEIGHT_NOT_REACHED
+        ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED
     );
 
     // fast forward to reclaim block height + 1
@@ -266,7 +266,7 @@ fn hybrid_p2id_script_timelock_test() -> anyhow::Result<()> {
     )?;
 
     let fungible_asset: Asset = FungibleAsset::mock(100);
-    let vault = NoteAssets::new(vec![fungible_asset.into()])?;
+    let vault = NoteAssets::new(vec![fungible_asset])?;
     let hybrid_p2id = Note::new(vault, metadata, recipient);
 
     let output_note = OutputNote::Full(hybrid_p2id.clone());
@@ -280,10 +280,7 @@ fn hybrid_p2id_script_timelock_test() -> anyhow::Result<()> {
         .build()
         .execute();
 
-    assert_transaction_executor_error!(
-        executed_transaction_1,
-        ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED
-    );
+    assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDH_TIMELOCK_NOT_REACHED);
 
     // fast forward to reclaim block height + 1
     mock_chain
@@ -361,7 +358,7 @@ fn hybrid_p2id_script_reclaimable_timelockable() -> anyhow::Result<()> {
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_reclaim, ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED);
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_TIMELOCK_NOT_REACHED);
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
@@ -369,7 +366,7 @@ fn hybrid_p2id_script_reclaimable_timelockable() -> anyhow::Result<()> {
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_spend, ERR_HYBRID_P2ID_TIMELOCK_NOT_REACHED);
+    assert_transaction_executor_error!(early_spend, ERR_P2IDH_TIMELOCK_NOT_REACHED);
 
     // ───────────────────── advance chain past height 7 ──────────────────────
     mock_chain
@@ -382,7 +379,7 @@ fn hybrid_p2id_script_reclaimable_timelockable() -> anyhow::Result<()> {
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_reclaim, ERR_HYBRID_P2ID_RECLAIM_HEIGHT_NOT_REACHED);
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past height 10 ──────────────────────
     mock_chain

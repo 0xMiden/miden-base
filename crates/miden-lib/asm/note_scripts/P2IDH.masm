@@ -6,13 +6,13 @@ use.miden::contracts::wallets::basic->wallet
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2IDH script expects exactly 4 note inputs"
+const.ERR_P2IDH_WRONG_NUMBER_OF_INPUTS="P2IDH script expects exactly 4 note inputs"
 
-const.ERR_P2ID_RECLAIM_ACCT_IS_NOT_SENDER="P2IDH reclaim account != sender"
+const.ERR_P2IDH_RECLAIM_ACCT_IS_NOT_SENDER="P2IDH reclaim account != sender"
 
-const.ERR_P2ID_RECLAIM_HEIGHT_NOT_REACHED="wait until reclaim height"
+const.ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED="wait until reclaim height"
 
-const.ERR_P2ID_TIMELOCK_HEIGHT_NOT_REACHED="wait until unlock"
+const.ERR_P2IDH_TIMELOCK_NOT_REACHED="wait until unlock"
 
 #! Helper procedure to add all assets of a note to an account.
 #!
@@ -107,7 +107,7 @@ begin
     # step 3
 
     # make sure the number of inputs is 4
-    eq.4 assert.err=ERR_P2ID_WRONG_NUMBER_OF_INPUTS
+    eq.4 assert.err=ERR_P2IDH_WRONG_NUMBER_OF_INPUTS
     # => [inputs_ptr]
 
     # read the reclaim block height and target account ID from the note inputs
@@ -127,7 +127,7 @@ begin
         if.true
             nop
         else
-            push.0 assert.err=ERR_P2ID_TIMELOCK_HEIGHT_NOT_REACHED
+            push.0 assert.err=ERR_P2IDH_TIMELOCK_NOT_REACHED
         end
         # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
     else
@@ -156,14 +156,14 @@ begin
         # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height]
 
         # ensure current account ID = sender account ID
-        exec.account::is_id_equal assert.err=ERR_P2ID_RECLAIM_ACCT_IS_NOT_SENDER
+        exec.account::is_id_equal assert.err=ERR_P2IDH_RECLAIM_ACCT_IS_NOT_SENDER
         # => [reclaim_block_height]
 
         # now check that sender is allowed to reclaim, current block >= reclaim block height
         exec.tx::get_block_number
         # => [current_block_height, reclaim_block_height]
 
-        u32assert2 u32lte assert.err=ERR_P2ID_RECLAIM_HEIGHT_NOT_REACHED
+        u32assert2 u32lte assert.err=ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED
     end
 
     exec.add_note_assets_to_account
