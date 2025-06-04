@@ -124,8 +124,22 @@ impl Host for MockHost {
                 ];
                 std::println!("set {map_key:?} to {map_value:?}");
 
-                self.adv_provider.push_stack(AdviceSource::Value(0u32.into()), err_ctx)?;
-                self.adv_provider.push_stack(AdviceSource::Value(map_ptr), err_ctx)?;
+                let link_map = LinkMap::new(map_ptr, process.into())
+                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+
+                let (operation, entry_ptr) = link_map.find_insertion(map_key);
+                if entry_ptr != 0 {
+                    let entry = link_map.entry(entry_ptr);
+                    std::println!("insert at entry {entry:?}",);
+                }
+
+                std::println!("operation: {operation:?} at {entry_ptr}");
+
+                self.adv_provider
+                    .push_stack(AdviceSource::Value(Felt::from(operation as u8)), err_ctx)?;
+                self.adv_provider
+                    .push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
+
                 Ok(())
             },
             // Expected operand stack state before: [map_ptr, KEY]
@@ -155,9 +169,7 @@ impl Host for MockHost {
 
                 let link_map = LinkMap::new(map_ptr, process.into())
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-                let entry_ptr = link_map
-                    .find(map_key)
-                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+                let entry_ptr = link_map.find(map_key);
 
                 match entry_ptr {
                     Some(entry_ptr) => {

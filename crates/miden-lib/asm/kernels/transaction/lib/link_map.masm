@@ -13,22 +13,6 @@ const.LINK_MAP_SET_EVENT=131098
 # Event emitted when an entry is fetched.
 const.LINK_MAP_GET_EVENT=131099
 
-#! Initializes a new map at the given ptr.
-#!
-#! The pointer should point to a location of size 12.
-#!
-#! Inputs:  [map_ptr]
-#! Outputs: []
-#!
-#! Where:
-#! - map_ptr is a pointer at which the map will be initialized.
-export.new
-    # store the map_ptr at map_ptr itself to establish the invariant that each map entry's first
-    # element is the map_ptr.
-    # dup mem_store
-    push.0 assert.err="unused"
-end
-
 #! Inserts the specified key-value pair into the map, or updates the existing key if the pair
 #! already exists.
 #!
@@ -52,7 +36,7 @@ export.set
     # => [is_empty, map_ptr, KEY, NEW_VALUE]
 
     if.true
-      # if the list is empty, insert a new entry.
+      # the list is empty; insert a new entry.
       exec.memory::link_map_malloc
       # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
 
@@ -67,22 +51,7 @@ export.set
       exec.set_head
       # => []
     else
-      emit.LINK_MAP_SET_EVENT adv_push.2
-      # => [is_after_entry_ptr, entry_ptr, map_ptr, KEY, NEW_VALUE]
-      dup.2 dup.2
-      # => [entry_ptr, map_ptr, is_after_entry_ptr, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-      # assert entry ptr validity
-      exec.memory::assert_link_map_entry_ptr
-      # => [is_after_entry_ptr, entry_ptr, map_ptr, KEY, NEW_VALUE]
-
-      if.true
-        # insert new entry
-        push.1 drop
-      else
-        # update existing entry
-        push.2 drop
-      end
+      exec.insert_into_non_empty_list
     end
 end
 
@@ -136,6 +105,199 @@ export.compute_commitment
     # => [SMT_ROOT]
 end
 
+#! Inserts the key value pair into the map ptr which is assumed to be non-empty.
+#!
+#! Inputs:  [map_ptr, KEY, NEW_VALUE]
+#! Outputs: []
+proc.insert_into_non_empty_list
+  # Operation:
+  # Update = 0,
+  # InsertAtHead = 1,
+  # InsertAfterEntry = 2,
+
+  emit.LINK_MAP_SET_EVENT adv_push.2
+  # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+  dup.2 dup.2
+  # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+  # assert entry ptr validity
+  exec.memory::assert_link_map_entry_ptr
+  # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+  dup eq.0
+  # => [is_update, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+  if.true
+    # update existing entry
+    drop
+    # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
+  else
+    # insert new entry
+    eq.1
+    # => [insert_at_head, entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+    if.true
+      # insert at head
+      push.0 assert.err="insert at head unimplemented"
+    else
+      # insert as next
+      exec.insert_as_next
+      # => []
+    end
+  end
+end
+
+#! Inserts the key value pair as the next entry after the prev_entry_ptr.
+#!
+#! Inputs:  [prev_entry_ptr, map_ptr, KEY, VALUE]
+#! Outputs: []
+proc.insert_as_next
+  movdn.5
+  # => [map_ptr, KEY, prev_entry_ptr, VALUE]
+
+  movdn.5
+  # => [KEY, prev_entry_ptr, map_ptr, VALUE]
+
+  dupw dup.8
+  # => [prev_entry_ptr, KEY, KEY, prev_entry_ptr, map_ptr, VALUE]
+
+  exec.assert_is_greater
+  # => [KEY, prev_entry_ptr, map_ptr, VALUE]
+
+  movup.4 movdn.9
+  # => [KEY, map_ptr, VALUE, prev_entry_ptr]
+
+  movup.4
+  # => [map_ptr, KEY, VALUE, prev_entry_ptr]
+
+  exec.memory::link_map_malloc
+  # => [entry_ptr, map_ptr, KEY, VALUE, prev_entry_ptr]
+
+  dup movdn.10
+  # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr, prev_entry_ptr]
+
+  exec.insert_pair
+  # => [entry_ptr, prev_entry_ptr]
+
+  dup.1 exec.get_next_item_ptr movdn.2
+  # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
+
+  dup dup.2
+  # => [prev_entry_ptr, entry_ptr, entry_ptr, prev_entry_ptr, next_entry_ptr]
+
+  # set prev_entry_ptr.next_item = entry_ptr
+  exec.set_next_item_ptr
+  # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
+
+  dup movdn.3
+  # => [entry_ptr, prev_entry_ptr, next_entry_ptr, entry_ptr]
+
+  # set entry_ptr.prev_item = prev_entry_ptr
+  exec.set_prev_item_ptr
+  # => [entry_ptr, next_entry_ptr, entry_ptr]
+
+  dup eq.0 not
+  # => [has_next_entry, next_entry_ptr, entry_ptr]
+
+  if.true
+    dup.1 exec.get_key
+    # => [KEY, next_entry_ptr, entry_ptr]
+    dup.4
+    # => [next_entry_ptr, KEY, next_entry_ptr, entry_ptr]
+
+    # assert KEY < next_entry.key
+    exec.assert_is_lesser
+    # => [next_entry_ptr, entry_ptr]
+
+    dup dup.2
+    # => [entry_ptr, next_entry_ptr, next_entry_ptr, entry_ptr]
+
+    # set entry_ptr.next_item = next_item
+    exec.set_next_item_ptr
+    # => [next_entry_ptr, entry_ptr]
+
+    # set next_item.prev_item = entry_ptr 
+    exec.set_prev_item_ptr
+    # => []
+  else
+    # remove unneeded stack elements
+    drop drop
+    # => []
+  end
+  # => []
+end
+
+#! Asserts that the KEY is lexicographically greater than the key in the entry pointer.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: []
+proc.assert_is_greater
+  exec.get_key swapw
+  # => [KEY, ENTRY_KEY]
+
+  exec.is_greater assert.err="provided key is not greater than the entry key"
+  # => []
+end
+
+#! Asserts that the KEY is lexicographically less than the key in the entry pointer.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: []
+proc.assert_is_lesser
+  exec.get_key swapw
+  # => [KEY, ENTRY_KEY]
+
+  # TODO
+  push.1 assert.err="provided key is not lesser than the entry key"
+  # => []
+end
+
+#! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
+#!
+#! TODO: Describe logic.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: []
+export.is_greater
+  # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
+  movup.3 movup.7
+  # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
+  movup.4 movup.7
+  # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
+  movup.5 movup.7
+  # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
+  movup.6 movup.7
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  push.1.0
+  # => [is_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  repeat.4
+    movup.3 movup.3
+    # => [2_x, 1_x, is_greater, continue, <remaining_felts>]
+
+    # check 1_x > 2_x
+    gt
+    # => [is_felt_gt, is_greater, continue, <remaining_felts>]
+
+    dup movdn.2
+    # => [is_felt_gt, is_greater, is_felt_gt, continue, <remaining_felts>]
+    dup.3 u32and
+    # => [is_felt_gt_if_continue, is_greater, is_felt_gt, continue, <remaining_felts>]
+    u32or movdn.2
+    # => [is_felt_gt, continue, is_greater, <remaining_felts>]
+    not u32and
+    # => [continue, is_greater, <remaining_felts>]
+    swap
+    # => [is_greater, continue, <remaining_felts>]
+  end
+  # => [is_greater, continue]
+
+  swap drop
+  # => [is_greater]
+end
+
 #! Inserts the key, value into the entry pointer and sets the map ptr to the provided value.
 #!
 #! Inputs:  [entry_ptr, map_ptr, KEY, VALUE]
@@ -186,6 +348,24 @@ end
 proc.get_prev_item_ptr
   add.1 mem_load
   # => [prev_item_ptr]
+end
+
+#! Sets the next_item ptr of the entry to the provided value.
+#!
+#! Inputs:  [entry_ptr, next_item]
+#! Outputs: []
+proc.set_next_item_ptr
+  add.2 mem_store
+  # => []
+end
+
+#! Sets the prev_item ptr of the entry to the provided value.
+#!
+#! Inputs:  [entry_ptr, prev_item]
+#! Outputs: []
+proc.set_prev_item_ptr
+  add.1 mem_store
+  # => []
 end
 
 #! Returns the value of the entry pointer.
