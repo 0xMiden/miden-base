@@ -508,7 +508,22 @@ end
 
 #! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
 #!
-#! TODO: Describe logic.
+#! For reference, this is equivalent to the following Rust function:
+#!
+#! fn is_word_greater(w0: Word, w1: Word) -> bool {
+#!     let mut result = 0u8;
+#!     let mut cont = 1u8;
+#!
+#!     for i in (0..4).rev() {
+#!         let gt = w0[i].as_int() > w1[i].as_int();
+#!         let eq = w0[i].as_int() == w1[i].as_int();
+#!
+#!         result |= gt as u8 & cont;
+#!         cont &= eq as u8;
+#!     }
+#!
+#!     result == 1
+#! }
 #!
 #! Inputs:  [KEY1, KEY2]
 #! Outputs: [is_greater]

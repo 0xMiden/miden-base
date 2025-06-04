@@ -9,21 +9,6 @@ use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
 
-fn is_word_greater(w0: Word, w1: Word) -> bool {
-    let mut result = 0u8;
-    let mut cont = 1;
-
-    for i in (0..4).rev() {
-        let gt = w0[i].as_int() > w1[i].as_int();
-        let eq = w0[i].as_int() == w1[i].as_int();
-
-        result |= gt as u8 & cont;
-        cont &= eq as u8;
-    }
-
-    result == 1
-}
-
 enum CompareOperation {
     Less,
     Equal,

@@ -1588,8 +1588,8 @@ end
 #! Inputs:  [entry_ptr, map_ptr]
 #! Outputs: []
 export.assert_link_map_entry_ptr
-  # TODO:
-  # LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR
+  # TODO: LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR
+
   # assert entry_ptr.map_ptr == map_ptr
   mem_load assert_eq.err="map ptr stored in entry ptr does not match actual map ptr"
 end
