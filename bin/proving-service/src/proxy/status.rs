@@ -36,7 +36,6 @@ pub struct ProxyStatusService {
 }
 
 impl ProxyStatusService {
-    #[allow(dead_code)]
     pub fn new(load_balancer: Arc<LoadBalancerState>) -> Self {
         Self { load_balancer }
     }

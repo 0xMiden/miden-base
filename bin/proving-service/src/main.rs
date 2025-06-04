@@ -1,11 +1,4 @@
-pub mod api;
-pub mod commands;
-pub mod error;
-mod generated;
-pub mod proxy;
-mod utils;
-use commands::Cli;
-use utils::setup_tracing;
+use miden_proving_service::{commands::Cli, utils::setup_tracing};
 
 #[tokio::main]
 async fn main() -> Result<(), String> {
@@ -37,16 +30,15 @@ mod test {
         },
         transaction::{ProvenTransaction, TransactionScript, TransactionWitness},
     };
-    use miden_testing::{Auth, MockChain};
-    use miden_tx::utils::Serializable;
-    use tokio::net::TcpListener;
-    use tonic::Request;
-
-    use crate::{
+    use miden_proving_service::{
         api::ProverRpcApi,
         commands::worker::ProverType,
         generated::{ProofType, ProvingRequest, api_client::ApiClient, api_server::ApiServer},
     };
+    use miden_testing::{Auth, MockChain};
+    use miden_tx::utils::Serializable;
+    use tokio::net::TcpListener;
+    use tonic::Request;
 
     #[tokio::test(flavor = "multi_thread", worker_threads = 3)]
     async fn test_prove_transaction() {
