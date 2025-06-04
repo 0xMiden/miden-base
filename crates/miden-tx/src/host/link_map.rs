@@ -134,6 +134,17 @@ impl<'process> LinkMap<'process> {
             map: *self,
         }
     }
+
+    pub fn compare_keys(key0: Word, key1: Word) -> Ordering {
+        key0.iter()
+            .rev()
+            .map(Felt::as_int)
+            .zip(key1.iter().rev().map(Felt::as_int))
+            .fold(Ordering::Equal, |ord, (felt0, felt1)| match ord {
+                Ordering::Equal => felt0.cmp(&felt1),
+                _ => ord,
+            })
+    }
 }
 
 pub struct LinkMapIter<'process> {
@@ -178,4 +189,34 @@ pub enum Operation {
     Update = 0,
     InsertAtHead = 1,
     InsertAfterEntry = 2,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn to_word(ints: [u32; 4]) -> Word {
+        ints.map(|int| Felt::from(int))
+    }
+
+    #[test]
+    fn compare_keys() {
+        for (expected, key0, key1) in [
+            (Ordering::Equal, [0, 0, 0, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [1, 0, 0, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [0, 1, 0, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [0, 0, 1, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [0, 0, 0, 1u32], [0, 0, 0, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [1, 0, 0, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [0, 1, 0, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 1, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 0, 1u32]),
+            (Ordering::Greater, [0, 0, 0, 1u32], [1, 1, 1, 0u32]),
+            (Ordering::Greater, [0, 0, 1, 0u32], [1, 1, 0, 0u32]),
+            (Ordering::Less, [1, 1, 1, 0u32], [0, 0, 0, 1u32]),
+            (Ordering::Less, [1, 1, 0, 0u32], [0, 0, 1, 0u32]),
+        ] {
+            assert_eq!(LinkMap::compare_keys(to_word(key0), to_word(key1)), expected);
+        }
+    }
 }
