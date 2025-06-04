@@ -205,7 +205,7 @@ fn authenticate_mock_account_tx_script(expiration_delta: u16) -> TransactionScri
         "
     );
 
-    TransactionScript::compile(code, [], TransactionKernel::testing_assembler_with_mock_account())
+    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()
 }
 

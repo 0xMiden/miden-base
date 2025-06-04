@@ -4,9 +4,7 @@ use miden_objects::{
     Digest, EMPTY_WORD, Felt, FieldElement, TransactionInputError, WORD_SIZE, Word, ZERO,
     account::{AccountHeader, PartialAccount},
     block::AccountWitness,
-    transaction::{
-        InputNote, PartialBlockchain, TransactionArgs, TransactionInputs, TransactionScript,
-    },
+    transaction::{InputNote, PartialBlockchain, TransactionInputs, TransactionParams},
     vm::AdviceInputs,
 };
 
@@ -23,18 +21,18 @@ use super::TransactionKernel;
 /// of one of partial blockchain peaks.
 pub(super) fn extend_advice_inputs(
     tx_inputs: &TransactionInputs,
-    tx_args: &TransactionArgs,
+    tx_params: &TransactionParams,
     advice_inputs: &mut AdviceInputs,
 ) -> Result<(), TransactionInputError> {
     // TODO: remove this value and use a user input instead
     let kernel_version = 0;
 
-    build_advice_stack(tx_inputs, tx_args.tx_script(), advice_inputs, kernel_version);
+    build_advice_stack(tx_inputs, tx_params, advice_inputs, kernel_version);
 
     // build the advice map and Merkle store for relevant components
     add_kernel_commitments_to_advice_inputs(advice_inputs, kernel_version);
     add_partial_blockchain_to_advice_inputs(tx_inputs.block_chain(), advice_inputs);
-    add_input_notes_to_advice_inputs(tx_inputs, tx_args, advice_inputs)?;
+    add_input_notes_to_advice_inputs(tx_inputs, tx_params, advice_inputs)?;
 
     // inject account data
     let partial_account = PartialAccount::from(tx_inputs.account());
@@ -45,7 +43,7 @@ pub(super) fn extend_advice_inputs(
     )?;
 
     // inject foreign account data
-    for account_inputs in tx_args.foreign_account_inputs() {
+    for account_inputs in tx_params.foreign_account_inputs() {
         add_account_to_advice_inputs(
             account_inputs.account(),
             AccountInputsType::Foreign,
@@ -54,7 +52,7 @@ pub(super) fn extend_advice_inputs(
         add_account_witness_to_advice_inputs(account_inputs.witness(), advice_inputs)?;
     }
 
-    advice_inputs.extend(tx_args.advice_inputs().clone());
+    advice_inputs.extend(tx_params.advice_inputs().clone());
     Ok(())
 }
 
@@ -86,7 +84,7 @@ pub(super) fn extend_advice_inputs(
 /// ]
 fn build_advice_stack(
     tx_inputs: &TransactionInputs,
-    tx_script: Option<&TransactionScript>,
+    tx_params: &TransactionParams,
     inputs: &mut AdviceInputs,
     kernel_version: u8,
 ) {
@@ -131,10 +129,8 @@ fn build_advice_stack(
 
     // push the transaction script root and transaction args key onto the stack
     // Note: keep in sync with the `prologue::process_tx_script_data` kernel procedure
-    inputs.extend_stack(tx_script.map_or(Word::default(), |script| *script.root()));
-    inputs.extend_stack(
-        tx_script.map_or(Word::default(), |script| *script.args_key().unwrap_or_default()),
-    );
+    inputs.extend_stack(tx_params.tx_script().map_or(Word::default(), |script| *script.root()));
+    inputs.extend_stack(tx_params.tx_script_args_key().unwrap_or_default());
 }
 
 // PARTIAL BLOCKCHAIN INJECTOR
@@ -312,7 +308,7 @@ fn add_account_witness_to_advice_inputs(
 /// The data above is processed by `prologue::process_input_notes_data`.
 fn add_input_notes_to_advice_inputs(
     tx_inputs: &TransactionInputs,
-    tx_args: &TransactionArgs,
+    tx_args: &TransactionParams,
     inputs: &mut AdviceInputs,
 ) -> Result<(), TransactionInputError> {
     // if there are no input notes, nothing is added to the advice inputs
