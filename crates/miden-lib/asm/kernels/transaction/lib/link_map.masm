@@ -126,19 +126,25 @@ proc.insert_into_non_empty_list
   # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
 
   dup eq.0
-  # => [is_update, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+  # => [is_update_op, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
 
   if.true
-    # update existing entry
+    # drop operation and map_ptr from stack
     drop
     # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
+
+    swap drop
+    # => [entry_ptr, KEY, NEW_VALUE]
+
+    exec.update_entry
+    # => []
   else
     # insert new entry
     eq.1
-    # => [insert_at_head, entry_ptr, map_ptr, KEY, NEW_VALUE]
+    # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, NEW_VALUE]
 
     if.true
-      # insert at head
+      # TODO: insert at head
       push.0 assert.err="insert at head unimplemented"
     else
       # insert after existing entry
@@ -146,6 +152,24 @@ proc.insert_into_non_empty_list
       # => []
     end
   end
+end
+
+#! Updates the value in the given entry.
+#!
+#! Inputs:  [entry_ptr, KEY, NEW_VALUE]
+#! Outputs: []
+#!
+#! Panics if:
+#! - the key in the entry does not match the provided KEY.
+proc.update_entry
+  dup movdn.5
+  # => [entry_ptr, KEY, entry_ptr, VALUE]
+
+  exec.assert_is_equal
+  # => [entry_ptr, VALUE]
+
+  exec.set_value
+  # => []
 end
 
 #! Inserts the key value pair as the next entry after the prev_entry_ptr.
@@ -228,6 +252,18 @@ proc.insert_after_entry
   # => []
 end
 
+#! Asserts that the KEY is equal to the key in the entry.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: []
+proc.assert_is_equal
+  exec.get_key swapw
+  # => [KEY, ENTRY_KEY]
+
+  exec.is_equal assert.err="provided key is not equal to the entry key"
+  # => []
+end
+
 #! Asserts that the KEY is lexicographically greater than the key in the entry pointer.
 #!
 #! Inputs:  [entry_ptr, KEY]
@@ -254,21 +290,36 @@ proc.assert_is_lesser
   # => []
 end
 
+#! Returns true if KEY1 is equal to KEY2, false otherwise.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: [is_equal]
+export.is_equal
+  exec.arrange_words_adjacent
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  push.1
+  # => [is_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+
+  repeat.4
+    swap movup.2
+    # => [2_x, 1_x, is_equal, <remaining_felts>]
+    eq
+    # => [felts_x_equal, is_equal, <remaining_felts>]
+    and
+    # => [is_equal, <remaining_felts>]
+  end
+  # => [is_equal]
+end
+
 #! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
 #!
 #! TODO: Describe logic.
 #!
 #! Inputs:  [KEY1, KEY2]
-#! Outputs: []
+#! Outputs: [is_greater]
 export.is_greater
-  # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
-  movup.3 movup.7
-  # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
-  movup.4 movup.7
-  # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
-  movup.5 movup.7
-  # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
-  movup.6 movup.7
+  exec.arrange_words_adjacent
   # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
   push.1.0
@@ -297,6 +348,22 @@ export.is_greater
 
   swap drop
   # => [is_greater]
+end
+
+#! Arranges the given words such that the corresponding elements are next to each other.
+#!
+#! Inputs:  [KEY1, KEY2]
+#! Outputs: [key2_3, key1_3, key2_2, key1_2, key2_1, key1_1, key2_0, key1_0]
+proc.arrange_words_adjacent
+  # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
+  movup.3 movup.7
+  # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
+  movup.4 movup.7
+  # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
+  movup.5 movup.7
+  # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
+  movup.6 movup.7
+  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 end
 
 #! Inserts the key, value into the entry pointer and sets the map ptr to the provided value.
