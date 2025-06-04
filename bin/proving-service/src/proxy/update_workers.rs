@@ -34,7 +34,6 @@ impl fmt::Debug for LoadBalancerUpdateService {
 }
 
 impl LoadBalancerUpdateService {
-    #[allow(dead_code)]
     pub(crate) fn new(lb_state: Arc<LoadBalancerState>) -> Self {
         let mut server_opts = HttpServerOptions::default();
         server_opts.h2c = true;

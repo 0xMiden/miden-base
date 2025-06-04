@@ -68,7 +68,6 @@ impl UpdateWorkers {
     /// - If the request fails.
     /// - If the status code is not successful.
     /// - If the X-Worker-Count header is missing.
-    #[allow(dead_code)]
     pub async fn execute(&self) -> Result<(), String> {
         let query_params = serde_qs::to_string(&self).map_err(|err| err.to_string())?;
 

@@ -157,7 +157,6 @@ pub async fn create_response_with_error_message(
 /// # Returns
 /// * `Ok(TcpListener)` if the port is available.
 /// * `Err(ProvingServiceError::PortAlreadyInUse)` if the port is already in use.
-#[allow(dead_code)]
 pub fn check_port_availability(
     port: u16,
     service: &str,
