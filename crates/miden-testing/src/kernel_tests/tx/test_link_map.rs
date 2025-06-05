@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::cmp::Ordering;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
@@ -10,138 +11,6 @@ use vm_processor::{MemAdviceProvider, ProcessState};
 use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
-
-enum CompareOperation {
-    Less,
-    Equal,
-    Greater,
-}
-
-impl CompareOperation {
-    fn procedure_name(&self) -> &'static str {
-        match self {
-            CompareOperation::Less => "is_less",
-            CompareOperation::Equal => "is_equal",
-            CompareOperation::Greater => "is_greater",
-        }
-    }
-}
-
-/// TODO: Speed up test: Build code first, then execute once.
-fn execute_comparison_test(operation: CompareOperation) -> anyhow::Result<()> {
-    for _ in 0..1000 {
-        let key0 = Word::from(rand_array());
-        let key1 = Word::from(rand_array());
-
-        let code = format!(
-            r#"
-        use.kernel::link_map
-
-        begin
-          push.{KEY_1}
-          push.{KEY_0}
-          exec.link_map::{proc_name}
-          swap drop
-        end
-        "#,
-            KEY_0 = word_to_masm_push_string(&key0),
-            KEY_1 = word_to_masm_push_string(&key1),
-            proc_name = operation.procedure_name(),
-        );
-
-        let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
-            .run(&code)
-            .unwrap();
-        let compare_result = process.stack.get(0);
-
-        let expected = match operation {
-            CompareOperation::Less => LinkMap::compare_keys(key0, key1).is_lt(),
-            CompareOperation::Equal => LinkMap::compare_keys(key0, key1).is_eq(),
-            CompareOperation::Greater => LinkMap::compare_keys(key0, key1).is_gt(),
-        };
-
-        let expected_int = if expected { 1 } else { 0 };
-        assert_eq!(
-            compare_result.as_int(),
-            expected_int,
-            "failed for procedure {proc_name} with keys {key0:?}, {key1:?}",
-            proc_name = operation.procedure_name()
-        );
-    }
-
-    Ok(())
-}
-
-#[test]
-fn is_greater() -> anyhow::Result<()> {
-    execute_comparison_test(CompareOperation::Greater)
-}
-
-#[test]
-fn is_equal() -> anyhow::Result<()> {
-    execute_comparison_test(CompareOperation::Equal)
-}
-
-#[test]
-fn is_less() -> anyhow::Result<()> {
-    execute_comparison_test(CompareOperation::Less)
-}
-
-#[test]
-fn set_on_empty_map() -> anyhow::Result<()> {
-    let code = r#"
-      use.kernel::link_map
-
-      const.MAP_PTR=8
-      const.MAP_KEY_OFFSET=4
-      const.MAP_VALUE_OFFSET=8
-
-      begin
-          # Insert a key-value pair
-          # ---------------------------------------------------------------------------------------
-
-          # value
-          push.1.2.3.4
-          # key
-          push.2.3.4.5
-          push.MAP_PTR
-          # => [map_ptr, KEY, VALUE]
-
-          exec.link_map::set
-          # => []
-
-          padw mem_load.MAP_PTR add.MAP_KEY_OFFSET mem_loadw
-          push.2.3.4.5 assert_eqw.err="key in memory does not match provided key"
-          # => []
-
-          padw mem_load.MAP_PTR add.MAP_VALUE_OFFSET mem_loadw
-          push.1.2.3.4 assert_eqw.err="value in memory does not match provided value"
-          # => []
-
-          # Get the value at the previously inserted key
-          # ---------------------------------------------------------------------------------------
-
-          # key
-          push.2.3.4.5
-          push.MAP_PTR
-          # => [map_ptr, KEY]
-
-          exec.link_map::get
-          # => [contains_key, VALUE]
-          assert.err="value should exist"
-
-          push.1.2.3.4
-          assert_eqw.err="retrieved value should be the previously inserted value"
-          # => []
-      end
-    "#;
-
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
-
-    tx_context.execute_code(code).context("failed to execute code")?;
-
-    Ok(())
-}
 
 /// Tests the following properties:
 /// - Insertion into an empty map.
@@ -390,6 +259,77 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
 
     execute_link_map_test(test_operations)
 }
+
+// COMPARISON OPERATIONS TESTS
+// ================================================================================================
+
+#[test]
+fn is_greater() -> anyhow::Result<()> {
+    execute_comparison_test(Ordering::Greater)
+}
+
+#[test]
+fn is_equal() -> anyhow::Result<()> {
+    execute_comparison_test(Ordering::Equal)
+}
+
+#[test]
+fn is_less() -> anyhow::Result<()> {
+    execute_comparison_test(Ordering::Less)
+}
+
+fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
+    let procedure_name = match operation {
+        Ordering::Less => "is_less",
+        Ordering::Equal => "is_equal",
+        Ordering::Greater => "is_greater",
+    };
+
+    let mut test_code = String::new();
+
+    for _ in 0..1000 {
+        let key0 = Word::from(rand_array());
+        let key1 = Word::from(rand_array());
+
+        let cmp = LinkMap::compare_keys(key0, key1);
+        let expected = cmp == operation;
+
+        let code = format!(
+            r#"
+        push.{KEY_1}
+        push.{KEY_0}
+        exec.link_map::{proc_name}
+        push.{expected_value}
+        assert_eq.err="failed for procedure {proc_name} with keys {key0:?}, {key1:?}"
+      "#,
+            KEY_0 = word_to_masm_push_string(&key0),
+            KEY_1 = word_to_masm_push_string(&key1),
+            proc_name = procedure_name,
+            expected_value = expected as u8
+        );
+
+        test_code.push_str(&code);
+    }
+
+    let code = format!(
+        r#"
+        use.kernel::link_map
+
+        begin
+          {test_code}
+        end
+        "#,
+    );
+
+    CodeExecutor::with_advice_provider(MemAdviceProvider::default())
+        .run(&code)
+        .with_context(|| format!("comparion test for {procedure_name} failed"))?;
+
+    Ok(())
+}
+
+// TEST HELPERS
+// ================================================================================================
 
 fn digest(elements: [u32; 4]) -> Digest {
     Digest::from(elements)
