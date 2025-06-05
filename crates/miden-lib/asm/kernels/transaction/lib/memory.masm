@@ -210,7 +210,7 @@ const.LINK_MAP_MEMORY_END_PTR=67108860
 # will be allocated.
 const.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET=33554432
 
-# Each map entry stores three words.
+# The size of each map entry, i.e. three words.
 const.LINK_MAP_ENTRY_SIZE=12
 
 # MEMORY PROCEDURES

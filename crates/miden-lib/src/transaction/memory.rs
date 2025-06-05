@@ -369,8 +369,15 @@ pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
 // LINK MAP
 // ------------------------------------------------------------------------------------------------
 
-/// TODO: Document
-pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33554432;
+/// The inclusive start of the link map dynamic memory range.
 pub const LINK_MAP_MEMORY_START_PTR: MemoryAddress = 33554436;
 
+/// The non-inclusive end of the link map dynamic memory range.
+pub const LINK_MAP_MEMORY_END_PTR: MemoryAddress = 67108860;
+
+/// LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer
+/// that will be allocated.
+pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33554432;
+
+/// The size of each map entry, i.e. three words.
 pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 12;
