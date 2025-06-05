@@ -420,15 +420,22 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let state = ProcessState::from(&process);
     let map = LinkMap::new(map_ptr.into(), state);
 
-    let actual_map: BTreeMap<_, _> = map
-        .iter()
-        .map(|entry| (Digest::from(entry.key), Digest::from(entry.value)))
-        .collect();
+    let actual_map_len = map.iter().count();
 
-    assert_eq!(actual_map.len(), control_map.len());
-    for (control_key, control_value) in control_map {
-        assert!(actual_map.contains_key(&control_key));
-        assert_eq!(actual_map[&control_key], control_value);
+    assert_eq!(actual_map_len, control_map.len());
+
+    // The order of the entries in the control map should be the same as what the link map returns.
+    let mut control_entries: Vec<_> = control_map.into_iter().collect();
+    control_entries.sort_by(|(key0, _), (key1, _)| {
+        LinkMap::compare_keys(Word::from(*key0), Word::from(*key1))
+    });
+
+    for ((control_key, control_value), (actual_key, actual_value)) in control_entries
+        .into_iter()
+        .zip(map.iter().map(|entry| (Digest::from(entry.key), Digest::from(entry.value))))
+    {
+        assert_eq!(actual_key, control_key);
+        assert_eq!(actual_value, control_value);
     }
 
     Ok(())
