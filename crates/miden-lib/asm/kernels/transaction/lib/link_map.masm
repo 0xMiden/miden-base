@@ -49,32 +49,32 @@ export.set
     # => [is_update_op, operation, entry_ptr, map_ptr, KEY, VALUE]
 
     if.true
-      # drop operation and map_ptr from stack
-      drop
-      # => [entry_ptr, map_ptr, KEY, VALUE]
-
-      swap drop
-      # => [entry_ptr, KEY, VALUE]
-
-      exec.update_entry
-      # => []
-    else
-      # insert new entry
-      eq.1
-      # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
-
-      if.true
-        # drop the entry ptr since we can load the head from memory
-        # and that way we don't have to validate it
+        # drop operation and map_ptr from stack
         drop
-        # => [map_ptr, KEY, VALUE]
-        exec.insert_at_head
+        # => [entry_ptr, map_ptr, KEY, VALUE]
+
+        swap drop
+        # => [entry_ptr, KEY, VALUE]
+
+        exec.update_entry
         # => []
-      else
-        # insert after existing entry
-        exec.insert_after_entry
-        # => []
-      end
+    else
+        # insert new entry
+        eq.1
+        # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
+
+        if.true
+            # drop the entry ptr since we can load the head from memory
+            # and that way we don't have to validate it
+            drop
+            # => [map_ptr, KEY, VALUE]
+            exec.insert_at_head
+            # => []
+        else
+            # insert after existing entry
+            exec.insert_after_entry
+            # => []
+        end
     end
 end
 
@@ -114,29 +114,29 @@ export.get
     # => [is_found, operation, entry_ptr, map_ptr, KEY]
 
     if.true
-      drop swap drop
-      # => [entry_ptr, KEY]
-      exec.get_existent_value
-      # => [VALUE]
-      push.1
-      # => [contains_key, VALUE]
+        drop swap drop
+        # => [entry_ptr, KEY]
+        exec.get_existent_value
+        # => [VALUE]
+        push.1
+        # => [contains_key, VALUE]
     else
-      eq.1
-      # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
+        eq.1
+        # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
 
-      if.true
-        drop
-        # => [map_ptr, KEY]
+        if.true
+            drop
+            # => [map_ptr, KEY]
 
-        exec.validate_absent_at_head
-        # => []
-      else
-        exec.validate_absent_after_entry
-        # => []
-      end
+            exec.validate_absent_at_head
+            # => []
+        else
+            exec.validate_absent_after_entry
+            # => []
+        end
 
-      padw push.0
-      # => [contains_key, EMPTY_WORD]
+        padw push.0
+        # => [contains_key, EMPTY_WORD]
     end
 end
 
@@ -150,7 +150,6 @@ export.compute_commitment
     # => [SMT_ROOT]
 end
 
-
 #! Validates that the provided KEY is absent at the head of the link map.
 #!
 #! An invariant of the link map is that its entries are sorted and since there is no previous
@@ -162,21 +161,21 @@ end
 #! Panics if:
 #! - the KEY is not less than the key in the head of the map, unless the map is empty.
 proc.validate_absent_at_head
-  drop dup exec.is_empty
-  # => [is_empty, map_ptr, KEY]
+    drop dup exec.is_empty
+    # => [is_empty, map_ptr, KEY]
 
-  if.true
-    # in an empty list, any KEY is absent at the head, so there's nothing further to validate
-    drop dropw
-    # => []
-  else
-    exec.get_head
-    # => [entry_ptr, KEY]
+    if.true
+        # in an empty list, any KEY is absent at the head, so there's nothing further to validate
+        drop dropw
+        # => []
+    else
+        exec.get_head
+        # => [entry_ptr, KEY]
 
-    # assert that KEY is less than the current head's key
-    exec.assert_key_is_less
-    # => []
-  end
+        # assert that KEY is less than the current head's key
+        exec.assert_key_is_less
+        # => []
+    end
 end
 
 #! Validates that the provided KEY is absent after the provided entry.
@@ -212,13 +211,13 @@ proc.validate_absent_after_entry
     # => [is_last_entry, next_item_ptr, KEY]
 
     if.true
-      # nothing further to validate
-      drop dropw
-      # => []
+        # nothing further to validate
+        drop dropw
+        # => []
     else
-      # if there is a next item, then the KEY must be less than next item's key
-      exec.assert_key_is_less
-      # => []
+        # if there is a next item, then the KEY must be less than next item's key
+        exec.assert_key_is_less
+        # => []
     end
     # => []
 end
@@ -252,53 +251,53 @@ end
 #! Panics if:
 #! - the key in the entry does not match the provided KEY.
 proc.insert_at_head
-  exec.memory::link_map_malloc
-  # => [entry_ptr, map_ptr, KEY, VALUE]
+    exec.memory::link_map_malloc
+    # => [entry_ptr, map_ptr, KEY, VALUE]
 
-  dup movdn.10
-  # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr]
-  dup.1 movdn.10
-  # => [entry_ptr, map_ptr, KEY, VALUE, map_ptr, entry_ptr]
+    dup movdn.10
+    # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr]
+    dup.1 movdn.10
+    # => [entry_ptr, map_ptr, KEY, VALUE, map_ptr, entry_ptr]
 
-  exec.insert_pair
-  # => [map_ptr, entry_ptr]
-
-  # TODO: consider get_head and checking for 0
-  dup exec.is_empty not
-  # => [is_non_empty, map_ptr, entry_ptr]
-
-  if.true
-    dup.1
-    # => [entry_ptr, map_ptr, entry_ptr]
-
-    dup.1 exec.get_head
-    # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
-
-    # assert that entry_ptr.key < current_head_entry_ptr.key
-    dup.1 exec.get_key
-    # => [ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
-
-    dup.4
-    # => [current_head_entry_ptr, ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
-
-    exec.assert_key_is_less
-    # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
-
-    dup movdn.2
-    # => [current_head_entry_ptr, entry_ptr, current_head_entry_ptr, map_ptr, entry_ptr]
-
-    # set current_head_entry_ptr.prev_item = entry_ptr
-    exec.set_prev_item_ptr
-    # => [current_head_entry_ptr, map_ptr, entry_ptr]
-
-    # set entry_ptr.next_item = current_head_entry_ptr
-    dup.2 exec.set_next_item_ptr
+    exec.insert_pair
     # => [map_ptr, entry_ptr]
-  end
 
-  # update the current head of the map to the newly inserted entry
-  exec.set_head
-  # => []
+    # TODO: consider get_head and checking for 0
+    dup exec.is_empty not
+    # => [is_non_empty, map_ptr, entry_ptr]
+
+    if.true
+        dup.1
+        # => [entry_ptr, map_ptr, entry_ptr]
+
+        dup.1 exec.get_head
+        # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+        # assert that entry_ptr.key < current_head_entry_ptr.key
+        dup.1 exec.get_key
+        # => [ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+        dup.4
+        # => [current_head_entry_ptr, ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+        exec.assert_key_is_less
+        # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
+
+        dup movdn.2
+        # => [current_head_entry_ptr, entry_ptr, current_head_entry_ptr, map_ptr, entry_ptr]
+
+        # set current_head_entry_ptr.prev_item = entry_ptr
+        exec.set_prev_item_ptr
+        # => [current_head_entry_ptr, map_ptr, entry_ptr]
+
+        # set entry_ptr.next_item = current_head_entry_ptr
+        dup.2 exec.set_next_item_ptr
+        # => [map_ptr, entry_ptr]
+    end
+
+    # update the current head of the map to the newly inserted entry
+    exec.set_head
+    # => []
 end
 
 #! Updates the value in the given entry.
@@ -309,14 +308,14 @@ end
 #! Panics if:
 #! - the key in the entry does not match the provided KEY.
 proc.update_entry
-  dup movdn.5
-  # => [entry_ptr, KEY, entry_ptr, VALUE]
+    dup movdn.5
+    # => [entry_ptr, KEY, entry_ptr, VALUE]
 
-  exec.assert_key_is_equal
-  # => [entry_ptr, VALUE]
+    exec.assert_key_is_equal
+    # => [entry_ptr, VALUE]
 
-  exec.set_value
-  # => []
+    exec.set_value
+    # => []
 end
 
 #! Inserts the key value pair as the next entry after the prev_entry_ptr.
@@ -324,79 +323,79 @@ end
 #! Inputs:  [prev_entry_ptr, map_ptr, KEY, VALUE]
 #! Outputs: []
 proc.insert_after_entry
-  movdn.5
-  # => [map_ptr, KEY, prev_entry_ptr, VALUE]
+    movdn.5
+    # => [map_ptr, KEY, prev_entry_ptr, VALUE]
 
-  movdn.5
-  # => [KEY, prev_entry_ptr, map_ptr, VALUE]
+    movdn.5
+    # => [KEY, prev_entry_ptr, map_ptr, VALUE]
 
-  dupw dup.8
-  # => [prev_entry_ptr, KEY, KEY, prev_entry_ptr, map_ptr, VALUE]
+    dupw dup.8
+    # => [prev_entry_ptr, KEY, KEY, prev_entry_ptr, map_ptr, VALUE]
 
-  exec.assert_key_is_greater
-  # => [KEY, prev_entry_ptr, map_ptr, VALUE]
+    exec.assert_key_is_greater
+    # => [KEY, prev_entry_ptr, map_ptr, VALUE]
 
-  movup.4 movdn.9
-  # => [KEY, map_ptr, VALUE, prev_entry_ptr]
+    movup.4 movdn.9
+    # => [KEY, map_ptr, VALUE, prev_entry_ptr]
 
-  movup.4
-  # => [map_ptr, KEY, VALUE, prev_entry_ptr]
+    movup.4
+    # => [map_ptr, KEY, VALUE, prev_entry_ptr]
 
-  exec.memory::link_map_malloc
-  # => [entry_ptr, map_ptr, KEY, VALUE, prev_entry_ptr]
+    exec.memory::link_map_malloc
+    # => [entry_ptr, map_ptr, KEY, VALUE, prev_entry_ptr]
 
-  dup movdn.10
-  # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr, prev_entry_ptr]
+    dup movdn.10
+    # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr, prev_entry_ptr]
 
-  exec.insert_pair
-  # => [entry_ptr, prev_entry_ptr]
+    exec.insert_pair
+    # => [entry_ptr, prev_entry_ptr]
 
-  dup.1 exec.get_next_item_ptr movdn.2
-  # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
-
-  dup dup.2
-  # => [prev_entry_ptr, entry_ptr, entry_ptr, prev_entry_ptr, next_entry_ptr]
-
-  # set prev_entry_ptr.next_item = entry_ptr
-  exec.set_next_item_ptr
-  # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
-
-  dup movdn.3
-  # => [entry_ptr, prev_entry_ptr, next_entry_ptr, entry_ptr]
-
-  # set entry_ptr.prev_item = prev_entry_ptr
-  exec.set_prev_item_ptr
-  # => [entry_ptr, next_entry_ptr, entry_ptr]
-
-  dup eq.0 not
-  # => [has_next_entry, next_entry_ptr, entry_ptr]
-
-  if.true
-    dup.1 exec.get_key
-    # => [KEY, next_entry_ptr, entry_ptr]
-    dup.4
-    # => [next_entry_ptr, KEY, next_entry_ptr, entry_ptr]
-
-    # assert KEY < next_entry.key
-    exec.assert_key_is_less
-    # => [next_entry_ptr, entry_ptr]
+    dup.1 exec.get_next_item_ptr movdn.2
+    # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
 
     dup dup.2
-    # => [entry_ptr, next_entry_ptr, next_entry_ptr, entry_ptr]
+    # => [prev_entry_ptr, entry_ptr, entry_ptr, prev_entry_ptr, next_entry_ptr]
 
-    # set entry_ptr.next_item = next_item
+    # set prev_entry_ptr.next_item = entry_ptr
     exec.set_next_item_ptr
-    # => [next_entry_ptr, entry_ptr]
+    # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
 
-    # set next_item.prev_item = entry_ptr 
+    dup movdn.3
+    # => [entry_ptr, prev_entry_ptr, next_entry_ptr, entry_ptr]
+
+    # set entry_ptr.prev_item = prev_entry_ptr
     exec.set_prev_item_ptr
+    # => [entry_ptr, next_entry_ptr, entry_ptr]
+
+    dup eq.0 not
+    # => [has_next_entry, next_entry_ptr, entry_ptr]
+
+    if.true
+        dup.1 exec.get_key
+        # => [KEY, next_entry_ptr, entry_ptr]
+        dup.4
+        # => [next_entry_ptr, KEY, next_entry_ptr, entry_ptr]
+
+        # assert KEY < next_entry.key
+        exec.assert_key_is_less
+        # => [next_entry_ptr, entry_ptr]
+
+        dup dup.2
+        # => [entry_ptr, next_entry_ptr, next_entry_ptr, entry_ptr]
+
+        # set entry_ptr.next_item = next_item
+        exec.set_next_item_ptr
+        # => [next_entry_ptr, entry_ptr]
+
+        # set next_item.prev_item = entry_ptr
+        exec.set_prev_item_ptr
+        # => []
+    else
+        # remove unneeded stack elements
+        drop drop
+        # => []
+    end
     # => []
-  else
-    # remove unneeded stack elements
-    drop drop
-    # => []
-  end
-  # => []
 end
 
 #! Asserts that the KEY is equal to the key in the entry.
@@ -404,11 +403,11 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.assert_key_is_equal
-  exec.get_key swapw
-  # => [KEY, ENTRY_KEY]
+    exec.get_key swapw
+    # => [KEY, ENTRY_KEY]
 
-  exec.is_equal assert.err="provided key is not equal to the entry key"
-  # => []
+    exec.is_equal assert.err="provided key is not equal to the entry key"
+    # => []
 end
 
 #! Asserts that the KEY is greater than the key in the entry pointer.
@@ -416,11 +415,11 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.assert_key_is_greater
-  exec.get_key swapw
-  # => [KEY, ENTRY_KEY]
+    exec.get_key swapw
+    # => [KEY, ENTRY_KEY]
 
-  exec.is_greater assert.err="provided key is not greater than the entry key"
-  # => []
+    exec.is_greater assert.err="provided key is not greater than the entry key"
+    # => []
 end
 
 #! Asserts that the KEY is less than the key in the entry pointer.
@@ -428,11 +427,11 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.assert_key_is_less
-  exec.get_key swapw
-  # => [KEY, ENTRY_KEY]
+    exec.get_key swapw
+    # => [KEY, ENTRY_KEY]
 
-  exec.is_less assert.err="provided key is not less than the entry key"
-  # => []
+    exec.is_less assert.err="provided key is not less than the entry key"
+    # => []
 end
 
 #! Inserts the key, value into the entry pointer and sets the map ptr to the provided value.
@@ -440,17 +439,17 @@ end
 #! Inputs:  [entry_ptr, map_ptr, KEY, VALUE]
 #! Outputs: []
 proc.insert_pair
-  swap dup.1
-  # => [entry_ptr, map_ptr, entry_ptr, KEY, VALUE]
-  exec.set_map_ptr
-  # => [entry_ptr, KEY, VALUE]
+    swap dup.1
+    # => [entry_ptr, map_ptr, entry_ptr, KEY, VALUE]
+    exec.set_map_ptr
+    # => [entry_ptr, KEY, VALUE]
 
-  dup movdn.5
-  # => [entry_ptr, KEY, entry_ptr, VALUE]
-  exec.set_key
+    dup movdn.5
+    # => [entry_ptr, KEY, entry_ptr, VALUE]
+    exec.set_key
 
-  # => [entry_ptr, VALUE]
-  exec.set_value
+    # => [entry_ptr, VALUE]
+    exec.set_value
 end
 
 #! Returns true if the list is empty, i.e. map ptr points to 0.
@@ -458,7 +457,7 @@ end
 #! Inputs:  [map_ptr]
 #! Outputs: [is_empty]
 proc.is_empty
-  mem_load eq.0
+    mem_load eq.0
 end
 
 #! Returns true if the entry at the given ptr has a non-null ptr to a next item.
@@ -466,7 +465,7 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [has_next]
 proc.has_next
-  exec.get_next_item_ptr eq.0 not
+    exec.get_next_item_ptr eq.0 not
 end
 
 #! Returns the value of the next_item pointer in the provided entry pointer.
@@ -474,8 +473,8 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [next_item_ptr]
 proc.get_next_item_ptr
-  add.2 mem_load
-  # => [next_item_ptr]
+    add.2 mem_load
+    # => [next_item_ptr]
 end
 
 #! Returns the value of the prev_item pointer in the provided entry pointer.
@@ -483,8 +482,8 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [prev_item_ptr]
 proc.get_prev_item_ptr
-  add.1 mem_load
-  # => [prev_item_ptr]
+    add.1 mem_load
+    # => [prev_item_ptr]
 end
 
 #! Sets the next_item ptr of the entry to the provided value.
@@ -492,8 +491,8 @@ end
 #! Inputs:  [entry_ptr, next_item]
 #! Outputs: []
 proc.set_next_item_ptr
-  add.2 mem_store
-  # => []
+    add.2 mem_store
+    # => []
 end
 
 #! Sets the prev_item ptr of the entry to the provided value.
@@ -501,8 +500,8 @@ end
 #! Inputs:  [entry_ptr, prev_item]
 #! Outputs: []
 proc.set_prev_item_ptr
-  add.1 mem_store
-  # => []
+    add.1 mem_store
+    # => []
 end
 
 #! Returns the value of the entry pointer.
@@ -510,10 +509,10 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [VALUE]
 proc.get_value
-  padw movup.4
-  # => [entry_ptr, pad(4)]
-  add.8 mem_loadw
-  # => [VALUE]
+    padw movup.4
+    # => [entry_ptr, pad(4)]
+    add.8 mem_loadw
+    # => [VALUE]
 end
 
 #! Returns the key of the entry pointer.
@@ -521,10 +520,10 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [KEY]
 proc.get_key
-  padw movup.4
-  # => [entry_ptr, pad(4)]
-  add.4 mem_loadw
-  # => [KEY]
+    padw movup.4
+    # => [entry_ptr, pad(4)]
+    add.4 mem_loadw
+    # => [KEY]
 end
 
 #! Sets the entry ptr as the head of the linked list.
@@ -532,7 +531,7 @@ end
 #! Inputs:  [map_ptr, entry_ptr]
 #! Outputs: []
 proc.set_head
-  mem_store
+    mem_store
 end
 
 #! Returns the entry ptr at the head of the linked list.
@@ -540,7 +539,7 @@ end
 #! Inputs:  [map_ptr]
 #! Outputs: [entry_ptr]
 proc.get_head
-  mem_load
+    mem_load
 end
 
 #! Sets the map ptr of the entry pointer.
@@ -548,7 +547,7 @@ end
 #! Inputs:  [entry_ptr, map_ptr]
 #! Outputs: []
 proc.set_map_ptr
-  mem_store
+    mem_store
 end
 
 #! Returns the map ptr of the entry pointer.
@@ -556,7 +555,7 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [map_ptr]
 proc.get_map_ptr
-  mem_load
+    mem_load
 end
 
 #! Sets the key of the entry pointer.
@@ -564,7 +563,7 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.set_key
-  add.4 mem_storew dropw
+    add.4 mem_storew dropw
 end
 
 #! Sets the value of the entry pointer.
@@ -572,7 +571,7 @@ end
 #! Inputs:  [entry_ptr, VALUE]
 #! Outputs: []
 proc.set_value
-  add.8 mem_storew dropw
+    add.8 mem_storew dropw
 end
 
 #! Asserts that the given entry ptr is a valid entry in the map identified by map_ptr.
@@ -586,54 +585,54 @@ end
 #!   - entry ptr is "link map entry"-aligned, i.e. entry_ptr % LINK_MAP_ENTRY_SIZE == 0.
 #!   - entry's map ptr is equal to the given map_ptr.
 export.assert_entry_ptr_is_valid
-  # Check entry pointer is in valid memory range.
-  # -------------------------------------------------------------------------------------------------
+    # Check entry pointer is in valid memory range.
+    # -------------------------------------------------------------------------------------------------
 
-  exec.memory::get_link_map_memory_start_ptr dup.1
-  # => [entry_ptr, LINK_MAP_MEMORY_START_PTR, entry_ptr, map_ptr]
+    exec.memory::get_link_map_memory_start_ptr dup.1
+    # => [entry_ptr, LINK_MAP_MEMORY_START_PTR, entry_ptr, map_ptr]
 
-  # compute LINK_MAP_MEMORY_START_PTR <= entry_ptr
-  lte
-  # => [is_entry_ptr_gt_start, entry_ptr, map_ptr]
+    # compute LINK_MAP_MEMORY_START_PTR <= entry_ptr
+    lte
+    # => [is_entry_ptr_gt_start, entry_ptr, map_ptr]
 
-  dup.1 exec.memory::get_link_map_memory_end_ptr
-  # => [LINK_MAP_MEMORY_END_PTR, entry_ptr, is_entry_ptr_gt_start, entry_ptr, map_ptr]
+    dup.1 exec.memory::get_link_map_memory_end_ptr
+    # => [LINK_MAP_MEMORY_END_PTR, entry_ptr, is_entry_ptr_gt_start, entry_ptr, map_ptr]
 
-  # assert entry_ptr < LINK_MAP_MEMORY_END_PTR
-  lt and
-  # => [is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
+    # assert entry_ptr < LINK_MAP_MEMORY_END_PTR
+    lt and
+    # => [is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
 
-  # we have to skip the assertion if the map is empty
-  dup.2 exec.is_empty
-  # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
+    # we have to skip the assertion if the map is empty
+    dup.2 exec.is_empty
+    # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
 
-  dup movdn.4
-  # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr, is_empty_map]
+    dup movdn.4
+    # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr, is_empty_map]
 
-  # this assertion is always true if is_empty_map is true
-  or assert.err="entry ptr is not in a valid memory range"
-  # => [entry_ptr, map_ptr, is_empty_map]
+    # this assertion is always true if is_empty_map is true
+    or assert.err="entry ptr is not in a valid memory range"
+    # => [entry_ptr, map_ptr, is_empty_map]
 
-  # Check that the entry pointer is aligned to link map entries.
-  # -------------------------------------------------------------------------------------------------
+    # Check that the entry pointer is aligned to link map entries.
+    # -------------------------------------------------------------------------------------------------
 
-  # note that the previous range check ensures that entry_ptr fits in a u32
-  dup exec.memory::get_link_map_entry_size u32mod eq.0
-  # => [is_entry_ptr_aligned, entry_ptr, map_ptr, is_empty_map]
+    # note that the previous range check ensures that entry_ptr fits in a u32
+    dup exec.memory::get_link_map_entry_size u32mod eq.0
+    # => [is_entry_ptr_aligned, entry_ptr, map_ptr, is_empty_map]
 
-  # this assertion is always true if is_empty_map is true
-  dup.3 or assert.err="entry ptr is not link map entry aligned"
-  # => [entry_ptr, map_ptr, is_empty_map]
+    # this assertion is always true if is_empty_map is true
+    dup.3 or assert.err="entry ptr is not link map entry aligned"
+    # => [entry_ptr, map_ptr, is_empty_map]
 
-  # Check entry pointer's map ptr is equal to map_ptr.
-  # -------------------------------------------------------------------------------------------------
+    # Check entry pointer's map ptr is equal to map_ptr.
+    # -------------------------------------------------------------------------------------------------
 
-  # check if entry_ptr.map_ptr == map_ptr
-  exec.get_map_ptr eq
-  # => [entry_contains_map_ptr, is_empty_map]
+    # check if entry_ptr.map_ptr == map_ptr
+    exec.get_map_ptr eq
+    # => [entry_contains_map_ptr, is_empty_map]
 
-  # this assertion is always true if is_empty_map is true
-  or assert.err="map ptr stored in entry ptr does not match actual map ptr"
+    # this assertion is always true if is_empty_map is true
+    or assert.err="map ptr stored in entry ptr does not match actual map ptr"
 end
 
 # COMPARISON OPERATIONS
@@ -644,21 +643,21 @@ end
 #! Inputs:  [KEY1, KEY2]
 #! Outputs: [is_equal]
 export.is_equal
-  exec.arrange_words_adjacent
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    exec.arrange_words_adjacent
+    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
-  push.1
-  # => [is_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    push.1
+    # => [is_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
-  repeat.4
-    swap movup.2
-    # => [2_x, 1_x, is_equal, <remaining_felts>]
-    eq
-    # => [felts_x_equal, is_equal, <remaining_felts>]
-    and
-    # => [is_equal, <remaining_felts>]
-  end
-  # => [is_equal]
+    repeat.4
+        swap movup.2
+        # => [2_x, 1_x, is_equal, <remaining_felts>]
+        eq
+        # => [felts_x_equal, is_equal, <remaining_felts>]
+        and
+        # => [is_equal, <remaining_felts>]
+    end
+    # => [is_equal]
 end
 
 #! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
@@ -683,44 +682,44 @@ end
 #! Inputs:  [KEY1, KEY2]
 #! Outputs: [is_greater]
 export.is_greater
-  exec.arrange_words_adjacent
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    exec.arrange_words_adjacent
+    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
-  push.1.0
-  # => [is_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    push.1.0
+    # => [is_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
-  repeat.4
-    movup.3 movup.3
-    # => [2_x, 1_x, is_greater, continue, <remaining_felts>]
+    repeat.4
+        movup.3 movup.3
+        # => [2_x, 1_x, is_greater, continue, <remaining_felts>]
 
-    # check 1_x == 2_x; if so, we continue
-    dup dup.2 eq
-    # => [is_felt_eq, 2_x, 1_x, is_greater, continue, <remaining_felts>]
+        # check 1_x == 2_x; if so, we continue
+        dup dup.2 eq
+        # => [is_felt_eq, 2_x, 1_x, is_greater, continue, <remaining_felts>]
 
-    movdn.3
-    # => [2_x, 1_x, is_greater, is_felt_eq, continue, <remaining_felts>]
+        movdn.3
+        # => [2_x, 1_x, is_greater, is_felt_eq, continue, <remaining_felts>]
 
-    # check 1_x > 2_x
-    gt
-    # => [is_felt_gt, is_greater, is_felt_eq, continue, <remaining_felts>]
+        # check 1_x > 2_x
+        gt
+        # => [is_felt_gt, is_greater, is_felt_eq, continue, <remaining_felts>]
 
-    dup.3 u32and
-    # => [is_felt_gt_if_continue, is_greater, is_felt_eq, continue, <remaining_felts>]
+        dup.3 u32and
+        # => [is_felt_gt_if_continue, is_greater, is_felt_eq, continue, <remaining_felts>]
 
-    u32or movdn.2
-    # => [is_felt_eq, continue, is_greater, <remaining_felts>]
+        u32or movdn.2
+        # => [is_felt_eq, continue, is_greater, <remaining_felts>]
 
-    # keeps continue at 1 if the felts are equal
-    # sets continue to 0 if the felts are not equal
-    u32and
-    # => [continue, is_greater, <remaining_felts>]
-    swap
-    # => [is_greater, continue, <remaining_felts>]
-  end
-  # => [is_greater, continue]
+        # keeps continue at 1 if the felts are equal
+        # sets continue to 0 if the felts are not equal
+        u32and
+        # => [continue, is_greater, <remaining_felts>]
+        swap
+        # => [is_greater, continue, <remaining_felts>]
+    end
+    # => [is_greater, continue]
 
-  swap drop
-  # => [is_greater]
+    swap drop
+    # => [is_greater]
 end
 
 #! Returns true if KEY1 is strictly less than KEY2, false otherwise.
@@ -731,44 +730,44 @@ end
 #! Inputs:  [KEY1, KEY2]
 #! Outputs: [is_less]
 export.is_less
-  exec.arrange_words_adjacent
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    exec.arrange_words_adjacent
+    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
-  push.1.0
-  # => [is_less, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    push.1.0
+    # => [is_less, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
-  repeat.4
-    movup.3 movup.3
-    # => [2_x, 1_x, is_less, continue, <remaining_felts>]
+    repeat.4
+        movup.3 movup.3
+        # => [2_x, 1_x, is_less, continue, <remaining_felts>]
 
-    # check 1_x == 2_x; if so, we continue
-    dup dup.2 eq
-    # => [is_felt_eq, 2_x, 1_x, is_less, continue, <remaining_felts>]
+        # check 1_x == 2_x; if so, we continue
+        dup dup.2 eq
+        # => [is_felt_eq, 2_x, 1_x, is_less, continue, <remaining_felts>]
 
-    movdn.3
-    # => [2_x, 1_x, is_less, is_felt_eq, continue, <remaining_felts>]
+        movdn.3
+        # => [2_x, 1_x, is_less, is_felt_eq, continue, <remaining_felts>]
 
-    # check 1_x < 2_x
-    lt
-    # => [is_felt_lt, is_less, is_felt_eq, continue, <remaining_felts>]
+        # check 1_x < 2_x
+        lt
+        # => [is_felt_lt, is_less, is_felt_eq, continue, <remaining_felts>]
 
-    dup.3 u32and
-    # => [is_felt_lt_if_continue, is_less, is_felt_eq, continue, <remaining_felts>]
+        dup.3 u32and
+        # => [is_felt_lt_if_continue, is_less, is_felt_eq, continue, <remaining_felts>]
 
-    u32or movdn.2
-    # => [is_felt_eq, continue, is_less, <remaining_felts>]
+        u32or movdn.2
+        # => [is_felt_eq, continue, is_less, <remaining_felts>]
 
-    # keeps continue at 1 if the felts are equal
-    # sets continue to 0 if the felts are not equal
-    u32and
-    # => [continue, is_less, <remaining_felts>]
-    swap
-    # => [is_less, continue, <remaining_felts>]
-  end
-  # => [is_less, continue]
+        # keeps continue at 1 if the felts are equal
+        # sets continue to 0 if the felts are not equal
+        u32and
+        # => [continue, is_less, <remaining_felts>]
+        swap
+        # => [is_less, continue, <remaining_felts>]
+    end
+    # => [is_less, continue]
 
-  swap drop
-  # => [is_less]
+    swap drop
+    # => [is_less]
 end
 
 #! Arranges the given words such that the corresponding elements are next to each other.
@@ -776,13 +775,13 @@ end
 #! Inputs:  [KEY1, KEY2]
 #! Outputs: [key2_3, key1_3, key2_2, key1_2, key2_1, key1_1, key2_0, key1_0]
 proc.arrange_words_adjacent
-  # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
-  movup.3 movup.7
-  # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
-  movup.4 movup.7
-  # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
-  movup.5 movup.7
-  # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
-  movup.6 movup.7
-  # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
+    movup.3 movup.7
+    # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
+    movup.4 movup.7
+    # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
+    movup.5 movup.7
+    # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
+    movup.6 movup.7
+    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 end

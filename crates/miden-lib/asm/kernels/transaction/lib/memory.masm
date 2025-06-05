@@ -41,7 +41,7 @@ const.NEW_CODE_ROOT_PTR=20
 # The memory address at which the absolute expiration block number is stored.
 const.TX_EXPIRATION_BLOCK_NUM_PTR=24
 
-# The memory address at which the pointer to the account stack element containing the pointer to the 
+# The memory address at which the pointer to the account stack element containing the pointer to the
 # currently accessing account data is stored.
 const.ACCOUNT_STACK_TOP_PTR=28
 
@@ -705,7 +705,7 @@ end
 #! Inputs:  []
 #! Outputs: []
 export.set_current_account_data_ptr_to_native_account
-    # get the pointer to the first stack element where pointer to the native account data should be 
+    # get the pointer to the first stack element where pointer to the native account data should be
     # stored
     push.ACCOUNT_STACK_TOP_PTR
     push.MIN_ACCOUNT_STACK_PTR
@@ -715,7 +715,7 @@ export.set_current_account_data_ptr_to_native_account
     push.NATIVE_ACCOUNT_DATA_PTR dup.1 mem_store
     # => [native_acct_stack_ptr, account_stack_top_ptr]
 
-    # store the pointer to the first account stack element at the account stack top 
+    # store the pointer to the first account stack element at the account stack top
     # pointer.
     swap mem_store
     # => []
@@ -757,7 +757,7 @@ export.push_ptr_to_account_stack
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
     # check that the current account data pointer is not equal to the native account data pointer
-    dup.1 push.NATIVE_ACCOUNT_DATA_PTR eq 
+    dup.1 push.NATIVE_ACCOUNT_DATA_PTR eq
     assertz.err=ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
@@ -1575,7 +1575,7 @@ end
 #! Inputs:  []
 #! Outputs: [start_ptr]
 export.get_link_map_memory_start_ptr
-  push.LINK_MAP_MEMORY_START_PTR
+    push.LINK_MAP_MEMORY_START_PTR
 end
 
 #! Returns the link map memory end ptr constant.
@@ -1583,7 +1583,7 @@ end
 #! Inputs:  []
 #! Outputs: [end_ptr]
 export.get_link_map_memory_end_ptr
-  push.LINK_MAP_MEMORY_END_PTR
+    push.LINK_MAP_MEMORY_END_PTR
 end
 
 #! Returns the link map entry size constant.
@@ -1591,26 +1591,25 @@ end
 #! Inputs:  []
 #! Outputs: [entry_size]
 export.get_link_map_entry_size
-  push.LINK_MAP_ENTRY_SIZE
+    push.LINK_MAP_ENTRY_SIZE
 end
-
 
 #! Returns the next pointer to an empty link map entry.
 #!
 #! Inputs:  []
 #! Outputs: [entry_ptr]
 export.link_map_malloc
-  # retrieve the current offset
-  mem_load.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET dup
-  # => [current_offset, current_offset]
+    # retrieve the current offset
+    mem_load.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET dup
+    # => [current_offset, current_offset]
 
-  # store next offset
-  add.LINK_MAP_ENTRY_SIZE
-  # => [next_offset, current_offset]
+    # store next offset
+    add.LINK_MAP_ENTRY_SIZE
+    # => [next_offset, current_offset]
 
-  mem_store.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET
-  # => [current_offset]
+    mem_store.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET
+    # => [current_offset]
 
-  add.LINK_MAP_MEMORY_START_PTR
-  # => [entry_ptr]
+    add.LINK_MAP_MEMORY_START_PTR
+    # => [entry_ptr]
 end
