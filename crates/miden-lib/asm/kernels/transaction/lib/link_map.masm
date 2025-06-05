@@ -116,11 +116,17 @@ use.kernel::memory
 #     key. If the host-provided entry has a next entry, then the requested key must also be less
 #     than the next entry's key to validate the absence claim.
 
+# EVENTS
+# -------------------------------------------------------------------------------------------------
+
 # Event emitted when an entry is set.
 const.LINK_MAP_SET_EVENT=131098
 
 # Event emitted when an entry is fetched.
 const.LINK_MAP_GET_EVENT=131099
+
+# PUBLIC API
+# -------------------------------------------------------------------------------------------------
 
 #! Inserts the specified key-value pair into the map, or updates the existing key if the pair
 #! already exists.
@@ -248,108 +254,16 @@ export.get
     end
 end
 
-#! Computes a commitment of the map over all contained key-value pairs.
+#! Returns true if the list is empty, i.e. map ptr points to 0.
 #!
 #! Inputs:  [map_ptr]
-#! Outputs: [MAP_COMMITMENT]
-export.compute_commitment
-    # while we use an SMT as the underlying implementation, the root is the commitment.
-    padw movup.4 mem_loadw
-    # => [SMT_ROOT]
+#! Outputs: [is_empty]
+export.is_empty
+    mem_load eq.0
 end
 
-#! Validates that the provided KEY is absent at the head of the link map.
-#!
-#! An invariant of the link map is that its entries are sorted and since there is no previous
-#! entry for the head, this proves that the KEY is absent from the map.
-#!
-#! Inputs:  [map_ptr, KEY]
-#! Outputs: []
-#!
-#! Panics if:
-#! - the KEY is not less than the key in the head of the map, unless the map is empty.
-proc.validate_absent_at_head
-    drop dup exec.is_empty
-    # => [is_empty, map_ptr, KEY]
-
-    if.true
-        # in an empty list, any KEY is absent at the head, so there's nothing further to validate
-        drop dropw
-        # => []
-    else
-        exec.get_head
-        # => [entry_ptr, KEY]
-
-        # assert that KEY is less than the current head's key
-        exec.assert_key_is_less
-        # => []
-    end
-end
-
-#! Validates that the provided KEY is absent after the provided entry.
-#!
-#! If KEY is greater than the key in the entry and less than the key in entry's next entry, then
-#! that proves the absence of the key.
-#!
-#! Inputs:  [entry_ptr, map_ptr, KEY]
-#! Outputs: []
-#!
-#! Panics if:
-#! - the map is empty.
-#! - the KEY is not greater than the key in the entry.
-#! - the KEY is not less than the key in entry.next_entry, unless entry is the last one in the map.
-proc.validate_absent_after_entry
-    swap exec.is_empty assertz.err="map cannot be empty when proving absence after an entry"
-    # => [entry_ptr, KEY]
-
-    movdn.4 dupw
-    # => [KEY, KEY, entry_ptr]
-
-    dup.8
-    # => [entry_ptr, KEY, KEY, entry_ptr]
-
-    # assert that KEY is greater than the entry's key
-    exec.assert_key_is_greater
-    # => [KEY, entry_ptr]
-
-    movup.4 exec.get_next_entry_ptr
-    # => [next_entry_ptr, KEY]
-
-    dup eq.0
-    # => [is_last_entry, next_entry_ptr, KEY]
-
-    if.true
-        # nothing further to validate
-        drop dropw
-        # => []
-    else
-        # if there is a next entry, then the KEY must be less than next entry's key
-        exec.assert_key_is_less
-        # => []
-    end
-    # => []
-end
-
-#! Fetches the VALUE at the provided KEY from the provided entry.
-#!
-#! Inputs:  [entry_ptr, KEY]
-#! Outputs: [VALUE]
-#!
-#! Panics if:
-#! - the key in the entry does not match KEY.
-proc.get_existent_value
-    movdn.4
-    # => [KEY, entry_ptr]
-
-    dup.4 exec.get_key
-    # => [ENTRY_KEY, KEY, entry_ptr]
-
-    assert_eqw.err="key in map entry does not match requested key"
-    # => [entry_ptr]
-
-    exec.get_value
-    # => [VALUE]
-end
+# SET HELPERS
+# -------------------------------------------------------------------------------------------------
 
 #! Updates the value in the given entry.
 #!
@@ -506,42 +420,6 @@ proc.insert_after_entry
     # => []
 end
 
-#! Asserts that the KEY is equal to the key in the entry.
-#!
-#! Inputs:  [entry_ptr, KEY]
-#! Outputs: []
-proc.assert_key_is_equal
-    exec.get_key swapw
-    # => [KEY, ENTRY_KEY]
-
-    exec.is_equal assert.err="provided key is not equal to the entry key"
-    # => []
-end
-
-#! Asserts that the KEY is greater than the key in the entry pointer.
-#!
-#! Inputs:  [entry_ptr, KEY]
-#! Outputs: []
-proc.assert_key_is_greater
-    exec.get_key swapw
-    # => [KEY, ENTRY_KEY]
-
-    exec.is_greater assert.err="provided key is not greater than the entry key"
-    # => []
-end
-
-#! Asserts that the KEY is less than the key in the entry pointer.
-#!
-#! Inputs:  [entry_ptr, KEY]
-#! Outputs: []
-proc.assert_key_is_less
-    exec.get_key swapw
-    # => [KEY, ENTRY_KEY]
-
-    exec.is_less assert.err="provided key is not less than the entry key"
-    # => []
-end
-
 #! Inserts the key, value into the entry pointer and sets the map ptr to the provided value.
 #!
 #! Inputs:  [entry_ptr, map_ptr, KEY, VALUE]
@@ -560,13 +438,104 @@ proc.insert_pair
     exec.set_value
 end
 
-#! Returns true if the list is empty, i.e. map ptr points to 0.
+# GET HELPERS
+# -------------------------------------------------------------------------------------------------
+
+#! Validates that the provided KEY is absent at the head of the link map.
 #!
-#! Inputs:  [map_ptr]
-#! Outputs: [is_empty]
-proc.is_empty
-    mem_load eq.0
+#! An invariant of the link map is that its entries are sorted and since there is no previous
+#! entry for the head, this proves that the KEY is absent from the map.
+#!
+#! Inputs:  [map_ptr, KEY]
+#! Outputs: []
+#!
+#! Panics if:
+#! - the KEY is not less than the key in the head of the map, unless the map is empty.
+proc.validate_absent_at_head
+    drop dup exec.is_empty
+    # => [is_empty, map_ptr, KEY]
+
+    if.true
+        # in an empty list, any KEY is absent at the head, so there's nothing further to validate
+        drop dropw
+        # => []
+    else
+        exec.get_head
+        # => [entry_ptr, KEY]
+
+        # assert that KEY is less than the current head's key
+        exec.assert_key_is_less
+        # => []
+    end
 end
+
+#! Validates that the provided KEY is absent after the provided entry.
+#!
+#! If KEY is greater than the key in the entry and less than the key in entry's next entry, then
+#! that proves the absence of the key.
+#!
+#! Inputs:  [entry_ptr, map_ptr, KEY]
+#! Outputs: []
+#!
+#! Panics if:
+#! - the map is empty.
+#! - the KEY is not greater than the key in the entry.
+#! - the KEY is not less than the key in entry.next_entry, unless entry is the last one in the map.
+proc.validate_absent_after_entry
+    swap exec.is_empty assertz.err="map cannot be empty when proving absence after an entry"
+    # => [entry_ptr, KEY]
+
+    movdn.4 dupw
+    # => [KEY, KEY, entry_ptr]
+
+    dup.8
+    # => [entry_ptr, KEY, KEY, entry_ptr]
+
+    # assert that KEY is greater than the entry's key
+    exec.assert_key_is_greater
+    # => [KEY, entry_ptr]
+
+    movup.4 exec.get_next_entry_ptr
+    # => [next_entry_ptr, KEY]
+
+    dup eq.0
+    # => [is_last_entry, next_entry_ptr, KEY]
+
+    if.true
+        # nothing further to validate
+        drop dropw
+        # => []
+    else
+        # if there is a next entry, then the KEY must be less than next entry's key
+        exec.assert_key_is_less
+        # => []
+    end
+    # => []
+end
+
+#! Fetches the VALUE at the provided KEY from the provided entry.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: [VALUE]
+#!
+#! Panics if:
+#! - the key in the entry does not match KEY.
+proc.get_existent_value
+    movdn.4
+    # => [KEY, entry_ptr]
+
+    dup.4 exec.get_key
+    # => [ENTRY_KEY, KEY, entry_ptr]
+
+    assert_eqw.err="key in map entry does not match requested key"
+    # => [entry_ptr]
+
+    exec.get_value
+    # => [VALUE]
+end
+
+# HELPERS
+# -------------------------------------------------------------------------------------------------
 
 #! Returns true if the entry at the given ptr has a non-null ptr to a next entry.
 #!
@@ -574,24 +543,6 @@ end
 #! Outputs: [has_next]
 proc.has_next
     exec.get_next_entry_ptr eq.0 not
-end
-
-#! Returns the value of the next_entry pointer in the provided entry pointer.
-#!
-#! Inputs:  [entry_ptr]
-#! Outputs: [next_entry_ptr]
-proc.get_next_entry_ptr
-    add.2 mem_load
-    # => [next_entry_ptr]
-end
-
-#! Returns the value of the prev_entry pointer in the provided entry pointer.
-#!
-#! Inputs:  [entry_ptr]
-#! Outputs: [prev_entry_ptr]
-proc.get_prev_entry_ptr
-    add.1 mem_load
-    # => [prev_entry_ptr]
 end
 
 #! Sets the next_entry ptr of the entry to the provided value.
@@ -603,6 +554,15 @@ proc.set_next_entry_ptr
     # => []
 end
 
+#! Returns the value of the next_entry pointer in the provided entry pointer.
+#!
+#! Inputs:  [entry_ptr]
+#! Outputs: [next_entry_ptr]
+proc.get_next_entry_ptr
+    add.2 mem_load
+    # => [next_entry_ptr]
+end
+
 #! Sets the prev_entry ptr of the entry to the provided value.
 #!
 #! Inputs:  [entry_ptr, prev_entry_ptr]
@@ -610,6 +570,23 @@ end
 proc.set_prev_entry_ptr
     add.1 mem_store
     # => []
+end
+
+#! Returns the value of the prev_entry pointer in the provided entry pointer.
+#!
+#! Inputs:  [entry_ptr]
+#! Outputs: [prev_entry_ptr]
+proc.get_prev_entry_ptr
+    add.1 mem_load
+    # => [prev_entry_ptr]
+end
+
+#! Sets the value of the entry pointer.
+#!
+#! Inputs:  [entry_ptr, VALUE]
+#! Outputs: []
+proc.set_value
+    add.8 mem_storew dropw
 end
 
 #! Returns the value of the entry pointer.
@@ -621,6 +598,14 @@ proc.get_value
     # => [entry_ptr, pad(4)]
     add.8 mem_loadw
     # => [VALUE]
+end
+
+#! Sets the key of the entry pointer.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: []
+proc.set_key
+    add.4 mem_storew dropw
 end
 
 #! Returns the key of the entry pointer.
@@ -666,20 +651,43 @@ proc.get_map_ptr
     mem_load
 end
 
-#! Sets the key of the entry pointer.
+# ASSERTIONS
+# -------------------------------------------------------------------------------------------------
+
+#! Asserts that the KEY is equal to the key in the entry.
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.set_key
-    add.4 mem_storew dropw
+proc.assert_key_is_equal
+    exec.get_key swapw
+    # => [KEY, ENTRY_KEY]
+
+    exec.is_key_equal assert.err="provided key is not equal to the entry key"
+    # => []
 end
 
-#! Sets the value of the entry pointer.
+#! Asserts that the KEY is greater than the key in the entry pointer.
 #!
-#! Inputs:  [entry_ptr, VALUE]
+#! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.set_value
-    add.8 mem_storew dropw
+proc.assert_key_is_greater
+    exec.get_key swapw
+    # => [KEY, ENTRY_KEY]
+
+    exec.is_key_greater assert.err="provided key is not greater than the entry key"
+    # => []
+end
+
+#! Asserts that the KEY is less than the key in the entry pointer.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: []
+proc.assert_key_is_less
+    exec.get_key swapw
+    # => [KEY, ENTRY_KEY]
+
+    exec.is_key_less assert.err="provided key is not less than the entry key"
+    # => []
 end
 
 #! Asserts that the given entry ptr is a valid entry in the map identified by map_ptr.
@@ -748,37 +756,43 @@ end
 
 #! Returns true if KEY1 is equal to KEY2, false otherwise.
 #!
+#! The implementation avoids branching for performance reasons.
+#! The procedure is exported for testing purposes only.
+#!
 #! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_equal]
-export.is_equal
+#! Outputs: [is_key_equal]
+export.is_key_equal
     exec.arrange_words_adjacent
     # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
     push.1
-    # => [is_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    # => [is_key_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
     repeat.4
         swap movup.2
-        # => [2_x, 1_x, is_equal, <remaining_felts>]
+        # => [2_x, 1_x, is_key_equal, <remaining_felts>]
         eq
-        # => [felts_x_equal, is_equal, <remaining_felts>]
+        # => [felts_x_equal, is_key_equal, <remaining_felts>]
         and
-        # => [is_equal, <remaining_felts>]
+        # => [is_key_equal, <remaining_felts>]
     end
-    # => [is_equal]
+    # => [is_key_equal]
 end
 
 #! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
 #!
+#! The implementation avoids branching for performance reasons.
+#! The procedure is exported for testing purposes only.
+#!
 #! For reference, this is equivalent to the following Rust function:
 #!
-#! fn is_word_greater(w0: Word, w1: Word) -> bool {
+#! fn is_key_greater(key1: Word, key2: Word) -> bool {
 #!     let mut result = 0u8;
 #!     let mut cont = 1u8;
 #!
 #!     for i in (0..4).rev() {
-#!         let gt = w0[i].as_int() > w1[i].as_int();
-#!         let eq = w0[i].as_int() == w1[i].as_int();
+#!         let gt = key1[i].as_int() > key2[i].as_int();
+#!         let eq = key1[i].as_int() == key2[i].as_int();
 #!
 #!         result |= gt as u8 & cont;
 #!         cont &= eq as u8;
@@ -788,94 +802,97 @@ end
 #! }
 #!
 #! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_greater]
-export.is_greater
+#! Outputs: [is_key_greater]
+export.is_key_greater
     exec.arrange_words_adjacent
     # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
     push.1.0
-    # => [is_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    # => [is_key_greater, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
     repeat.4
         movup.3 movup.3
-        # => [2_x, 1_x, is_greater, continue, <remaining_felts>]
+        # => [2_x, 1_x, is_key_greater, continue, <remaining_felts>]
 
         # check 1_x == 2_x; if so, we continue
         dup dup.2 eq
-        # => [is_felt_eq, 2_x, 1_x, is_greater, continue, <remaining_felts>]
+        # => [is_felt_eq, 2_x, 1_x, is_key_greater, continue, <remaining_felts>]
 
         movdn.3
-        # => [2_x, 1_x, is_greater, is_felt_eq, continue, <remaining_felts>]
+        # => [2_x, 1_x, is_key_greater, is_felt_eq, continue, <remaining_felts>]
 
         # check 1_x > 2_x
         gt
-        # => [is_felt_gt, is_greater, is_felt_eq, continue, <remaining_felts>]
+        # => [is_felt_gt, is_key_greater, is_felt_eq, continue, <remaining_felts>]
 
         dup.3 u32and
-        # => [is_felt_gt_if_continue, is_greater, is_felt_eq, continue, <remaining_felts>]
+        # => [is_felt_gt_if_continue, is_key_greater, is_felt_eq, continue, <remaining_felts>]
 
         u32or movdn.2
-        # => [is_felt_eq, continue, is_greater, <remaining_felts>]
+        # => [is_felt_eq, continue, is_key_greater, <remaining_felts>]
 
         # keeps continue at 1 if the felts are equal
         # sets continue to 0 if the felts are not equal
         u32and
-        # => [continue, is_greater, <remaining_felts>]
+        # => [continue, is_key_greater, <remaining_felts>]
         swap
-        # => [is_greater, continue, <remaining_felts>]
+        # => [is_key_greater, continue, <remaining_felts>]
     end
-    # => [is_greater, continue]
+    # => [is_key_greater, continue]
 
     swap drop
-    # => [is_greater]
+    # => [is_key_greater]
 end
 
 #! Returns true if KEY1 is strictly less than KEY2, false otherwise.
 #!
-#! From an implementation standpoint this is exactly the same as `is_greater` except it uses
+#! The implementation avoids branching for performance reasons.
+#! The procedure is exported for testing purposes only.
+#!
+#! From an implementation standpoint this is exactly the same as `is_key_greater` except it uses
 #! `lt` rather than `gt`. See its docs for details.
 #!
 #! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_less]
-export.is_less
+#! Outputs: [is_key_less]
+export.is_key_less
     exec.arrange_words_adjacent
     # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
     push.1.0
-    # => [is_less, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
+    # => [is_key_less, continue, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 
     repeat.4
         movup.3 movup.3
-        # => [2_x, 1_x, is_less, continue, <remaining_felts>]
+        # => [2_x, 1_x, is_key_less, continue, <remaining_felts>]
 
         # check 1_x == 2_x; if so, we continue
         dup dup.2 eq
-        # => [is_felt_eq, 2_x, 1_x, is_less, continue, <remaining_felts>]
+        # => [is_felt_eq, 2_x, 1_x, is_key_less, continue, <remaining_felts>]
 
         movdn.3
-        # => [2_x, 1_x, is_less, is_felt_eq, continue, <remaining_felts>]
+        # => [2_x, 1_x, is_key_less, is_felt_eq, continue, <remaining_felts>]
 
         # check 1_x < 2_x
         lt
-        # => [is_felt_lt, is_less, is_felt_eq, continue, <remaining_felts>]
+        # => [is_felt_lt, is_key_less, is_felt_eq, continue, <remaining_felts>]
 
         dup.3 u32and
-        # => [is_felt_lt_if_continue, is_less, is_felt_eq, continue, <remaining_felts>]
+        # => [is_felt_lt_if_continue, is_key_less, is_felt_eq, continue, <remaining_felts>]
 
         u32or movdn.2
-        # => [is_felt_eq, continue, is_less, <remaining_felts>]
+        # => [is_felt_eq, continue, is_key_less, <remaining_felts>]
 
         # keeps continue at 1 if the felts are equal
         # sets continue to 0 if the felts are not equal
         u32and
-        # => [continue, is_less, <remaining_felts>]
+        # => [continue, is_key_less, <remaining_felts>]
         swap
-        # => [is_less, continue, <remaining_felts>]
+        # => [is_key_less, continue, <remaining_felts>]
     end
-    # => [is_less, continue]
+    # => [is_key_less, continue]
 
     swap drop
-    # => [is_less]
+    # => [is_key_less]
 end
 
 #! Arranges the given words such that the corresponding elements are next to each other.

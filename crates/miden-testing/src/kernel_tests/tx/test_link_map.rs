@@ -266,25 +266,25 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
 // ================================================================================================
 
 #[test]
-fn is_greater() -> anyhow::Result<()> {
+fn is_key_greater() -> anyhow::Result<()> {
     execute_comparison_test(Ordering::Greater)
 }
 
 #[test]
-fn is_equal() -> anyhow::Result<()> {
+fn is_key_equal() -> anyhow::Result<()> {
     execute_comparison_test(Ordering::Equal)
 }
 
 #[test]
-fn is_less() -> anyhow::Result<()> {
+fn is_key_less() -> anyhow::Result<()> {
     execute_comparison_test(Ordering::Less)
 }
 
 fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
     let procedure_name = match operation {
-        Ordering::Less => "is_less",
-        Ordering::Equal => "is_equal",
-        Ordering::Greater => "is_greater",
+        Ordering::Less => "is_key_less",
+        Ordering::Equal => "is_key_equal",
+        Ordering::Greater => "is_key_greater",
     };
 
     let mut test_code = String::new();
