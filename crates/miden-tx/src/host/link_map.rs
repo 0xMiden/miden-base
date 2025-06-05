@@ -93,9 +93,9 @@ impl<'process> LinkMap<'process> {
         EntryMetadata { map_ptr, prev_item, next_item }
     }
 
-    pub fn find_insertion(&self, key: Word) -> (Operation, u32) {
+    pub fn compute_set_operation(&self, key: Word) -> (SetOperation, u32) {
         let Some(current_head) = self.head() else {
-            return (Operation::InsertAtHead, 0);
+            return (SetOperation::InsertAtHead, 0);
         };
 
         let mut last_entry_ptr: u32 = current_head;
@@ -103,11 +103,11 @@ impl<'process> LinkMap<'process> {
         for entry in self.iter() {
             match Self::compare_keys(key, entry.key) {
                 Ordering::Equal => {
-                    return (Operation::Update, entry.ptr);
+                    return (SetOperation::Update, entry.ptr);
                 },
                 Ordering::Less => {
                     if entry.ptr == current_head {
-                        return (Operation::InsertAtHead, entry.ptr);
+                        return (SetOperation::InsertAtHead, entry.ptr);
                     }
 
                     break;
@@ -118,12 +118,17 @@ impl<'process> LinkMap<'process> {
             }
         }
 
-        (Operation::InsertAfterEntry, last_entry_ptr)
+        (SetOperation::InsertAfterEntry, last_entry_ptr)
     }
 
-    pub fn find(&self, key: Word) -> Option<u32> {
-        self.iter()
-            .find_map(|entry| if entry.key == key { Some(entry.ptr) } else { None })
+    pub fn compute_get_operation(&self, key: Word) -> (GetOperation, u32) {
+        let (set_op, entry_ptr) = self.compute_set_operation(key);
+        let get_op = match set_op {
+            SetOperation::Update => GetOperation::Found,
+            SetOperation::InsertAtHead => GetOperation::AbsentAtHead,
+            SetOperation::InsertAfterEntry => GetOperation::AbsentAfterEntry,
+        };
+        (get_op, entry_ptr)
     }
 
     pub fn iter(&self) -> LinkMapIter {
@@ -183,7 +188,15 @@ pub struct EntryMetadata {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
-pub enum Operation {
+pub enum GetOperation {
+    Found = 0,
+    AbsentAtHead = 1,
+    AbsentAfterEntry = 2,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+pub enum SetOperation {
     Update = 0,
     InsertAtHead = 1,
     InsertAfterEntry = 2,

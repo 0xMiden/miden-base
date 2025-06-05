@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
+use miden_crypto::EMPTY_WORD;
 use miden_objects::{Digest, ONE, Word};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
@@ -104,7 +105,7 @@ fn set_on_empty_map() -> anyhow::Result<()> {
           # key
           push.2.3.4.5
           push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
+          # => [map_ptr, KEY, VALUE]
 
           exec.link_map::set
           # => []
@@ -126,7 +127,8 @@ fn set_on_empty_map() -> anyhow::Result<()> {
           # => [map_ptr, KEY]
 
           exec.link_map::get
-          # => [VALUE]
+          # => [contains_key, VALUE]
+          assert.err="value should exist"
 
           push.1.2.3.4
           assert_eqw.err="retrieved value should be the previously inserted value"
@@ -141,116 +143,24 @@ fn set_on_empty_map() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn set_multiple_entries() -> anyhow::Result<()> {
-    let code = r#"
-      use.kernel::link_map
-
-      const.MAP_PTR=8
-
-      begin
-          # Insert key [1, 1, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # value
-          push.1.2.3.4
-          # key
-          push.1.1.1.1
-          push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
-
-          exec.link_map::set
-          # => []
-
-          # Insert key [1, 3, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # value
-          push.3.4.5.6
-          # key
-          push.1.3.1.1
-          push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
-
-          exec.link_map::set
-          # => []
-
-          # Insert key [1, 2, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # value
-          push.4.5.6.7
-          # key
-          push.1.2.1.1
-          push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
-
-          exec.link_map::set
-          # => []
-
-          # Fetch value at key [1, 1, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # key
-          push.1.1.1.1
-          push.MAP_PTR
-          # => [map_ptr, KEY]
-
-          exec.link_map::get
-          # => [VALUE]
-
-          push.1.2.3.4
-          assert_eqw.err="retrieved value for key [1, 1, 1, 1] should be the previously inserted value"
-          # => []
-
-          # Fetch value at key [1, 2, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # key
-          push.1.2.1.1
-          push.MAP_PTR
-          # => [map_ptr, KEY]
-
-          exec.link_map::get
-          # => [VALUE]
-
-          push.4.5.6.7
-          assert_eqw.err="retrieved value for key [1, 2, 1, 1] should be the previously inserted value"
-          # => []
-
-          # Fetch value at key [1, 3, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # key
-          push.1.3.1.1
-          push.MAP_PTR
-          # => [map_ptr, KEY]
-
-          exec.link_map::get
-          # => [VALUE]
-
-          push.3.4.5.6
-          assert_eqw.err="retrieved value for key [1, 3, 1, 1] should be the previously inserted value"
-          # => []
-      end
-    "#;
-
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
-
-    tx_context.execute_code(code).context("failed to execute code")?;
-
-    Ok(())
-}
-
+/// Tests the following properties:
+/// - Insertion into an empty map.
+/// - Insertion after an existing entry.
+/// - Insertion in between two existing entries.
+/// - Insertion before an existing head.
 #[test]
 fn link_map_iterator() -> anyhow::Result<()> {
     let map_ptr = 8u32;
-    let entry0_key = Digest::from([1, 1, 1, 1u32]);
+    // check that using an empty word as key is fine
+    let entry0_key = Digest::from([0, 0, 0, 0u32]);
     let entry0_value = Digest::from([1, 2, 3, 4u32]);
     let entry1_key = Digest::from([1, 2, 1, 1u32]);
     let entry1_value = Digest::from([3, 4, 5, 6u32]);
     let entry2_key = Digest::from([1, 3, 1, 1u32]);
-    let entry2_value = Digest::from([2, 3, 4, 5u32]);
+    // check that using an empty word as value is fine
+    let entry2_value = Digest::from([0, 0, 0, 0u32]);
+    let entry3_key = Digest::from([1, 4, 1, 1u32]);
+    let entry3_value = Digest::from([5, 6, 7, 8u32]);
 
     let code = format!(
         r#"
@@ -259,33 +169,7 @@ fn link_map_iterator() -> anyhow::Result<()> {
       const.MAP_PTR={map_ptr}
 
       begin
-          # Insert key [1, 1, 1, 1].
-          # ---------------------------------------------------------------------------------------
-
-          # value
-          push.{entry0_value}
-          # key
-          push.{entry0_key}
-          push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
-
-          exec.link_map::set
-          # => []
-
-          # Insert key [1, 3, 1, 1] after the previous one.
-          # ---------------------------------------------------------------------------------------
-
-          # value
-          push.{entry2_value}
-          # key
-          push.{entry2_key}
-          push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
-
-          exec.link_map::set
-          # => []
-
-          # Insert key [1, 2, 1, 1] in between the first two.
+          # Insert key {entry1_key} into an empty map.
           # ---------------------------------------------------------------------------------------
 
           # value
@@ -293,9 +177,112 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # key
           push.{entry1_key}
           push.MAP_PTR
-          # => [map_ptr, KEY, NEW_VALUE]
+          # => [map_ptr, KEY, VALUE]
 
           exec.link_map::set
+          # => []
+
+          # Insert key {entry3_key} after the previous one.
+          # ---------------------------------------------------------------------------------------
+
+          # value
+          push.{entry3_value}
+          # key
+          push.{entry3_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY, VALUE]
+
+          exec.link_map::set
+          # => []
+
+          # Insert key {entry2_key} in between the first two.
+          # ---------------------------------------------------------------------------------------
+
+          # value
+          push.{entry2_value}
+          # key
+          push.{entry2_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY, VALUE]
+
+          exec.link_map::set
+          # => []
+
+          # Insert key {entry0_key} at the head of the map.
+          # ---------------------------------------------------------------------------------------
+
+          # value
+          push.{entry0_value}
+          # key
+          push.{entry0_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY, VALUE]
+
+          exec.link_map::set
+          # => []
+
+          # Fetch value at key {entry0_key}.
+          # ---------------------------------------------------------------------------------------
+
+          # key
+          push.{entry0_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY]
+
+          exec.link_map::get
+          # => [contains_key, VALUE]
+          assert.err="value for key {entry0_key} should exist"
+
+          push.{entry0_value}
+          assert_eqw.err="retrieved value for key {entry0_key} should be the previously inserted value"
+          # => []
+
+          # Fetch value at key {entry1_key}.
+          # ---------------------------------------------------------------------------------------
+
+          # key
+          push.{entry1_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY]
+
+          exec.link_map::get
+          # => [contains_key, VALUE]
+          assert.err="value for key {entry1_key} should exist"
+
+          push.{entry1_value}
+          assert_eqw.err="retrieved value for key {entry1_key} should be the previously inserted value"
+          # => []
+
+          # Fetch value at key {entry2_key}.
+          # ---------------------------------------------------------------------------------------
+
+          # key
+          push.{entry2_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY]
+
+          exec.link_map::get
+          # => [contains_key, VALUE]
+          assert.err="value for key {entry2_key} should exist"
+
+          push.{entry2_value}
+          assert_eqw.err="retrieved value for key {entry2_key} should be the previously inserted value"
+          # => []
+
+          # Fetch value at key {entry3_key}.
+          # ---------------------------------------------------------------------------------------
+
+          # key
+          push.{entry3_key}
+          push.MAP_PTR
+          # => [map_ptr, KEY]
+
+          exec.link_map::get
+          # => [contains_key, VALUE]
+          assert.err="value for key {entry3_key} should exist"
+
+          push.{entry3_value}
+          assert_eqw.err="retrieved value for key {entry3_key} should be the previously inserted value"
           # => []
       end
     "#,
@@ -305,6 +292,8 @@ fn link_map_iterator() -> anyhow::Result<()> {
         entry1_value = word_to_masm_push_string(&entry1_value),
         entry2_key = word_to_masm_push_string(&entry2_key),
         entry2_value = word_to_masm_push_string(&entry2_value),
+        entry3_key = word_to_masm_push_string(&entry3_key),
+        entry3_value = word_to_masm_push_string(&entry3_value),
     );
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
@@ -314,28 +303,35 @@ fn link_map_iterator() -> anyhow::Result<()> {
     let map = LinkMap::new(map_ptr.into(), state).unwrap();
     let mut map_iter = map.iter();
 
-    let first_entry = map_iter.next().expect("map should have three entries");
-    let second_entry = map_iter.next().expect("map should have three entries");
-    let third_entry = map_iter.next().expect("map should have three entries");
-    assert!(map_iter.next().is_none(), "map should only have three entries");
+    let entry0 = map_iter.next().expect("map should have four entries");
+    let entry1 = map_iter.next().expect("map should have four entries");
+    let entry2 = map_iter.next().expect("map should have four entries");
+    let entry3 = map_iter.next().expect("map should have four entries");
+    assert!(map_iter.next().is_none(), "map should only have four entries");
 
-    assert_eq!(first_entry.metadata.map_ptr, map_ptr);
-    assert_eq!(first_entry.metadata.prev_item, 0);
-    assert_eq!(first_entry.metadata.next_item, second_entry.ptr);
-    assert_eq!(first_entry.key, *entry0_key);
-    assert_eq!(first_entry.value, *entry0_value);
+    assert_eq!(entry0.metadata.map_ptr, map_ptr);
+    assert_eq!(entry0.metadata.prev_item, 0);
+    assert_eq!(entry0.metadata.next_item, entry1.ptr);
+    assert_eq!(entry0.key, *entry0_key);
+    assert_eq!(entry0.value, *entry0_value);
 
-    assert_eq!(second_entry.metadata.map_ptr, map_ptr);
-    assert_eq!(second_entry.metadata.prev_item, first_entry.ptr);
-    assert_eq!(second_entry.metadata.next_item, third_entry.ptr);
-    assert_eq!(second_entry.key, *entry1_key);
-    assert_eq!(second_entry.value, *entry1_value);
+    assert_eq!(entry1.metadata.map_ptr, map_ptr);
+    assert_eq!(entry1.metadata.prev_item, entry0.ptr);
+    assert_eq!(entry1.metadata.next_item, entry2.ptr);
+    assert_eq!(entry1.key, *entry1_key);
+    assert_eq!(entry1.value, *entry1_value);
 
-    assert_eq!(third_entry.metadata.map_ptr, map_ptr);
-    assert_eq!(third_entry.metadata.prev_item, second_entry.ptr);
-    assert_eq!(third_entry.metadata.next_item, 0);
-    assert_eq!(third_entry.key, *entry2_key);
-    assert_eq!(third_entry.value, *entry2_value);
+    assert_eq!(entry2.metadata.map_ptr, map_ptr);
+    assert_eq!(entry2.metadata.prev_item, entry1.ptr);
+    assert_eq!(entry2.metadata.next_item, entry3.ptr);
+    assert_eq!(entry2.key, *entry2_key);
+    assert_eq!(entry2.value, *entry2_value);
+
+    assert_eq!(entry3.metadata.map_ptr, map_ptr);
+    assert_eq!(entry3.metadata.prev_item, entry2.ptr);
+    assert_eq!(entry3.metadata.next_item, 0);
+    assert_eq!(entry3.key, *entry3_key);
+    assert_eq!(entry3.value, *entry3_value);
 
     Ok(())
 }
@@ -368,6 +364,7 @@ fn insert_at_head() -> anyhow::Result<()> {
 #[test]
 fn set_update_get_random_entries() -> anyhow::Result<()> {
     let entries = generate_entries(1000);
+    let absent_entries = generate_entries(100);
     let update_ops = generate_updates(&entries, 200);
 
     // Insert all entries into the map.
@@ -379,10 +376,17 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
     // Fetch all values and ensure they are as expected, in particular the updated ones.
     let get_ops2 = generate_get_ops(&entries);
 
+    // Fetch values for entries that are (most likely) absent.
+    // Note that the link map test will simply assert that the link map returns whatever the btree
+    // map returns, so whether they actually exist or not does not matter for the correctness of the
+    // test.
+    let get_ops3 = generate_get_ops(&absent_entries);
+
     let mut test_operations = set_ops;
     test_operations.extend(get_ops);
     test_operations.extend(set_update_ops);
     test_operations.extend(get_ops2);
+    test_operations.extend(get_ops3);
 
     execute_link_map_test(test_operations)
 }
@@ -417,7 +421,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 let set_code = format!(
                     "
                   push.{value}.{key}.MAP_PTR
-                  # => [map_ptr, KEY, NEW_VALUE]
+                  # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => []
                 ",
@@ -427,20 +431,27 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 test_code.push_str(&set_code);
             },
             TestOperation::Get { key } => {
-                let expected_value =
-                    control_map.get(&key).expect("key should exist for get operations");
+                let control_value = control_map.get(&key);
+
+                let (expected_contains_key, expected_value) = match control_value {
+                    Some(value) => (true, *value),
+                    None => (false, Digest::from(EMPTY_WORD)),
+                };
 
                 let get_code = format!(
                     r#"
                   push.{key}.MAP_PTR
                   # => [map_ptr, KEY]
                   exec.link_map::get
-                  # => [VALUE]
+                  # => [contains_key, VALUE]
+                  push.{expected_contains_key}
+                  assert_eq.err="contains_key did not match the expected value: {expected_contains_key}"
                   push.{expected_value}
                   assert_eqw.err="value returned from get is not the expected value: {expected_value}"
                 "#,
                     key = word_to_masm_push_string(&key),
-                    expected_value = word_to_masm_push_string(&expected_value)
+                    expected_value = word_to_masm_push_string(&expected_value),
+                    expected_contains_key = expected_contains_key as u8
                 );
 
                 test_code.push_str(&get_code);

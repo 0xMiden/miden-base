@@ -4,6 +4,7 @@ use.kernel::memory
 # TODO: Document security.
 # TODO: Document terminology.
 # TODO: Document full map layout.
+# TODO: Rename prev_item and next_item to prev_entry and next_entry.
 
 # Layout of each map entry:
 # [map_ptr, prev_item, next_item, 0, KEY, VALUE]
@@ -17,16 +18,15 @@ const.LINK_MAP_GET_EVENT=131099
 #! Inserts the specified key-value pair into the map, or updates the existing key if the pair
 #! already exists.
 #!
-#! Inputs:  [map_ptr, KEY, NEW_VALUE]
-#! Outputs: [OLD_VALUE]
+#! Note that unlike smt::set, passing VALUE = EMPTY_WORD does not mean removal of the entry.
+#!
+#! Inputs:  [map_ptr, KEY, VALUE]
+#! Outputs: []
 #!
 #! Where:
 #! - map_ptr is a pointer to the map.
 #! - KEY is the key that will be set in the map.
-#! - NEW_VALUE is the value that will be set under KEY. If NEW_VALUE is the EMPTY_WORD then the
-#!   pair is removed from the map.
-#! - OLD_VALUE is the value that was previously stored at KEY. It will be the EMPTY_WORD if the
-#!   value was not previously set.
+#! - VALUE is the value that will be set under KEY.
 #!
 #! Panics if:
 #! - the map ptr does not point to a valid map.
@@ -34,7 +34,7 @@ export.set
     # TODO: Should we disallow KEY = EMPTY_WORD?
 
     emit.LINK_MAP_SET_EVENT adv_push.2
-    # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+    # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
     # Operation:
     # Update = 0,
@@ -42,35 +42,35 @@ export.set
     # InsertAfterEntry = 2,
 
     dup.2 dup.2
-    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, VALUE]
 
     # assert entry ptr validity
     exec.memory::assert_link_map_entry_ptr
-    # => [operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+    # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
     dup eq.0
-    # => [is_update_op, operation, entry_ptr, map_ptr, KEY, NEW_VALUE]
+    # => [is_update_op, operation, entry_ptr, map_ptr, KEY, VALUE]
 
     if.true
       # drop operation and map_ptr from stack
       drop
-      # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
+      # => [entry_ptr, map_ptr, KEY, VALUE]
 
       swap drop
-      # => [entry_ptr, KEY, NEW_VALUE]
+      # => [entry_ptr, KEY, VALUE]
 
       exec.update_entry
       # => []
     else
       # insert new entry
       eq.1
-      # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, NEW_VALUE]
+      # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
 
       if.true
         # drop the entry ptr since we can load the head from memory
         # and that way we don't have to validate it
         drop
-        # => [map_ptr, KEY, NEW_VALUE]
+        # => [map_ptr, KEY, VALUE]
         exec.insert_at_head
         # => []
       else
@@ -84,30 +84,156 @@ end
 #! Returns the VALUE located at KEY in the given map.
 #!
 #! Inputs:  [map_ptr, KEY]
-#! Outputs: [VALUE]
+#! Outputs: [contains_key, VALUE]
 #!
 #! Where:
 #! - map_ptr is a pointer to the map.
 #! - KEY is the key that will be fetched from the map.
-#! - VALUE is the value fetched from the map. If no value was previously set for KEY, the
-#!   EMPTY_WORD is returned.
+#! - contains_key is a boolean indicating whether the map contained the KEY or not.
+#! - VALUE is the value fetched from the map. VALUE is guaranteed to be an EMPTY_WORD when the
+#!   map did not contain the key.
 #!
 #! Panics if:
 #! - the map ptr does not point to a valid map.
+#! - the map does not contain the provided KEY.
 export.get
+    # TODO: Document where entry_ptr points to in case the key (does not) exist.
+
     emit.LINK_MAP_GET_EVENT adv_push.2
-    # => [entry_exists, entry_ptr, map_ptr, KEY]
+    # => [operation, entry_ptr, map_ptr, KEY]
 
-    assert.err="entry does not exist"
-    # => [entry_ptr, map_ptr, KEY]
-
-    # assert entry ptr validity
-    swap dup.1
-    # => [entry_ptr, map_ptr, entry_ptr, KEY]
+    dup.2 dup.2
+    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY]
 
     exec.memory::assert_link_map_entry_ptr
+    # => [operation, entry_ptr, map_ptr, KEY]
+
+    # Operation:
+    # Found = 0
+    # AbsentAtHead = 1
+    # AbsentAfterEntry = 2
+
+    dup eq.0
+    # => [is_found, operation, entry_ptr, map_ptr, KEY]
+
+    if.true
+      drop swap drop
+      # => [entry_ptr, KEY]
+      exec.get_existent_value
+      # => [VALUE]
+      push.1
+      # => [contains_key, VALUE]
+    else
+      eq.1
+      # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
+
+      if.true
+        drop
+        # => [map_ptr, KEY]
+
+        exec.validate_absent_at_head
+        # => []
+      else
+        exec.validate_absent_after_entry
+        # => []
+      end
+
+      padw push.0
+      # => [contains_key, EMPTY_WORD]
+    end
+end
+
+#! Computes a commitment of the map over all contained key-value pairs.
+#!
+#! Inputs:  [map_ptr]
+#! Outputs: [MAP_COMMITMENT]
+export.compute_commitment
+    # while we use an SMT as the underlying implementation, the root is the commitment.
+    padw movup.4 mem_loadw
+    # => [SMT_ROOT]
+end
+
+
+#! Validates that the provided KEY is absent at the head of the link map.
+#!
+#! An invariant of the link map is that its entries are sorted and since there is no previous
+#! entry for the head, this proves that the KEY is absent from the map.
+#!
+#! Inputs:  [map_ptr, KEY]
+#! Outputs: []
+#!
+#! Panics if:
+#! - the KEY is not less than the key in the head of the map, unless the map is empty.
+proc.validate_absent_at_head
+  drop dup exec.is_empty
+  # => [is_empty, map_ptr, KEY]
+
+  if.true
+    # in an empty list, any KEY is absent at the head, so there's nothing further to validate
+    drop dropw
+    # => []
+  else
+    exec.get_head
     # => [entry_ptr, KEY]
 
+    # assert that KEY is less than the current head's key
+    exec.assert_is_less
+    # => []
+  end
+end
+
+#! Validates that the provided KEY is absent after the provided entry.
+#!
+#! If KEY is greater than the key in the entry and less than the key in entry's next entry, then
+#! that proves the absence of the key.
+#!
+#! Inputs:  [entry_ptr, map_ptr, KEY]
+#! Outputs: []
+#!
+#! Panics if:
+#! - the map is empty.
+#! - the KEY is not greater than the key in the entry.
+#! - the KEY is not less than the key in entry.next_entry, unless entry is the last one in the map.
+proc.validate_absent_after_entry
+    swap exec.is_empty assertz.err="map cannot be empty when proving absence after an entry"
+    # => [entry_ptr, KEY]
+
+    movdn.4 dupw
+    # => [KEY, KEY, entry_ptr]
+
+    dup.8
+    # => [entry_ptr, KEY, KEY, entry_ptr]
+
+    # assert that KEY is greater than the entry's key
+    exec.assert_is_greater
+    # => [KEY, entry_ptr]
+
+    movup.4 exec.get_next_item_ptr
+    # => [next_item_ptr, KEY]
+
+    dup eq.0
+    # => [is_last_entry, next_item_ptr, KEY]
+
+    if.true
+      # nothing further to validate
+      drop dropw
+      # => []
+    else
+      # if there is a next item, then the KEY must be less than next item's key
+      exec.assert_is_less
+      # => []
+    end
+    # => []
+end
+
+#! Fetches the VALUE at the provided KEY from the provided entry.
+#!
+#! Inputs:  [entry_ptr, KEY]
+#! Outputs: [VALUE]
+#!
+#! Panics if:
+#! - the key in the entry does not match KEY.
+proc.get_existent_value
     movdn.4
     # => [KEY, entry_ptr]
 
@@ -121,31 +247,21 @@ export.get
     # => [VALUE]
 end
 
-#! Computes a commitment of the map over all contained key-value pairs.
-#!
-#! Inputs:  [map_ptr]
-#! Outputs: [MAP_COMMITMENT]
-export.compute_commitment
-    # while we use an SMT as the underlying implementation, the root is the commitment.
-    padw movup.4 mem_loadw
-    # => [SMT_ROOT]
-end
-
 #! Updates the value in the given entry.
 #!
-#! Inputs:  [map_ptr, KEY, NEW_VALUE]
+#! Inputs:  [map_ptr, KEY, VALUE]
 #! Outputs: []
 #!
 #! Panics if:
 #! - the key in the entry does not match the provided KEY.
 proc.insert_at_head
   exec.memory::link_map_malloc
-  # => [entry_ptr, map_ptr, KEY, NEW_VALUE]
+  # => [entry_ptr, map_ptr, KEY, VALUE]
 
   dup movdn.10
-  # => [entry_ptr, map_ptr, KEY, NEW_VALUE, entry_ptr]
+  # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr]
   dup.1 movdn.10
-  # => [entry_ptr, map_ptr, KEY, NEW_VALUE, map_ptr, entry_ptr]
+  # => [entry_ptr, map_ptr, KEY, VALUE, map_ptr, entry_ptr]
 
   exec.insert_pair
   # => [map_ptr, entry_ptr]
@@ -190,7 +306,7 @@ end
 
 #! Updates the value in the given entry.
 #!
-#! Inputs:  [entry_ptr, KEY, NEW_VALUE]
+#! Inputs:  [entry_ptr, KEY, VALUE]
 #! Outputs: []
 #!
 #! Panics if:
@@ -298,6 +414,7 @@ proc.assert_is_equal
   # => []
 end
 
+# TODO: Consider renaming to assert_is_key_greater
 #! Asserts that the KEY is lexicographically greater than the key in the entry pointer.
 #!
 #! Inputs:  [entry_ptr, KEY]
@@ -333,10 +450,10 @@ proc.insert_pair
   # => [entry_ptr, KEY, VALUE]
 
   dup movdn.5
-  # => [entry_ptr, KEY, entry_ptr, NEW_VALUE]
+  # => [entry_ptr, KEY, entry_ptr, VALUE]
   exec.set_key
 
-  # => [entry_ptr, NEW_VALUE]
+  # => [entry_ptr, VALUE]
   exec.set_value
 end
 

@@ -124,7 +124,7 @@ impl Host for MockHost {
                 let link_map = LinkMap::new(map_ptr, process.into())
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
 
-                let (operation, entry_ptr) = link_map.find_insertion(map_key);
+                let (operation, entry_ptr) = link_map.compute_set_operation(map_key);
 
                 self.adv_provider
                     .push_stack(AdviceSource::Value(Felt::from(operation as u8)), err_ctx)?;
@@ -146,20 +146,12 @@ impl Host for MockHost {
 
                 let link_map = LinkMap::new(map_ptr, process.into())
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-                let entry_ptr = link_map.find(map_key);
+                let (get_op, entry_ptr) = link_map.compute_get_operation(map_key);
 
-                match entry_ptr {
-                    Some(entry_ptr) => {
-                        // Push 1 to signal that the entry was found.
-                        self.adv_provider.push_stack(AdviceSource::Value(1u32.into()), err_ctx)?;
-                        self.adv_provider
-                            .push_stack(AdviceSource::Value(entry_ptr.into()), err_ctx)?;
-                    },
-                    None => {
-                        self.adv_provider.push_stack(AdviceSource::Value(0u32.into()), err_ctx)?;
-                        self.adv_provider.push_stack(AdviceSource::Value(0u32.into()), err_ctx)?;
-                    },
-                }
+                self.adv_provider
+                    .push_stack(AdviceSource::Value(Felt::from(get_op as u8)), err_ctx)?;
+                self.adv_provider
+                    .push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
 
                 Ok(())
             },
