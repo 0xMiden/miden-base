@@ -44,8 +44,7 @@ export.set
     dup.2 dup.2
     # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, VALUE]
 
-    # assert entry ptr validity
-    exec.memory::assert_link_map_entry_ptr
+    exec.assert_entry_ptr_is_valid
     # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
     dup eq.0
@@ -105,7 +104,7 @@ export.get
     dup.2 dup.2
     # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY]
 
-    exec.memory::assert_link_map_entry_ptr
+    exec.assert_entry_ptr_is_valid
     # => [operation, entry_ptr, map_ptr, KEY]
 
     # Operation:
@@ -555,6 +554,14 @@ proc.set_map_ptr
   mem_store
 end
 
+#! Returns the map ptr of the entry pointer.
+#!
+#! Inputs:  [entry_ptr]
+#! Outputs: [map_ptr]
+proc.get_map_ptr
+  mem_load
+end
+
 #! Sets the key of the entry pointer.
 #!
 #! Inputs:  [entry_ptr, KEY]
@@ -569,6 +576,65 @@ end
 #! Outputs: []
 proc.set_value
   add.8 mem_storew dropw
+end
+
+#! Asserts that either of the following conditions is true:
+#! - the map is empty.
+#! - the given entry ptr's map ptr is equal to the given map ptr and TODO.
+#!
+#! Always succeeds if the map is empty.
+#!
+#! Inputs:  [entry_ptr, map_ptr]
+#! Outputs: []
+export.assert_entry_ptr_is_valid
+  # Check entry pointer is in valid memory range.
+  # -------------------------------------------------------------------------------------------------
+
+  exec.memory::get_link_map_memory_start_ptr dup.1
+  # => [entry_ptr, LINK_MAP_MEMORY_START_PTR, entry_ptr, map_ptr]
+
+  # compute LINK_MAP_MEMORY_START_PTR <= entry_ptr
+  lte
+  # => [is_entry_ptr_gt_start, entry_ptr, map_ptr]
+
+  dup.1 exec.memory::get_link_map_memory_end_ptr
+  # => [LINK_MAP_MEMORY_END_PTR, entry_ptr, is_entry_ptr_gt_start, entry_ptr, map_ptr]
+
+  # assert entry_ptr < LINK_MAP_MEMORY_END_PTR
+  lt and
+  # => [is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
+
+  # we have to skip the assertion if the map is empty
+  dup.2 exec.is_empty
+  # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
+
+  dup movdn.4
+  # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr, is_empty_map]
+
+  # this assertion is always true if is_empty_map is true
+  or assert.err="entry ptr is not in a valid memory range"
+  # => [entry_ptr, map_ptr, is_empty_map]
+
+  # Check that the entry pointer is aligned to link map entries, i.e. that entry_ptr % 12 == 0.
+  # -------------------------------------------------------------------------------------------------
+
+  # note that the previous range check ensures that entry_ptr fits in a u32
+  dup exec.memory::get_link_map_entry_size u32mod eq.0
+  # => [is_entry_ptr_aligned, entry_ptr, map_ptr, is_empty_map]
+
+  # this assertion is always true if is_empty_map is true
+  dup.3 or assert.err="entry ptr is not link map entry aligned"
+  # => [entry_ptr, map_ptr, is_empty_map]
+
+  # Check entry pointer's map ptr is equal to map_ptr.
+  # -------------------------------------------------------------------------------------------------
+
+  # check if entry_ptr.map_ptr == map_ptr
+  exec.get_map_ptr eq
+  # => [entry_contains_map_ptr, is_empty_map]
+
+  # this assertion is always true if is_empty_map is true
+  or assert.err="map ptr stored in entry ptr does not match actual map ptr"
 end
 
 # COMPARISON OPERATIONS

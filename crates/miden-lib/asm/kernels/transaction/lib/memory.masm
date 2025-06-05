@@ -200,8 +200,15 @@ const.OUTPUT_NOTE_ASSETS_OFFSET=20
 # LINK MAP MEMORY
 # -------------------------------------------------------------------------------------------------
 
-const.LINK_MAP_MEMORY_CURRENT_OFFSET=33554432
+# The inclusive start of the link map dynamic memory range.
 const.LINK_MAP_MEMORY_START_PTR=33554436
+
+# The non-inclusive end of the link map dynamic memory range.
+const.LINK_MAP_MEMORY_END_PTR=67108864
+
+# LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer that
+# will be allocated.
+const.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET=33554432
 
 # Each map entry stores three words.
 const.LINK_MAP_ENTRY_SIZE=12
@@ -1563,46 +1570,47 @@ end
 # LINK MAP
 # -------------------------------------------------------------------------------------------------
 
+#! Returns the link map memory start ptr constant.
+#!
+#! Inputs:  []
+#! Outputs: [start_ptr]
+export.get_link_map_memory_start_ptr
+  push.LINK_MAP_MEMORY_START_PTR
+end
+
+#! Returns the link map memory end ptr constant.
+#!
+#! Inputs:  []
+#! Outputs: [end_ptr]
+export.get_link_map_memory_end_ptr
+  push.LINK_MAP_MEMORY_END_PTR
+end
+
+#! Returns the link map entry size constant.
+#!
+#! Inputs:  []
+#! Outputs: [entry_size]
+export.get_link_map_entry_size
+  push.LINK_MAP_ENTRY_SIZE
+end
+
+
 #! Returns the next pointer to an empty link map entry.
 #!
 #! Inputs:  []
 #! Outputs: [entry_ptr]
 export.link_map_malloc
   # retrieve the current offset
-  mem_load.LINK_MAP_MEMORY_CURRENT_OFFSET dup
+  mem_load.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET dup
   # => [current_offset, current_offset]
 
   # store next offset
   add.LINK_MAP_ENTRY_SIZE
   # => [next_offset, current_offset]
 
-  mem_store.LINK_MAP_MEMORY_CURRENT_OFFSET
+  mem_store.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET
   # => [current_offset]
 
   add.LINK_MAP_MEMORY_START_PTR
   # => [entry_ptr]
-end
-
-#! Asserts that the given entry ptr is for the given map ptr.
-#!
-#! Always succeeds if the map is empty.
-#!
-#! Inputs:  [entry_ptr, map_ptr]
-#! Outputs: []
-export.assert_link_map_entry_ptr
-  # TODO: LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR
-
-  # we have to skip the assertion if the map is empty
-  dup.1 mem_load eq.0
-  # => [is_empty_map, entry_ptr, map_ptr]
-
-  movdn.2
-  # => [entry_ptr, map_ptr, is_empty_map]
-
-  # check if entry_ptr.map_ptr == map_ptr
-  mem_load eq
-  # => [entry_contains_map_ptr, is_empty_map]
-
-  # this assertion is effectively always true if is_empty_map is true
-  or assert.err="map ptr stored in entry ptr does not match actual map ptr"
 end

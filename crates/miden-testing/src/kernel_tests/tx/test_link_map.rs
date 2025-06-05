@@ -12,6 +12,8 @@ use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
 
+// TODO: Test multiple link maps at the same time.
+
 /// Tests the following properties:
 /// - Insertion into an empty map.
 /// - Insertion after an existing entry.

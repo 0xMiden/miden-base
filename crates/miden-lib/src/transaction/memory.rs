@@ -24,7 +24,8 @@ pub type StorageSlot = u8;
 // | Accounts data     | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
 // | Input notes       | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes      | 16_777_216 (4_194_304)                | ?                                   |                                             |
-
+// | Link Map Memory   | 33_554_432 (8_388_608)                | 67_108_863 (16777215)               | Enough for 2_796_202 key-value pairs        |
+//
 // Relative layout of one account
 //
 // Here the "end pointer" is the last memory pointer occupied by the current data
