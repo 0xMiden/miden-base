@@ -138,12 +138,13 @@ const.LINK_MAP_GET_EVENT=131099
 #! Outputs: []
 #!
 #! Where:
-#! - map_ptr is a pointer to the map.
+#! - map_ptr is the pointer to the map.
 #! - KEY is the key that will be set in the map.
 #! - VALUE is the value that will be set under KEY.
 #!
 #! Panics if:
-#! - the map ptr does not point to a valid map.
+#! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
+#!   update_entry, insert_at_head, insert_after_entry.
 export.set
     emit.LINK_MAP_SET_EVENT adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY, VALUE]
@@ -198,18 +199,16 @@ end
 #! Outputs: [contains_key, VALUE]
 #!
 #! Where:
-#! - map_ptr is a pointer to the map.
+#! - map_ptr is the pointer to the map.
 #! - KEY is the key that will be fetched from the map.
 #! - contains_key is a boolean indicating whether the map contained the KEY or not.
 #! - VALUE is the value fetched from the map. VALUE is guaranteed to be an EMPTY_WORD when the
 #!   map did not contain the key.
 #!
 #! Panics if:
-#! - the map ptr does not point to a valid map.
-#! - the map does not contain the provided KEY.
+#! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
+#!   get_existent_value, validate_absent_at_head, validate_absent_after_entry.
 export.get
-    # TODO: Document where entry_ptr points to in case the key (does not) exist.
-
     emit.LINK_MAP_GET_EVENT adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY]
 
@@ -265,13 +264,13 @@ end
 # SET HELPERS
 # -------------------------------------------------------------------------------------------------
 
-#! Updates the value in the given entry.
+#! Inserts the key-value pair at the head of the map.
 #!
 #! Inputs:  [map_ptr, KEY, VALUE]
 #! Outputs: []
 #!
 #! Panics if:
-#! - the key in the entry does not match the provided KEY.
+#! - the KEY is not less than the key in the head of the map, unless the map is empty.
 proc.insert_at_head
     exec.memory::link_map_malloc
     # => [entry_ptr, map_ptr, KEY, VALUE]
@@ -284,7 +283,6 @@ proc.insert_at_head
     exec.insert_pair
     # => [map_ptr, entry_ptr]
 
-    # TODO: consider get_head and checking for 0
     dup exec.is_empty not
     # => [is_non_empty, map_ptr, entry_ptr]
 
@@ -344,6 +342,11 @@ end
 #!
 #! Inputs:  [prev_entry_ptr, map_ptr, KEY, VALUE]
 #! Outputs: []
+#!
+#! Panics if:
+#! - the KEY is not greater than the key in the prev entry.
+#! - the KEY is not less than the key in prev_entry.next_entry, unless the prev entry is the last
+#!   one in the map.
 proc.insert_after_entry
     movdn.5
     # => [map_ptr, KEY, prev_entry_ptr, VALUE]
@@ -480,7 +483,7 @@ end
 #! Panics if:
 #! - the map is empty.
 #! - the KEY is not greater than the key in the entry.
-#! - the KEY is not less than the key in entry.next_entry, unless entry is the last one in the map.
+#! - the KEY is not less than the key in entry.next_entry, unless the entry is the last one in the map.
 proc.validate_absent_after_entry
     swap exec.is_empty assertz.err="map cannot be empty when proving absence after an entry"
     # => [entry_ptr, KEY]
@@ -698,7 +701,9 @@ end
 #! Panics if:
 #! - any of the following conditions is false, except if the map is empty:
 #!   - LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR.
-#!   - entry ptr is "link map entry"-aligned, i.e. entry_ptr % LINK_MAP_ENTRY_SIZE == 0.
+#!   - entry ptr is "link map entry"-aligned, i.e. entry_ptr % LINK_MAP_ENTRY_SIZE == 0. This
+#!     works because every entry ptr is a multiple of LINK_MAP_ENTRY_SIZE added to
+#!     LINK_MAP_MEMORY_START_PTR which happens to be itself a multiple of LINK_MAP_ENTRY_SIZE.
 #!   - entry's map ptr is equal to the given map_ptr.
 export.assert_entry_ptr_is_valid
     # Check entry pointer is in valid memory range.

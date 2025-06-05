@@ -204,7 +204,7 @@ const.OUTPUT_NOTE_ASSETS_OFFSET=20
 const.LINK_MAP_MEMORY_START_PTR=33554436
 
 # The non-inclusive end of the link map dynamic memory range.
-const.LINK_MAP_MEMORY_END_PTR=67108864
+const.LINK_MAP_MEMORY_END_PTR=67108860
 
 # LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer that
 # will be allocated.
@@ -1598,6 +1598,9 @@ end
 #!
 #! Inputs:  []
 #! Outputs: [entry_ptr]
+#!
+#! Panics if:
+#! - the allocation exceeds the maximum possible number of link map entries.
 export.link_map_malloc
     # retrieve the current offset
     mem_load.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET dup
@@ -1611,5 +1614,12 @@ export.link_map_malloc
     # => [current_offset]
 
     add.LINK_MAP_MEMORY_START_PTR
+    # => [entry_ptr]
+
+    # if entry_ptr is the end_ptr the entry would be allocated in the next memory region so
+    # we must abort
+    # we can use neq because the end ptr is a multiple of LINK_MAP_ENTRY_SIZE and neq is cheaper
+    # than lt/gt
+    dup neq.LINK_MAP_MEMORY_END_PTR assert.err="number of link map entries exceeds maximum"
     # => [entry_ptr]
 end
