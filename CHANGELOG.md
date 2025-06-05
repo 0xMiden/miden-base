@@ -5,7 +5,7 @@
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
 - Add `bench-prover` crate to benchmark proving times (#1378)
-- Implement map in transaction kernel library (#1396).
+- Implement map based on a sorted linked list in transaction kernel library (#1396, #1428).
 
 ## 0.9.1 (2025-05-30)
 
