@@ -3,7 +3,7 @@ use std::time::{Duration, Instant};
 use pingora::lb::Backend;
 use serde::Serialize;
 use tonic::transport::Channel;
-use tracing::{debug, error};
+use tracing::{debug, error, info};
 
 use super::metrics::WORKER_UNHEALTHY;
 use crate::{
@@ -27,8 +27,15 @@ const MPS_PROXY_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 /// A worker used for processing of requests.
 ///
-/// A worker consists of a backend service (defined by worker address), a flag indicating wheter
-/// the worker is currently available to process new requests, and a gRPC status client.
+/// The worker is used to process requests.
+/// It has a backend, a status client, a health status, and a version.
+/// The backend is used to send requests to the worker.
+/// The status client is used to check the status of the worker.
+/// The health status is used to determine if the worker is healthy or unhealthy.
+/// The version is used to check if the worker is compatible with the proxy.
+/// The is_available is used to determine if the worker is available to process requests.
+/// The connection_timeout is used to set the timeout for the connection to the worker.
+/// The total_timeout is used to set the timeout for the total request.
 #[derive(Debug, Clone)]
 pub struct Worker {
     backend: Backend,
@@ -36,6 +43,8 @@ pub struct Worker {
     is_available: bool,
     health_status: WorkerHealthStatus,
     version: String,
+    connection_timeout: Duration,
+    total_timeout: Duration,
 }
 
 /// The health status of a worker.
@@ -77,26 +86,21 @@ impl Worker {
         let backend =
             Backend::new(&worker_addr).map_err(ProvingServiceError::BackendCreationFailed)?;
 
-        let (status_client, health_status) = match create_status_client(
-            worker_addr.clone(),
-            connection_timeout,
-            total_timeout,
-        )
-        .await
-        {
-            Ok(client) => (Some(client), WorkerHealthStatus::Unknown),
-            Err(err) => {
-                error!("Failed to create status client for worker {}: {}", worker_addr, err);
-                (
-                    None,
-                    WorkerHealthStatus::Unhealthy {
-                        num_failed_attempts: 1,
-                        first_fail_timestamp: Instant::now(),
-                        reason: format!("Failed to create status client: {}", err),
-                    },
-                )
-            },
-        };
+        let (status_client, health_status) =
+            match create_status_client(&worker_addr, connection_timeout, total_timeout).await {
+                Ok(client) => (Some(client), WorkerHealthStatus::Unknown),
+                Err(err) => {
+                    error!("Failed to create status client for worker {}: {}", worker_addr, err);
+                    (
+                        None,
+                        WorkerHealthStatus::Unhealthy {
+                            num_failed_attempts: 1,
+                            first_fail_timestamp: Instant::now(),
+                            reason: format!("Failed to create status client: {}", err),
+                        },
+                    )
+                },
+            };
 
         Ok(Self {
             backend,
@@ -104,11 +108,35 @@ impl Worker {
             status_client,
             health_status,
             version: "".to_string(),
+            connection_timeout,
+            total_timeout,
         })
     }
 
     // MUTATORS
     // --------------------------------------------------------------------------------------------
+
+    /// Attempts to recreate the status client for this worker.
+    ///
+    /// This method will try to create a new gRPC status client using the worker's address
+    /// and timeout configurations. If successful, it will update the worker's status_client field.
+    ///
+    /// # Returns
+    /// - `Ok(())` if the client was successfully created
+    /// - `Err(ProvingServiceError)` if the client creation failed
+    async fn recreate_status_client(&mut self) -> Result<(), ProvingServiceError> {
+        let address = self.address();
+        match create_status_client(&address, self.connection_timeout, self.total_timeout).await {
+            Ok(client) => {
+                self.status_client = Some(client);
+                Ok(())
+            },
+            Err(err) => {
+                error!("Failed to recreate status client for worker {}: {}", address, err);
+                Err(err)
+            },
+        }
+    }
 
     /// Checks the current status of the worker and marks the worker as healthy or unhealthy based
     /// on the status.
@@ -123,18 +151,25 @@ impl Worker {
 
         // If we don't have a status client, try to recreate it
         if self.status_client.is_none() {
-            let failed_attempts = self.num_failures();
-            self.set_health_status(WorkerHealthStatus::Unhealthy {
-                num_failed_attempts: failed_attempts + 1,
-                first_fail_timestamp: match &self.health_status {
-                    WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
-                        *first_fail_timestamp
-                    },
-                    _ => Instant::now(),
+            match self.recreate_status_client().await {
+                Ok(()) => {
+                    info!("Successfully recreated status client for worker {}", self.address());
                 },
-                reason: "No status client available".to_string(),
-            });
-            return;
+                Err(err) => {
+                    let failed_attempts = self.num_failures();
+                    self.set_health_status(WorkerHealthStatus::Unhealthy {
+                        num_failed_attempts: failed_attempts + 1,
+                        first_fail_timestamp: match &self.health_status {
+                            WorkerHealthStatus::Unhealthy { first_fail_timestamp, .. } => {
+                                *first_fail_timestamp
+                            },
+                            _ => Instant::now(),
+                        },
+                        reason: format!("Failed to recreate status client: {}", err),
+                    });
+                    return;
+                },
+            }
         }
 
         let failed_attempts = self.num_failures();
@@ -351,17 +386,17 @@ impl PartialEq for Worker {
 /// - [ProvingServiceError::InvalidURI] if the worker address is invalid.
 /// - [ProvingServiceError::ConnectionFailed] if the connection to the worker fails.
 async fn create_status_client(
-    address: String,
+    address: &str,
     connection_timeout: Duration,
     total_timeout: Duration,
 ) -> Result<StatusApiClient<Channel>, ProvingServiceError> {
     let channel = Channel::from_shared(format!("http://{}", address))
-        .map_err(|err| ProvingServiceError::InvalidURI(err, address.clone()))?
+        .map_err(|err| ProvingServiceError::InvalidURI(err, address.to_string()))?
         .connect_timeout(connection_timeout)
         .timeout(total_timeout)
         .connect()
         .await
-        .map_err(|err| ProvingServiceError::ConnectionFailed(err, address))?;
+        .map_err(|err| ProvingServiceError::ConnectionFailed(err, address.to_string()))?;
 
     Ok(StatusApiClient::new(channel))
 }
