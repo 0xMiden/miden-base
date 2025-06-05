@@ -7,6 +7,7 @@
 - Add `bench-prover` crate to benchmark proving times (#1378)
 - Implement map in transaction kernel library (#1396).
 - Add P2IDH standard note (#TBD).
+- Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 
 ## 0.9.1 (2025-05-30)
 
