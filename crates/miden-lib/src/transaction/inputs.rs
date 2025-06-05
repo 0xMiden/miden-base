@@ -144,7 +144,7 @@ impl TransactionAdviceInputs {
         ]);
         self.extend_stack(header.note_root());
 
-        // kernel version
+        // ── kernel version ───────────────────────────────────────────────
         self.extend_stack([Felt::from(kernel_version)]);
 
         // ── core account items ───────────────────────────────────────────────
