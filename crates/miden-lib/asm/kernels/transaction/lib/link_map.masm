@@ -575,14 +575,16 @@ proc.set_value
   add.8 mem_storew dropw
 end
 
-#! Asserts that either of the following conditions is true:
-#! - the map is empty.
-#! - the given entry ptr's map ptr is equal to the given map ptr and TODO.
-#!
-#! Always succeeds if the map is empty.
+#! Asserts that the given entry ptr is a valid entry in the map identified by map_ptr.
 #!
 #! Inputs:  [entry_ptr, map_ptr]
 #! Outputs: []
+#!
+#! Panics if:
+#! - any of the following conditions is false, except if the map is empty:
+#!   - LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR.
+#!   - entry ptr is "link map entry"-aligned, i.e. entry_ptr % LINK_MAP_ENTRY_SIZE == 0.
+#!   - entry's map ptr is equal to the given map_ptr.
 export.assert_entry_ptr_is_valid
   # Check entry pointer is in valid memory range.
   # -------------------------------------------------------------------------------------------------
@@ -612,7 +614,7 @@ export.assert_entry_ptr_is_valid
   or assert.err="entry ptr is not in a valid memory range"
   # => [entry_ptr, map_ptr, is_empty_map]
 
-  # Check that the entry pointer is aligned to link map entries, i.e. that entry_ptr % 12 == 0.
+  # Check that the entry pointer is aligned to link map entries.
   # -------------------------------------------------------------------------------------------------
 
   # note that the previous range check ensures that entry_ptr fits in a u32
