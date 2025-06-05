@@ -1,12 +1,120 @@
 use.std::collections::smt
 use.kernel::memory
 
-# TODO: Document security.
-# TODO: Document terminology.
-# TODO: Document full map layout.
-
-# Layout of each map entry:
-# [map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE]
+# A link map is a map data structure based on a sorted linked list.
+#
+# # Basics & Terminology
+#
+# The entries in the list are sorted by their keys. The order is defined by comparing the
+# individual felts of the word from most significant (the top element on a word layed out on the
+# stack) to least significant.
+#
+# A link map is identified by a pointer called the map_ptr. The map_ptr points to a single field
+# element which is the head of the map, i.e. the first element in the map with the smallest key.
+# The value at the map_ptr is an entry_ptr, which points to a concrete entry of the map.
+#
+# The map_ptr is a double pointer, i.e. it takes two dereference operations to end up at the head
+# entry of the map. This has the following properties:
+# - A link map does not need any initialization. If a map_ptr is uninitialized mem_load returns 0,
+#   which is interpreted as an empty map.
+# - It is simple to update the head of the map simply by setting *map_ptr = entry_ptr, where
+#   entry_ptr is the new head entry of the map.
+#
+# # Layout
+#
+# The layout of a link map _conceptually_ looks like this:
+#
+# [
+#   (map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE),
+#   (map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE),
+#   ...
+# ]
+#
+# where:
+# - KEY and VALUE are the user-provided data and both are of size word.
+# - the first word is the METADATA of the entry.
+# - the map_ptr is the pointer of the map to which this entry belongs. See the security section
+#   for the rationale.
+# - the prev_entry_ptr is an entry pointer that points to the previous item in the list whose key
+#   is smaller than the entry's KEY.
+# - the next_entry_ptr is an entry pointer that points to the next item in the list whose key is
+#   greater than the entry's KEY.
+# - the fourth element in the metadata is currently unused, but could be used to store additional
+#   things like the current number of entries of the map.
+#
+# Each entry takes up 3 words or 12 field elements of memory. Note that the above layout is not
+# how the map is layed out in memory, since entries are not guaranteed to be contiguous in memory.
+#
+# # Memory Allocation
+#
+# A link map can be grown dynamically without the need to specify the number of entries upfront.
+# This works by statically allocating a large chunk of dedicated link map memory in the kernel and
+# then allocating entry by entry on demand.
+#
+# Multiple link map's entries can be allocated from that same region of memory, which avoids
+# having to split up this chunk into smaller chunks per map, which would impose more limitations
+# on the overall system.
+#
+# Security
+#
+# The in-VM link map works closely together with a link map part of the VM host. For set
+# operations this means the host does the expensive iteration to find the place where a key-value
+# pair must be inserted or updated. Similarly for get operations. The host will either find the
+# requested key-value pair or provide the entry at which the pair would reside if it was present
+# in the map to prove its absence. The link map in the VM will validate that what the host
+# provided is correct.
+#
+# Because the host cannot be trusted, the link map in the VM must validate a couple of things.
+#
+# ## Entry Pointer Validity
+#
+# The first of these is basic entry pointer validity. Both in set and get operations, the host
+# provides entry pointers. It is important that the host cannot provide a pointer to an arbitrary
+# memory location, otherwise the VM might read or write to those locations and produce incorrect
+# results.
+#
+# Each map entry is allocated from a dedicated range of memory. That way, it is simple to validate
+# that a host-provided entry_ptr lies within that range. That ensures that no other piece of
+# memory can be abused as an entry. Moreover, each entry takes up exactly three words, so each
+# entry pointer can be checked for entry-alignment. Finally, because entries from _different_ link
+# maps are allocated from the same memory region means it would still be possible for a host to
+# provide an entry pointer from map 1 to an operation in map 2. To avoid this, each entry is
+# tagged using the map_ptr. Every operation on a map_ptr asserts that the entry's map_ptr tag
+# matches it.
+#
+# ## Set Operation
+#
+# During a set operation, the host is asked where the provided key-value pair should be inserted
+# or updated. The host can respond with three different values:
+# - Update = 0
+#   - Means the key already exists in the map and requires validating that the host-provided entry
+#     pointer's key matches the one that is being set.
+# - InsertAtHead = 1
+#   - Means the key should be inserted at the head of the list. This requires validating that the
+#     key that is being inserted is less than current head entry's key.
+# - InsertAfterEntry = 2
+#   - Means the key should be inserted after the entry that the host provided. This requires
+#     validating that the key that is being inserted is greater than the host-provided entry's
+#     key. If the host-provided entry has a next entry, then the key that is being inserted must
+#     be less than the next entry's key.
+#
+# ## Get Operation
+#
+# During a get operation, the host is asked where the requested key-value pair is located, or if
+# it does not exist, where its absence can be validated. Similarly to the set operation, the host
+# can respond with three different values:
+# - Found = 0
+#   - Means the key was found and requires validating that the host-provided entry pointer's key
+#     matches the requested one.
+# - AbsentAtHead = 1
+#   - Means the key would be at the head of the map, if it was present in the map. This requires
+#     validating that the requested key is smaller than the current head's key to validate the
+#     absence claim.
+# - AbsentAfterEntry = 2
+#   - Means the key would be after the entry that the host provided, if it was present in the map.
+#     This requires validating that the requested key is greater than the host-provided entry's
+#     key. If the host-provided entry has a next entry, then the requested key must also be less
+#     than the next entry's key to validate the absence claim.
 
 # Event emitted when an entry is set.
 const.LINK_MAP_SET_EVENT=131098
@@ -18,6 +126,7 @@ const.LINK_MAP_GET_EVENT=131099
 #! already exists.
 #!
 #! Note that unlike smt::set, passing VALUE = EMPTY_WORD does not mean removal of the entry.
+#! To remove an entry, use link_map::remove instead (TODO: unimplemented).
 #!
 #! Inputs:  [map_ptr, KEY, VALUE]
 #! Outputs: []
@@ -34,9 +143,9 @@ export.set
     # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
     # Operation:
-    # Update = 0,
-    # InsertAtHead = 1,
-    # InsertAfterEntry = 2,
+    # Update = 0
+    # InsertAtHead = 1
+    # InsertAfterEntry = 2
 
     dup.2 dup.2
     # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, VALUE]
