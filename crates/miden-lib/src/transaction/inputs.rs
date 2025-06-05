@@ -128,7 +128,7 @@ impl TransactionAdviceInputs {
     ) {
         let header = tx_inputs.block_header();
 
-        // ── block header data (keep in sync with kernel) ────────────────────
+        // --- block header data (keep in sync with kernel) --------------------
         self.extend_stack(header.prev_block_commitment());
         self.extend_stack(header.chain_commitment());
         self.extend_stack(header.account_root());
@@ -144,10 +144,10 @@ impl TransactionAdviceInputs {
         ]);
         self.extend_stack(header.note_root());
 
-        // ── kernel version ───────────────────────────────────────────────
+        // --- kernel version -----------------------------------------------------
         self.extend_stack([Felt::from(kernel_version)]);
 
-        // ── core account items ───────────────────────────────────────────────
+        // --- core account items -------------------------------------------------
         let account = tx_inputs.account();
         self.extend_stack([
             account.id().suffix(),
@@ -235,7 +235,7 @@ impl TransactionAdviceInputs {
             self.extend_map(core::iter::once((proof.leaf().hash(), proof.leaf().to_elements())));
         }
 
-        // --- account code ----------------------------------------------------
+        // --- account code -------------------------------------------------------
 
         let code = account.code();
         self.extend_map([
@@ -243,13 +243,13 @@ impl TransactionAdviceInputs {
             (code.commitment(), code.as_elements()),
         ]);
 
-        // --- account vault ----------------------------------------------------
+        // --- account vault ------------------------------------------------------
 
         self.extend_merkle_store(account.vault().inner_nodes());
         // populate advice map with Sparse Merkle Tree leaf nodes
         self.extend_map(account.vault().leaves().map(|leaf| (leaf.hash(), leaf.to_elements())));
 
-        // --- account state ----------------------------------------------------
+        // --- account state ------------------------------------------------------
 
         let acc_id = account.id();
         let account_id_key: Digest =
