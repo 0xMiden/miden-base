@@ -1,57 +1,12 @@
-use clap::{Parser, ValueEnum};
-use serde::{Deserialize, Serialize};
+use clap::Parser;
+use miden_proving_service::{
+    api::{MIDEN_PROVING_SERVICE, ProverType, RpcListener},
+    generated::api_server::ApiServer,
+};
 use tokio::net::TcpListener;
 use tokio_stream::wrappers::TcpListenerStream;
 use tonic_health::server::health_reporter;
 use tracing::{info, instrument};
-
-use crate::{api::RpcListener, generated::api_server::ApiServer, utils::MIDEN_PROVING_SERVICE};
-
-/// Specifies the type of proving task a worker can handle.
-#[derive(Debug, Clone, Copy, Default, ValueEnum, PartialEq, Serialize, Deserialize)]
-pub enum ProverType {
-    /// Transaction proving
-    #[default]
-    Transaction,
-    /// Batch proving
-    Batch,
-    /// Block proving
-    Block,
-}
-
-impl ProverType {
-    /// Returns the corresponding ProofType from the generated code
-    pub fn to_proof_type(&self) -> crate::generated::ProofType {
-        match self {
-            ProverType::Transaction => crate::generated::ProofType::Transaction,
-            ProverType::Batch => crate::generated::ProofType::Batch,
-            ProverType::Block => crate::generated::ProofType::Block,
-        }
-    }
-}
-
-impl std::fmt::Display for ProverType {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ProverType::Transaction => write!(f, "transaction"),
-            ProverType::Batch => write!(f, "batch"),
-            ProverType::Block => write!(f, "block"),
-        }
-    }
-}
-
-impl std::str::FromStr for ProverType {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "transaction" => Ok(ProverType::Transaction),
-            "batch" => Ok(ProverType::Batch),
-            "block" => Ok(ProverType::Block),
-            _ => Err(format!("Invalid proof type: {}", s)),
-        }
-    }
-}
 
 /// Starts a worker.
 #[derive(Debug, Parser)]

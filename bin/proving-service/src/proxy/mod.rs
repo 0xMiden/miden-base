@@ -11,6 +11,10 @@ use metrics::{
     REQUEST_FAILURE_COUNT, REQUEST_LATENCY, REQUEST_RETRIES, WORKER_BUSY, WORKER_COUNT,
     WORKER_REQUEST_COUNT,
 };
+use miden_proving_service::{
+    api::{MIDEN_PROVING_SERVICE, ProverType},
+    error::ProvingServiceError,
+};
 use pingora::{
     http::ResponseHeader,
     prelude::*,
@@ -29,11 +33,9 @@ use crate::{
     commands::{
         ProxyConfig,
         update_workers::{Action, UpdateWorkers},
-        worker::ProverType,
     },
-    error::ProvingServiceError,
     utils::{
-        MIDEN_PROVING_SERVICE, create_queue_full_response, create_response_with_error_message,
+        create_queue_full_response, create_response_with_error_message,
         create_too_many_requests_response,
     },
 };

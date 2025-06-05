@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use miden_proving_service::api::ProverType;
 use pingora::{
     apps::HttpServerApp,
     http::ResponseHeader,
@@ -12,7 +13,7 @@ use tonic::async_trait;
 use tracing::error;
 
 use super::worker::WorkerHealthStatus;
-use crate::{commands::worker::ProverType, proxy::LoadBalancerState};
+use crate::proxy::LoadBalancerState;
 
 // Status of a worker
 #[derive(Debug, Serialize)]
@@ -36,7 +37,6 @@ pub struct ProxyStatusService {
 }
 
 impl ProxyStatusService {
-    #[allow(dead_code)]
     pub fn new(load_balancer: Arc<LoadBalancerState>) -> Self {
         Self { load_balancer }
     }

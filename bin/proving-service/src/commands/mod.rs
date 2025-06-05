@@ -1,16 +1,14 @@
 use clap::Parser;
+use miden_proving_service::api::{MIDEN_PROVING_SERVICE, ProverType};
 use proxy::StartProxy;
 use tracing::instrument;
 use update_workers::{AddWorkers, RemoveWorkers, UpdateWorkers};
-use worker::{ProverType, StartWorker};
-
-use crate::utils::MIDEN_PROVING_SERVICE;
+use worker::StartWorker;
 
 pub mod proxy;
 pub mod update_workers;
 pub mod worker;
 
-#[allow(dead_code)]
 pub(crate) const PROXY_HOST: &str = "0.0.0.0";
 
 #[derive(Debug, Parser)]

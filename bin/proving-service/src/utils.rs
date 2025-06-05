@@ -1,5 +1,6 @@
 use std::net::TcpListener;
 
+use miden_proving_service::error::ProvingServiceError;
 use opentelemetry::{KeyValue, trace::TracerProvider as _};
 use opentelemetry_sdk::{
     Resource,
@@ -13,7 +14,7 @@ use pingora::{Error, ErrorType, http::ResponseHeader, protocols::http::ServerSes
 use pingora_proxy::Session;
 use tracing_subscriber::{EnvFilter, Registry, layer::SubscriberExt};
 
-use crate::{commands::PROXY_HOST, error::ProvingServiceError, proxy::metrics::QUEUE_DROP_COUNT};
+use crate::{commands::PROXY_HOST, proxy::metrics::QUEUE_DROP_COUNT};
 
 pub const MIDEN_PROVING_SERVICE: &str = "miden-proving-service";
 
@@ -157,7 +158,6 @@ pub async fn create_response_with_error_message(
 /// # Returns
 /// * `Ok(TcpListener)` if the port is available.
 /// * `Err(ProvingServiceError::PortAlreadyInUse)` if the port is already in use.
-#[allow(dead_code)]
 pub fn check_port_availability(
     port: u16,
     service: &str,

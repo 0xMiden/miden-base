@@ -1,16 +1,16 @@
 use std::time::{Duration, Instant};
 
+use miden_proving_service::{
+    api::ProverType,
+    error::ProvingServiceError,
+    generated::status::{StatusRequest, status_api_client::StatusApiClient},
+};
 use pingora::lb::Backend;
 use serde::Serialize;
 use tonic::transport::Channel;
 use tracing::error;
 
 use super::metrics::WORKER_UNHEALTHY;
-use crate::{
-    commands::worker::ProverType,
-    error::ProvingServiceError,
-    generated::status::{StatusRequest, status_api_client::StatusApiClient},
-};
 
 /// The maximum exponent for the backoff.
 ///
