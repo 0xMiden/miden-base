@@ -31,8 +31,6 @@ const.LINK_MAP_GET_EVENT=131099
 #! Panics if:
 #! - the map ptr does not point to a valid map.
 export.set
-    # TODO: Should we disallow KEY = EMPTY_WORD?
-
     emit.LINK_MAP_SET_EVENT adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
@@ -176,7 +174,7 @@ proc.validate_absent_at_head
     # => [entry_ptr, KEY]
 
     # assert that KEY is less than the current head's key
-    exec.assert_is_less
+    exec.assert_key_is_less
     # => []
   end
 end
@@ -204,7 +202,7 @@ proc.validate_absent_after_entry
     # => [entry_ptr, KEY, KEY, entry_ptr]
 
     # assert that KEY is greater than the entry's key
-    exec.assert_is_greater
+    exec.assert_key_is_greater
     # => [KEY, entry_ptr]
 
     movup.4 exec.get_next_item_ptr
@@ -219,7 +217,7 @@ proc.validate_absent_after_entry
       # => []
     else
       # if there is a next item, then the KEY must be less than next item's key
-      exec.assert_is_less
+      exec.assert_key_is_less
       # => []
     end
     # => []
@@ -283,7 +281,7 @@ proc.insert_at_head
     dup.4
     # => [current_head_entry_ptr, ENTRY_KEY, current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
 
-    exec.assert_is_less
+    exec.assert_key_is_less
     # => [current_head_entry_ptr, entry_ptr, map_ptr, entry_ptr]
 
     dup movdn.2
@@ -314,7 +312,7 @@ proc.update_entry
   dup movdn.5
   # => [entry_ptr, KEY, entry_ptr, VALUE]
 
-  exec.assert_is_equal
+  exec.assert_key_is_equal
   # => [entry_ptr, VALUE]
 
   exec.set_value
@@ -335,7 +333,7 @@ proc.insert_after_entry
   dupw dup.8
   # => [prev_entry_ptr, KEY, KEY, prev_entry_ptr, map_ptr, VALUE]
 
-  exec.assert_is_greater
+  exec.assert_key_is_greater
   # => [KEY, prev_entry_ptr, map_ptr, VALUE]
 
   movup.4 movdn.9
@@ -380,7 +378,7 @@ proc.insert_after_entry
     # => [next_entry_ptr, KEY, next_entry_ptr, entry_ptr]
 
     # assert KEY < next_entry.key
-    exec.assert_is_less
+    exec.assert_key_is_less
     # => [next_entry_ptr, entry_ptr]
 
     dup dup.2
@@ -405,7 +403,7 @@ end
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_is_equal
+proc.assert_key_is_equal
   exec.get_key swapw
   # => [KEY, ENTRY_KEY]
 
@@ -413,12 +411,11 @@ proc.assert_is_equal
   # => []
 end
 
-# TODO: Consider renaming to assert_is_key_greater
-#! Asserts that the KEY is lexicographically greater than the key in the entry pointer.
+#! Asserts that the KEY is greater than the key in the entry pointer.
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_is_greater
+proc.assert_key_is_greater
   exec.get_key swapw
   # => [KEY, ENTRY_KEY]
 
@@ -426,11 +423,11 @@ proc.assert_is_greater
   # => []
 end
 
-#! Asserts that the KEY is lexicographically less than the key in the entry pointer.
+#! Asserts that the KEY is less than the key in the entry pointer.
 #!
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
-proc.assert_is_less
+proc.assert_key_is_less
   exec.get_key swapw
   # => [KEY, ENTRY_KEY]
 
