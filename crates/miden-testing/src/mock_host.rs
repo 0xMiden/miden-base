@@ -2,7 +2,7 @@ use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::{
-    Digest, Felt,
+    Digest,
     account::{AccountHeader, AccountVaultDelta},
     assembly::mast::MastNodeExt,
 };
@@ -104,56 +104,11 @@ impl Host for MockHost {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process, err_ctx)
             },
-            // Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
-            // Advice stack state after: [is_after_entry_ptr, entry_ptr]
             TransactionEvent::LinkMapSetEvent => {
-                let map_ptr = process.get_stack_item(0);
-                let map_key = [
-                    process.get_stack_item(4),
-                    process.get_stack_item(3),
-                    process.get_stack_item(2),
-                    process.get_stack_item(1),
-                ];
-                // let map_value = [
-                //     process.get_stack_item(8),
-                //     process.get_stack_item(7),
-                //     process.get_stack_item(6),
-                //     process.get_stack_item(5),
-                // ];
-
-                let link_map = LinkMap::new(map_ptr, process.into())
-                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-
-                let (operation, entry_ptr) = link_map.compute_set_operation(map_key);
-
-                self.adv_provider
-                    .push_stack(AdviceSource::Value(Felt::from(operation as u8)), err_ctx)?;
-                self.adv_provider
-                    .push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
-
-                Ok(())
+                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())
             },
-            // Expected operand stack state before: [map_ptr, KEY]
-            // Advice stack state after: [entry_exists, entry_ptr]
             TransactionEvent::LinkMapGetEvent => {
-                let map_ptr = process.get_stack_item(0);
-                let map_key = [
-                    process.get_stack_item(4),
-                    process.get_stack_item(3),
-                    process.get_stack_item(2),
-                    process.get_stack_item(1),
-                ];
-
-                let link_map = LinkMap::new(map_ptr, process.into())
-                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-                let (get_op, entry_ptr) = link_map.compute_get_operation(map_key);
-
-                self.adv_provider
-                    .push_stack(AdviceSource::Value(Felt::from(get_op as u8)), err_ctx)?;
-                self.adv_provider
-                    .push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
-
-                Ok(())
+                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())
             },
             _ => Ok(()),
         }?;

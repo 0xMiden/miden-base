@@ -1,7 +1,10 @@
+use alloc::boxed::Box;
 use core::cmp::Ordering;
 
-use miden_objects::{Felt, Word};
-use vm_processor::{ContextId, ProcessState};
+use miden_objects::{Felt, Word, assembly::mast::MastNodeExt};
+use vm_processor::{
+    AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, ProcessState,
+};
 
 #[derive(Debug, thiserror::Error)]
 pub enum LinkMapError {
@@ -41,6 +44,57 @@ impl<'process> LinkMap<'process> {
             .expect("address should be word-aligned")
     }
 
+    /// Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
+    /// Advice stack state after: [set_operation, entry_ptr]
+    pub fn handle_set_event(
+        process: ProcessState<'_>,
+        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        advice_provider: &mut impl AdviceProvider,
+    ) -> Result<(), ExecutionError> {
+        let map_ptr = process.get_stack_item(0);
+        let map_key = [
+            process.get_stack_item(4),
+            process.get_stack_item(3),
+            process.get_stack_item(2),
+            process.get_stack_item(1),
+        ];
+
+        let link_map = LinkMap::new(map_ptr, process)
+            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+
+        let (operation, entry_ptr) = link_map.compute_set_operation(map_key);
+
+        advice_provider.push_stack(AdviceSource::Value(Felt::from(operation as u8)), err_ctx)?;
+        advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
+
+        Ok(())
+    }
+
+    /// Expected operand stack state before: [map_ptr, KEY]
+    /// Advice stack state after: [get_operation, entry_ptr]
+    pub fn handle_get_event(
+        process: ProcessState<'_>,
+        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        advice_provider: &mut impl AdviceProvider,
+    ) -> Result<(), ExecutionError> {
+        let map_ptr = process.get_stack_item(0);
+        let map_key = [
+            process.get_stack_item(4),
+            process.get_stack_item(3),
+            process.get_stack_item(2),
+            process.get_stack_item(1),
+        ];
+
+        let link_map = LinkMap::new(map_ptr, process)
+            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+        let (get_op, entry_ptr) = link_map.compute_get_operation(map_key);
+
+        advice_provider.push_stack(AdviceSource::Value(Felt::from(get_op as u8)), err_ctx)?;
+        advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
+
+        Ok(())
+    }
+
     pub fn is_empty(&self) -> bool {
         self.get_mem_value(self.map_ptr).is_none()
     }
@@ -69,7 +123,7 @@ impl<'process> LinkMap<'process> {
     fn metadata(&self, entry_ptr: u32) -> EntryMetadata {
         let entry_metadata = self
             .get_mem_word(entry_ptr)
-            .ok_or_else(|| LinkMapError::InaccessibleMetadata(entry_ptr))
+            .ok_or(LinkMapError::InaccessibleMetadata(entry_ptr))
             .unwrap();
 
         let map_ptr = entry_metadata[0];
@@ -207,7 +261,7 @@ mod tests {
     use super::*;
 
     fn to_word(ints: [u32; 4]) -> Word {
-        ints.map(|int| Felt::from(int))
+        ints.map(Felt::from)
     }
 
     #[test]

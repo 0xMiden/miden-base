@@ -454,7 +454,7 @@ fn generate_updates(entries: &[(Digest, Digest)], num_updates: usize) -> Vec<(Di
     let mut rng = rand::rng();
 
     entries
-        .into_iter()
+        .iter()
         .choose_multiple(&mut rng, num_updates)
         .into_iter()
         .map(|(key, _)| (*key, rand_digest()))
