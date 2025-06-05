@@ -1,9 +1,13 @@
-use std::time::{Duration, Instant};
+use std::{
+    sync::LazyLock,
+    time::{Duration, Instant},
+};
 
 use pingora::lb::Backend;
+use semver::{Version, VersionReq};
 use serde::Serialize;
 use tonic::transport::Channel;
-use tracing::{debug, error, info};
+use tracing::{error, info};
 
 use super::metrics::WORKER_UNHEALTHY;
 use crate::{
@@ -21,6 +25,16 @@ const MAX_BACKOFF_EXPONENT: usize = 9;
 ///
 /// This is the version of the proxy that is used to check the version of the worker.
 const MPS_PROXY_VERSION: &str = env!("CARGO_PKG_VERSION");
+
+/// The version requirement for the worker.
+///
+/// This is the version requirement for the worker that is used to check the version of the worker.
+static WORKER_VERSION_REQUIREMENT: LazyLock<VersionReq> = LazyLock::new(|| {
+    let current =
+        Version::parse(MPS_PROXY_VERSION).expect("Proxy version should be valid at this point");
+    VersionReq::parse(&format!("~{}.{}", current.major, current.minor))
+        .expect("Version should be valid at this point")
+});
 
 // WORKER
 // ================================================================================================
@@ -207,7 +221,7 @@ impl Worker {
             return;
         }
 
-        if !is_valid_version(MPS_PROXY_VERSION, &worker_status.version) {
+        if !is_valid_version(&WORKER_VERSION_REQUIREMENT, &worker_status.version).unwrap_or(false) {
             self.set_health_status(WorkerHealthStatus::Unhealthy {
                 num_failed_attempts: failed_attempts + 1,
                 first_fail_timestamp: match &self.health_status {
@@ -401,25 +415,16 @@ async fn create_status_client(
     Ok(StatusApiClient::new(channel))
 }
 
-/// Returns whether the worker version is valid.
+/// Returns true if the version has major and minor versions match the major and minor
+/// versions of the required version. Returns false otherwise.
 ///
-/// The version is valid if it is a semantic version and is greater than or equal to the
-/// current version. We dont check the patch version.
-/// Returns false if either version string is malformed.
-fn is_valid_version(current_version: &str, received_version: &str) -> bool {
-    debug!("current version: {}", current_version);
-    debug!("received version: {}", received_version);
+/// # Errors
+/// Returns an error if either of the versions is malformed.
+fn is_valid_version(version_req: &VersionReq, version: &str) -> Result<bool, String> {
+    let received =
+        Version::parse(version).map_err(|err| format!("Invalid worker version: {err}"))?;
 
-    // Dont check the patch version.
-    let current_version_parts: Vec<&str> = current_version.split('.').collect();
-    let version_parts: Vec<&str> = received_version.split('.').collect();
-
-    // Check if both versions have at least major and minor components
-    if current_version_parts.len() < 2 || version_parts.len() < 2 {
-        return false;
-    }
-
-    version_parts[0] == current_version_parts[0] && version_parts[1] == current_version_parts[1]
+    Ok(version_req.matches(&received))
 }
 
 // TESTS
@@ -431,16 +436,17 @@ mod tests {
 
     #[test]
     fn test_is_valid_version() {
-        assert!(is_valid_version("1.0.0", "1.0.0"));
-        assert!(is_valid_version("1.0.0", "1.0.1"));
-        assert!(is_valid_version("1.0.12", "1.0.1"));
-        assert!(is_valid_version("1.0.0", "1.0"));
-        assert!(!is_valid_version("1.0.0", "2.0.0"));
-        assert!(!is_valid_version("1.0.0", "1.1.0"));
-        assert!(!is_valid_version("1.0.0", "0.9.0"));
-        assert!(!is_valid_version("1.0.0", "0.9.1"));
-        assert!(!is_valid_version("1.0.0", "0.10.0"));
-        assert!(!is_valid_version("miden", "1.0"));
-        assert!(!is_valid_version("1.0.0", "1.miden.12"));
+        let version_req = VersionReq::parse("~1.0").unwrap();
+        assert!(is_valid_version(&version_req, "1.0.0").unwrap());
+        assert!(is_valid_version(&version_req, "1.0.1").unwrap());
+        assert!(is_valid_version(&version_req, "1.0.12").unwrap());
+        assert!(is_valid_version(&version_req, "1.0").is_err());
+        assert!(!is_valid_version(&version_req, "2.0.0").unwrap());
+        assert!(!is_valid_version(&version_req, "1.1.0").unwrap());
+        assert!(!is_valid_version(&version_req, "0.9.0").unwrap());
+        assert!(!is_valid_version(&version_req, "0.9.1").unwrap());
+        assert!(!is_valid_version(&version_req, "0.10.0").unwrap());
+        assert!(is_valid_version(&version_req, "miden").is_err());
+        assert!(is_valid_version(&version_req, "1.miden.12").is_err());
     }
 }

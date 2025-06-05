@@ -2126,6 +2126,7 @@ dependencies = [
  "prost-build",
  "protox 0.8.0",
  "reqwest",
+ "semver 1.0.26",
  "serde",
  "serde_json",
  "serde_qs",
