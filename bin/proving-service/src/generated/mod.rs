@@ -9,6 +9,8 @@ use miden_tx::utils::{Deserializable, DeserializationError, Serializable};
 pub mod proving_service;
 #[rustfmt::skip]
 pub mod status;
+#[rustfmt::skip]
+pub mod proxy_status;
 
 pub use proving_service::*;
 

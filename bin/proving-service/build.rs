@@ -16,7 +16,8 @@ const REPO_PROTO_DIR: &str = "../../proto";
 const CRATE_PROTO_DIR: &str = "proto";
 
 /// List of proto files to be compiled
-const PROTO_FILES: &[&str] = &["proving_service.proto", "worker_status.proto"];
+const PROTO_FILES: &[&str] =
+    &["proving_service.proto", "worker_status.proto", "proxy_status.proto"];
 
 /// Generates Rust protobuf bindings from .proto files.
 ///

@@ -1,0 +1,43 @@
+// Specification of the proxy status gRPC API.
+syntax = "proto3";
+package proxy_status;
+
+import "proving_service.proto";
+
+service ProxyStatusApi {
+    // Returns the status of the proxy.
+    rpc Status(ProxyStatusRequest) returns (ProxyStatusResponse) {}
+}
+
+// Request message for the status of the proxy.
+message ProxyStatusRequest {}
+
+// Status of an individual worker in the proxy.
+message WorkerStatus {
+    // The address of the worker.
+    string address = 1;
+    // The version of the worker.
+    string version = 2;
+    // The health status of the worker.
+    WorkerHealthStatus status = 3;
+}
+
+// Health status of a worker.
+enum WorkerHealthStatus {
+    // The worker's health status is unknown.
+    UNKNOWN = 0;
+    // The worker is healthy.
+    HEALTHY = 1;
+    // The worker is unhealthy.
+    UNHEALTHY = 2;
+}
+
+// Response message containing the status of the proxy.
+message ProxyStatusResponse {
+    // The version of the proxy.
+    string version = 1;
+    // The proof type supported by this proxy.
+    proving_service.ProofType supported_proof_type = 2;
+    // The list of workers managed by this proxy.
+    repeated WorkerStatus workers = 3;
+} 
