@@ -163,7 +163,7 @@ fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     mock_chain.prove_next_block();
 
     // fast forward to reclaim block height + 1
-    mock_chain.prove_until_block((reclaim_block_height + 1) as u32).unwrap();
+    mock_chain.prove_until_block(reclaim_block_height + 1).unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Failure - sender_account)
     let executed_transaction_1 = mock_chain
@@ -176,7 +176,7 @@ fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
         ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED
     );
 
-    mock_chain.prove_until_block(timelock_block_height as u32).unwrap();
+    mock_chain.prove_until_block(timelock_block_height).unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Success - sender_account)
     let executed_transaction_1 = mock_chain
@@ -248,7 +248,7 @@ fn p2idh_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     assert_transaction_executor_error!(early_spend, ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past unlock height block height ──────────────────────
-    mock_chain.prove_until_block((timelock_block_height + 1) as u32).unwrap();
+    mock_chain.prove_until_block(timelock_block_height + 1).unwrap();
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
@@ -325,7 +325,7 @@ fn p2idh_script_reclaimable_timelockable() -> anyhow::Result<()> {
     assert_transaction_executor_error!(early_spend, ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past height 7 ──────────────────────
-    mock_chain.prove_until_block((timelock_block_height + 1) as u32).unwrap();
+    mock_chain.prove_until_block(timelock_block_height + 1).unwrap();
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
@@ -336,7 +336,7 @@ fn p2idh_script_reclaimable_timelockable() -> anyhow::Result<()> {
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past height 10 ──────────────────────
-    mock_chain.prove_until_block((reclaim_block_height + 1) as u32).unwrap();
+    mock_chain.prove_until_block(reclaim_block_height + 1).unwrap();
 
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
@@ -402,26 +402,15 @@ fn p2idh_build_from_scratch_test() -> anyhow::Result<()> {
 
     let output_note = OutputNote::Full(hybrid_p2id.clone());
     mock_chain.add_pending_note(output_note);
-    mock_chain.prove_until_block(8 as u32).unwrap();
+    mock_chain.prove_until_block(8_u32).unwrap();
 
-    // CONSTRUCT AND EXECUTE TX (Success - Target Account)
+    // CONSTRUCT AND EXECUTE TX (Failure - Sender Account)
     let executed_transaction_1 = mock_chain
         .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
         .build()
-        .execute()
-        .unwrap();
+        .execute();
 
-    let target_account_after: Account = Account::from_parts(
-        sender_account.id(),
-        AssetVault::new(&[fungible_asset]).unwrap(),
-        target_account.storage().clone(),
-        target_account.code().clone(),
-        Felt::new(2),
-    );
-    assert_eq!(
-        executed_transaction_1.final_account().commitment(),
-        target_account_after.commitment()
-    );
+    assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDH_RECLAIM_DISABLED);
 
     Ok(())
 }
