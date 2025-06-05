@@ -591,10 +591,12 @@ impl<A: AdviceProvider> Host for TransactionHost<A> {
                 Ok(())
             }
             TransactionEvent::LinkMapSetEvent => {
+                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())?;
                 Ok(())
             },
             TransactionEvent::LinkMapGetEvent => {
-              Ok(())
+                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())?;
+                Ok(())
             }
         }
         .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
