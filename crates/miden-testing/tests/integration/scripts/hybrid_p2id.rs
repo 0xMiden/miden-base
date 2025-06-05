@@ -345,7 +345,7 @@ fn hybrid_p2id_script_reclaimable_timelockable() -> anyhow::Result<()> {
     )?;
 
     let asset: Asset = FungibleAsset::mock(100);
-    let vault = NoteAssets::new(vec![asset.into()])?;
+    let vault = NoteAssets::new(vec![asset])?;
     let hybrid_p2id = Note::new(vault, metadata, recipient);
 
     // push note on-chain
