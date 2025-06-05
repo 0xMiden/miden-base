@@ -86,7 +86,7 @@ impl TransactionProver for LocalTransactionProver {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
                 .map_err(TransactionProverError::InvalidTransactionInputs)?;
-        let advice_provider: MemAdviceProvider = advice_inputs.into();
+        let advice_provider: MemAdviceProvider = advice_inputs.into_inner().into();
 
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_transaction_code(account.code(), input_notes, &tx_args);

@@ -58,13 +58,12 @@ impl TransactionContext {
         code: &str,
         assembler: Assembler,
     ) -> Result<Process, ExecutionError> {
-        let (stack_inputs, mut advice_inputs) = TransactionKernel::prepare_inputs(
+        let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
             &self.tx_args,
             Some(self.advice_inputs.clone()),
         )
         .unwrap();
-        advice_inputs.extend(self.advice_inputs.clone());
 
         let test_lib = TransactionKernel::kernel_as_library();
 
