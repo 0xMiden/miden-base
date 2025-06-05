@@ -171,7 +171,7 @@ fn link_map_iterator() -> anyhow::Result<()> {
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
-    let map = LinkMap::new(map_ptr.into(), state).unwrap();
+    let map = LinkMap::new(map_ptr.into(), state);
     let mut map_iter = map.iter();
 
     let entry0 = map_iter.next().expect("map should have four entries");
@@ -181,26 +181,26 @@ fn link_map_iterator() -> anyhow::Result<()> {
     assert!(map_iter.next().is_none(), "map should only have four entries");
 
     assert_eq!(entry0.metadata.map_ptr, map_ptr);
-    assert_eq!(entry0.metadata.prev_item, 0);
-    assert_eq!(entry0.metadata.next_item, entry1.ptr);
+    assert_eq!(entry0.metadata.prev_entry_ptr, 0);
+    assert_eq!(entry0.metadata.next_entry_ptr, entry1.ptr);
     assert_eq!(entry0.key, *entry0_key);
     assert_eq!(entry0.value, *entry0_value);
 
     assert_eq!(entry1.metadata.map_ptr, map_ptr);
-    assert_eq!(entry1.metadata.prev_item, entry0.ptr);
-    assert_eq!(entry1.metadata.next_item, entry2.ptr);
+    assert_eq!(entry1.metadata.prev_entry_ptr, entry0.ptr);
+    assert_eq!(entry1.metadata.next_entry_ptr, entry2.ptr);
     assert_eq!(entry1.key, *entry1_key);
     assert_eq!(entry1.value, *entry1_value);
 
     assert_eq!(entry2.metadata.map_ptr, map_ptr);
-    assert_eq!(entry2.metadata.prev_item, entry1.ptr);
-    assert_eq!(entry2.metadata.next_item, entry3.ptr);
+    assert_eq!(entry2.metadata.prev_entry_ptr, entry1.ptr);
+    assert_eq!(entry2.metadata.next_entry_ptr, entry3.ptr);
     assert_eq!(entry2.key, *entry2_key);
     assert_eq!(entry2.value, *entry2_value);
 
     assert_eq!(entry3.metadata.map_ptr, map_ptr);
-    assert_eq!(entry3.metadata.prev_item, entry2.ptr);
-    assert_eq!(entry3.metadata.next_item, 0);
+    assert_eq!(entry3.metadata.prev_entry_ptr, entry2.ptr);
+    assert_eq!(entry3.metadata.next_entry_ptr, 0);
     assert_eq!(entry3.key, *entry3_key);
     assert_eq!(entry3.value, *entry3_value);
 
@@ -418,7 +418,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
-    let map = LinkMap::new(map_ptr.into(), state).unwrap();
+    let map = LinkMap::new(map_ptr.into(), state);
 
     let actual_map: BTreeMap<_, _> = map
         .iter()
