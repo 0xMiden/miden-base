@@ -4,10 +4,9 @@ use.kernel::memory
 # TODO: Document security.
 # TODO: Document terminology.
 # TODO: Document full map layout.
-# TODO: Rename prev_item and next_item to prev_entry and next_entry.
 
 # Layout of each map entry:
-# [map_ptr, prev_item, next_item, 0, KEY, VALUE]
+# [map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE]
 
 # Event emitted when an entry is set.
 const.LINK_MAP_SET_EVENT=131098
@@ -204,18 +203,18 @@ proc.validate_absent_after_entry
     exec.assert_key_is_greater
     # => [KEY, entry_ptr]
 
-    movup.4 exec.get_next_item_ptr
-    # => [next_item_ptr, KEY]
+    movup.4 exec.get_next_entry_ptr
+    # => [next_entry_ptr, KEY]
 
     dup eq.0
-    # => [is_last_entry, next_item_ptr, KEY]
+    # => [is_last_entry, next_entry_ptr, KEY]
 
     if.true
         # nothing further to validate
         drop dropw
         # => []
     else
-        # if there is a next item, then the KEY must be less than next item's key
+        # if there is a next entry, then the KEY must be less than next entry's key
         exec.assert_key_is_less
         # => []
     end
@@ -286,12 +285,12 @@ proc.insert_at_head
         dup movdn.2
         # => [current_head_entry_ptr, entry_ptr, current_head_entry_ptr, map_ptr, entry_ptr]
 
-        # set current_head_entry_ptr.prev_item = entry_ptr
-        exec.set_prev_item_ptr
+        # set current_head_entry_ptr.prev_entry_ptr = entry_ptr
+        exec.set_prev_entry_ptr
         # => [current_head_entry_ptr, map_ptr, entry_ptr]
 
-        # set entry_ptr.next_item = current_head_entry_ptr
-        dup.2 exec.set_next_item_ptr
+        # set entry_ptr.next_entry_ptr = current_head_entry_ptr
+        dup.2 exec.set_next_entry_ptr
         # => [map_ptr, entry_ptr]
     end
 
@@ -350,21 +349,21 @@ proc.insert_after_entry
     exec.insert_pair
     # => [entry_ptr, prev_entry_ptr]
 
-    dup.1 exec.get_next_item_ptr movdn.2
+    dup.1 exec.get_next_entry_ptr movdn.2
     # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
 
     dup dup.2
     # => [prev_entry_ptr, entry_ptr, entry_ptr, prev_entry_ptr, next_entry_ptr]
 
-    # set prev_entry_ptr.next_item = entry_ptr
-    exec.set_next_item_ptr
+    # set prev_entry_ptr.next_entry_ptr = entry_ptr
+    exec.set_next_entry_ptr
     # => [entry_ptr, prev_entry_ptr, next_entry_ptr]
 
     dup movdn.3
     # => [entry_ptr, prev_entry_ptr, next_entry_ptr, entry_ptr]
 
-    # set entry_ptr.prev_item = prev_entry_ptr
-    exec.set_prev_item_ptr
+    # set entry_ptr.prev_entry = prev_entry_ptr
+    exec.set_prev_entry_ptr
     # => [entry_ptr, next_entry_ptr, entry_ptr]
 
     dup eq.0 not
@@ -383,12 +382,12 @@ proc.insert_after_entry
         dup dup.2
         # => [entry_ptr, next_entry_ptr, next_entry_ptr, entry_ptr]
 
-        # set entry_ptr.next_item = next_item
-        exec.set_next_item_ptr
+        # set entry_ptr.next_entry_ptr = next_entry
+        exec.set_next_entry_ptr
         # => [next_entry_ptr, entry_ptr]
 
-        # set next_item.prev_item = entry_ptr
-        exec.set_prev_item_ptr
+        # set next_entry.prev_entry_ptr = entry_ptr
+        exec.set_prev_entry_ptr
         # => []
     else
         # remove unneeded stack elements
@@ -460,46 +459,46 @@ proc.is_empty
     mem_load eq.0
 end
 
-#! Returns true if the entry at the given ptr has a non-null ptr to a next item.
+#! Returns true if the entry at the given ptr has a non-null ptr to a next entry.
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [has_next]
 proc.has_next
-    exec.get_next_item_ptr eq.0 not
+    exec.get_next_entry_ptr eq.0 not
 end
 
-#! Returns the value of the next_item pointer in the provided entry pointer.
+#! Returns the value of the next_entry pointer in the provided entry pointer.
 #!
 #! Inputs:  [entry_ptr]
-#! Outputs: [next_item_ptr]
-proc.get_next_item_ptr
+#! Outputs: [next_entry_ptr]
+proc.get_next_entry_ptr
     add.2 mem_load
-    # => [next_item_ptr]
+    # => [next_entry_ptr]
 end
 
-#! Returns the value of the prev_item pointer in the provided entry pointer.
+#! Returns the value of the prev_entry pointer in the provided entry pointer.
 #!
 #! Inputs:  [entry_ptr]
-#! Outputs: [prev_item_ptr]
-proc.get_prev_item_ptr
+#! Outputs: [prev_entry_ptr]
+proc.get_prev_entry_ptr
     add.1 mem_load
-    # => [prev_item_ptr]
+    # => [prev_entry_ptr]
 end
 
-#! Sets the next_item ptr of the entry to the provided value.
+#! Sets the next_entry ptr of the entry to the provided value.
 #!
-#! Inputs:  [entry_ptr, next_item]
+#! Inputs:  [entry_ptr, next_entry_ptr]
 #! Outputs: []
-proc.set_next_item_ptr
+proc.set_next_entry_ptr
     add.2 mem_store
     # => []
 end
 
-#! Sets the prev_item ptr of the entry to the provided value.
+#! Sets the prev_entry ptr of the entry to the provided value.
 #!
-#! Inputs:  [entry_ptr, prev_item]
+#! Inputs:  [entry_ptr, prev_entry_ptr]
 #! Outputs: []
-proc.set_prev_item_ptr
+proc.set_prev_entry_ptr
     add.1 mem_store
     # => []
 end
