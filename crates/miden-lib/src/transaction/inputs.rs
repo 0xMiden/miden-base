@@ -255,15 +255,16 @@ impl TransactionAdviceInputs {
         let account_id_key: Digest =
             Digest::from([acc_id.suffix(), acc_id.prefix().as_felt(), ZERO, ZERO]);
         match input_type {
-            // if a seed was provided, extend the map; otherwise inject the state
+            // if a seed was provided, extend the map appropriately
             AccountInputsType::Native(Some(seed)) => {
                 self.extend_map([
                     // ACCOUNT_ID -> ACCOUNT_SEED
                     (account_id_key, seed.to_vec()),
                 ]);
             },
-            // NOTE: keep in sync with the start_foreign_context kernel procedure
+            // for foreign accounts, we need to insert the id to state mapping
             AccountInputsType::Foreign => {
+                // NOTE: keep this in sync with the start_foreign_context kernel procedure
                 let header = AccountHeader::from(account);
                 self.extend_map([
                     // ACCOUNT_ID -> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT,
