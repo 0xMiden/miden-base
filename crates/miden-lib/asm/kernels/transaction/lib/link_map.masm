@@ -61,10 +61,10 @@ use.kernel::memory
 # operations this means the host does the expensive iteration to find the place where a key-value
 # pair must be inserted or updated. Similarly for get operations. The host will either find the
 # requested key-value pair or provide the entry at which the pair would reside if it was present
-# in the map to prove its absence. The link map in the VM will validate that what the host
+# in the map to prove its absence. The link map in the VM will assert that what the host
 # provided is correct.
 #
-# Because the host cannot be trusted, the link map in the VM must validate a couple of things.
+# Because the host cannot be trusted, the link map in the VM must assert a couple of things.
 #
 # ## Entry Pointer Validity
 #
@@ -73,7 +73,7 @@ use.kernel::memory
 # memory location, otherwise the VM might read or write to those locations and produce incorrect
 # results.
 #
-# Each map entry is allocated from a dedicated range of memory. That way, it is simple to validate
+# Each map entry is allocated from a dedicated range of memory. That way, it is simple to assert
 # that a host-provided entry_ptr lies within that range. That ensures that no other piece of
 # memory can be abused as an entry. Moreover, each entry takes up exactly three words, so each
 # entry pointer can be checked for entry-alignment. Finally, because entries from _different_ link
@@ -101,7 +101,7 @@ use.kernel::memory
 # ## Get Operation
 #
 # During a get operation, the host is asked where the requested key-value pair is located, or if
-# it does not exist, where its absence can be validated. Similarly to the set operation, the host
+# it does not exist, where its absence can be asserted. Similarly to the set operation, the host
 # can respond with three different values:
 # - Found = 0
 #   - Means the key was found and requires validating that the host-provided entry pointer's key
@@ -245,7 +245,7 @@ end
 #!
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
-#!   get_existent_value, validate_absent_at_head, validate_absent_after_entry.
+#!   get_existent_value, assert_absent_at_head, assert_absent_after_entry.
 export.get
     emit.LINK_MAP_GET_EVENT adv_push.2
     # => [get_operation, entry_ptr, map_ptr, KEY]
@@ -270,18 +270,18 @@ export.get
         push.1
         # => [contains_key, VALUE]
     else
-        # validate absence of the entry
+        # assert absence of the entry
         # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
 
         if.true
             drop
             # => [map_ptr, KEY]
 
-            exec.validate_absent_at_head
+            exec.assert_absent_at_head
             # => []
 
         else
-            exec.validate_absent_after_entry
+            exec.assert_absent_after_entry
             # => []
         end
 
@@ -488,7 +488,7 @@ end
 # GET HELPERS
 # -------------------------------------------------------------------------------------------------
 
-#! Validates that the provided KEY is absent at the head of the link map.
+#! Asserts that the provided KEY is absent at the head of the link map.
 #!
 #! An invariant of the link map is that its entries are sorted and since there is no previous
 #! entry for the head, this proves that the KEY is absent from the map.
@@ -498,12 +498,12 @@ end
 #!
 #! Panics if:
 #! - the KEY is not less than the key in the head of the map, unless the map is empty.
-proc.validate_absent_at_head
+proc.assert_absent_at_head
     dup exec.is_empty
     # => [is_empty, map_ptr, KEY]
 
     if.true
-        # in an empty list, any KEY is absent at the head, so there's nothing further to validate
+        # in an empty list, any KEY is absent at the head, so there's nothing further to assert
         drop dropw
         # => []
     else
@@ -516,7 +516,7 @@ proc.validate_absent_at_head
     end
 end
 
-#! Validates that the provided KEY is absent after the provided entry.
+#! Asserts that the provided KEY is absent after the provided entry.
 #!
 #! If KEY is greater than the key in the entry and less than the key in entry's next entry, then
 #! that proves the absence of the key.
@@ -528,7 +528,7 @@ end
 #! - the map is empty.
 #! - the KEY is not greater than the key in the entry.
 #! - the KEY is not less than the key in entry.next_entry, unless the entry is the last one in the map.
-proc.validate_absent_after_entry
+proc.assert_absent_after_entry
     swap exec.is_empty assertz.err=ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY
     # => [entry_ptr, KEY]
 
@@ -549,7 +549,7 @@ proc.validate_absent_after_entry
     # => [is_last_entry, next_entry_ptr, KEY]
 
     if.true
-        # nothing further to validate
+        # nothing further to assert
         drop dropw
         # => []
     else
