@@ -1,7 +1,7 @@
 use tonic::{Request, Response, Status};
 
 use crate::{
-    commands::worker::ProverType,
+    api::prover::ProverType,
     generated::status::{StatusRequest, StatusResponse, status_api_server::StatusApi},
 };
 

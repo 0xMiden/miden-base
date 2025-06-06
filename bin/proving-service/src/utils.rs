@@ -1,5 +1,6 @@
 use std::net::TcpListener;
 
+use miden_proving_service::error::ProvingServiceError;
 use opentelemetry::{KeyValue, trace::TracerProvider as _};
 use opentelemetry_sdk::{
     Resource,
@@ -13,7 +14,7 @@ use pingora::{Error, ErrorType, http::ResponseHeader, protocols::http::ServerSes
 use pingora_proxy::Session;
 use tracing_subscriber::{EnvFilter, Registry, layer::SubscriberExt};
 
-use crate::{commands::PROXY_HOST, error::ProvingServiceError, proxy::metrics::QUEUE_DROP_COUNT};
+use crate::{commands::PROXY_HOST, proxy::metrics::QUEUE_DROP_COUNT};
 
 pub const MIDEN_PROVING_SERVICE: &str = "miden-proving-service";
 
@@ -58,7 +59,7 @@ const RESOURCE_EXHAUSTED_CODE: u16 = 8;
 /// - `Ok(())` if the global subscriber is successfully set up.
 /// - `Err(String)` describing the failure if any step (creating the exporter or setting the
 ///   subscriber) fails.
-pub(crate) fn setup_tracing() -> Result<(), String> {
+pub fn setup_tracing() -> Result<(), String> {
     let exporter = opentelemetry_otlp::SpanExporter::builder()
         .with_tonic()
         .build()

@@ -8,6 +8,7 @@
 - Implement map in transaction kernel library (#1396).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
+- Exported proving service as library (#1424).
 
 ## 0.9.1 (2025-05-30)
 

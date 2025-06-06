@@ -5,14 +5,14 @@ use miden_objects::{
 };
 use miden_tx::utils::{Deserializable, DeserializationError, Serializable};
 
+use crate::api::prover::ProverType;
+
 #[rustfmt::skip]
 pub mod proving_service;
 #[rustfmt::skip]
 pub mod status;
 
 pub use proving_service::*;
-
-use crate::commands::worker::ProverType;
 
 // CONVERSIONS
 // ================================================================================================

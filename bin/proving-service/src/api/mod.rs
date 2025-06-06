@@ -1,14 +1,11 @@
 use tokio::net::TcpListener;
 
-use crate::{
-    commands::worker::ProverType,
-    generated::{api_server::ApiServer, status::status_api_server::StatusApiServer},
-};
+use crate::generated::{api_server::ApiServer, status::status_api_server::StatusApiServer};
 
-mod prover;
+pub(crate) mod prover;
 mod status;
 
-pub use prover::ProverRpcApi;
+pub use prover::{MIDEN_PROVING_SERVICE, ProverRpcApi, ProverType};
 
 pub struct RpcListener {
     pub api_service: ApiServer<ProverRpcApi>,

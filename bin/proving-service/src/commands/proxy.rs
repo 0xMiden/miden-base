@@ -1,4 +1,5 @@
 use clap::Parser;
+use miden_proving_service::{api::MIDEN_PROVING_SERVICE, error::ProvingServiceError};
 use pingora::{
     apps::HttpServerOptions,
     prelude::{Opt, background_service},
@@ -11,12 +12,11 @@ use tracing::{info, warn};
 use super::ProxyConfig;
 use crate::{
     commands::PROXY_HOST,
-    error::ProvingServiceError,
     proxy::{
         LoadBalancer, LoadBalancerState, status::ProxyStatusService,
         update_workers::LoadBalancerUpdateService,
     },
-    utils::{MIDEN_PROVING_SERVICE, check_port_availability},
+    utils::check_port_availability,
 };
 
 /// Starts the proxy.
