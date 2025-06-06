@@ -501,7 +501,7 @@ end
 #! Panics if:
 #! - the KEY is not less than the key in the head of the map, unless the map is empty.
 proc.validate_absent_at_head
-    drop dup exec.is_empty
+    dup exec.is_empty
     # => [is_empty, map_ptr, KEY]
 
     if.true

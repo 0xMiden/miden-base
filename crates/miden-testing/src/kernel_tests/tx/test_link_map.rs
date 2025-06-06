@@ -235,7 +235,7 @@ fn insert_at_head() -> anyhow::Result<()> {
 #[test]
 fn set_update_get_random_entries() -> anyhow::Result<()> {
     let entries = generate_entries(1000);
-    let absent_entries = generate_entries(100);
+    let absent_entries = generate_entries(500);
     let update_ops = generate_updates(&entries, 200);
 
     // Insert all entries into the map.
