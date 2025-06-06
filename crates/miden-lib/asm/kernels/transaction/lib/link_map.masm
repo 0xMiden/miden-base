@@ -148,6 +148,18 @@ const.KEY_OFFSET=4
 # The offset of the VALUE in an entry.
 const.VALUE_OFFSET=8
 
+# The value of the Update operation for a set event.
+const.INSERT_OPERATION_UPDATE=0
+
+# The value of the InsertAtHead operation for a set event.
+const.INSERT_OPERATION_AT_HEAD=1
+
+# The value of the Found operation for a get event.
+const.GET_OPERATION_FOUND=0
+
+# The value of the AbsentAtHead operation for a get event.
+const.GET_OPERATION_ABSENT_AT_HEAD=1
+
 # EVENTS
 # =================================================================================================
 
@@ -184,25 +196,21 @@ export.set
     emit.LINK_MAP_SET_EVENT adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
-    # Operation:
-    # Update = 0
-    # InsertAtHead = 1
-    # InsertAfterEntry = 2
-
     dup.2 dup.2
     # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, VALUE]
 
     exec.assert_entry_ptr_is_valid
     # => [operation, entry_ptr, map_ptr, KEY, VALUE]
 
-    dup eq.0
-    # => [is_update_op, operation, entry_ptr, map_ptr, KEY, VALUE]
+    dup eq.INSERT_OPERATION_AT_HEAD swap eq.INSERT_OPERATION_UPDATE
+    # => [is_insert_update_op, is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
 
     if.true
-        # drop operation and map_ptr from stack
+        # drop is_insert_at_head_op from stack
         drop
         # => [entry_ptr, map_ptr, KEY, VALUE]
 
+        # drop map_ptr from stack
         swap drop
         # => [entry_ptr, KEY, VALUE]
 
@@ -210,12 +218,10 @@ export.set
         # => []
     else
         # insert new entry
-        eq.1
         # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
 
         if.true
-            # drop the entry ptr since we can load the head from memory
-            # and that way we don't have to validate it
+            # drop the entry ptr since we can load the head from map_ptr
             drop
             # => [map_ptr, KEY, VALUE]
 
@@ -246,21 +252,16 @@ end
 #!   get_existent_value, validate_absent_at_head, validate_absent_after_entry.
 export.get
     emit.LINK_MAP_GET_EVENT adv_push.2
-    # => [operation, entry_ptr, map_ptr, KEY]
+    # => [get_operation, entry_ptr, map_ptr, KEY]
 
     dup.2 dup.2
-    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY]
+    # => [entry_ptr, map_ptr, get_operation, entry_ptr, map_ptr, KEY]
 
     exec.assert_entry_ptr_is_valid
-    # => [operation, entry_ptr, map_ptr, KEY]
+    # => [get_operation, entry_ptr, map_ptr, KEY]
 
-    # Operation:
-    # Found = 0
-    # AbsentAtHead = 1
-    # AbsentAfterEntry = 2
-
-    dup eq.0
-    # => [is_found, operation, entry_ptr, map_ptr, KEY]
+    dup eq.GET_OPERATION_ABSENT_AT_HEAD swap eq.GET_OPERATION_FOUND
+    # => [is_found, is_absent_at_head, entry_ptr, map_ptr, KEY]
 
     if.true
         drop swap drop
@@ -272,7 +273,7 @@ export.get
         push.1
         # => [contains_key, VALUE]
     else
-        eq.1
+        # validate absence of the entry
         # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
 
         if.true
