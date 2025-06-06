@@ -1,3 +1,5 @@
+#[cfg(any(feature = "async", target_family = "wasm"))]
+use alloc::boxed::Box;
 use alloc::{collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
