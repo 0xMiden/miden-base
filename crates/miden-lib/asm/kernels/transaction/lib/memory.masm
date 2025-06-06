@@ -75,6 +75,9 @@ const.INIT_NONCE_PTR=416
 # The memory address at which the transaction script mast root is stored.
 const.TX_SCRIPT_ROOT_PTR=420
 
+# The memory address at which the key of the transaction script arguments is stored.
+const.TX_SCRIPT_ARGS_KEY_PTR=424
+
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -227,7 +230,7 @@ const.LINK_MAP_ENTRY_SIZE=12
 #! Where:
 #! - num_output_notes is the number of output notes.
 export.get_num_output_notes
-    push.NUM_OUTPUT_NOTES_PTR mem_load
+    mem_load.NUM_OUTPUT_NOTES_PTR
 end
 
 #! Sets the number of output notes.
@@ -238,7 +241,7 @@ end
 #! Where:
 #! - num_output_notes is the number of output notes.
 export.set_num_output_notes
-    push.NUM_OUTPUT_NOTES_PTR mem_store
+    mem_store.NUM_OUTPUT_NOTES_PTR
 end
 
 #! Returns a pointer to the input note being executed.
@@ -249,7 +252,7 @@ end
 #! Where:
 #! - note_ptr is the memory address of the data segment for the current input note.
 export.get_current_input_note_ptr
-    push.CURRENT_INPUT_NOTE_PTR mem_load
+    mem_load.CURRENT_INPUT_NOTE_PTR
 end
 
 #! Sets the current input note pointer to the input note being executed.
@@ -260,7 +263,7 @@ end
 #! Where:
 #! - note_ptr is the new memory address of the data segment for the input note.
 export.set_current_input_note_ptr
-    push.CURRENT_INPUT_NOTE_PTR mem_store
+    mem_store.CURRENT_INPUT_NOTE_PTR
 end
 
 #! Returns a pointer to the memory address at which the input vault root is stored.
@@ -283,7 +286,7 @@ end
 #! Where:
 #! - INPUT_VAULT_ROOT is the input vault root.
 export.get_input_vault_root
-    padw push.INPUT_VAULT_ROOT_PTR mem_loadw
+    padw mem_loadw.INPUT_VAULT_ROOT_PTR
 end
 
 #! Sets the input vault root.
@@ -294,8 +297,7 @@ end
 #! Where:
 #! - INPUT_VAULT_ROOT is the input vault root.
 export.set_input_vault_root
-    push.INPUT_VAULT_ROOT_PTR
-    mem_storew
+    mem_storew.INPUT_VAULT_ROOT_PTR
 end
 
 #! Returns a pointer to the memory address at which the output vault root is stored.
@@ -318,7 +320,7 @@ end
 #! Where:
 #! - OUTPUT_VAULT_ROOT is the output vault root.
 export.get_output_vault_root
-    padw push.OUTPUT_VAULT_ROOT_PTR mem_loadw
+    padw mem_loadw.OUTPUT_VAULT_ROOT_PTR
 end
 
 #! Sets the output vault root.
@@ -329,8 +331,7 @@ end
 #! Where:
 #! - OUTPUT_VAULT_ROOT is the output vault root.
 export.set_output_vault_root
-    push.OUTPUT_VAULT_ROOT_PTR
-    mem_storew
+    mem_storew.OUTPUT_VAULT_ROOT_PTR
 end
 
 # GLOBAL INPUTS
@@ -344,8 +345,7 @@ end
 #! Where:
 #! - BLOCK_COMMITMENT is the commitment of the transaction reference block.
 export.set_block_commitment
-    push.BLOCK_COMMITMENT_PTR
-    mem_storew
+    mem_storew.BLOCK_COMMITMENT_PTR
 end
 
 #! Returns the block commitment of the reference block.
@@ -356,7 +356,7 @@ end
 #! Where:
 #! - BLOCK_COMMITMENT is the commitment of the transaction reference block.
 export.get_block_commitment
-    padw push.BLOCK_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.BLOCK_COMMITMENT_PTR
 end
 
 #! Sets the account ID.
@@ -395,8 +395,7 @@ end
 #! Where:
 #! - INIT_ACCOUNT_COMMITMENT is the initial account commitment.
 export.set_init_account_commitment
-    push.INIT_ACCOUNT_COMMITMENT_PTR
-    mem_storew
+    mem_storew.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
 #! Returns the initial account commitment.
@@ -407,7 +406,7 @@ end
 #! Where:
 #! - INIT_ACCOUNT_COMMITMENT is the initial account commitment.
 export.get_init_account_commitment
-    padw push.INIT_ACCOUNT_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
 #! Returns the input notes commitment.
@@ -420,7 +419,7 @@ end
 #! Where:
 #! - INPUT_NOTES_COMMITMENT is the input notes commitment.
 export.get_input_notes_commitment
-    padw push.INPUT_NOTES_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.INPUT_NOTES_COMMITMENT_PTR
 end
 
 #! Sets the input notes' commitment.
@@ -431,8 +430,7 @@ end
 #! Where:
 #! - INPUT_NOTES_COMMITMENT is the notes' commitment.
 export.set_nullifier_commitment
-    push.INPUT_NOTES_COMMITMENT_PTR
-    mem_storew
+    mem_storew.INPUT_NOTES_COMMITMENT_PTR
 end
 
 #! Returns the initial account nonce.
@@ -443,7 +441,7 @@ end
 #! Where:
 #! - init_nonce is the initial account nonce.
 export.get_init_nonce
-    push.INIT_NONCE_PTR mem_load
+    mem_load.INIT_NONCE_PTR
 end
 
 #! Sets the initial account nonce.
@@ -454,7 +452,7 @@ end
 #! Where:
 #! - init_nonce is the initial account nonce.
 export.set_init_nonce
-    push.INIT_NONCE_PTR mem_store
+    mem_store.INIT_NONCE_PTR
 end
 
 #! Returns a memory address of the transaction script root.
@@ -476,8 +474,31 @@ end
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction script root.
 export.set_tx_script_root
-    push.TX_SCRIPT_ROOT_PTR
-    mem_storew
+    mem_storew.TX_SCRIPT_ROOT_PTR
+end
+
+#! Returns the transaction script arguments key.
+#!
+#! Inputs:  []
+#! Outputs: [TX_SCRIPT_ARGS_KEY]
+#!
+#! Where:
+#! - TX_SCRIPT_ARGS_KEY is the key which could be used to obtain the transaction script arguments 
+#!   from the advice map.
+export.get_tx_script_args_key
+    padw mem_loadw.TX_SCRIPT_ARGS_KEY_PTR
+end
+
+#! Sets the transaction script arguments key.
+#!
+#! Inputs:  [TX_SCRIPT_ARGS_KEY]
+#! Outputs: [TX_SCRIPT_ARGS_KEY]
+#!
+#! Where:
+#! - TX_SCRIPT_ARGS_KEY is the key which could be used to obtain the transaction script arguments 
+#!   from the advice map.
+export.set_tx_script_args_key
+    mem_storew.TX_SCRIPT_ARGS_KEY_PTR
 end
 
 # BLOCK DATA
@@ -502,7 +523,7 @@ end
 #! Where:
 #! - PREV_BLOCK_COMMITMENT_PTR is the block commitment of the transaction reference block.
 export.get_prev_block_commitment
-    padw push.PREV_BLOCK_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.PREV_BLOCK_COMMITMENT_PTR
 end
 
 #! Returns the block number of the transaction reference block.
@@ -513,7 +534,7 @@ end
 #! Where:
 #! - blk_num is the block number of the transaction reference block.
 export.get_blk_num
-    push.BLOCK_METADATA_PTR mem_load
+    mem_load.BLOCK_METADATA_PTR
 end
 
 #! Returns the protocol version of the transaction reference block.
@@ -524,7 +545,7 @@ end
 #! Where:
 #! - version is the protocol version of the transaction reference block.
 export.get_blk_version
-    padw push.BLOCK_METADATA_PTR mem_loadw drop drop swap drop
+    padw mem_loadw.BLOCK_METADATA_PTR drop drop swap drop
 end
 
 #! Returns the block timestamp of the reference block for this transaction.
@@ -535,7 +556,7 @@ end
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
 export.get_blk_timestamp
-    padw push.BLOCK_METADATA_PTR mem_loadw drop movdn.2 drop drop
+    padw mem_loadw.BLOCK_METADATA_PTR drop movdn.2 drop drop
 end
 
 #! Returns the chain commitment of the transaction reference block.
@@ -546,7 +567,7 @@ end
 #! Where:
 #! - CHAIN_COMMITMENT is the chain commitment of the transaction reference block.
 export.get_chain_commitment
-    padw push.CHAIN_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.CHAIN_COMMITMENT_PTR
 end
 
 #! Returns the account db root of the transaction reference block.
@@ -557,7 +578,7 @@ end
 #! Where:
 #! - ACCT_DB_ROOT is the account database root of the transaction reference block.
 export.get_acct_db_root
-    padw push.ACCT_DB_ROOT_PTR mem_loadw
+    padw mem_loadw.ACCT_DB_ROOT_PTR
 end
 
 #! Returns the nullifier db root of the transaction reference block.
@@ -568,7 +589,7 @@ end
 #! Where:
 #! - NULLIFIER_ROOT is the nullifier root of the transaction reference block.
 export.get_nullifier_db_root
-    padw push.NULLIFIER_ROOT_PTR mem_loadw
+    padw mem_loadw.NULLIFIER_ROOT_PTR
 end
 
 #! Returns the tx commitment of the transaction reference block.
@@ -579,7 +600,7 @@ end
 #! Where:
 #! - TX_COMMITMENT is the tx commitment of the transaction reference block.
 export.get_tx_commitment
-    padw push.TX_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.TX_COMMITMENT_PTR
 end
 
 #! Returns the transaction kernel commitment of the transaction reference block.
@@ -590,7 +611,7 @@ end
 #! Where:
 #! - TX_KERNEL_COMMITMENT is an accumulative hash from all kernel commitments.
 export.get_tx_kernel_commitment
-    padw push.TX_KERNEL_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.TX_KERNEL_COMMITMENT_PTR
 end
 
 #! Returns the proof commitment of the transaction reference block.
@@ -601,7 +622,7 @@ end
 #! Where:
 #! - PROOF_COMMITMENT is the proof commitment of the transaction reference block.
 export.get_proof_commitment
-    padw push.PROOF_COMMITMENT_PTR mem_loadw
+    padw mem_loadw.PROOF_COMMITMENT_PTR
 end
 
 #! Returns the note root of the transaction reference block.
@@ -612,7 +633,7 @@ end
 #! Where:
 #! - NOTE_ROOT is the note root of the transaction reference block.
 export.get_note_root
-    padw push.NOTE_ROOT_PTR mem_loadw
+    padw mem_loadw.NOTE_ROOT_PTR
 end
 
 #! Sets the note root of the transaction reference block.
@@ -623,8 +644,7 @@ end
 #! Where:
 #! - NOTE_ROOT is the note root of the transaction reference block.
 export.set_note_root
-    push.NOTE_ROOT_PTR
-    mem_storew
+    mem_storew.NOTE_ROOT_PTR
 end
 
 # CHAIN DATA
@@ -649,7 +669,7 @@ end
 #! Where:
 #! - num_leaves is the number of leaves in the partial blockchain.
 export.set_partial_blockchain_num_leaves
-    push.PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR mem_store
+    mem_store.PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR
 end
 
 #! Returns a pointer to start of the partial blockchain peaks section.
@@ -729,7 +749,7 @@ end
 #! Where:
 #! - ptr is the memory address at which the data of the currently used account begins.
 export.get_current_account_data_ptr
-    push.ACCOUNT_STACK_TOP_PTR mem_load
+    mem_load.ACCOUNT_STACK_TOP_PTR
     # => [account_stack_top_ptr]
 
     mem_load
@@ -752,7 +772,7 @@ end
 #! - the provided account data pointer is equal to the native account data pointer.
 export.push_ptr_to_account_stack
     # check that the account stack is not full
-    push.ACCOUNT_STACK_TOP_PTR mem_load dup push.MAX_ACCOUNT_STACK_PTR
+    mem_load.ACCOUNT_STACK_TOP_PTR dup push.MAX_ACCOUNT_STACK_PTR
     lt assert.err=ERR_ACCOUNT_STACK_OVERFLOW
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
@@ -780,7 +800,7 @@ end
 export.pop_ptr_from_account_stack
     # check that the account stack always is at least of size 1, that is, it contains at least the
     # native account
-    push.ACCOUNT_STACK_TOP_PTR mem_load dup push.MIN_ACCOUNT_STACK_PTR
+    mem_load.ACCOUNT_STACK_TOP_PTR dup push.MIN_ACCOUNT_STACK_PTR
     gt assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
     # => [account_stack_top_ptr]
 
@@ -963,9 +983,7 @@ end
 #! Where:
 #! - CODE_COMMITMENT is the new account code commitment.
 export.get_new_acct_code_commitment
-    padw
-    push.NEW_CODE_ROOT_PTR
-    mem_loadw
+    padw mem_loadw.NEW_CODE_ROOT_PTR
 end
 
 #! Stores the new account code commitment in memory.
@@ -976,8 +994,7 @@ end
 #! Where:
 #! - CODE_COMMITMENT is the new account code commitment.
 export.set_new_acct_code_commitment
-    push.NEW_CODE_ROOT_PTR
-    mem_storew
+    mem_storew.NEW_CODE_ROOT_PTR
 end
 
 #! Sets the transaction expiration block number.
@@ -988,7 +1005,7 @@ end
 #! Where:
 #! - tx_expiration_block_num is the number of the transaction expiration block.
 export.set_expiration_block_num
-    push.TX_EXPIRATION_BLOCK_NUM_PTR mem_store
+    mem_store.TX_EXPIRATION_BLOCK_NUM_PTR
 end
 
 #! Gets the transaction expiration block number.
@@ -999,7 +1016,7 @@ end
 #! Where:
 #! - tx_expiration_block_num is the number of the transaction expiration block.
 export.get_expiration_block_num
-    push.TX_EXPIRATION_BLOCK_NUM_PTR mem_load
+    mem_load.TX_EXPIRATION_BLOCK_NUM_PTR
 end
 
 #! Returns the number of procedures contained in the account code.
@@ -1110,7 +1127,7 @@ end
 #! Where:
 #! - num_input_notes is the total number of input notes in the transaction.
 export.get_num_input_notes
-    push.NUM_INPUT_NOTES_PTR mem_load
+    mem_load.NUM_INPUT_NOTES_PTR
 end
 
 #! Sets the total number of input notes in the transaction.
@@ -1121,7 +1138,7 @@ end
 #! Where:
 #! - num_input_notes is the total number of input notes in the transaction.
 export.set_num_input_notes
-    push.NUM_INPUT_NOTES_PTR mem_store
+    mem_store.NUM_INPUT_NOTES_PTR
 end
 
 #! Computes a pointer to the memory address at which the data associated with an input note with
@@ -1541,7 +1558,7 @@ end
 #! Where:
 #! - num_kernel_procedures is the number of the procedures of the selected kernel.
 export.set_num_kernel_procedures
-    push.NUM_KERNEL_PROCEDURES_PTR mem_store
+    mem_store.NUM_KERNEL_PROCEDURES_PTR
 end
 
 #! Returns the number of the procedures of the selected kernel.
@@ -1552,7 +1569,7 @@ end
 #! Where:
 #! - num_kernel_procedures is the number of the procedures of the selected kernel.
 export.get_num_kernel_procedures
-    push.NUM_KERNEL_PROCEDURES_PTR mem_load
+    mem_load.NUM_KERNEL_PROCEDURES_PTR
 end
 
 #! Returns a pointer to the memory where hashes of the kernel procedures are stored.
