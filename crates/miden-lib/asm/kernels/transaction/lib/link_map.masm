@@ -179,7 +179,6 @@ const.LINK_MAP_GET_EVENT=131099
 #! already exists.
 #!
 #! Note that unlike smt::set, passing VALUE = EMPTY_WORD does not mean removal of the entry.
-#! To remove an entry, use link_map::remove instead (TODO: unimplemented).
 #!
 #! Inputs:  [map_ptr, KEY, VALUE]
 #! Outputs: []
@@ -206,12 +205,9 @@ export.set
     # => [is_insert_update_op, is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
 
     if.true
-        # drop is_insert_at_head_op from stack
-        drop
-        # => [entry_ptr, map_ptr, KEY, VALUE]
-
-        # drop map_ptr from stack
-        swap drop
+        # update existing entry
+        # drop is_insert_at_head_op and map_ptr from stack
+        drop swap drop
         # => [entry_ptr, KEY, VALUE]
 
         exec.update_entry
@@ -264,6 +260,7 @@ export.get
     # => [is_found, is_absent_at_head, entry_ptr, map_ptr, KEY]
 
     if.true
+        # drop is_absent_at_head and map_ptr from stack
         drop swap drop
         # => [entry_ptr, KEY]
 
@@ -293,7 +290,7 @@ export.get
     end
 end
 
-#! Returns true if the list is empty, i.e. map ptr points to 0.
+#! Returns true if the list is empty, i.e. map ptr points to a 0 entry_ptr, false otherwise.
 #!
 #! Inputs:  [map_ptr]
 #! Outputs: [is_empty]
