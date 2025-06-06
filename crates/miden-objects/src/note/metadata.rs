@@ -299,7 +299,7 @@ mod tests {
         // produces valid felts.
         let sender = AccountId::try_from(ACCOUNT_ID_MAX_ONES).unwrap();
         let note_type = NoteType::Public;
-        let tag = NoteTag::from_account_id(sender).unwrap();
+        let tag = NoteTag::from_account_id(sender);
         let aux = Felt::try_from(0xffff_ffff_0000_0000u64).unwrap();
 
         for execution_hint in [

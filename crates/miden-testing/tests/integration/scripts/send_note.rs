@@ -23,7 +23,7 @@ fn test_send_note_script_basic_wallet() {
 
     let sender_account_interface = AccountInterface::from(&sender_basic_wallet_account);
 
-    let tag = NoteTag::from_account_id(sender_basic_wallet_account.id()).unwrap();
+    let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_wallet_account.id(),
         NoteType::Public,
@@ -69,7 +69,7 @@ fn test_send_note_script_basic_fungible_faucet() {
     let sender_account_interface =
         AccountInterface::from(sender_basic_fungible_faucet_account.account());
 
-    let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id()).unwrap();
+    let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_fungible_faucet_account.id(),
         NoteType::Public,

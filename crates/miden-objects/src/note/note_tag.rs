@@ -88,7 +88,7 @@ impl NoteTag {
     /// - For network execution (`AccountStorageMode::Network`), the most significant bits are set
     ///   to `0b00` and the remaining bits are set to the 30 most significant bits of the account
     ///   ID.
-    pub fn from_account_id(account_id: AccountId) -> Result<Self, NoteError> {
+    pub fn from_account_id(account_id: AccountId) -> Self {
         match account_id.storage_mode() {
             AccountStorageMode::Network => {
                 let prefix_id: u64 = account_id.prefix().into();
@@ -101,7 +101,7 @@ impl NoteTag {
                 // [2 zero bits | remaining high bits (30 bits)].
                 // The two most significant zero bits match the tag we need for network
                 // execution.
-                Ok(Self(high_bits as u32))
+                Self(high_bits as u32)
             },
             AccountStorageMode::Private | AccountStorageMode::Public => {
                 let prefix_id: u64 = account_id.prefix().into();
@@ -120,7 +120,7 @@ impl NoteTag {
                 let high_bits = high_bits & 0xffff0000;
 
                 // Set the local execution tag in the two most significant bits.
-                Ok(Self(high_bits | LOCAL_EXECUTION_WITH_ALL_NOTE_TYPES_ALLOWED))
+                Self(high_bits | LOCAL_EXECUTION_WITH_ALL_NOTE_TYPES_ALLOWED)
             },
         }
     }
@@ -350,13 +350,8 @@ mod tests {
             AccountId::try_from(ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET).unwrap(),
         ];
 
-        for account_id in private_accounts.into_iter().chain(public_accounts) {
-            assert!(NoteTag::from_account_id(account_id).is_ok())
-        }
-
         for account_id in network_accounts {
-            let tag = NoteTag::from_account_id(account_id)
-                .expect("tag generation must work with network execution and network account ID");
+            let tag = NoteTag::from_account_id(account_id);
             assert!(tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Network);
 
@@ -373,8 +368,7 @@ mod tests {
         }
 
         for account_id in private_accounts {
-            let tag = NoteTag::from_account_id(account_id)
-                .expect("tag generation must work with local execution and private account ID");
+            let tag = NoteTag::from_account_id(account_id);
             assert!(!tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
 
@@ -387,8 +381,7 @@ mod tests {
         }
 
         for account_id in public_accounts {
-            let tag = NoteTag::from_account_id(account_id)
-                .expect("Tag generation must work with local execution and public account ID");
+            let tag = NoteTag::from_account_id(account_id);
             assert!(!tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
 
@@ -401,8 +394,7 @@ mod tests {
         }
 
         for account_id in network_accounts {
-            let tag = NoteTag::from_account_id(account_id)
-                .expect("Tag generation must work with local execution and network account ID");
+            let tag = NoteTag::from_account_id(account_id);
             assert!(tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Network);
 
@@ -455,16 +447,10 @@ mod tests {
         // Expected network tag with leading 00 tag bits for network execution.
         let expected_network_network_tag = NoteTag(0b00101010_10110011_00011101_11110011);
 
-        assert_eq!(
-            NoteTag::from_account_id(private_account_id).unwrap(),
-            expected_private_local_tag,
-        );
-        assert_eq!(NoteTag::from_account_id(public_account_id).unwrap(), expected_public_local_tag,);
+        assert_eq!(NoteTag::from_account_id(private_account_id), expected_private_local_tag,);
+        assert_eq!(NoteTag::from_account_id(public_account_id), expected_public_local_tag,);
 
-        assert_eq!(
-            NoteTag::from_account_id(network_account_id).unwrap(),
-            expected_network_network_tag,
-        );
+        assert_eq!(NoteTag::from_account_id(network_account_id), expected_network_network_tag,);
     }
 
     #[test]
