@@ -68,7 +68,7 @@ impl LoadBalancerState {
     /// Returns an error if:
     /// - The worker cannot be created.
     #[tracing::instrument(name = "proxy:new_load_balancer", skip(initial_workers))]
-    pub async fn new(
+    pub(crate) async fn new(
         initial_workers: Vec<String>,
         config: &ProxyConfig,
     ) -> core::result::Result<Self, ProvingServiceError> {
