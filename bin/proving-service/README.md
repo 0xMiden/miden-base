@@ -179,34 +179,50 @@ The status check returns:
 
 ### Proxy Status Endpoint
 
-The proxy service exposes a status endpoint that provides information about the current state of the proxy and its workers. This endpoint can be accessed at `http://<proxy_host>:<status_port>/status`.
+The proxy service exposes a gRPC status endpoint that provides information about the current state of the proxy and its workers. This endpoint implements the `ProxyStatusApi` service defined in `proxy_status.proto`.
 
-The status endpoint returns a JSON response with the following information:
+#### gRPC Service Definition
+
+The status service provides the following method:
+- `Status(ProxyStatusRequest) -> ProxyStatusResponse`: Returns the current status of the proxy and all its workers
+
+#### Response Format
+
+The gRPC response includes the following information:
 - `version`: The version of the proxy
-- `supported_proof_type`: The types of proof that the proxy supports
-- `workers`: A list of workers with their status
+- `supported_proof_type`: The type of proof that the proxy supports (TRANSACTION, BATCH, or BLOCK)
+- `workers`: A list of workers with their status information
+
+Each worker status includes:
+- `address`: The worker's network address
+- `version`: The worker's version
+- `status`: The worker's health status (UNKNOWN, HEALTHY, or UNHEALTHY)
+
+#### Example Usage
+
+You can query the status endpoint using a gRPC client. For example, using `grpcurl`:
+
+```bash
+grpcurl -plaintext -import-path ./proto -proto proxy_status.proto \
+  -d '{}' localhost:<status_port> proxy_status.ProxyStatusApi.Status
+```
 
 Example response:
 ```json
 {
   "version": "0.8.0",
-  "prover_type": "Transaction",
+  "supported_proof_type": "TRANSACTION",
   "workers": [
     {
       "address": "0.0.0.0:50051",
       "version": "0.8.0",
-      "status": {
-        "Unhealthy": {
-          "failed_attempts": 3,
-          "reason": "Unsupported prover type: Batch"
-        }
-      }
+      "status": "UNHEALTHY"
     },
     {
       "address": "0.0.0.0:50052",
       "version": "0.8.0",
-      "status": "Healthy"
-    },
+      "status": "HEALTHY"
+    }
   ]
 }
 ```
