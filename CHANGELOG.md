@@ -7,6 +7,7 @@
 - Add `bench-prover` crate to benchmark proving times (#1378)
 - Implement map in transaction kernel library (#1396).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
+- [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 - [BREAKING] Refactor the `miden-proving-service` proxy status service to use gRPC instead of HTTP (#1430).
 
 ## 0.9.1 (2025-05-30)
