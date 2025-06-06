@@ -40,6 +40,7 @@ assembly = { workspace = true }
 assert_matches = { workspace = true }
 rand = { workspace = true, features = ["os_rng", "small_rng"] }
 miden-objects = { workspace = true, features = ["std"] }
+winter-rand-utils = { version = "0.12" }
 
 [package.metadata.cargo-machete]
 # cargo machete flags async-trait as unused but it is used by winter-maybe-async with the async feature

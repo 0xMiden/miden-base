@@ -106,6 +106,21 @@ pub const ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = MasmErro
 /// Error Message: "provided kernel procedure offset is out of bounds"
 pub const ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided kernel procedure offset is out of bounds");
 
+/// Error Message: "map cannot be empty when proving absence after an entry"
+pub const ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY: MasmError = MasmError::from_static_str("map cannot be empty when proving absence after an entry");
+/// Error Message: "host-provided entry ptr is not 'link map entry'-aligned"
+pub const ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED: MasmError = MasmError::from_static_str("host-provided entry ptr is not 'link map entry'-aligned");
+/// Error Message: "host-provided entry ptr is outside the valid memory region"
+pub const ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION: MasmError = MasmError::from_static_str("host-provided entry ptr is outside the valid memory region");
+/// Error Message: "map ptr stored in host-provided entry does not match actual pointer of the map"
+pub const ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR: MasmError = MasmError::from_static_str("map ptr stored in host-provided entry does not match actual pointer of the map");
+/// Error Message: "provided key does not match key in map entry"
+pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key does not match key in map entry");
+/// Error Message: "provided key is not greater than the entry key"
+pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key is not greater than the entry key");
+/// Error Message: "provided key is not less than the entry key"
+pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key is not less than the entry key");
+
 /// Error Message: "non-fungible asset that already exists in the note cannot be added again"
 pub const ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS: MasmError = MasmError::from_static_str("non-fungible asset that already exists in the note cannot be added again");
 /// Error Message: "the origin of the non-fungible asset is not this faucet"

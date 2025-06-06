@@ -24,6 +24,7 @@ pub type StorageSlot = u8;
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_859 (16777214)               | Enough for 2_796_202 key-value pairs        |
 
 // Relative layout of one account
 //
@@ -367,3 +368,19 @@ pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
 pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
 pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
+
+// LINK MAP
+// ------------------------------------------------------------------------------------------------
+
+/// The inclusive start of the link map dynamic memory range.
+pub const LINK_MAP_MEMORY_START_PTR: MemoryAddress = 33554436;
+
+/// The non-inclusive end of the link map dynamic memory range.
+pub const LINK_MAP_MEMORY_END_PTR: MemoryAddress = 67108860;
+
+/// LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer
+/// that will be allocated.
+pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33554432;
+
+/// The size of each map entry, i.e. three words.
+pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 12;
