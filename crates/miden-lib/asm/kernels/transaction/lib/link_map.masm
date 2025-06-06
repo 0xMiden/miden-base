@@ -586,15 +586,6 @@ proc.set_prev_entry_ptr
     # => []
 end
 
-#! Returns the value of the prev_entry pointer in the provided entry pointer.
-#!
-#! Inputs:  [entry_ptr]
-#! Outputs: [prev_entry_ptr]
-proc.get_prev_entry_ptr
-    add.1 mem_load
-    # => [prev_entry_ptr]
-end
-
 #! Sets the value of the entry pointer.
 #!
 #! Inputs:  [entry_ptr, VALUE]
