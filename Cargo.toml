@@ -7,7 +7,6 @@ members = [
     "crates/miden-tx-batch-prover",
     "crates/miden-lib",
     "crates/miden-objects",
-    "crates/miden-proving-service-client",
     "crates/miden-testing",
     "crates/miden-tx",
 ]
