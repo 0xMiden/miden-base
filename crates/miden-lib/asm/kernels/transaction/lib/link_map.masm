@@ -116,6 +116,21 @@ use.kernel::memory
 #     key. If the host-provided entry has a next entry, then the requested key must also be less
 #     than the next entry's key to validate the absence claim.
 
+# CONSTANTS
+# -------------------------------------------------------------------------------------------------
+
+# The offset of the prev_entry_ptr in an entry's metadata.
+const.PREV_ENTRY_PTR_OFFSET=1
+
+# The offset of the next_entry_ptr in an entry's metadata.
+const.NEXT_ENTRY_PTR_OFFSET=2
+
+# The offset of the KEY in an entry.
+const.KEY_OFFSET=4
+
+# The offset of the VALUE in an entry.
+const.VALUE_OFFSET=8
+
 # EVENTS
 # -------------------------------------------------------------------------------------------------
 
@@ -564,7 +579,7 @@ end
 #! Inputs:  [entry_ptr, next_entry_ptr]
 #! Outputs: []
 proc.set_next_entry_ptr
-    add.2 mem_store
+    add.NEXT_ENTRY_PTR_OFFSET mem_store
     # => []
 end
 
@@ -573,7 +588,7 @@ end
 #! Inputs:  [entry_ptr]
 #! Outputs: [next_entry_ptr]
 proc.get_next_entry_ptr
-    add.2 mem_load
+    add.NEXT_ENTRY_PTR_OFFSET mem_load
     # => [next_entry_ptr]
 end
 
@@ -582,7 +597,7 @@ end
 #! Inputs:  [entry_ptr, prev_entry_ptr]
 #! Outputs: []
 proc.set_prev_entry_ptr
-    add.1 mem_store
+    add.PREV_ENTRY_PTR_OFFSET mem_store
     # => []
 end
 
@@ -591,7 +606,7 @@ end
 #! Inputs:  [entry_ptr, VALUE]
 #! Outputs: []
 proc.set_value
-    add.8 mem_storew dropw
+    add.VALUE_OFFSET mem_storew dropw
 end
 
 #! Returns the value of the entry pointer.
@@ -602,7 +617,7 @@ proc.get_value
     padw movup.4
     # => [entry_ptr, pad(4)]
 
-    add.8 mem_loadw
+    add.VALUE_OFFSET mem_loadw
     # => [VALUE]
 end
 
@@ -611,7 +626,7 @@ end
 #! Inputs:  [entry_ptr, KEY]
 #! Outputs: []
 proc.set_key
-    add.4 mem_storew dropw
+    add.KEY_OFFSET mem_storew dropw
 end
 
 #! Returns the key of the entry pointer.
@@ -622,7 +637,7 @@ proc.get_key
     padw movup.4
     # => [entry_ptr, pad(4)]
 
-    add.4 mem_loadw
+    add.KEY_OFFSET mem_loadw
     # => [KEY]
 end
 
