@@ -13,7 +13,6 @@ use protox::prost::Message;
 /// otherwise the docs will fail to build there. Note that writing to `OUT_DIR` is fine.
 const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN_SRC").is_some();
 
-const REPO_PROTO_DIR: &str = "../../proto";
 const CRATE_PROTO_DIR: &str = "proto";
 
 /// Generates Rust protobuf bindings from .proto files.
@@ -27,24 +26,11 @@ fn main() -> miette::Result<()> {
         return Ok(());
     }
 
-    copy_proto_files()?;
     compile_tonic_client_proto()
 }
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-/// Copies the proto file from the root proto directory to the proto directory of this crate.
-fn copy_proto_files() -> miette::Result<()> {
-    let src_file = format!("{REPO_PROTO_DIR}/proving_service.proto");
-    let dest_file = format!("{CRATE_PROTO_DIR}/proving_service.proto");
-
-    fs::remove_dir_all(CRATE_PROTO_DIR).into_diagnostic()?;
-    fs::create_dir_all(CRATE_PROTO_DIR).into_diagnostic()?;
-    fs::copy(src_file, dest_file).into_diagnostic()?;
-
-    Ok(())
-}
 
 fn compile_tonic_client_proto() -> miette::Result<()> {
     let crate_root =
