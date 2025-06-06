@@ -116,8 +116,25 @@ use.kernel::memory
 #     key. If the host-provided entry has a next entry, then the requested key must also be less
 #     than the next entry's key to validate the absence claim.
 
+# ERRORS
+# =================================================================================================
+
+const.ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY="map cannot be empty when proving absence after an entry"
+
+const.ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY="provided key does not match key in map entry"
+
+const.ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY="provided key is not greater than the entry key"
+
+const.ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY="provided key is not less than the entry key"
+
+const.ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION="host-provided entry ptr is outside the valid memory region"
+
+const.ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED="host-provided entry ptr is not 'link map entry'-aligned"
+
+const.ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR="map ptr stored in host-provided entry does not match actual pointer of the map"
+
 # CONSTANTS
-# -------------------------------------------------------------------------------------------------
+# =================================================================================================
 
 # The offset of the prev_entry_ptr in an entry's metadata.
 const.PREV_ENTRY_PTR_OFFSET=1
@@ -132,13 +149,16 @@ const.KEY_OFFSET=4
 const.VALUE_OFFSET=8
 
 # EVENTS
-# -------------------------------------------------------------------------------------------------
+# =================================================================================================
 
 # Event emitted when an entry is set.
 const.LINK_MAP_SET_EVENT=131098
 
 # Event emitted when an entry is fetched.
 const.LINK_MAP_GET_EVENT=131099
+
+# LINK MAP PROCEDURES
+# =================================================================================================
 
 # PUBLIC API
 # -------------------------------------------------------------------------------------------------
@@ -511,7 +531,7 @@ end
 #! - the KEY is not greater than the key in the entry.
 #! - the KEY is not less than the key in entry.next_entry, unless the entry is the last one in the map.
 proc.validate_absent_after_entry
-    swap exec.is_empty assertz.err="map cannot be empty when proving absence after an entry"
+    swap exec.is_empty assertz.err=ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY
     # => [entry_ptr, KEY]
 
     movdn.4 dupw
@@ -550,13 +570,10 @@ end
 #! Panics if:
 #! - the key in the entry does not match KEY.
 proc.get_existent_value
-    movdn.4
-    # => [KEY, entry_ptr]
+    movdn.4 dup.4
+    # => [entry_ptr, KEY, entry_ptr]
 
-    dup.4 exec.get_key
-    # => [ENTRY_KEY, KEY, entry_ptr]
-
-    assert_eqw.err="key in map entry does not match requested key"
+    exec.assert_key_is_equal
     # => [entry_ptr]
 
     exec.get_value
@@ -684,7 +701,7 @@ proc.assert_key_is_equal
     exec.get_key swapw
     # => [KEY, ENTRY_KEY]
 
-    exec.is_key_equal assert.err="provided key is not equal to the entry key"
+    exec.is_key_equal assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY
     # => []
 end
 
@@ -696,7 +713,7 @@ proc.assert_key_is_greater
     exec.get_key swapw
     # => [KEY, ENTRY_KEY]
 
-    exec.is_key_greater assert.err="provided key is not greater than the entry key"
+    exec.is_key_greater assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY
     # => []
 end
 
@@ -708,7 +725,7 @@ proc.assert_key_is_less
     exec.get_key swapw
     # => [KEY, ENTRY_KEY]
 
-    exec.is_key_less assert.err="provided key is not less than the entry key"
+    exec.is_key_less assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY
     # => []
 end
 
@@ -750,7 +767,7 @@ export.assert_entry_ptr_is_valid
     # => [is_empty_map, is_entry_ptr_in_valid_range, entry_ptr, map_ptr, is_empty_map]
 
     # this assertion is always true if is_empty_map is true
-    or assert.err="entry ptr is not in a valid memory range"
+    or assert.err=ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION
     # => [entry_ptr, map_ptr, is_empty_map]
 
     # Check that the entry pointer is aligned to link map entries.
@@ -761,7 +778,7 @@ export.assert_entry_ptr_is_valid
     # => [is_entry_ptr_aligned, entry_ptr, map_ptr, is_empty_map]
 
     # this assertion is always true if is_empty_map is true
-    dup.3 or assert.err="entry ptr is not link map entry aligned"
+    dup.3 or assert.err=ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED
     # => [entry_ptr, map_ptr, is_empty_map]
 
     # Check entry pointer's map ptr is equal to map_ptr.
@@ -772,7 +789,7 @@ export.assert_entry_ptr_is_valid
     # => [entry_contains_map_ptr, is_empty_map]
 
     # this assertion is always true if is_empty_map is true
-    or assert.err="map ptr stored in entry ptr does not match actual map ptr"
+    or assert.err=ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR
 end
 
 # COMPARISON OPERATIONS
