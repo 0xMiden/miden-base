@@ -183,6 +183,7 @@ export.set
             # and that way we don't have to validate it
             drop
             # => [map_ptr, KEY, VALUE]
+
             exec.insert_at_head
             # => []
         else
@@ -229,8 +230,10 @@ export.get
     if.true
         drop swap drop
         # => [entry_ptr, KEY]
+
         exec.get_existent_value
         # => [VALUE]
+
         push.1
         # => [contains_key, VALUE]
     else
@@ -243,6 +246,7 @@ export.get
 
             exec.validate_absent_at_head
             # => []
+
         else
             exec.validate_absent_after_entry
             # => []
@@ -277,6 +281,7 @@ proc.insert_at_head
 
     dup movdn.10
     # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr]
+
     dup.1 movdn.10
     # => [entry_ptr, map_ptr, KEY, VALUE, map_ptr, entry_ptr]
 
@@ -398,6 +403,7 @@ proc.insert_after_entry
     if.true
         dup.1 exec.get_key
         # => [KEY, next_entry_ptr, entry_ptr]
+
         dup.4
         # => [next_entry_ptr, KEY, next_entry_ptr, entry_ptr]
 
@@ -415,6 +421,7 @@ proc.insert_after_entry
         # set next_entry.prev_entry_ptr = entry_ptr
         exec.set_prev_entry_ptr
         # => []
+
     else
         # remove unneeded stack elements
         drop drop
@@ -430,15 +437,19 @@ end
 proc.insert_pair
     swap dup.1
     # => [entry_ptr, map_ptr, entry_ptr, KEY, VALUE]
+
     exec.set_map_ptr
     # => [entry_ptr, KEY, VALUE]
 
     dup movdn.5
     # => [entry_ptr, KEY, entry_ptr, VALUE]
+
     exec.set_key
 
     # => [entry_ptr, VALUE]
+
     exec.set_value
+    # => []
 end
 
 # GET HELPERS
@@ -599,6 +610,7 @@ end
 proc.get_value
     padw movup.4
     # => [entry_ptr, pad(4)]
+
     add.8 mem_loadw
     # => [VALUE]
 end
@@ -618,6 +630,7 @@ end
 proc.get_key
     padw movup.4
     # => [entry_ptr, pad(4)]
+
     add.4 mem_loadw
     # => [KEY]
 end
@@ -776,8 +789,10 @@ export.is_key_equal
     repeat.4
         swap movup.2
         # => [2_x, 1_x, is_key_equal, <remaining_felts>]
+
         eq
         # => [felts_x_equal, is_key_equal, <remaining_felts>]
+
         and
         # => [is_key_equal, <remaining_felts>]
     end
@@ -840,6 +855,7 @@ export.is_key_greater
         # sets continue to 0 if the felts are not equal
         u32and
         # => [continue, is_key_greater, <remaining_felts>]
+
         swap
         # => [is_key_greater, continue, <remaining_felts>]
     end
@@ -891,6 +907,7 @@ export.is_key_less
         # sets continue to 0 if the felts are not equal
         u32and
         # => [continue, is_key_less, <remaining_felts>]
+
         swap
         # => [is_key_less, continue, <remaining_felts>]
     end
@@ -906,12 +923,16 @@ end
 #! Outputs: [key2_3, key1_3, key2_2, key1_2, key2_1, key1_1, key2_0, key1_0]
 proc.arrange_words_adjacent
     # => [1_3, 1_2, 1_1, 1_0, 2_3, 2_2, 2_1, 2_0]
+
     movup.3 movup.7
     # => [2_0, 1_0, 1_3, 1_2, 1_1, 2_3, 2_2, 2_1]
+
     movup.4 movup.7
     # => [2_1, 1_1, 2_0, 1_0, 1_3, 1_2, 2_3, 2_2]
+
     movup.5 movup.7
     # => [2_2, 1_2, 2_1, 1_1, 2_0, 1_0, 1_3, 2_3]
+
     movup.6 movup.7
     # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
 end
