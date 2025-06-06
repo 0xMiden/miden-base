@@ -830,18 +830,17 @@ end
 #! For reference, this is equivalent to the following Rust function:
 #!
 #! fn is_key_greater(key1: Word, key2: Word) -> bool {
-#!     let mut result = 0u8;
-#!     let mut cont = 1u8;
+#!     let mut result = false;
+#!     let mut cont = true;
 #!
 #!     for i in (0..4).rev() {
 #!         let gt = key1[i].as_int() > key2[i].as_int();
 #!         let eq = key1[i].as_int() == key2[i].as_int();
-#!
-#!         result |= gt as u8 & cont;
-#!         cont &= eq as u8;
+#!         result |= gt & cont;
+#!         cont &= eq;
 #!     }
 #!
-#!     result == 1
+#!     result
 #! }
 #!
 #! Inputs:  [KEY1, KEY2]
@@ -868,15 +867,15 @@ export.is_key_greater
         gt
         # => [is_felt_gt, is_key_greater, is_felt_eq, continue, <remaining_felts>]
 
-        dup.3 u32and
+        dup.3 and
         # => [is_felt_gt_if_continue, is_key_greater, is_felt_eq, continue, <remaining_felts>]
 
-        u32or movdn.2
+        or movdn.2
         # => [is_felt_eq, continue, is_key_greater, <remaining_felts>]
 
         # keeps continue at 1 if the felts are equal
         # sets continue to 0 if the felts are not equal
-        u32and
+        and
         # => [continue, is_key_greater, <remaining_felts>]
 
         swap
@@ -920,15 +919,15 @@ export.is_key_less
         lt
         # => [is_felt_lt, is_key_less, is_felt_eq, continue, <remaining_felts>]
 
-        dup.3 u32and
+        dup.3 and
         # => [is_felt_lt_if_continue, is_key_less, is_felt_eq, continue, <remaining_felts>]
 
-        u32or movdn.2
+        or movdn.2
         # => [is_felt_eq, continue, is_key_less, <remaining_felts>]
 
         # keeps continue at 1 if the felts are equal
         # sets continue to 0 if the felts are not equal
-        u32and
+        and
         # => [continue, is_key_less, <remaining_felts>]
 
         swap
