@@ -168,7 +168,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() {
     // is initialized with the metadata of the faucet which we don't need to check.
     assert_eq!(faucet.account().storage().get_item(1).unwrap()[0], Felt::new(200));
 
-    // Check that the faucet reserved slot has been correctly initialised.
+    // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
     assert_eq!(faucet.account().storage().get_item(0).unwrap()[3], Felt::new(100));
 

@@ -137,6 +137,7 @@ impl TransactionAdviceInputs {
     ///     ACCOUNT_CODE_COMMITMENT,
     ///     number_of_input_notes,
     ///     TX_SCRIPT_ROOT,
+    ///     TX_SCRIPT_ARGS_KEY,
     /// ]
     fn build_stack(
         &mut self,
@@ -146,7 +147,7 @@ impl TransactionAdviceInputs {
     ) {
         let header = tx_inputs.block_header();
 
-        // --- block header data (keep in sync with process_block_data_kernel) ----
+        // --- block header data (keep in sync with kernel's process_block_data) --
         self.extend_stack(header.prev_block_commitment());
         self.extend_stack(header.chain_commitment());
         self.extend_stack(header.account_root());
@@ -180,6 +181,9 @@ impl TransactionAdviceInputs {
         // note count & script root
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
         self.extend_stack(tx_script.map_or(Word::default(), |s| *s.root()));
+        self.extend_stack(
+            tx_script.map_or(Word::default(), |script| *script.args_key().unwrap_or_default()),
+        );
     }
 
     /// Inserts the partial blockchain data into the provided advice inputs.

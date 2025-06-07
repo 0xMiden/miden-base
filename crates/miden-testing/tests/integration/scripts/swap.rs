@@ -45,7 +45,7 @@ pub fn prove_send_swap_note() {
         ",
         recipient = word_to_masm_push_string(&note.recipient().digest()),
         note_type = NoteType::Public as u8,
-        tag = Felt::new(note.metadata().tag().into()),
+        tag = Felt::from(note.metadata().tag()),
         asset = word_to_masm_push_string(&offered_asset.into()),
         note_execution_hint = Felt::from(note.metadata().execution_hint())
     );
