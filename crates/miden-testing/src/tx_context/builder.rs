@@ -182,6 +182,12 @@ impl TransactionContextBuilder {
         self
     }
 
+    // Set the desired note args
+    pub fn note_args(mut self, args: BTreeMap<NoteId, Word>) -> Self {
+        self.note_args = args;
+        self
+    }
+
     /// Set the desired transaction script
     pub fn tx_script(mut self, tx_script: TransactionScript) -> Self {
         self.tx_script = Some(tx_script);
