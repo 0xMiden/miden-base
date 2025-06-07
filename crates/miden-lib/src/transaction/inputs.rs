@@ -43,14 +43,14 @@ impl TransactionAdviceInputs {
         inputs.add_input_notes(tx_inputs, tx_args)?;
 
         // native/executor account
-        let native_account = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native_account)?;
+        let native_acc = PartialAccount::from(tx_inputs.account());
+        inputs.add_account(&native_acc)?;
 
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
             let account_id_key: Digest = Digest::from([
-                native_account.id().suffix(),
-                native_account.id().prefix().as_felt(),
+                native_acc.id().suffix(),
+                native_acc.id().prefix().as_felt(),
                 ZERO,
                 ZERO,
             ]);
@@ -62,20 +62,20 @@ impl TransactionAdviceInputs {
         }
 
         // foreign accounts
-        for acc_inputs in tx_args.foreign_account_inputs() {
-            inputs.add_account(acc_inputs.account())?;
-            inputs.add_account_witness(acc_inputs.witness())?;
+        for foreign_acc in tx_args.foreign_account_inputs() {
+            inputs.add_account(foreign_acc.account())?;
+            inputs.add_account_witness(foreign_acc.witness())?;
 
             // for foreign accounts, we need to insert the id to state mapping
             // NOTE: keep this in sync with the start_foreign_context kernel procedure
             let account_id_key: Digest = Digest::from([
-                acc_inputs.id().suffix(),
-                acc_inputs.id().prefix().as_felt(),
+                foreign_acc.id().suffix(),
+                foreign_acc.id().prefix().as_felt(),
                 ZERO,
                 ZERO,
             ]);
 
-            let header = AccountHeader::from(acc_inputs.account());
+            let header = AccountHeader::from(foreign_acc.account());
             inputs.extend_map([
                 // ACCOUNT_ID -> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT,
                 // CODE_COMMITMENT]
