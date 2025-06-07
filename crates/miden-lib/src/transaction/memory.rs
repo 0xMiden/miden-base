@@ -14,16 +14,16 @@ pub type StorageSlot = u8;
 //
 // Here the "end address" is the last memory address occupied by the current data
 //
-// | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
-// | ----------------- | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
-// | Bookkeeping       | 0 (0)                                 | 287 (71)                            |                                             |
-// | Global inputs     | 400 (100)                             | 423 (105)                           |                                             |
-// | Block header      | 800 (200)                             | 835 (208)                           |                                             |
-// | Partial blockchain         | 1_200 (300)                           | 1_331? (332?)                       |                                             |
-// | Kernel data       | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
-// | Accounts data     | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
-// | Input notes       | 4_194_304 (1_048_576)                 | ?                                   |                                             |
-// | Output notes      | 16_777_216 (4_194_304)                | ?                                   |                                             |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
+// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                             |
+// | Global inputs      | 400 (100)                             | 427 (106)                           |                                             |
+// | Block header       | 800 (200)                             | 835 (208)                           |                                             |
+// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
+// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
+// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
+// | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
+// | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
 
 // Relative layout of one account
 //
@@ -115,6 +115,9 @@ pub const INIT_NONCE_PTR: MemoryAddress = 416;
 
 /// The memory address at which the transaction script mast root is store
 pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
+
+/// The memory address at which the key of the transaction script arguments is stored.
+pub const TX_SCRIPT_ARGS_KEY: MemoryAddress = 424;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------
@@ -298,6 +301,13 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
 // - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
 // - ASSETS_HASH is the key to look up note assets in the advice map.
+//
+// Notice that note input values are not loaded to the memory, only their length. In order to obtain
+// the input values the advice map should be used: they are stored there as 
+// `INPUTS_COMMITMENT -> INPUTS || PADDING`. 
+// 
+// As opposed to the asset values, input values are never used in kernel memory, so their presence 
+// there is unnecessary. 
 
 /// The memory address at which the input note section begins.
 pub const INPUT_NOTE_SECTION_PTR: MemoryAddress = 4_194_304;

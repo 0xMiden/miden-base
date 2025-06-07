@@ -82,6 +82,7 @@ pub(super) fn extend_advice_inputs(
 ///     ACCOUNT_CODE_COMMITMENT,
 ///     number_of_input_notes,
 ///     TX_SCRIPT_ROOT,
+///     TX_SCRIPT_ARGS_KEY,
 /// ]
 fn build_advice_stack(
     tx_inputs: &TransactionInputs,
@@ -92,7 +93,7 @@ fn build_advice_stack(
     let header = tx_inputs.block_header();
 
     // push block header info into the stack
-    // Note: keep in sync with the process_block_data kernel procedure
+    // Note: keep in sync with the `prologue::process_block_data` kernel procedure
     inputs.extend_stack(header.prev_block_commitment());
     inputs.extend_stack(header.chain_commitment());
     inputs.extend_stack(header.account_root());
@@ -109,11 +110,11 @@ fn build_advice_stack(
     inputs.extend_stack(header.note_root());
 
     // push the version of the kernel which will be used for this transaction
-    // Note: keep in sync with the process_kernel_data kernel procedure
+    // Note: keep in sync with the `prologue::process_kernel_data` kernel procedure
     inputs.extend_stack([Felt::from(kernel_version)]);
 
     // push core account items onto the stack
-    // Note: keep in sync with the process_account_data kernel procedure
+    // Note: keep in sync with the `prologue::process_account_data` kernel procedure
     let account = tx_inputs.account();
     inputs.extend_stack([
         account.id().suffix(),
@@ -128,8 +129,12 @@ fn build_advice_stack(
     // push the number of input notes onto the stack
     inputs.extend_stack([Felt::from(tx_inputs.input_notes().num_notes() as u32)]);
 
-    // push tx_script root onto the stack
+    // push the transaction script root and transaction args key onto the stack
+    // Note: keep in sync with the `prologue::process_tx_script_data` kernel procedure
     inputs.extend_stack(tx_script.map_or(Word::default(), |script| *script.root()));
+    inputs.extend_stack(
+        tx_script.map_or(Word::default(), |script| *script.args_key().unwrap_or_default()),
+    );
 }
 
 // PARTIAL BLOCKCHAIN INJECTOR
@@ -149,7 +154,7 @@ fn build_advice_stack(
 /// - num_blocks, is the number of blocks in the MMR.
 /// - PEAK_1 .. PEAK_N, are the MMR peaks.
 fn add_partial_blockchain_to_advice_inputs(mmr: &PartialBlockchain, inputs: &mut AdviceInputs) {
-    // NOTE: keep this code in sync with the `process_chain_data` kernel procedure
+    // NOTE: keep this code in sync with the `prologue::process_chain_data` kernel procedure
 
     // add authentication paths from the MMR to the Merkle store
     inputs.extend_merkle_store(mmr.inner_nodes());

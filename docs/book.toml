@@ -1,6 +1,6 @@
 [book]
 authors = ["Miden contributors"]
-description = "Description and core structures for the Miden rollup protocol"
+description = "Description and core structures for the Miden protocol"
 language = "en"
 multilingual = false
 title = "The Miden protocol"

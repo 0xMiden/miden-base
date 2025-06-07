@@ -4,7 +4,7 @@ use anyhow::Context;
 use miden_lib::{
     account::wallets::BasicWallet,
     errors::tx_kernel_errors::{
-        ERR_ACCOUNT_SEED_ANCHOR_BLOCK_COMMITMENT_DIGEST_MISMATCH,
+        ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
         ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
         ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPY_SMT,
     },
@@ -17,23 +17,24 @@ use miden_lib::{
             INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET, INPUT_NOTE_METADATA_OFFSET,
             INPUT_NOTE_NULLIFIER_SECTION_PTR, INPUT_NOTE_NUM_ASSETS_OFFSET,
             INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR, INPUT_NOTE_SERIAL_NUM_OFFSET,
-            INPUT_NOTES_COMMITMENT_PTR, MemoryOffset, NATIVE_ACCT_CODE_COMMITMENT_PTR,
-            NATIVE_ACCT_ID_AND_NONCE_PTR, NATIVE_ACCT_PROCEDURES_SECTION_PTR,
-            NATIVE_ACCT_STORAGE_COMMITMENT_PTR, NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR,
-            NATIVE_ACCT_VAULT_ROOT_PTR, NATIVE_NUM_ACCT_PROCEDURES_PTR,
-            NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR, NULLIFIER_DB_ROOT_PTR,
-            PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR, PARTIAL_BLOCKCHAIN_PEAKS_PTR,
-            PREV_BLOCK_COMMITMENT_PTR, PROOF_COMMITMENT_PTR, PROTOCOL_VERSION_IDX, TIMESTAMP_IDX,
-            TX_COMMITMENT_PTR, TX_KERNEL_COMMITMENT_PTR, TX_SCRIPT_ROOT_PTR,
+            INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR, MemoryOffset,
+            NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
+            NATIVE_ACCT_PROCEDURES_SECTION_PTR, NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
+            NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR, NATIVE_ACCT_VAULT_ROOT_PTR,
+            NATIVE_NUM_ACCT_PROCEDURES_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR,
+            NULLIFIER_DB_ROOT_PTR, NUM_KERNEL_PROCEDURES_PTR, PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
+            PARTIAL_BLOCKCHAIN_PEAKS_PTR, PREV_BLOCK_COMMITMENT_PTR, PROOF_COMMITMENT_PTR,
+            PROTOCOL_VERSION_IDX, TIMESTAMP_IDX, TX_COMMITMENT_PTR, TX_KERNEL_COMMITMENT_PTR,
+            TX_SCRIPT_ROOT_PTR,
         },
     },
 };
 use miden_objects::{
+    WORD_SIZE,
     account::{
-        Account, AccountBuilder, AccountId, AccountIdAnchor, AccountIdVersion,
-        AccountProcedureInfo, AccountStorageMode, AccountType, StorageSlot,
+        Account, AccountBuilder, AccountId, AccountIdVersion, AccountProcedureInfo,
+        AccountStorageMode, AccountType, StorageSlot,
     },
-    block::{BlockHeader, BlockNumber},
     testing::{
         account_component::AccountMockComponent,
         account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET},
@@ -67,7 +68,7 @@ fn test_transaction_prologue() {
 
     let mock_tx_script_code = "
         begin
-            push.1.2.3.4 dropw
+            nop
         end
         ";
 
@@ -101,6 +102,7 @@ fn test_transaction_prologue() {
     global_input_memory_assertions(process, &tx_context);
     block_data_memory_assertions(process, &tx_context);
     partial_blockchain_memory_assertions(process, &tx_context);
+    kernel_data_memory_assertions(process);
     account_data_memory_assertions(process, &tx_context);
     input_notes_memory_assertions(process, &tx_context, &note_args);
 }
@@ -239,13 +241,39 @@ fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &Transac
         let peak_idx: u32 = i.try_into().expect(
             "Number of peaks is log2(number_of_leaves), this value won't be larger than 2**32",
         );
-        let word_aligned_peak_idx = peak_idx * 4;
+        let word_aligned_peak_idx = peak_idx * WORD_SIZE as u32;
         assert_eq!(
             read_root_mem_word(
                 &process.into(),
                 PARTIAL_BLOCKCHAIN_PEAKS_PTR + word_aligned_peak_idx
             ),
             Word::from(peak)
+        );
+    }
+}
+
+fn kernel_data_memory_assertions(process: &Process) {
+    let latest_version_procedures = TransactionKernel::PROCEDURES
+        .last()
+        .expect("kernel should have at least one version");
+
+    // check that the number of kernel procedures stored in the memory is equal to the number of
+    // kernel procedures in the `TransactionKernel` array.
+    //
+    // By default we check procedures of the latest kernel version
+    assert_eq!(
+        read_root_mem_word(&process.into(), NUM_KERNEL_PROCEDURES_PTR)[0].as_int(),
+        latest_version_procedures.len() as u64,
+        "Number of the kernel procedures should be stored at the NUM_KERNEL_PROCEDURES_PTR"
+    );
+
+    // check that the hashes of the kernel procedures stored in the memory is equal to the hashes in
+    // `TransactionKernel`'s procedures array
+    for (i, &proc_hash) in latest_version_procedures.iter().enumerate() {
+        assert_eq!(
+            read_root_mem_word(&process.into(), KERNEL_PROCEDURES_PTR + (i * WORD_SIZE) as u32),
+            *proc_hash,
+            "hash of kernel procedure at index `{i}` does not match the hash stored in memory"
         );
     }
 }
@@ -301,7 +329,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
         assert_eq!(
             read_root_mem_word(
                 &process.into(),
-                NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR + (i as u32) * 4
+                NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR + (i * WORD_SIZE) as u32
             ),
             Word::try_from(elements).unwrap(),
             "The account storage slots should be stored starting at NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR"
@@ -329,7 +357,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
         assert_eq!(
             read_root_mem_word(
                 &process.into(),
-                NATIVE_ACCT_PROCEDURES_SECTION_PTR + (i as u32) * 4
+                NATIVE_ACCT_PROCEDURES_SECTION_PTR + (i * WORD_SIZE) as u32
             ),
             Word::try_from(elements).unwrap(),
             "The account procedures and storage offsets should be stored starting at NATIVE_ACCT_PROCEDURES_SECTION_PTR"
@@ -340,7 +368,7 @@ fn account_data_memory_assertions(process: &Process, inputs: &TransactionContext
 fn input_notes_memory_assertions(
     process: &Process,
     inputs: &TransactionContext,
-    note_args: &[[Felt; 4]],
+    note_args: &[[Felt; WORD_SIZE]],
 ) {
     assert_eq!(
         read_root_mem_word(&process.into(), INPUT_NOTE_SECTION_PTR),
@@ -352,7 +380,10 @@ fn input_notes_memory_assertions(
         let note = input_note.note();
 
         assert_eq!(
-            read_root_mem_word(&process.into(), INPUT_NOTE_NULLIFIER_SECTION_PTR + note_idx * 4),
+            read_root_mem_word(
+                &process.into(),
+                INPUT_NOTE_NULLIFIER_SECTION_PTR + note_idx * WORD_SIZE as u32
+            ),
             note.nullifier().as_elements(),
             "note nullifier should be computer and stored at the correct offset"
         );
@@ -408,7 +439,11 @@ fn input_notes_memory_assertions(
         for (asset, asset_idx) in note.assets().iter().cloned().zip(0_u32..) {
             let word: Word = asset.into();
             assert_eq!(
-                read_note_element(process, note_idx, INPUT_NOTE_ASSETS_OFFSET + asset_idx * 4),
+                read_note_element(
+                    process,
+                    note_idx,
+                    INPUT_NOTE_ASSETS_OFFSET + asset_idx * WORD_SIZE as u32
+                ),
                 word,
                 "assets should be stored at (INPUT_NOTES_DATA_OFFSET + note_index * 2048 + 32 + asset_idx * 4)"
             );
@@ -448,7 +483,6 @@ pub fn create_account_test(
 
 pub fn create_multiple_accounts_test(
     mock_chain: &MockChain,
-    anchor_block_header: &BlockHeader,
     storage_mode: AccountStorageMode,
 ) -> anyhow::Result<()> {
     let mut accounts = Vec::new();
@@ -462,14 +496,10 @@ pub fn create_multiple_accounts_test(
         let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
             .account_type(account_type)
             .storage_mode(storage_mode)
-            .anchor(
-                AccountIdAnchor::try_from(anchor_block_header)
-                    .context("block header to anchor conversion failed")?,
-            )
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),
-                    vec![StorageSlot::Value([Felt::new(255); 4])],
+                    vec![StorageSlot::Value([Felt::new(255); WORD_SIZE])],
                 )
                 .unwrap(),
             )
@@ -490,57 +520,21 @@ pub fn create_multiple_accounts_test(
     Ok(())
 }
 
-/// Tests that a valid account of each type can be created successfully with the genesis block used
-/// as the anchor block for the account IDs.
+/// Tests that a valid account of each storage mode can be created successfully.
 #[test]
-pub fn create_accounts_with_anchor_block_zero() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    // Choose epoch block 0 as the anchor block.
-    // Here the transaction reference block is also the anchor block.
-    let genesis_block_header = mock_chain.block_header(BlockNumber::GENESIS.as_usize());
+pub fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
+    let mock_chain = MockChain::new();
 
-    create_multiple_accounts_test(&mock_chain, &genesis_block_header, AccountStorageMode::Private)?;
+    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Private)?;
 
-    // Seal one more block to test the case where the transaction reference block is not the anchor
-    // block.
-    mock_chain.prove_next_block();
+    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Public)?;
 
-    create_multiple_accounts_test(&mock_chain, &genesis_block_header, AccountStorageMode::Public)?;
-
-    // Test account creation with network storage mode.
-    create_multiple_accounts_test(&mock_chain, &genesis_block_header, AccountStorageMode::Network)
+    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Network)
 }
 
-/// Tests that a valid account of each type can be created successfully with an epoch block whose
-/// number is non-zero used as the anchor block for the account IDs.
-///
-/// Note that this test is very slow in debug mode.
-#[test]
-pub fn create_accounts_with_non_zero_anchor_block() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    mock_chain
-        .prove_until_block(1u32 << 16)
-        .context("failed to prove multiple blocks")?;
-
-    // Choose epoch block 1 whose block number is 2^16 as the anchor block.
-    // Here the transaction reference block is also the anchor block.
-    let epoch1_block_header = mock_chain.block_header(1 << 16);
-
-    create_multiple_accounts_test(&mock_chain, &epoch1_block_header, AccountStorageMode::Private)?;
-
-    // Seal one more block to test the case where the transaction reference block is not the anchor
-    // block.
-    mock_chain.prove_next_block();
-
-    create_multiple_accounts_test(&mock_chain, &epoch1_block_header, AccountStorageMode::Public)
-}
-
-/// Takes an account with a placeholder ID and returns the same account but with its ID replaced.
-/// The ID is newly generated and anchored in the given block header.
-fn compute_valid_account_id(
-    account: Account,
-    anchor_block_header: &BlockHeader,
-) -> (Account, Word) {
+/// Takes an account with a placeholder ID and returns the same account but with its ID replaced
+/// with a newly generated one.
+fn compute_valid_account_id(account: Account) -> (Account, Word) {
     let init_seed: [u8; 32] = [5; 32];
     let seed = AccountId::compute_account_seed(
         init_seed,
@@ -549,14 +543,11 @@ fn compute_valid_account_id(
         AccountIdVersion::Version0,
         account.code().commitment(),
         account.storage().commitment(),
-        anchor_block_header.commitment(),
     )
     .unwrap();
 
-    let anchor = AccountIdAnchor::try_from(anchor_block_header).unwrap();
     let account_id = AccountId::new(
         seed,
-        anchor,
         AccountIdVersion::Version0,
         account.code().commitment(),
         account.storage().commitment(),
@@ -577,15 +568,13 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block();
 
-    let genesis_block_header = mock_chain.block_header(BlockNumber::GENESIS.as_usize());
-
     let account = Account::mock_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ZERO,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
         TransactionKernel::assembler().with_debug_mode(true),
     );
-    let (account, account_seed) = compute_valid_account_id(account, &genesis_block_header);
+    let (account, account_seed) = compute_valid_account_id(account);
 
     let result = create_account_test(&mock_chain, account, account_seed);
 
@@ -601,15 +590,13 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block();
 
-    let genesis_block_header = mock_chain.block_header(BlockNumber::GENESIS.as_usize());
-
     let account = Account::mock_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
         ZERO,
         false,
         TransactionKernel::assembler().with_debug_mode(true),
     );
-    let (account, account_seed) = compute_valid_account_id(account, &genesis_block_header);
+    let (account, account_seed) = compute_valid_account_id(account);
 
     let result = create_account_test(&mock_chain, account, account_seed);
 
@@ -627,10 +614,7 @@ pub fn create_account_invalid_seed() {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block();
 
-    let genesis_block_header = mock_chain.block_header(BlockNumber::GENESIS.as_usize());
-
     let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .anchor(AccountIdAnchor::try_from(&genesis_block_header).unwrap())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .with_component(BasicWallet)
         .build()
@@ -641,7 +625,7 @@ pub fn create_account_invalid_seed() {
     // override the seed with an invalid seed to ensure the kernel fails
     let account_seed_key = [account.id().suffix(), account.id().prefix().as_felt(), ZERO, ZERO];
     let adv_inputs =
-        AdviceInputs::default().with_map([(Digest::from(account_seed_key), vec![ZERO; 4])]);
+        AdviceInputs::default().with_map([(Digest::from(account_seed_key), vec![ZERO; WORD_SIZE])]);
 
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
@@ -659,7 +643,7 @@ pub fn create_account_invalid_seed() {
 
     let result = tx_context.execute_code(code);
 
-    assert_execution_error!(result, ERR_ACCOUNT_SEED_ANCHOR_BLOCK_COMMITMENT_DIGEST_MISMATCH)
+    assert_execution_error!(result, ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH)
 }
 
 #[test]

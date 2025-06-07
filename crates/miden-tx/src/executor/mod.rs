@@ -29,7 +29,7 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 // TRANSACTION EXECUTOR
 // ================================================================================================
 
-/// The transaction executor is responsible for executing Miden rollup transactions.
+/// The transaction executor is responsible for executing Miden blockchain transactions.
 ///
 /// Transaction execution consists of the following steps:
 /// - Fetch the data required to execute a transaction from the [DataStore].

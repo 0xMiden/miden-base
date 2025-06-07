@@ -143,10 +143,19 @@ pub fn generate_tx_with_authenticated_notes(
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
+/// Generates a NOOP transaction, i.e. one that doesn't change the state of the account.
+pub fn generate_noop_tx(
+    chain: &mut MockChain,
+    input: impl Into<TxContextInput>,
+) -> ExecutedTransaction {
+    let tx_context = chain.build_tx_context(input, &[], &[]).build();
+    tx_context.execute().unwrap()
+}
+
 /// Generates a transaction that expires at the given block number.
 pub fn generate_tx_with_expiration(
     chain: &mut MockChain,
-    account_id: AccountId,
+    input: impl Into<TxContextInput>,
     expiration_block: BlockNumber,
 ) -> ProvenTransaction {
     let expiration_delta = expiration_block
@@ -154,7 +163,7 @@ pub fn generate_tx_with_expiration(
         .unwrap();
 
     let tx_context = chain
-        .build_tx_context(account_id, &[], &[])
+        .build_tx_context(input, &[], &[])
         .tx_script(authenticate_mock_account_tx_script(expiration_delta.as_u32() as u16))
         .build();
     let executed_tx = tx_context.execute().unwrap();
