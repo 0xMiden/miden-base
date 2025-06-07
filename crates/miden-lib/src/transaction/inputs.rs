@@ -14,20 +14,6 @@ use miden_objects::{
 
 use super::TransactionKernel;
 
-/// Describes the type of account inputs that should be injected to the advice map:
-///
-/// - For a native account that is new, a seed must be provided and an account_id |-> [SEED] is
-///   injected. For an existing native account, no extra inputs need to be provided.
-/// - For foreign accounts, account_id |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT,
-///   CODE_COMMITMENT] is injected
-enum AccountInputsType {
-    /// Inputs for the native (executor) account that is new. The inner value is the seed of the
-    /// new account.
-    Native(Option<Word>),
-    /// Inputs for a foreign account
-    Foreign,
-}
-
 // TRANSACTION ADVICE INPUTS
 // ================================================================================================
 
@@ -57,13 +43,44 @@ impl TransactionAdviceInputs {
         inputs.add_input_notes(tx_inputs, tx_args)?;
 
         // native/executor account
-        let native = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native, AccountInputsType::Native(tx_inputs.account_seed()))?;
+        let native_account = PartialAccount::from(tx_inputs.account());
+        inputs.add_account(&native_account)?;
+
+        // if a seed was provided, extend the map appropriately
+        if let Some(seed) = tx_inputs.account_seed() {
+            let account_id_key: Digest = Digest::from([
+                native_account.id().suffix(),
+                native_account.id().prefix().as_felt(),
+                ZERO,
+                ZERO,
+            ]);
+
+            inputs.extend_map([
+                // ACCOUNT_ID -> ACCOUNT_SEED
+                (account_id_key, seed.to_vec()),
+            ]);
+        }
 
         // foreign accounts
-        for acc in tx_args.foreign_account_inputs() {
-            inputs.add_account(acc.account(), AccountInputsType::Foreign)?;
-            inputs.add_account_witness(acc.witness())?;
+        for acc_inputs in tx_args.foreign_account_inputs() {
+            inputs.add_account(acc_inputs.account())?;
+            inputs.add_account_witness(acc_inputs.witness())?;
+
+            // for foreign accounts, we need to insert the id to state mapping
+            // NOTE: keep this in sync with the start_foreign_context kernel procedure
+            let account_id_key: Digest = Digest::from([
+                acc_inputs.id().suffix(),
+                acc_inputs.id().prefix().as_felt(),
+                ZERO,
+                ZERO,
+            ]);
+
+            let header = AccountHeader::from(acc_inputs.account());
+            inputs.extend_map([
+                // ACCOUNT_ID -> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT,
+                // CODE_COMMITMENT]
+                (account_id_key, header.as_elements()),
+            ]);
         }
 
         // any extra user-supplied advice
@@ -201,15 +218,7 @@ impl TransactionAdviceInputs {
     /// - The account code commitment |-> procedures vector.
     /// - The leaf hash |-> (key, value), for all leaves of the partial vault.
     /// - If present, the Merkle leaves associated with the account storage maps.
-    /// - account_id |-> account_seed, when `account_inputs_type` is
-    ///   [`AccountInputsType::NativeNew`].
-    /// - account_id |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT] when
-    ///   `account_inputs_type` is [`AccountInputsType::Foreign`].
-    fn add_account(
-        &mut self,
-        account: &PartialAccount,
-        input_type: AccountInputsType,
-    ) -> Result<(), TransactionInputError> {
+    fn add_account(&mut self, account: &PartialAccount) -> Result<(), TransactionInputError> {
         // --- account storage ----------------------------------------------------
 
         let storage_header = account.storage().header();
@@ -240,32 +249,6 @@ impl TransactionAdviceInputs {
         // populate advice map with Sparse Merkle Tree leaf nodes
         self.extend_map(account.vault().leaves().map(|leaf| (leaf.hash(), leaf.to_elements())));
 
-        // --- account state ------------------------------------------------------
-
-        let acc_id = account.id();
-        let account_id_key: Digest =
-            Digest::from([acc_id.suffix(), acc_id.prefix().as_felt(), ZERO, ZERO]);
-        match input_type {
-            // if a seed was provided, extend the map appropriately
-            AccountInputsType::Native(Some(seed)) => {
-                self.extend_map([
-                    // ACCOUNT_ID -> ACCOUNT_SEED
-                    (account_id_key, seed.to_vec()),
-                ]);
-            },
-            // for foreign accounts, we need to insert the id to state mapping
-            AccountInputsType::Foreign => {
-                // NOTE: keep this in sync with the start_foreign_context kernel procedure
-                let header = AccountHeader::from(account);
-                self.extend_map([
-                    // ACCOUNT_ID -> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT,
-                    // CODE_COMMITMENT]
-                    (account_id_key, header.as_elements()),
-                ]);
-            },
-            // native non-new accounts do not need extra inputs
-            AccountInputsType::Native(None) => {},
-        }
         Ok(())
     }
 
