@@ -8,9 +8,8 @@ WantedBy=multi-user.target
 [Service]
 Type=exec
 EnvironmentFile=/lib/systemd/system/miden-prover-proxy.env
-ExecStart=/usr/bin/miden-proving-service start-proxy 127.0.0.1:50051
+ExecStart=/usr/bin/miden-proving-service start-proxy
 WorkingDirectory=/opt/miden-prover-proxy
 User=miden-prover-proxy
 RestartSec=5
 Restart=always
-TimeoutStopSec=10

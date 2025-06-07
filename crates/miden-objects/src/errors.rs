@@ -360,7 +360,7 @@ pub enum NoteError {
     DuplicateFungibleAsset(AccountId),
     #[error("duplicate non fungible asset {0} in note")]
     DuplicateNonFungibleAsset(NonFungibleAsset),
-    #[error("note type {0:?} is inconsistent with note tag {1}")]
+    #[error("note type {0} is inconsistent with note tag {1}")]
     InconsistentNoteTag(NoteType, u64),
     #[error("adding fungible asset amounts would exceed maximum allowed amount")]
     AddFungibleAssetBalanceError(#[source] AssetError),
@@ -378,12 +378,12 @@ pub enum NoteError {
     NoteExecutionHintAfterBlockCannotBeU32Max,
     #[error("invalid note execution hint payload {1} for tag {0}")]
     InvalidNoteExecutionHintPayload(u8, u32),
-    #[error("note type {0:b} does not match any of the valid note types {public}, {private} or {encrypted}",
-      public = NoteType::Public as u8,
-      private = NoteType::Private as u8,
-      encrypted = NoteType::Encrypted as u8,
+    #[error("note type {0} does not match any of the valid note types {public}, {private} or {encrypted}",
+      public = NoteType::Public,
+      private = NoteType::Private,
+      encrypted = NoteType::Encrypted,
     )]
-    InvalidNoteType(u64),
+    UnknownNoteType(Box<str>),
     #[error("note location index {node_index_in_block} is out of bounds 0..={highest_index}")]
     NoteLocationIndexOutOfBounds {
         node_index_in_block: u16,
@@ -391,7 +391,7 @@ pub enum NoteError {
     },
     #[error("note network execution requires the target to be a network account")]
     NetworkExecutionRequiresNetworkAccount,
-    #[error("note network execution requires a public note but note is of type {0:?}")]
+    #[error("note network execution requires a public note but note is of type {0}")]
     NetworkExecutionRequiresPublicNote(NoteType),
     #[error("failed to assemble note script:\n{}", PrintDiagnostic::new(.0))]
     NoteScriptAssemblyError(Report),
@@ -401,7 +401,7 @@ pub enum NoteError {
     TooManyAssets(usize),
     #[error("note contains {0} inputs which exceeds the maximum of {max}", max = MAX_INPUTS_PER_NOTE)]
     TooManyInputs(usize),
-    #[error("note tag requires a public note but the note is of type {0:?}")]
+    #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
 }
 
@@ -455,6 +455,18 @@ impl PartialBlockchainError {
 pub enum TransactionScriptError {
     #[error("failed to assemble transaction script:\n{}", PrintDiagnostic::new(.0))]
     AssemblyError(Report),
+    #[error("provided inputs map is missing an entry for transaction script arguments key `{0}`")]
+    MissingScriptArgsKeyEntry(Digest),
+    #[error(
+        "script arguments with key `{key}` and values `{:?}` were added to the inputs map, but there is already an entry in the map with the same key but different values: `{:?}`",
+        new_value,
+        old_value
+    )]
+    ScriptArgsCollision {
+        key: Digest,
+        new_value: Vec<Felt>,
+        old_value: Vec<Felt>,
+    },
 }
 
 // TRANSACTION INPUT ERROR

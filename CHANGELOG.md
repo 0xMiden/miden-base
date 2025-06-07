@@ -2,10 +2,22 @@
 
 ## 0.10.0 (TBD)
 
+- [BREAKING] Refactor `NoteTag` to an enum (#1322).
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
+- Add `bench-prover` crate to benchmark proving times (#1378)
 - Implement map in transaction kernel library (#1396).
-- [BREAKING] Refactor `NoteTag` to an enum (#1322).
+- Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
+- [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
+- Add support for workers configuration in the proxy with environment variables (#1412).
+- Implement Display for `NoteType` (#1420).
+
+## 0.9.1 (2025-05-30)
+
+### Fixes
+
+- Expose types used in public APIs (#1385).
+- Version check always fails in proxy (#1407).
 
 ## 0.9.0 (2025-05-20)
 
