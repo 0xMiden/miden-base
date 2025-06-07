@@ -372,6 +372,7 @@ mod tests {
             assert!(!tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
 
+            // for local execution[`NoteExecutionMode::Local`], all notes are allowed
             tag.validate(NoteType::Public)
                 .expect("local execution should support public notes");
             tag.validate(NoteType::Private)
@@ -385,6 +386,7 @@ mod tests {
             assert!(!tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Local);
 
+            // for local execution[`NoteExecutionMode::Local`], all notes are allowed
             tag.validate(NoteType::Public)
                 .expect("local execution should support public notes");
             tag.validate(NoteType::Private)
@@ -398,8 +400,9 @@ mod tests {
             assert!(tag.is_single_target());
             assert_eq!(tag.execution_mode(), NoteExecutionMode::Network);
 
+            // for network execution[`NoteExecutionMode::Network`], only public notes are allowed
             tag.validate(NoteType::Public)
-                .expect("local execution should support public notes");
+                .expect("network execution should support public notes");
             assert_matches!(
                 tag.validate(NoteType::Private),
                 Err(NoteError::NetworkExecutionRequiresPublicNote(NoteType::Private))
@@ -440,9 +443,6 @@ mod tests {
         const NETWORK_ACCOUNT_INT: u128 = ACCOUNT_ID_REGULAR_NETWORK_ACCOUNT_IMMUTABLE_CODE
             | 0x00cc_77cc_0000_0000_0000_0000_0000_0000;
         let network_account_id = AccountId::try_from(NETWORK_ACCOUNT_INT).unwrap();
-
-        // Expected network tag with LOCAL_EXECUTION_WITH_ALL_NOTE_TYPES_ALLOWED.
-        let _expected_network_local_tag = NoteTag(0b11101010_10110011_00000000_00000000);
 
         // Expected network tag with leading 00 tag bits for network execution.
         let expected_network_network_tag = NoteTag(0b00101010_10110011_00011101_11110011);
