@@ -71,6 +71,11 @@ impl NoteInclusionProof {
         &self.location
     }
 
+    /// Returns the index of the merkle tree leaf in the note tree.
+    pub fn location_index(&self) -> u16 {
+        self.location.node_index_in_block()
+    }
+
     /// Returns the Merkle path to the note in the note Merkle tree of the block the note was
     /// created in.
     pub fn note_path(&self) -> &MerklePath {

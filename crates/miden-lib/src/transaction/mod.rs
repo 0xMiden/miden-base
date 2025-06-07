@@ -127,7 +127,7 @@ impl TransactionKernel {
 
         let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
         if let Some(init_advice_inputs) = init_advice_inputs {
-            tx_advice_inputs.extend(&init_advice_inputs);
+            tx_advice_inputs.extend(init_advice_inputs);
         }
 
         Ok((stack_inputs, tx_advice_inputs))

@@ -2,9 +2,10 @@ use alloc::vec::Vec;
 
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, FieldElement, TransactionInputError, WORD_SIZE, Word, ZERO,
-    account::{AccountHeader, PartialAccount},
+    account::{AccountHeader, AccountId, PartialAccount},
     block::AccountWitness,
-    crypto::merkle::InnerNodeInfo,
+    crypto::merkle::{InnerNodeInfo, SmtProof},
+    note::{Note, NoteInclusionProof},
     transaction::{
         InputNote, PartialBlockchain, TransactionArgs, TransactionInputs, TransactionScript,
     },
@@ -66,20 +67,20 @@ impl TransactionAdviceInputs {
         }
 
         // any extra user-supplied advice
-        inputs.extend(tx_args.advice_inputs());
+        inputs.extend(tx_args.advice_inputs().clone());
 
         Ok(inputs)
     }
 
-    pub fn into_inner(self) -> AdviceInputs {
+    pub fn into_advice_inputs(self) -> AdviceInputs {
         self.0
     }
 
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    pub fn extend(&mut self, adv_inputs: &AdviceInputs) {
-        self.0.extend(adv_inputs.clone());
+    pub fn extend(&mut self, adv_inputs: AdviceInputs) {
+        self.0.extend(adv_inputs);
     }
 
     /// Extends the map of values with the given argument, replacing previously inserted items.
@@ -128,7 +129,7 @@ impl TransactionAdviceInputs {
     ) {
         let header = tx_inputs.block_header();
 
-        // --- block header data (keep in sync with kernel) --------------------
+        // --- block header data (keep in sync with process_block_data_kernel) ----
         self.extend_stack(header.prev_block_commitment());
         self.extend_stack(header.chain_commitment());
         self.extend_stack(header.account_root());
@@ -144,10 +145,10 @@ impl TransactionAdviceInputs {
         ]);
         self.extend_stack(header.note_root());
 
-        // --- kernel version -----------------------------------------------------
+        // --- kernel version (keep in sync with process_kernel_data) -------------
         self.extend_stack([Felt::from(kernel_version)]);
 
-        // --- core account items -------------------------------------------------
+        // --- core account items (keep in sync with process_account_data) --------
         let account = tx_inputs.account();
         self.extend_stack([
             account.id().suffix(),
@@ -160,7 +161,7 @@ impl TransactionAdviceInputs {
         self.extend_stack(account.code().commitment());
 
         // note count & script root
-        self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes() as u32)]);
+        self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
         self.extend_stack(tx_script.map_or(Word::default(), |s| *s.root()));
     }
 
@@ -219,18 +220,8 @@ impl TransactionAdviceInputs {
 
         // load merkle nodes for storage maps
         for proof in account.storage().storage_map_proofs() {
-            // extend the merkle store and map with the storage maps
-            self.extend_merkle_store(
-                proof
-                    .path()
-                    .inner_nodes(proof.leaf().index().value(), proof.leaf().hash())
-                    .map_err(|e| {
-                        TransactionInputError::InvalidMerklePath(
-                            format!("foreign account ID {} storage proof", account.id()).into(),
-                            e,
-                        )
-                    })?,
-            );
+            // extend the merkle store with the SMT proof
+            self.extend_merkle_store_with_smt_proof(proof, account.id())?;
             // populate advice map with Sparse Merkle Tree leaf nodes
             self.extend_map(core::iter::once((proof.leaf().hash(), proof.leaf().to_elements())));
         }
@@ -349,23 +340,11 @@ impl TransactionAdviceInputs {
             // authentication vs unauthenticated
             match input_note {
                 InputNote::Authenticated { note, proof } => {
-                    note_data.push(Felt::ONE); // is_authenticated
+                    // Push the `is_authenticated` flag
+                    note_data.push(Felt::ONE);
 
                     // Merkle path
-                    self.extend_merkle_store(
-                        proof
-                            .note_path()
-                            .inner_nodes(
-                                proof.location().node_index_in_block().into(),
-                                note.commitment(),
-                            )
-                            .map_err(|e| {
-                                TransactionInputError::InvalidMerklePath(
-                                    format!("input note ID {}", note.id()).into(),
-                                    e,
-                                )
-                            })?,
-                    );
+                    self.extend_with_note_merkle_proof(proof, note)?;
 
                     let block_num = proof.location().block_num();
                     let block_header = if block_num == tx_inputs.block_header().block_num() {
@@ -382,7 +361,11 @@ impl TransactionAdviceInputs {
                     note_data.extend(block_header.note_root());
                     note_data.push(proof.location().node_index_in_block().into());
                 },
-                InputNote::Unauthenticated { .. } => note_data.push(Felt::ZERO),
+                InputNote::Unauthenticated { .. } =>
+                // push the `is_authenticated` flag
+                {
+                    note_data.push(Felt::ZERO)
+                },
             }
         }
 
@@ -415,6 +398,44 @@ impl TransactionAdviceInputs {
 
         // insert kernels root with kernel commitments into the advice map
         self.extend_map([(TransactionKernel::kernel_commitment(), kernel_commitments)]);
+    }
+
+    /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
+    /// inclusion proof for a note.
+    fn extend_with_note_merkle_proof(
+        &mut self,
+        note_inclusion_proof: &NoteInclusionProof,
+        note: &Note,
+    ) -> Result<(), TransactionInputError> {
+        match note_inclusion_proof
+            .note_path()
+            .inner_nodes(note_inclusion_proof.location_index().into(), note.commitment())
+        {
+            Ok(nodes) => {
+                self.extend_merkle_store(nodes);
+                Ok(())
+            },
+            Err(err) => Err(TransactionInputError::InvalidNoteMerklePath(note.id(), err)),
+        }
+    }
+
+    /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
+    /// SMT proof for an account.
+    fn extend_merkle_store_with_smt_proof(
+        &mut self,
+        smt_proof: &SmtProof,
+        acc_id: AccountId,
+    ) -> Result<(), TransactionInputError> {
+        match smt_proof
+            .path()
+            .inner_nodes(smt_proof.leaf().index().value(), smt_proof.leaf().hash())
+        {
+            Ok(nodes) => {
+                self.extend_merkle_store(nodes);
+                Ok(())
+            },
+            Err(err) => Err(TransactionInputError::InvalidAccountMerklePath(acc_id, err)),
+        }
     }
 }
 

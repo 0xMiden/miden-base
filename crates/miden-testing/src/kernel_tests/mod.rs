@@ -78,7 +78,7 @@ fn transaction_executor_witness() {
         Some(executed_transaction.advice_witness().clone()),
     )
     .unwrap();
-    let mem_advice_provider: MemAdviceProvider = advice_inputs.into_inner().into();
+    let mem_advice_provider: MemAdviceProvider = advice_inputs.into_advice_inputs().into();
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
