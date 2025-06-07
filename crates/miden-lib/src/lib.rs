@@ -16,6 +16,7 @@ mod auth;
 pub use auth::AuthScheme;
 
 pub mod account;
+#[cfg(any(feature = "testing", test))]
 pub mod errors;
 pub mod note;
 pub mod transaction;

@@ -1,6 +1,6 @@
 # Miden architecture overview
 
-Polygon Miden’s architecture departs considerably from typical blockchain designs to support privacy and parallel transaction execution.
+Miden’s architecture departs considerably from typical blockchain designs to support privacy and parallel transaction execution.
 
 In traditional blockchains, state and transactions must be transparent to be verifiable. This is necessary for block production and execution.
 
@@ -14,9 +14,9 @@ However, user generated zero-knowledge proofs allow state transitions, e.g. tran
 
 ## Actor model
 
-The [actor model](https://en.wikipedia.org/wiki/Actor_model) inspires Polygon Miden’s execution model. This is a well-known computational design paradigm in concurrent systems. In the actor model, actors are state machines responsible for maintaining their own state. In the context of Polygon Miden, each account is an actor. Actors communicate with each other by exchanging messages asynchronously. One actor can send a message to another, but it is up to the recipient to apply the requested change to their state.
+The [actor model](https://en.wikipedia.org/wiki/Actor_model) inspires Miden’s execution model. This is a well-known computational design paradigm in concurrent systems. In the actor model, actors are state machines responsible for maintaining their own state. In the context of Miden, each account is an actor. Actors communicate with each other by exchanging messages asynchronously. One actor can send a message to another, but it is up to the recipient to apply the requested change to their state.
 
-Polygon Miden’s architecture takes the actor model further and combines it with zero-knowledge proofs. Now, actors not only maintain and update their own state, but they can also prove the validity of their own state transitions to the rest of the network. This ability to independently prove state transitions enables local smart contract execution, private smart contracts, and much more. And it is quite unique in the rollup space. Normally only centralized entities - sequencer or prover - create zero-knowledge proofs, not the users.
+Miden’s architecture takes the actor model further and combines it with zero-knowledge proofs. Now, actors not only maintain and update their own state, but they can also prove the validity of their own state transitions to the rest of the network. This ability to independently prove state transitions enables local smart contract execution, private smart contracts, and much more. And it is quite unique in the rollup space. Normally only centralized entities - sequencer or prover - create zero-knowledge proofs, not the users.
 
 ## Core concepts
 
@@ -48,7 +48,7 @@ The [transaction chapter](transaction.md) describes the transaction design and i
 
 ## State and execution
 
-The actor-based execution model requires a radically different approach to recording the system's state. Actors and the messages they exchange must be treated as first-class citizens. Polygon Miden addresses this by combining the state models of account-based systems like Ethereum and UTXO-based systems like Bitcoin and Zcash.
+The actor-based execution model requires a radically different approach to recording the system's state. Actors and the messages they exchange must be treated as first-class citizens. Miden addresses this by combining the state models of account-based systems like Ethereum and UTXO-based systems like Bitcoin and Zcash.
 
 Miden's state model captures the individual states of all accounts and notes, and the execution model describes state progress in a sequence of blocks.
 

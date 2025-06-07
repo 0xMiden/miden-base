@@ -6,17 +6,13 @@ use.kernel::memory
 # ERRORS
 # =================================================================================================
 
-# Attempted to access note sender from incorrect context
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT=0x00020102
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT="attempted to access note sender from incorrect context"
 
-# Attempted to access note assets from incorrect context
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT=0x00020100
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
 
-# Attempted to access note inputs from incorrect context
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT=0x00020101
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
 
-# Number of assets in a note exceed 255
-const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT=0x00020108
+const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
 
 # CONSTANTS
 # =================================================================================================
@@ -148,8 +144,8 @@ end
 #! Outputs: [note_script_root_ptr, NOTE_ARGS]
 #!
 #! Where:
-#! - note_script_root_ptr, the memory address where note's script root is stored.
-#! - NOTE_ARGS, the note's arguments.
+#! - note_script_root_ptr is the memory address where note's script root is stored.
+#! - NOTE_ARGS is the note's arguments.
 export.prepare_note
     exec.memory::get_current_input_note_ptr
     # => [note_ptr]

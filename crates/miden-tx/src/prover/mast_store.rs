@@ -29,7 +29,7 @@ impl TransactionMastStore {
     ///
     /// The default libraries include:
     /// - Miden standard library (miden-stdlib).
-    /// - Miden rollup library (miden-lib).
+    /// - Miden protocol library (miden-lib).
     /// - Transaction kernel.
     pub fn new() -> Self {
         let mast_forests = RwLock::new(BTreeMap::new());
@@ -57,7 +57,6 @@ impl TransactionMastStore {
     /// - Account code for the account specified from the provided [AccountCode].
     /// - Note scripts for all input notes in the provided [InputNotes].
     /// - Transaction script (if any) from the specified [TransactionArgs].
-    /// - Foreign account code (if any) from the specified [TransactionArgs].
     pub fn load_transaction_code(
         &self,
         account_code: &AccountCode,
@@ -72,9 +71,9 @@ impl TransactionMastStore {
             self.insert(note.note().script().mast().clone());
         }
 
-        // load foreign account's MAST forests
-        for foreign_account in tx_args.foreign_accounts() {
-            self.load_account_code(foreign_account.account_code());
+        // add extra account codes
+        for foreign_account in tx_args.foreign_account_inputs() {
+            self.load_account_code(foreign_account.code());
         }
 
         // load tx script MAST into the MAST store

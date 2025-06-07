@@ -1,15 +1,61 @@
 # Miden proving service
 
-> [!IMPORTANT]  
-> **Due to a transitive dependency compilation error, the only way to install the binary is using `--locked`.**
-
 A service for generating Miden proofs on-demand. The binary enables spawning workers and a proxy for Miden's remote proving service. It currently supports proving individual transactions, transaction batches, and blocks.
 
 A worker is a gRPC service that can receive transaction witnesses, proposed batches, or proposed blocks, prove them, and return the generated proofs. It can handle only one request at a time and will return an error if it is already in use. Each worker is specialized on startup to handle exactly one type of proof requests - transactions, batches, or blocks.
 
 The proxy uses [Cloudflare's Pingora crate](https://crates.io/crates/pingora), which provides features to create a modular proxy. It is meant to handle multiple workers with a queue, assigning a worker to each request and retrying if the worker is not available. Further information about Pingora and its features can be found in the [official GitHub repository](https://github.com/cloudflare/pingora).
 
-## Installation
+
+## Debian Installation
+
+#### Prover
+
+Install the Debian package:
+```bash
+set -e
+
+sudo wget https://github.com/0xMiden/miden-base/releases/download/v0.8/miden-prover-v0.8-arm64.deb -O prover.deb
+sudo wget -q -O - https://github.com/0xMiden/miden-base/releases/download/v0.8/miden-prover-v0.8-arm64.deb.checksum | awk '{print $1}' | sudo tee prover.checksum
+sudo sha256sum prover.deb | awk '{print $1}' > prover.sha256
+sudo diff prover.sha256 prover.checksum
+sudo dpkg -i prover.deb
+sudo rm prover.deb
+```
+
+Edit the configuration file `/lib/systemd/system/miden-prover.service.env`
+
+Run the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable miden-prover
+sudo systemctl start miden-prover
+```
+
+#### Prover Proxy
+```bash
+set -e
+
+sudo wget https://github.com/0xMiden/miden-base/releases/download/v0.8/miden-prover-proxy-v0.8-arm64.deb -O prover-proxy.deb
+sudo wget -q -O - https://github.com/0xMiden/miden-base/releases/download/v0.8/miden-prover-proxy-v0.8-arm64.deb.checksum | awk '{print $1}' | sudo tee prover-proxy.checksum
+sudo sha256sum prover-proxy.deb | awk '{print $1}' > prover-proxy.sha256
+sudo diff prover-proxy.sha256 prover-proxy.checksum
+sudo dpkg -i prover-proxy.deb
+sudo rm prover-proxy.deb
+```
+
+Edit the configuration file `/lib/systemd/system/miden-prover-proxy.service.env`
+
+Edit the service file to specify workers `/lib/systemd/system/miden-prover-proxy.service`
+
+Run the service:
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable miden-prover-proxy
+sudo systemctl start miden-prover-proxy
+```
+
+## Source Installation
 
 To build the service from a local version, from the root of the workspace you can run:
 
@@ -59,16 +105,22 @@ miden-proving-service start-worker
 To start the proxy service, you will need to run:
 
 ```bash
-miden-proving-service start-proxy --prover-type transaction [worker1] [worker2] ... [workerN]
+miden-proving-service start-proxy --prover-type transaction --workers [worker1],[worker2],...,[workerN]
 ```
 
 For example:
 
 ```bash
-miden-proving-service start-proxy --prover-type transaction 0.0.0.0:8084 0.0.0.0:8085
+miden-proving-service start-proxy --prover-type transaction --workers 0.0.0.0:8084,0.0.0.0:8085
 ```
 
-This command will start the proxy using the workers passed as arguments. The workers should be in the format `host:port`. If no workers are passed, the proxy will start without any workers and will not be able to handle any requests until one is added through the `miden-proving-service add-worker` command.
+This command will start the proxy using the workers passed as arguments. The workers should be in the format `host:port`. Another way to specify the workers is by using the `MPS_PROXY_WORKERS_LIST` environment variable, which can be set to a comma-separated list of worker addresses. For example:
+
+```bash
+export MPS_PROXY_WORKERS_LIST="0.0.0.0:8084,0.0.0.0:8085"
+```
+
+If no workers are passed, the proxy will start without any workers and will not be able to handle any requests until one is added through the `miden-proving-service add-worker` command.
 
 The `--prover-type` flag is required and specifies which type of proof the proxy will handle. The available options are:
 - `transaction`: For transaction proofs
@@ -92,19 +144,27 @@ At the moment, when a worker added to the proxy stops working and can not connec
 
 ## Updating workers on a running proxy
 
-To update the workers on a running proxy, two commands are provided: `add-worker` and `remove-worker`. These commands will update the workers on the proxy and will not require a restart. To use these commands, you will need to run:
+To update the workers on a running proxy, two commands are provided: `add-workers` and `remove-workers`. These commands will update the workers on the proxy and will not require a restart. To use these commands, you will need to run:
 
 ```bash
-miden-proving-service add-worker --control-port <port> [worker1] [worker2] ... [workerN]
-miden-proving-service remove-worker --control-port <port> [worker1] [worker2] ... [workerN]
+miden-proving-service add-workers --control-port <port> [worker1],[worker2],...,[workerN]
+miden-proving-service remove-workers --control-port <port> [worker1],[worker2],...,[workerN]
 ```
 For example:
 
 ```bash
 # To add 0.0.0.0:8085 and 200.58.70.4:50051 to the workers list:
-miden-proving-service add-workers --control-port 8083 0.0.0.0:8085 200.58.70.4:50051
+miden-proving-service add-workers --control-port 8083 0.0.0.0:8085,200.58.70.4:50051
 # To remove 158.12.12.3:8080 and 122.122.6.6:50051 from the workers list:
-miden-proving-service remove-workers --control-port 8083 158.12.12.3:8080 122.122.6.6:50051
+miden-proving-service remove-workers --control-port 8083 158.12.12.3:8080,122.122.6.6:50051
+```
+
+These commands can receive the list of workers to update as a comma-separated list of addresses through the `MPS_PROXY_WORKERS_LIST` environment variable, or as command-line arguments:
+
+```bash
+export MPS_PROXY_WORKERS_LIST="0.0.0.0:8085,200.58.70.4:50051"
+miden-proving-service add-workers --control-port 8083
+miden-proving-service remove-workers --control-port 8083
 ```
 
 The `--control-port` flag is required to specify the port where the proxy is listening for updates. The workers are passed as arguments in the format `host:port`. The port can be specified via the `MPS_CONTROL_PORT` environment variable. For example:

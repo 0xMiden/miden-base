@@ -233,6 +233,11 @@ impl FungibleAssetDelta {
         self.add_delta(asset.faucet_id(), -amount)
     }
 
+    /// Returns the amount of the fungible asset with the given faucet ID.
+    pub fn amount(&self, faucet_id: &AccountId) -> Option<i64> {
+        self.0.get(faucet_id).copied()
+    }
+
     /// Returns the number of fungible assets affected in the delta.
     pub fn num_assets(&self) -> usize {
         self.0.len()

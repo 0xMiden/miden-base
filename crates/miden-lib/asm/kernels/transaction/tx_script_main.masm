@@ -6,8 +6,7 @@ use.kernel::prologue
 # ERRORS
 # =================================================================================================
 
-# The transaction script is missing.
-const.ERR_TX_TRANSACTION_SCRIPT_IS_MISSING=0x000200C2
+const.ERR_TX_TRANSACTION_SCRIPT_IS_MISSING="the transaction script is missing"
 
 # MAIN
 # =================================================================================================

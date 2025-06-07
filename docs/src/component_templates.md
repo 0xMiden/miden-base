@@ -126,7 +126,7 @@ Storage map entries can specify the following fields:
 - `slot`: Specifies the slot index in which the root of the map will be placed
 - `values`: Contains a list of map entries, defined by a `key` and `value`
 
-Where `key`s and `value`s are word values, which can be defined as placeholders.
+Where keys and values are word values, which can be defined as placeholders.
 
 In the example, the third storage entry defines a storage map.
 

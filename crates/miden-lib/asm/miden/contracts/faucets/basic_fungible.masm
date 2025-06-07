@@ -20,8 +20,7 @@ const.PRIVATE_NOTE=2
 # ERRORS
 # =================================================================================================
 
-# Distribute would cause the maximum supply to be exceeded
-const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED=0x00020201
+const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distribute would cause the maximum supply to be exceeded"
 
 # CONSTANTS
 # =================================================================================================

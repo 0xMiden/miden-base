@@ -1,12 +1,12 @@
 [book]
-authors      = ["Miden contributors"]
-description  = "Description and core structures for the Miden rollup protocol"
-language     = "en"
+authors = ["Miden contributors"]
+description = "Description and core structures for the Miden protocol"
+language = "en"
 multilingual = false
-title        = "The Miden protocol"
+title = "The Miden protocol"
 
 [output.html]
-git-repository-url = "https://github.com/0xPolygonMiden/miden-base"
+git-repository-url = "https://github.com/0xMiden/miden-base"
 
 [preprocessor.katex]
 after = ["links"]

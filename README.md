@@ -1,10 +1,10 @@
-# Miden Rollup protocol
+# Miden protocol
 
-[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/0xPolygonMiden/miden-base/blob/main/LICENSE)
-[![test](https://github.com/0xPolygonMiden/miden-base/actions/workflows/test.yml/badge.svg)](https://github.com/0xPolygonMiden/miden-base/actions/workflows/test.yml)
-[![build](https://github.com/0xPolygonMiden/miden-base/actions/workflows/build.yml/badge.svg)](https://github.com/0xPolygonMiden/miden-base/actions/workflows/build.yml)
-[![RUST_VERSION](https://img.shields.io/badge/rustc-1.86+-lightgray.svg)](https://www.rust-lang.org/tools/install)
-[![GitHub Release](https://img.shields.io/github/release/0xPolygonMiden/miden-base)](https://github.com/0xPolygonMiden/miden-base/releases/)
+[![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/0xMiden/miden-base/blob/main/LICENSE)
+[![test](https://github.com/0xMiden/miden-base/actions/workflows/test.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/test.yml)
+[![build](https://github.com/0xMiden/miden-base/actions/workflows/build.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/build.yml)
+[![RUST_VERSION](https://img.shields.io/badge/rustc-1.87+-lightgray.svg)](https://www.rust-lang.org/tools/install)
+[![GitHub Release](https://img.shields.io/github/release/0xMiden/miden-base)](https://github.com/0xMiden/miden-base/releases/)
 
 Description and core structures for the Miden Rollup protocol.
 
@@ -16,14 +16,14 @@ Miden is a zero-knowledge rollup for high-throughput and private applications. M
 
 If you want to join the technical discussion or learn more about the project, please check out
 
-* the [Documentation](https://0xpolygonmiden.github.io/miden-docs).
-* the [Discord](https://discord.gg/0xpolygonrnd)
-* the [Repo](https://github.com/0xPolygonMiden)
+* the [Documentation](https://0xMiden.github.io/miden-docs).
+* the [Telegram](https://t.me/BuildOnMiden)
+* the [Repo](https://github.com/0xMiden)
 * the [Roadmap](docs/roadmap.md)
 
 ## Status and features
 
-Polygon Miden is currently on release v0.9. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
+Miden is currently on release v0.10. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
 
 ### Feature highlights
 
@@ -44,14 +44,14 @@ Polygon Miden is currently on release v0.9. This is an early version of the prot
 
 ## Project structure
 
-| Crate                                   | Description                                                                         |
-| --------------------------------------- | ----------------------------------------------------------------------------------- |
-| [objects](crates/miden-objects)         | Contains core components defining the Miden rollup protocol.                        |
-| [miden-lib](crates/miden-lib)           | Contains the code of the Miden rollup kernels and standardized smart contracts.     |
-| [miden-tx](crates/miden-tx)             | Contains tool for creating, executing, and proving Miden rollup transaction.        |
-| [proving-service](bin/proving-service/) | Contains a binary with a service for generating Miden transaction proofs on-demand. |
-| [proving-service-client](crates/miden-proving-service-client/) | Contains protobuf definition for the Miden transaction proving service. |
-| [bench-tx](bin/bench-tx)                | Contains transaction execution and proving benchmarks.                              |
+| Crate                                                          | Description                                                                         |
+|----------------------------------------------------------------|-------------------------------------------------------------------------------------|
+| [objects](crates/miden-objects)                                | Contains core components defining the Miden rollup protocol.                        |
+| [miden-lib](crates/miden-lib)                                  | Contains the code of the Miden rollup kernels and standardized smart contracts.     |
+| [miden-tx](crates/miden-tx)                                    | Contains tool for creating, executing, and proving Miden rollup transaction.        |
+| [proving-service](bin/proving-service/)                        | Contains a binary with a service for generating Miden transaction proofs on-demand. |
+| [proving-service-client](crates/miden-proving-service-client/) | Contains protobuf definition for the Miden transaction proving service.             |
+| [bench-tx](bin/bench-tx)                                       | Contains transaction execution and proving benchmarks.                              |
 
 ## Make commands
 

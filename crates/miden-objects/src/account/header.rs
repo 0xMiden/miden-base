@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use super::{Account, AccountId, Digest, Felt, ZERO, hash_account};
+use super::{Account, AccountId, Digest, Felt, PartialAccount, ZERO, hash_account};
 use crate::utils::serde::{Deserializable, Serializable};
 
 // ACCOUNT HEADER
@@ -107,6 +107,24 @@ impl AccountHeader {
             self.code_commitment.as_elements(),
         ]
         .concat()
+    }
+}
+
+impl From<PartialAccount> for AccountHeader {
+    fn from(account: PartialAccount) -> Self {
+        (&account).into()
+    }
+}
+
+impl From<&PartialAccount> for AccountHeader {
+    fn from(account: &PartialAccount) -> Self {
+        Self {
+            id: account.id(),
+            nonce: account.nonce(),
+            vault_root: account.vault().root(),
+            storage_commitment: account.storage().commitment(),
+            code_commitment: account.code().commitment(),
+        }
     }
 }
 

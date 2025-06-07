@@ -107,22 +107,41 @@ impl ProvenTransaction {
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
+    /// Validates the transaction.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
+    /// - The transaction was executed against a _new_ on-chain account and its account ID does not
+    ///   match the ID in the account update.
+    /// - The transaction was executed against a _new_ on-chain account and its commitment does not
+    ///   match the final state commitment of the account update.
+    /// - The transaction was executed against a private account and the account update is _not_ of
+    ///   type [`AccountUpdateDetails::Private`].
+    /// - The transaction was executed against an on-chain account and the update is of type
+    ///   [`AccountUpdateDetails::Private`].
+    /// - The transaction was executed against an _existing_ on-chain account and the update is of
+    ///   type [`AccountUpdateDetails::New`].
+    /// - The transaction creates a _new_ on-chain account and the update is of type
+    ///   [`AccountUpdateDetails::Delta`].
     fn validate(self) -> Result<Self, ProvenTransactionError> {
-        if self.account_id().is_public() {
+        // If the account is on-chain, then the account update details must be present.
+        if self.account_id().is_onchain() {
             self.account_update.validate()?;
 
             let is_new_account =
                 self.account_update.initial_state_commitment() == Digest::default();
             match self.account_update.details() {
                 AccountUpdateDetails::Private => {
-                    return Err(ProvenTransactionError::PublicAccountMissingDetails(
+                    return Err(ProvenTransactionError::OnChainAccountMissingDetails(
                         self.account_id(),
                     ));
                 },
                 AccountUpdateDetails::New(account) => {
                     if !is_new_account {
                         return Err(
-                            ProvenTransactionError::ExistingPublicAccountRequiresDeltaDetails(
+                            ProvenTransactionError::ExistingOnChainAccountRequiresDeltaDetails(
                                 self.account_id(),
                             ),
                         );
@@ -142,7 +161,7 @@ impl ProvenTransaction {
                 },
                 AccountUpdateDetails::Delta(_) => {
                     if is_new_account {
-                        return Err(ProvenTransactionError::NewPublicAccountRequiresFullDetails(
+                        return Err(ProvenTransactionError::NewOnChainAccountRequiresFullDetails(
                             self.account_id(),
                         ));
                     }
@@ -297,12 +316,30 @@ impl ProvenTransactionBuilder {
         self
     }
 
-    /// Builds the [ProvenTransaction].
+    /// Builds the [`ProvenTransaction`].
     ///
     /// # Errors
     ///
-    /// An error will be returned if a public account is used without provided on-chain detail.
-    /// Or if the account details, i.e. account ID and final hash, don't match the transaction.
+    /// Returns an error if:
+    /// - The total number of input notes is greater than
+    ///   [`MAX_INPUT_NOTES_PER_TX`](crate::constants::MAX_INPUT_NOTES_PER_TX).
+    /// - The vector of input notes contains duplicates.
+    /// - The total number of output notes is greater than
+    ///   [`MAX_OUTPUT_NOTES_PER_TX`](crate::constants::MAX_OUTPUT_NOTES_PER_TX).
+    /// - The vector of output notes contains duplicates.
+    /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
+    /// - The transaction was executed against a _new_ on-chain account and its account ID does not
+    ///   match the ID in the account update.
+    /// - The transaction was executed against a _new_ on-chain account and its commitment does not
+    ///   match the final state commitment of the account update.
+    /// - The transaction was executed against a private account and the account update is _not_ of
+    ///   type [`AccountUpdateDetails::Private`].
+    /// - The transaction was executed against an on-chain account and the update is of type
+    ///   [`AccountUpdateDetails::Private`].
+    /// - The transaction was executed against an _existing_ on-chain account and the update is of
+    ///   type [`AccountUpdateDetails::New`].
+    /// - The transaction creates a _new_ on-chain account and the update is of type
+    ///   [`AccountUpdateDetails::Delta`].
     pub fn build(self) -> Result<ProvenTransaction, ProvenTransactionError> {
         let input_notes =
             InputNotes::new(self.input_notes).map_err(ProvenTransactionError::InputNotesError)?;
@@ -551,8 +588,7 @@ mod tests {
         ACCOUNT_UPDATE_MAX_SIZE, Digest, EMPTY_WORD, ONE, ProvenTransactionError, ZERO,
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, NetworkAccount, StorageMapDelta,
-            delta::AccountUpdateDetails,
+            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
         },
         block::BlockNumber,
         testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -638,7 +674,6 @@ mod tests {
             AccountIdVersion::Version0,
             AccountType::FungibleFaucet,
             AccountStorageMode::Private,
-            NetworkAccount::Disabled,
         );
         let initial_account_commitment =
             [2; 32].try_into().expect("failed to create initial account commitment");

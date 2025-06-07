@@ -1,3 +1,5 @@
+use core::{fmt::Display, str::FromStr};
+
 use crate::{
     Felt, NoteError,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
@@ -47,7 +49,7 @@ impl TryFrom<u8> for NoteType {
             PRIVATE => Ok(NoteType::Private),
             ENCRYPTED => Ok(NoteType::Encrypted),
             PUBLIC => Ok(NoteType::Public),
-            _ => Err(NoteError::InvalidNoteType(value.into())),
+            _ => Err(NoteError::UnknownNoteType(format!("0b{:b}", value).into())),
         }
     }
 }
@@ -72,7 +74,9 @@ impl TryFrom<u64> for NoteType {
     type Error = NoteError;
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
-        let value: u8 = value.try_into().map_err(|_| NoteError::InvalidNoteType(value))?;
+        let value: u8 = value
+            .try_into()
+            .map_err(|_| NoteError::UnknownNoteType(format!("0b{:b}", value).into()))?;
         value.try_into()
     }
 }
@@ -82,6 +86,19 @@ impl TryFrom<Felt> for NoteType {
 
     fn try_from(value: Felt) -> Result<Self, Self::Error> {
         value.as_int().try_into()
+    }
+}
+
+impl FromStr for NoteType {
+    type Err = NoteError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "private" => Ok(NoteType::Private),
+            "encrypted" => Ok(NoteType::Encrypted),
+            "public" => Ok(NoteType::Public),
+            _ => Err(NoteError::UnknownNoteType(s.into())),
+        }
     }
 }
 
@@ -112,4 +129,38 @@ impl Deserializable for NoteType {
 
         Ok(note_type)
     }
+}
+
+// DISPLAY
+// ================================================================================================
+
+impl Display for NoteType {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            NoteType::Private => write!(f, "private"),
+            NoteType::Encrypted => write!(f, "encrypted"),
+            NoteType::Public => write!(f, "public"),
+        }
+    }
+}
+
+#[test]
+fn test_from_str_note_type() {
+    use assert_matches::assert_matches;
+
+    use crate::alloc::string::ToString;
+
+    for string in ["private", "public", "encrypted"] {
+        let parsed_note_type = NoteType::from_str(string).unwrap();
+        assert_eq!(parsed_note_type.to_string(), string);
+    }
+
+    let public_type_invalid_err = NoteType::from_str("puBlIc").unwrap_err();
+    assert_matches!(public_type_invalid_err, NoteError::UnknownNoteType(_));
+
+    let encrypted_type_invalid = NoteType::from_str("eNcrYptEd").unwrap_err();
+    assert_matches!(encrypted_type_invalid, NoteError::UnknownNoteType(_));
+
+    let invalid_type = NoteType::from_str("invalid").unwrap_err();
+    assert_matches!(invalid_type, NoteError::UnknownNoteType(_));
 }

@@ -43,7 +43,7 @@ const.NOTE_ADD_ASSET_OFFSET=21                   # mutator
 
 # note parameters
 const.NOTE_GET_SERIAL_NUMBER_OFFSET=22
-const.NOTE_GET_INPUTS_COMMITMENT_OFFSET=23
+const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=23
 const.NOTE_GET_SENDER_OFFSET=24
 const.NOTE_GET_SCRIPT_ROOT_OFFSET=25
 
@@ -353,16 +353,16 @@ export.note_get_serial_number_offset
     push.NOTE_GET_SERIAL_NUMBER_OFFSET
 end
 
-#! Returns the offset of the `note_get_inputs_commitment` kernel procedure.
+#! Returns the offset of the `note_get_inputs_commitment_and_len` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `note_get_inputs_commitment` kernel procedure required to get the
-#!   address where this procedure is stored.
-export.note_get_inputs_commitment_offset
-    push.NOTE_GET_INPUTS_COMMITMENT_OFFSET
+#! - proc_offset is the offset of the `note_get_inputs_commitment_and_len` kernel procedure required
+#!   to get the address where this procedure is stored.
+export.note_get_inputs_commitment_and_len_offset
+    push.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET
 end
 
 #! Returns the offset of the `note_get_sender` kernel procedure.

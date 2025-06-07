@@ -2,7 +2,7 @@ use clap::Parser;
 use pingora::{
     apps::HttpServerOptions,
     prelude::{Opt, background_service},
-    server::Server,
+    server::{Server, configuration::ServerConf},
     services::listening::Service,
 };
 use pingora_proxy::http_proxy_service;
@@ -21,16 +21,16 @@ use crate::{
 
 /// Starts the proxy.
 ///
-/// Example: `miden-proving-service start-proxy 0.0.0.0:8080 127.0.0.1:9090`
+/// Example: `miden-proving-service start-proxy --workers 0.0.0.0:8080,127.0.0.1:9090`
 #[derive(Debug, Parser)]
 pub struct StartProxy {
     /// List of workers as host:port strings.
     ///
-    /// Example: `127.0.0.1:8080 192.168.1.1:9090`
-    #[clap(value_name = "WORKERS")]
+    /// Example: `127.0.0.1:8080,192.168.1.1:9090`
+    #[arg(long, env = "MPS_PROXY_WORKERS_LIST", value_delimiter = ',')]
     workers: Vec<String>,
     /// Proxy configurations.
-    #[clap(flatten)]
+    #[command(flatten)]
     proxy_config: ProxyConfig,
 }
 
@@ -57,7 +57,15 @@ impl StartProxy {
             check_port_availability(metrics_port, "Metrics")?;
         }
 
-        let mut server = Server::new(Some(Opt::default())).map_err(|err| err.to_string())?;
+        let mut conf = ServerConf::new().ok_or(ProvingServiceError::PingoraConfigFailed(
+            "Failed to create server conf".to_string(),
+        ))?;
+        conf.grace_period_seconds = Some(self.proxy_config.grace_period_seconds);
+        conf.graceful_shutdown_timeout_seconds =
+            Some(self.proxy_config.graceful_shutdown_timeout_seconds);
+
+        let mut server = Server::new_with_opt_and_conf(Some(Opt::default()), conf);
+
         server.bootstrap();
 
         info!("Proxy starting with workers: {:?}", self.workers);

@@ -29,7 +29,7 @@ impl BatchId {
     }
 
     /// Calculates a batch ID from the given transaction ID and account ID tuple.
-    pub fn from_ids(iter: impl Iterator<Item = (TransactionId, AccountId)>) -> Self {
+    pub fn from_ids(iter: impl IntoIterator<Item = (TransactionId, AccountId)>) -> Self {
         let mut elements: Vec<Felt> = Vec::new();
         for (tx_id, account_id) in iter {
             elements.extend_from_slice(tx_id.as_elements());

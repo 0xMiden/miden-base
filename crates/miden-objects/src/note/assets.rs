@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use crate::{
     Digest, Felt, Hasher, MAX_ASSETS_PER_NOTE, WORD_SIZE, Word, ZERO,
-    asset::Asset,
+    asset::{Asset, FungibleAsset, NonFungibleAsset},
     errors::NoteError,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -105,6 +105,22 @@ impl NoteAssets {
         padded_assets.resize(padded_len, ZERO);
 
         padded_assets
+    }
+
+    /// Returns an iterator over all [`FungibleAsset`].
+    pub fn iter_fungible(&self) -> impl Iterator<Item = FungibleAsset> {
+        self.assets.iter().filter_map(|asset| match asset {
+            Asset::Fungible(fungible_asset) => Some(*fungible_asset),
+            Asset::NonFungible(_) => None,
+        })
+    }
+
+    /// Returns iterator over all [`NonFungibleAsset`].
+    pub fn iter_non_fungible(&self) -> impl Iterator<Item = NonFungibleAsset> {
+        self.assets.iter().filter_map(|asset| match asset {
+            Asset::Fungible(_) => None,
+            Asset::NonFungible(non_fungible_asset) => Some(*non_fungible_asset),
+        })
     }
 
     // STATE MUTATORS
@@ -224,8 +240,11 @@ mod tests {
     use crate::{
         Digest,
         account::AccountId,
-        asset::{Asset, FungibleAsset},
-        testing::account_id::ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
+        testing::account_id::{
+            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        },
     };
 
     #[test]
@@ -237,6 +256,7 @@ mod tests {
 
         // create empty assets
         let mut assets = NoteAssets::default();
+
         assert_eq!(assets.hash, Digest::default());
 
         // add asset1
@@ -249,5 +269,24 @@ mod tests {
         let expected_asset = Asset::Fungible(FungibleAsset::new(faucet_id, 150).unwrap());
         assert_eq!(assets.assets, vec![expected_asset]);
         assert_eq!(assets.hash, compute_asset_commitment(&[expected_asset]));
+    }
+    #[test]
+    fn iter_fungible_asset() {
+        let faucet_id_1 = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap();
+        let faucet_id_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET).unwrap();
+        let details = NonFungibleAssetDetails::new(account_id.prefix(), vec![1, 2, 3]).unwrap();
+
+        let asset1 = Asset::Fungible(FungibleAsset::new(faucet_id_1, 100).unwrap());
+        let asset2 = Asset::Fungible(FungibleAsset::new(faucet_id_2, 50).unwrap());
+        let non_fungible_asset = Asset::NonFungible(NonFungibleAsset::new(&details).unwrap());
+
+        // Create NoteAsset from assets
+        let assets = NoteAssets::new([asset1, asset2, non_fungible_asset].to_vec()).unwrap();
+
+        let mut fungible_assets = assets.iter_fungible();
+        assert_eq!(fungible_assets.next().unwrap(), asset1.unwrap_fungible());
+        assert_eq!(fungible_assets.next().unwrap(), asset2.unwrap_fungible());
+        assert_eq!(fungible_assets.next(), None);
     }
 }

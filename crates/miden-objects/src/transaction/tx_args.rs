@@ -1,5 +1,6 @@
 use alloc::{
     collections::{BTreeMap, BTreeSet},
+    string::ToString,
     sync::Arc,
     vec::Vec,
 };
@@ -7,9 +8,9 @@ use alloc::{
 use assembly::{Assembler, Compile};
 use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{Digest, Felt, ForeignAccountInputs, Word};
+use super::{AccountInputs, Digest, Felt, Word};
 use crate::{
-    MastForest, MastNodeId, TransactionScriptError,
+    Hasher, MastForest, MastNodeId, TransactionScriptError,
     note::{NoteId, NoteRecipient},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
     vm::{AdviceInputs, AdviceMap, Program},
@@ -26,12 +27,13 @@ use crate::{
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.
 /// - Advice inputs: Provides data needed by the runtime, like the details of public output notes.
+/// - Account inputs: Provides account data that will be accessed in the transaction.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
-    foreign_account_inputs: Vec<ForeignAccountInputs>,
+    foreign_account_inputs: Vec<AccountInputs>,
 }
 
 impl TransactionArgs {
@@ -47,7 +49,7 @@ impl TransactionArgs {
         tx_script: Option<TransactionScript>,
         note_args: Option<BTreeMap<NoteId, Word>>,
         advice_map: AdviceMap,
-        foreign_account_inputs: Vec<ForeignAccountInputs>,
+        foreign_account_inputs: Vec<AccountInputs>,
     ) -> Self {
         let mut advice_inputs = AdviceInputs::default().with_map(advice_map);
         // add transaction script inputs to the advice inputs' map
@@ -78,16 +80,6 @@ impl TransactionArgs {
         self
     }
 
-    /// Returns the modified [TransactionArgs] with the provided foreign account inputs.
-    #[must_use]
-    pub fn with_foreign_account_inputs(
-        mut self,
-        foreign_account_inputs: Vec<ForeignAccountInputs>,
-    ) -> Self {
-        self.foreign_account_inputs = foreign_account_inputs;
-        self
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -107,15 +99,15 @@ impl TransactionArgs {
     }
 
     /// Returns a reference to the foreign account inputs in the transaction args.
-    pub fn foreign_accounts(&self) -> &[ForeignAccountInputs] {
+    pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
         &self.foreign_account_inputs
     }
 
     /// Collects and returns a set containing all code commitments from foreign accounts.
     pub fn foreign_account_code_commitments(&self) -> BTreeSet<Digest> {
-        self.foreign_accounts()
+        self.foreign_account_inputs()
             .iter()
-            .map(|acc| acc.account_code().commitment())
+            .map(|acc| acc.code().commitment())
             .collect()
     }
 
@@ -136,7 +128,7 @@ impl TransactionArgs {
         let script_encoded: Vec<Felt> = script.into();
 
         let new_elements = [
-            (note_recipient.digest(), note_recipient.to_elements()),
+            (note_recipient.digest(), note_recipient.format_for_advice()),
             (inputs.commitment(), inputs.format_for_advice()),
             (script.root(), script_encoded),
         ];
@@ -191,13 +183,13 @@ impl Deserializable for TransactionArgs {
         let tx_script = Option::<TransactionScript>::read_from(source)?;
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
-        let foreign_accounts = Vec::<ForeignAccountInputs>::read_from(source)?;
+        let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
 
         Ok(Self {
             tx_script,
             note_args,
             advice_inputs,
-            foreign_account_inputs: foreign_accounts,
+            foreign_account_inputs,
         })
     }
 }
@@ -214,11 +206,15 @@ impl Deserializable for TransactionArgs {
 /// - An executable program defined by a [MastForest] and an associated entrypoint.
 /// - A set of transaction script inputs defined by a map of key-value inputs that are loaded into
 ///   the advice inputs' map such that the transaction script can access them.
+/// - A script arguments key defined as an optional [`Digest`]: if present, this key will be pushed
+///   to the operand stack before the transaction script execution and could be used to get the
+///   script arguments array. See [`TransactionScript::with_args`] for more details.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionScript {
     mast: Arc<MastForest>,
     entrypoint: MastNodeId,
     inputs: BTreeMap<Digest, Vec<Felt>>,
+    args_key: Option<Digest>,
 }
 
 impl TransactionScript {
@@ -231,6 +227,7 @@ impl TransactionScript {
             entrypoint: code.entrypoint(),
             mast: code.mast_forest().clone(),
             inputs: inputs.into_iter().map(|(k, v)| (k.into(), v)).collect(),
+            args_key: None,
         }
     }
 
@@ -252,15 +249,62 @@ impl TransactionScript {
 
     /// Returns a new [TransactionScript] instantiated from the provided components.
     ///
+    /// If the `args_key` is present, it's expected that `inputs` map will have it as a key, with
+    /// the value being equal to the provided script arguments array. See
+    /// [`TransactionScript::with_args`] for more details.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The provided `args_key` is not presented in the `inputs` map.
+    ///
     /// # Panics
     /// Panics if the specified entrypoint is not in the provided MAST forest.
     pub fn from_parts(
         mast: Arc<MastForest>,
         entrypoint: MastNodeId,
         inputs: BTreeMap<Digest, Vec<Felt>>,
-    ) -> Self {
+        args_key: Option<Digest>,
+    ) -> Result<Self, TransactionScriptError> {
         assert!(mast.get_node_by_id(entrypoint).is_some());
-        Self { mast, entrypoint, inputs }
+
+        // check that provided `args_key` is presented in the `inputs` map
+        if let Some(args_key) = args_key {
+            if !inputs.contains_key(&args_key) {
+                return Err(TransactionScriptError::MissingScriptArgsKeyEntry(args_key));
+            }
+        }
+
+        Ok(Self { mast, entrypoint, inputs, args_key })
+    }
+
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Sets the `args_key` to the commitment of the provided arguments slice and extends the
+    /// `inputs` map with the `COMPUTED_COMMITMENT -> [[script_args]]` entry.
+    ///
+    /// Script arguments is an optional array of [`Felt`]s which could be easily accessed at the
+    /// beginning of the transaction script execution. The commitment of this array (`args_key`) is
+    /// automatically pushed to the operand stack at the beginning of the transaction script
+    /// execution and the underlying arguments can be accessed using the `adv.push_mapval`
+    /// and `adv_push.n` instructions.
+    pub fn with_args(mut self, script_args: &[Felt]) -> Result<Self, TransactionScriptError> {
+        let args_key = Hasher::hash_elements(script_args);
+        let old_map_value = self.inputs.insert(args_key, script_args.to_vec());
+
+        // check that a new map entry will not overwrite an existing one
+        if let Some(old_value) = old_map_value {
+            if old_value != script_args {
+                return Err(TransactionScriptError::ScriptArgsCollision {
+                    key: args_key,
+                    new_value: script_args.to_vec(),
+                    old_value,
+                });
+            }
+        }
+
+        self.args_key = Some(args_key);
+        Ok(self)
     }
 
     // PUBLIC ACCESSORS
@@ -280,6 +324,12 @@ impl TransactionScript {
     pub fn inputs(&self) -> &BTreeMap<Digest, Vec<Felt>> {
         &self.inputs
     }
+
+    /// Returns the commitment of the transaction script arguments, or [`None`] if they were not
+    /// specified.
+    pub fn args_key(&self) -> Option<Digest> {
+        self.args_key
+    }
 }
 
 // SERIALIZATION
@@ -290,6 +340,7 @@ impl Serializable for TransactionScript {
         self.mast.write_into(target);
         target.write_u32(self.entrypoint.as_u32());
         self.inputs.write_into(target);
+        self.args_key.write_into(target);
     }
 }
 
@@ -298,8 +349,10 @@ impl Deserializable for TransactionScript {
         let mast = MastForest::read_from(source)?;
         let entrypoint = MastNodeId::from_u32_safe(source.read_u32()?, &mast)?;
         let inputs = BTreeMap::<Digest, Vec<Felt>>::read_from(source)?;
+        let script_args_key = Option::<Digest>::read_from(source)?;
 
-        Ok(Self::from_parts(Arc::new(mast), entrypoint, inputs))
+        Self::from_parts(Arc::new(mast), entrypoint, inputs, script_args_key)
+            .map_err(|e| DeserializationError::InvalidValue(e.to_string()))
     }
 }
 

@@ -431,7 +431,7 @@ mod tests {
     use super::*;
     use crate::{
         Digest, Word,
-        account::{AccountIdVersion, AccountStorageMode, AccountType, NetworkAccount},
+        account::{AccountIdVersion, AccountStorageMode, AccountType},
         transaction::ProvenTransactionBuilder,
     };
 
@@ -462,7 +462,6 @@ mod tests {
             AccountIdVersion::Version0,
             AccountType::FungibleFaucet,
             AccountStorageMode::Private,
-            NetworkAccount::Disabled,
         );
         let initial_account_commitment =
             [2; 32].try_into().expect("failed to create initial account commitment");

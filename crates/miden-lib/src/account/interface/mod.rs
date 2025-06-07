@@ -75,12 +75,25 @@ impl AccountInterface {
         self.account_id.is_regular_account()
     }
 
-    /// Returns true if the reference account is public.
+    /// Returns `true` if the full state of the account is on chain, i.e. if the modes are
+    /// [`AccountStorageMode::Public`](miden_objects::account::AccountStorageMode::Public) or
+    /// [`AccountStorageMode::Network`](miden_objects::account::AccountStorageMode::Network),
+    /// `false` otherwise.
+    pub fn is_onchain(&self) -> bool {
+        self.account_id.is_onchain()
+    }
+
+    /// Returns `true` if the reference account is a private account, `false` otherwise.
+    pub fn is_private(&self) -> bool {
+        self.account_id.is_private()
+    }
+
+    /// Returns true if the reference account is a public account, `false` otherwise.
     pub fn is_public(&self) -> bool {
         self.account_id.is_public()
     }
 
-    /// Returns true if the reference account is public.
+    /// Returns true if the reference account is a network account, `false` otherwise.
     pub fn is_network(&self) -> bool {
         self.account_id.is_network()
     }
@@ -118,7 +131,7 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_wallet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::BasicFungibleFaucet => {
+                AccountComponentInterface::BasicFungibleFaucet(_) => {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
@@ -205,8 +218,8 @@ impl AccountInterface {
     /// - the note created by the faucet doesn't contain exactly one asset.
     /// - a faucet tries to distribute an asset with a different faucet ID.
     ///
-    /// [wallet]: miden_lib::account::interface::AccountComponentInterface::BasicWallet
-    /// [faucet]: miden_lib::account::interface::AccountComponentInterface::BasicFungibleFaucet
+    /// [wallet]: crate::account::interface::AccountComponentInterface::BasicWallet
+    /// [faucet]: crate::account::interface::AccountComponentInterface::BasicFungibleFaucet
     pub fn build_send_notes_script(
         &self,
         output_notes: &[PartialNote],
@@ -258,8 +271,10 @@ impl AccountInterface {
         &self,
         output_notes: &[PartialNote],
     ) -> Result<String, AccountInterfaceError> {
-        if self.components().contains(&AccountComponentInterface::BasicFungibleFaucet) {
-            AccountComponentInterface::BasicFungibleFaucet.send_note_body(*self.id(), output_notes)
+        if let Some(basic_fungible_faucet) = self.components().iter().find(|component_interface| {
+            matches!(component_interface, AccountComponentInterface::BasicFungibleFaucet(_))
+        }) {
+            basic_fungible_faucet.send_note_body(*self.id(), output_notes)
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {
@@ -316,6 +331,8 @@ pub enum NoteAccountCompatibility {
     /// The account has all necessary procedures of one execution branch of the note script. This
     /// means the note may be able to be consumed by the account if that branch is executed.
     Maybe,
+    /// A note could be successfully executed and consumed by the account.
+    Yes,
 }
 
 // HELPER FUNCTIONS

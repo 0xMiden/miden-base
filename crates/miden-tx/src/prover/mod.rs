@@ -1,15 +1,16 @@
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     account::delta::AccountUpdateDetails,
+    assembly::DefaultSourceManager,
     transaction::{OutputNote, ProvenTransaction, ProvenTransactionBuilder, TransactionWitness},
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
-use vm_processor::MemAdviceProvider;
+use vm_processor::{Digest, MemAdviceProvider};
 use winter_maybe_async::*;
 
 use super::{TransactionHost, TransactionProverError};
@@ -90,24 +91,31 @@ impl TransactionProver for LocalTransactionProver {
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_transaction_code(account.code(), input_notes, &tx_args);
 
+        let account_code_commitments: BTreeSet<Digest> = tx_args
+            .foreign_account_inputs()
+            .iter()
+            .map(|acc| acc.code().commitment())
+            .collect();
+
         let mut host: TransactionHost<_> = TransactionHost::new(
             account.into(),
             advice_provider,
             self.mast_store.clone(),
             None,
-            tx_args
-                .foreign_accounts()
-                .iter()
-                .map(|acc| acc.account_code().commitment())
-                .collect(),
+            account_code_commitments,
         )
         .map_err(TransactionProverError::TransactionHostCreationFailed)?;
 
+        // For the prover, we assume that the transaction witness was successfully executed and so
+        // there is no need to provide the actual source manager, as it is only used to improve
+        // error quality. So we simply pass an empty one.
+        let source_manager = Arc::new(DefaultSourceManager::default());
         let (stack_outputs, proof) = maybe_await!(prove(
             &TransactionKernel::main(),
             stack_inputs,
             &mut host,
-            self.proof_options.clone()
+            self.proof_options.clone(),
+            source_manager
         ))
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
@@ -134,7 +142,8 @@ impl TransactionProver for LocalTransactionProver {
         .add_input_notes(input_notes)
         .add_output_notes(output_notes);
 
-        let builder = match account.is_public() {
+        // If the account is on-chain, add the update details.
+        let builder = match account.is_onchain() {
             true => {
                 let account_update_details = if account.is_new() {
                     let mut account = account.clone();

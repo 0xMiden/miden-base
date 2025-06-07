@@ -30,8 +30,8 @@ use super::{
 /// - 1st felt: Is equivalent to the prefix of the account ID so it inherits its validity.
 /// - 2nd felt: The lower 8 bits of the account ID suffix are `0` by construction, so that they can
 ///   be overwritten with other data. The suffix is designed such that it retains its felt validity
-///   even if all of its lower 8 bits are be set to `1`. This is because the anchor epoch in the
-///   upper 16 bits always contains at least one `0` bit.
+///   even if all of its lower 8 bits are be set to `1`. This is because the most significant bit is
+///   always zero.
 /// - 3rd felt: The note execution hint payload must contain at least one `0` bit in its encoding,
 ///   so the upper 32 bits of the felt will contain at least one `0` bit making the entire felt
 ///   valid.
@@ -209,8 +209,8 @@ fn merge_id_type_and_hint_tag(
     merged |= (type_bits << 6) as u64;
     merged |= tag_bits as u64;
 
-    // SAFETY: One of the top 16 bits (the anchor epoch) of the suffix is zero by construction
-    // so the bytes will be a valid felt.
+    // SAFETY: The most significant bit of the suffix is zero by construction so the bytes will be a
+    // valid felt.
     Felt::try_from(merged).expect("encoded value should be a valid felt")
 }
 

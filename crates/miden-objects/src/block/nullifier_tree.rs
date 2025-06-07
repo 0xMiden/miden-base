@@ -74,6 +74,13 @@ impl NullifierTree {
         self.smt.num_entries()
     }
 
+    /// Returns an iterator over the nullifiers and their block numbers in the tree.
+    pub fn entries(&self) -> impl Iterator<Item = (Nullifier, BlockNumber)> {
+        self.smt.entries().map(|(nullifier, block_num)| {
+            (Nullifier::from(*nullifier), Self::leaf_value_to_block_num(*block_num))
+        })
+    }
+
     /// Returns a [`NullifierWitness`] of the leaf associated with the `nullifier`.
     ///
     /// Conceptually, such a witness is a Merkle path to the leaf, as well as the leaf itself.

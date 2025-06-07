@@ -1,6 +1,6 @@
 use core::fmt;
 
-use super::{TransactionEventError, TransactionTraceParsingError};
+use super::TransactionEventError;
 
 // CONSTANTS
 // ================================================================================================
@@ -32,6 +32,21 @@ const NOTE_BEFORE_ADD_ASSET: u32 = 0x2_000d; // 131085
 const NOTE_AFTER_ADD_ASSET: u32 = 0x2_000e; // 131086
 
 const FALCON_SIG_TO_STACK: u32 = 0x2_000f; // 131087
+
+const PROLOGUE_START: u32 = 0x2_0010; // 131088
+const PROLOGUE_END: u32 = 0x2_0011; // 131089
+
+const NOTES_PROCESSING_START: u32 = 0x2_0012; // 131090
+const NOTES_PROCESSING_END: u32 = 0x2_0013; // 131091
+
+const NOTE_EXECUTION_START: u32 = 0x2_0014; // 131092
+const NOTE_EXECUTION_END: u32 = 0x2_0015; // 131093
+
+const TX_SCRIPT_PROCESSING_START: u32 = 0x2_0016; // 131094
+const TX_SCRIPT_PROCESSING_END: u32 = 0x2_0017; // 131095
+
+const EPILOGUE_START: u32 = 0x2_0018; // 131096
+const EPILOGUE_END: u32 = 0x2_0019; // 131097
 
 /// Events which may be emitted by a transaction kernel.
 ///
@@ -67,6 +82,21 @@ pub enum TransactionEvent {
     NoteAfterAddAsset = NOTE_AFTER_ADD_ASSET,
 
     FalconSigToStack = FALCON_SIG_TO_STACK,
+
+    PrologueStart = PROLOGUE_START,
+    PrologueEnd = PROLOGUE_END,
+
+    NotesProcessingStart = NOTES_PROCESSING_START,
+    NotesProcessingEnd = NOTES_PROCESSING_END,
+
+    NoteExecutionStart = NOTE_EXECUTION_START,
+    NoteExecutionEnd = NOTE_EXECUTION_END,
+
+    TxScriptProcessingStart = TX_SCRIPT_PROCESSING_START,
+    TxScriptProcessingEnd = TX_SCRIPT_PROCESSING_END,
+
+    EpilogueStart = EPILOGUE_START,
+    EpilogueEnd = EPILOGUE_END,
 }
 
 impl TransactionEvent {
@@ -120,55 +150,22 @@ impl TryFrom<u32> for TransactionEvent {
 
             FALCON_SIG_TO_STACK => Ok(TransactionEvent::FalconSigToStack),
 
+            PROLOGUE_START => Ok(TransactionEvent::PrologueStart),
+            PROLOGUE_END => Ok(TransactionEvent::PrologueEnd),
+
+            NOTES_PROCESSING_START => Ok(TransactionEvent::NotesProcessingStart),
+            NOTES_PROCESSING_END => Ok(TransactionEvent::NotesProcessingEnd),
+
+            NOTE_EXECUTION_START => Ok(TransactionEvent::NoteExecutionStart),
+            NOTE_EXECUTION_END => Ok(TransactionEvent::NoteExecutionEnd),
+
+            TX_SCRIPT_PROCESSING_START => Ok(TransactionEvent::TxScriptProcessingStart),
+            TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
+
+            EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
+            EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
+
             _ => Err(TransactionEventError::InvalidTransactionEvent(value)),
-        }
-    }
-}
-
-// TRANSACTION TRACE
-// ================================================================================================
-
-#[repr(u32)]
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub enum TransactionTrace {
-    PrologueStart = 0x2_0000,           // 131072
-    PrologueEnd = 0x2_0001,             // 131073
-    NotesProcessingStart = 0x2_0002,    // 131074
-    NotesProcessingEnd = 0x2_0003,      // 131075
-    NoteExecutionStart = 0x2_0004,      // 131076
-    NoteExecutionEnd = 0x2_0005,        // 131077
-    TxScriptProcessingStart = 0x2_0006, // 131078
-    TxScriptProcessingEnd = 0x2_0007,   // 131079
-    EpilogueStart = 0x2_0008,           // 131080
-    EpilogueEnd = 0x2_0009,             // 131081
-}
-
-impl fmt::Display for TransactionTrace {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{self:?}")
-    }
-}
-
-impl TryFrom<u32> for TransactionTrace {
-    type Error = TransactionTraceParsingError;
-
-    fn try_from(value: u32) -> Result<Self, Self::Error> {
-        if value >> 16 != TransactionEvent::ID_PREFIX {
-            return Err(TransactionTraceParsingError::UnknownTransactionTrace(value));
-        }
-
-        match value {
-            0x2_0000 => Ok(TransactionTrace::PrologueStart),
-            0x2_0001 => Ok(TransactionTrace::PrologueEnd),
-            0x2_0002 => Ok(TransactionTrace::NotesProcessingStart),
-            0x2_0003 => Ok(TransactionTrace::NotesProcessingEnd),
-            0x2_0004 => Ok(TransactionTrace::NoteExecutionStart),
-            0x2_0005 => Ok(TransactionTrace::NoteExecutionEnd),
-            0x2_0006 => Ok(TransactionTrace::TxScriptProcessingStart),
-            0x2_0007 => Ok(TransactionTrace::TxScriptProcessingEnd),
-            0x2_0008 => Ok(TransactionTrace::EpilogueStart),
-            0x2_0009 => Ok(TransactionTrace::EpilogueEnd),
-            _ => Err(TransactionTraceParsingError::UnknownTransactionTrace(value)),
         }
     }
 }

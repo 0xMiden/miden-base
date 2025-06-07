@@ -1,5 +1,5 @@
 use super::{
-    AssetError, Felt, Hasher, Word, ZERO,
+    AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO,
     account::AccountType,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -15,7 +15,7 @@ mod token_symbol;
 pub use token_symbol::TokenSymbol;
 
 mod vault;
-pub use vault::AssetVault;
+pub use vault::{AssetVault, PartialVault};
 
 // ASSET
 // ================================================================================================
@@ -137,7 +137,11 @@ impl Asset {
         }
     }
 
-    /// Returns the inner fungible asset, or panics if the asset is not fungible.
+    /// Returns the inner [`FungibleAsset`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the asset is non-fungible.
     pub fn unwrap_fungible(&self) -> FungibleAsset {
         match self {
             Asset::Fungible(asset) => *asset,
@@ -145,8 +149,12 @@ impl Asset {
         }
     }
 
-    /// Returns the inner non-fungible asset, or panics if the asset is fungible.
-    pub fn unwrap_non_fungible(&mut self) -> NonFungibleAsset {
+    /// Returns the inner [`NonFungibleAsset`].
+    ///
+    /// # Panics
+    ///
+    /// Panics if the asset is fungible.
+    pub fn unwrap_non_fungible(&self) -> NonFungibleAsset {
         match self {
             Asset::Fungible(_) => panic!("the asset is fungible"),
             Asset::NonFungible(asset) => *asset,

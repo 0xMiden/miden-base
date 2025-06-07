@@ -9,6 +9,10 @@ use crate::{
     account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction},
     crypto::merkle::Smt,
 };
+
+mod partial;
+pub use partial::PartialVault;
+
 // ASSET VAULT
 // ================================================================================================
 

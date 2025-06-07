@@ -60,6 +60,11 @@ impl Blockchain {
         Some(BlockNumber::from(self.num_blocks() - 1))
     }
 
+    /// Returns the chain commitment.
+    pub fn commitment(&self) -> Digest {
+        self.peaks().hash_peaks()
+    }
+
     /// Returns the current peaks of the MMR.
     pub fn peaks(&self) -> MmrPeaks {
         self.mmr.peaks()

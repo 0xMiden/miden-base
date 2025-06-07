@@ -1,7 +1,7 @@
 [package]
 name = "miden-lib"
-version = "0.9.0"
-description = "Standard library of the Miden rollup"
+version = "0.10.0"
+description = "Standard library of the Miden protocol"
 readme = "README.md"
 categories = ["no-std"]
 keywords = ["miden", "transaction", "kernel"]
@@ -26,6 +26,7 @@ miden-stdlib = { workspace = true }
 thiserror = { workspace = true }
 
 [dev-dependencies]
+assert_matches = { workspace = true }
 miden-objects = { workspace = true, features = ["testing"] }
 vm-processor = { workspace = true, features = ["testing"] }
 

@@ -1,6 +1,8 @@
 use alloc::string::ToString;
 
-use miden_crypto::merkle::{LeafIndex, MerklePath, SMT_DEPTH, SmtLeaf, SmtProof, SmtProofError};
+use miden_crypto::merkle::{
+    InnerNodeInfo, LeafIndex, MerklePath, SMT_DEPTH, SmtLeaf, SmtProof, SmtProofError,
+};
 
 use crate::{
     AccountTreeError, Digest, Word,
@@ -147,6 +149,14 @@ impl AccountWitness {
         let leaf = self.leaf();
         SmtProof::new(self.path, leaf)
             .expect("merkle path depth should be the SMT depth by construction")
+    }
+
+    /// Returns an iterator over every inner node of this witness' merkle path.
+    pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
+        let leaf = self.leaf();
+        self.path()
+            .inner_nodes(leaf.index().value(), leaf.hash())
+            .expect("leaf index is u64 and should be less than 2^SMT_DEPTH")
     }
 }
 

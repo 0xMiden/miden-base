@@ -53,8 +53,6 @@ pub enum TransactionKernelError {
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]
     PublicNoteMissingDetails(NoteMetadata, Digest),
-    #[error("public note has incomplete inputs in the advice provider")]
-    MissingNoteInputs,
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]

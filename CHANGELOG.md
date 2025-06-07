@@ -1,20 +1,64 @@
 # Changelog
 
-## 0.9.0 (TBD)
+## 0.10.0 (TBD)
 
-- [BREAKING] Refactored how foreign account inputs are passed to `TransactionExecutor`, and upgraded Rust version to 1.86 (#1229).
-- [BREAKING] Add `TransactionHeader` and include it in batches and blocks (#1247).
+- [BREAKING] Refactor `NoteTag` to an enum (#1322).
+- [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
+- Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
+- Add `bench-prover` crate to benchmark proving times (#1378)
+- Implement map in transaction kernel library (#1396).
+- Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
+- [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
+- Add support for workers configuration in the proxy with environment variables (#1412).
+- Implement Display for `NoteType` (#1420).
+
+## 0.9.1 (2025-05-30)
+
+### Fixes
+
+- Expose types used in public APIs (#1385).
+- Version check always fails in proxy (#1407).
+
+## 0.9.0 (2025-05-20)
+
+### Features
+
+- Added pretty print for `AccountCode` (#1273).
+- Add iterators over concrete asset types in `NoteAssets` (#1346).
+- Add the ability to create `BasicFungibleFaucet` from `Account` (#1376).
+
+### Fixes
+
 - [BREAKING] Hash keys in storage maps before insertion into the SMT (#1250).
+- Fix error when creating accounts with empty storage (#1307).
+- [BREAKING] Move the number of note inputs to the separate memory address (#1327).
+- [BREAKING] Change Token Symbol encoding (#1334).
+
+### Changes
+
+- [BREAKING] Refactored how foreign account inputs are passed to `TransactionExecutor` (#1229).
+- [BREAKING] Add `TransactionHeader` and include it in batches and blocks (#1247).
 - Add `AccountTree` and `PartialAccountTree` wrappers and enforce ID prefix uniqueness (#1254, #1301).
 - Added getter for proof security level in `ProvenBatch` and `ProvenBlock` (#1259).
 - [BREAKING] Replaced the `ProvenBatch::new_unchecked` with the `ProvenBatch::new` method to initialize the struct with validations (#1260).
-- Added pretty print for `AccountCode` (#1273).
-- [BREAKING] Add `NetworkAccount` configuration (#1275).
+- [BREAKING] Add `AccountStorageMode::Network` for network accounts (#1275, #1349).
 - Added support for environment variables to set up the `miden-proving-service` worker (#1281).
 - Added field identifier structs for component metadata (#1292).
 - Move `NullifierTree` and `BlockChain` from node to base (#1304).
 - Rename `ChainMmr` to `PartialBlockchain` (#1305).
 - Add safe `PartialBlockchain` constructor (#1308).
+- [BREAKING] Move `MockChain` and `TransactionContext` to new `miden-testing` crate (#1309).
+- [BREAKING] Add support for private notes in `MockChain` (#1310).
+- Generalized account-related inputs to the transaction kernel (#1311).
+- [BREAKING] Refactor `MockChain` to use batch and block provers (#1315).
+- [BREAKING] Upgrade VM to 0.14 and refactor transaction kernel error extraction (#1353).
+- [BREAKING] Update MSRV to 1.87.
+
+## 0.8.3 (2025-04-22) - `miden-proving-service` crate only
+
+### Fixes
+
+- Version check always fails (#1300).
 
 ## 0.8.2 (2025-04-18) - `miden-proving-service` crate only
 
@@ -32,12 +76,14 @@
 ## 0.8.0 (2025-03-21)
 
 ### Features
+
 - Added an endpoint to the `miden-proving-service` to update the workers (#1107).
 - [BREAKING] Added the `get_block_timestamp` procedure to the `miden` library (#1138).
 - Implemented `AccountInterface` structure (#1171).
 - Implement user-facing bech32 encoding for `AccountId`s (#1185).
 - Implemented `execute_tx_view_script` procedure for the `TransactionExecutor` (#1197).
 - Enabled nested FPI calls (#1227).
+- Implement `check_notes_consumability` procedure for the `TransactionExecutor` (#1269).
 
 ### Changes
 

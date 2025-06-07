@@ -23,6 +23,24 @@ impl PartialNullifierTree {
         PartialNullifierTree(PartialSmt::new())
     }
 
+    /// Returns a new [`PartialNullifierTree`] instantiated with the provided entries.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the merkle paths of the witnesses do not result in the same tree root.
+    pub fn with_witnesses(
+        witnesses: impl IntoIterator<Item = NullifierWitness>,
+    ) -> Result<Self, NullifierTreeError> {
+        let mut tree = Self::new();
+
+        for witness in witnesses {
+            tree.track_nullifier(witness)?;
+        }
+
+        Ok(tree)
+    }
+
     /// Adds the given nullifier witness to the partial tree and tracks it. Once a nullifier has
     /// been added to the tree, it can be marked as spent using [`Self::mark_spent`].
     ///

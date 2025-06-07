@@ -1,7 +1,7 @@
 [package]
 name = "miden-proving-service"
-version = "0.9.0"
-description = "Miden rollup proving service"
+version = "0.10.0"
+description = "Miden blockchain proving service"
 readme = "README.md"
 keywords = ["miden", "proving", "service"]
 license.workspace = true
@@ -33,35 +33,41 @@ opentelemetry = { version = "0.29", features = ["metrics", "trace"] }
 opentelemetry-otlp = { version = "0.29", features = ["grpc-tonic"] }
 opentelemetry_sdk = { version = "0.29", features = ["metrics", "rt-tokio"] }
 opentelemetry-semantic-conventions = "0.29"
-prometheus = "0.13"
+prometheus = "0.14"
 prost = { version = "0.13", default-features = false, features = ["derive"] }
-pingora = { version = "0.4", features = [ "lb" ] }
-pingora-core = "0.4"
-pingora-proxy = "0.4"
-pingora-limits = "0.4"
+pingora = { version = "0.5", features = ["lb"] }
+pingora-core = "0.5"
+pingora-proxy = "0.5"
+pingora-limits = "0.5"
 reqwest = { version = "0.12" }
+semver = { version = "1.0" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = { version = "1.0" }
-serde_qs = { version = "0.13" }
+serde_qs = { version = "0.15" }
 tokio = { version = "1.44", features = ["full"] }
-tokio-stream = { version = "0.1", features = [ "net" ]}
+tokio-stream = { version = "0.1", features = ["net"] }
 thiserror = { workspace = true }
-tonic = { version = "0.12", default-features = false, features = ["codegen", "prost", "transport"] }
+tonic = { version = "0.12", default-features = false, features = [
+    "codegen",
+    "prost",
+    "transport",
+] }
 tonic-health = { version = "0.12" }
 tonic-web = { version = "0.12" }
 tracing = { version = "0.1" }
 tracing-opentelemetry = "0.30"
-tracing-subscriber = { version = "0.3", features = ["fmt",  "json",  "env-filter"] }
+tracing-subscriber = { version = "0.3", features = ["fmt", "json", "env-filter"] }
 uuid = { version = "1.16", features = ["v4"] }
 
 [dev-dependencies]
-miden-lib = { workspace = true , default-features = false, features = ["testing"]}
+miden-lib = { workspace = true, default-features = false, features = ["testing"] }
 miden-objects = { workspace = true, default-features = false, features = ["testing"] }
 miden-tx = { workspace = true, default-features = false, features = ["testing"] }
+miden-testing = { workspace = true, default-features = false }
 
 [build-dependencies]
 miette = { version = "7.5", features = ["fancy"] }
 prost = { version = "0.13", default-features = false, features = ["derive"] }
 prost-build = { version = "0.13" }
-protox = { version = "0.7" }
+protox = { version = "0.8" }
 tonic-build = { version = "0.12" }

@@ -66,16 +66,13 @@ impl NoteInputs {
 
     /// Returns the note's input formatted to be used with the advice map.
     ///
-    /// The format is `input_len || INPUTS || PADDING`, where:
+    /// The format is `INPUTS || PADDING`, where:
     ///
-    /// - input_len is the number of inputs
+    /// Where:
     /// - INPUTS is the variable inputs for the note
     /// - PADDING is the optional padding to align the data with a 2WORD boundary
     pub fn format_for_advice(&self) -> Vec<Felt> {
-        // NOTE: keep map in sync with the `note::get_inputs` API procedure
-        let mut padded = pad_inputs(&self.values);
-        padded.insert(0, self.num_values().into());
-        padded
+        pad_inputs(&self.values)
     }
 }
 

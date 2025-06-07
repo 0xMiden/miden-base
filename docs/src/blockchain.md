@@ -1,6 +1,6 @@
 # Blockchain
 
-The Miden blockchain protocol describes how the [state](state.md) progresses through `Block`s, which are containers that aggregate account state changes and their proofs, together with created and consumed notes. `Block`s represent the delta of the global state between two time periods, and each is accompanied by a corresponding proof that attests to the correctness of all state transitions it contains. The current global state can be derived by applying all the `Block`s to the genesis state.
+The Miden blockchain protocol describes how the [state](state.md) progresses through blocks, which are containers that aggregate account state changes and their proofs, together with created and consumed notes. Blocks represent the delta of the global state between two time periods, and each is accompanied by a corresponding proof that attests to the correctness of all state transitions it contains. The current global state can be derived by applying all the blocks to the genesis state.
 
 Miden's blockchain protocol aims for the following:
 
@@ -78,10 +78,10 @@ These steps can be performed by any verifier (e.g., a contract on Ethereum, Poly
 
 Nodes can sync efficiently from genesis to the tip of the chain through a multi-step process:
 
-  1. Download historical `Block`s from genesis to the present.
-  2. Verify zero-knowledge proofs for all `Block`s.
+  1. Download historical blocks from genesis to the present.
+  2. Verify zero-knowledge proofs for all blocks.
   3. Retrieve current state data (accounts, notes, and nullifiers).
-  4. Validate that the downloaded state matches the latest `Block`'s state commitment.
+  4. Validate that the downloaded state matches the latest block's state commitment.
 
 This approach enables fast blockchain syncing by verifying `Block` proofs rather than re-executing individual transactions, resulting in exponentially faster performance. Consequently, state sync is dominated by the time needed to download the data.
 

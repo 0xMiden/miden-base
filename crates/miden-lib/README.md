@@ -1,6 +1,6 @@
 # Transaction kernel
 
-This crate contains the code of the Miden rollup kernels and standardized smart contracts.
+This crate contains the code of the Miden protocol kernels and standardized smart contracts.
 
 ## Status
 

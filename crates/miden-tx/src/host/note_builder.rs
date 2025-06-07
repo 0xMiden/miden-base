@@ -53,23 +53,19 @@ impl OutputNoteBuilder {
         // enough info available in the advice provider
         let recipient_digest = Digest::new([stack[8], stack[7], stack[6], stack[5]]);
         let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
-            if data.len() != 12 {
+            if data.len() != 13 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             }
-            let inputs_commitment = Digest::new([data[0], data[1], data[2], data[3]]);
-            let script_root = Digest::new([data[4], data[5], data[6], data[7]]);
-            let serial_num = [data[8], data[9], data[10], data[11]];
+            let inputs_commitment = Digest::new([data[1], data[2], data[3], data[4]]);
+            let script_root = Digest::new([data[5], data[6], data[7], data[8]]);
+            let serial_num = [data[9], data[10], data[11], data[12]];
             let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
 
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
             let inputs = match inputs_data {
                 None => NoteInputs::default(),
                 Some(inputs) => {
-                    if inputs.is_empty() {
-                        return Err(TransactionKernelError::MissingNoteInputs);
-                    }
-
-                    let num_inputs = u64::from(inputs[0]) as usize;
+                    let num_inputs = data[0].as_int() as usize;
 
                     // There must be at least `num_inputs` elements in the advice provider data,
                     // otherwise it is an error.
@@ -77,14 +73,14 @@ impl OutputNoteBuilder {
                     // It is possible to have more elements because of padding. The extra elements
                     // will be discarded below, and later their contents will be validated by
                     // computing the commitment and checking against the expected value.
-                    if num_inputs > (inputs.len() - 1) {
+                    if num_inputs > inputs.len() {
                         return Err(TransactionKernelError::TooFewElementsForNoteInputs {
                             specified: num_inputs as u64,
-                            actual: (inputs.len() - 1) as u64,
+                            actual: inputs.len() as u64,
                         });
                     }
 
-                    NoteInputs::new(inputs[1..=num_inputs].to_vec())
+                    NoteInputs::new(inputs[0..num_inputs].to_vec())
                         .map_err(TransactionKernelError::MalformedNoteInputs)?
                 },
             };

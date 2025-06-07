@@ -15,6 +15,9 @@ pub use map::StorageMap;
 mod header;
 pub use header::{AccountStorageHeader, StorageSlotHeader};
 
+mod partial;
+pub use partial::PartialStorage;
+
 // ACCOUNT STORAGE
 // ================================================================================================
 
@@ -87,25 +90,21 @@ impl AccountStorage {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the storage slots.
-    pub fn slots(&self) -> &Vec<StorageSlot> {
-        &self.slots
-    }
-
     /// Returns a commitment to this storage.
     pub fn commitment(&self) -> Digest {
         build_slots_commitment(&self.slots)
     }
 
-    /// Converts storage slots of this account storage into a vector of field elements.
-    ///
-    /// This is done by first converting each storage slot into exactly 8 elements as follows:
-    /// ```text
-    /// [STORAGE_SLOT_VALUE, storage_slot_type, 0, 0, 0]
-    /// ```
-    /// And then concatenating the resulting elements into a single vector.
-    pub fn as_elements(&self) -> Vec<Felt> {
-        slots_as_elements(self.slots())
+    /// Returns a reference to the storage slots.
+    pub fn slots(&self) -> &Vec<StorageSlot> {
+        &self.slots
+    }
+
+    /// Returns an [AccountStorageHeader] for this account storage.
+    pub fn to_header(&self) -> AccountStorageHeader {
+        AccountStorageHeader::new(
+            self.slots.iter().map(|slot| (slot.slot_type(), slot.value())).collect(),
+        )
     }
 
     /// Returns an item from the storage at the specified index.
@@ -137,14 +136,18 @@ impl AccountStorage {
         }
     }
 
-    /// Returns an [AccountStorageHeader] for this account storage.
-    pub fn get_header(&self) -> AccountStorageHeader {
-        AccountStorageHeader::new(
-            self.slots.iter().map(|slot| (slot.slot_type(), slot.value())).collect(),
-        )
+    /// Converts storage slots of this account storage into a vector of field elements.
+    ///
+    /// This is done by first converting each storage slot into exactly 8 elements as follows:
+    /// ```text
+    /// [STORAGE_SLOT_VALUE, storage_slot_type, 0, 0, 0]
+    /// ```
+    /// And then concatenating the resulting elements into a single vector.
+    pub fn as_elements(&self) -> Vec<Felt> {
+        slots_as_elements(self.slots())
     }
 
-    // DATA MUTATORS
+    // STATE MUTATORS
     // --------------------------------------------------------------------------------------------
 
     /// Applies the provided delta to this account storage.

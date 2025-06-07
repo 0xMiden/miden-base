@@ -3,26 +3,19 @@ use.kernel::account
 # ERRORS
 # =================================================================================================
 
-# Malformed fungible asset: `ASSET[1]` must be 0
-const.ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_ONE_MUST_BE_ZERO=0x00020203
+const.ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_ONE_MUST_BE_ZERO="malformed fungible asset: `ASSET[1]` must be 0"
 
-# Malformed fungible asset: `ASSET[2]` and `ASSET[3]` must be a valid fungible faucet id
-const.ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_TWO_AND_THREE_MUST_BE_FUNGIBLE_FAUCET_ID=0x00020204
+const.ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_TWO_AND_THREE_MUST_BE_FUNGIBLE_FAUCET_ID="malformed fungible asset: `ASSET[2]` and `ASSET[3]` must be a valid fungible faucet id"
 
-# Malformed fungible asset: `ASSET[0]` exceeds the maximum allowed amount
-const.ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_ZERO_MUST_BE_WITHIN_LIMITS=0x00020205
+const.ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_ZERO_MUST_BE_WITHIN_LIMITS="malformed fungible asset: `ASSET[0]` exceeds the maximum allowed amount"
 
-# Malformed non-fungible asset: `ASSET[3]` is not a valid non-fungible faucet id
-const.ERR_NON_FUNGIBLE_ASSET_FORMAT_ELEMENT_THREE_MUST_BE_FUNGIBLE_FAUCET_ID=0x00020242
+const.ERR_NON_FUNGIBLE_ASSET_FORMAT_ELEMENT_THREE_MUST_BE_FUNGIBLE_FAUCET_ID="malformed non-fungible asset: `ASSET[3]` is not a valid non-fungible faucet id"
 
-# Malformed non-fungible asset: the most significant bit must be 0
-const.ERR_NON_FUNGIBLE_ASSET_FORMAT_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO=0x00020243
+const.ERR_NON_FUNGIBLE_ASSET_FORMAT_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO="malformed non-fungible asset: the most significant bit must be 0"
 
-# The origin of the fungible asset is not this faucet
-const.ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN=0x00020202
+const.ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN="the origin of the fungible asset is not this faucet"
 
-# The origin of the non-fungible asset is not this faucet
-const.ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN=0x00020241
+const.ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN="the origin of the non-fungible asset is not this faucet"
 
 # CONSTANT ACCESSORS
 # =================================================================================================

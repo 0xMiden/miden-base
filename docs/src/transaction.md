@@ -1,17 +1,17 @@
 # Transactions
 
-A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](account.md) and zero or more [notes](note.md), and outputs the same account with an updated state, together with zero or more notes. `Transaction`s in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
+A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](account.md) and zero or more [notes](note.md), and outputs the same account with an updated state, together with zero or more notes. Transactions in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
 
 Miden's `Transaction` model aims for the following:
 
 - **Parallel transaction execution**: Accounts can update their state independently from each other and in parallel.
-- **Private transaction execution**: Client-side `Transaction` proving allows the network to verify `Transaction`s validity with zero knowledge.
+- **Private transaction execution**: Client-side `Transaction` proving allows the network to verify transactions validity with zero-knowledge.
 
 <p style="text-align: center;">
     <img src="img/transaction/transaction-diagram.png" style="width:70%;" alt="Transaction diagram"/>
 </p>
 
-Compared to most blockchains, where a `Transaction` typically involves more than one account (e.g., sender and receiver), a `Transaction` in Miden involves a single account. To illustrate, Alice sends 5 ETH to Bob. In Miden, sending 5 ETH from Alice to Bob takes two `Transaction`s, one in which Alice creates a note containing 5 ETH and one in which Bob consumes that note and receives the 5 ETH. This model removes the need for a global lock on the blockchain's state, enabling Miden to process `Transaction`s in parallel.
+Compared to most blockchains, where a `Transaction` typically involves more than one account (e.g., sender and receiver), a `Transaction` in Miden involves a single account. To illustrate, Alice sends 5 ETH to Bob. In Miden, sending 5 ETH from Alice to Bob takes two transactions, one in which Alice creates a note containing 5 ETH and one in which Bob consumes that note and receives the 5 ETH. This model removes the need for a global lock on the blockchain's state, enabling Miden to process transactions in parallel.
 
 Currently the protocol limits the number of notes that can be consumed and produced in a transaction to 1000 each, which means that in a single `Transaction` an application could serve up to 2000 different user requests like deposits or withdrawals into/from a pool.
 
@@ -19,7 +19,7 @@ A simple transaction currently takes about 1-2 seconds on a MacBook Pro. It take
 
 ## Transaction lifecycle
 
-Every `Transaction` describes the process of an account changing its state. This process is described as a Miden VM program, resulting in the generation of a zero-knowledge proof. `Transaction`s are being executed in a specified sequence, in which several notes and a transaction script can interact with an account.
+Every `Transaction` describes the process of an account changing its state. This process is described as a Miden VM program, resulting in the generation of a zero-knowledge proof. Transactions are being executed in a specified sequence, in which several notes and a transaction script can interact with an account.
 
 <p style="text-align: center;">
     <img src="img/transaction/transaction-program.png" style="width:70%;" alt="Transaction program"/>
@@ -70,7 +70,7 @@ Let's assume account A wants to create a P2ID note. P2ID notes are pay-to-ID not
 
 In this example, account A uses the basic wallet and the authentication component provided by `miden-lib`. The basic wallet component defines the methods `wallets::basic::create_note` and `wallets::basic::move_asset_to_note` to create notes with assets, and `wallets::basic::receive_asset` to receive assets. The authentication component exposes `auth::basic::auth_tx_rpo_falcon512` which allows for signing a transaction. Some account methods like `account::get_id` are always exposed.
 
-The executor inputs to the Miden VM a `Transaction` script in which he places on the stack the data (tag, aux, note_type, execution_hint, RECIPIENT) of the note(s) that he wants to create using `wallets::basic::create_note` during the said `Transaction`. The [`NoteRecipient`](https://github.com/0xPolygonMiden/miden-base/blob/main/crates/miden-objects/src/note/recipient.rs) is a value that describes under which condition a note can be consumed and is built using a `serial_number`, the `note_script` (in this case P2ID script) and the `note_inputs`. The Miden VM will execute the `Transaction` script and create the note(s). After having been created, the executor can use `wallets::basic::move_asset_to_note` to move assets from the account's vault to the notes vault.
+The executor inputs to the Miden VM a `Transaction` script in which he places on the stack the data (tag, aux, note_type, execution_hint, RECIPIENT) of the note(s) that he wants to create using `wallets::basic::create_note` during the said `Transaction`. The [`NoteRecipient`](https://github.com/0xMiden/miden-base/blob/main/crates/miden-objects/src/note/recipient.rs) is a value that describes under which condition a note can be consumed and is built using a `serial_number`, the `note_script` (in this case P2ID script) and the `note_inputs`. The Miden VM will execute the `Transaction` script and create the note(s). After having been created, the executor can use `wallets::basic::move_asset_to_note` to move assets from the account's vault to the notes vault.
 
 After finalizing the `Transaction` the updated state and created note(s) can now be submitted to the Miden operator to be recorded on-chain.
 
@@ -92,7 +92,7 @@ The Epilogue finalizes the transaction by computing the final account hash, asse
 
 ## Transaction types
 
-There are two types of `Transaction`s in Miden: **local transactions** and **network transactions** [not yet implemented].
+There are two types of transactions in Miden: **local transactions** and **network transactions** [not yet implemented].
 
 ### Local transaction
 
@@ -109,14 +109,14 @@ Client-side proving or local transactions on low-power devices can be slow, but 
 
 ### Network transaction
 
-The Miden operator executes the `Transaction` and generates the proof. Miden uses network `Transaction`s for smart contracts with public shared state. This type of `Transaction` is quite similar to the ones in traditional blockchains (e.g., Ethereum).
+The Miden operator executes the `Transaction` and generates the proof. Miden uses network transactions for smart contracts with public shared state. This type of `Transaction` is quite similar to the ones in traditional blockchains (e.g., Ethereum).
 
 They are useful, because:
 
-1. For public shared state of smart contracts. Network `Transaction`s allow orchestrated state changes of public smart contracts without race conditions.
-2. Smart contracts should be able to be executed autonomously, ensuring liveness. Local `Transaction`s require a user to execute and prove, but in some cases a smart contract should be able to execute when certain conditions are met.
+1. For public shared state of smart contracts. Network transactions allow orchestrated state changes of public smart contracts without race conditions.
+2. Smart contracts should be able to be executed autonomously, ensuring liveness. Local transactions require a user to execute and prove, but in some cases a smart contract should be able to execute when certain conditions are met.
 3. Clients may not have sufficient resources to generate zero-knowledge proofs.
 
-The ability to facilitate both, local and network `Transaction`s, **is one of the differentiating factors of Miden** compared to other blockchains. Local `Transaction` execution and proving can happen in parallel as for most `Transaction`s there is no need for public state changes. This increases the network's throughput tremendously and provides privacy. Network `Transaction`s on the other hand enable autonomous smart contracts and public shared state.
+The ability to facilitate both, local and network transactions, **is one of the differentiating factors of Miden** compared to other blockchains. Local `Transaction` execution and proving can happen in parallel as for most transactions there is no need for public state changes. This increases the network's throughput tremendously and provides privacy. Network transactions on the other hand enable autonomous smart contracts and public shared state.
 
 ---

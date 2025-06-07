@@ -9,7 +9,10 @@ extern crate std;
 pub use miden_objects::transaction::TransactionInputs;
 
 mod executor;
-pub use executor::{DataStore, MastForestStore, TransactionExecutor};
+pub use executor::{
+    DataStore, MastForestStore, NoteAccountExecution, NoteConsumptionChecker, NoteInputsCheck,
+    TransactionExecutor,
+};
 
 pub mod host;
 pub use host::{TransactionHost, TransactionProgress};
@@ -27,12 +30,6 @@ pub use errors::{
 };
 
 pub mod auth;
-
-#[cfg(any(feature = "testing", test))]
-pub mod testing;
-
-#[cfg(test)]
-mod tests;
 
 // RE-EXPORTS
 // ================================================================================================
