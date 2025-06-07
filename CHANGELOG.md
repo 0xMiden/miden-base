@@ -10,6 +10,7 @@
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 - Add support for workers configuration in the proxy with environment variables (#1412).
 - Implement Display for `NoteType` (#1420).
+- [BREAKING] Remove `NoteExecutionMode` from `from_account_id` (#1422).
 
 ## 0.9.1 (2025-05-30)
 
