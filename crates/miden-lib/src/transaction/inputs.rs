@@ -178,7 +178,7 @@ impl TransactionAdviceInputs {
         self.extend_stack(account.storage().commitment());
         self.extend_stack(account.code().commitment());
 
-        // note count & script root
+        // --- number of notes, script root and args key --------------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
         self.extend_stack(tx_script.map_or(Word::default(), |s| *s.root()));
         self.extend_stack(
