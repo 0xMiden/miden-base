@@ -7,6 +7,7 @@
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
 - Add `bench-prover` crate to benchmark proving times (#1378)
 - Implement map in transaction kernel library (#1396).
+- Add P2IDH standard note (#TBD).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 - Add support for workers configuration in the proxy with environment variables (#1412).
