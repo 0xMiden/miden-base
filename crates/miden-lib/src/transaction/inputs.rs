@@ -17,7 +17,7 @@ use super::TransactionKernel;
 // TRANSACTION ADVICE INPUTS
 // ================================================================================================
 
-/// Advice inputs wrapper for inputs that are meant to be used exclusively on the transaction
+/// Advice inputs wrapper for inputs that are meant to be used exclusively in the transaction
 /// kernel.
 #[derive(Default, Clone, Debug)]
 pub struct TransactionAdviceInputs(AdviceInputs);
@@ -48,39 +48,23 @@ impl TransactionAdviceInputs {
 
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
-            let account_id_key: Digest = Digest::from([
-                native_acc.id().suffix(),
-                native_acc.id().prefix().as_felt(),
-                ZERO,
-                ZERO,
-            ]);
-
-            inputs.extend_map([
-                // ACCOUNT_ID -> ACCOUNT_SEED
-                (account_id_key, seed.to_vec()),
-            ]);
+            // ACCOUNT_ID |-> ACCOUNT_SEED
+            let account_id_key = build_account_id_key(native_acc.id());
+            inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
         // foreign accounts
         for foreign_acc in tx_args.foreign_account_inputs() {
             inputs.add_account(foreign_acc.account())?;
-            inputs.add_account_witness(foreign_acc.witness())?;
+            inputs.add_account_witness(foreign_acc.witness());
 
             // for foreign accounts, we need to insert the id to state mapping
             // NOTE: keep this in sync with the start_foreign_context kernel procedure
-            let account_id_key: Digest = Digest::from([
-                foreign_acc.id().suffix(),
-                foreign_acc.id().prefix().as_felt(),
-                ZERO,
-                ZERO,
-            ]);
-
+            let account_id_key = build_account_id_key(foreign_acc.id());
             let header = AccountHeader::from(foreign_acc.account());
-            inputs.extend_map([
-                // ACCOUNT_ID -> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT,
-                // CODE_COMMITMENT]
-                (account_id_key, header.as_elements()),
-            ]);
+
+            // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
+            inputs.add_map_entry(account_id_key, header.as_elements());
         }
 
         // any extra user-supplied advice
@@ -89,31 +73,16 @@ impl TransactionAdviceInputs {
         Ok(inputs)
     }
 
-    pub fn into_advice_inputs(self) -> AdviceInputs {
+    pub fn inner(self) -> AdviceInputs {
         self.0
     }
 
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
+    /// Extends these advice inputs with the provided advice inputs.
     pub fn extend(&mut self, adv_inputs: AdviceInputs) {
         self.0.extend(adv_inputs);
-    }
-
-    /// Extends the map of values with the given argument, replacing previously inserted items.
-    pub fn extend_map(&mut self, iter: impl IntoIterator<Item = (Digest, Vec<Felt>)>) {
-        self.0.extend_map(iter);
-    }
-
-    /// Extends the stack with the given elements.
-    pub fn extend_stack(&mut self, iter: impl IntoIterator<Item = Felt>) {
-        self.0.stack.extend(iter);
-    }
-
-    /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
-    /// nodes.
-    pub fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
-        self.0.store.extend(iter);
     }
 
     /// Extend the advice stack with the transaction inputs.
@@ -186,6 +155,9 @@ impl TransactionAdviceInputs {
         );
     }
 
+    // BLOCKCHAIN INJECTIONS
+    // --------------------------------------------------------------------------------------------
+
     /// Inserts the partial blockchain data into the provided advice inputs.
     ///
     /// Inserts the following items into the Merkle store:
@@ -208,8 +180,41 @@ impl TransactionAdviceInputs {
         let peaks = mmr.peaks();
         let mut elements = vec![Felt::new(peaks.num_leaves() as u64), ZERO, ZERO, ZERO];
         elements.extend(peaks.flatten_and_pad_peaks());
-        self.extend_map([(peaks.hash_peaks(), elements)]);
+        self.add_map_entry(peaks.hash_peaks(), elements);
     }
+
+    // KERNEL INJECTIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Inserts kernel commitments and hashes of their procedures into the advice inputs.
+    ///
+    /// Inserts the following entries into the advice map:
+    /// - The accumulative hash of all kernels |-> array of each kernel commitment.
+    /// - The hash of the selected kernel |-> array of the kernel's procedure roots.
+    fn add_kernel_commitments(&mut self, kernel_version: u8) {
+        let mut kernel_commitments: Vec<Felt> =
+            Vec::with_capacity(TransactionKernel::NUM_VERSIONS * WORD_SIZE);
+        for version in 0..TransactionKernel::NUM_VERSIONS {
+            kernel_commitments
+                .extend_from_slice(TransactionKernel::commitment(version as u8).as_elements());
+        }
+
+        // insert the selected kernel commitment with its procedure roots into the advice map
+        self.extend_map([(
+            Digest::new(
+                kernel_commitments[kernel_version as usize..kernel_version as usize + WORD_SIZE]
+                    .try_into()
+                    .expect("invalid kernel offset"),
+            ),
+            TransactionKernel::procedures_as_elements(kernel_version),
+        )]);
+
+        // insert kernels root with kernel commitments into the advice map
+        self.add_map_entry(TransactionKernel::kernel_commitment(), kernel_commitments);
+    }
+
+    // ACCOUNT INJECTION
+    // --------------------------------------------------------------------------------------------
 
     /// Inserts account data into the advice inputs.
     ///
@@ -225,27 +230,23 @@ impl TransactionAdviceInputs {
     fn add_account(&mut self, account: &PartialAccount) -> Result<(), TransactionInputError> {
         // --- account storage ----------------------------------------------------
 
+        // STORAGE_COMMITMENT |-> [[STORAGE_SLOT_DATA]]
         let storage_header = account.storage().header();
-        self.extend_map([
-            // STORAGE_COMMITMENT -> [[STORAGE_SLOT_DATA]]
-            (storage_header.compute_commitment(), storage_header.as_elements()),
-        ]);
+        self.add_map_entry(storage_header.compute_commitment(), storage_header.as_elements());
 
         // load merkle nodes for storage maps
         for proof in account.storage().storage_map_proofs() {
             // extend the merkle store with the SMT proof
             self.extend_merkle_store_with_smt_proof(proof, account.id())?;
             // populate advice map with Sparse Merkle Tree leaf nodes
-            self.extend_map(core::iter::once((proof.leaf().hash(), proof.leaf().to_elements())));
+            self.add_map_entry(proof.leaf().hash(), proof.leaf().to_elements());
         }
 
         // --- account code -------------------------------------------------------
 
+        // CODE_COMMITMENT -> [[ACCOUNT_PROCEDURE_DATA]]
         let code = account.code();
-        self.extend_map([
-            // CODE_COMMITMENT -> [[ACCOUNT_PROCEDURE_DATA]]
-            (code.commitment(), code.as_elements()),
-        ]);
+        self.add_map_entry(code.commitment(), code.as_elements());
 
         // --- account vault ------------------------------------------------------
 
@@ -260,18 +261,36 @@ impl TransactionAdviceInputs {
     ///
     /// This involves extending the map to include the leaf's hash mapped to its elements, as well
     /// as extending the merkle store with the nodes of the witness.
-    fn add_account_witness(
-        &mut self,
-        witness: &AccountWitness,
-    ) -> Result<(), TransactionInputError> {
-        let leaf = witness.leaf();
-
+    fn add_account_witness(&mut self, witness: &AccountWitness) {
         // populate advice map with the account's leaf
-        self.extend_map([(leaf.hash(), leaf.to_elements())]);
+        let leaf = witness.leaf();
+        self.add_map_entry(leaf.hash(), leaf.to_elements());
+
         // extend the merkle store and map with account witnesses merkle path
         self.extend_merkle_store(witness.inner_nodes());
-        Ok(())
     }
+
+    /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
+    /// SMT proof for an account.
+    fn extend_merkle_store_with_smt_proof(
+        &mut self,
+        smt_proof: &SmtProof,
+        acc_id: AccountId,
+    ) -> Result<(), TransactionInputError> {
+        match smt_proof
+            .path()
+            .inner_nodes(smt_proof.leaf().index().value(), smt_proof.leaf().hash())
+        {
+            Ok(nodes) => {
+                self.extend_merkle_store(nodes);
+                Ok(())
+            },
+            Err(err) => Err(TransactionInputError::InvalidAccountMerklePath(acc_id, err)),
+        }
+    }
+
+    // NOTE INJECTION
+    // --------------------------------------------------------------------------------------------
 
     /// Populates the advice inputs for all input notes.
     ///
@@ -307,11 +326,11 @@ impl TransactionAdviceInputs {
             let note_arg = tx_args.get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
-            self.extend_map([(
+            self.add_map_entry(
                 recipient.inputs().commitment(),
                 recipient.inputs().format_for_advice(),
-            )]);
-            self.extend_map([(assets.commitment(), assets.to_padded_assets())]);
+            );
+            self.add_map_entry(assets.commitment(), assets.to_padded_assets());
 
             // note details / metadata
             note_data.extend(recipient.serial_num());
@@ -356,35 +375,8 @@ impl TransactionAdviceInputs {
             }
         }
 
-        self.extend_map([(tx_inputs.input_notes().commitment(), note_data)]);
+        self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
         Ok(())
-    }
-
-    /// Inserts kernel commitments and hashes of their procedures into the provided advice inputs.
-    ///
-    /// Inserts the following entries into the advice map:
-    /// - The accumulative hash of all kernels |-> array of each kernel commitment.
-    /// - The hash of the selected kernel |-> array of the kernel's procedure roots.
-    fn add_kernel_commitments(&mut self, kernel_version: u8) {
-        let mut kernel_commitments: Vec<Felt> =
-            Vec::with_capacity(TransactionKernel::NUM_VERSIONS * WORD_SIZE);
-        for version in 0..TransactionKernel::NUM_VERSIONS {
-            kernel_commitments
-                .extend_from_slice(TransactionKernel::commitment(version as u8).as_elements());
-        }
-
-        // insert the selected kernel commitment with its procedure roots into the advice map
-        self.extend_map([(
-            Digest::new(
-                kernel_commitments[kernel_version as usize..kernel_version as usize + WORD_SIZE]
-                    .try_into()
-                    .expect("invalid kernel offset"),
-            ),
-            TransactionKernel::procedures_as_elements(kernel_version),
-        )]);
-
-        // insert kernels root with kernel commitments into the advice map
-        self.extend_map([(TransactionKernel::kernel_commitment(), kernel_commitments)]);
     }
 
     /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
@@ -406,23 +398,27 @@ impl TransactionAdviceInputs {
         }
     }
 
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Extends the map of values with the given argument, replacing previously inserted items.
+    fn extend_map(&mut self, iter: impl IntoIterator<Item = (Digest, Vec<Felt>)>) {
+        self.0.extend_map(iter);
+    }
+
+    fn add_map_entry(&mut self, key: Digest, values: Vec<Felt>) {
+        self.0.extend_map([(key, values)]);
+    }
+
+    /// Extends the stack with the given elements.
+    fn extend_stack(&mut self, iter: impl IntoIterator<Item = Felt>) {
+        self.0.stack.extend(iter);
+    }
+
     /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
-    /// SMT proof for an account.
-    fn extend_merkle_store_with_smt_proof(
-        &mut self,
-        smt_proof: &SmtProof,
-        acc_id: AccountId,
-    ) -> Result<(), TransactionInputError> {
-        match smt_proof
-            .path()
-            .inner_nodes(smt_proof.leaf().index().value(), smt_proof.leaf().hash())
-        {
-            Ok(nodes) => {
-                self.extend_merkle_store(nodes);
-                Ok(())
-            },
-            Err(err) => Err(TransactionInputError::InvalidAccountMerklePath(acc_id, err)),
-        }
+    /// nodes.
+    fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
+        self.0.store.extend(iter);
     }
 }
 
@@ -439,4 +435,11 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
     fn from(inner: AdviceInputs) -> Self {
         Self(inner)
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn build_account_id_key(id: AccountId) -> Digest {
+    Digest::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
 }
