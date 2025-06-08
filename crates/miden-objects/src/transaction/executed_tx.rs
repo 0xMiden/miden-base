@@ -3,8 +3,8 @@ use core::cell::OnceCell;
 
 use super::{
     Account, AccountDelta, AccountHeader, AccountId, AdviceInputs, BlockHeader, InputNote,
-    InputNotes, NoteId, OutputNotes, TransactionArgs, TransactionId, TransactionInputs,
-    TransactionOutputs, TransactionWitness,
+    InputNotes, NoteId, OutputNotes, TransactionId, TransactionInputs, TransactionOutputs,
+    TransactionParams, TransactionWitness,
 };
 use crate::{
     block::BlockNumber,
@@ -30,7 +30,7 @@ pub struct ExecutedTransaction {
     tx_inputs: TransactionInputs,
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
-    tx_args: TransactionArgs,
+    tx_args: TransactionParams,
     advice_witness: AdviceInputs,
     tx_measurements: TransactionMeasurements,
 }
@@ -47,7 +47,7 @@ impl ExecutedTransaction {
         tx_inputs: TransactionInputs,
         tx_outputs: TransactionOutputs,
         account_delta: AccountDelta,
-        tx_args: TransactionArgs,
+        tx_args: TransactionParams,
         advice_witness: AdviceInputs,
         tx_measurements: TransactionMeasurements,
     ) -> Self {
@@ -104,7 +104,7 @@ impl ExecutedTransaction {
     }
 
     /// Returns a reference to the transaction args.
-    pub fn tx_args(&self) -> &TransactionArgs {
+    pub fn tx_args(&self) -> &TransactionParams {
         &self.tx_args
     }
 
@@ -181,7 +181,7 @@ impl Deserializable for ExecutedTransaction {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_outputs = TransactionOutputs::read_from(source)?;
         let account_delta = AccountDelta::read_from(source)?;
-        let tx_args = TransactionArgs::read_from(source)?;
+        let tx_args = TransactionParams::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 

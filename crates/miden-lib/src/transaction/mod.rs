@@ -6,7 +6,7 @@ use miden_objects::{
     assembly::{Assembler, DefaultSourceManager, KernelLibrary},
     block::BlockNumber,
     transaction::{
-        OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
+        OutputNote, OutputNotes, TransactionInputs, TransactionOutputs, TransactionParams,
     },
     utils::{serde::Deserializable, sync::LazyLock},
     vm::{AdviceInputs, AdviceMap, Program, ProgramInfo, StackInputs, StackOutputs},
@@ -112,7 +112,7 @@ impl TransactionKernel {
     /// If `init_advice_inputs` is provided, they will be included in the returned advice inputs.
     pub fn prepare_inputs(
         tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
+        tx_args: &TransactionParams,
         init_advice_inputs: Option<AdviceInputs>,
     ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionInputError> {
         let account = tx_inputs.account();
