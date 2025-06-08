@@ -107,7 +107,7 @@ impl TransactionInputs {
 
     /// Returns partial blockchain containing authentication paths for all notes consumed by the
     /// transaction.
-    pub fn block_chain(&self) -> &PartialBlockchain {
+    pub fn blockchain(&self) -> &PartialBlockchain {
         &self.block_chain
     }
 

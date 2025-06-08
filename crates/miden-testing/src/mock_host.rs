@@ -35,7 +35,7 @@ impl MockHost {
         mut foreign_code_commitments: BTreeSet<Digest>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
-        let adv_provider = MemAdviceProvider::from(advice_inputs.inner());
+        let adv_provider = MemAdviceProvider::from(advice_inputs.into_inner());
         let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, &adv_provider);
 
         Self {

@@ -79,7 +79,7 @@ fn transaction_executor_witness() {
         Some(executed_transaction.advice_witness().clone()),
     )
     .unwrap();
-    let mem_advice_provider = MemAdviceProvider::from(advice_inputs.inner());
+    let mem_advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());

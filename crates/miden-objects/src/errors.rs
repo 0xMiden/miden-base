@@ -499,10 +499,6 @@ pub enum TransactionInputError {
     InputNoteNotInBlock(NoteId, BlockNumber),
     #[error("account ID computed from seed is invalid")]
     InvalidAccountIdSeed(#[source] AccountIdError),
-    #[error("the SMT proof's merkle path for account with ID {0} is invalid")]
-    InvalidAccountMerklePath(AccountId, #[source] MerkleError),
-    #[error("merkle path for note with ID {0} is invalid")]
-    InvalidNoteMerklePath(NoteId, #[source] MerkleError),
     #[error(
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
