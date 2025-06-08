@@ -25,13 +25,13 @@ use.kernel::memory
 # The layout of a link map _conceptually_ looks like this:
 #
 # [
-#   (map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE),
-#   (map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE),
+#   (map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE0, VALUE1),
+#   (map_ptr, prev_entry_ptr, next_entry_ptr, 0, KEY, VALUE0, VALUE1),
 #   ...
 # ]
 #
 # where:
-# - KEY and VALUE are the user-provided data and both are of size word.
+# - KEY and VALUE{0,1} are the user-provided data and all are of size word.
 # - the first word is the METADATA of the entry.
 # - the map_ptr is the pointer of the map to which this entry belongs. See the security section
 #   for the rationale.
@@ -39,10 +39,9 @@ use.kernel::memory
 #   is smaller than the entry's KEY.
 # - the next_entry_ptr is an entry pointer that points to the next item in the list whose key is
 #   greater than the entry's KEY.
-# - the fourth element in the metadata is currently unused, but could be used to store additional
-#   things like the current number of entries of the map.
+# - the fourth element in the entry metadata is currently unused.
 #
-# Each entry takes up 3 words or 12 field elements of memory. Note that the above layout is not
+# Each entry takes up 4 words or 16 field elements of memory. Note that the above layout is not
 # how the map is layed out in memory, since entries are not guaranteed to be contiguous in memory.
 #
 # # Memory Allocation
@@ -145,8 +144,11 @@ const.NEXT_ENTRY_PTR_OFFSET=2
 # The offset of the KEY in an entry.
 const.KEY_OFFSET=4
 
-# The offset of the VALUE in an entry.
-const.VALUE_OFFSET=8
+# The offset of the VALUE0 in an entry.
+const.VALUE0_OFFSET=8
+
+# The offset of the VALUE1 in an entry.
+const.VALUE1_OFFSET=12
 
 # The value of the Update operation for a set event.
 const.INSERT_OPERATION_UPDATE=0
@@ -178,48 +180,48 @@ const.LINK_MAP_GET_EVENT=131099
 #! Inserts the specified key-value pair into the map, or updates the existing key if the pair
 #! already exists.
 #!
-#! Note that unlike smt::set, passing VALUE = EMPTY_WORD does not mean removal of the entry.
+#! Note that unlike smt::set, passing VALUE{0,1} = EMPTY_WORD does not mean removal of the entry.
 #!
-#! Inputs:  [map_ptr, KEY, VALUE]
+#! Inputs:  [map_ptr, KEY, VALUE0, VALUE1]
 #! Outputs: []
 #!
 #! Where:
 #! - map_ptr is the pointer to the map.
 #! - KEY is the key that will be set in the map.
-#! - VALUE is the value that will be set under KEY.
+#! - VALUE0 and VALUE1 are the values that will be set under KEY.
 #!
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   update_entry, insert_at_head, insert_after_entry.
 export.set
     emit.LINK_MAP_SET_EVENT adv_push.2
-    # => [operation, entry_ptr, map_ptr, KEY, VALUE]
+    # => [operation, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
     dup.2 dup.2
-    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, VALUE]
+    # => [entry_ptr, map_ptr, operation, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
     exec.assert_entry_ptr_is_valid
-    # => [operation, entry_ptr, map_ptr, KEY, VALUE]
+    # => [operation, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
     dup eq.INSERT_OPERATION_AT_HEAD swap eq.INSERT_OPERATION_UPDATE
-    # => [is_insert_update_op, is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
+    # => [is_insert_update_op, is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
     if.true
         # update existing entry
         # drop is_insert_at_head_op and map_ptr from stack
         drop swap drop
-        # => [entry_ptr, KEY, VALUE]
+        # => [entry_ptr, KEY, VALUE0, VALUE1]
 
         exec.update_entry
         # => []
     else
         # insert new entry
-        # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE]
+        # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
         if.true
             # drop the entry ptr since we can load the head from map_ptr
             drop
-            # => [map_ptr, KEY, VALUE]
+            # => [map_ptr, KEY, VALUE0, VALUE1]
 
             exec.insert_at_head
             # => []
@@ -234,14 +236,14 @@ end
 #! Returns the VALUE located at KEY in the given map.
 #!
 #! Inputs:  [map_ptr, KEY]
-#! Outputs: [contains_key, VALUE]
+#! Outputs: [contains_key, VALUE0, VALUE1]
 #!
 #! Where:
 #! - map_ptr is the pointer to the map.
 #! - KEY is the key that will be fetched from the map.
 #! - contains_key is a boolean indicating whether the map contained the KEY or not.
-#! - VALUE is the value fetched from the map. VALUE is guaranteed to be an EMPTY_WORD when the
-#!   map did not contain the key.
+#! - VALUE0 and VALUE1 are the values fetched from the map. Both values are guaranteed to be an
+#!   EMPTY_WORD if the map did not contain the key.
 #!
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
@@ -265,10 +267,10 @@ export.get
         # => [entry_ptr, KEY]
 
         exec.get_existent_value
-        # => [VALUE]
+        # => [VALUE0, VALUE1]
 
         push.1
-        # => [contains_key, VALUE]
+        # => [contains_key, VALUE0, VALUE1]
     else
         # assert absence of the entry
         # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
@@ -285,8 +287,8 @@ export.get
             # => []
         end
 
-        padw push.0
-        # => [contains_key, EMPTY_WORD]
+        padw padw push.0
+        # => [contains_key, EMPTY_WORD, EMPTY_WORD]
     end
 end
 
@@ -303,20 +305,20 @@ end
 
 #! Inserts the key-value pair at the head of the map.
 #!
-#! Inputs:  [map_ptr, KEY, VALUE]
+#! Inputs:  [map_ptr, KEY, VALUE0, VALUE1]
 #! Outputs: []
 #!
 #! Panics if:
 #! - the KEY is not less than the key in the head of the map, unless the map is empty.
 proc.insert_at_head
     exec.memory::link_map_malloc
-    # => [entry_ptr, map_ptr, KEY, VALUE]
+    # => [entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
-    dup movdn.10
-    # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr]
+    dup movdn.14
+    # => [entry_ptr, map_ptr, KEY, VALUE0, VALUE1, entry_ptr]
 
-    dup.1 movdn.10
-    # => [entry_ptr, map_ptr, KEY, VALUE, map_ptr, entry_ptr]
+    dup.1 movdn.14
+    # => [entry_ptr, map_ptr, KEY, VALUE0, VALUE1, map_ptr, entry_ptr]
 
     exec.insert_pair
     # => [map_ptr, entry_ptr]
@@ -358,19 +360,19 @@ proc.insert_at_head
     # => []
 end
 
-#! Updates the value in the given entry.
+#! Updates the VALUE0 in the given entry.
 #!
-#! Inputs:  [entry_ptr, KEY, VALUE]
+#! Inputs:  [entry_ptr, KEY, VALUE0, VALUE1]
 #! Outputs: []
 #!
 #! Panics if:
 #! - the key in the entry does not match the provided KEY.
 proc.update_entry
     dup movdn.5
-    # => [entry_ptr, KEY, entry_ptr, VALUE]
+    # => [entry_ptr, KEY, entry_ptr, VALUE0, VALUE1]
 
     exec.assert_key_is_equal
-    # => [entry_ptr, VALUE]
+    # => [entry_ptr, VALUE0, VALUE1]
 
     exec.set_value
     # => []
@@ -378,7 +380,7 @@ end
 
 #! Inserts the key value pair as the next entry after the prev_entry_ptr.
 #!
-#! Inputs:  [prev_entry_ptr, map_ptr, KEY, VALUE]
+#! Inputs:  [prev_entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 #! Outputs: []
 #!
 #! Panics if:
@@ -387,28 +389,28 @@ end
 #!   one in the map.
 proc.insert_after_entry
     movdn.5
-    # => [map_ptr, KEY, prev_entry_ptr, VALUE]
+    # => [map_ptr, KEY, prev_entry_ptr, VALUE0, VALUE1]
 
     movdn.5
-    # => [KEY, prev_entry_ptr, map_ptr, VALUE]
+    # => [KEY, prev_entry_ptr, map_ptr, VALUE0, VALUE1]
 
     dupw dup.8
-    # => [prev_entry_ptr, KEY, KEY, prev_entry_ptr, map_ptr, VALUE]
+    # => [prev_entry_ptr, KEY, KEY, prev_entry_ptr, map_ptr, VALUE0]
 
     exec.assert_key_is_greater
-    # => [KEY, prev_entry_ptr, map_ptr, VALUE]
+    # => [KEY, prev_entry_ptr, map_ptr, VALUE0, VALUE1]
 
-    movup.4 movdn.9
-    # => [KEY, map_ptr, VALUE, prev_entry_ptr]
+    movup.4 movdn.13
+    # => [KEY, map_ptr, VALUE0, VALUE1, prev_entry_ptr]
 
     movup.4
-    # => [map_ptr, KEY, VALUE, prev_entry_ptr]
+    # => [map_ptr, KEY, VALUE0, VALUE1, prev_entry_ptr]
 
     exec.memory::link_map_malloc
-    # => [entry_ptr, map_ptr, KEY, VALUE, prev_entry_ptr]
+    # => [entry_ptr, map_ptr, KEY, VALUE0, VALUE1, prev_entry_ptr]
 
-    dup movdn.10
-    # => [entry_ptr, map_ptr, KEY, VALUE, entry_ptr, prev_entry_ptr]
+    dup movdn.14
+    # => [entry_ptr, map_ptr, KEY, VALUE0, VALUE1, entry_ptr, prev_entry_ptr]
 
     exec.insert_pair
     # => [entry_ptr, prev_entry_ptr]
@@ -465,21 +467,20 @@ end
 
 #! Inserts the key, value into the entry pointer and sets the map ptr to the provided value.
 #!
-#! Inputs:  [entry_ptr, map_ptr, KEY, VALUE]
+#! Inputs:  [entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 #! Outputs: []
 proc.insert_pair
     swap dup.1
-    # => [entry_ptr, map_ptr, entry_ptr, KEY, VALUE]
+    # => [entry_ptr, map_ptr, entry_ptr, KEY, VALUE0, VALUE1]
 
     exec.set_map_ptr
-    # => [entry_ptr, KEY, VALUE]
+    # => [entry_ptr, KEY, VALUE0, VALUE1]
 
     dup movdn.5
-    # => [entry_ptr, KEY, entry_ptr, VALUE]
+    # => [entry_ptr, KEY, entry_ptr, VALUE0, VALUE1]
 
     exec.set_key
-
-    # => [entry_ptr, VALUE]
+    # => [entry_ptr, VALUE0, VALUE1]
 
     exec.set_value
     # => []
@@ -560,10 +561,10 @@ proc.assert_absent_after_entry
     # => []
 end
 
-#! Fetches the VALUE at the provided KEY from the provided entry.
+#! Fetches VALUE0 and VALUE1 at the provided KEY from the provided entry.
 #!
 #! Inputs:  [entry_ptr, KEY]
-#! Outputs: [VALUE]
+#! Outputs: [VALUE0, VALUE1]
 #!
 #! Panics if:
 #! - the key in the entry does not match KEY.
@@ -575,7 +576,7 @@ proc.get_existent_value
     # => [entry_ptr]
 
     exec.get_value
-    # => [VALUE]
+    # => [VALUE0, VALUE1]
 end
 
 # HELPERS
@@ -618,22 +619,35 @@ end
 
 #! Sets the value of the entry pointer.
 #!
-#! Inputs:  [entry_ptr, VALUE]
+#! Inputs:  [entry_ptr, VALUE0, VALUE1]
 #! Outputs: []
 proc.set_value
-    add.VALUE_OFFSET mem_storew dropw
+    dup movdn.5
+    # => [entry_ptr, VALUE0, entry_ptr, VALUE1]
+
+    add.VALUE0_OFFSET mem_storew dropw
+    # => [entry_ptr, VALUE1]
+
+    add.VALUE1_OFFSET mem_storew dropw
+    # => []
 end
 
-#! Returns the value of the entry pointer.
+#! Returns the values of the entry pointer.
 #!
 #! Inputs:  [entry_ptr]
-#! Outputs: [VALUE]
+#! Outputs: [VALUE0, VALUE1]
 proc.get_value
-    padw movup.4
-    # => [entry_ptr, pad(4)]
+    padw dup.4
+    # => [entry_ptr, pad(4), entry_ptr]
 
-    add.VALUE_OFFSET mem_loadw
-    # => [VALUE]
+    add.VALUE1_OFFSET mem_loadw
+    # => [VALUE1, entry_ptr]
+
+    padw movup.8
+    # => [entry_ptr, pad(4), VALUE1]
+
+    add.VALUE0_OFFSET mem_loadw
+    # => [VALUE0, VALUE1]
 end
 
 #! Sets the key of the entry pointer.
@@ -736,8 +750,7 @@ end
 #! - any of the following conditions is false, except if the map is empty:
 #!   - LINK_MAP_MEMORY_START_PTR <= entry_ptr < LINK_MAP_MEMORY_END_PTR.
 #!   - entry ptr is "link map entry"-aligned, i.e. entry_ptr % LINK_MAP_ENTRY_SIZE == 0. This
-#!     works because every entry ptr is a multiple of LINK_MAP_ENTRY_SIZE added to
-#!     LINK_MAP_MEMORY_START_PTR which happens to be itself a multiple of LINK_MAP_ENTRY_SIZE.
+#!     works because every entry ptr is a multiple of LINK_MAP_ENTRY_SIZE.
 #!   - entry's map ptr is equal to the given map_ptr.
 export.assert_entry_ptr_is_valid
     # Check entry pointer is in valid memory range.

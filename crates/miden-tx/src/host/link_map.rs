@@ -108,18 +108,28 @@ impl<'process> LinkMap<'process> {
 
     fn entry(&self, entry_ptr: u32) -> Entry {
         let key = self.key(entry_ptr);
-        let value = self.value(entry_ptr);
+        let (value0, value1) = self.value(entry_ptr);
         let metadata = self.metadata(entry_ptr);
 
-        Entry { ptr: entry_ptr, metadata, key, value }
+        Entry {
+            ptr: entry_ptr,
+            metadata,
+            key,
+            value0,
+            value1,
+        }
     }
 
     fn key(&self, entry_ptr: u32) -> Word {
         self.get_kernel_mem_word(entry_ptr + 4).expect("entry pointer should be valid")
     }
 
-    fn value(&self, entry_ptr: u32) -> Word {
-        self.get_kernel_mem_word(entry_ptr + 8).expect("entry pointer should be valid")
+    fn value(&self, entry_ptr: u32) -> (Word, Word) {
+        let value0 =
+            self.get_kernel_mem_word(entry_ptr + 8).expect("entry pointer should be valid");
+        let value1 =
+            self.get_kernel_mem_word(entry_ptr + 12).expect("entry pointer should be valid");
+        (value0, value1)
     }
 
     fn metadata(&self, entry_ptr: u32) -> EntryMetadata {
@@ -232,7 +242,8 @@ pub struct Entry {
     pub ptr: u32,
     pub metadata: EntryMetadata,
     pub key: Word,
-    pub value: Word,
+    pub value0: Word,
+    pub value1: Word,
 }
 
 /// An entry's metadata in a [`LinkMap`].

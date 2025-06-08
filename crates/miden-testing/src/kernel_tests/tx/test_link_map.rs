@@ -44,7 +44,7 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # ---------------------------------------------------------------------------------------
 
           # value
-          push.{entry1_value}
+          padw push.{entry1_value}
           # key
           push.{entry1_key}
           push.MAP_PTR
@@ -57,7 +57,7 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # ---------------------------------------------------------------------------------------
 
           # value
-          push.{entry3_value}
+          padw push.{entry3_value}
           # key
           push.{entry3_key}
           push.MAP_PTR
@@ -70,7 +70,7 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # ---------------------------------------------------------------------------------------
 
           # value
-          push.{entry2_value}
+          padw push.{entry2_value}
           # key
           push.{entry2_key}
           push.MAP_PTR
@@ -83,7 +83,7 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # ---------------------------------------------------------------------------------------
 
           # value
-          push.{entry0_value}
+          padw push.{entry0_value}
           # key
           push.{entry0_key}
           push.MAP_PTR
@@ -101,11 +101,13 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY]
 
           exec.link_map::get
-          # => [contains_key, VALUE]
+          # => [contains_key, VALUE0, VALUE1]
           assert.err="value for key {entry0_key} should exist"
 
           push.{entry0_value}
-          assert_eqw.err="retrieved value for key {entry0_key} should be the previously inserted value"
+          assert_eqw.err="retrieved value0 for key {entry0_key} should be the previously inserted value"
+          padw
+          assert_eqw.err="retrieved value1 for key {entry0_key} should be an empty word"
           # => []
 
           # Fetch value at key {entry1_key}.
@@ -117,11 +119,13 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY]
 
           exec.link_map::get
-          # => [contains_key, VALUE]
+          # => [contains_key, VALUE0, VALUE1]
           assert.err="value for key {entry1_key} should exist"
 
           push.{entry1_value}
-          assert_eqw.err="retrieved value for key {entry1_key} should be the previously inserted value"
+          assert_eqw.err="retrieved value0 for key {entry1_key} should be the previously inserted value"
+          padw
+          assert_eqw.err="retrieved value1 for key {entry1_key} should be an empty word"
           # => []
 
           # Fetch value at key {entry2_key}.
@@ -133,11 +137,13 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY]
 
           exec.link_map::get
-          # => [contains_key, VALUE]
+          # => [contains_key, VALUE0, VALUE1]
           assert.err="value for key {entry2_key} should exist"
 
           push.{entry2_value}
-          assert_eqw.err="retrieved value for key {entry2_key} should be the previously inserted value"
+          assert_eqw.err="retrieved value0 for key {entry2_key} should be the previously inserted value"
+          padw
+          assert_eqw.err="retrieved value1 for key {entry2_key} should be an empty word"
           # => []
 
           # Fetch value at key {entry3_key}.
@@ -149,11 +155,13 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY]
 
           exec.link_map::get
-          # => [contains_key, VALUE]
+          # => [contains_key, VALUE0, VALUE1]
           assert.err="value for key {entry3_key} should exist"
 
           push.{entry3_value}
-          assert_eqw.err="retrieved value for key {entry3_key} should be the previously inserted value"
+          assert_eqw.err="retrieved value0 for key {entry3_key} should be the previously inserted value"
+          padw
+          assert_eqw.err="retrieved value1 for key {entry3_key} should be an empty word"
           # => []
       end
     "#,
@@ -184,25 +192,29 @@ fn link_map_iterator() -> anyhow::Result<()> {
     assert_eq!(entry0.metadata.prev_entry_ptr, 0);
     assert_eq!(entry0.metadata.next_entry_ptr, entry1.ptr);
     assert_eq!(entry0.key, *entry0_key);
-    assert_eq!(entry0.value, *entry0_value);
+    assert_eq!(entry0.value0, *entry0_value);
+    assert_eq!(entry0.value1, EMPTY_WORD);
 
     assert_eq!(entry1.metadata.map_ptr, map_ptr);
     assert_eq!(entry1.metadata.prev_entry_ptr, entry0.ptr);
     assert_eq!(entry1.metadata.next_entry_ptr, entry2.ptr);
     assert_eq!(entry1.key, *entry1_key);
-    assert_eq!(entry1.value, *entry1_value);
+    assert_eq!(entry1.value0, *entry1_value);
+    assert_eq!(entry1.value1, EMPTY_WORD);
 
     assert_eq!(entry2.metadata.map_ptr, map_ptr);
     assert_eq!(entry2.metadata.prev_entry_ptr, entry1.ptr);
     assert_eq!(entry2.metadata.next_entry_ptr, entry3.ptr);
     assert_eq!(entry2.key, *entry2_key);
-    assert_eq!(entry2.value, *entry2_value);
+    assert_eq!(entry2.value0, *entry2_value);
+    assert_eq!(entry2.value1, EMPTY_WORD);
 
     assert_eq!(entry3.metadata.map_ptr, map_ptr);
     assert_eq!(entry3.metadata.prev_entry_ptr, entry2.ptr);
     assert_eq!(entry3.metadata.next_entry_ptr, 0);
     assert_eq!(entry3.key, *entry3_key);
-    assert_eq!(entry3.value, *entry3_value);
+    assert_eq!(entry3.value0, *entry3_value);
+    assert_eq!(entry3.value1, EMPTY_WORD);
 
     Ok(())
 }
@@ -351,6 +363,7 @@ impl TestOperation {
     }
 }
 
+// TODO: Implement passing a double word as value instead of one word.
 fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let mut test_code = String::new();
     let mut control_map = BTreeMap::new();
@@ -362,7 +375,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                 let set_code = format!(
                     "
-                  push.{value}.{key}.MAP_PTR
+                  padw push.{value}.{key}.MAP_PTR
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => []
@@ -385,11 +398,12 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                   push.{key}.MAP_PTR
                   # => [map_ptr, KEY]
                   exec.link_map::get
-                  # => [contains_key, VALUE]
+                  # => [contains_key, VALUE0, VALUE1]
                   push.{expected_contains_key}
                   assert_eq.err="contains_key did not match the expected value: {expected_contains_key}"
                   push.{expected_value}
                   assert_eqw.err="value returned from get is not the expected value: {expected_value}"
+                  dropw
                 "#,
                     key = word_to_masm_push_string(&key),
                     expected_value = word_to_masm_push_string(&expected_value),
@@ -432,7 +446,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
     for ((control_key, control_value), (actual_key, actual_value)) in control_entries
         .into_iter()
-        .zip(map.iter().map(|entry| (Digest::from(entry.key), Digest::from(entry.value))))
+        .zip(map.iter().map(|entry| (Digest::from(entry.key), Digest::from(entry.value0))))
     {
         assert_eq!(actual_key, control_key);
         assert_eq!(actual_value, control_value);
