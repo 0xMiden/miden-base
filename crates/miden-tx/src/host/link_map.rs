@@ -61,9 +61,9 @@ impl<'process> LinkMap<'process> {
 
         let link_map = LinkMap::new(map_ptr, process);
 
-        let (operation, entry_ptr) = link_map.compute_set_operation(map_key);
+        let (set_op, entry_ptr) = link_map.compute_set_operation(map_key);
 
-        advice_provider.push_stack(AdviceSource::Value(Felt::from(operation as u8)), err_ctx)?;
+        advice_provider.push_stack(AdviceSource::Value(Felt::from(set_op as u8)), err_ctx)?;
         advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
 
         Ok(())

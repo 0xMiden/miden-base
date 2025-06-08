@@ -14,6 +14,8 @@ const.ERR_ACCOUNT_STACK_UNDERFLOW="failed to end foreign context because the cur
 
 const.ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT="creation of a foreign context against the native account is forbidden"
 
+const.ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED="number of link map entries exceeds maximum"
+
 # MEMORY ADDRESS CONSTANTS
 # =================================================================================================
 
@@ -204,17 +206,23 @@ const.OUTPUT_NOTE_ASSETS_OFFSET=20
 # -------------------------------------------------------------------------------------------------
 
 # The inclusive start of the link map dynamic memory range.
-const.LINK_MAP_MEMORY_START_PTR=33554436
+# Chosen as a number greater than 2^25 such that all entry pointers are multiples of
+# LINK_MAP_ENTRY_SIZE. That enables a simpler check in assert_entry_ptr_is_valid.
+const.LINK_MAP_MEMORY_START_PTR=33554448
 
 # The non-inclusive end of the link map dynamic memory range.
-const.LINK_MAP_MEMORY_END_PTR=67108860
+# This happens to be 2^26, but if it is changed, it should be chosen as a number such that
+# LINK_MAP_MEMORY_END_PTR - LINK_MAP_MEMORY_START_PTR is a multiple of LINK_MAP_ENTRY_SIZE,
+# because that enables checking whether a newly allocated entry pointer is at the end of the range
+# using equality rather than lt/gt in link_map_malloc.
+const.LINK_MAP_MEMORY_END_PTR=67108864
 
 # LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer that
 # will be allocated.
 const.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET=33554432
 
-# The size of each map entry, i.e. three words.
-const.LINK_MAP_ENTRY_SIZE=12
+# The size of each map entry, i.e. four words.
+const.LINK_MAP_ENTRY_SIZE=16
 
 # MEMORY PROCEDURES
 # =================================================================================================
@@ -1633,10 +1641,9 @@ export.link_map_malloc
     add.LINK_MAP_MEMORY_START_PTR
     # => [entry_ptr]
 
-    # if entry_ptr is the end_ptr the entry would be allocated in the next memory region so
-    # we must abort
-    # we can use neq because the end ptr is a multiple of LINK_MAP_ENTRY_SIZE and neq is cheaper
-    # than lt/gt
-    dup neq.LINK_MAP_MEMORY_END_PTR assert.err="number of link map entries exceeds maximum"
+    # If entry_ptr is the end_ptr the entry would be allocated in the next memory region so
+    # we must abort.
+    # We can use neq because of how the end ptr is chosen. See its docs for details.
+    dup neq.LINK_MAP_MEMORY_END_PTR assert.err=ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED
     # => [entry_ptr]
 end

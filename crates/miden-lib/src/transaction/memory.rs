@@ -24,7 +24,7 @@ pub type StorageSlot = u8;
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
-// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_859 (16777214)               | Enough for 2_796_202 key-value pairs        |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16777215)               | Enough for 2_097_151 key-value pairs        |
 
 // Relative layout of one account
 //
@@ -373,14 +373,24 @@ pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
 // ------------------------------------------------------------------------------------------------
 
 /// The inclusive start of the link map dynamic memory range.
-pub const LINK_MAP_MEMORY_START_PTR: MemoryAddress = 33554436;
+pub const LINK_MAP_MEMORY_START_PTR: MemoryAddress = 33_554_448;
 
 /// The non-inclusive end of the link map dynamic memory range.
-pub const LINK_MAP_MEMORY_END_PTR: MemoryAddress = 67108860;
+pub const LINK_MAP_MEMORY_END_PTR: MemoryAddress = 67_108_864;
 
 /// LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer
 /// that will be allocated.
-pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33554432;
+pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33_554_432;
 
 /// The size of each map entry, i.e. three words.
-pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 12;
+pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 16;
+
+const _: () = assert!(
+    LINK_MAP_MEMORY_START_PTR % LINK_MAP_ENTRY_SIZE == 0,
+    "link map start ptr should be aligned to entry size"
+);
+
+const _: () = assert!(
+    (LINK_MAP_MEMORY_END_PTR - LINK_MAP_MEMORY_START_PTR) % LINK_MAP_ENTRY_SIZE == 0,
+    "the link map memory range should cleanly contain a multiple of the entry size"
+);
