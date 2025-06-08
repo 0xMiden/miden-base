@@ -1,4 +1,4 @@
-use super::{AdviceInputs, TransactionArgs, TransactionInputs};
+use super::{AdviceInputs, TransactionInputs, TransactionParams};
 use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // TRANSACTION WITNESS
@@ -25,7 +25,7 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionWitness {
     pub tx_inputs: TransactionInputs,
-    pub tx_args: TransactionArgs,
+    pub tx_args: TransactionParams,
     pub advice_witness: AdviceInputs,
 }
 
@@ -43,7 +43,7 @@ impl Serializable for TransactionWitness {
 impl Deserializable for TransactionWitness {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_inputs = TransactionInputs::read_from(source)?;
-        let tx_args = TransactionArgs::read_from(source)?;
+        let tx_args = TransactionParams::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         Ok(Self { tx_inputs, tx_args, advice_witness })
     }

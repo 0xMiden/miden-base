@@ -9,8 +9,8 @@ use miden_objects::{
     block::{BlockHeader, BlockNumber},
     note::Note,
     transaction::{
-        ExecutedTransaction, InputNote, InputNotes, PartialBlockchain, TransactionArgs,
-        TransactionInputs,
+        ExecutedTransaction, InputNote, InputNotes, PartialBlockchain, TransactionInputs,
+        TransactionParams,
     },
 };
 use miden_tx::{
@@ -34,7 +34,7 @@ use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthentic
 /// [TransactionExecutor](miden_tx::TransactionExecutor)
 pub struct TransactionContext {
     pub(super) expected_output_notes: Vec<Note>,
-    pub(super) tx_args: TransactionArgs,
+    pub(super) tx_args: TransactionParams,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
@@ -142,7 +142,7 @@ impl TransactionContext {
         &self.expected_output_notes
     }
 
-    pub fn tx_args(&self) -> &TransactionArgs {
+    pub fn tx_args(&self) -> &TransactionParams {
         &self.tx_args
     }
 
@@ -150,7 +150,7 @@ impl TransactionContext {
         self.tx_inputs.input_notes()
     }
 
-    pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
+    pub fn set_tx_args(&mut self, tx_args: TransactionParams) {
         self.tx_args = tx_args;
     }
 

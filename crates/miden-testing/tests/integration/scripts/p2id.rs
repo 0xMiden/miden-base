@@ -283,8 +283,7 @@ fn test_create_consume_multiple_notes() {
     );
 
     let tx_script =
-        TransactionScript::compile(tx_script_src, vec![], TransactionKernel::testing_assembler())
-            .unwrap();
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[input_note_1.id(), input_note_2.id()], &[])

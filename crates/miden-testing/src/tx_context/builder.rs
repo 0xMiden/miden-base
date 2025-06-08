@@ -24,7 +24,7 @@ use miden_objects::{
         storage::prepare_assets,
     },
     transaction::{
-        AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
+        AccountInputs, OutputNote, TransactionInputs, TransactionParams, TransactionScript,
     },
     vm::AdviceMap,
 };
@@ -78,6 +78,7 @@ pub struct TransactionContextBuilder {
     foreign_account_inputs: Vec<AccountInputs>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
+    tx_script_args: Option<Vec<Felt>>,
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     rng: ChaCha20Rng,
@@ -93,6 +94,7 @@ impl TransactionContextBuilder {
             expected_output_notes: Vec::new(),
             rng: ChaCha20Rng::from_seed([0_u8; 32]),
             tx_script: None,
+            tx_script_args: None,
             authenticator: None,
             advice_inputs: Default::default(),
             transaction_inputs: None,
@@ -122,6 +124,7 @@ impl TransactionContextBuilder {
             advice_inputs: Default::default(),
             rng: ChaCha20Rng::from_seed([0_u8; 32]),
             tx_script: None,
+            tx_script_args: None,
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
@@ -158,9 +161,9 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Override and set the [AdviceInputs]
+    /// Extend the advice inputs with the provided [AdviceInputs] instance.
     pub fn advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
-        self.advice_inputs = advice_inputs;
+        self.advice_inputs.extend(advice_inputs);
         self
     }
 
@@ -182,21 +185,37 @@ impl TransactionContextBuilder {
         self
     }
 
-    // Set the desired note args
-    pub fn note_args(mut self, args: BTreeMap<NoteId, Word>) -> Self {
-        self.note_args = args;
-        self
-    }
-
     /// Set the desired transaction script
     pub fn tx_script(mut self, tx_script: TransactionScript) -> Self {
         self.tx_script = Some(tx_script);
         self
     }
 
+    /// Set the transaction script arguments
+    pub fn tx_script_args(mut self, tx_script_args: Vec<Felt>) -> Self {
+        self.tx_script_args = Some(tx_script_args);
+        self
+    }
+
+    /// Set the transaction script inputs
+    pub fn tx_script_inputs(
+        mut self,
+        script_inputs: impl IntoIterator<Item = (Word, Vec<Felt>)>,
+    ) -> Self {
+        self.advice_inputs
+            .extend_map(script_inputs.into_iter().map(|(hash, input)| (hash.into(), input)));
+        self
+    }
+
     /// Set the desired transaction inputs
     pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
         self.transaction_inputs = Some(tx_inputs);
+        self
+    }
+
+    /// Set the note arguments
+    pub fn note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
+        self.note_args.extend(note_args);
         self
     }
 
@@ -662,12 +681,21 @@ impl TransactionContextBuilder {
             },
         };
 
-        let mut tx_args = TransactionArgs::new(
+        let tx_args = TransactionParams::new(
             self.tx_script,
-            Some(self.note_args),
             AdviceMap::default(),
             self.foreign_account_inputs,
-        );
+        )
+        .with_note_args(self.note_args);
+
+        let mut tx_args = if let Some(tx_script_args) = self.tx_script_args {
+            // TODO: handle this error
+            tx_args
+                .with_tx_script_args(&tx_script_args)
+                .expect("script arguments collision")
+        } else {
+            tx_args
+        };
 
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());

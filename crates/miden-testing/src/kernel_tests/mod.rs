@@ -18,7 +18,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
+    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionParamsError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
     assembly::{
         DefaultSourceManager,
@@ -41,7 +41,8 @@ use miden_objects::{
         note::{DEFAULT_NOTE_CODE, NoteBuilder},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
-    transaction::{OutputNote, ProvenTransaction, TransactionScript},
+    transaction::{OutputNote, ProvenTransaction, TransactionParams, TransactionScript},
+    vm::AdviceMap,
 };
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
@@ -280,7 +281,6 @@ fn executed_transaction_account_delta_new() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         TransactionKernel::testing_assembler_with_mock_account(),
     )
     .unwrap();
@@ -379,7 +379,6 @@ fn test_empty_delta_nonce_update() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         TransactionKernel::testing_assembler_with_mock_account(),
     )
     .unwrap();
@@ -496,7 +495,6 @@ fn test_send_note_proc() -> miette::Result<()> {
 
         let tx_script = TransactionScript::compile(
             tx_script_src,
-            [],
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
@@ -724,7 +722,6 @@ fn executed_transaction_output_notes() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )
     .unwrap();
@@ -848,15 +845,12 @@ fn test_tx_script_inputs() {
         value = word_to_masm_push_string(&tx_script_input_value)
     );
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        [(tx_script_input_key, tx_script_input_value.into())],
-        TransactionKernel::testing_assembler(),
-    )
-    .unwrap();
+    let tx_script =
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
+        .tx_script_inputs([(tx_script_input_key, tx_script_input_value.into())])
         .build();
 
     let executed_transaction = tx_context.execute();
@@ -910,20 +904,20 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         end"#;
 
     let tx_script =
-        TransactionScript::compile(tx_script_src, [], TransactionKernel::testing_assembler())
-            .context("failed to compile transaction script")?
-            .with_args(&[
-                ONE,
-                Felt::new(2),
-                Felt::new(3),
-                Felt::new(4),
-                Felt::new(5),
-                Felt::new(6),
-                Felt::new(7),
-            ])?;
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())
+            .context("failed to compile transaction script")?;
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
+        .tx_script_args(vec![
+            ONE,
+            Felt::new(2),
+            Felt::new(3),
+            Felt::new(4),
+            Felt::new(5),
+            Felt::new(6),
+            Felt::new(7),
+        ])
         .build();
 
     tx_context.execute().context("failed to execute transaction")?;
@@ -936,16 +930,13 @@ fn test_tx_script_args_collision() -> anyhow::Result<()> {
     let collision_elements = vec![ONE, Felt::new(2), Felt::new(3), Felt::new(4)];
     let collision_key = Hasher::hash_elements(&collision_elements);
 
-    let script_args_collision_err = TransactionScript::compile(
-        "begin nop end",
-        [(*collision_key, vec![ONE, Felt::new(2)])],
-        TransactionKernel::testing_assembler(),
-    )
-    .context("failed to compile transaction script")?
-    .with_args(&collision_elements)
-    .unwrap_err();
+    let advice_map = AdviceMap::from_iter([(collision_key, vec![ONE, Felt::new(2)])]);
 
-    assert_matches!(script_args_collision_err, TransactionScriptError::ScriptArgsCollision {
+    let script_args_collision_err = TransactionParams::new(None, advice_map, vec![])
+        .with_tx_script_args(&collision_elements)
+        .unwrap_err();
+
+    assert_matches!(script_args_collision_err, TransactionParamsError::ScriptArgsCollision {
         key,
         new_value,
         old_value,
@@ -1026,7 +1017,6 @@ fn transaction_executor_account_code_using_custom_library() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         // Add the account component library since the transaction script is calling the account's
         // procedure.
         assembler.with_library(&account_component_lib).unwrap(),
@@ -1076,8 +1066,8 @@ fn test_execute_program() {
     end
     ";
 
-    let tx_script = TransactionScript::compile(source, [], assembler)
-        .expect("failed to compile the source script");
+    let tx_script =
+        TransactionScript::compile(source, assembler).expect("failed to compile the source script");
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script.clone())

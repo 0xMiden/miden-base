@@ -98,8 +98,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
     .unwrap();
 
     let tx_script_target =
-        TransactionScript::compile(DEFAULT_AUTH_SCRIPT, [], TransactionKernel::assembler())
-            .unwrap();
+        TransactionScript::compile(DEFAULT_AUTH_SCRIPT, TransactionKernel::assembler()).unwrap();
 
     let tx_context = TransactionContextBuilder::new(target_account.clone())
         .input_notes(vec![note])
