@@ -397,12 +397,12 @@ pub enum NoteError {
     NoteScriptAssemblyError(Report),
     #[error("failed to deserialize note script")]
     NoteScriptDeserializationError(#[source] DeserializationError),
-    #[error("public use case requires a public note but note is of type {0}")]
-    PublicUseCaseRequiresPublicNote(NoteType),
     #[error("note contains {0} assets which exceeds the maximum of {max}", max = NoteAssets::MAX_NUM_ASSETS)]
     TooManyAssets(usize),
     #[error("note contains {0} inputs which exceeds the maximum of {max}", max = MAX_INPUTS_PER_NOTE)]
     TooManyInputs(usize),
+    #[error("note tag requires a public note but the note is of type {0}")]
+    PublicNoteRequired(NoteType),
 }
 
 // PARTIAL BLOCKCHAIN ERROR

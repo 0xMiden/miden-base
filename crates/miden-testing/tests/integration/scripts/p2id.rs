@@ -272,12 +272,12 @@ fn test_create_consume_multiple_notes() {
             ",
         recipient_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
         note_type_1 = NoteType::Public as u8,
-        tag_1 = Felt::new(output_note_1.metadata().tag().into()),
+        tag_1 = Felt::from(output_note_1.metadata().tag()),
         asset_1 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
         note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
         recipient_2 = word_to_masm_push_string(&output_note_2.recipient().digest()),
         note_type_2 = NoteType::Public as u8,
-        tag_2 = Felt::new(output_note_2.metadata().tag().into()),
+        tag_2 = Felt::from(output_note_2.metadata().tag()),
         asset_2 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
         note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint())
     );

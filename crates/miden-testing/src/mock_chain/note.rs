@@ -57,9 +57,7 @@ impl TryFrom<MockChainNote> for InputNote {
 
     fn try_from(value: MockChainNote) -> Result<Self, Self::Error> {
         match value {
-            MockChainNote::Private(..) => {
-                Err(NoteError::PublicUseCaseRequiresPublicNote(NoteType::Private))
-            },
+            MockChainNote::Private(..) => Err(NoteError::PublicNoteRequired(NoteType::Private)),
             MockChainNote::Public(note, proof) => Ok(InputNote::Authenticated { note, proof }),
         }
     }
