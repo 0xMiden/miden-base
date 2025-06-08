@@ -227,7 +227,7 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
 fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &TransactionContext) {
     // update the partial blockchain to point to the block against which this transaction is being
     // executed
-    let mut partial_blockchain = prepared_tx.tx_inputs().block_chain().clone();
+    let mut partial_blockchain = prepared_tx.tx_inputs().blockchain().clone();
     partial_blockchain.add_block(prepared_tx.tx_inputs().block_header().clone(), true);
 
     assert_eq!(

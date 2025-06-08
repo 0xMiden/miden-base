@@ -499,8 +499,6 @@ pub enum TransactionInputError {
     InputNoteNotInBlock(NoteId, BlockNumber),
     #[error("account ID computed from seed is invalid")]
     InvalidAccountIdSeed(#[source] AccountIdError),
-    #[error("merkle path for {0} is invalid")]
-    InvalidMerklePath(Box<str>, #[source] MerkleError),
     #[error(
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]

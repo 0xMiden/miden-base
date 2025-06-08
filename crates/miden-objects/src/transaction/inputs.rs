@@ -107,7 +107,7 @@ impl TransactionInputs {
 
     /// Returns partial blockchain containing authentication paths for all notes consumed by the
     /// transaction.
-    pub fn block_chain(&self) -> &PartialBlockchain {
+    pub fn blockchain(&self) -> &PartialBlockchain {
         &self.block_chain
     }
 
@@ -238,8 +238,11 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
     }
 
     /// Returns total number of input notes.
-    pub fn num_notes(&self) -> usize {
-        self.notes.len()
+    pub fn num_notes(&self) -> u16 {
+        self.notes
+            .len()
+            .try_into()
+            .expect("by construction, number of notes fits into u16")
     }
 
     /// Returns true if this [InputNotes] does not contain any notes.
