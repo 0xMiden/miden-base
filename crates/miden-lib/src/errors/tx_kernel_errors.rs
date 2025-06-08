@@ -114,6 +114,8 @@ pub const ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED: MasmError = MasmError::fr
 pub const ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION: MasmError = MasmError::from_static_str("host-provided entry ptr is outside the valid memory region");
 /// Error Message: "map ptr stored in host-provided entry does not match actual pointer of the map"
 pub const ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR: MasmError = MasmError::from_static_str("map ptr stored in host-provided entry does not match actual pointer of the map");
+/// Error Message: "number of link map entries exceeds maximum"
+pub const ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED: MasmError = MasmError::from_static_str("number of link map entries exceeds maximum");
 /// Error Message: "provided key does not match key in map entry"
 pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key does not match key in map entry");
 /// Error Message: "provided key is not greater than the entry key"
