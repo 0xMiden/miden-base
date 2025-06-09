@@ -367,13 +367,13 @@ impl TransactionAdviceInputs {
 
     /// Extends the stack with the given elements.
     fn extend_stack(&mut self, iter: impl IntoIterator<Item = Felt>) {
-        self.0.stack.extend(iter);
+        self.0.extend_stack(iter);
     }
 
     /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
-        self.0.store.extend(iter);
+        self.0.extend_merkle_store(iter);
     }
 }
 
