@@ -52,7 +52,6 @@ impl TransactionMastStore {
     ///
     /// The loaded code includes:
     /// - Account code for the account specified from the provided [AccountCode].
-    /// - Note scripts for all input notes in the provided [InputNotes].
     /// - Transaction script (if any) from the specified [TransactionArgs].
     pub fn load_transaction_code(&self, account_code: &AccountCode, tx_args: &TransactionArgs) {
         // load account code
