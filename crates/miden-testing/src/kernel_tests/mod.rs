@@ -9,6 +9,7 @@ use ::assembly::{
     LibraryPath,
     ast::{Module, ModuleKind},
 };
+use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -16,7 +17,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
+    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
     assembly::DefaultSourceManager,
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
@@ -78,7 +79,7 @@ fn transaction_executor_witness() {
         Some(executed_transaction.advice_witness().clone()),
     )
     .unwrap();
-    let mem_advice_provider: MemAdviceProvider = advice_inputs.into();
+    let mem_advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
@@ -153,9 +154,7 @@ fn executed_transaction_account_delta_new() {
 
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    );
     let tag2 = NoteTag::for_local_use_case(0, 0).unwrap();
     let tag3 = NoteTag::for_local_use_case(0, 0).unwrap();
     let tags = [tag1, tag2, tag3];
@@ -408,9 +407,7 @@ fn test_send_note_proc() {
 
     let tag = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    );
     let aux = Felt::new(27);
     let note_type = NoteType::Private;
 
@@ -555,9 +552,7 @@ fn executed_transaction_output_notes() {
 
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    );
     let tag2 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
     let tag3 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
     let aux1 = Felt::new(27);
@@ -579,7 +574,7 @@ fn executed_transaction_output_notes() {
     let serial_num_2 = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
     let note_script_2 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler()).unwrap();
-    let inputs_2 = NoteInputs::new(vec![]).unwrap();
+    let inputs_2 = NoteInputs::new(vec![ONE]).unwrap();
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2).unwrap();
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4]).unwrap();
@@ -590,7 +585,7 @@ fn executed_transaction_output_notes() {
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler()).unwrap();
-    let inputs_3 = NoteInputs::new(vec![]).unwrap();
+    let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)]).unwrap();
     let metadata_3 = NoteMetadata::new(
         account_id,
         note_type3,
@@ -737,26 +732,49 @@ fn executed_transaction_output_notes() {
     // --------------------------------------------------------------------------------------------
     let output_notes = executed_transaction.output_notes();
 
-    // assert that the expected output note is present
+    // check the total number of notes
     // NOTE: the mock state already contains 3 output notes
     assert_eq!(output_notes.num_notes(), 6);
 
-    let output_note_id_3 = executed_transaction.output_notes().get_note(3).id();
-    let recipient_3 = Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
-    let note_assets_3 = NoteAssets::new(vec![combined_asset]).unwrap();
-    let expected_note_id_3 = NoteId::new(recipient_3, note_assets_3.commitment());
-    assert_eq!(output_note_id_3, expected_note_id_3);
+    // assert that the expected output note 1 is present
+    let resulting_output_note_1 = executed_transaction.output_notes().get_note(3);
+
+    let expected_recipient_1 =
+        Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
+    let expected_note_assets_1 = NoteAssets::new(vec![combined_asset]).unwrap();
+    let expected_note_id_1 = NoteId::new(expected_recipient_1, expected_note_assets_1.commitment());
+    assert_eq!(resulting_output_note_1.id(), expected_note_id_1);
 
     // assert that the expected output note 2 is present
-    let output_note = executed_transaction.output_notes().get_note(4);
-    let note_id = expected_output_note_2.id();
-    let note_metadata = expected_output_note_2.metadata();
-    assert_eq!(NoteHeader::from(output_note), NoteHeader::new(note_id, *note_metadata));
+    let resulting_output_note_2 = executed_transaction.output_notes().get_note(4);
+
+    let expected_note_id_2 = expected_output_note_2.id();
+    let expected_note_metadata_2 = expected_output_note_2.metadata();
+    assert_eq!(
+        NoteHeader::from(resulting_output_note_2),
+        NoteHeader::new(expected_note_id_2, *expected_note_metadata_2)
+    );
 
     // assert that the expected output note 3 is present and has no assets
-    let output_note_3 = executed_transaction.output_notes().get_note(5);
-    assert_eq!(expected_output_note_3.id(), output_note_3.id());
-    assert_eq!(expected_output_note_3.assets(), output_note_3.assets().unwrap());
+    let resulting_output_note_3 = executed_transaction.output_notes().get_note(5);
+
+    assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
+    assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
+
+    // make sure that the number of note inputs remains the same
+    let resulting_note_2_recipient =
+        resulting_output_note_2.recipient().expect("output note 2 is not full");
+    assert_eq!(
+        resulting_note_2_recipient.inputs().num_values(),
+        expected_output_note_2.inputs().num_values()
+    );
+
+    let resulting_note_3_recipient =
+        resulting_output_note_3.recipient().expect("output note 3 is not full");
+    assert_eq!(
+        resulting_note_3_recipient.inputs().num_values(),
+        expected_output_note_3.inputs().num_values()
+    );
 }
 
 #[allow(clippy::arc_with_non_send_sync)]
@@ -794,22 +812,22 @@ fn prove_witness_and_verify() {
 // ================================================================================================
 
 #[test]
-fn test_tx_script() {
+fn test_tx_script_inputs() {
     let tx_script_input_key = [Felt::new(9999), Felt::new(8888), Felt::new(9999), Felt::new(8888)];
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
         "
-    begin
-        # push the tx script input key onto the stack
-        push.{key}
+        begin
+            # push the tx script input key onto the stack
+            push.{key}
 
-        # load the tx script input value from the map and read it onto the stack
-        adv.push_mapval adv_loadw
+            # load the tx script input value from the map and read it onto the stack
+            adv.push_mapval adv_loadw
 
-        # assert that the value is correct
-        push.{value} assert_eqw
-    end
-",
+            # assert that the value is correct
+            push.{value} assert_eqw
+        end
+        ",
         key = word_to_masm_push_string(&tx_script_input_key),
         value = word_to_masm_push_string(&tx_script_input_value)
     );
@@ -822,7 +840,6 @@ fn test_tx_script() {
     .unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
         .tx_script(tx_script)
         .build();
 
@@ -833,6 +850,96 @@ fn test_tx_script() {
         "Transaction execution failed {:?}",
         executed_transaction,
     );
+}
+
+#[test]
+fn test_tx_script_args() -> anyhow::Result<()> {
+    let tx_script_src = r#"
+        begin
+            # => [TX_SCRIPT_ARGS_KEY]
+            # `TX_SCRIPT_ARGS_KEY` value, which is located on the stack at the beginning of 
+            # the execution, is the advice map key which allows to obtain transaction script args 
+            # which were specified during the `TransactionScript` creation (see below). In this
+            # example transaction args is an array of Felts from 1 to 7.
+
+            # move the transaction args from advice map to the advice stack
+            adv.push_mapval
+            # OS => [TX_SCRIPT_ARGS_KEY]
+            # AS => [7, 6, 5, 4, 3, 2, 1]
+
+            # drop the args commitment
+            dropw
+            # OS => []
+            # AS => [7, 6, 5, 4, 3, 2, 1]
+
+            # Move the transaction arguments array from advice stack to the operand stack. It 
+            # consists of 7 Felts, so we could use `adv_push.7` instruction to load them all at once
+            adv_push.7
+            # OS => [7, 6, 5, 4, 3, 2, 1]
+            # AS => []
+
+            # assert that the transaction arguments array consists of correct values
+            push.4.5.6.7
+            assert_eqw.err="last four values in the transaction args array are incorrect"
+            # OS => [3, 2, 1]
+            # AS => []
+            
+            # To use more convenient `assert_eqw` instruction we should push `0` first, but notice 
+            # that there are only three values from the original array left on the stack. We could 
+            # do so because there are no other elements on the stack left except for the argument 
+            # values (hidden values deeper on the stack are zeros). In case there are some values 
+            # deeper on the stack, we should assert values one by one using `push.n assert_eq`.
+            push.0.1.2.3
+            assert_eqw.err="first three values in the transaction args array are incorrect"
+        end"#;
+
+    let tx_script =
+        TransactionScript::compile(tx_script_src, [], TransactionKernel::testing_assembler())
+            .context("failed to compile transaction script")?
+            .with_args(&[
+                ONE,
+                Felt::new(2),
+                Felt::new(3),
+                Felt::new(4),
+                Felt::new(5),
+                Felt::new(6),
+                Felt::new(7),
+            ])?;
+
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+        .tx_script(tx_script)
+        .build();
+
+    tx_context.execute().context("failed to execute transaction")?;
+
+    Ok(())
+}
+
+#[test]
+fn test_tx_script_args_collision() -> anyhow::Result<()> {
+    let collision_elements = vec![ONE, Felt::new(2), Felt::new(3), Felt::new(4)];
+    let collision_key = Hasher::hash_elements(&collision_elements);
+
+    let script_args_collision_err = TransactionScript::compile(
+        "begin nop end",
+        [(*collision_key, vec![ONE, Felt::new(2)])],
+        TransactionKernel::testing_assembler(),
+    )
+    .context("failed to compile transaction script")?
+    .with_args(&collision_elements)
+    .unwrap_err();
+
+    assert_matches!(script_args_collision_err, TransactionScriptError::ScriptArgsCollision {
+        key,
+        new_value,
+        old_value,
+    } => {
+        assert_eq!(key, collision_key);
+        assert_eq!(new_value, collision_elements);
+        assert_eq!(old_value, [ONE, Felt::new(2)]);
+    });
+
+    Ok(())
 }
 
 /// Tests that an account can call code in a custom library when loading that library into the

@@ -29,7 +29,7 @@ impl TransactionMastStore {
     ///
     /// The default libraries include:
     /// - Miden standard library (miden-stdlib).
-    /// - Miden rollup library (miden-lib).
+    /// - Miden protocol library (miden-lib).
     /// - Transaction kernel.
     pub fn new() -> Self {
         let mast_forests = RwLock::new(BTreeMap::new());

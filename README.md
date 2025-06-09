@@ -1,4 +1,4 @@
-# Miden Rollup protocol
+# Miden protocol
 
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/0xMiden/miden-base/blob/main/LICENSE)
 [![test](https://github.com/0xMiden/miden-base/actions/workflows/test.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/test.yml)
@@ -23,7 +23,7 @@ If you want to join the technical discussion or learn more about the project, pl
 
 ## Status and features
 
-Miden is currently on release v0.9. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
+Miden is currently on release v0.10. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
 
 ### Feature highlights
 
@@ -49,8 +49,6 @@ Miden is currently on release v0.9. This is an early version of the protocol and
 | [objects](crates/miden-objects)                                | Contains core components defining the Miden rollup protocol.                        |
 | [miden-lib](crates/miden-lib)                                  | Contains the code of the Miden rollup kernels and standardized smart contracts.     |
 | [miden-tx](crates/miden-tx)                                    | Contains tool for creating, executing, and proving Miden rollup transaction.        |
-| [proving-service](bin/proving-service/)                        | Contains a binary with a service for generating Miden transaction proofs on-demand. |
-| [proving-service-client](crates/miden-proving-service-client/) | Contains protobuf definition for the Miden transaction proving service.             |
 | [bench-tx](bin/bench-tx)                                       | Contains transaction execution and proving benchmarks.                              |
 
 ## Make commands

@@ -29,7 +29,7 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 // TRANSACTION EXECUTOR
 // ================================================================================================
 
-/// The transaction executor is responsible for executing Miden rollup transactions.
+/// The transaction executor is responsible for executing Miden blockchain transactions.
 ///
 /// Transaction execution consists of the following steps:
 /// - Fetch the data required to execute a transaction from the [DataStore].
@@ -141,7 +141,7 @@ impl TransactionExecutor {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
-        let advice_recorder: RecAdviceProvider = advice_inputs.into();
+        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
@@ -212,7 +212,7 @@ impl TransactionExecutor {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
-        let advice_recorder: RecAdviceProvider = advice_inputs.into();
+        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
@@ -280,7 +280,7 @@ impl TransactionExecutor {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
-        let advice_provider: MemAdviceProvider = advice_inputs.into();
+        let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),

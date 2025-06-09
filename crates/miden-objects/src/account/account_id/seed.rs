@@ -24,7 +24,6 @@ pub(super) fn compute_account_seed(
     version: AccountIdVersion,
     code_commitment: Digest,
     storage_commitment: Digest,
-    anchor_block_commitment: Digest,
 ) -> Result<Word, AccountError> {
     compute_account_seed_single(
         init_seed,
@@ -33,7 +32,6 @@ pub(super) fn compute_account_seed(
         version,
         code_commitment,
         storage_commitment,
-        anchor_block_commitment,
     )
 }
 
@@ -44,7 +42,6 @@ fn compute_account_seed_single(
     version: AccountIdVersion,
     code_commitment: Digest,
     storage_commitment: Digest,
-    anchor_block_commitment: Digest,
 ) -> Result<Word, AccountError> {
     let init_seed: Vec<[u8; 8]> =
         init_seed.chunks(8).map(|chunk| chunk.try_into().unwrap()).collect();
@@ -54,8 +51,7 @@ fn compute_account_seed_single(
         Felt::new(u64::from_le_bytes(init_seed[2])),
         Felt::new(u64::from_le_bytes(init_seed[3])),
     ];
-    let mut current_digest =
-        compute_digest(current_seed, code_commitment, storage_commitment, anchor_block_commitment);
+    let mut current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
 
     #[cfg(feature = "log")]
     let mut log = log::Log::start(current_digest, current_seed, account_type, storage_mode);
@@ -65,14 +61,19 @@ fn compute_account_seed_single(
         #[cfg(feature = "log")]
         log.iteration(current_digest, current_seed);
 
-        // check if the seed satisfies the specified account type
+        // Check if the seed satisfies the specified type, storage mode and version. Additionally,
+        // the most significant bit of the suffix must be zero to ensure felt validity.
         let prefix = current_digest.as_elements()[0];
+        let suffix = current_digest.as_elements()[1];
+        let is_suffix_msb_zero = suffix.as_int() >> 63 == 0;
+
         if let Ok((computed_account_type, computed_storage_mode, computed_version)) =
             validate_prefix(prefix)
         {
             if computed_account_type == account_type
                 && computed_storage_mode == storage_mode
                 && computed_version == version
+                && is_suffix_msb_zero
             {
                 #[cfg(feature = "log")]
                 log.done(current_digest, current_seed);
@@ -82,12 +83,7 @@ fn compute_account_seed_single(
         }
 
         current_seed = current_digest.into();
-        current_digest = compute_digest(
-            current_seed,
-            code_commitment,
-            storage_commitment,
-            anchor_block_commitment,
-        );
+        current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
     }
 }
 

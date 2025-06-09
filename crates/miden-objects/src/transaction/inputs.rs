@@ -6,9 +6,9 @@ use miden_crypto::merkle::{SmtProof, SmtProofError};
 use super::{BlockHeader, Digest, Felt, Hasher, PartialBlockchain, Word};
 use crate::{
     MAX_INPUT_NOTES_PER_TX, TransactionInputError,
-    account::{Account, AccountCode, AccountId, AccountIdAnchor, PartialAccount, PartialStorage},
+    account::{Account, AccountCode, AccountId, PartialAccount, PartialStorage},
     asset::PartialVault,
-    block::{AccountWitness, BlockNumber},
+    block::AccountWitness,
     note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -43,7 +43,7 @@ impl TransactionInputs {
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
         // validate the seed
-        validate_account_seed(&account, &block_header, &block_chain, account_seed)?;
+        validate_account_seed(&account, account_seed)?;
 
         // check the block_chain and block_header are consistent
         let block_num = block_header.block_num();
@@ -107,7 +107,7 @@ impl TransactionInputs {
 
     /// Returns partial blockchain containing authentication paths for all notes consumed by the
     /// transaction.
-    pub fn block_chain(&self) -> &PartialBlockchain {
+    pub fn blockchain(&self) -> &PartialBlockchain {
         &self.block_chain
     }
 
@@ -238,8 +238,11 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
     }
 
     /// Returns total number of input notes.
-    pub fn num_notes(&self) -> usize {
-        self.notes.len()
+    pub fn num_notes(&self) -> u16 {
+        self.notes
+            .len()
+            .try_into()
+            .expect("by construction, number of notes fits into u16")
     }
 
     /// Returns true if this [InputNotes] does not contain any notes.
@@ -359,7 +362,7 @@ pub enum InputNote {
     Authenticated { note: Note, proof: NoteInclusionProof },
 
     /// Input notes whose existence in the chain is not verified by the transaction kernel, but
-    /// instead is delegated to the rollup kernels.
+    /// instead is delegated to the protocol kernels.
     Unauthenticated { note: Note },
 }
 
@@ -488,32 +491,12 @@ impl Deserializable for InputNote {
 /// Validates that the provided seed is valid for this account.
 pub fn validate_account_seed(
     account: &Account,
-    block_header: &BlockHeader,
-    block_chain: &PartialBlockchain,
     account_seed: Option<Word>,
 ) -> Result<(), TransactionInputError> {
     match (account.is_new(), account_seed) {
         (true, Some(seed)) => {
-            let anchor_block_number = BlockNumber::from_epoch(account.id().anchor_epoch());
-
-            let anchor_block_commitment = if block_header.block_num() == anchor_block_number {
-                block_header.commitment()
-            } else {
-                let anchor_block_header =
-                    block_chain.get_block(anchor_block_number).ok_or_else(|| {
-                        TransactionInputError::AnchorBlockHeaderNotProvidedForNewAccount(
-                            account.id().anchor_epoch(),
-                        )
-                    })?;
-                anchor_block_header.commitment()
-            };
-
-            let anchor = AccountIdAnchor::new(anchor_block_number, anchor_block_commitment)
-                .map_err(TransactionInputError::InvalidAccountIdSeed)?;
-
             let account_id = AccountId::new(
                 seed,
-                anchor,
                 account.id().version(),
                 account.code().commitment(),
                 account.storage().commitment(),
