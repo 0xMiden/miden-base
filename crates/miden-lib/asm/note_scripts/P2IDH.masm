@@ -100,13 +100,15 @@ end
 #! - timelock_block_height is the block height at which the note can be consumed by the target.
 #!
 #! Panics if:
-#! - Account does not expose miden::contracts::wallets::basic::receive_asset procedure.
-#! - Before reclaim block height: account ID of executing account is not equal to specified
+#! - The account does not expose miden::contracts::wallets::basic::receive_asset procedure.
+#! - The note is consumed before the timelock expired, i.e. the transaction's reference block
+#!   number is less than the timelock block height.
+#! - Before reclaim block height: the account ID of the executing account is not equal to the specified
 #!   account ID.
-#! - At and after reclaim block height: account ID of executing account is not equal to
-#!   specified account ID or Sender account ID.
+#! - At and after reclaim block height: the account ID of the executing account is not equal to
+#!   the specified account ID or sender account ID.
 #! - The same non-fungible asset already exists in the account.
-#! - Adding a fungible asset would result in amount overflow, i.e., the total amount would be
+#! - Adding a fungible asset would result in an amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 begin
 
