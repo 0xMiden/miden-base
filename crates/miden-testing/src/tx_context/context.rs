@@ -77,7 +77,7 @@ impl TransactionContext {
 
         mast_store.insert(program.mast_forest().clone());
         mast_store.insert(test_lib.mast_forest().clone());
-        mast_store.load_transaction_code(self.account().code(), self.input_notes(), &self.tx_args);
+        mast_store.load_transaction_code(self.account().code(), &self.tx_args);
 
         CodeExecutor::new(MockHost::new(
             self.tx_inputs.account().into(),

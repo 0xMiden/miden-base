@@ -89,7 +89,7 @@ impl TransactionProver for LocalTransactionProver {
         let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
         // load the store with account/note/tx_script MASTs
-        self.mast_store.load_transaction_code(account.code(), input_notes, &tx_args);
+        self.mast_store.load_transaction_code(account.code(), &tx_args);
 
         let account_code_commitments: BTreeSet<Digest> = tx_args
             .foreign_account_inputs()
@@ -101,6 +101,7 @@ impl TransactionProver for LocalTransactionProver {
             account.into(),
             advice_provider,
             self.mast_store.clone(),
+            input_notes.iter().map(|n| n.note().script()),
             None,
             account_code_commitments,
         )

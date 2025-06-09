@@ -83,12 +83,13 @@ fn transaction_executor_witness() {
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
-    mast_store.load_transaction_code(tx_inputs.account().code(), tx_inputs.input_notes(), tx_args);
+    mast_store.load_transaction_code(tx_inputs.account().code(), tx_args);
 
     let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
         tx_inputs.account().into(),
         mem_advice_provider,
         mast_store,
+        tx_inputs.input_notes().iter().map(|n| n.note().script()),
         None,
         BTreeSet::new(),
     )

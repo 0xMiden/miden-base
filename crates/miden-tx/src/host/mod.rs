@@ -14,7 +14,7 @@ use miden_objects::{
     account::{AccountDelta, AccountHeader},
     assembly::mast::MastNodeExt,
     asset::Asset,
-    note::NoteId,
+    note::{NoteId, NoteScript},
     transaction::{OutputNote, TransactionMeasurements},
     vm::RowIndex,
 };
@@ -31,6 +31,9 @@ pub use account_procedures::AccountProcedureIndexMap;
 
 mod note_builder;
 use note_builder::OutputNoteBuilder;
+
+mod note_mast_forest_store;
+use note_mast_forest_store::NoteMastForestStore;
 
 mod tx_progress;
 pub use tx_progress::TransactionProgress;
@@ -52,6 +55,10 @@ pub struct TransactionHost<A> {
 
     /// MAST store which contains the code required to execute the transaction.
     mast_store: Arc<dyn MastForestStore>,
+
+    /// MAST store which contains the forests of all input note scripts involved in the
+    /// transaction.
+    note_mast_store: NoteMastForestStore,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -89,6 +96,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
         account: AccountHeader,
         adv_provider: A,
         mast_store: Arc<dyn MastForestStore>,
+        input_note_scripts: impl Iterator<Item = impl AsRef<NoteScript>>,
         authenticator: Option<Arc<dyn TransactionAuthenticator>>,
         mut foreign_account_code_commitments: BTreeSet<Digest>,
     ) -> Result<Self, TransactionHostError> {
@@ -99,9 +107,12 @@ impl<A: AdviceProvider> TransactionHost<A> {
         let proc_index_map =
             AccountProcedureIndexMap::new(foreign_account_code_commitments, &adv_provider)?;
 
+        let note_mast_store = NoteMastForestStore::new(input_note_scripts);
+
         Ok(Self {
             adv_provider,
             mast_store,
+            note_mast_store,
             account_delta: AccountDeltaTracker::new(&account),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
@@ -480,7 +491,11 @@ impl<A: AdviceProvider> Host for TransactionHost<A> {
     }
 
     fn get_mast_forest(&self, node_digest: &Digest) -> Option<Arc<MastForest>> {
-        self.mast_store.get(node_digest)
+        // Search in the note MAST forest store, otherwise fall back to the user's store
+        match self.note_mast_store.get(node_digest) {
+            Some(forest) => Some(forest),
+            None => self.mast_store.get(node_digest),
+        }
     }
 
     fn on_event(

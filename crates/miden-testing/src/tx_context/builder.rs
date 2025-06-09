@@ -676,11 +676,7 @@ impl TransactionContextBuilder {
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
-            mast_forest_store.load_transaction_code(
-                tx_inputs.account().code(),
-                tx_inputs.input_notes(),
-                &tx_args,
-            );
+            mast_forest_store.load_transaction_code(tx_inputs.account().code(), &tx_args);
 
             mast_forest_store
         };

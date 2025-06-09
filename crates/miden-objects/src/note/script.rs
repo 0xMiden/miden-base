@@ -125,6 +125,12 @@ impl From<NoteScript> for Vec<Felt> {
     }
 }
 
+impl AsRef<NoteScript> for &NoteScript {
+    fn as_ref(&self) -> &NoteScript {
+        self
+    }
+}
+
 // CONVERSIONS FROM NOTE SCRIPT
 // ================================================================================================
 

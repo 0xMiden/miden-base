@@ -147,6 +147,7 @@ impl TransactionExecutor {
             tx_inputs.account().into(),
             advice_recorder,
             self.data_store.clone(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
             self.authenticator.clone(),
             tx_args.foreign_account_code_commitments(),
         )
@@ -218,6 +219,7 @@ impl TransactionExecutor {
             tx_inputs.account().into(),
             advice_recorder,
             self.data_store.clone(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
             self.authenticator.clone(),
             tx_args.foreign_account_code_commitments(),
         )
@@ -286,6 +288,7 @@ impl TransactionExecutor {
             tx_inputs.account().into(),
             advice_provider,
             self.data_store.clone(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
             self.authenticator.clone(),
             tx_args.foreign_account_code_commitments(),
         )
