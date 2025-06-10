@@ -518,8 +518,6 @@ fn test_burn_non_fungible_asset_succeeds() {
 
     let code = format!(
         r#"
-        use.std::collections::smt
-
         use.kernel::account
         use.kernel::asset_vault
         use.kernel::memory
@@ -529,11 +527,25 @@ fn test_burn_non_fungible_asset_succeeds() {
         begin
             exec.prologue::prepare_transaction
 
-            # add existing non-fungible asset to the vault
+            # add non-fungible asset to the vault
             exec.memory::get_input_vault_root_ptr push.{non_fungible_asset}
             exec.asset_vault::add_non_fungible_asset dropw
 
-            # burn asset
+            # check that the non-fungible asset is presented in the input vault
+            exec.memory::get_input_vault_root_ptr
+            push.{non_fungible_asset}
+            exec.asset_vault::has_non_fungible_asset
+            assert.err="input vault should contain the asset"
+
+            # check that the non-fungible asset is in the account map
+            push.{burnt_asset_vault_key}
+            push.{FAUCET_STORAGE_DATA_SLOT}
+            exec.account::get_map_item
+            push.{non_fungible_asset}
+            assert_eqw.err="non-fungible asset should be in the account map"
+            dropw
+
+            # burn the non-fungible asset
             push.{non_fungible_asset}
             call.test_account::burn
 
@@ -541,19 +553,18 @@ fn test_burn_non_fungible_asset_succeeds() {
             push.{non_fungible_asset}
             assert_eqw.err="burnt asset does not match expected asset"
 
-            # assert the input vault has been updated.
+            # assert the input vault has been updated and does not have the burnt asset
             exec.memory::get_input_vault_root_ptr
             push.{non_fungible_asset}
             exec.asset_vault::has_non_fungible_asset
-            not assert.err="input vault should contain minted asset"
+            not assert.err="input vault should not contain burned asset"
 
-            # assert the non-fungible asset has been removed from the faucet smt
-            push.{FAUCET_STORAGE_DATA_SLOT}
-            exec.account::get_item
+            # assert that the non-fungible asset is no longer in the account map
             push.{burnt_asset_vault_key}
-            exec.smt::get
+            push.{FAUCET_STORAGE_DATA_SLOT}
+            exec.account::get_map_item
             padw
-            assert_eqw.err="burnt asset should have been removed from faucet SMT"
+            assert_eqw.err="burnt asset should have been removed from map"
             dropw
         end
         "#,

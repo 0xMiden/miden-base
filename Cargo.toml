@@ -1,15 +1,14 @@
 [workspace]
 resolver = "3"
 members = [
-  "bin/bench-tx",
-  "bin/proving-service",
-  "crates/miden-block-prover",
-  "crates/miden-tx-batch-prover",
-  "crates/miden-lib",
-  "crates/miden-objects",
-  "crates/miden-proving-service-client",
-  "crates/miden-testing",
-  "crates/miden-tx",
+    "bin/bench-tx",
+    "bin/bench-prover",
+    "crates/miden-block-prover",
+    "crates/miden-tx-batch-prover",
+    "crates/miden-lib",
+    "crates/miden-objects",
+    "crates/miden-testing",
+    "crates/miden-tx",
 ]
 
 [workspace.package]

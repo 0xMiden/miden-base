@@ -7,8 +7,8 @@ use miden_objects::{
     block::BlockNumber,
     crypto::rand::FeltRng,
     note::{
-        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteExecutionMode, NoteInputs,
-        NoteMetadata, NoteRecipient, NoteTag, NoteType,
+        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient,
+        NoteTag, NoteType,
     },
 };
 use utils::build_swap_tag;
@@ -41,7 +41,7 @@ pub fn create_p2id_note<R: FeltRng>(
     let serial_num = rng.draw_word();
     let recipient = utils::build_p2id_recipient(target, serial_num)?;
 
-    let tag = NoteTag::from_account_id(target, NoteExecutionMode::Local)?;
+    let tag = NoteTag::from_account_id(target);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
     let vault = NoteAssets::new(assets)?;
@@ -74,7 +74,7 @@ pub fn create_p2idr_note<R: FeltRng>(
 
     let inputs =
         NoteInputs::new(vec![target.suffix(), target.prefix().as_felt(), recall_height.into()])?;
-    let tag = NoteTag::from_account_id(target, NoteExecutionMode::Local)?;
+    let tag = NoteTag::from_account_id(target);
     let serial_num = rng.draw_word();
 
     let vault = NoteAssets::new(assets)?;
@@ -107,7 +107,7 @@ pub fn create_swap_note<R: FeltRng>(
 
     let payback_recipient_word: Word = payback_recipient.digest().into();
     let requested_asset_word: Word = requested_asset.into();
-    let payback_tag = NoteTag::from_account_id(sender, NoteExecutionMode::Local)?;
+    let payback_tag = NoteTag::from_account_id(sender);
 
     let inputs = NoteInputs::new(vec![
         payback_recipient_word[0],
@@ -118,7 +118,7 @@ pub fn create_swap_note<R: FeltRng>(
         requested_asset_word[1],
         requested_asset_word[2],
         requested_asset_word[3],
-        payback_tag.inner().into(),
+        payback_tag.as_u32().into(),
         NoteExecutionHint::always().into(),
     ])?;
 

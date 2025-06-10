@@ -89,7 +89,7 @@ impl<'a> NoteConsumptionChecker<'a> {
 
         // if all checked notes turned out to be either `P2ID` or `P2IDR` notes and all of them
         // passed, then we could safely return the `Success`
-        if successful_notes.len() == input_notes.num_notes() {
+        if successful_notes.len() == (input_notes.num_notes() as usize) {
             return Ok(NoteAccountExecution::Success);
         }
 
