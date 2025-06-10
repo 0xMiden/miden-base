@@ -14,7 +14,7 @@ use miden_objects::{
     account::{AccountDelta, AccountHeader},
     assembly::mast::MastNodeExt,
     asset::Asset,
-    note::{NoteId, NoteScript},
+    note::NoteId,
     transaction::{OutputNote, TransactionMeasurements},
     vm::RowIndex,
 };
@@ -33,7 +33,7 @@ mod note_builder;
 use note_builder::OutputNoteBuilder;
 
 mod note_mast_forest_store;
-use note_mast_forest_store::NoteMastForestStore;
+pub use note_mast_forest_store::ScriptMastForestStore;
 
 mod tx_progress;
 pub use tx_progress::TransactionProgress;
@@ -53,12 +53,12 @@ pub struct TransactionHost<A> {
     /// runtime.
     adv_provider: A,
 
-    /// MAST store which contains the code required to execute the transaction.
+    /// MAST store which contains the code required to execute account code functions.
     mast_store: Arc<dyn MastForestStore>,
 
-    /// MAST store which contains the forests of all input note scripts involved in the
-    /// transaction.
-    note_mast_store: NoteMastForestStore,
+    /// MAST store which contains the forests of all scripts involved in the transaction. These
+    /// include input note scripts and the transaction script.
+    scripts_mast_store: ScriptMastForestStore,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -96,7 +96,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
         account: AccountHeader,
         adv_provider: A,
         mast_store: Arc<dyn MastForestStore>,
-        input_note_scripts: impl Iterator<Item = impl AsRef<NoteScript>>,
+        scripts_mast_store: ScriptMastForestStore,
         authenticator: Option<Arc<dyn TransactionAuthenticator>>,
         mut foreign_account_code_commitments: BTreeSet<Digest>,
     ) -> Result<Self, TransactionHostError> {
@@ -107,12 +107,10 @@ impl<A: AdviceProvider> TransactionHost<A> {
         let proc_index_map =
             AccountProcedureIndexMap::new(foreign_account_code_commitments, &adv_provider)?;
 
-        let note_mast_store = NoteMastForestStore::new(input_note_scripts);
-
         Ok(Self {
             adv_provider,
             mast_store,
-            note_mast_store,
+            scripts_mast_store,
             account_delta: AccountDeltaTracker::new(&account),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
@@ -491,8 +489,8 @@ impl<A: AdviceProvider> Host for TransactionHost<A> {
     }
 
     fn get_mast_forest(&self, node_digest: &Digest) -> Option<Arc<MastForest>> {
-        // Search in the note MAST forest store, otherwise fall back to the user's store
-        match self.note_mast_store.get(node_digest) {
+        // Search in the note MAST forest store, otherwise fall back to the user-provided store
+        match self.scripts_mast_store.get(node_digest) {
             Some(forest) => Some(forest),
             None => self.mast_store.get(node_digest),
         }

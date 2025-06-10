@@ -14,6 +14,7 @@ use vm_processor::{Digest, MemAdviceProvider};
 use winter_maybe_async::*;
 
 use super::{TransactionHost, TransactionProverError};
+use crate::host::ScriptMastForestStore;
 
 mod mast_store;
 pub use mast_store::TransactionMastStore;
@@ -89,7 +90,7 @@ impl TransactionProver for LocalTransactionProver {
         let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
         // load the store with account/note/tx_script MASTs
-        self.mast_store.load_transaction_code(account.code(), &tx_args);
+        self.mast_store.load_account_code(account.code());
 
         let account_code_commitments: BTreeSet<Digest> = tx_args
             .foreign_account_inputs()
@@ -97,11 +98,16 @@ impl TransactionProver for LocalTransactionProver {
             .map(|acc| acc.code().commitment())
             .collect();
 
+        let script_mast_store = ScriptMastForestStore::new(
+            tx_args.tx_script(),
+            input_notes.iter().map(|n| n.note().script()),
+        );
+
         let mut host: TransactionHost<_> = TransactionHost::new(
             account.into(),
             advice_provider,
             self.mast_store.clone(),
-            input_notes.iter().map(|n| n.note().script()),
+            script_mast_store,
             None,
             account_code_commitments,
         )

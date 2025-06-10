@@ -42,7 +42,7 @@ use miden_objects::{
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
     TransactionExecutor, TransactionExecutorError, TransactionHost, TransactionMastStore,
-    TransactionProver, TransactionVerifier,
+    TransactionProver, TransactionVerifier, host::ScriptMastForestStore,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -72,6 +72,11 @@ fn transaction_executor_witness() {
     let tx_inputs = executed_transaction.tx_inputs();
     let tx_args = executed_transaction.tx_args();
 
+    let scripts_mast_store = ScriptMastForestStore::new(
+        tx_args.tx_script(),
+        tx_inputs.input_notes().iter().map(|n| n.note().script()),
+    );
+
     // use the witness to execute the transaction again
     let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
         tx_inputs,
@@ -83,13 +88,13 @@ fn transaction_executor_witness() {
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
-    mast_store.load_transaction_code(tx_inputs.account().code(), tx_args);
+    mast_store.load_account_code(tx_inputs.account().code());
 
     let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
         tx_inputs.account().into(),
         mem_advice_provider,
         mast_store,
-        tx_inputs.input_notes().iter().map(|n| n.note().script()),
+        scripts_mast_store,
         None,
         BTreeSet::new(),
     )

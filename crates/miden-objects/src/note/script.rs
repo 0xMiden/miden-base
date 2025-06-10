@@ -125,7 +125,7 @@ impl From<NoteScript> for Vec<Felt> {
     }
 }
 
-impl AsRef<NoteScript> for &NoteScript {
+impl AsRef<NoteScript> for NoteScript {
     fn as_ref(&self) -> &NoteScript {
         self
     }
