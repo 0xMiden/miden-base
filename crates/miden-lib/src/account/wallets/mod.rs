@@ -88,8 +88,8 @@ pub fn create_basic_wallet(
 /// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. There is a
 /// single procedure of this component:
 /// - `add_asset_to_note`, which can be used to add an asset to the output note with the specified
-///   index. It allows for a so-called "in-flight" asset transfer, i.e., an asset that doesn't
-///   "pass through" the account, but is directly "moved" from one note to another.
+///   index. It allows for a so-called "in-flight" asset transfer, i.e., an asset that doesn't "pass
+///   through" the account, but is directly "moved" from one note to another.
 ///
 /// All methods require authentication. Thus, this component must be combined with a component
 /// providing authentication.

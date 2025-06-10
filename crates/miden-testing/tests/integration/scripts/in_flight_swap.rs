@@ -1,27 +1,23 @@
-use miden_crypto::Word;
-use miden_crypto::rand::FeltRng;
-use miden_lib::note::utils::{build_p2id_recipient, build_swap_tag};
-use miden_lib::transaction::TransactionKernel;
-use miden_objects::NoteError;
-use miden_objects::note::{
-    NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, NoteTag,
+use miden_crypto::{Word, rand::FeltRng};
+use miden_lib::{
+    account::wallets::{AuxWallet, BasicWallet},
+    note::utils::{build_p2id_recipient, build_swap_tag},
+    transaction::TransactionKernel,
 };
-use miden_objects::transaction::OutputNote;
-use rand::random;
-
-use miden_lib::account::wallets::{AuxWallet, BasicWallet};
-use miden_objects::account::Account;
 use miden_objects::{
     Felt,
-    account::AccountId,
+    account::{Account, AccountId},
     asset::Asset,
     crypto::rand::RpoRandomCoin,
-    note::{Note, NoteDetails, NoteType},
+    note::{
+        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient,
+        NoteScript, NoteTag, NoteType,
+    },
+    transaction::OutputNote,
 };
 use miden_testing::{AccountState, Auth, MockChain};
+use rand::random;
 
-// Consumes the swap note (same as the one used in the above test) and proves the transaction
-// The sender account also consumes the payback note
 #[test]
 fn test_inflight_swap() {
     let mut mock_chain = MockChain::new();
@@ -30,20 +26,17 @@ fn test_inflight_swap() {
     let requested_asset =
         mock_chain.add_pending_new_faucet(Auth::BasicAuth, "MID", 100_000_u64).mint(100);
 
-    // Create a standard sender account with just BasicWallet
+    // For end users: Create a standard sender account with just BasicWallet
     let mut alice = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![offered_asset]);
     let mut bob = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![requested_asset]);
 
     let (alice_note, alice_payback_note_details) =
-        get_swap_note(alice.id(), offered_asset, requested_asset);
+        create_in_flight_swap_note(alice.id(), offered_asset, requested_asset);
 
     let (bob_note, bob_payback_note_details) =
-        get_swap_note(bob.id(), requested_asset, offered_asset);
+        create_in_flight_swap_note(bob.id(), requested_asset, offered_asset);
 
-    // CONSUME CREATED NOTES
-    // --------------------------------------------------------------------------------------------
-
-    // Create matcher account with AuxWallet component
+    // For the matcher: Create the account with the AuxWallet as well as BasicWallet components
     let account_builder =
         Account::builder(random()).with_component(BasicWallet).with_component(AuxWallet);
 
@@ -76,7 +69,8 @@ fn test_inflight_swap() {
         .find(|note| note.id() == bob_payback_note_details.id())
         .unwrap();
 
-    // Construct the full note Alice needs to consume, using original details and actual metadata
+    // Construct the full note that Alice needs to consume, using original details and actual
+    // metadata
     let full_alice_payback_note = Note::new(
         alice_payback_note_details.assets().clone(),
         *alice_output_payback_note.metadata(),
@@ -111,20 +105,57 @@ fn test_inflight_swap() {
     assert!(bob.vault().assets().any(|asset| asset == offered_asset));
 }
 
-fn get_swap_note(
+/// This is a modification of `create_swap_note` to create an in-flight swap note. The consumer of
+/// this note does not receive the `offered_asset` directly, and only acts as an intermediary. The
+/// consumer will create a new P2ID note with `sender` as target, containing the `requested_asset`.
+fn create_in_flight_swap_note(
     sender_account_id: AccountId,
     offered_asset: Asset,
     requested_asset: Asset,
 ) -> (Note, NoteDetails) {
-    create_in_flight_swap_note(
-        sender_account_id,
-        offered_asset,
-        requested_asset,
-        NoteType::Public,
-        Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
-    )
-    .unwrap()
+    let mut rng = RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+    let note_type = NoteType::Public;
+    let aux = Felt::new(0);
+
+    let note_script =
+        NoteScript::compile(IN_FLIGHT_SWAP_NOTE_SCRIPT, TransactionKernel::testing_assembler())
+            .unwrap();
+
+    let payback_serial_num = rng.draw_word();
+    let payback_recipient = build_p2id_recipient(sender_account_id, payback_serial_num).unwrap();
+
+    let payback_recipient_word: Word = payback_recipient.digest().into();
+    let requested_asset_word: Word = requested_asset.into();
+    let payback_tag = NoteTag::from_account_id(sender_account_id);
+
+    let inputs = NoteInputs::new(vec![
+        payback_recipient_word[0],
+        payback_recipient_word[1],
+        payback_recipient_word[2],
+        payback_recipient_word[3],
+        requested_asset_word[0],
+        requested_asset_word[1],
+        requested_asset_word[2],
+        requested_asset_word[3],
+        payback_tag.into(),
+        NoteExecutionHint::always().into(),
+    ])
+    .unwrap();
+
+    let tag = build_swap_tag(note_type, &offered_asset, &requested_asset).unwrap();
+    let serial_num = rng.draw_word();
+
+    let metadata =
+        NoteMetadata::new(sender_account_id, note_type, tag, NoteExecutionHint::always(), aux)
+            .unwrap();
+    let assets = NoteAssets::new(vec![offered_asset]).unwrap();
+    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+    let note = Note::new(assets, metadata, recipient);
+
+    let payback_assets = NoteAssets::new(vec![requested_asset]).unwrap();
+    let payback_note = NoteDetails::new(payback_assets, payback_recipient);
+
+    (note, payback_note)
 }
 
 const IN_FLIGHT_SWAP_NOTE_SCRIPT: &str = r"
@@ -133,7 +164,7 @@ use.miden::tx
 use.miden::contracts::wallets::basic
 use.miden::contracts::wallets::aux
 
-# CONSTANTS
+# CONSTANTS
 # =================================================================================================
 
 const.PRIVATE_NOTE=2
@@ -207,63 +238,3 @@ begin
     # => []
 end
 ";
-
-/// Creates a new in-flight swap note.
-///
-/// This is a modification of `create_swap_note` but with the modified in-flight note script.
-/// Generates an in-flight SWAP note - swap of assets between two accounts - and returns the note
-/// as well as [NoteDetails] for the payback note.
-///
-/// This script enables a swap of 2 assets between the `sender` account and any other account
-/// (usually a matcher) that is willing to consume the note as well as the counterpart note. The
-/// consumer of this note does not receive the `offered_asset` directly, and only acts as an
-/// intermediary. The consumer will create a new P2ID note with `sender` as target, containing the
-/// `requested_asset`.
-///
-/// # Errors
-/// Returns an error if deserialization or compilation of the `SWAP_INFLIGHT` script fails.
-fn create_in_flight_swap_note(
-    sender: AccountId,
-    offered_asset: Asset,
-    requested_asset: Asset,
-    note_type: NoteType,
-    aux: Felt,
-    rng: &mut impl FeltRng,
-) -> Result<(Note, NoteDetails), NoteError> {
-    let note_script =
-        NoteScript::compile(IN_FLIGHT_SWAP_NOTE_SCRIPT, TransactionKernel::testing_assembler())
-            .unwrap();
-
-    let payback_serial_num = rng.draw_word();
-    let payback_recipient = build_p2id_recipient(sender, payback_serial_num)?;
-
-    let payback_recipient_word: Word = payback_recipient.digest().into();
-    let requested_asset_word: Word = requested_asset.into();
-    let payback_tag = NoteTag::from_account_id(sender);
-
-    let inputs = NoteInputs::new(vec![
-        payback_recipient_word[0],
-        payback_recipient_word[1],
-        payback_recipient_word[2],
-        payback_recipient_word[3],
-        requested_asset_word[0],
-        requested_asset_word[1],
-        requested_asset_word[2],
-        requested_asset_word[3],
-        payback_tag.into(),
-        NoteExecutionHint::always().into(),
-    ])?;
-
-    let tag = build_swap_tag(note_type, &offered_asset, &requested_asset)?;
-    let serial_num = rng.draw_word();
-
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
-    let assets = NoteAssets::new(vec![offered_asset])?;
-    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
-    let note = Note::new(assets, metadata, recipient);
-
-    let payback_assets = NoteAssets::new(vec![requested_asset])?;
-    let payback_note = NoteDetails::new(payback_assets, payback_recipient);
-
-    Ok((note, payback_note))
-}
