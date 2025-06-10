@@ -29,6 +29,7 @@
 [#1425]: https://github.com/0xMiden/miden-base/pull/1425
 [#1427]: https://github.com/0xMiden/miden-base/pull/1427
 [#1435]: https://github.com/0xMiden/miden-base/pull/1435
+
 ## 0.9.1 (2025-05-30)
 
 ### Fixes
@@ -38,6 +39,7 @@
 
 [#1385]: https://github.com/0xMiden/miden-base/pull/1385
 [#1407]: https://github.com/0xMiden/miden-base/pull/1407
+
 ## 0.9.0 (2025-05-20)
 
 ### Features
@@ -98,6 +100,7 @@
 [#1349]: https://github.com/0xMiden/miden-base/pull/1349
 [#1353]: https://github.com/0xMiden/miden-base/pull/1353
 [#1376]: https://github.com/0xMiden/miden-base/pull/1376
+
 ## 0.8.3 (2025-04-22) - `miden-proving-service` crate only
 
 ### Fixes
@@ -105,6 +108,7 @@
 - Version check always fails ([#1300]).
 
 [#1300]: https://github.com/0xMiden/miden-base/pull/1300
+
 ## 0.8.2 (2025-04-18) - `miden-proving-service` crate only
 
 ### Changes
@@ -113,6 +117,7 @@
 - Added a status endpoint for the `miden-proving-service` worker and proxy ([#1255]).
 
 [#1255]: https://github.com/0xMiden/miden-base/pull/1255
+
 ## 0.8.1 (2025-03-26) - `miden-objects` and `miden-tx` crates only.
 
 ### Changes
@@ -120,6 +125,7 @@
 - [BREAKING] Changed `TransactionArgs` API to accept `AsRef<NoteRecipient>` for extending the advice map in relation to output notes ([#1251]).
 
 [#1251]: https://github.com/0xMiden/miden-base/pull/1251
+
 ## 0.8.0 (2025-03-21)
 
 ### Features
@@ -201,6 +207,7 @@
 [#1227]: https://github.com/0xMiden/miden-base/pull/1227
 [#1249]: https://github.com/0xMiden/miden-base/pull/1249
 [#1269]: https://github.com/0xMiden/miden-base/pull/1269
+
 ## 0.7.2 (2025-01-28) - `miden-objects` crate only
 
 ### Changes
@@ -208,6 +215,7 @@
 - Added serialization for `ExecutedTransaction` ([#1113]).
 
 [#1113]: https://github.com/0xMiden/miden-base/pull/1113
+
 ## 0.7.1 (2025-01-24) - `miden-objects` crate only
 
 ### Fixes
@@ -217,6 +225,7 @@
 
 [#1100]: https://github.com/0xMiden/miden-base/pull/1100
 [#1103]: https://github.com/0xMiden/miden-base/pull/1103
+
 ## 0.7.0 (2025-01-22)
 
 ### Highlights
@@ -297,11 +306,13 @@
 [#1088]: https://github.com/0xMiden/miden-base/pull/1088
 [#1090]: https://github.com/0xMiden/miden-base/pull/1090
 [#1091]: https://github.com/0xMiden/miden-base/pull/1091
+
 ## 0.6.2 (2024-11-20)
 
 - Avoid writing to the filesystem during docs.rs build ([#970]).
 
 [#970]: https://github.com/0xMiden/miden-base/pull/970
+
 ## 0.6.1 (2024-11-08)
 
 ### Features
@@ -316,6 +327,7 @@
 [#955]: https://github.com/0xMiden/miden-base/pull/955
 [#958]: https://github.com/0xMiden/miden-base/pull/958
 [#971]: https://github.com/0xMiden/miden-base/pull/971
+
 ## 0.6.0 (2024-11-05)
 
 ### Features
@@ -388,9 +400,11 @@
 [#952]: https://github.com/0xMiden/miden-base/pull/952
 [#953]: https://github.com/0xMiden/miden-base/pull/953
 [#954]: https://github.com/0xMiden/miden-base/pull/954
+
 ## 0.5.1 (2024-08-28) - `miden-objects` crate only
 
 - Implemented `PrettyPrint` and `Display` for `NoteScript`.
+
 
 ## 0.5.0 (2024-08-27)
 
@@ -441,6 +455,7 @@
 [#826]: https://github.com/0xMiden/miden-base/pull/826
 [#827]: https://github.com/0xMiden/miden-base/pull/827
 [#838]: https://github.com/0xMiden/miden-base/pull/838
+
 ## 0.4.0 (2024-07-03)
 
 ### Features
@@ -500,6 +515,7 @@
 [#770]: https://github.com/0xMiden/miden-base/pull/770
 [#772]: https://github.com/0xMiden/miden-base/pull/772
 [#774]: https://github.com/0xMiden/miden-base/pull/774
+
 ## 0.3.1 (2024-06-12)
 
 - Replaced `cargo-make` with just `make` for running tasks ([#696]).
@@ -509,6 +525,7 @@
 [#696]: https://github.com/0xMiden/miden-base/pull/696
 [#725]: https://github.com/0xMiden/miden-base/pull/725
 [#745]: https://github.com/0xMiden/miden-base/pull/745
+
 ## 0.3.0 (2024-05-14)
 
 - Introduce the `miden-bench-tx` crate used for transactions benchmarking ([#577]).
@@ -537,16 +554,19 @@
 [#674]: https://github.com/0xMiden/miden-base/pull/674
 [#681]: https://github.com/0xMiden/miden-base/pull/681
 [#686]: https://github.com/0xMiden/miden-base/pull/686
+
 ## 0.2.3 (2024-04-26) - `miden-tx` crate only
 
 - Fixed handling of debug mode in `TransactionExecutor` ([#627])
 
 [#627]: https://github.com/0xMiden/miden-base/pull/627
+
 ## 0.2.2 (2024-04-23) - `miden-tx` crate only
 
 - Added `with_debug_mode()` methods to `TransactionCompiler` and `TransactionExecutor` ([#562]).
 
 [#562]: https://github.com/0xMiden/miden-base/pull/562
+
 ## 0.2.1 (2024-04-12)
 
 - [BREAKING] Return a reference to `NoteMetadata` from output notes ([#593]).
@@ -556,6 +576,7 @@
 [#593]: https://github.com/0xMiden/miden-base/pull/593
 [#597]: https://github.com/0xMiden/miden-base/pull/597
 [#598]: https://github.com/0xMiden/miden-base/pull/598
+
 ## 0.2.0 (2024-04-11)
 
 - [BREAKING] Implement support for public accounts ([#481], [#485], [#538]).
@@ -582,11 +603,13 @@
 [#572]: https://github.com/0xMiden/miden-base/pull/572
 [#587]: https://github.com/0xMiden/miden-base/pull/587
 [#590]: https://github.com/0xMiden/miden-base/pull/590
+
 ## 0.1.1 (2024-03-07) - `miden-objects` crate only
 
 - Added `BlockHeader::mock()` method ([#511])
 
 [#511]: https://github.com/0xMiden/miden-base/pull/511
+
 ## 0.1.0 (2024-03-05)
 
 - Initial release.
