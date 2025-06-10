@@ -6,7 +6,10 @@ use miden_objects::{
 };
 
 use super::AuthScheme;
-use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
+use crate::account::{
+    auth::RpoFalcon512,
+    components::{aux_wallet_library, basic_wallet_library},
+};
 
 // BASIC WALLET
 // ================================================================================================
@@ -73,6 +76,37 @@ pub fn create_basic_wallet(
         .build()?;
 
     Ok((account, account_seed))
+}
+
+// AUX WALLET
+// ================================================================================================
+
+/// An [`AccountComponent`] implementing an auxiliary wallet.
+///
+/// It reexports the procedures from `miden::contracts::wallets::aux`. When linking against this
+/// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
+/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. There is a
+/// single procedure of this component:
+/// - `add_asset_to_note`, which can be used to add an asset to the output note with the specified
+///   index. It allows for a so-called "in-flight" asset transfer, i.e., an asset that doesn't
+///   "pass through" the account, but is directly "moved" from one note to another.
+///
+/// All methods require authentication. Thus, this component must be combined with a component
+/// providing authentication.
+///
+/// This component supports all account types.
+///
+/// [kasm]: crate::transaction::TransactionKernel::assembler
+pub struct AuxWallet;
+
+impl From<AuxWallet> for AccountComponent {
+    fn from(_: AuxWallet) -> Self {
+        AccountComponent::new(aux_wallet_library(), vec![])
+            .expect(
+                "aux wallet component should satisfy the requirements of a valid account component",
+            )
+            .with_supports_all_types()
+    }
 }
 
 // TESTS
