@@ -250,14 +250,13 @@ end
 
 #! Sets an item in the account storage.
 #!
-#! Inputs:  [index, V', pad(11)]
-#! Outputs: [R', V, pad(8)]
+#! Inputs:  [index, VALUE, pad(11)]
+#! Outputs: [OLD_VALUE, pad(12)]
 #!
 #! Where:
 #! - index is the index of the item to set.
-#! - V' is the value to set.
-#! - V is the previous value of the item.
-#! - R' is the new storage commitment.
+#! - VALUE is the value to set.
+#! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
 #! - the index is out of bounds.
@@ -267,30 +266,26 @@ end
 export.account_set_item
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [index, V', pad(11)]
+    # => [index, VALUE, pad(11)]
 
     # if the transaction is being executed against a faucet account then assert
     # index != FAUCET_STORAGE_DATA_SLOT (reserved slot)
     dup exec.account::get_faucet_storage_data_slot eq
     exec.account::get_id swap drop exec.account::is_faucet
     and assertz.err=ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED
-    # => [index, V', pad(11)]
+    # => [index, VALUE, pad(11)]
 
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin
-    # => [storage_offset, storage_size, index, V', pad(11)]
+    # => [storage_offset, storage_size, index, VALUE, pad(11)]
 
     # apply offset to storage slot index
     exec.account::apply_storage_offset
-    # => [index_with_offset, V', pad(11)]
+    # => [index_with_offset, VALUE, pad(11)]
 
     # set the account storage item
     exec.account::set_item
-    # => [R', V, pad(11)]
-
-    # truncate the stack
-    movup.8 drop movup.8 drop movup.8 drop
-    # => [R', V, pad(8)]
+    # => [OLD_VALUE, pad(12)]
 end
 
 #! Returns the VALUE located under the specified KEY within the map contained in the given

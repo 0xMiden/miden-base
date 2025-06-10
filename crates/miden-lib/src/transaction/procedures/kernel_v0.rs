@@ -24,7 +24,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_get_item
     digest!("0xdd8f439cb6f7f3edcda15c9c339e7c2b2dada2fc94952a8199081a197aeebb7a"),
     // account_set_item
-    digest!("0x61104ec016c3ed9b49aee53650ddde9e984a72e4c4e13001cbf98b9cef426758"),
+    digest!("0x0d1820e4d87588381ab45e74635ad542e4a25180cd66b40601d9c4c593ee1daf"),
     // account_get_map_item
     digest!("0xf751b0762e049923d31ec6fd18512254f307f22140a7daa40e71ae7577b03f67"),
     // account_set_map_item

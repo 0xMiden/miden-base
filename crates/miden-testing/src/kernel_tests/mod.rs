@@ -229,7 +229,7 @@ fn executed_transaction_account_delta_new() {
             push.{STORAGE_INDEX_0}
             # => [idx, 13, 11, 9, 7]
             # update the storage value
-            call.account::set_item dropw dropw
+            call.account::set_item dropw
             # => []
 
             ## Update account storage map

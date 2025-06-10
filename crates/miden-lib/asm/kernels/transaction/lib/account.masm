@@ -484,42 +484,42 @@ end
 #! Note:
 #! - We assume that index has been validated and is within bounds.
 #!
-#! Inputs:  [index, V']
-#! Outputs: [V]
+#! Inputs:  [index, VALUE]
+#! Outputs: [OLD_VALUE]
 #!
 #! Where:
 #! - index is the index of the item to set.
-#! - V' is the value to set.
-#! - V is the previous value of the item.
+#! - VALUE is the value to set.
+#! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
 #! - the storage slot type is not value.
 export.set_item
     emit.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT
-    # => [index, V']
+    # => [index, VALUE]
 
     # get storage slot type
     dup exec.get_storage_slot_type
-    # => [storage_slot_type, index, V']
+    # => [storage_slot_type, index, VALUE]
 
     # check if type == slot
     exec.constants::get_storage_slot_type_value eq
     assert.err=ERR_ACCOUNT_SETTING_VALUE_ITEM_ON_NON_VALUE_SLOT
-    # => [index, V']
+    # => [index, VALUE]
 
-    # duplicate the index and the V' enabling emission of an
+    # duplicate the index and the VALUE enabling emission of an
     # event after an account storage item is being updated
     movdn.4 dupw dup.8
-    # => [index, V', V', index]
+    # => [index, VALUE, VALUE, index]
 
-    # set V' in the storage slot
+    # set VALUE in the storage slot
     exec.set_item_raw
-    # => [V, V', index]
+    # => [OLD_VALUE, VALUE, index]
 
     # emit event to signal that an account storage item is being updated
     swapw movup.8
     emit.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT drop dropw
-    # => [V]
+    # => [OLD_VALUE]
 end
 
 #! Returns the VALUE located under the specified KEY within the map contained in the given
