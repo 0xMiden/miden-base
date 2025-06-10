@@ -183,12 +183,16 @@ const.LINK_MAP_GET_EVENT=131099
 #! Note that unlike smt::set, passing VALUE{0,1} = EMPTY_WORD does not mean removal of the entry.
 #!
 #! Inputs:  [map_ptr, KEY, VALUE0, VALUE1]
-#! Outputs: []
+#! Outputs: [is_new_key]
 #!
 #! Where:
 #! - map_ptr is the pointer to the map.
 #! - KEY is the key that will be set in the map.
 #! - VALUE0 and VALUE1 are the values that will be set under KEY.
+#! - is_new_key is a boolean indicating whether the KEY and its values were newly inserted into the
+#!   map or not. That is:
+#!   - If the map did not previously contain the KEY, 1 is returned.
+#!   - If the map already contained the KEY, 0 is returned.
 #!
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
@@ -214,10 +218,15 @@ export.set
 
         exec.update_entry
         # => []
+
+        push.0
+        # => [is_new_key]
     else
         # insert new entry
         # => [is_insert_at_head_op, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
+        # note: the is_new_key flag logic is duplicated rather than appended after the if-else branch
+        # to avoid introducing an extra MAST node
         if.true
             # drop the entry ptr since we can load the head from map_ptr
             drop
@@ -225,10 +234,16 @@ export.set
 
             exec.insert_at_head
             # => []
+
+            push.1
+            # => [is_new_key]
         else
             # insert after existing entry
             exec.insert_after_entry
             # => []
+
+            push.1
+            # => [is_new_key]
         end
     end
 end
@@ -275,6 +290,8 @@ export.get
         # assert absence of the entry
         # => [is_absent_at_head, entry_ptr, map_ptr, KEY]
 
+        # note: the flag and empty word logic is duplicated rather than appended after the if-else
+        # branch to avoid introducing an extra MAST node
         if.true
             drop
             # => [map_ptr, KEY]
@@ -282,13 +299,15 @@ export.get
             exec.assert_absent_at_head
             # => []
 
+            padw padw push.0
+            # => [contains_key, EMPTY_WORD, EMPTY_WORD]
         else
             exec.assert_absent_after_entry
             # => []
-        end
 
-        padw padw push.0
-        # => [contains_key, EMPTY_WORD, EMPTY_WORD]
+            padw padw push.0
+            # => [contains_key, EMPTY_WORD, EMPTY_WORD]
+        end
     end
 end
 

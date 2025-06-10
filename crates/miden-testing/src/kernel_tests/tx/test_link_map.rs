@@ -20,7 +20,7 @@ use crate::{TransactionContextBuilder, executor::CodeExecutor};
 /// - Insertion in between two existing entries.
 /// - Insertion before an existing head.
 #[test]
-fn link_map_iterator() -> anyhow::Result<()> {
+fn insertion() -> anyhow::Result<()> {
     let map_ptr = 8u32;
     // check that using an empty word as key is fine
     let entry0_key = Digest::from([0, 0, 0, 0u32]);
@@ -51,6 +51,8 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY, VALUE]
 
           exec.link_map::set
+          # => [is_new_key]
+          assert.err="{entry1_key} should be a new key in the map"
           # => []
 
           # Insert key {entry3_key} after the previous one.
@@ -64,6 +66,8 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY, VALUE]
 
           exec.link_map::set
+          # => [is_new_key]
+          assert.err="{entry3_key} should be a new key in the map"
           # => []
 
           # Insert key {entry2_key} in between the first two.
@@ -77,6 +81,8 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY, VALUE]
 
           exec.link_map::set
+          # => [is_new_key]
+          assert.err="{entry2_key} should be a new key in the map"
           # => []
 
           # Insert key {entry0_key} at the head of the map.
@@ -90,6 +96,8 @@ fn link_map_iterator() -> anyhow::Result<()> {
           # => [map_ptr, KEY, VALUE]
 
           exec.link_map::set
+          # => [is_new_key]
+          assert.err="{entry0_key} should be a new key in the map"
           # => []
 
           # Fetch value at key {entry0_key}.
@@ -227,6 +235,8 @@ fn insert_and_update() -> anyhow::Result<()> {
         TestOperation::set(digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
         // This key is updated.
         TestOperation::set(digest([1, 0, 0, 0]), digest([4, 5, 6, 7])),
+        // This key is updated (even though its value is the same).
+        TestOperation::set(digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
     ];
 
     execute_link_map_test(operations)
@@ -371,18 +381,22 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     for operation in operations {
         match operation {
             TestOperation::Set { key, value } => {
-                control_map.insert(key, value);
+                let is_new_key = control_map.insert(key, value).is_none();
 
                 let set_code = format!(
-                    "
+                    r#"
                   padw push.{value}.{key}.MAP_PTR
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
-                  # => []
-                ",
+                  # => [is_new_key]
+                  push.{expected_is_new_key}
+                  assert_eq.err="is_new_key returned by link_map::set for {key} did not match expected value {expected_is_new_key}"
+                "#,
                     key = word_to_masm_push_string(&key),
                     value = word_to_masm_push_string(&value),
+                    expected_is_new_key = is_new_key as u8,
                 );
+
                 test_code.push_str(&set_code);
             },
             TestOperation::Get { key } => {
