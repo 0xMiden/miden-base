@@ -96,7 +96,7 @@ pub fn create_p2idr_note<R: FeltRng>(
 ///
 /// # Errors
 /// Returns an error if deserialization or compilation of the `P2ID` script fails.
-pub fn create_p2idh_note<R: FeltRng>(
+pub fn create_p2ide_note<R: FeltRng>(
     sender: AccountId,
     target: AccountId,
     assets: Vec<Asset>,
@@ -107,7 +107,7 @@ pub fn create_p2idh_note<R: FeltRng>(
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
-    let recipient = utils::build_p2idh_recipient(
+    let recipient = utils::build_p2ide_recipient(
         target,
         recall_height.map(|bn| bn.as_u32()),
         timelock_height.map(|bn| bn.as_u32()),

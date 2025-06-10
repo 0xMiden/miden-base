@@ -4,10 +4,10 @@ use anyhow::Context;
 use miden_crypto::Word;
 use miden_lib::{
     errors::note_script_errors::{
-        ERR_P2IDH_RECLAIM_DISABLED, ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED,
-        ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED,
+        ERR_P2IDE_RECLAIM_DISABLED, ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED,
+        ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED,
     },
-    note::create_p2idh_note,
+    note::create_p2ide_note,
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -26,7 +26,7 @@ use miden_testing::{Auth, MockChain};
 use crate::assert_transaction_executor_error;
 
 #[test]
-fn p2idh_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
+fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
@@ -39,7 +39,7 @@ fn p2idh_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let recall_height = None; // if 0, means it is not reclaimable
     let timelock_height = None; // if 0 means it is not timelocked
 
-    let hybrid_p2id = create_p2idh_note(
+    let p2id_extended = create_p2ide_note(
         sender_account.id(),
         target_account.id(),
         vec![fungible_asset],
@@ -51,13 +51,13 @@ fn p2idh_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     )
     .unwrap();
 
-    let output_note = OutputNote::Full(hybrid_p2id.clone());
+    let output_note = OutputNote::Full(p2id_extended.clone());
     mock_chain.add_pending_note(output_note);
     mock_chain.prove_next_block();
 
     // CONSTRUCT AND EXECUTE TX (Success - Target Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(target_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute()
         .unwrap();
@@ -78,7 +78,7 @@ fn p2idh_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
 }
 
 #[test]
-fn p2idh_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Result<()> {
+fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
@@ -92,7 +92,7 @@ fn p2idh_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
     let reclaim_block_height = 5; // if 0, means it is not reclaimable
     let timelock_block_height = 4; // if 0 means it is not timelocked
 
-    let hybrid_p2id = create_p2idh_note(
+    let p2id_extended = create_p2ide_note(
         sender_account.id(),
         target_account.id(),
         vec![fungible_asset],
@@ -104,13 +104,13 @@ fn p2idh_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
     )
     .unwrap();
 
-    let output_note = OutputNote::Full(hybrid_p2id.clone());
+    let output_note = OutputNote::Full(p2id_extended.clone());
     mock_chain.add_pending_note(output_note);
     mock_chain.prove_until_block(4).context("failed to prove multiple blocks")?;
 
     // CONSTRUCT AND EXECUTE TX (Success - Target Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(target_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute()
         .unwrap();
@@ -131,7 +131,7 @@ fn p2idh_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
 }
 
 #[test]
-fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
+fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
@@ -146,7 +146,7 @@ fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let reclaim_block_height = 4;
     let timelock_block_height = 7;
 
-    let hybrid_p2id = create_p2idh_note(
+    let p2id_extended = create_p2ide_note(
         sender_account.id(),
         target_account.id(),
         vec![fungible_asset],
@@ -158,7 +158,7 @@ fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     )
     .unwrap();
 
-    let output_note = OutputNote::Full(hybrid_p2id.clone());
+    let output_note = OutputNote::Full(p2id_extended.clone());
     mock_chain.add_pending_note(output_note);
     mock_chain.prove_next_block();
 
@@ -167,20 +167,20 @@ fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Failure - sender_account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
     assert_transaction_executor_error!(
         executed_transaction_1,
-        ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED
+        ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
     );
 
     mock_chain.prove_until_block(timelock_block_height).unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Success - sender_account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute()
         .unwrap();
@@ -202,7 +202,7 @@ fn p2idh_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 }
 
 #[test]
-fn p2idh_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
+fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
@@ -215,7 +215,7 @@ fn p2idh_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let reclaim_block_height = 0;
     let timelock_block_height = 5;
 
-    let hybrid_p2id = create_p2idh_note(
+    let p2id_extended = create_p2ide_note(
         sender_account.id(),
         target_account.id(),
         vec![fungible_asset],
@@ -228,39 +228,39 @@ fn p2idh_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     .unwrap();
 
     // push note on-chain
-    mock_chain.add_pending_note(OutputNote::Full(hybrid_p2id.clone()));
+    mock_chain.add_pending_note(OutputNote::Full(p2id_extended.clone()));
     mock_chain.prove_next_block();
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED);
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
-        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(target_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_spend, ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED);
+    assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past unlock height block height ──────────────────────
     mock_chain.prove_until_block(timelock_block_height + 1).unwrap();
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_RECLAIM_DISABLED);
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_DISABLED);
 
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
-        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(target_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute()
         .unwrap();
@@ -279,7 +279,7 @@ fn p2idh_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 }
 
 #[test]
-fn p2idh_script_reclaimable_timelockable() -> anyhow::Result<()> {
+fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
@@ -292,7 +292,7 @@ fn p2idh_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let reclaim_block_height = 10;
     let timelock_block_height = 7;
 
-    let hybrid_p2id = create_p2idh_note(
+    let p2id_extended = create_p2ide_note(
         sender_account.id(),
         target_account.id(),
         vec![fungible_asset],
@@ -305,42 +305,42 @@ fn p2idh_script_reclaimable_timelockable() -> anyhow::Result<()> {
     .unwrap();
 
     // push note on-chain
-    mock_chain.add_pending_note(OutputNote::Full(hybrid_p2id.clone()));
+    mock_chain.add_pending_note(OutputNote::Full(p2id_extended.clone()));
     mock_chain.prove_next_block();
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED);
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
-        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(target_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_spend, ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED);
+    assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past height 7 ──────────────────────
     mock_chain.prove_until_block(timelock_block_height + 1).unwrap();
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(early_reclaim, ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED);
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past height 10 ──────────────────────
     mock_chain.prove_until_block(reclaim_block_height + 1).unwrap();
 
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
-        .build_tx_context(target_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(target_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute()
         .unwrap();
@@ -359,7 +359,7 @@ fn p2idh_script_reclaimable_timelockable() -> anyhow::Result<()> {
 }
 
 #[test]
-fn p2idh_build_from_scratch_test() -> anyhow::Result<()> {
+fn p2ide_build_from_scratch_test() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
@@ -368,7 +368,7 @@ fn p2idh_build_from_scratch_test() -> anyhow::Result<()> {
     let target_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2IDH.masm")).unwrap();
+    let code = fs::read_to_string(Path::new("../miden-lib/asm/note_scripts/P2IDE.masm")).unwrap();
 
     let serial_num = Word::default();
     let note_script = NoteScript::compile(code, assembler).unwrap();
@@ -398,19 +398,19 @@ fn p2idh_build_from_scratch_test() -> anyhow::Result<()> {
 
     let fungible_asset: Asset = FungibleAsset::mock(100);
     let vault = NoteAssets::new(vec![fungible_asset])?;
-    let hybrid_p2id = Note::new(vault, metadata, recipient);
+    let p2id_extended = Note::new(vault, metadata, recipient);
 
-    let output_note = OutputNote::Full(hybrid_p2id.clone());
+    let output_note = OutputNote::Full(p2id_extended.clone());
     mock_chain.add_pending_note(output_note);
     mock_chain.prove_until_block(8_u32).unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Failure - Sender Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[hybrid_p2id.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
         .build()
         .execute();
 
-    assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDH_RECLAIM_DISABLED);
+    assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDE_RECLAIM_DISABLED);
 
     Ok(())
 }

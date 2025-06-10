@@ -30,10 +30,10 @@ static P2IDR_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     NoteScript::new(program)
 });
 
-// Initialize the P2IDH note script only once
-static P2IDH_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDH.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped P2IDH script is well-formed");
+// Initialize the P2IDE note script only once
+static P2IDE_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDE.masb"));
+    let program = Program::read_from_bytes(bytes).expect("Shipped P2IDE script is well-formed");
     NoteScript::new(program)
 });
 
@@ -64,14 +64,14 @@ fn p2idr_root() -> Digest {
     P2IDR_SCRIPT.root()
 }
 
-/// Returns the P2IDH (Pay-to-ID with optional recall & timelock) note script.
-fn p2idh() -> NoteScript {
-    P2IDH_SCRIPT.clone()
+/// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script.
+fn p2ide() -> NoteScript {
+    P2IDE_SCRIPT.clone()
 }
 
-/// Returns the P2IDH (Pay-to-ID with optional recall & timelock) note script root.
-fn p2idh_root() -> Digest {
-    P2IDH_SCRIPT.root()
+/// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script root.
+fn p2ide_root() -> Digest {
+    P2IDE_SCRIPT.root()
 }
 
 /// Returns the SWAP (Swap note) note script.
@@ -91,7 +91,7 @@ fn swap_root() -> Digest {
 pub enum WellKnownNote {
     P2ID,
     P2IDR,
-    P2IDH,
+    P2IDE,
     SWAP,
 }
 
@@ -106,7 +106,7 @@ impl WellKnownNote {
     const P2IDR_NUM_INPUTS: usize = 3;
 
     /// Expected number of inputs of the P2IDR note.
-    const P2IDH_NUM_INPUTS: usize = 4;
+    const P2IDE_NUM_INPUTS: usize = 4;
 
     /// Expected number of inputs of the SWAP note.
     const SWAP_NUM_INPUTS: usize = 10;
@@ -140,7 +140,7 @@ impl WellKnownNote {
         match self {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
             Self::P2IDR => Self::P2IDR_NUM_INPUTS,
-            Self::P2IDH => Self::P2IDH_NUM_INPUTS,
+            Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
         }
     }
@@ -150,7 +150,7 @@ impl WellKnownNote {
         match self {
             Self::P2ID => p2id(),
             Self::P2IDR => p2idr(),
-            Self::P2IDH => p2idh(),
+            Self::P2IDE => p2ide(),
             Self::SWAP => swap(),
         }
     }
@@ -160,7 +160,7 @@ impl WellKnownNote {
         match self {
             Self::P2ID => p2id_root(),
             Self::P2IDR => p2idr_root(),
-            Self::P2IDH => p2idh_root(),
+            Self::P2IDE => p2ide_root(),
             Self::SWAP => swap_root(),
         }
     }
@@ -187,7 +187,7 @@ impl WellKnownNote {
 
                 interface_proc_digests.contains(&receive_asset_digest)
             },
-            Self::P2IDH => {
+            Self::P2IDE => {
                 // Get the hash of the "receive_asset" procedure and check that this procedure is
                 // presented in the provided account interfaces. P2ID and P2IDR notes requires only
                 // this procedure to be consumed by the account.
@@ -285,7 +285,7 @@ impl WellKnownNote {
                     }
                 }
             },
-            WellKnownNote::P2IDH => {
+            WellKnownNote::P2IDE => {
                 let note_inputs = note.inputs().values();
                 if note_inputs.len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;

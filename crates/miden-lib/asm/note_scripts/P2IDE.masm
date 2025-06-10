@@ -6,15 +6,15 @@ use.miden::contracts::wallets::basic->wallet
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2IDH_WRONG_NUMBER_OF_INPUTS="P2IDH script expects exactly 4 note inputs"
+const.ERR_P2IDE_WRONG_NUMBER_OF_INPUTS="P2IDE script expects exactly 4 note inputs"
 
-const.ERR_P2IDH_RECLAIM_ACCT_IS_NOT_SENDER="P2IDH reclaim account not sender"
+const.ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER="P2IDE reclaim account not sender"
 
-const.ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED="P2IDH wait until reclaim height"
+const.ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED="P2IDE wait until reclaim height"
 
-const.ERR_P2IDH_RECLAIM_DISABLED="failed to reclaim P2IDH note because reclaim is disabled"
+const.ERR_P2IDE_RECLAIM_DISABLED="P2IDE reclaim is disabled"
 
-const.ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDH note because the note is still timelocked"
+const.ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDH note because the note is still timelocked"
 
 #! Helper procedure to add all assets of a note to an account.
 #!
@@ -68,25 +68,16 @@ proc.add_note_assets_to_account
     drop dropw drop
 end
 
-#! Hybrid Pay to ID (Optional Reclaimable & Timelockable): adds all assets from the note to the account,
-#! assuming ID of the account matches target account ID specified by the note inputs OR
-#! matches the sender ID if the note is consumed after the reclaim block height
-#! specified by the note inputs OR the timelock block height specified by the note inputs is less than
-#! the current block height.
+#! Hybrid Pay to ID (Reclaimable & Timelockable)
 #!
-#! Both the reclaim block height and timelock block height are optional parameters.
-#! If the reclaim block height and timelock block height are set both to 0, the P2IDH note
-#! functions identically to the P2ID note.
-#!
-#! Examples:
-#!
-#! If reclaim block height = 4, timelock block height = 3
-#! reclaiming of the note will be locked until block height = 4
-#! but the target account id will be able to consume at block height = 3
-#!
-#! If reclaim block height = 3, timelock block height = 4
-#! reclaiming of the note will be locked until block height = 4
-#! At block height = 4, both sender & target will be able to consume the note
+#! Adds all assets from the note to the account if all of the following conditions are true:
+#! - The transaction's reference block number is greater than or equal to the note's timelock block height,
+#!   or the timelock block height is 0, which means it is disabled.
+#! - Any of the following conditions is true:
+#!   - The account ID against which the transaction is executed matches the note's target account id.
+#!   - The account ID against which the transaction is executed matches the note's sender account id and
+#!     the transaction's reference block number is greater than or equal to the note's reclaim block height,
+#!     or the reclaim block height is 0, which means it is disabled.
 #!
 #! Requires that the account exposes:
 #! - miden::contracts::wallets::basic::receive_asset procedure.
@@ -117,38 +108,26 @@ begin
     # => [num_inputs, inputs_ptr]
 
     # make sure the number of inputs is 4
-    eq.4 assert.err=ERR_P2IDH_WRONG_NUMBER_OF_INPUTS
+    eq.4 assert.err=ERR_P2IDE_WRONG_NUMBER_OF_INPUTS
     # => [inputs_ptr]
 
-    # read the reclaim block height, timelock_block_height and target account ID from the note inputs
-    padw movup.4 mem_loadw
+    # read the reclaim block height, timelock_block_height, and target account ID from the note inputs
+    mem_loadw
     # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
-    dup push.0 neq
-    # => [is_timelock_on, timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+    dup eq.0 swap
+    # => [timelock_block_height, is_timelock_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
-    if.true
-        dup exec.tx::get_block_number
-        # => [current_block_height, timelock_block_height, timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+    # get block number and store in memory at address 0 for later
+    exec.tx::get_block_number dup push.5 mem_store
+    # => [current_block_height, timelock_block_height, is_timelock_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
-        lte
-        # => [is_unlockable, timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+    # check timelock_block_height <= current_block_height
+    lte
+    # => [is_unlockable, is_timelock_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
-        if.true
-            # no operation, continue
-            nop
-        else
-            # if not unlockable, error out
-            push.0 assert.err=ERR_P2IDH_TIMELOCK_HEIGHT_NOT_REACHED
-        end
-        # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-    else
-        # if timelock is not set, continue
-        nop
-    end
-    # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-
-    drop
+    # this is always true if the timelock is enabled, in which case the value of is_unlockable does not matter
+    or assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
     # => [reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     dup push.0 eq
@@ -172,9 +151,7 @@ begin
         movup.2 push.1 eq
         # => [is_reclaim_disabled, account_id_prefix, account_id_suffix, reclaim_block_height]
 
-        if.true
-            push.0 assert.err=ERR_P2IDH_RECLAIM_DISABLED
-        end
+        eq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
         # => [account_id_prefix, account_id_suffix, reclaim_block_height]
 
         # if current account is not the target, we need to ensure it is the sender
@@ -182,14 +159,15 @@ begin
         # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height]
 
         # ensure current account ID = sender account ID
-        exec.account::is_id_equal assert.err=ERR_P2IDH_RECLAIM_ACCT_IS_NOT_SENDER
+        exec.account::is_id_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
         # => [reclaim_block_height]
 
         # now check that sender is allowed to reclaim, current block >= reclaim block height
-        exec.tx::get_block_number
+        # exec.tx::get_block_number
+        push.5 mem_load
         # => [current_block_height, reclaim_block_height]
 
-        u32assert2 u32lte assert.err=ERR_P2IDH_RECLAIM_HEIGHT_NOT_REACHED
+        u32assert2 u32lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
     end
 
     exec.add_note_assets_to_account

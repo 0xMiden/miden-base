@@ -21,17 +21,17 @@ pub fn build_p2id_recipient(
     Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
 }
 
-/// Creates a [NoteRecipient] for the P2IDH note.
+/// Creates a [NoteRecipient] for the P2IDE note.
 ///
-/// Notes created with this recipient will be P2IDH notes consumable by the specified target
+/// Notes created with this recipient will be P2IDE notes consumable by the specified target
 /// account.
-pub fn build_p2idh_recipient(
+pub fn build_p2ide_recipient(
     target: AccountId,
     reclaim_block_height: Option<u32>,
     timelock_block_height: Option<u32>,
     serial_num: Word,
 ) -> Result<NoteRecipient, NoteError> {
-    let note_script = WellKnownNote::P2IDH.script();
+    let note_script = WellKnownNote::P2IDE.script();
     let note_inputs = NoteInputs::new(vec![
         target.suffix(),
         target.prefix().into(),
