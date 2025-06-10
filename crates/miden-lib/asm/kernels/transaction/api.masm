@@ -379,7 +379,8 @@ end
 #!
 #! Panics if:
 #! - the asset is not valid.
-#! - the total value of two fungible assets is greater than or equal to 2^63.
+#! - the total value of the fungible asset is greater than or equal to 2^63 after the new asset was 
+#!   added.
 #! - the vault already contains the same non-fungible asset.
 #! - the invocation of this procedure does not originate from the native account.
 #!
@@ -394,7 +395,7 @@ export.account_add_asset
     # => [ASSET, pad(12)]
 
     # add the specified asset to the account vault, emitting the corresponding events
-    exec.account::add_asset_to_account_vault
+    exec.account::add_asset_to_vault
     # => [ASSET', pad(12)]
 end
 
@@ -423,7 +424,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 
     # remove the specified asset from the account vault, emitting the corresponding events
-    exec.account::remove_asset_from_account_vault
+    exec.account::remove_asset_from_vault
     # => [ASSET, pad(12)]
 end
 
