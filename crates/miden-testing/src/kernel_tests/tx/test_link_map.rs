@@ -229,14 +229,18 @@ fn insertion() -> anyhow::Result<()> {
 fn insert_and_update() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 8;
 
+    let value0 = digest([1, 2, 3, 4]);
+    let value1 = digest([2, 3, 4, 5]);
+    let value2 = digest([3, 4, 5, 6]);
+
     let operations = vec![
-        TestOperation::set(MAP_PTR, digest([1, 0, 0, 0]), digest([1, 2, 3, 4])),
-        TestOperation::set(MAP_PTR, digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
-        TestOperation::set(MAP_PTR, digest([2, 0, 0, 0]), digest([3, 4, 5, 6])),
+        TestOperation::set(MAP_PTR, digest([1, 0, 0, 0]), (value0, value1)),
+        TestOperation::set(MAP_PTR, digest([3, 0, 0, 0]), (value1, value2)),
+        TestOperation::set(MAP_PTR, digest([2, 0, 0, 0]), (value2, value1)),
         // This key is updated.
-        TestOperation::set(MAP_PTR, digest([1, 0, 0, 0]), digest([4, 5, 6, 7])),
+        TestOperation::set(MAP_PTR, digest([1, 0, 0, 0]), (value1, value1)),
         // This key is updated (even though its value is the same).
-        TestOperation::set(MAP_PTR, digest([3, 0, 0, 0]), digest([2, 3, 4, 5])),
+        TestOperation::set(MAP_PTR, digest([3, 0, 0, 0]), (value1, value2)),
     ];
 
     execute_link_map_test(operations)
@@ -249,12 +253,15 @@ fn insert_at_head() -> anyhow::Result<()> {
     let key3 = digest([3, 0, 0, 0]);
     let key2 = digest([2, 0, 0, 0]);
     let key1 = digest([1, 0, 0, 0]);
+    let value0 = digest([1, 2, 3, 4]);
+    let value1 = digest([2, 3, 4, 5]);
+    let value2 = digest([3, 4, 5, 6]);
 
     let operations = vec![
-        TestOperation::set(MAP_PTR, key3, digest([2, 3, 4, 5])),
+        TestOperation::set(MAP_PTR, key3, (value1, value0)),
         // These keys are smaller than the existing one, so the head of the map is updated.
-        TestOperation::set(MAP_PTR, key2, digest([3, 4, 5, 6])),
-        TestOperation::set(MAP_PTR, key1, digest([1, 2, 3, 4])),
+        TestOperation::set(MAP_PTR, key2, (value2, value0)),
+        TestOperation::set(MAP_PTR, key1, (value1, value2)),
         TestOperation::get(MAP_PTR, key1),
         TestOperation::get(MAP_PTR, key2),
         TestOperation::get(MAP_PTR, key3),
@@ -271,12 +278,15 @@ fn multiple_link_maps() -> anyhow::Result<()> {
     let key3 = digest([3, 0, 0, 0]);
     let key2 = digest([2, 0, 0, 0]);
     let key1 = digest([1, 0, 0, 0]);
+    let value0 = digest([1, 2, 3, 4]);
+    let value1 = digest([2, 3, 4, 5]);
+    let value2 = digest([3, 4, 5, 6]);
 
     let operations = vec![
-        TestOperation::set(MAP_PTR0, key3, digest([2, 3, 4, 5])),
-        TestOperation::set(MAP_PTR0, key2, digest([3, 4, 5, 6])),
-        TestOperation::set(MAP_PTR1, key1, digest([1, 2, 3, 4])),
-        TestOperation::set(MAP_PTR1, key3, digest([5, 6, 7, 8])),
+        TestOperation::set(MAP_PTR0, key3, (value0, value2)),
+        TestOperation::set(MAP_PTR0, key2, (value1, value2)),
+        TestOperation::set(MAP_PTR1, key1, (value2, value2)),
+        TestOperation::set(MAP_PTR1, key3, (value0, value2)),
         // Note that not all keys that we fetch have been inserted, but that is intentional.
         TestOperation::get(MAP_PTR0, key1),
         TestOperation::get(MAP_PTR0, key2),
@@ -397,13 +407,26 @@ fn digest(elements: [u32; 4]) -> Digest {
 }
 
 enum TestOperation {
-    Set { map_ptr: u32, key: Digest, value: Digest },
-    Get { map_ptr: u32, key: Digest },
+    Set {
+        map_ptr: u32,
+        key: Digest,
+        value0: Digest,
+        value1: Digest,
+    },
+    Get {
+        map_ptr: u32,
+        key: Digest,
+    },
 }
 
 impl TestOperation {
-    pub fn set(map_ptr: u32, key: Digest, value: Digest) -> Self {
-        Self::Set { map_ptr, key, value }
+    pub fn set(map_ptr: u32, key: Digest, values: (Digest, Digest)) -> Self {
+        Self::Set {
+            map_ptr,
+            key,
+            value0: values.0,
+            value1: values.1,
+        }
     }
     pub fn get(map_ptr: u32, key: Digest) -> Self {
         Self::Get { map_ptr, key }
@@ -417,13 +440,13 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
     for operation in operations {
         match operation {
-            TestOperation::Set { map_ptr, key, value } => {
+            TestOperation::Set { map_ptr, key, value0, value1 } => {
                 let control_map: &mut BTreeMap<_, _> = control_maps.entry(map_ptr).or_default();
-                let is_new_key = control_map.insert(key, value).is_none();
+                let is_new_key = control_map.insert(key, (value0, value1)).is_none();
 
                 let set_code = format!(
                     r#"
-                  padw push.{value}.{key}.{map_ptr}
+                  push.{value1}.{value0}.{key}.{map_ptr}
                   # => [map_ptr, KEY, VALUE]
                   exec.link_map::set
                   # => [is_new_key]
@@ -431,7 +454,8 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                   assert_eq.err="is_new_key returned by link_map::set for {key} did not match expected value {expected_is_new_key}"
                 "#,
                     key = word_to_masm_push_string(&key),
-                    value = word_to_masm_push_string(&value),
+                    value0 = word_to_masm_push_string(&value0),
+                    value1 = word_to_masm_push_string(&value1),
                     expected_is_new_key = is_new_key as u8,
                 );
 
@@ -441,10 +465,11 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 let control_map: &mut BTreeMap<_, _> = control_maps.entry(map_ptr).or_default();
                 let control_value = control_map.get(&key);
 
-                let (expected_contains_key, expected_value) = match control_value {
-                    Some(value) => (true, *value),
-                    None => (false, Digest::from(EMPTY_WORD)),
-                };
+                let (expected_contains_key, (expected_value0, expected_value1)) =
+                    match control_value {
+                        Some(value) => (true, (value.0, value.1)),
+                        None => (false, (Digest::from(EMPTY_WORD), Digest::from(EMPTY_WORD))),
+                    };
 
                 let get_code = format!(
                     r#"
@@ -454,12 +479,14 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                   # => [contains_key, VALUE0, VALUE1]
                   push.{expected_contains_key}
                   assert_eq.err="contains_key did not match the expected value: {expected_contains_key}"
-                  push.{expected_value}
-                  assert_eqw.err="value returned from get is not the expected value: {expected_value}"
-                  dropw
+                  push.{expected_value0}
+                  assert_eqw.err="value0 returned from get is not the expected value: {expected_value0}"
+                  push.{expected_value1}
+                  assert_eqw.err="value1 returned from get is not the expected value: {expected_value1}"
                 "#,
                     key = word_to_masm_push_string(&key),
-                    expected_value = word_to_masm_push_string(&expected_value),
+                    expected_value0 = word_to_masm_push_string(&expected_value0),
+                    expected_value1 = word_to_masm_push_string(&expected_value1),
                     expected_contains_key = expected_contains_key as u8
                 );
 
@@ -497,9 +524,20 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
             LinkMap::compare_keys(Word::from(*key0), Word::from(*key1))
         });
 
-        for (idx, ((control_key, control_value), (actual_key, actual_value))) in control_entries
+        for (
+            idx,
+            (
+                (control_key, (control_value0, control_value1)),
+                (actual_key, (actual_value0, actual_value1)),
+            ),
+        ) in control_entries
             .into_iter()
-            .zip(map.iter().map(|entry| (Digest::from(entry.key), Digest::from(entry.value0))))
+            .zip(map.iter().map(|entry| {
+                (
+                    Digest::from(entry.key),
+                    (Digest::from(entry.value0), Digest::from(entry.value1)),
+                )
+            }))
             .enumerate()
         {
             assert_eq!(
@@ -507,8 +545,12 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 "link map {map_ptr}'s key is different from control map's key at index {idx}"
             );
             assert_eq!(
-                actual_value, control_value,
-                "link map {map_ptr}'s value is different from control map's value at index {idx}"
+                actual_value0, control_value0,
+                "link map {map_ptr}'s value0 is different from control map's value0 at index {idx}"
+            );
+            assert_eq!(
+                actual_value1, control_value1,
+                "link map {map_ptr}'s value1 is different from control map's value1 at index {idx}"
             );
         }
     }
@@ -516,35 +558,39 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     Ok(())
 }
 
-fn generate_set_ops(map_ptr: u32, entries: &[(Digest, Digest)]) -> Vec<TestOperation> {
+fn generate_set_ops(map_ptr: u32, entries: &[(Digest, (Digest, Digest))]) -> Vec<TestOperation> {
     entries
         .iter()
-        .map(|(key, value)| TestOperation::set(map_ptr, *key, *value))
+        .map(|(key, values)| TestOperation::set(map_ptr, *key, *values))
         .collect()
 }
 
-fn generate_get_ops(map_ptr: u32, entries: &[(Digest, Digest)]) -> Vec<TestOperation> {
+fn generate_get_ops(map_ptr: u32, entries: &[(Digest, (Digest, Digest))]) -> Vec<TestOperation> {
     entries.iter().map(|(key, _)| TestOperation::get(map_ptr, *key)).collect()
 }
 
-fn generate_entries(count: u64) -> Vec<(Digest, Digest)> {
+fn generate_entries(count: u64) -> Vec<(Digest, (Digest, Digest))> {
     (0..count)
         .map(|_| {
             let key = rand_digest();
-            let value = rand_digest();
-            (key, value)
+            let value0 = rand_digest();
+            let value1 = rand_digest();
+            (key, (value0, value1))
         })
         .collect()
 }
 
-fn generate_updates(entries: &[(Digest, Digest)], num_updates: usize) -> Vec<(Digest, Digest)> {
+fn generate_updates(
+    entries: &[(Digest, (Digest, Digest))],
+    num_updates: usize,
+) -> Vec<(Digest, (Digest, Digest))> {
     let mut rng = rand::rng();
 
     entries
         .iter()
         .choose_multiple(&mut rng, num_updates)
         .into_iter()
-        .map(|(key, _)| (*key, rand_digest()))
+        .map(|(key, _)| (*key, (rand_digest(), rand_digest())))
         .collect()
 }
 
