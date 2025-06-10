@@ -209,7 +209,7 @@ begin
     drop drop swap
     # => [tag, execution_hint, ASSET, RECIPIENT]
 
-    # we add aux = 0 to the note assuming we don't need it for the second leg of the SWAP
+    # aux = 0, not used
     push.0 swap
     # => [tag, aux, execution_hint, ASSET, RECIPIENT]
 
@@ -227,7 +227,6 @@ begin
 
     swapw dropw movupw.3
     # => [ASSET, note_idx, pad(11)]
-
 
     # move asset to the note
     call.aux::add_asset_to_note

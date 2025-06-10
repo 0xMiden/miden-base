@@ -85,8 +85,8 @@ pub fn create_basic_wallet(
 ///
 /// It reexports the procedures from `miden::contracts::wallets::aux`. When linking against this
 /// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
-/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. There is a
-/// single procedure of this component:
+/// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. This component
+/// contains a single procedure:
 /// - `add_asset_to_note`, which can be used to add an asset to the output note with the specified
 ///   index. It allows for a so-called "in-flight" asset transfer, i.e., an asset that doesn't "pass
 ///   through" the account, but is directly "moved" from one note to another.
