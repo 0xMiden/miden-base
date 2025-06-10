@@ -6,9 +6,9 @@ use miden_objects::{
 use vm_processor::MastForestStore;
 
 /// Stores the MAST forests for a set of scripts (both note scripts and transaction scripts).
-/// 
-/// A [ScriptMastForestStore] is meant to exclusively store MAST forests related to both 
-/// transaction and input note scripts. 
+///
+/// A [ScriptMastForestStore] is meant to exclusively store MAST forests related to both
+/// transaction and input note scripts.
 pub struct ScriptMastForestStore {
     mast_forests: BTreeMap<Digest, Arc<MastForest>>,
 }
