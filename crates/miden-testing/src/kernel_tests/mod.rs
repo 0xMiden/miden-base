@@ -79,7 +79,7 @@ fn transaction_executor_witness() {
         Some(executed_transaction.advice_witness().clone()),
     )
     .unwrap();
-    let mem_advice_provider: MemAdviceProvider = advice_inputs.into();
+    let mem_advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
@@ -154,9 +154,7 @@ fn executed_transaction_account_delta_new() {
 
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    );
     let tag2 = NoteTag::for_local_use_case(0, 0).unwrap();
     let tag3 = NoteTag::for_local_use_case(0, 0).unwrap();
     let tags = [tag1, tag2, tag3];
@@ -409,9 +407,7 @@ fn test_send_note_proc() {
 
     let tag = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    );
     let aux = Felt::new(27);
     let note_type = NoteType::Private;
 
@@ -556,9 +552,7 @@ fn executed_transaction_output_notes() {
 
     let tag1 = NoteTag::from_account_id(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    );
     let tag2 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
     let tag3 = NoteTag::for_public_use_case(0, 0, NoteExecutionMode::Local).unwrap();
     let aux1 = Felt::new(27);

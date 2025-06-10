@@ -123,7 +123,7 @@ fn test_create_note() {
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(account_id, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(account_id);
 
     let code = format!(
         "
@@ -318,8 +318,7 @@ fn test_get_output_notes_commitment() {
 
     // create output note 1
     let output_serial_no_1 = [Felt::new(8); 4];
-    let output_tag_1 =
-        NoteTag::from_account_id(network_account, NoteExecutionMode::Network).unwrap();
+    let output_tag_1 = NoteTag::from_account_id(network_account);
     let assets = NoteAssets::new(vec![input_asset_1]).unwrap();
     let metadata = NoteMetadata::new(
         tx_context.tx_inputs().account().id(),
@@ -335,7 +334,7 @@ fn test_get_output_notes_commitment() {
 
     // create output note 2
     let output_serial_no_2 = [Felt::new(11); 4];
-    let output_tag_2 = NoteTag::from_account_id(local_account, NoteExecutionMode::Local).unwrap();
+    let output_tag_2 = NoteTag::from_account_id(local_account);
     let assets = NoteAssets::new(vec![input_asset_2]).unwrap();
     let metadata = NoteMetadata::new(
         tx_context.tx_inputs().account().id(),
@@ -472,7 +471,7 @@ fn test_create_note_and_add_asset() {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(faucet_id, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(faucet_id);
     let asset = [Felt::new(10), ZERO, faucet_id.suffix(), faucet_id.prefix().as_felt()];
 
     let code = format!(
@@ -542,7 +541,7 @@ fn test_create_note_and_add_multiple_assets() {
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let aux = Felt::new(27);
-    let tag = NoteTag::from_account_id(faucet_2, NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(faucet_2);
 
     let asset = [Felt::new(10), ZERO, faucet.suffix(), faucet.prefix().as_felt()];
     let asset_2 = [Felt::new(20), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()];

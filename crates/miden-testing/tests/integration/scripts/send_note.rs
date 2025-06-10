@@ -4,8 +4,8 @@ use miden_objects::{
     asset::{Asset, FungibleAsset},
     crypto::rand::{FeltRng, RpoRandomCoin},
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType, PartialNote,
+        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
+        NoteTag, NoteType, PartialNote,
     },
     transaction::OutputNote,
 };
@@ -23,8 +23,7 @@ fn test_send_note_script_basic_wallet() {
 
     let sender_account_interface = AccountInterface::from(&sender_basic_wallet_account);
 
-    let tag = NoteTag::from_account_id(sender_basic_wallet_account.id(), NoteExecutionMode::Local)
-        .unwrap();
+    let tag = NoteTag::from_account_id(sender_basic_wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_wallet_account.id(),
         NoteType::Public,
@@ -70,11 +69,7 @@ fn test_send_note_script_basic_fungible_faucet() {
     let sender_account_interface =
         AccountInterface::from(sender_basic_fungible_faucet_account.account());
 
-    let tag = NoteTag::from_account_id(
-        sender_basic_fungible_faucet_account.id(),
-        NoteExecutionMode::Local,
-    )
-    .unwrap();
+    let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_basic_fungible_faucet_account.id(),
         NoteType::Public,
