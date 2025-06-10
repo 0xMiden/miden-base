@@ -281,7 +281,32 @@ fn burn_and_mint_fungible_asset() {
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block();
 
-    // Execute the transaction against the other faucet. Should fail.
+    // Execute the transaction against the receiver(BasicWallet).
+    // Should fail due to account authentication in `authenticate_account_origin`:
+    // `burn` procedure is not in the set of the receipient's account procedures.
+    let executed_transaction_receiver =
+        mock_chain.build_tx_context(receiver.id(), &[note.id()], &[]).build().execute();
+
+    match executed_transaction_receiver.unwrap_err() {
+        TransactionExecutorError::TransactionProgramExecutionFailed(
+            ExecutionError::EventError { label: _, source_file: _, error },
+        ) => {
+            if let Some(kernel_error) = error.downcast_ref::<TransactionKernelError>() {
+                match kernel_error {
+                    TransactionKernelError::UnknownAccountProcedure(_digest) => {},
+                    e => panic!("Expected UnknownAccountProcedure, got: {:?}", e),
+                }
+            } else {
+                panic!("Failed to downcast EventError to TransactionKernelError, got: {:?}", error);
+            }
+        },
+        e => panic!("Expected TransactionProgramExecutionFailed error, got: {:?}", e),
+    }
+
+    // Execute the transaction against the other faucet.
+    // Should fail due to the mismatch between the caller and the origin of the asset as part of
+    // `validate_fungible_asset_origin`:
+    // `burn` and `mint` are only callable by the original faucet
     let executed_transaction_other = mock_chain
         .build_tx_context(faucet_other.account().id(), &[note.id()], &[])
         .build()
@@ -299,28 +324,6 @@ fn burn_and_mint_fungible_asset() {
         ) => {
             if let Some(ref msg) = err_msg {
                 assert!(msg.contains("the origin of the fungible asset is not this faucet"));
-            }
-        },
-        e => panic!("Expected TransactionProgramExecutionFailed error, got: {:?}", e),
-    }
-
-    // Execute the transaction against the receiver(BasicWallet).
-    // Should fail, but with a different error.
-    // `burn` procedure is not in the set of the receipient's account procedures.
-    let executed_transaction_receiver =
-        mock_chain.build_tx_context(receiver.id(), &[note.id()], &[]).build().execute();
-
-    match executed_transaction_receiver.unwrap_err() {
-        TransactionExecutorError::TransactionProgramExecutionFailed(
-            ExecutionError::EventError { label: _, source_file: _, error },
-        ) => {
-            if let Some(kernel_error) = error.downcast_ref::<TransactionKernelError>() {
-                match kernel_error {
-                    TransactionKernelError::UnknownAccountProcedure(_digest) => {},
-                    e => panic!("Expected UnknownAccountProcedure, got: {:?}", e),
-                }
-            } else {
-                panic!("Failed to downcast EventError to TransactionKernelError, got: {:?}", error);
             }
         },
         e => panic!("Expected TransactionProgramExecutionFailed error, got: {:?}", e),
