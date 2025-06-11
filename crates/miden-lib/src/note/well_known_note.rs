@@ -174,20 +174,7 @@ impl WellKnownNote {
 
         let interface_proc_digests = account_interface.get_procedure_digests();
         match self {
-            Self::P2ID | &Self::P2IDR => {
-                // Get the hash of the "receive_asset" procedure and check that this procedure is
-                // presented in the provided account interfaces. P2ID and P2IDR notes requires only
-                // this procedure to be consumed by the account.
-                let receive_asset_proc_name = QualifiedProcedureName::new(
-                    Default::default(),
-                    ProcedureName::new("receive_asset").unwrap(),
-                );
-                let node_id = basic_wallet_library().get_export_node_id(&receive_asset_proc_name);
-                let receive_asset_digest = basic_wallet_library().mast_forest()[node_id].digest();
-
-                interface_proc_digests.contains(&receive_asset_digest)
-            },
-            Self::P2IDE => {
+            Self::P2ID | &Self::P2IDR | &Self::P2IDE => {
                 // Get the hash of the "receive_asset" procedure and check that this procedure is
                 // presented in the provided account interfaces. P2ID and P2IDR notes requires only
                 // this procedure to be consumed by the account.
