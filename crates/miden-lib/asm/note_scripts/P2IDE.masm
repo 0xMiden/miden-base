@@ -113,6 +113,7 @@ end
 #! - the reclaim block height is not reached yet.
 #! - the account attempting to reclaim the note is not the sender account.
 proc.consume_by_sender
+    # check that the reclaim of the current note is enabled
     movup.2 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
     # => [reclaim_block_height, account_id_prefix, account_id_suffix]
 
