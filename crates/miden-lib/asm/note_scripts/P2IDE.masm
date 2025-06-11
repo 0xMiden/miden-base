@@ -134,6 +134,7 @@ proc.consume_by_sender
 
     # add note assets to account
     exec.add_note_assets_to_account
+    # => []
 end
 
 #! Hybrid Pay to ID (Reclaimable & Timelockable)
