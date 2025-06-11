@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.4 (2025-06-12)
+
+- Refactor proving service client errors (#1448)
+
 ## 0.9.3 (2025-06-12)
 
 - Add TLS support to `miden-proving-service-client` (#1447)
