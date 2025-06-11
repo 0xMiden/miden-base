@@ -32,8 +32,8 @@ pub use account_procedures::AccountProcedureIndexMap;
 mod note_builder;
 use note_builder::OutputNoteBuilder;
 
-mod note_mast_forest_store;
-pub use note_mast_forest_store::ScriptMastForestStore;
+mod script_mast_forest_store;
+pub use script_mast_forest_store::ScriptMastForestStore;
 
 mod tx_progress;
 pub use tx_progress::TransactionProgress;
@@ -57,7 +57,7 @@ pub struct TransactionHost<A> {
     mast_store: Arc<dyn MastForestStore>,
 
     /// MAST store which contains the forests of all scripts involved in the transaction. These
-    /// include input note scripts and the transaction script.
+    /// include input note scripts and the transaction script, but not account code.
     scripts_mast_store: ScriptMastForestStore,
 
     /// Account state changes accumulated during transaction execution.
