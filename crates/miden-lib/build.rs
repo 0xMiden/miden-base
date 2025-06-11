@@ -83,8 +83,7 @@ fn main() -> Result<()> {
 
     // compile transaction kernel
     let mut assembler =
-        compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?
-            .with_debug_mode(true);
+        compile_tx_kernel(&source_dir.join(ASM_TX_KERNEL_DIR), &target_dir.join("kernels"))?;
 
     // compile miden library
     let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;
@@ -137,7 +136,7 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     let shared_path = Path::new(ASM_DIR).join(SHARED_DIR);
     let kernel_namespace = LibraryNamespace::new("kernel").expect("namespace should be valid");
 
-    let mut assembler = build_assembler(None)?.with_debug_mode(true);
+    let mut assembler = build_assembler(None)?;
     // add the shared modules to the kernel lib under the kernel::util namespace
     assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_path)?;
 

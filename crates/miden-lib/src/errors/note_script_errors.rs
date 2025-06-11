@@ -10,6 +10,17 @@ use crate::errors::MasmError;
 // NOTE SCRIPT ERRORS
 // ================================================================================================
 
+/// Error Message: "P2IDE reclaim account not sender"
+pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("P2IDE reclaim account not sender");
+/// Error Message: "P2IDE reclaim is disabled"
+pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2IDE reclaim is disabled");
+/// Error Message: "P2IDE wait until reclaim height"
+pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("P2IDE wait until reclaim height");
+/// Error Message: "failed to consume P2IDE note because the note is still timelocked"
+pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
+/// Error Message: "P2IDE script expects exactly 4 note inputs"
+pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE script expects exactly 4 note inputs");
+
 /// Error Message: "P2IDR's reclaimer is not the original sender"
 pub const ERR_P2IDR_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("P2IDR's reclaimer is not the original sender");
 /// Error Message: "P2IDR can not be reclaimed as the transaction's reference block is lower than the reclaim height"
@@ -21,17 +32,6 @@ pub const ERR_P2IDR_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_s
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");
 /// Error Message: "P2ID script expects exactly 2 note inputs"
 pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID script expects exactly 2 note inputs");
-
-/// Error Message: "Hybrid P2ID script expects exactly 4 note inputs"
-pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE script expects exactly 4 note inputs");
-/// Error Message: "Hybrid P2ID script reclaim account != sender"
-pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("P2IDE reclaim account != sender");
-/// Error Message: "Hybrid P2ID script wait until reclaim height"
-pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("P2IDE wait until reclaim height");
-/// Error Message: "Hybrid P2ID script reclaim disabled"
-pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2IDE reclaim is disabled");
-/// Error Message: "Hybrid P2ID script wait until unlock"
-pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
 
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");
