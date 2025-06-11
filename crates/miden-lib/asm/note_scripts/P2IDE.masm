@@ -126,7 +126,7 @@ proc.consume_by_sender
 
     # if current account is not the target, we need to ensure it is the sender
     exec.note::get_sender
-    # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height]
+    # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix]
 
     # ensure current account ID = sender account ID
     exec.account::is_id_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
