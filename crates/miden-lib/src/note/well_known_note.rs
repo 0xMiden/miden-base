@@ -299,7 +299,13 @@ impl WellKnownNote {
                     return NoteAccountCompatibility::No;
                 };
 
-                if block_ref.as_u32() >= recall_height && block_ref.as_u32() >= timelock_height {
+                // Return `No` if the timelock height is not reached, i.e. the note is still 
+                // timelocked
+                if block_ref.as_u32() < timelock_height {
+                    return NoteAccountCompatibility::No;
+                }
+
+                if block_ref.as_u32() >= recall_height {
                     let sender_account_id = note.metadata().sender();
                     // if the sender can already reclaim the assets back, then:
                     // - target account ID could be equal to the inputs account ID if the note is
