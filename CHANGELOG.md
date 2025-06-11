@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.9.3 (2025-06-12)
+
+- Add TLS support to `miden-proving-service-client` (#1447)
+
 ## 0.9.2 (2025-06-10)
 
 - Refreshed Cargo.lock file.
