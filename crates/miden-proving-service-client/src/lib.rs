@@ -32,7 +32,7 @@ pub enum RemoteProverError {
     InvalidEndpoint(String),
     #[error("failed to connect to prover {0}")]
     /// Indicates that the connection to the server failed.
-    ConnectionFailed(String),
+    ConnectionFailed(#[source] Box<dyn CoreError + Send + Sync + 'static>),
     /// Custom error variant for errors not covered by the other variants.
     #[error("{error_msg}")]
     Other {

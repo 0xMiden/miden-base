@@ -1,10 +1,9 @@
-use core::time::Duration;
-
 use alloc::{
     boxed::Box,
     string::{String, ToString},
     sync::Arc,
 };
+use core::time::Duration;
 
 use miden_objects::{
     transaction::{ProvenTransaction, TransactionWitness},
@@ -70,18 +69,18 @@ impl RemoteTransactionProver {
         #[cfg(not(target_arch = "wasm32"))]
         let new_client = {
             let endpoint = tonic::transport::Endpoint::try_from(self.endpoint.clone())
-                .unwrap()
+                .map_err(|err| RemoteProverError::ConnectionFailed(err.into()))?
                 .timeout(Duration::from_millis(10000));
             let channel = endpoint
                 .tls_config(tonic::transport::ClientTlsConfig::new().with_native_roots())
-                .unwrap()
+                .map_err(|err| RemoteProverError::ConnectionFailed(err.into()))?
                 .connect()
                 .await
-                .unwrap();
+                .map_err(|err| RemoteProverError::ConnectionFailed(err.into()))?;
 
             ApiClient::connect(self.endpoint.clone())
                 .await
-                .map_err(|_| RemoteProverError::ConnectionFailed(self.endpoint.to_string()))?
+                .map_err(|err| RemoteProverError::ConnectionFailed(err.into()))?
         };
 
         *client = Some(new_client);
