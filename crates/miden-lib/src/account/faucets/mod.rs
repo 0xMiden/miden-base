@@ -119,7 +119,7 @@ impl BasicFungibleFaucet {
         Err(FungibleFaucetError::NoAvailableInterface)
     }
 
-    // ACCESSORS
+    // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
     /// Returns the decimals of the faucet.
