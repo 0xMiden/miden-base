@@ -28,19 +28,6 @@ const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUC
 
 const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
 
-# EVENTS
-# =================================================================================================
-
-# Event emitted before an asset is added to the account vault.
-const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=131072
-# Event emitted after an asset is added to the account vault.
-const.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT=131073
-
-# Event emitted before an asset is removed from the account vault.
-const.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT=131074
-# Event emitted after an asset is removed from the account vault.
-const.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT=131075
-
 # AUTHENTICATION
 # =================================================================================================
 
@@ -378,7 +365,7 @@ export.account_get_vault_root
     # => [VAULT_ROOT, pad(12)]
 end
 
-#! Add the specified asset to the vault.
+#! Adds the specified asset to the vault.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [ASSET', pad(12)]
@@ -392,7 +379,8 @@ end
 #!
 #! Panics if:
 #! - the asset is not valid.
-#! - the total value of two fungible assets is greater than or equal to 2^63.
+#! - the total value of the fungible asset is greater than or equal to 2^63 after the new asset was 
+#!   added.
 #! - the vault already contains the same non-fungible asset.
 #! - the invocation of this procedure does not originate from the native account.
 #!
@@ -406,28 +394,12 @@ export.account_add_asset
     exec.authenticate_account_origin drop drop
     # => [ASSET, pad(12)]
 
-    emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
-    # => [ASSET, pad(12)]
-
-    # duplicate the ASSET to be able to emit an event after an asset is being added
-    dupw
-    # => [ASSET, ASSET, pad(12)]
-
-    # fetch the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
-    # => [ASSET, acct_vault_root_ptr, ASSET, pad(12)]
-
-    # add the asset to the account vault
-    exec.asset_vault::add_asset
-    # => [ASSET', ASSET, pad(12)]
-
-    # emit event to signal that an asset is being added to the account vault
-    swapw
-    emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT dropw
+    # add the specified asset to the account vault, emitting the corresponding events
+    exec.account::add_asset_to_vault
     # => [ASSET', pad(12)]
 end
 
-#! Remove the specified asset from the vault.
+#! Removes the specified asset from the vault.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [ASSET, pad(12)]
@@ -451,19 +423,8 @@ export.account_remove_asset
     exec.authenticate_account_origin drop drop
     # => [ASSET, pad(12)]
 
-    emit.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT
-    # => [ASSET, pad(12)]
-
-    # fetch the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
-    # => [ASSET, acct_vault_root_ptr, pad(12)]
-
-    # remove the asset from the account vault
-    exec.asset_vault::remove_asset
-    # => [ASSET, pad(12)]
-
-    # emit event to signal that an asset is being removed from the account vault
-    emit.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT
+    # remove the specified asset from the account vault, emitting the corresponding events
+    exec.account::remove_asset_from_vault
     # => [ASSET, pad(12)]
 end
 

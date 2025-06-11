@@ -49,8 +49,6 @@ Miden is currently on release v0.10. This is an early version of the protocol an
 | [objects](crates/miden-objects)                                | Contains core components defining the Miden rollup protocol.                        |
 | [miden-lib](crates/miden-lib)                                  | Contains the code of the Miden rollup kernels and standardized smart contracts.     |
 | [miden-tx](crates/miden-tx)                                    | Contains tool for creating, executing, and proving Miden rollup transaction.        |
-| [proving-service](bin/proving-service/)                        | Contains a binary with a service for generating Miden transaction proofs on-demand. |
-| [proving-service-client](crates/miden-proving-service-client/) | Contains protobuf definition for the Miden transaction proving service.             |
 | [bench-tx](bin/bench-tx)                                       | Contains transaction execution and proving benchmarks.                              |
 
 ## Make commands

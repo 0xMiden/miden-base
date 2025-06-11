@@ -1,5 +1,6 @@
 name: "Task"
 description: "Work item"
+type: "Task"
 body:
   - type: markdown
     attributes:
