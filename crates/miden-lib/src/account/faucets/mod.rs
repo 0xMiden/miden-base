@@ -122,9 +122,19 @@ impl BasicFungibleFaucet {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the symbol of the faucet.
+    pub fn symbol(&self) -> TokenSymbol {
+        self.symbol
+    }
+
     /// Returns the decimals of the faucet.
     pub fn decimals(&self) -> u8 {
         self.decimals
+    }
+
+    /// Returns the max supply of the faucet.
+    pub fn max_supply(&self) -> Felt {
+        self.max_supply
     }
 }
 
