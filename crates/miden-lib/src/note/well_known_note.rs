@@ -289,7 +289,7 @@ impl WellKnownNote {
                 };
 
                 let timelock_height: Result<u32, _> = note_inputs[3].try_into();
-                // Return `No` if the note input value which represents the recall height is invalid
+                // Return `No` if the note input value which represents the timelock height is invalid
                 let Ok(timelock_height) = timelock_height else {
                     return NoteAccountCompatibility::No;
                 };
