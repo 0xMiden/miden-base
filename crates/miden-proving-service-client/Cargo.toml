@@ -22,22 +22,21 @@ block-prover = ["dep:tokio", "dep:miden-objects"]
 
 [target.'cfg(all(target_arch = "wasm32", target_os = "unknown"))'.dependencies]
 tonic-web-wasm-client = { version = "0.6", default-features = false }
-tonic = { version = "0.13", default-features = false, features = [
+tonic = { version = "0.12", default-features = false, features = [
     "prost",
     "codegen",
     "transport",
-    "tls-ring",
+    "tls",
     "tls-native-roots",
 ] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
 [target.'cfg(not(all(target_arch = "wasm32", target_os = "unknown")))'.dependencies]
-tonic = { version = "0.13", default-features = false, features = [
+tonic = { version = "0.12", default-features = false, features = [
     "prost",
     "codegen",
     "transport",
-    "transport",
-    "tls-ring",
+    "tls",
     "tls-native-roots",
 ] }
 tonic-web = { version = "0.12", optional = true }
@@ -57,4 +56,4 @@ miette = { version = "7.5", features = ["fancy"] }
 prost = { version = "0.13", default-features = false, features = ["derive"] }
 prost-build = { version = "0.13" }
 protox = { version = "0.7" }
-tonic-build = { version = "0.13" }
+tonic-build = { version = "0.12" }

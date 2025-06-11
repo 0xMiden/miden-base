@@ -73,7 +73,7 @@ pub mod api_client {
     }
     impl<T> ApiClient<T>
     where
-        T: tonic::client::GrpcService<tonic::body::Body>,
+        T: tonic::client::GrpcService<tonic::body::BoxBody>,
         T::Error: Into<StdError>,
         T::ResponseBody: Body<Data = Bytes> + core::marker::Send + 'static,
         <T::ResponseBody as Body>::Error: Into<StdError> + core::marker::Send,
@@ -94,13 +94,13 @@ pub mod api_client {
             F: tonic::service::Interceptor,
             T::ResponseBody: Default,
             T: tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
+                http::Request<tonic::body::BoxBody>,
                 Response = http::Response<
-                    <T as tonic::client::GrpcService<tonic::body::Body>>::ResponseBody,
+                    <T as tonic::client::GrpcService<tonic::body::BoxBody>>::ResponseBody,
                 >,
             >,
             <T as tonic::codegen::Service<
-                http::Request<tonic::body::Body>,
+                http::Request<tonic::body::BoxBody>,
             >>::Error: Into<StdError> + core::marker::Send + core::marker::Sync,
         {
             ApiClient::new(InterceptedService::new(inner, interceptor))
