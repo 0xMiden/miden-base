@@ -16,6 +16,14 @@ const.ERR_P2IDE_RECLAIM_DISABLED="P2IDE reclaim is disabled"
 
 const.ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note because the note is still timelocked"
 
+# CONSTANTS
+# =================================================================================================
+
+const.CURRENT_BLOCK_HEIGHT_MEM_ADDR=5
+
+# HELPER PROCEDURES
+# =================================================================================================
+
 #! Helper procedure to add all assets of a note to an account.
 #!
 #! Inputs:  []
@@ -68,6 +76,60 @@ proc.add_note_assets_to_account
     drop dropw drop
 end
 
+#! Helper procedure to check if the P2IDE note is unlocked.
+#!
+#! Inputs:  [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+#! Outputs: [reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+proc.verify_unlocked
+    # get current block number and store in memory for later
+    exec.tx::get_block_number dup mem_store.CURRENT_BLOCK_HEIGHT_MEM_ADDR
+    # => [current_block_height, timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+
+    # check timelock_block_height <= current_block_height
+    lte
+    # => [is_unlockable, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+
+    assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
+end
+
+#!  Helper procedure to be called after necessary checks that consumer is target.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.consume_by_target
+    # add note assets to account
+    exec.add_note_assets_to_account
+end
+
+#!  Helper procedure to be called if consumer is not target.
+#!  Checks if P2IDE reclaim is enabled and if true, if reclaim
+#!  height has been reached.
+#!
+#! Inputs:  [account_id_prefix, account_id_suffix, reclaim_block_height]
+#! Outputs: []
+proc.consume_by_sender
+    movup.2 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
+    # => [reclaim_block_height, account_id_prefix, account_id_suffix]
+
+    # now check that sender is allowed to reclaim, current block >= reclaim block height
+    mem_load.CURRENT_BLOCK_HEIGHT_MEM_ADDR
+    # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]]
+
+    u32assert2 u32lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
+    # => [account_id_prefix, account_id_suffix]]
+
+    # if current account is not the target, we need to ensure it is the sender
+    exec.note::get_sender
+    # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height]
+
+    # ensure current account ID = sender account ID
+    exec.account::is_id_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
+    # => []
+
+    # add note assets to account
+    exec.add_note_assets_to_account
+end
+
 #! Hybrid Pay to ID (Reclaimable & Timelockable)
 #!
 #! Adds all assets from the note to the account if all of the following conditions are true:
@@ -115,61 +177,28 @@ begin
     mem_loadw
     # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
-    dup eq.0 swap
-    # => [timelock_block_height, is_timelock_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-
-    # get block number and store in memory at address 0 for later
-    exec.tx::get_block_number dup push.5 mem_store
-    # => [current_block_height, timelock_block_height, is_timelock_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-
-    # check timelock_block_height <= current_block_height
-    lte
-    # => [is_unlockable, is_timelock_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-
-    # this is always true if the timelock is enabled, in which case the value of is_unlockable does not matter
-    or assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
+    # fails if note is locked
+    exec.verify_unlocked
     # => [reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
-    dup push.0 eq
-    # => [is_reclaim_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-
+    # get current account id
     exec.account::get_id dup.1 dup.1
-    # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, is_reclaim_disabled, reclaim_block_height, target_account_id_prefix, target_account_id_suffix, ...]
+    # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # determine if the current account is the target account
-    movup.7 movup.7 exec.account::is_id_equal
-    # => [is_target, account_id_prefix, account_id_suffix, is_reclaim_disabled, reclaim_block_height]
+    movup.6 movup.6 exec.account::is_id_equal
+    # => [is_target, account_id_prefix, account_id_suffix, reclaim_block_height]
 
     if.true
-        # if current account is the target, we don't need to check anything else
-        # and so we just clear the stack
-        dropw
+        # since the current account is the target move assets from note to target
+        dropw exec.consume_by_target
+        # => []
 
     else
-        # => [account_id_prefix, account_id_suffix, is_reclaim_disabled, reclaim_block_height]
-
-        movup.2 push.1 eq
-        # => [is_reclaim_disabled, account_id_prefix, account_id_suffix, reclaim_block_height]
-
-        eq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
-        # => [account_id_prefix, account_id_suffix, reclaim_block_height]
-
-        # if current account is not the target, we need to ensure it is the sender
-        exec.note::get_sender
-        # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height]
-
-        # ensure current account ID = sender account ID
-        exec.account::is_id_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
-        # => [reclaim_block_height]
-
-        # now check that sender is allowed to reclaim, current block >= reclaim block height
-        # exec.tx::get_block_number
-        push.5 mem_load
-        # => [current_block_height, reclaim_block_height]
-
-        u32assert2 u32lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
+        # checks if current account is sender and if reclaim is enabled
+        exec.consume_by_sender
+        # => []
     end
 
-    exec.add_note_assets_to_account
     # => []
 end
