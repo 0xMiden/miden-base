@@ -25,9 +25,6 @@ tonic-web-wasm-client = { version = "0.6", default-features = false }
 tonic = { version = "0.12", default-features = false, features = [
     "prost",
     "codegen",
-    "transport",
-    "tls",
-    "tls-native-roots",
 ] }
 getrandom = { version = "0.3", features = ["wasm_js"] }
 
