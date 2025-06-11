@@ -10,6 +10,7 @@ use miden_objects::{
     transaction::{OrderedTransactionHeaders, TransactionHeader},
     utils::{Deserializable, DeserializationError, Serializable},
 };
+use miden_tx::{TransactionProver, TransactionProverError};
 use tokio::sync::Mutex;
 
 use super::generated::api_client::ApiClient;
@@ -68,7 +69,7 @@ impl RemoteBlockProver {
         let new_client = {
             ApiClient::connect(self.endpoint.clone())
                 .await
-                .map_err(|_| RemoteProverError::ConnectionFailed(self.endpoint.to_string()))?
+                .map_err(|err| RemoteProverError::ConnectionFailed(err.into()))?
         };
 
         *client = Some(new_client);
@@ -90,9 +91,7 @@ impl RemoteBlockProver {
             .lock()
             .await
             .as_ref()
-            .ok_or_else(|| {
-                RemoteProverError::ConnectionFailed("client should be connected".into())
-            })?
+            .ok_or_else(|| RemoteProverError::other("client should be connected"))?
             .clone();
 
         // Get the set of expected transaction headers.
