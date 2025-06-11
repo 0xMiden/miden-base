@@ -1,3 +1,5 @@
+use core::time::Duration;
+
 use alloc::{
     boxed::Box,
     string::{String, ToString},
@@ -67,6 +69,16 @@ impl RemoteTransactionProver {
 
         #[cfg(not(target_arch = "wasm32"))]
         let new_client = {
+            let endpoint = tonic::transport::Endpoint::try_from(self.endpoint.clone())
+                .unwrap()
+                .timeout(Duration::from_millis(10000));
+            let channel = endpoint
+                .tls_config(tonic::transport::ClientTlsConfig::new().with_native_roots())
+                .unwrap()
+                .connect()
+                .await
+                .unwrap();
+
             ApiClient::connect(self.endpoint.clone())
                 .await
                 .map_err(|_| RemoteProverError::ConnectionFailed(self.endpoint.to_string()))?
