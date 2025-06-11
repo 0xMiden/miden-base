@@ -10,12 +10,12 @@ use crate::errors::MasmError;
 // NOTE SCRIPT ERRORS
 // ================================================================================================
 
-/// Error Message: "P2IDE reclaim account not sender"
-pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("P2IDE reclaim account not sender");
+/// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
+pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");
 /// Error Message: "P2IDE reclaim is disabled"
 pub const ERR_P2IDE_RECLAIM_DISABLED: MasmError = MasmError::from_static_str("P2IDE reclaim is disabled");
-/// Error Message: "P2IDE wait until reclaim height"
-pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("P2IDE wait until reclaim height");
+/// Error Message: "failed to reclaim P2IDE note because the reclaim block height is not reached yet"
+pub const ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaim block height is not reached yet");
 /// Error Message: "failed to consume P2IDE note because the note is still timelocked"
 pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("failed to consume P2IDE note because the note is still timelocked");
 /// Error Message: "P2IDE script expects exactly 4 note inputs"

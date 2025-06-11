@@ -92,15 +92,6 @@ proc.verify_unlocked
     assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
 end
 
-#!  Helper procedure to be called after necessary checks that consumer is target.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.consume_by_target
-    # add note assets to account
-    exec.add_note_assets_to_account
-end
-
 #! Helper procedure which adds the note assets to the sender account.
 #!
 #! Checks if P2IDE reclaim is enabled and if true, if reclaim height has been reached.
@@ -171,7 +162,6 @@ end
 #! - Adding a fungible asset would result in an amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 begin
-
     # store the note inputs to memory starting at address 0
     push.0 exec.note::get_inputs
     # => [num_inputs, inputs_ptr]
@@ -200,6 +190,7 @@ begin
         # we can safely consume the note since the current account is the target of the note
         dropw exec.add_note_assets_to_account
         # => []
+
     else
         # checks if current account is sender and if reclaim is enabled
         exec.consume_by_sender
