@@ -1,0 +1,25 @@
+use.miden::tx
+
+#! Adds the specified asset to the output note with the specified index.
+#!
+#! This procedure is expected to be invoked using a `call` instruction. It makes no guarantees about
+#! the contents of the `PAD` elements shown below. It is the caller's responsibility to make sure
+#! these elements do not contain any meaningful data.
+#!
+#! Inputs:  [ASSET, note_idx, pad(11)]
+#! Outputs: [ASSET, note_idx, pad(11)]
+#!
+#! Where:
+#! - note_idx is the index of the output note.
+#! - ASSET is the fungible or non-fungible asset of interest.
+#!
+#! Panics if:
+#! - the fungible asset is not found in the vault.
+#! - the amount of the fungible asset in the vault is less than the amount to be removed.
+#! - the non-fungible asset is not found in the vault.
+#!
+#! Invocation: call
+export.add_asset_to_note
+    exec.tx::add_asset_to_note
+    # => [ASSET, note_idx, pad(11) ...]
+end

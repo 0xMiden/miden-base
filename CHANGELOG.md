@@ -15,6 +15,7 @@
 - [BREAKING] Refactor transaction kernel advice inputs (#1425).
 - Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
 - Remove doc update checks on CI (#1435).
+- Add `AuxWallet` component (#1440).
 
 ## 0.9.1 (2025-05-30)
 

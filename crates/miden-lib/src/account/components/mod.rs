@@ -10,6 +10,13 @@ static BASIC_WALLET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Basic Wallet library is well-formed")
 });
 
+// Initialize the Aux Wallet library only once.
+static AUX_WALLET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes =
+        include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/aux_wallet.masl"));
+    Library::read_from_bytes(bytes).expect("Shipped Aux Wallet library is well-formed")
+});
+
 // Initialize the Rpo Falcon 512 library only once.
 static RPO_FALCON_512_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes =
@@ -29,6 +36,11 @@ static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 /// Returns the Basic Wallet Library.
 pub fn basic_wallet_library() -> Library {
     BASIC_WALLET_LIBRARY.clone()
+}
+
+/// Returns the Aux Wallet Library.
+pub fn aux_wallet_library() -> Library {
+    AUX_WALLET_LIBRARY.clone()
 }
 
 /// Returns the Rpo Falcon 512 Library.
