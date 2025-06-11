@@ -115,7 +115,7 @@ proc.consume_by_sender
     mem_load.CURRENT_BLOCK_HEIGHT_MEM_ADDR
     # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]]
 
-    u32assert2 u32lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
+    lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
     # => [account_id_prefix, account_id_suffix]]
 
     # if current account is not the target, we need to ensure it is the sender
