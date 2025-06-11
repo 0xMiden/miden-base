@@ -101,9 +101,9 @@ proc.consume_by_target
     exec.add_note_assets_to_account
 end
 
-#!  Helper procedure to be called if consumer is not target.
-#!  Checks if P2IDE reclaim is enabled and if true, if reclaim
-#!  height has been reached.
+#! Helper procedure which adds the note assets to the sender account.
+#!
+#! Checks if P2IDE reclaim is enabled and if true, if reclaim height has been reached.
 #!
 #! Inputs:  [account_id_prefix, account_id_suffix, reclaim_block_height]
 #! Outputs: []
