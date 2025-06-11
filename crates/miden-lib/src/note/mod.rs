@@ -113,7 +113,7 @@ pub fn create_p2ide_note<R: FeltRng>(
         timelock_height.map(|bn| bn.as_u32()),
         serial_num,
     )?;
-    let tag = NoteTag::from_account_id(target, NoteExecutionMode::Local)?;
+    let tag = NoteTag::from_account_id(target);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
     let vault = NoteAssets::new(assets)?;
