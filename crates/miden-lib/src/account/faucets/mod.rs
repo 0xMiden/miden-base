@@ -118,6 +118,14 @@ impl BasicFungibleFaucet {
 
         Err(FungibleFaucetError::NoAvailableInterface)
     }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the decimals of the faucet.
+    pub fn decimals(&self) -> u8 {
+        self.decimals
+    }
 }
 
 impl From<BasicFungibleFaucet> for AccountComponent {
@@ -138,6 +146,16 @@ impl TryFrom<Account> for BasicFungibleFaucet {
 
     fn try_from(account: Account) -> Result<Self, Self::Error> {
         let account_interface = AccountInterface::from(&account);
+
+        BasicFungibleFaucet::try_from_interface(account_interface, account.storage())
+    }
+}
+
+impl TryFrom<&Account> for BasicFungibleFaucet {
+    type Error = FungibleFaucetError;
+
+    fn try_from(account: &Account) -> Result<Self, Self::Error> {
+        let account_interface = AccountInterface::from(account);
 
         BasicFungibleFaucet::try_from_interface(account_interface, account.storage())
     }
