@@ -110,7 +110,7 @@ proc.reclaim_note
 
     # now check that sender is allowed to reclaim, reclaim block height <= current block height
     mem_load.CURRENT_BLOCK_HEIGHT_MEM_ADDR
-    # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]]
+    # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]
 
     lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
     # => [account_id_prefix, account_id_suffix]
