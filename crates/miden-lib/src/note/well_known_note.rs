@@ -105,7 +105,7 @@ impl WellKnownNote {
     /// Expected number of inputs of the P2IDR note.
     const P2IDR_NUM_INPUTS: usize = 3;
 
-    /// Expected number of inputs of the P2IDR note.
+    /// Expected number of inputs of the P2IDE note.
     const P2IDE_NUM_INPUTS: usize = 4;
 
     /// Expected number of inputs of the SWAP note.
