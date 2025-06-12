@@ -16,6 +16,7 @@
 - Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
 - Remove doc update checks on CI (#1435).
 - [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
+- [BREAKING] Allow list of keys in `AccountFile` (#1451).
 
 ## 0.9.1 (2025-05-30)
 
