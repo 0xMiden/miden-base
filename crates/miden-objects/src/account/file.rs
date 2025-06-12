@@ -21,8 +21,10 @@ const MAGIC: &str = "acct";
 // ================================================================================================
 
 /// Account file contains a complete description of an account, including the [`Account`] struct as
-/// well as account seed and account authentication info. The account authentication info consists
-/// of a list of [`AuthSecretKey`] that the account may use within its code.
+/// well as account seed and account authentication info. 
+///
+/// The account authentication info consists of a list of [`AuthSecretKey`] that the account may
+/// use within its code.
 ///
 /// The intent of this struct is to provide an easy way to serialize and deserialize all
 /// account-related data as a single unit (e.g., to/from files).
