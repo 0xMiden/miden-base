@@ -131,13 +131,11 @@ end
 #! Extended Pay-to_ID note script (Reclaimable & Timelockable)
 #!
 #! Adds all assets from the note to the account if all of the following conditions are true:
-#! - The transaction's reference block number is greater than or equal to the note's timelock block height,
-#!   or the timelock block height is 0, which means it is disabled.
+#! - The transaction's reference block number is greater than or equal to the note's timelock block height.
 #! - Any of the following conditions is true:
 #!   - The account ID against which the transaction is executed matches the note's target account id.
 #!   - The account ID against which the transaction is executed matches the note's sender account id and
-#!     the transaction's reference block number is greater than or equal to the note's reclaim block height,
-#!     or the reclaim block height is 0, which means it is disabled.
+#!     the transaction's reference block number is greater than or equal to the note's reclaim block height.
 #!
 #! Requires that the account exposes:
 #! - miden::contracts::wallets::basic::receive_asset procedure.
