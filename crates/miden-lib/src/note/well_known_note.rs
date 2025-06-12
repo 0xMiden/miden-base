@@ -283,17 +283,6 @@ impl WellKnownNote {
                     return NoteAccountCompatibility::No;
                 }
 
-                // parse recall height
-                let recall_height: Result<u32, _> = note_inputs[2].try_into();
-                let Ok(recall_height) = recall_height else {
-                    return NoteAccountCompatibility::No;
-                };
-                // parse timelock height
-                let timelock_height: Result<u32, _> = note_inputs[3].try_into();
-                let Ok(timelock_height) = timelock_height else {
-                    return NoteAccountCompatibility::No;
-                };
-
                 let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
                     return NoteAccountCompatibility::No;
                 };
@@ -306,8 +295,19 @@ impl WellKnownNote {
                     return NoteAccountCompatibility::No;
                 }
 
+                // parse recall height
+                let recall_height: Result<u32, _> = note_inputs[2].try_into();
+                let Ok(recall_height) = recall_height else {
+                    return NoteAccountCompatibility::No;
+                };
+                // parse timelock height
+                let timelock_height: Result<u32, _> = note_inputs[3].try_into();
+                let Ok(timelock_height) = timelock_height else {
+                    return NoteAccountCompatibility::No;
+                };
+
                 // timelock check
-                if block_ref.as_u32() < timelock_height {
+                if block_ref.as_u32() <= timelock_height {
                     // still locked
                     return NoteAccountCompatibility::No;
                 }
