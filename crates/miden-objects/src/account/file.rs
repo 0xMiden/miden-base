@@ -21,7 +21,7 @@ const MAGIC: &str = "acct";
 // ================================================================================================
 
 /// Account file contains a complete description of an account, including the [`Account`] struct as
-/// well as account seed and account authentication info. 
+/// well as account seed and account authentication info.
 ///
 /// The account authentication info consists of a list of [`AuthSecretKey`] that the account may
 /// use within its code.
