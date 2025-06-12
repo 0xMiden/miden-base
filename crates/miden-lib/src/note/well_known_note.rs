@@ -314,7 +314,7 @@ impl WellKnownNote {
 
                 // reclaim logic
                 if is_sender {
-                    // sender can reclaim only after recall period has passed
+                    // sender can reclaim only after recall block height has passed
                     if block_ref.as_u32() >= recall_height {
                         NoteAccountCompatibility::Yes
                     } else {
