@@ -283,23 +283,6 @@ impl WellKnownNote {
                     return NoteAccountCompatibility::No;
                 }
 
-                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
-                    return NoteAccountCompatibility::No;
-                };
-                let sender_account_id = note.metadata().sender();
-                let is_target = input_account_id == target_account_id;
-                let is_sender = input_account_id == sender_account_id;
-
-                // only target or sender may consume
-                if !is_target && !is_sender {
-                    return NoteAccountCompatibility::No;
-                }
-
-                // parse recall height
-                let recall_height: Result<u32, _> = note_inputs[2].try_into();
-                let Ok(recall_height) = recall_height else {
-                    return NoteAccountCompatibility::No;
-                };
                 // parse timelock height
                 let timelock_height: Result<u32, _> = note_inputs[3].try_into();
                 let Ok(timelock_height) = timelock_height else {
@@ -312,8 +295,26 @@ impl WellKnownNote {
                     return NoteAccountCompatibility::No;
                 }
 
+                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
+                    return NoteAccountCompatibility::No;
+                };
+                let sender_account_id = note.metadata().sender();
+                let is_target = input_account_id == target_account_id;
+                let is_sender = input_account_id == sender_account_id;
+
+                // only target or sender may consume
+                if !is_target && !is_sender {
+                    return NoteAccountCompatibility::No;
+                }
+
                 // reclaim logic
                 if is_sender {
+                    // parse recall height
+                    let recall_height: Result<u32, _> = note_inputs[2].try_into();
+                    let Ok(recall_height) = recall_height else {
+                        return NoteAccountCompatibility::No;
+                    };
+
                     // sender can reclaim only after recall block height has passed
                     if block_ref.as_u32() >= recall_height {
                         NoteAccountCompatibility::Yes

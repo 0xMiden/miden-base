@@ -2,6 +2,7 @@ use miden_objects::{
     Felt, NoteError, Word,
     account::AccountId,
     asset::Asset,
+    block::BlockNumber,
     note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType},
 };
 
@@ -32,12 +33,17 @@ pub fn build_p2ide_recipient(
     serial_num: Word,
 ) -> Result<NoteRecipient, NoteError> {
     let note_script = WellKnownNote::P2IDE.script();
+
+    let reclaim_height_u32 = reclaim_block_height.map_or(0, |bn| bn.as_u32());
+    let timelock_height_u32 = timelock_block_height.map_or(0, |bn| bn.as_u32());
+
     let note_inputs = NoteInputs::new(vec![
         target.suffix(),
         target.prefix().into(),
-        Felt::new(reclaim_block_height.unwrap_or(0) as u64),
-        Felt::new(timelock_block_height.unwrap_or(0) as u64),
+        Felt::new(reclaim_height_u32 as u64),
+        Felt::new(timelock_height_u32 as u64),
     ])?;
+
     Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
 }
 

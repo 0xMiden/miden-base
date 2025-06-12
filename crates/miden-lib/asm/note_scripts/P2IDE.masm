@@ -128,7 +128,7 @@ proc.reclaim_note
     # => []
 end
 
-#! Extended Pay-to_ID note script (Reclaimable & Timelockable)
+#! Extended Pay-to-ID note script (Reclaimable & Timelockable)
 #!
 #! Adds all assets from the note to the account if all of the following conditions are true:
 #! - The transaction's reference block number is greater than or equal to the note's timelock block height.

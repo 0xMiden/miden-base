@@ -83,7 +83,7 @@ pub fn create_p2idr_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
-/// Generates a hybrid P2ID note - pay to id with optional recall after a certain block height and
+/// Generates a P2IDE note - pay to id with optional recall after a certain block height and
 /// optional timelock.
 ///
 /// This script enables the transfer of assets from the sender `sender` account to the `target`
@@ -107,12 +107,8 @@ pub fn create_p2ide_note<R: FeltRng>(
     rng: &mut R,
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
-    let recipient = utils::build_p2ide_recipient(
-        target,
-        recall_height.map(|bn| bn.as_u32()),
-        timelock_height.map(|bn| bn.as_u32()),
-        serial_num,
-    )?;
+    let recipient =
+        utils::build_p2ide_recipient(target, recall_height, timelock_height, serial_num)?;
     let tag = NoteTag::from_account_id(target);
 
     let execution_hint = match timelock_height {
