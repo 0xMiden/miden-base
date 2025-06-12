@@ -113,7 +113,7 @@ proc.consume_by_sender
     # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]]
 
     lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
-    # => [account_id_prefix, account_id_suffix]]
+    # => [account_id_prefix, account_id_suffix]
 
     # if current account is not the target, we need to ensure it is the sender
     exec.note::get_sender
