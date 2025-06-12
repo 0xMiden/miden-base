@@ -108,7 +108,7 @@ proc.reclaim_note
     movup.2 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
     # => [reclaim_block_height, account_id_prefix, account_id_suffix]
 
-    # now check that sender is allowed to reclaim, current block >= reclaim block height
+    # now check that sender is allowed to reclaim, reclaim block height <= current block height
     mem_load.CURRENT_BLOCK_HEIGHT_MEM_ADDR
     # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]]
 
