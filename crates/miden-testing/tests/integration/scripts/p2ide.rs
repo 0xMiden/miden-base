@@ -285,7 +285,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Test that the P2IDE script ye
+/// Test that the P2IDE note can have timelock and reclaim functionality
 #[test]
 fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
