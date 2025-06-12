@@ -44,6 +44,22 @@ pub type StorageSlot = u8;
 // | Storage slot info | 2_088 (522)                           | 4_127 (1031)                        | 255 slots max, 8 elements each      |
 // | Padding           | 4_128 (1032)                          | 8_191 (2047)                        |                                     |
 
+// Relative layout of the native account's delta.
+//
+// Here the "end pointer" is the last memory pointer occupied by the current data
+//
+// For now each link map ptr occupies a word in anticipation of the current single element map ptr
+// storing map metadata in the future.
+//
+// | Section               | Start address (word pointer) | End address (word pointer) | Comment                             |
+// | --------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
+// | Nonce                 | 0 (0)                        | 3 (0)                      |                                     |
+// | Fungible Asset        | 4 (1)                        | 7 (1)                      |                                     |
+// | Non-Fungible Asset    | 8 (2)                        | 11 (2)                     |                                     |
+// | Storage Map Pointers  | 12 (3)                       | 1031 (257)                 | Max 255 storage map deltas          |
+// | Initial Storage Slots | 1032 (258)                   | 3071 (767)                 | Max 255 slots, 8 elements each      |
+// | Storage Delta         | 3072 (768)                   | 5111 (1277)                | Max 255 slots, 8 elements each      |
+
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------
 
@@ -269,22 +285,12 @@ pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2088;
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
 
-/// ```text
-/// ┌──────────────┬──────────────────┬──────────────────────┬──────────────┬─────┬────────────────┐
-/// │ ID AND NONCE │ FUNG VAULT DELTA │ NON-FUNG VAULT DELTA │ SLOT 0 DELTA │ ... │ SLOT 255 DELTA │
-/// ├──────────────┼──────────────────┼──────────────────────┼──────────────┼─────┼────────────────┤
-///      532_480          532_484             532_488            532_492               534_532
-/// ```
-///
-/// TODO: Document vault layout?
-///
-/// The slot delta is either:
-/// - value slots: the new value.
-/// - map slots: a ptr to a map that contains the updated key-value pairs.
-pub const ACCOUNT_DELTA_PTR: MemoryAddress = 532_480;
+pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
 
 /// TODO
 pub const ACCOUNT_STORAGE_DELTA_PTR: MemoryAddress = 532492;
+
+pub const ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS: MemoryAddress = ACCOUNT_DELTA_NONCE_PTR + 1032;
 
 // NOTES DATA
 // ================================================================================================

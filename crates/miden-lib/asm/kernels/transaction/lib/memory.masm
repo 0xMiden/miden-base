@@ -1,5 +1,6 @@
 use.kernel::account
 use.kernel::constants
+use.std::mem
 
 # ERRORS
 # =================================================================================================
@@ -161,27 +162,15 @@ const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
 
-# The pointer at which the ID of the account and the delta of the nonce is stored.
-# Note that the ID is included because it should be part of the account delta commitment.
-# Layout: [account_nonce, 0, account_id_prefix, account_id_suffix]
-const.ACCOUNT_ID_AND_NONCE_DELTA_PTR=532480
+# The pointer at which the delta of the nonce is stored.
+# Layout: [0, 0, 0, account_id_suffix]
+const.ACCOUNT_DELTA_NONCE_PTR=532480
 
-# The pointer at which the map is stored that holds the updated fungible assets.
-# The layout of each fungible asset is: `[amount_hi, amount_lo, faucet_id_suffix, faucet_id_prefix]`,
-# where `amount_hi` and `amount_lo` are the limbs of a u64 which is interpreted as an i64 to
-# represent whether `amount` is negative (1) or positive (0).
-# const.ACCOUNT_FUNGIBLE_ASSET_DELTA_PTR=532484
-
-# const.ACCOUNT_NON_FUNGIBLE_ASSET_DELTA_PTR=532488
-
-# The pointer to the storage delta.
-#
-# Layout: [VALUE_OR_MAP_DELTA_0, VALUE_OR_MAP_DELTA_1, ...]
-#
-# Where VALUE_OR_MAP_DELTA is:
-# - value slots: the new value.
-# - map slots: the pointer to the map delta at offset 0.
-const.ACCOUNT_STORAGE_DELTA_PTR=532492
+# Exact copy of the account's storage slot section starting at ACCT_STORAGE_SLOTS_SECTION_OFFSET.
+# This keeps the initial values of the account storage slots to enable computing a diff
+# between the initial and current account storage **value** slots.
+# This is only used for **value** slots and the map type slots are unused.
+const.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS=ACCOUNT_DELTA_NONCE_PTR+1032
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -1114,6 +1103,24 @@ export.set_num_storage_slots
     mem_store
 end
 
+#! Returns the type of the requested storage slot.
+#!
+#! Inputs:  [index]
+#! Outputs: [slot_type]
+#!
+#! Where:
+#! - index is the location in memory of the storage slot.
+#! - slot_type is the type of the storage slot.
+export.get_storage_slot_type
+    # get account storage slots section offset
+    exec.get_acct_storage_slots_section_ptr
+    # => [acct_storage_slots_section_offset, index]
+
+    # get storage slot type
+    swap mul.8 add add.4 mem_load
+    # => [slot_type]
+end
+
 #! Returns the memory pointer to the account storage slots section.
 #!
 #! Inputs:  []
@@ -1123,6 +1130,11 @@ end
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
 export.get_acct_storage_slots_section_ptr
     exec.get_current_account_data_ptr push.ACCT_STORAGE_SLOTS_SECTION_OFFSET add
+end
+
+# TODO: Docs
+export.get_account_delta_initial_storage_slots_ptr
+  push.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS
 end
 
 ### ACCOUNT DELTA #################################################
@@ -1137,7 +1149,7 @@ end
 #! Where:
 #! - nonce_delta is the value by which the nonce changed.
 export.incr_account_nonce_delta
-    exec.get_account_nonce_delta add mem_store.ACCOUNT_ID_AND_NONCE_DELTA_PTR
+    exec.get_account_nonce_delta add mem_store.ACCOUNT_DELTA_NONCE_PTR
 end
 
 #! Returns the delta of the account's nonce.
@@ -1148,21 +1160,23 @@ end
 #! Where:
 #! - nonce_delta is the value by which the nonce changed.
 export.get_account_nonce_delta
-    mem_load.ACCOUNT_ID_AND_NONCE_DELTA_PTR
+    mem_load.ACCOUNT_DELTA_NONCE_PTR
 end
 
-#! Sets the delta of a value storage slot.
+#! Initializes the storage slots holding the initial values of each slot.
 #!
-#! Note: Assumes the storage slot at the index is of type value.
-#!
-#! Inputs:  [index, NEW_VALUE]
+#! Inputs:  []
 #! Outputs: []
-#!
-#! Where:
-#! - index is the index of the storage slot.
-#! - NEW_VALUE is the new value in the storage slot.
-export.set_value_item_delta
-    mul.4 add.ACCOUNT_STORAGE_DELTA_PTR mem_storew dropw
+export.mem_copy_initial_storage_slots
+  push.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS exec.get_acct_storage_slots_section_ptr
+  # => [storage_slots_section_ptr, initial_storage_slots_ptr]
+
+  # each slot takes up two words
+  exec.get_num_storage_slots mul.2
+  # => [num_storage_slot_words, storage_slots_section_ptr, initial_storage_slots_ptr]
+
+  exec.mem::memcopy_words
+  # => []
 end
 
 # INPUT NOTES

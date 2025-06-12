@@ -1,0 +1,171 @@
+use.kernel::memory
+use.kernel::constants
+use.kernel::account
+use.std::crypto::hashes::rpo
+
+#! Computes the commitment to the account delta.
+#!
+#! The delta is a sequential hash over:
+#! [
+#!     [account_id_prefix, account_id_suffix, 0, nonce_delta],
+#!     FUNGIBLE_VAULT_DELTA_COMMITMENT,
+#!     NON_FUNGIBLE_VAULT_DELTA_COMMITMENT,
+#!     EMPTY_WORD,
+#!     SLOT_COMMITMENT_0, [0, 0, 0, was_slot_0_changed],
+#!     SLOT_COMMITMENT_1, [0, 0, 0, was_slot_1_changed],
+#!     ...
+#!     SLOT_COMMITMENT_n-1, [0, 0, 0, was_slot_n-1_changed],
+#! ]
+#!
+#! Where:
+#! - n is the number of storage slots.
+#! - TODO
+#!
+#! Inputs:  []
+#! Outputs: [DELTA_COMMITMENT]
+#!
+#! Where:
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+export.compute_commitment
+    # pad capacity element of the hasher
+    padw
+    # => [CAPACITY]
+
+    exec.memory::get_account_nonce_delta push.0
+    # => [0, nonce_delta, CAPACITY]
+
+    exec.memory::get_native_account_id
+    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_delta, CAPACITY]
+    # => [ID_AND_NONCE, CAPACITY]
+
+    # TODO: add fungible vault delta commitment
+    padw
+    # => [FUNGIBLE_VAULT_DELTA_COMMITMENT, ID_AND_NONCE, CAPACITY]
+
+    hperm
+    # => [RATE, RATE, PERM]
+
+    # clear rate elements
+    dropw dropw
+    # => [PERM]
+
+    # TODO: add non-fungible vault delta commitment
+    padw padw
+    # => [EMPTY_WORD, NON_FUNGIBLE_VAULT_DELTA_COMMITMENT, PERM]
+
+    hperm
+    # => [RATE, RATE, PERM]
+
+    exec.memory::get_num_storage_slots movdn.12
+    # => [RATE, RATE, PERM, num_storage_slots]
+
+    push.0 movdn.12
+    # => [RATE, RATE, PERM, slot_idx = 0, num_storage_slots]
+
+    # loop if num_storage_slots != 0
+    dup.13 neq.0
+    # => [should_loop, RATE, RATE, PERM, slot_idx, num_storage_slots]
+
+    while.true
+        # clear rate elements
+        dropw dropw
+        # => [PERM, slot_idx, num_storage_slots]
+
+        dup.4
+        # => [slot_idx, PERM, slot_idx, num_storage_slots]
+
+        exec.compute_storage_commitment
+        # => [SLOT_COMMITMENT, 0, 0, 0, was_changed, PERM, slot_idx, num_storage_slots]
+
+        hperm
+        # => [RATE, RATE, PERM, slot_idx, num_storage_slots]
+
+        # increment slot index
+        movup.12 add.1
+        # => [next_slot_idx, RATE, RATE, PERM, num_storage_slots]
+
+        dup movdn.13
+        # => [next_slot_idx, RATE, RATE, PERM, next_slot_idx, num_storage_slots]
+
+        # compute next_slot_idx < num_storage_slots
+        dup.14 lt
+        # => [should_loop, RATE, RATE, PERM, next_slot_idx, num_storage_slots]
+    end
+
+    exec.rpo::squeeze_digest
+    # => [DELTA_COMMITMENT, next_slot_idx, num_storage_slots]
+
+    # clean the stack
+    movup.4 drop movup.4 drop
+    # => [DELTA_COMMITMENT]
+end
+
+#! Computes the delta commitment of the storage slot at the provided index.
+#!
+#! Assumes the slot index is valid and within bounds.
+#!
+#! Inputs:  [slot_idx]
+#! Outputs: [SLOT_COMMITMENT, 0, 0, 0, was_changed]
+proc.compute_storage_commitment
+    # we use memory::get_storage_slot_type instead of the procedure in account to
+    # avoid the assertion overhead
+    dup exec.memory::get_storage_slot_type
+    # => [storage_slot_type, slot_idx]
+
+    # check if type == slot
+    exec.constants::get_storage_slot_type_value eq
+    # => [is_value_slot_type, slot_idx]
+
+    if.true
+        exec.compute_value_slot_commitment
+    else
+        # TODO: Compute storage map delta commitment
+        padw padw
+        # => [pad(8)]
+    end
+end
+
+#! Computes the delta commitment of a value-type storage slot.
+#!
+#! Inputs:  [slot_idx]
+#! Outputs: [SLOT_COMMITMENT, 0, 0, 0, was_changed]
+proc.compute_value_slot_commitment
+    padw padw
+    # => [EMPTY_WORD, EMPTY_WORD, slot_idx]
+
+    dup.8 exec.account::get_item
+    # => [CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD, slot_idx]
+
+    movup.12 exec.get_item_initial
+    # => [INIT_VALUE, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
+
+    dupw.1 eqw not
+    # => [was_changed, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
+    # => [was_changed, was_changed, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
+
+    dup swap.13
+    # => [was_changed, CURRENT_VALUE, EMPTY_WORD, [0, 0, 0, was_changed]]
+
+    # if was_changed is true CURRENT_VALUE remains as the SLOT_COMMITMENT
+    # if was_changed is false EMPTY_WORD remains as the SLOT_COMMITMENT
+    cdropw
+    # => [SLOT_COMMITMENT, [0, 0, 0, was_changed]]
+end
+
+#! TODO: Should this be a procedure on the account?
+#!
+#! Gets the initial value of a storage slot from the account storage.
+#!
+#! This is the value of the slot at the beginning of the transaction.
+#!
+#! Inputs:  [index]
+#! Outputs: [INIT_VALUE]
+proc.get_item_initial
+    # get account storage slots section offset
+    exec.memory::get_account_delta_initial_storage_slots_ptr
+    # => [account_delta_initial_storage_slots_ptr, index]
+
+    # get the item from storage
+    swap mul.8 add padw movup.4 mem_loadw
+    # => [INIT_VALUE]
+end

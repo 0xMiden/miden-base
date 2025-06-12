@@ -525,12 +525,6 @@ export.set_item
     exec.set_item_raw
     # => [V, V', index]
 
-    dupw.1 dup.12
-    # => [index, V', V, V', index]
-
-    exec.memory::set_value_item_delta
-    # => [V, V', index]
-
     # emit event to signal that an account storage item is being updated
     swapw movup.8
     emit.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT drop dropw
@@ -665,12 +659,7 @@ export.get_storage_slot_type
     dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
     # => [index]
 
-    # get account storage slots section offset
-    exec.memory::get_acct_storage_slots_section_ptr
-    # => [acct_storage_slots_section_offset, index]
-
-    # get storage slot type
-    swap mul.8 add add.4 mem_load
+    exec.memory::get_storage_slot_type
     # => [slot_type]
 end
 
@@ -871,6 +860,11 @@ export.save_account_storage_data
 
     # verify hashed account storage slots match account storage commitment
     assert_eqw.err=ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH
+    # OS => []
+
+    # duplicate the initial storage slots in memory to enable a diff computation
+    # for the account delta
+    exec.memory::mem_copy_initial_storage_slots
     # OS => []
 end
 

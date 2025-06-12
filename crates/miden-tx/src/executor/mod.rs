@@ -6,7 +6,9 @@ use alloc::{
 
 use miden_lib::transaction::{
     TransactionKernel, TransactionKernelError,
-    memory::{ACCOUNT_DELTA_PTR, ACCOUNT_STORAGE_DELTA_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
+    memory::{
+        ACCOUNT_DELTA_NONCE_PTR, ACCOUNT_STORAGE_DELTA_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    },
 };
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word, ZERO,
@@ -385,7 +387,7 @@ impl<'process> AccountDeltaBuilder<'process> {
     pub fn build_delta(&self) -> Result<AccountDelta, TransactionKernelError> {
         // TODO: Get the ID as well so the account delta is self-contained and its commitment can be
         // computed.
-        let nonce = self.get_mem_value(ACCOUNT_DELTA_PTR);
+        let nonce = self.get_mem_value(ACCOUNT_DELTA_NONCE_PTR);
 
         let storage_delta = self.build_storage_delta()?;
         let vault_delta = AccountVaultDelta::default();
@@ -399,6 +401,7 @@ impl<'process> AccountDeltaBuilder<'process> {
         let mut value_slots = BTreeMap::new();
         let map_slots = BTreeMap::new();
 
+        // TODO: This is outdated. Compute diff between initial and current slot values instead.
         for slot_idx in 0..num_storage_slots {
             // TODO: Handle maps.
             let slot_addr = ACCOUNT_STORAGE_DELTA_PTR + slot_idx as u32 * 4;
