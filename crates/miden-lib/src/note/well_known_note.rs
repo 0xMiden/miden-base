@@ -30,6 +30,13 @@ static P2IDR_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     NoteScript::new(program)
 });
 
+// Initialize the P2IDE note script only once
+static P2IDE_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDE.masb"));
+    let program = Program::read_from_bytes(bytes).expect("Shipped P2IDE script is well-formed");
+    NoteScript::new(program)
+});
+
 // Initialize the SWAP note script only once
 static SWAP_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/SWAP.masb"));
@@ -57,6 +64,16 @@ fn p2idr_root() -> Digest {
     P2IDR_SCRIPT.root()
 }
 
+/// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script.
+fn p2ide() -> NoteScript {
+    P2IDE_SCRIPT.clone()
+}
+
+/// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script root.
+fn p2ide_root() -> Digest {
+    P2IDE_SCRIPT.root()
+}
+
 /// Returns the SWAP (Swap note) note script.
 fn swap() -> NoteScript {
     SWAP_SCRIPT.clone()
@@ -74,6 +91,7 @@ fn swap_root() -> Digest {
 pub enum WellKnownNote {
     P2ID,
     P2IDR,
+    P2IDE,
     SWAP,
 }
 
@@ -86,6 +104,9 @@ impl WellKnownNote {
 
     /// Expected number of inputs of the P2IDR note.
     const P2IDR_NUM_INPUTS: usize = 3;
+
+    /// Expected number of inputs of the P2IDE note.
+    const P2IDE_NUM_INPUTS: usize = 4;
 
     /// Expected number of inputs of the SWAP note.
     const SWAP_NUM_INPUTS: usize = 10;
@@ -119,6 +140,7 @@ impl WellKnownNote {
         match self {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
             Self::P2IDR => Self::P2IDR_NUM_INPUTS,
+            Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
         }
     }
@@ -128,6 +150,7 @@ impl WellKnownNote {
         match self {
             Self::P2ID => p2id(),
             Self::P2IDR => p2idr(),
+            Self::P2IDE => p2ide(),
             Self::SWAP => swap(),
         }
     }
@@ -137,6 +160,7 @@ impl WellKnownNote {
         match self {
             Self::P2ID => p2id_root(),
             Self::P2IDR => p2idr_root(),
+            Self::P2IDE => p2ide_root(),
             Self::SWAP => swap_root(),
         }
     }
@@ -150,7 +174,7 @@ impl WellKnownNote {
 
         let interface_proc_digests = account_interface.get_procedure_digests();
         match self {
-            Self::P2ID | &Self::P2IDR => {
+            Self::P2ID | &Self::P2IDR | &Self::P2IDE => {
                 // Get the hash of the "receive_asset" procedure and check that this procedure is
                 // presented in the provided account interfaces. P2ID and P2IDR notes requires only
                 // this procedure to be consumed by the account.
@@ -182,6 +206,10 @@ impl WellKnownNote {
     /// - for `P2ID` note: assertion that the account ID provided by the note inputs is equal to the
     ///   target account ID.
     /// - for `P2IDR` note: assertion that the account ID provided by the note inputs is equal to
+    ///   the target account ID (which means that the note is going to be consumed by the target
+    ///   account) or that the target account ID is equal to the sender account ID (which means that
+    ///   the note is going to be consumed by the sender account)
+    /// - for `P2IDE` note: assertion that the account ID provided by the note inputs is equal to
     ///   the target account ID (which means that the note is going to be consumed by the target
     ///   account) or that the target account ID is equal to the sender account ID (which means that
     ///   the note is going to be consumed by the sender account)
@@ -248,6 +276,57 @@ impl WellKnownNote {
                     }
                 }
             },
+            WellKnownNote::P2IDE => {
+                let note_inputs = note.inputs().values();
+                // check the expected number of inputs
+                if note_inputs.len() != self.num_expected_inputs() {
+                    return NoteAccountCompatibility::No;
+                }
+
+                // parse timelock height
+                let timelock_height: Result<u32, _> = note_inputs[3].try_into();
+                let Ok(timelock_height) = timelock_height else {
+                    return NoteAccountCompatibility::No;
+                };
+
+                // timelock check
+                if block_ref.as_u32() < timelock_height {
+                    // still locked
+                    return NoteAccountCompatibility::No;
+                }
+
+                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
+                    return NoteAccountCompatibility::No;
+                };
+                let sender_account_id = note.metadata().sender();
+                let is_target = input_account_id == target_account_id;
+                let is_sender = input_account_id == sender_account_id;
+
+                // only target or sender may consume
+                if !is_target && !is_sender {
+                    return NoteAccountCompatibility::No;
+                }
+
+                // reclaim logic
+                if is_sender {
+                    // parse recall height
+                    let recall_height: Result<u32, _> = note_inputs[2].try_into();
+                    let Ok(recall_height) = recall_height else {
+                        return NoteAccountCompatibility::No;
+                    };
+
+                    // sender can reclaim only after recall block height has passed
+                    if block_ref.as_u32() >= recall_height {
+                        NoteAccountCompatibility::Yes
+                    } else {
+                        NoteAccountCompatibility::No
+                    }
+                } else {
+                    // target can spend as soon as timelock is over
+                    NoteAccountCompatibility::Yes
+                }
+            },
+
             WellKnownNote::SWAP => {
                 if note.inputs().values().len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;
