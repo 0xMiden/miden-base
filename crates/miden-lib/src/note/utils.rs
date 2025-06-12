@@ -27,8 +27,8 @@ pub fn build_p2id_recipient(
 /// account.
 pub fn build_p2ide_recipient(
     target: AccountId,
-    reclaim_block_height: Option<u32>,
-    timelock_block_height: Option<u32>,
+    reclaim_block_height: Option<BlockNumber>,
+    timelock_block_height: Option<BlockNumber>,
     serial_num: Word,
 ) -> Result<NoteRecipient, NoteError> {
     let note_script = WellKnownNote::P2IDE.script();
