@@ -78,8 +78,8 @@ end
 
 #! Helper procedure to check if the P2IDE note is unlocked.
 #!
-#! Inputs:  [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-#! Outputs: [reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+#! Inputs:  [timelock_block_height]
+#! Outputs: []
 proc.verify_unlocked
     # get current block number and store in memory for later
     exec.tx::get_block_number dup mem_store.CURRENT_BLOCK_HEIGHT_MEM_ADDR
