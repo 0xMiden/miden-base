@@ -307,7 +307,7 @@ impl WellKnownNote {
                 };
 
                 // timelock check
-                if block_ref.as_u32() <= timelock_height {
+                if block_ref.as_u32() < timelock_height {
                     // still locked
                     return NoteAccountCompatibility::No;
                 }

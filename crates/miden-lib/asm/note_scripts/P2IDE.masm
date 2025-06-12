@@ -103,7 +103,7 @@ end
 #! - the reclaim of the current note is disabled.
 #! - the reclaim block height is not reached yet.
 #! - the account attempting to reclaim the note is not the sender account.
-proc.consume_by_sender
+proc.reclaim_note
     # check that the reclaim of the current note is enabled
     movup.2 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
     # => [reclaim_block_height, account_id_prefix, account_id_suffix]
@@ -193,7 +193,7 @@ begin
 
     else
         # checks if current account is sender and if reclaim is enabled
-        exec.consume_by_sender
+        exec.reclaim_note
         # => []
     end
 
