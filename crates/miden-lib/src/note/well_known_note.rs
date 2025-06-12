@@ -278,54 +278,54 @@ impl WellKnownNote {
             },
             WellKnownNote::P2IDE => {
                 let note_inputs = note.inputs().values();
+                // check the expected number of inputs
                 if note_inputs.len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;
                 }
 
+                // parse recall height
                 let recall_height: Result<u32, _> = note_inputs[2].try_into();
-                // Return `No` if the note input value which represents the recall height is invalid
                 let Ok(recall_height) = recall_height else {
                     return NoteAccountCompatibility::No;
                 };
-
+                // parse timelock height
                 let timelock_height: Result<u32, _> = note_inputs[3].try_into();
-                // Return `No` if the note input value which represents the timelock height is invalid
                 let Ok(timelock_height) = timelock_height else {
                     return NoteAccountCompatibility::No;
                 };
 
-                // Return `No` if the note input values used to construct the account ID are invalid
                 let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
                     return NoteAccountCompatibility::No;
                 };
+                let sender_account_id = note.metadata().sender();
+                let is_target = input_account_id == target_account_id;
+                let is_sender = input_account_id == sender_account_id;
 
-                // Return `No` if the timelock height is not reached, i.e. the note is still 
-                // timelocked
-                if block_ref.as_u32() < timelock_height {
+                // only target or sender may consume
+                if !is_target && !is_sender {
                     return NoteAccountCompatibility::No;
                 }
 
-                if block_ref.as_u32() >= recall_height {
-                    let sender_account_id = note.metadata().sender();
-                    // if the sender can already reclaim the assets back, then:
-                    // - target account ID could be equal to the inputs account ID if the note is
-                    //   going to be consumed by the target account
-                    // - target account ID could be equal to the sender account ID if the note is
-                    //   going to be consumed by the sender account
-                    if [input_account_id, sender_account_id].contains(&target_account_id) {
+                // timelock check
+                if block_ref.as_u32() < timelock_height {
+                    // still locked
+                    return NoteAccountCompatibility::No;
+                }
+
+                // reclaim logic
+                if is_sender {
+                    // sender can reclaim only after recall period has passed
+                    if block_ref.as_u32() >= recall_height {
                         NoteAccountCompatibility::Yes
                     } else {
                         NoteAccountCompatibility::No
                     }
                 } else {
-                    // in this case note could be consumed only by the target account
-                    if input_account_id == target_account_id {
-                        NoteAccountCompatibility::Yes
-                    } else {
-                        NoteAccountCompatibility::No
-                    }
+                    // target can spend as soon as timelock is over
+                    NoteAccountCompatibility::Yes
                 }
             },
+
             WellKnownNote::SWAP => {
                 if note.inputs().values().len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;

@@ -37,8 +37,7 @@ pub fn build_p2ide_recipient(
         target.prefix().into(),
         Felt::new(reclaim_block_height.unwrap_or(0) as u64),
         Felt::new(timelock_block_height.unwrap_or(0) as u64),
-    ])
-    .unwrap();
+    ])?;
     Ok(NoteRecipient::new(serial_num, note_script, note_inputs))
 }
 

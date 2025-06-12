@@ -115,7 +115,12 @@ pub fn create_p2ide_note<R: FeltRng>(
     )?;
     let tag = NoteTag::from_account_id(target);
 
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
+    let execution_hint = match timelock_height {
+        Some(height) => NoteExecutionHint::after_block(height)?,
+        None => NoteExecutionHint::always(),
+    };
+
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
     let vault = NoteAssets::new(assets)?;
 
     Ok(Note::new(vault, metadata, recipient))
