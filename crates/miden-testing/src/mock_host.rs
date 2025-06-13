@@ -6,7 +6,10 @@ use miden_objects::{
     account::{AccountHeader, AccountVaultDelta},
     assembly::mast::MastNodeExt,
 };
-use miden_tx::{TransactionMastStore, host::AccountProcedureIndexMap};
+use miden_tx::{
+    TransactionMastStore,
+    host::{AccountProcedureIndexMap, LinkMap},
+};
 use vm_processor::{
     AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, Host, MastForest,
     MastForestStore, MemAdviceProvider, ProcessState,
@@ -101,6 +104,12 @@ impl Host for MockHost {
         match event {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process, err_ctx)
+            },
+            TransactionEvent::LinkMapSetEvent => {
+                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())
+            },
+            TransactionEvent::LinkMapGetEvent => {
+                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())
             },
             _ => Ok(()),
         }?;
