@@ -1018,13 +1018,16 @@ impl MockChain {
     ///
     /// A block has to be created to finalize the new entity.
     pub fn add_pending_account(&mut self, account: Account) {
+        let account_id = account.id();
+        let account_commitment = account.commitment();
+        let update_details = match account.is_private() {
+            true => AccountUpdateDetails::Private,
+            false => AccountUpdateDetails::New(account),
+        };
+
         self.pending_objects.updated_accounts.insert(
-            account.id(),
-            BlockAccountUpdate::new(
-                account.id(),
-                account.commitment(),
-                AccountUpdateDetails::New(account),
-            ),
+            account_id,
+            BlockAccountUpdate::new(account_id, account_commitment, update_details),
         );
     }
 
