@@ -180,7 +180,8 @@ pub struct MockChain {
     /// NoteID |-> MockChainNote mapping to simplify note retrieval.
     committed_notes: BTreeMap<NoteId, MockChainNote>,
 
-    /// AccountId |-> MockAccount mapping to simplify transaction creation.
+    /// AccountId |-> MockAccount mapping to simplify transaction creation. Only public accounts
+    /// are stored here.
     committed_accounts: BTreeMap<AccountId, MockAccount>,
 
     // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
@@ -518,7 +519,7 @@ impl MockChain {
     ///
     /// Depending on the provided `input`, the builder is initialized differently:
     /// - [`TxContextInput::AccountId`]: Initialize the builder with [`TransactionInputs`] fetched
-    ///   from the chain for the account identified by the ID.
+    ///   from the chain for the public account identified by the ID.
     /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
     ///   account is passed as-is to the inputs.
     /// - [`TxContextInput::ExecutedTransaction`]: Initialize the builder with [`TransactionInputs`]
@@ -1018,13 +1019,16 @@ impl MockChain {
     ///
     /// A block has to be created to finalize the new entity.
     pub fn add_pending_account(&mut self, account: Account) {
+        let account_id = account.id();
+        let account_commitment = account.commitment();
+        let update_details = match account.is_private() {
+            true => AccountUpdateDetails::Private,
+            false => AccountUpdateDetails::New(account),
+        };
+
         self.pending_objects.updated_accounts.insert(
-            account.id(),
-            BlockAccountUpdate::new(
-                account.id(),
-                account.commitment(),
-                AccountUpdateDetails::New(account),
-            ),
+            account_id,
+            BlockAccountUpdate::new(account_id, account_commitment, update_details),
         );
     }
 
@@ -1083,9 +1087,9 @@ impl MockChain {
                         .apply_delta(account_delta)
                         .context("failed to apply account delta to committed account")?;
                 },
-                AccountUpdateDetails::Private => {
-                    todo!("private accounts are not yet supported")
-                },
+                // No state to keep for private accounts other than the commitment on the account
+                // tree
+                AccountUpdateDetails::Private => {},
             }
         }
 
