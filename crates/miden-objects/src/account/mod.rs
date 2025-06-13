@@ -510,8 +510,12 @@ mod tests {
             .add_updated_maps([(2, updated_map)])
             .build()
             .unwrap();
-        let account_delta =
-            build_account_delta(vec![asset_1], vec![asset_0], final_nonce, storage_delta);
+        let account_delta = build_account_delta(
+            vec![asset_1],
+            vec![asset_0],
+            final_nonce - init_nonce,
+            storage_delta,
+        );
 
         // apply delta and create final_account
         account.apply_delta(&account_delta).unwrap();

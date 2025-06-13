@@ -55,15 +55,13 @@ impl AccountDelta {
 
     /// Merge another [AccountDelta] into this one.
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
-        match (&mut self.nonce, other.nonce) {
-            (Some(old), Some(new)) if new.as_int() <= old.as_int() => {
-                return Err(AccountDeltaError::InconsistentNonceUpdate(format!(
-                    "new nonce {new} is not larger than the old nonce {old}"
-                )));
+        self.nonce = match (self.nonce, other.nonce) {
+            (Some(self_nonce_delta), Some(other_nonce_delta)) => {
+                Some(self_nonce_delta + other_nonce_delta)
             },
-            // Incoming nonce takes precedence.
-            (old, new) => *old = new.or(*old),
+            (self_nonce_delta, other_nonce_delta) => other_nonce_delta.or(self_nonce_delta),
         };
+
         self.storage.merge(other.storage)?;
         self.vault.merge(other.vault)
     }
@@ -86,7 +84,7 @@ impl AccountDelta {
         &self.vault
     }
 
-    /// Returns the new nonce, if the nonce was changed.
+    /// Returns the amount by which the nonce changed.
     pub fn nonce(&self) -> Option<Felt> {
         self.nonce
     }
