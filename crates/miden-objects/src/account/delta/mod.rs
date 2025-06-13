@@ -22,7 +22,8 @@ pub use vault::{
 /// The differences are represented as follows:
 /// - storage: an [AccountStorageDelta] that contains the changes to the account storage.
 /// - vault: an [AccountVaultDelta] object that contains the changes to the account vault.
-/// - nonce: if the nonce of the account has changed, the new nonce is stored here.
+/// - nonce: if the nonce of the account has changed, the _delta_ of the nonce is stored, i.e. the
+///   value by which the nonce increased.
 ///
 /// TODO: add ability to trace account code updates.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
