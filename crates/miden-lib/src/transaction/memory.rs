@@ -22,6 +22,7 @@ pub type StorageSlot = u8;
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
+// | Account delta      | 532_480 (133_120)                     | TODO (TODO)                         |                                             |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
 
@@ -31,7 +32,7 @@ pub type StorageSlot = u8;
 //
 // | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
 // | ----------------- | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
-// | Id and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
+// | ID and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
 // | Vault root        | 4 (1)                                 | 7 (1)                               |                                     |
 // | Storage root      | 8 (2)                                 | 11 (2)                              |                                     |
 // | Code root         | 12 (3)                                | 15 (3)                              |                                     |
@@ -42,6 +43,21 @@ pub type StorageSlot = u8;
 // | Num storage slots | 2_084 (521)                           | 2_087 (521)                         |                                     |
 // | Storage slot info | 2_088 (522)                           | 4_127 (1031)                        | 255 slots max, 8 elements each      |
 // | Padding           | 4_128 (1032)                          | 8_191 (2047)                        |                                     |
+
+// Relative layout of the native account's delta.
+//
+// Here the "end pointer" is the last memory pointer occupied by the current data
+//
+// For now each Storage Map pointer (a link map ptr) occupies a word in anticipation of the current
+// single element map ptr storing map metadata in the future.
+//
+// | Section                      | Start address (word pointer) | End address (word pointer) | Comment                             |
+// | ---------------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
+// | Nonce                        | 0 (0)                        | 3 (0)                      |                                     |
+// | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
+// | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
+// | Storage Map Delta Ptrs       | 12 (3)                       | 1031 (257)                 | Max 255 storage map deltas          |
+// | Initial Storage Slots        | 1032 (258)                   | 3071 (767)                 | Max 255 slots, 8 elements each      |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------
@@ -264,9 +280,21 @@ pub const NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR: MemoryAddress =
 /// account data segment.
 pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2088;
 
+/// The number of elements that each storage slot takes up in memory.
+pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
+
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
+
+// ACCOUNT DELTA
+// ------------------------------------------------------------------------------------------------
+
+/// The memory address at which the nonce delta is stored.
+pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
+
+/// The memory address at which the initial storage slot values are stored.
+pub const ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS: MemoryAddress = ACCOUNT_DELTA_NONCE_PTR + 1032;
 
 // NOTES DATA
 // ================================================================================================

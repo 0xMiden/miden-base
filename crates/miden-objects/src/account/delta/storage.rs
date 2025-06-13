@@ -30,6 +30,11 @@ pub struct AccountStorageDelta {
 
 impl AccountStorageDelta {
     /// Creates a new storage delta from the provided fields.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Any of the updated slot is referenced from both maps (e.g., updated twice).
     pub fn new(
         values: BTreeMap<u8, Word>,
         maps: BTreeMap<u8, StorageMapDelta>,
@@ -84,7 +89,9 @@ impl AccountStorageDelta {
 
     /// Checks whether this storage delta is valid.
     ///
-    /// # Errors:
+    /// # Errors
+    ///
+    /// Returns an error if:
     /// - Any of the updated slot is referenced from both maps (e.g., updated twice).
     fn validate(&self) -> Result<(), AccountDeltaError> {
         for slot in self.maps.keys() {

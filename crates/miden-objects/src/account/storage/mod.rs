@@ -95,6 +95,13 @@ impl AccountStorage {
         build_slots_commitment(&self.slots)
     }
 
+    /// Returns the number of slots in the account's storage.
+    pub fn num_slots(&self) -> u8 {
+        // SAFETY: The constructors of account storage ensure that the number of slots fits into a
+        // u8.
+        self.slots.len() as u8
+    }
+
     /// Returns a reference to the storage slots.
     pub fn slots(&self) -> &Vec<StorageSlot> {
         &self.slots
