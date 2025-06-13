@@ -404,7 +404,6 @@ fn test_set_item() {
     let code = format!(
         "
         use.kernel::account
-        use.kernel::memory
         use.kernel::prologue
 
         begin
@@ -526,7 +525,7 @@ fn test_account_component_storage_offset() {
             push.1.2.3.4.0
             exec.account::set_item
 
-            dropw dropw
+            dropw
         end
 
         export.foo_read
@@ -545,7 +544,7 @@ fn test_account_component_storage_offset() {
             push.5.6.7.8.0
             exec.account::set_item
 
-            dropw dropw
+            dropw
         end
 
         export.bar_read

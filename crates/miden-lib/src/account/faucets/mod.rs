@@ -118,6 +118,24 @@ impl BasicFungibleFaucet {
 
         Err(FungibleFaucetError::NoAvailableInterface)
     }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the symbol of the faucet.
+    pub fn symbol(&self) -> TokenSymbol {
+        self.symbol
+    }
+
+    /// Returns the decimals of the faucet.
+    pub fn decimals(&self) -> u8 {
+        self.decimals
+    }
+
+    /// Returns the max supply of the faucet.
+    pub fn max_supply(&self) -> Felt {
+        self.max_supply
+    }
 }
 
 impl From<BasicFungibleFaucet> for AccountComponent {
@@ -138,6 +156,16 @@ impl TryFrom<Account> for BasicFungibleFaucet {
 
     fn try_from(account: Account) -> Result<Self, Self::Error> {
         let account_interface = AccountInterface::from(&account);
+
+        BasicFungibleFaucet::try_from_interface(account_interface, account.storage())
+    }
+}
+
+impl TryFrom<&Account> for BasicFungibleFaucet {
+    type Error = FungibleFaucetError;
+
+    fn try_from(account: &Account) -> Result<Self, Self::Error> {
+        let account_interface = AccountInterface::from(account);
 
         BasicFungibleFaucet::try_from_interface(account_interface, account.storage())
     }
