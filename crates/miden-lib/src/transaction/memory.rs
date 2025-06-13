@@ -48,17 +48,16 @@ pub type StorageSlot = u8;
 //
 // Here the "end pointer" is the last memory pointer occupied by the current data
 //
-// For now each link map ptr occupies a word in anticipation of the current single element map ptr
-// storing map metadata in the future.
+// For now each Storage Map pointer (a link map ptr) occupies a word in anticipation of the current
+// single element map ptr storing map metadata in the future.
 //
-// | Section               | Start address (word pointer) | End address (word pointer) | Comment                             |
-// | --------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
-// | Nonce                 | 0 (0)                        | 3 (0)                      |                                     |
-// | Fungible Asset        | 4 (1)                        | 7 (1)                      |                                     |
-// | Non-Fungible Asset    | 8 (2)                        | 11 (2)                     |                                     |
-// | Storage Map Pointers  | 12 (3)                       | 1031 (257)                 | Max 255 storage map deltas          |
-// | Initial Storage Slots | 1032 (258)                   | 3071 (767)                 | Max 255 slots, 8 elements each      |
-// | Storage Delta         | 3072 (768)                   | 5111 (1277)                | Max 255 slots, 8 elements each      |
+// | Section                      | Start address (word pointer) | End address (word pointer) | Comment                             |
+// | ---------------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
+// | Nonce                        | 0 (0)                        | 3 (0)                      |                                     |
+// | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
+// | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
+// | Storage Map Delta Ptrs       | 12 (3)                       | 1031 (257)                 | Max 255 storage map deltas          |
+// | Initial Storage Slots        | 1032 (258)                   | 3071 (767)                 | Max 255 slots, 8 elements each      |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------

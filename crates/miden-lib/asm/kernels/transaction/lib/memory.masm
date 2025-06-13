@@ -1132,16 +1132,24 @@ export.get_acct_storage_slots_section_ptr
     exec.get_current_account_data_ptr push.ACCT_STORAGE_SLOTS_SECTION_OFFSET add
 end
 
-# TODO: Docs
+### ACCOUNT DELTA #################################################
+
+#! Returns the memory pointer to the initial account storage slots.
+#!
+#! Inputs:  []
+#! Outputs: [account_delta_initial_storage_slots_ptr]
+#!
+#! Where:
+#! - account_delta_initial_storage_slots_ptr is the memory pointer to the initial account storage
+#!   slots section.
 export.get_account_delta_initial_storage_slots_ptr
   push.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS
 end
 
-### ACCOUNT DELTA #################################################
-
 #! Increments the delta of the account's nonce.
 #!
-#! TODO: Add example.
+#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2, then the
+#! stored nonce_delta will be 5.
 #!
 #! Inputs:  [nonce_delta]
 #! Outputs: []

@@ -17,15 +17,23 @@ use.std::crypto::hashes::rpo
 #!     SLOT_COMMITMENT_n-1, [0, 0, 0, was_slot_n-1_changed],
 #! ]
 #!
-#! Where:
-#! - n is the number of storage slots.
-#! - TODO
-#!
 #! Inputs:  []
 #! Outputs: [DELTA_COMMITMENT]
 #!
 #! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account id.
+#! - nonce_delta is the value by which the nonce was incremented.
 #! - DELTA_COMMITMENT is the commitment to the account delta.
+#! - FUNGIBLE_VAULT_DELTA_COMMITMENT is the vault delta commitment of fungible assets.
+#! - NON_FUNGIBLE_VAULT_DELTA_COMMITMENT is the vault delta commitment of non-fungible assets.
+#! - SLOT_COMMITMENT is the new value of the slot or the commitment to the map delta. If the slot
+#!   is unchanged, it is the empty word.
+#! - was_slot_x_changed is a boolean flag indicating whether slot x was changed or not. This is
+#!   needed to differentiate the case where a slot's value was set to the empty word and the
+#!   case when a slot's value is unchanged. Without this, the delta commitment for these cases
+#!   would be the same which would allow a malicious delta creator to choose which of these updates
+#!   to provide.
+#! - n is the number of storage slots.
 export.compute_commitment
     # pad capacity element of the hasher
     padw
