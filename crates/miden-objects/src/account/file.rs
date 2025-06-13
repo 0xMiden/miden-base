@@ -137,8 +137,9 @@ mod tests {
         let account = Account::from_parts(id, vault, storage, code, nonce);
         let account_seed = Some(Word::default());
         let auth_secret_key = AuthSecretKey::RpoFalcon512(SecretKey::new());
+        let auth_secret_key_2 = AuthSecretKey::RpoFalcon512(SecretKey::new());
 
-        AccountFile::new(account, account_seed, vec![auth_secret_key])
+        AccountFile::new(account, account_seed, vec![auth_secret_key, auth_secret_key_2])
     }
 
     #[test]
