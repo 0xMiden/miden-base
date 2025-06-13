@@ -23,8 +23,6 @@ fn delta_nonce() -> anyhow::Result<()> {
 
     let tx_script = compile_tx_script(format!(
         "
-      {TEST_ACCOUNT_CONVENIENCE_WRAPPERS}
-
       begin
           push.3
           exec.incr_nonce
@@ -72,8 +70,6 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     let tx_script = compile_tx_script(format!(
         "
-      {TEST_ACCOUNT_CONVENIENCE_WRAPPERS}
-
       begin
           push.{tmp_slot_0_value}
           push.0
@@ -158,8 +154,16 @@ fn setup_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
 }
 
 fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
+    let code = format!(
+        "
+    {TEST_ACCOUNT_CONVENIENCE_WRAPPERS}
+    {code}
+    ",
+        code = code.as_ref()
+    );
+
     TransactionScript::compile(
-        code.as_ref(),
+        &code,
         [],
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )

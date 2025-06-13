@@ -18,7 +18,7 @@ use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, R
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
-use crate::{auth::TransactionAuthenticator, executor::account_delta_builder::AccountDeltaBuilder};
+use crate::auth::TransactionAuthenticator;
 
 mod data_store;
 pub use data_store::DataStore;
@@ -27,6 +27,7 @@ mod notes_checker;
 pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 
 mod account_delta_builder;
+pub use account_delta_builder::AccountDeltaBuilder;
 
 // TRANSACTION EXECUTOR
 // ================================================================================================
