@@ -1,10 +1,12 @@
-use alloc::string::ToString;
+use alloc::{string::ToString, vec::Vec};
+
+use vm_core::EMPTY_WORD;
 
 use super::{
     Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
     Word, ZERO,
 };
-use crate::AccountDeltaError;
+use crate::{AccountDeltaError, Digest, Hasher, ONE, account::AccountId};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -92,6 +94,43 @@ impl AccountDelta {
     /// Converts this storage delta into individual delta components.
     pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Option<Felt>) {
         (self.storage, self.vault, self.nonce)
+    }
+
+    /// Computes the commitment to the account delta.
+    ///
+    /// TODO: Make account ID and num_slots part of delta.
+    pub fn commitment(&self, account_id: AccountId, num_slots: u8) -> Digest {
+        let mut elements = Vec::with_capacity(16);
+
+        // ID and nonce
+        elements.push(self.nonce.unwrap_or(ZERO));
+        elements.push(ZERO);
+        elements.push(account_id.suffix());
+        elements.push(account_id.prefix().as_felt());
+
+        // Fungible Vault Delta Commitment
+        elements.extend_from_slice(&EMPTY_WORD);
+
+        // Non-Fungible Vault Delta Commitment
+        elements.extend_from_slice(&EMPTY_WORD);
+        // Empty Word for padding
+        elements.extend_from_slice(&EMPTY_WORD);
+
+        for slot_idx in 0..num_slots {
+            match self.storage().values().get(&slot_idx) {
+                Some(new_slot_value) => {
+                    elements.extend_from_slice(&[ONE, ZERO, ZERO, ZERO]);
+                    elements.extend_from_slice(new_slot_value);
+                },
+                None => {
+                    // TODO: Handle map slots and slots for which no delta is provided.
+                    elements.extend_from_slice(&EMPTY_WORD);
+                    elements.extend_from_slice(&EMPTY_WORD);
+                },
+            }
+        }
+
+        Hasher::hash_elements(&elements)
     }
 }
 

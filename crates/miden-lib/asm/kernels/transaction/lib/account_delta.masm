@@ -139,11 +139,13 @@ proc.compute_value_slot_commitment
     movup.12 exec.get_item_initial
     # => [INIT_VALUE, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
 
-    dupw.1 eqw not
-    # => [was_changed, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
-    # => [was_changed, was_changed, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
+    eqw not
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
 
-    dup swap.13
+    movdn.4 dropw
+    # => [was_changed, CURRENT_VALUE, EMPTY_WORD, EMPTY_WORD]
+
+    dup swap.13 drop
     # => [was_changed, CURRENT_VALUE, EMPTY_WORD, [0, 0, 0, was_changed]]
 
     # if was_changed is true CURRENT_VALUE remains as the SLOT_COMMITMENT

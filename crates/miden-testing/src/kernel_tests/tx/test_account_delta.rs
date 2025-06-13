@@ -9,7 +9,7 @@ use miden_objects::{
     testing::account_component::AccountMockComponent,
     transaction::TransactionScript,
 };
-use miden_tx::utils::word_to_masm_push_string;
+use miden_tx::{AccountDeltaBuilder, utils::word_to_masm_push_string};
 
 use crate::MockChain;
 
@@ -21,7 +21,7 @@ use crate::MockChain;
 fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id } = setup_test(vec![]);
 
-    let tx_script = compile_tx_script(format!(
+    let tx_script = compile_tx_script(
         "
       begin
           push.3
@@ -33,7 +33,7 @@ fn delta_nonce() -> anyhow::Result<()> {
           # => []
       end
       ",
-    ))?;
+    )?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
@@ -123,6 +123,56 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     // Note that slot 2 is absent because its value hasn't changed.
     assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
+
+    Ok(())
+}
+
+/// Tests that the delta computed in the kernel and in Rust is the same.
+#[test]
+fn delta_commitment() -> anyhow::Result<()> {
+    let TestSetup { mock_chain, account_id } = setup_test(vec![
+        StorageSlot::Value(word([9, 8, 7, 6u32])),
+        StorageSlot::Value(word([6, 5, 4, 3u32])),
+    ]);
+
+    let slot_0_value = word([5, 4, 3, 2u32]);
+
+    let code = format!(
+        "
+      use.kernel::prologue
+      use.kernel::account
+      use.kernel::account_delta
+
+      begin
+          exec.prologue::prepare_transaction
+
+          push.3 exec.account::incr_nonce
+          # => []
+
+          # set some value on slot 0
+          push.{slot_0_value}.0 exec.account::set_item dropw
+          # => []
+
+          exec.account_delta::compute_commitment
+          # => [DELTA_COMMITMENT]
+          swapw dropw
+      end
+      ",
+        slot_0_value = word_to_masm_push_string(&slot_0_value)
+    );
+
+    let process = mock_chain
+        .build_tx_context(account_id, &[], &[])
+        .build()
+        .execute_code(&code)
+        .context("failed to execute code")?;
+    let kernel_delta_commitment = process.stack.get_word(0);
+
+    let account_delta = AccountDeltaBuilder::new(&process).build();
+
+    assert_eq!(account_delta.nonce(), Some(miden_objects::Felt::new(3)));
+    assert_eq!(*account_delta.storage().values().get(&0).unwrap(), slot_0_value);
+    assert_eq!(*account_delta.commitment(account_id, 2), kernel_delta_commitment);
 
     Ok(())
 }
