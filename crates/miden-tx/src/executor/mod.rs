@@ -1,18 +1,9 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::{
-    TransactionKernel, TransactionKernelError,
-    memory::{
-        ACCOUNT_DELTA_NONCE_PTR, ACCOUNT_STORAGE_DELTA_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
-    },
-};
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word, ZERO,
-    account::{AccountDelta, AccountId, AccountStorageDelta, AccountVaultDelta},
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
+    account::{AccountDelta, AccountId},
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::NoteId,
@@ -23,20 +14,19 @@ use miden_objects::{
     vm::StackOutputs,
 };
 pub use vm_processor::MastForestStore;
-use vm_processor::{
-    AdviceInputs, ContextId, ExecutionOptions, MemAdviceProvider, Process, ProcessState,
-    RecAdviceProvider,
-};
+use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
-use crate::auth::TransactionAuthenticator;
+use crate::{auth::TransactionAuthenticator, executor::account_delta_builder::AccountDeltaBuilder};
 
 mod data_store;
 pub use data_store::DataStore;
 
 mod notes_checker;
 pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
+
+mod account_delta_builder;
 
 // TRANSACTION EXECUTOR
 // ================================================================================================
@@ -174,7 +164,7 @@ impl TransactionExecutor {
             .execute(&program, &mut host)
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
-        let account_delta = AccountDeltaBuilder::new(&process).build_delta().expect("TODO");
+        let account_delta = AccountDeltaBuilder::new(&process).build();
 
         let trace = vm_processor::ExecutionTrace::new(process, stack_outputs);
         assert_eq!(&program.hash(), trace.program_hash(), "inconsistent program hash");
@@ -357,79 +347,6 @@ impl TransactionExecutor {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-struct AccountDeltaBuilder<'process> {
-    state: ProcessState<'process>,
-}
-
-impl<'process> AccountDeltaBuilder<'process> {
-    pub fn new(process: &'process Process) -> Self {
-        Self { state: process.into() }
-    }
-
-    fn get_mem_value(&self, addr: u32) -> Option<Felt> {
-        self.state.get_mem_value(ContextId::root(), addr)
-    }
-
-    /// TODO
-    ///
-    /// # Panics
-    ///
-    /// Panics if:
-    /// - the provided address is not word-aligned.
-    fn get_mem_word(&self, addr: u32) -> Option<Word> {
-        self.state
-            .get_mem_word(ContextId::root(), addr)
-            .expect("address should be aligned")
-    }
-
-    /// Builds the account delta from the process' memory.
-    pub fn build_delta(&self) -> Result<AccountDelta, TransactionKernelError> {
-        // TODO: Get the ID as well so the account delta is self-contained and its commitment can be
-        // computed.
-        let nonce = self.get_mem_value(ACCOUNT_DELTA_NONCE_PTR);
-
-        let storage_delta = self.build_storage_delta()?;
-        let vault_delta = AccountVaultDelta::default();
-
-        Ok(AccountDelta::new(storage_delta, vault_delta, nonce)
-            .expect("TODO: kernel should ensure nonce is incremented if state has changed"))
-    }
-
-    fn build_storage_delta(&self) -> Result<AccountStorageDelta, TransactionKernelError> {
-        let num_storage_slots = self.num_storage_slots()?;
-        let mut value_slots = BTreeMap::new();
-        let map_slots = BTreeMap::new();
-
-        // TODO: This is outdated. Compute diff between initial and current slot values instead.
-        for slot_idx in 0..num_storage_slots {
-            // TODO: Handle maps.
-            let slot_addr = ACCOUNT_STORAGE_DELTA_PTR + slot_idx as u32 * 4;
-            if let Some(storage_slot_delta) = self.get_mem_word(slot_addr) {
-                value_slots.insert(slot_idx, storage_slot_delta);
-            }
-        }
-
-        // SAFETY: We iterate over the slot indices once, so every index is only inserted into one
-        // map.
-        let storage_delta = AccountStorageDelta::new(value_slots, map_slots)
-            .expect("we should not have inserted the same index twice");
-        Ok(storage_delta)
-    }
-
-    fn num_storage_slots(&self) -> Result<u8, TransactionKernelError> {
-        let num_storage_slots_felt = self.get_mem_value(NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR).ok_or(
-            TransactionKernelError::AccountStorageSlotsNumMissing(
-                NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
-            ),
-        )?;
-
-        let num_storage_slots = u8::try_from(num_storage_slots_felt.as_int())
-            .expect("storage slot num should fit into u8");
-
-        Ok(num_storage_slots)
-    }
-}
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction(

@@ -4,6 +4,7 @@ use anyhow::Context;
 use miden_crypto::{EMPTY_WORD, Word};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
+    Digest,
     account::{AccountBuilder, AccountId, StorageSlot},
     testing::account_component::AccountMockComponent,
     transaction::TransactionScript,
@@ -17,7 +18,7 @@ use crate::MockChain;
 
 /// Tests that incrementing the nonce by 3 and 2 results in a nonce delta of 5.
 #[test]
-fn test_delta_nonce() -> anyhow::Result<()> {
+fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id } = setup_test(vec![]);
 
     let tx_script = compile_tx_script(format!(
@@ -48,37 +49,52 @@ fn test_delta_nonce() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that setting a new value for a single value storage slot multiple times results in the
-/// correct delta.
-///
-/// TODO: Test update to the initial value.
+/// Tests that setting new values for value storage slots results in the correct delta.
 #[test]
-fn test_storage_delta_for_value_slots() -> anyhow::Result<()> {
-    let TestSetup { mock_chain, account_id } =
-        setup_test(vec![StorageSlot::Value(EMPTY_WORD), StorageSlot::Value(EMPTY_WORD)]);
+fn storage_delta_for_value_slots() -> anyhow::Result<()> {
+    // Slot 0 is updated from non-empty word to empty word.
+    let slot_0_init_value = word([2, 4, 6, 8u32]);
+    let slot_0_final_value = EMPTY_WORD;
 
-    let slot_0_value: Word = miden_objects::Digest::from([6, 7, 8, 9u32]).into();
-    let slot_1_value: Word = miden_objects::Digest::from([3, 4, 5, 6u32]).into();
+    // Slot 1 is updated from empty word to non-empty word.
+    let slot_1_init_value = EMPTY_WORD;
+    let slot_1_final_value = word([3, 4, 5, 6u32]);
+
+    // Slot 2 is updated to itself.
+    let slot_2_init_value = word([1, 3, 5, 7u32]);
+    let slot_2_final_value = slot_2_init_value;
+
+    let TestSetup { mock_chain, account_id } = setup_test(vec![
+        StorageSlot::Value(slot_0_init_value),
+        StorageSlot::Value(slot_1_init_value),
+        StorageSlot::Value(slot_2_init_value),
+    ]);
 
     let tx_script = compile_tx_script(format!(
         "
       {TEST_ACCOUNT_CONVENIENCE_WRAPPERS}
 
       begin
-          push.4.3.2.1
+          push.{tmp_slot_0_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot0_value}
+          push.{final_slot_0_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot1_value}
+          push.{final_slot_1_value}
           push.1
+          # => [index, VALUE]
+          exec.set_item
+          # => []
+
+          push.{final_slot_2_value}
+          push.2
           # => [index, VALUE]
           exec.set_item
           # => []
@@ -87,8 +103,11 @@ fn test_storage_delta_for_value_slots() -> anyhow::Result<()> {
           push.1 exec.incr_nonce
       end
       ",
-        final_slot0_value = word_to_masm_push_string(&slot_0_value),
-        final_slot1_value = word_to_masm_push_string(&slot_1_value)
+        // Set slot 0 to some other value initially.
+        tmp_slot_0_value = word_to_masm_push_string(&slot_1_final_value),
+        final_slot_0_value = word_to_masm_push_string(&slot_0_final_value),
+        final_slot_1_value = word_to_masm_push_string(&slot_1_final_value),
+        final_slot_2_value = word_to_masm_push_string(&slot_2_final_value)
     ))?;
 
     let executed_tx = mock_chain
@@ -105,7 +124,9 @@ fn test_storage_delta_for_value_slots() -> anyhow::Result<()> {
         .iter()
         .map(|(k, v)| (*k, *v))
         .collect::<Vec<_>>();
-    assert_eq!(storage_values_delta, &[(0u8, slot_0_value), (1u8, slot_1_value),]);
+
+    // Note that slot 2 is absent because its value hasn't changed.
+    assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
 
     Ok(())
 }
@@ -143,6 +164,10 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )
     .context("failed to compile tx script")
+}
+
+fn word(data: [u32; 4]) -> Word {
+    Word::from(Digest::from(data))
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
