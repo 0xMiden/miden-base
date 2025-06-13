@@ -15,6 +15,7 @@
 - [BREAKING] Refactor transaction kernel advice inputs (#1425).
 - Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
 - Remove doc update checks on CI (#1435).
+- [BREAKING] Implement in-kernel account delta tracking (#1404).
 
 ## 0.9.1 (2025-05-30)
 
