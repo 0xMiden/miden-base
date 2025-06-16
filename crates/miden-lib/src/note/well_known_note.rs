@@ -209,10 +209,14 @@ impl WellKnownNote {
     ///   the target account ID (which means that the note is going to be consumed by the target
     ///   account) or that the target account ID is equal to the sender account ID (which means that
     ///   the note is going to be consumed by the sender account)
-    /// - for `P2IDE` note: assertion that the account ID provided by the note inputs is equal to
-    ///   the target account ID (which means that the note is going to be consumed by the target
-    ///   account) or that the target account ID is equal to the sender account ID (which means that
-    ///   the note is going to be consumed by the sender account)
+    /// - for `P2IDE` note: 
+    ///   - assertion that the ID of the account, against which the transaction is being executed,
+    ///     is equal to the target account ID specified in the note inputs (which means that the
+    ///     note is going to be consumed by the target account) or is equal to the ID of the
+    ///     account, which sent this note (which means that the note is going to be consumed by the
+    ///     sender account).
+    ///   - assertion that the timelock height was reached.
+    ///   - assertion that the recall height was reached.
     pub fn check_note_inputs(
         &self,
         note: &Note,
