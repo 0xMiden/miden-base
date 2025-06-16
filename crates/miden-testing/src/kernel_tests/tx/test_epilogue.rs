@@ -3,6 +3,7 @@ use alloc::{string::ToString, vec::Vec};
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
+        ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
         ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME, ERR_TX_INVALID_EXPIRATION_DELTA,
     },
     transaction::{
@@ -14,6 +15,7 @@ use miden_objects::{
     account::Account,
     transaction::{OutputNote, OutputNotes},
 };
+use miden_tx::TransactionExecutorError;
 use vm_processor::{Felt, ONE, ProcessState};
 
 use super::{ZERO, output_notes_data_procedure};
@@ -234,6 +236,7 @@ fn test_block_expiration_height_monotonically_decreases() {
         use.kernel::prologue
         use.kernel::tx
         use.kernel::epilogue
+        use.kernel::account
 
         begin
             exec.prologue::prepare_transaction
@@ -243,6 +246,9 @@ fn test_block_expiration_height_monotonically_decreases() {
             exec.tx::update_expiration_block_num
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
+
+            # update the nonce to make the transaction non-empty
+            push.1 exec.account::incr_nonce
 
             exec.epilogue::finalize_transaction
                         
@@ -306,11 +312,15 @@ fn test_no_expiration_delta_set() {
     use.kernel::prologue
     use.kernel::epilogue
     use.kernel::tx
+    use.kernel::account
 
     begin
         exec.prologue::prepare_transaction
 
         exec.tx::get_expiration_delta assertz
+
+        # update the nonce to make the transaction non-empty
+        push.1 exec.account::incr_nonce
 
         exec.epilogue::finalize_transaction
                     
@@ -417,4 +427,16 @@ fn test_epilogue_increment_nonce_violation() {
         TransactionKernel::testing_assembler_with_mock_account(),
     );
     assert_execution_error!(process, ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE)
+}
+
+#[test]
+fn test_epilogue_execute_empty_transaction() {
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+
+    let err = tx_context.execute().unwrap_err();
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        panic!("unexpected error")
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
 }

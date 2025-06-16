@@ -823,6 +823,8 @@ fn test_tx_script_inputs() {
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
         "
+        use.miden::account
+
         begin
             # push the tx script input key onto the stack
             push.{key}
@@ -832,6 +834,9 @@ fn test_tx_script_inputs() {
 
             # assert that the value is correct
             push.{value} assert_eqw
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
         end
         ",
         key = word_to_masm_push_string(&tx_script_input_key),
@@ -861,6 +866,8 @@ fn test_tx_script_inputs() {
 #[test]
 fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_src = r#"
+        use.miden::account
+
         begin
             # => [TX_SCRIPT_ARGS_KEY]
             # `TX_SCRIPT_ARGS_KEY` value, which is located on the stack at the beginning of 
@@ -897,6 +904,9 @@ fn test_tx_script_args() -> anyhow::Result<()> {
             # deeper on the stack, we should assert values one by one using `push.n assert_eq`.
             push.0.1.2.3
             assert_eqw.err="first three values in the transaction args array are incorrect"
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
         end"#;
 
     let tx_script =
