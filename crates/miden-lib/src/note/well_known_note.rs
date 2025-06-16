@@ -209,7 +209,7 @@ impl WellKnownNote {
     ///   the target account ID (which means that the note is going to be consumed by the target
     ///   account) or that the target account ID is equal to the sender account ID (which means that
     ///   the note is going to be consumed by the sender account)
-    /// - for `P2IDE` note: 
+    /// - for `P2IDE` note:
     ///   - assertion that the ID of the account, against which the transaction is being executed,
     ///     is equal to the target account ID specified in the note inputs (which means that the
     ///     note is going to be consumed by the target account) or is equal to the ID of the
@@ -282,23 +282,21 @@ impl WellKnownNote {
             },
             WellKnownNote::P2IDE => {
                 let note_inputs = note.inputs().values();
-                // check the expected number of inputs
+
+                // check expected number of inputs
                 if note_inputs.len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;
                 }
 
-                // parse timelock height
-                let timelock_height: Result<u32, _> = note_inputs[3].try_into();
-                let Ok(timelock_height) = timelock_height else {
+                // parse timelock height and enforce it
+                let Ok(timelock_height) = note_inputs[3].try_into() else {
                     return NoteAccountCompatibility::No;
                 };
-
-                // timelock check
                 if block_ref.as_u32() < timelock_height {
-                    // still locked
-                    return NoteAccountCompatibility::No;
+                    return NoteAccountCompatibility::No; // still locked
                 }
 
+                // identify who is trying to spend
                 let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
                     return NoteAccountCompatibility::No;
                 };
@@ -306,28 +304,22 @@ impl WellKnownNote {
                 let is_target = input_account_id == target_account_id;
                 let is_sender = input_account_id == sender_account_id;
 
-                // only target or sender may consume
-                if !is_target && !is_sender {
-                    return NoteAccountCompatibility::No;
-                }
-
-                // reclaim logic
-                if is_sender {
-                    // parse recall height
-                    let recall_height: Result<u32, _> = note_inputs[2].try_into();
-                    let Ok(recall_height) = recall_height else {
+                if is_target {
+                    // target (possibly also the sender) can spend as soon as the timelock is over
+                    return NoteAccountCompatibility::Yes;
+                } else if is_sender {
+                    // sender can reclaim only after recall height
+                    let Ok(recall_height) = note_inputs[2].try_into() else {
                         return NoteAccountCompatibility::No;
                     };
-
-                    // sender can reclaim only after recall block height has passed
-                    if block_ref.as_u32() >= recall_height {
+                    return if block_ref.as_u32() >= recall_height {
                         NoteAccountCompatibility::Yes
                     } else {
                         NoteAccountCompatibility::No
-                    }
+                    };
                 } else {
-                    // target can spend as soon as timelock is over
-                    NoteAccountCompatibility::Yes
+                    // neither target nor sender
+                    return NoteAccountCompatibility::No;
                 }
             },
 
