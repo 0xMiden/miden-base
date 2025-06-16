@@ -17,6 +17,7 @@
 - Remove doc update checks on CI (#1435).
 - [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
+- Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 
 ## 0.9.1 (2025-05-30)
 
