@@ -306,7 +306,7 @@ impl WellKnownNote {
 
                 if is_target {
                     // target (possibly also the sender) can spend as soon as the timelock is over
-                    return NoteAccountCompatibility::Yes;
+                    NoteAccountCompatibility::Yes
                 } else if is_sender {
                     // sender can reclaim only after recall height
                     let Ok(recall_height) = note_inputs[2].try_into() else {
@@ -319,7 +319,7 @@ impl WellKnownNote {
                     };
                 } else {
                     // neither target nor sender
-                    return NoteAccountCompatibility::No;
+                    NoteAccountCompatibility::No
                 }
             },
 
