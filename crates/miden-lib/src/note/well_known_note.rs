@@ -302,7 +302,7 @@ impl WellKnownNote {
                 };
                 let sender_account_id = note.metadata().sender();
                 let is_target = input_account_id == target_account_id;
-                let is_sender = input_account_id == sender_account_id;
+                let is_sender = target_account_id == sender_account_id;
 
                 if is_target {
                     // target (possibly also the sender) can spend as soon as the timelock is over
