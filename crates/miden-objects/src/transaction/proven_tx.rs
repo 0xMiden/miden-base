@@ -2,7 +2,7 @@ use alloc::{string::ToString, vec::Vec};
 
 use super::{InputNote, ToInputNoteCommitments};
 use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE, ProvenTransactionError,
+    ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError,
     account::delta::AccountUpdateDetails,
     block::BlockNumber,
     note::NoteHeader,
@@ -129,6 +129,15 @@ impl ProvenTransaction {
         // If the account is on-chain, then the account update details must be present.
         if self.account_id().is_onchain() {
             self.account_update.validate()?;
+
+            // check that either the account state was changed or at least one note was consumed,
+            // otherwise this transaction is empty
+            if self.account_update.initial_state_commitment()
+                == self.account_update.final_state_commitment()
+                && *self.input_notes.commitment() == EMPTY_WORD
+            {
+                return Err(ProvenTransactionError::EmptyTransaction);
+            }
 
             let is_new_account =
                 self.account_update.initial_state_commitment() == Digest::default();
