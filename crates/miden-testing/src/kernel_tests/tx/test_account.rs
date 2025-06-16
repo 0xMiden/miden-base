@@ -15,7 +15,7 @@ use miden_objects::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
-    assembly::Library,
+    assembly::{Library, diagnostics::Report},
     asset::AssetVault,
     testing::{
         account_component::AccountMockComponent,
@@ -66,7 +66,7 @@ pub fn test_get_code() {
 // ================================================================================================
 
 #[test]
-pub fn test_account_type() {
+pub fn test_account_type() -> miette::Result<()> {
     let procedures = vec![
         ("is_fungible_faucet", AccountType::FungibleFaucet),
         ("is_non_fungible_faucet", AccountType::NonFungibleFaucet),
@@ -100,8 +100,7 @@ pub fn test_account_type() {
 
             let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
                 .stack_inputs(StackInputs::new(vec![account_id.prefix().as_felt()]).unwrap())
-                .run(&code)
-                .unwrap();
+                .run(&code)?;
 
             let type_matches = account_id.account_type() == expected_type;
             let expected_result = Felt::from(type_matches);
@@ -120,10 +119,12 @@ pub fn test_account_type() {
 
         assert!(has_type, "missing test for type {:?}", expected_type);
     }
+
+    Ok(())
 }
 
 #[test]
-pub fn test_account_validate_id() -> anyhow::Result<()> {
+pub fn test_account_validate_id() -> miette::Result<()> {
     let test_cases = [
         (ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE, None),
         (ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, None),
@@ -172,21 +173,23 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
         match (result, expected_error) {
             (Ok(_), None) => (),
             (Ok(_), Some(err)) => {
-                anyhow::bail!("expected error {err} but validation was successful")
+                miette::bail!("expected error {err} but validation was successful")
             },
             (Err(ExecutionError::FailedAssertion { err_code, err_msg, .. }), Some(err)) => {
                 if err_code != err.code() {
-                    anyhow::bail!(
+                    miette::bail!(
                         "actual error \"{}\" (code: {err_code}) did not match expected error {err}",
                         err_msg.as_ref().map(AsRef::as_ref).unwrap_or("<no message>")
                     );
                 }
             },
+            // Construct Reports to get the diagnostics-based error messages.
             (Err(err), None) => {
-                anyhow::bail!("validation is supposed to succeed but error occurred: {}", err)
+                return Err(Report::from(err)
+                    .context("validation is supposed to succeed but error occurred"));
             },
             (Err(err), Some(_)) => {
-                anyhow::bail!("unexpected different error than expected {}", err)
+                return Err(Report::from(err).context("unexpected different error than expected"));
             },
         }
     }
