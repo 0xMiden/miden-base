@@ -1,5 +1,5 @@
 use anyhow::Context;
-use assembly::diagnostics::{WrapErr, miette};
+use assembly::diagnostics::{IntoDiagnostic, WrapErr, miette};
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
@@ -40,7 +40,7 @@ use crate::{MockChain, TransactionContextBuilder, assert_execution_error, execut
 // ================================================================================================
 
 #[test]
-pub fn test_get_code() {
+pub fn test_get_code() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
     let code = "
         use.kernel::prologue
@@ -52,7 +52,7 @@ pub fn test_get_code() {
         end
         ";
 
-    let process = &tx_context.execute_code(code).unwrap();
+    let process = &tx_context.execute_code(code).wrap_err("failed to execute code")?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(
@@ -60,6 +60,8 @@ pub fn test_get_code() {
         tx_context.account().code().commitment().as_elements(),
         "obtained code commitment is not equal to the account code commitment",
     );
+
+    Ok(())
 }
 
 // ACCOUNT ID TESTS
@@ -245,7 +247,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 // ================================================================================================
 
 #[test]
-fn test_get_item() {
+fn test_get_item() -> miette::Result<()> {
     for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
         let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
 
@@ -270,12 +272,14 @@ fn test_get_item() {
             item_value = word_to_masm_push_string(&storage_item.slot.value())
         );
 
-        tx_context.execute_code(&code).unwrap();
+        tx_context.execute_code(&code).wrap_err("failed to execute code")?;
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_get_map_item() {
+fn test_get_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_component(
             AccountMockComponent::new_with_slots(
@@ -315,7 +319,7 @@ fn test_get_map_item() {
                 &code,
                 TransactionKernel::testing_assembler_with_mock_account(),
             )
-            .unwrap();
+            .wrap_err("failed to execute code")?;
         let process_state: ProcessState = process.into();
 
         assert_eq!(
@@ -339,10 +343,12 @@ fn test_get_map_item() {
             "The rest of the stack must be cleared",
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_get_storage_slot_type() {
+fn test_get_storage_slot_type() -> miette::Result<()> {
     for storage_item in [
         AccountStorage::mock_item_0(),
         AccountStorage::mock_item_1(),
@@ -371,7 +377,7 @@ fn test_get_storage_slot_type() {
             item_index = storage_item.index,
         );
 
-        let process = &tx_context.execute_code(&code).unwrap();
+        let process = &tx_context.execute_code(&code).wrap_err("failed to execute code")?;
         let process_state: ProcessState = process.into();
 
         let storage_slot_type = storage_item.slot.slot_type();
@@ -396,10 +402,12 @@ fn test_get_storage_slot_type() {
             "the rest of the stack is empty"
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_set_item() {
+fn test_set_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
 
     let new_storage_item: Word = [Felt::new(91), Felt::new(92), Felt::new(93), Felt::new(94)];
@@ -431,11 +439,13 @@ fn test_set_item() {
         new_storage_item_index = 0,
     );
 
-    tx_context.execute_code(&code).unwrap();
+    tx_context.execute_code(&code).wrap_err("failed to execute code")?;
+
+    Ok(())
 }
 
 #[test]
-fn test_set_map_item() {
+fn test_set_map_item() -> miette::Result<()> {
     let (new_key, new_value) = (
         Digest::new([Felt::new(109), Felt::new(110), Felt::new(111), Felt::new(112)]),
         [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
@@ -489,7 +499,7 @@ fn test_set_map_item() {
             &code,
             TransactionKernel::testing_assembler_with_mock_account(),
         )
-        .unwrap();
+        .wrap_err("failed to execute code")?;
     let process_state: ProcessState = process.into();
 
     let mut new_storage_map = AccountStorage::mock_map();
@@ -505,10 +515,12 @@ fn test_set_map_item() {
         process_state.get_stack_word(1),
         "The original value stored in the map doesn't match the expected value",
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_account_component_storage_offset() {
+fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
     let assembler = TransactionKernel::testing_assembler();
 
@@ -641,7 +653,7 @@ fn test_account_component_storage_offset() {
     let tx_context = TransactionContextBuilder::new(account.clone()).tx_script(tx_script).build();
 
     // execute code in context
-    let tx = tx_context.execute().unwrap();
+    let tx = tx_context.execute().into_diagnostic()?;
     account.apply_delta(tx.account_delta()).unwrap();
 
     // assert that elements have been set at the correct locations in storage
@@ -654,6 +666,8 @@ fn test_account_component_storage_offset() {
         account.storage().get_item(1).unwrap(),
         [Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)].into()
     );
+
+    Ok(())
 }
 
 /// Tests that we can successfully create regular and faucet accounts with empty storage.
@@ -820,7 +834,7 @@ fn test_get_vault_root() {
 // ================================================================================================
 
 #[test]
-fn test_authenticate_procedure() {
+fn test_authenticate_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
     let account_code = AccountCode::from_components(
@@ -870,4 +884,6 @@ fn test_authenticate_procedure() {
             false => assert!(process.is_err(), "An invalid procedure should fail to authenticate"),
         }
     }
+
+    Ok(())
 }
