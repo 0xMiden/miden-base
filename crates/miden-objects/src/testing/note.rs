@@ -100,7 +100,16 @@ impl NoteBuilder {
     }
 
     pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        let code = assembler.clone().assemble_program(&self.code).unwrap();
+        let serial_num_part = self.serial_num[0].as_int();
+        let source_manager = assembler.source_manager();
+        let virtual_source_file =
+            source_manager.load(&format!("note_{serial_num_part}"), self.code);
+        let code = assembler
+            .clone()
+            .with_debug_mode(true)
+            .assemble_program(virtual_source_file)
+            .unwrap();
+
         let note_script = NoteScript::new(code);
         let vault = NoteAssets::new(self.assets)?;
         let metadata = NoteMetadata::new(

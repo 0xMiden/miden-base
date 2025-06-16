@@ -19,7 +19,10 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::DefaultSourceManager,
+    assembly::{
+        DefaultSourceManager,
+        diagnostics::{IntoDiagnostic, miette},
+    },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -62,12 +65,13 @@ mod tx;
 // ================================================================================================
 
 #[test]
-fn transaction_executor_witness() {
+fn transaction_executor_witness() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
 
-    let executed_transaction = tx_context.execute().unwrap();
+    let source_manager = tx_context.source_manager();
+    let executed_transaction = tx_context.execute().into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
     let tx_args = executed_transaction.tx_args();
@@ -104,7 +108,7 @@ fn transaction_executor_witness() {
         stack_inputs,
         &mut host,
         Default::default(),
-        Arc::new(DefaultSourceManager::default()),
+        source_manager,
     )
     .unwrap();
 
@@ -122,6 +126,8 @@ fn transaction_executor_witness() {
         tx_outputs.account.commitment()
     );
     assert_eq!(executed_transaction.output_notes(), &tx_outputs.output_notes);
+
+    Ok(())
 }
 
 #[test]

@@ -15,6 +15,7 @@ use miden_lib::{
 use miden_objects::{
     Digest, EMPTY_WORD, ONE, WORD_SIZE,
     account::{AccountBuilder, AccountId},
+    assembly::diagnostics::miette,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteScript, NoteTag, NoteType,
@@ -645,7 +646,7 @@ fn test_get_current_script_root() {
 }
 
 #[test]
-fn test_build_note_metadata() {
+fn test_build_note_metadata() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
@@ -691,7 +692,7 @@ fn test_build_note_metadata() {
             tag = test_metadata.tag(),
         );
 
-        let process = tx_context.execute_code(&code).unwrap();
+        let process = tx_context.execute_code(&code)?;
 
         let metadata_word = [
             process.stack.get(3),
@@ -702,6 +703,8 @@ fn test_build_note_metadata() {
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }
+
+    Ok(())
 }
 
 /// This serves as a test that setting a custom timestamp on mock chain blocks works.
