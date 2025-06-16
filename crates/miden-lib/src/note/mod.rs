@@ -51,7 +51,7 @@ pub fn create_p2id_note<R: FeltRng>(
 
 /// Generates a P2IDR note - pay to id with recall after a certain block height.
 ///
-/// This script enables the transfer of assets from the sender `sender` account to the `target`
+/// This script enables the transfer of assets from the `sender` account to the `target`
 /// account by specifying the target's account ID. Additionally it adds the possibility for the
 /// sender to reclaiming the assets if the note has not been consumed by the target within the
 /// specified timeframe.
@@ -86,7 +86,7 @@ pub fn create_p2idr_note<R: FeltRng>(
 /// Generates a P2IDE note - pay to id with optional recall after a certain block height and
 /// optional timelock.
 ///
-/// This script enables the transfer of assets from the sender `sender` account to the `target`
+/// This script enables the transfer of assets from the `sender` account to the `target`
 /// account by specifying the target's account ID. It adds the optional possibility for the
 /// sender to reclaiming the assets if the note has not been consumed by the target within the
 /// specified timeframe and the optional possibility to add a timelock to the asset transfer.
