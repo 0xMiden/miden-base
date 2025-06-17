@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 
-use miden_objects::{Felt, Word, assembly::mast::MastNodeExt};
+use miden_objects::{Felt, Word, ZERO, assembly::mast::MastNodeExt};
 use vm_processor::{
     AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, ProcessState,
 };
@@ -100,10 +100,18 @@ impl<'process> LinkMap<'process> {
         self.get_kernel_mem_value(self.map_ptr).is_none()
     }
 
-    /// Returns the entry pointer at the head of the map.
+    /// Returns the entry pointer at the head of the map or `None` if the map is empty.
     fn head(&self) -> Option<u32> {
-        self.get_kernel_mem_value(self.map_ptr)
-            .map(|head_ptr| head_ptr.try_into().expect("head ptr should be a valid ptr"))
+        // Returns None if the value was either not yet initialized or points to 0.
+        // It can point to 0 for example if a get operation is executed before a set operation,
+        // which initializes the value in memory to 0 but does not change it.
+        self.get_kernel_mem_value(self.map_ptr).and_then(|head_ptr| {
+            if head_ptr == ZERO {
+                None
+            } else {
+                Some(u32::try_from(head_ptr).expect("head ptr should be a valid ptr"))
+            }
+        })
     }
 
     fn entry(&self, entry_ptr: u32) -> Entry {
