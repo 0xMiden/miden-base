@@ -252,7 +252,7 @@ impl TransactionContextBuilder {
         inputs: impl IntoIterator<Item = Felt>,
         output: &Note,
     ) -> Note {
-        let var_name = format!(
+        let code = format!(
             "
             use.miden::contracts::wallets::basic->wallet
             use.test::account
@@ -287,7 +287,6 @@ impl TransactionContextBuilder {
             asset = prepare_assets(output.assets())[0],
             execution_hint_always = Felt::from(NoteExecutionHint::always())
         );
-        let code = var_name;
 
         NoteBuilder::new(sender, ChaCha20Rng::from_seed(self.rng.random()))
             .note_inputs(inputs)
@@ -316,7 +315,6 @@ impl TransactionContextBuilder {
 
                 # NOTE 0
                 # ---------------------------------------------------------------------------------
-
                 padw padw
                 push.{recipient0}
                 push.{execution_hint_always}
@@ -676,11 +674,11 @@ impl TransactionContextBuilder {
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
-            mast_forest_store.load_transaction_code(
-                tx_inputs.account().code(),
-                tx_inputs.input_notes(),
-                &tx_args,
-            );
+            mast_forest_store.load_account_code(tx_inputs.account().code());
+
+            for acc_inputs in tx_args.foreign_account_inputs() {
+                mast_forest_store.insert(acc_inputs.code().mast());
+            }
 
             mast_forest_store
         };

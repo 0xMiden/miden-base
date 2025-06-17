@@ -10,6 +10,7 @@ use ::assembly::{
     ast::{Module, ModuleKind},
 };
 use anyhow::Context;
+use assembly::diagnostics::WrapErr;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -19,7 +20,10 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::DefaultSourceManager,
+    assembly::{
+        DefaultSourceManager,
+        diagnostics::{IntoDiagnostic, miette},
+    },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -42,7 +46,7 @@ use miden_objects::{
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
     TransactionExecutor, TransactionExecutorError, TransactionHost, TransactionMastStore,
-    TransactionProver, TransactionVerifier,
+    TransactionProver, TransactionVerifier, host::ScriptMastForestStore,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -62,15 +66,21 @@ mod tx;
 // ================================================================================================
 
 #[test]
-fn transaction_executor_witness() {
+fn transaction_executor_witness() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
 
-    let executed_transaction = tx_context.execute().unwrap();
+    let source_manager = tx_context.source_manager();
+    let executed_transaction = tx_context.execute().into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
     let tx_args = executed_transaction.tx_args();
+
+    let scripts_mast_store = ScriptMastForestStore::new(
+        tx_args.tx_script(),
+        tx_inputs.input_notes().iter().map(|n| n.note().script()),
+    );
 
     // use the witness to execute the transaction again
     let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
@@ -83,12 +93,13 @@ fn transaction_executor_witness() {
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
-    mast_store.load_transaction_code(tx_inputs.account().code(), tx_inputs.input_notes(), tx_args);
+    mast_store.load_account_code(tx_inputs.account().code());
 
     let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
         tx_inputs.account().into(),
         mem_advice_provider,
         mast_store,
+        scripts_mast_store,
         None,
         BTreeSet::new(),
     )
@@ -98,7 +109,7 @@ fn transaction_executor_witness() {
         stack_inputs,
         &mut host,
         Default::default(),
-        Arc::new(DefaultSourceManager::default()),
+        source_manager,
     )
     .unwrap();
 
@@ -116,6 +127,8 @@ fn transaction_executor_witness() {
         tx_outputs.account.commitment()
     );
     assert_eq!(executed_transaction.output_notes(), &tx_outputs.output_notes);
+
+    Ok(())
 }
 
 #[test]
@@ -229,7 +242,7 @@ fn executed_transaction_account_delta_new() {
             push.{STORAGE_INDEX_0}
             # => [idx, 13, 11, 9, 7]
             # update the storage value
-            call.account::set_item dropw dropw
+            call.account::set_item dropw
             # => []
 
             ## Update account storage map
@@ -393,7 +406,7 @@ fn test_empty_delta_nonce_update() {
 }
 
 #[test]
-fn test_send_note_proc() {
+fn test_send_note_proc() -> miette::Result<()> {
     // removed assets
     let removed_asset_1 = FungibleAsset::mock(FUNGIBLE_ASSET_AMOUNT / 2);
     let removed_asset_2 = Asset::Fungible(
@@ -498,7 +511,8 @@ fn test_send_note_proc() {
         // execute the transaction and get the witness
         let executed_transaction = tx_context
             .execute()
-            .unwrap_or_else(|_| panic!("test failed in iteration {idx}"));
+            .into_diagnostic()
+            .wrap_err(format!("test failed in iteration {idx}"))?;
 
         // nonce delta
         // --------------------------------------------------------------------------------------------
@@ -519,6 +533,8 @@ fn test_send_note_proc() {
             executed_transaction.account_delta().vault().removed_assets().count()
         );
     }
+
+    Ok(())
 }
 
 #[test]

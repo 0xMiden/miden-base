@@ -11,8 +11,8 @@ use crate::{
 // ================================================================================================
 /// An asset container for a note.
 ///
-/// A note must contain at least 1 asset and can contain up to 256 assets. No duplicates are
-/// allowed, but the order of assets is unspecified.
+/// A note can contain between 0 and 256 assets. No duplicates are allowed, but the order of assets
+/// is unspecified.
 ///
 /// All the assets in a note can be reduced to a single commitment which is computed by
 /// sequentially hashing the assets. Note that the same list of assets can result in two different

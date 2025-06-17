@@ -353,6 +353,7 @@ impl TransactionKernel {
             .expect("failed to load miden-lib")
             .with_library(kernel_library)
             .expect("failed to load kernel library (/lib)")
+            .with_debug_mode(true)
     }
 
     /// Returns the testing assembler, and additionally contains the library for

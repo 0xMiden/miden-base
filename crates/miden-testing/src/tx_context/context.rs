@@ -1,6 +1,6 @@
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
+use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
@@ -51,7 +51,11 @@ impl TransactionContext {
     /// which is loaded with the procedures exposed by the transaction kernel, and also individual
     /// kernel functions (not normally exposed).
     ///
+    /// To improve the error message quality, convert the returned [`ExecutionError`] into a
+    /// [`Report`](miden_objects::assembly::diagnostics::Report).
+    ///
     /// # Errors
+    ///
     /// Returns an error if the assembly or execution of the provided code fails.
     pub fn execute_code_with_assembler(
         &self,
@@ -68,16 +72,23 @@ impl TransactionContext {
         let test_lib = TransactionKernel::kernel_as_library();
 
         let source_manager = assembler.source_manager();
+
+        // Virtual file name should be unique.
+        let virtual_source_file = source_manager.load("_tx_context_code", code.to_owned());
+
         let program = assembler
             .with_debug_mode(true)
-            .assemble_program(code)
+            .assemble_program(virtual_source_file)
             .expect("compilation of the provided code failed");
 
         let mast_store = Rc::new(TransactionMastStore::new());
 
         mast_store.insert(program.mast_forest().clone());
         mast_store.insert(test_lib.mast_forest().clone());
-        mast_store.load_transaction_code(self.account().code(), self.input_notes(), &self.tx_args);
+        mast_store.load_account_code(self.account().code());
+        for acc_inputs in self.tx_args.foreign_account_inputs() {
+            mast_store.load_account_code(acc_inputs.code());
+        }
 
         CodeExecutor::new(MockHost::new(
             self.tx_inputs.account().into(),

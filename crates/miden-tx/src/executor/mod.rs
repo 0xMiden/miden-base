@@ -6,7 +6,7 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
-    note::NoteId,
+    note::{NoteId, NoteScript},
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
@@ -18,7 +18,7 @@ use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, R
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
-use crate::auth::TransactionAuthenticator;
+use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
 
 mod data_store;
 pub use data_store::DataStore;
@@ -143,10 +143,16 @@ impl TransactionExecutor {
 
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
+        let script_mast_store = ScriptMastForestStore::new(
+            tx_args.tx_script(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+        );
+
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
             advice_recorder,
             self.data_store.clone(),
+            script_mast_store,
             self.authenticator.clone(),
             tx_args.foreign_account_code_commitments(),
         )
@@ -214,10 +220,14 @@ impl TransactionExecutor {
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
+        let scripts_mast_store =
+            ScriptMastForestStore::new(Some(&tx_script), core::iter::empty::<&NoteScript>());
+
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
             advice_recorder,
             self.data_store.clone(),
+            scripts_mast_store,
             self.authenticator.clone(),
             tx_args.foreign_account_code_commitments(),
         )
@@ -282,10 +292,16 @@ impl TransactionExecutor {
 
         let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
+        let scripts_mast_store = ScriptMastForestStore::new(
+            tx_args.tx_script(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+        );
+
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
             advice_provider,
             self.data_store.clone(),
+            scripts_mast_store,
             self.authenticator.clone(),
             tx_args.foreign_account_code_commitments(),
         )

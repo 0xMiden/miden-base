@@ -35,6 +35,9 @@ pub use account_procedures::AccountProcedureIndexMap;
 mod note_builder;
 use note_builder::OutputNoteBuilder;
 
+mod script_mast_forest_store;
+pub use script_mast_forest_store::ScriptMastForestStore;
+
 mod tx_progress;
 pub use tx_progress::TransactionProgress;
 
@@ -53,8 +56,12 @@ pub struct TransactionHost<A> {
     /// runtime.
     adv_provider: A,
 
-    /// MAST store which contains the code required to execute the transaction.
+    /// MAST store which contains the code required to execute account code functions.
     mast_store: Arc<dyn MastForestStore>,
+
+    /// MAST store which contains the forests of all scripts involved in the transaction. These
+    /// include input note scripts and the transaction script, but not account code.
+    scripts_mast_store: ScriptMastForestStore,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -92,6 +99,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
         account: AccountHeader,
         adv_provider: A,
         mast_store: Arc<dyn MastForestStore>,
+        scripts_mast_store: ScriptMastForestStore,
         authenticator: Option<Arc<dyn TransactionAuthenticator>>,
         mut foreign_account_code_commitments: BTreeSet<Digest>,
     ) -> Result<Self, TransactionHostError> {
@@ -105,6 +113,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
         Ok(Self {
             adv_provider,
             mast_store,
+            scripts_mast_store,
             account_delta: AccountDeltaTracker::new(&account),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
@@ -483,7 +492,11 @@ impl<A: AdviceProvider> Host for TransactionHost<A> {
     }
 
     fn get_mast_forest(&self, node_digest: &Digest) -> Option<Arc<MastForest>> {
-        self.mast_store.get(node_digest)
+        // Search in the note MAST forest store, otherwise fall back to the user-provided store
+        match self.scripts_mast_store.get(node_digest) {
+            Some(forest) => Some(forest),
+            None => self.mast_store.get(node_digest),
+        }
     }
 
     fn on_event(
