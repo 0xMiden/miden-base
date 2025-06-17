@@ -18,6 +18,13 @@ use crate::{
 
 /// Result of executing and proving a transaction. Contains all the data required to verify that a
 /// transaction was executed correctly.
+///
+/// A proven transaction must not be empty. A transaction is empty if the account state is unchanged
+/// or the number of input notes is zero. This check prevents proving a transaction once and
+/// submitting it to the network many times. Output notes are not considered because they can be
+/// empty (i.e. contain no assets). Otherwise, a transaction with no account state change, no input
+/// notes and one such empty output note could be resubmitted many times to the network and fill up
+/// block space which is a form of DOS attack.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenTransaction {
     /// A unique identifier for the transaction, see [TransactionId] for additional details.
@@ -113,6 +120,8 @@ impl ProvenTransaction {
     ///
     /// Returns an error if:
     /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
+    /// - The transaction is empty, which is the case if the account state is unchanged or the
+    ///   number of input notes is zero.
     /// - The transaction was executed against a _new_ on-chain account and its account ID does not
     ///   match the ID in the account update.
     /// - The transaction was executed against a _new_ on-chain account and its commitment does not
@@ -337,6 +346,8 @@ impl ProvenTransactionBuilder {
     ///   [`MAX_OUTPUT_NOTES_PER_TX`](crate::constants::MAX_OUTPUT_NOTES_PER_TX).
     /// - The vector of output notes contains duplicates.
     /// - The size of the serialized account update exceeds [`ACCOUNT_UPDATE_MAX_SIZE`].
+    /// - The transaction is empty, which is the case if the account state is unchanged or the
+    ///   number of input notes is zero.
     /// - The transaction was executed against a _new_ on-chain account and its account ID does not
     ///   match the ID in the account update.
     /// - The transaction was executed against a _new_ on-chain account and its commitment does not
