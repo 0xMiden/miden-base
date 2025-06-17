@@ -67,20 +67,12 @@ impl<'process> AccountDeltaBuilder<'process> {
     }
 
     fn build_fungible_vault_delta(&self) -> FungibleAssetDelta {
-        std::println!(
-            "build_fungible_vault_delta: {:?}",
-            self.get_mem_value(ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR)
-        );
         let delta_map = LinkMap::new(Felt::from(ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR), self.state);
         let mut delta =
             FungibleAssetDelta::new(BTreeMap::new()).expect("empty delta should be valid");
 
         for asset_delta in delta_map.iter() {
-            std::println!("key: {:?}, value0: {:?}", asset_delta.key, asset_delta.value0);
-            let faucet_id: [Felt; 2] = asset_delta.key[2..3]
-                .try_into()
-                .expect("we should have sliced off exactly two elements");
-            let faucet_id = AccountId::try_from(faucet_id)
+            let faucet_id = AccountId::try_from([asset_delta.key[3], asset_delta.key[2]])
                 .expect("TODO: tx kernel does not guarantee faucet ID validity");
             let amount_hi: u32 = asset_delta.value0[3]
                 .try_into()
