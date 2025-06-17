@@ -270,6 +270,24 @@ fn insert_at_head() -> anyhow::Result<()> {
     execute_link_map_test(operations)
 }
 
+/// Tests that a get before a set results in the expected returned values and behavior.
+#[test]
+fn get_before_set() -> anyhow::Result<()> {
+    const MAP_PTR: u32 = 8;
+
+    let key0 = digest([3, 0, 0, 0]);
+    let value0 = digest([1, 2, 3, 4]);
+    let value1 = digest([2, 3, 4, 5]);
+
+    let operations = vec![
+        TestOperation::get(MAP_PTR, key0),
+        TestOperation::set(MAP_PTR, key0, (value1, value0)),
+        TestOperation::get(MAP_PTR, key0),
+    ];
+
+    execute_link_map_test(operations)
+}
+
 #[test]
 fn multiple_link_maps() -> anyhow::Result<()> {
     const MAP_PTR0: u32 = 8;
