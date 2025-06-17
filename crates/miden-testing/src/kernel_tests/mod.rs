@@ -10,6 +10,7 @@ use ::assembly::{
     ast::{Module, ModuleKind},
 };
 use anyhow::Context;
+use assembly::diagnostics::WrapErr;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -19,7 +20,10 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::DefaultSourceManager,
+    assembly::{
+        DefaultSourceManager,
+        diagnostics::{IntoDiagnostic, miette},
+    },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -62,12 +66,13 @@ mod tx;
 // ================================================================================================
 
 #[test]
-fn transaction_executor_witness() {
+fn transaction_executor_witness() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
 
-    let executed_transaction = tx_context.execute().unwrap();
+    let source_manager = tx_context.source_manager();
+    let executed_transaction = tx_context.execute().into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
     let tx_args = executed_transaction.tx_args();
@@ -104,7 +109,7 @@ fn transaction_executor_witness() {
         stack_inputs,
         &mut host,
         Default::default(),
-        Arc::new(DefaultSourceManager::default()),
+        source_manager,
     )
     .unwrap();
 
@@ -122,6 +127,8 @@ fn transaction_executor_witness() {
         tx_outputs.account.commitment()
     );
     assert_eq!(executed_transaction.output_notes(), &tx_outputs.output_notes);
+
+    Ok(())
 }
 
 #[test]
@@ -403,7 +410,7 @@ fn test_empty_delta_nonce_update() {
 }
 
 #[test]
-fn test_send_note_proc() {
+fn test_send_note_proc() -> miette::Result<()> {
     // removed assets
     let removed_asset_1 = FungibleAsset::mock(FUNGIBLE_ASSET_AMOUNT / 2);
     let removed_asset_2 = Asset::Fungible(
@@ -508,7 +515,8 @@ fn test_send_note_proc() {
         // execute the transaction and get the witness
         let executed_transaction = tx_context
             .execute()
-            .unwrap_or_else(|_| panic!("test failed in iteration {idx}"));
+            .into_diagnostic()
+            .wrap_err(format!("test failed in iteration {idx}"))?;
 
         // nonce delta
         // --------------------------------------------------------------------------------------------
@@ -531,6 +539,8 @@ fn test_send_note_proc() {
             executed_transaction.account_delta().vault().removed_assets().count()
         );
     }
+
+    Ok(())
 }
 
 #[test]
