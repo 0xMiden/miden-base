@@ -168,6 +168,9 @@ const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 # Layout: [0, 0, 0, account_id_suffix]
 const.ACCOUNT_DELTA_NONCE_PTR=532480
 
+# The link map pointer at which the delta of the fungible asset vault is stored.
+const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+4
+
 # Exact copy of the account's storage slot section starting at ACCT_STORAGE_SLOTS_SECTION_OFFSET.
 # This keeps the initial values of the account storage slots to enable computing a diff
 # between the initial and current account storage **value** slots.
@@ -1168,6 +1171,17 @@ end
 #!   slots section.
 export.get_account_delta_initial_storage_slots_ptr
   push.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS
+end
+
+#! Returns the link map pointer to the fungible asset vault delta.
+#!
+#! Inputs:  []
+#! Outputs: [account_delta_fungible_asset_ptr]
+#!
+#! Where:
+#! - account_delta_fungible_asset_ptr is the link map pointer to the fungible asset vault delta.
+export.get_account_delta_fungible_asset_ptr
+  push.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR
 end
 
 #! Increments the delta of the account's nonce.
