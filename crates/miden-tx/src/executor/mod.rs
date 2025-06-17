@@ -3,7 +3,7 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
-    account::{AccountDelta, AccountId, AccountStorageDelta},
+    account::{AccountDelta, AccountId, AccountStorageDelta, AccountVaultDelta},
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
@@ -490,15 +490,20 @@ pub enum NoteAccountExecution {
 
 fn tmp_merge_deltas(new_delta: AccountDelta, old_delta: AccountDelta) -> AccountDelta {
     // The parts we take from the new delta.
-    let (new_storage_delta, _vault_delta, nonce_delta) = new_delta.into_parts();
+    let (new_storage_delta, new_vault_delta, nonce_delta) = new_delta.into_parts();
 
-    let (old_storage_delta, vault_delta, _nonce_delta) = old_delta.into_parts();
+    let (old_storage_delta, old_vault_delta, _nonce_delta) = old_delta.into_parts();
 
     let storage_delta = AccountStorageDelta::new(
         new_storage_delta.values().clone(),
         old_storage_delta.maps().clone(),
     )
     .expect("storage delta should be valid");
+
+    let vault_delta = AccountVaultDelta::new(
+        new_vault_delta.fungible().clone(),
+        old_vault_delta.non_fungible().clone(),
+    );
 
     AccountDelta::new(storage_delta, vault_delta, nonce_delta).expect("delta should still be valid")
 }

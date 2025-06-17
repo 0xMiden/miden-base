@@ -126,18 +126,17 @@ export.add_fungible_asset
     # Create the asset key from the asset.
     # ---------------------------------------------------------------------------------------------
 
-    # => [faucet_id_prefix, faucet_id_suffix, 0, amount, vault_root_ptr]
-    dupw
-    # => [faucet_id_prefix, faucet_id_suffix, 0, amount, faucet_id_prefix, faucet_id_suffix, 0, amount, vault_root_ptr]
-    push.0 swap.4 drop
-    # => [[faucet_id_prefix, faucet_id_suffix, 0, 0], faucet_id_prefix, faucet_id_suffix, 0, amount, vault_root_ptr]
+    dupw exec.build_fungible_asset_vault_key
+    # => [ASSET_KEY, faucet_id_prefix, faucet_id_suffix, 0, amount, vault_root_ptr]
+
     movup.6 drop
     # => [[faucet_id_prefix, faucet_id_suffix, 0, 0], faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
-    padw dup.11
-    # => [vault_root_ptr, pad(4), ASSET_KEY, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
 
     # Get the asset vault root and read the current asset using the `push_smtpeek` decorator.
     # ---------------------------------------------------------------------------------------------
+
+    padw dup.11
+    # => [vault_root_ptr, pad(4), ASSET_KEY, faucet_id_prefix, faucet_id_suffix, amount, vault_root_ptr]
 
     # the current asset may be the empty word if it does not exist and so its faucet id would be zeroes
     # we therefore overwrite the faucet id with the faucet id from ASSET to account for this edge case
@@ -440,4 +439,22 @@ export.build_non_fungible_asset_vault_key
     # reassemble hash0 felt by multiplying the high part with 2^32 and adding the lo part
     swap push.0x0100000000 mul add
     # => [ASSET_KEY]
+end
+
+#! TODO: Add Rust <-> MASM test.
+#!
+#! Builds the vault key of a fungible asset. The asset is NOT validated and therefore must
+#! be a valid fungible asset.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [ASSET_KEY]
+#!
+#! Where:
+#! - ASSET is the fungible asset for which the vault key is built.
+#! - ASSET_KEY is the vault key of the fungible asset.
+export.build_fungible_asset_vault_key
+  # => [faucet_id_prefix, faucet_id_suffix, 0, amount]
+
+  push.0 swap.4 drop
+  # => [faucet_id_prefix, faucet_id_suffix, 0, 0]
 end

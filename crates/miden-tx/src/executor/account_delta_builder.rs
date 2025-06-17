@@ -1,14 +1,21 @@
 use alloc::collections::BTreeMap;
 
 use miden_lib::transaction::memory::{
-    ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS, ACCOUNT_DELTA_NONCE_PTR, ACCT_STORAGE_SLOT_NUM_ELEMENTS,
-    NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR, ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS, ACCOUNT_DELTA_NONCE_PTR,
+    ACCT_STORAGE_SLOT_NUM_ELEMENTS, NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR,
+    NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
 use miden_objects::{
     Felt, Word,
-    account::{AccountDelta, AccountStorageDelta, AccountVaultDelta, StorageSlotType},
+    account::{
+        AccountDelta, AccountId, AccountStorageDelta, AccountVaultDelta, FungibleAssetDelta,
+        NonFungibleAssetDelta, StorageSlotType,
+    },
+    asset::FungibleAsset,
 };
 use vm_processor::{ContextId, Process, ProcessState};
+
+use crate::host::LinkMap;
 
 /// Builds an [`AccountDelta`] from a process after the transaction kernel was executed.
 ///
@@ -45,12 +52,54 @@ impl<'process> AccountDeltaBuilder<'process> {
         let nonce = self.get_mem_value(ACCOUNT_DELTA_NONCE_PTR);
 
         let storage_delta = self.build_storage_delta();
-        let vault_delta = AccountVaultDelta::default();
+        let vault_delta = self.build_vault_delta();
 
         // TODO: Add the account ID to the delta struct so it is self-contained and its
         // commitment can be computed without having to provide the account ID.
         AccountDelta::new(storage_delta, vault_delta, nonce)
             .expect("kernel should ensure nonce is incremented if state has changed")
+    }
+
+    fn build_vault_delta(&self) -> AccountVaultDelta {
+        let fungible = self.build_fungible_vault_delta();
+        let non_fungible = NonFungibleAssetDelta::default();
+        AccountVaultDelta::new(fungible, non_fungible)
+    }
+
+    fn build_fungible_vault_delta(&self) -> FungibleAssetDelta {
+        let delta_map = LinkMap::new(Felt::from(ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR), self.state);
+        let mut delta =
+            FungibleAssetDelta::new(BTreeMap::new()).expect("empty delta should be valid");
+
+        for asset_delta in delta_map.iter() {
+            let faucet_id = AccountId::try_from([asset_delta.key[3], asset_delta.key[2]])
+                .expect("TODO: tx kernel does not guarantee faucet ID validity");
+            let amount_hi: u32 = asset_delta.value0[3]
+                .try_into()
+                .expect("tx kernel should guarantee amount limbs are u32");
+            let amount_lo: u32 = asset_delta.value0[2]
+                .try_into()
+                .expect("tx kernel should guarantee amount limbs are u32");
+            let amount: u64 = ((amount_hi as u64) << 32) + amount_lo as u64;
+            let signed_amount: i64 = amount
+                .try_into()
+                .expect("tx kernel should guarantee that the delta is in i64 range");
+            if amount > 0 {
+                let asset = FungibleAsset::new(faucet_id, amount)
+                    .expect("TODO: faucet ID should be valid?");
+                // SAFETY: The tx kernel guarantees there is one vault delta entry per fungible
+                // asset so the removed amount will not overflow the total delta amount.
+                delta.add(asset).expect("adding an i64 to 0 should not overflow an i64");
+            } else {
+                let asset = FungibleAsset::new(faucet_id, signed_amount.unsigned_abs())
+                    .expect("TODO: faucet ID should be valid?");
+                // SAFETY: The tx kernel guarantees there is one vault delta entry per fungible
+                // asset so the removed amount will not overflow the total delta amount.
+                delta.remove(asset).expect("removing an i64 from 0 should not underflow an i64");
+            }
+        }
+
+        delta
     }
 
     fn build_storage_delta(&self) -> AccountStorageDelta {
