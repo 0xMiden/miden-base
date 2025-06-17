@@ -65,7 +65,7 @@ pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
     NoteBuilder::new(sender, &mut rng)
         .note_type(NoteType::Private)
         .tag(NoteTag::for_local_use_case(0, 0).unwrap().into())
-        .build(&TransactionKernel::assembler())
+        .build(&TransactionKernel::assembler().with_debug_mode(true))
         .unwrap()
 }
 
