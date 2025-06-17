@@ -1,15 +1,14 @@
 use alloc::vec::Vec;
+use std::collections::BTreeMap;
 
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
         AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, StorageSlot,
-    },
-    testing::account_component::AccountMockComponent,
-    transaction::{ExecutedTransaction, TransactionScript},
-    vm::AdviceMap,
+    }, asset::{Asset, FungibleAsset}, note::{Note, NoteType}, testing::{
+        account_component::AccountMockComponent, account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    }, transaction::{ExecutedTransaction, TransactionScript}, vm::AdviceMap, Digest, Felt, Hasher, Word, EMPTY_WORD
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
 
@@ -24,7 +23,7 @@ use crate::MockChain;
 /// Tests that incrementing the nonce by 3 and 2 results in a nonce delta of 5.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
-    let TestSetup { mock_chain, account_id } = setup_test(vec![]);
+    let TestSetup { mock_chain, account_id } = setup_storage_test(vec![]);
 
     let tx_script = compile_tx_script(
         "
@@ -69,7 +68,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_2_init_value = word([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
 
-    let TestSetup { mock_chain, account_id } = setup_test(vec![
+    let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
         StorageSlot::Value(slot_0_init_value),
         StorageSlot::Value(slot_1_init_value),
         StorageSlot::Value(slot_2_init_value),
@@ -136,6 +135,71 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that increasing, decreasing the amount of a fungible asset results in the correct delta.
+/// - Asset0 is increased by 100 and decreased by 200 -> Delta: -100.
+/// - Asset1 is increased by 100 and decreased by 100 -> Delta: 0.
+/// - Asset2 is increased by 200 and decreased by 100 -> Delta: 100.
+#[test]
+fn fungible_asset_delta() -> anyhow::Result<()> {
+    let original_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 300)?;
+    // let original_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
+    // 200)?; let original_asset2 =
+    // FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
+
+    let added_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 100)?;
+    // let added_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
+    // let added_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 200)?;
+
+    // let removed_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 200)?;
+    // let removed_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
+    // 100)?; let removed_asset2 =
+    // FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
+
+    let TestSetup { mut mock_chain, account_id } = setup_asset_test(
+        [
+            original_asset0,
+            // original_asset1,
+            // original_asset2
+        ]
+        .map(Asset::from),
+    );
+
+    let mut added_notes = vec![];
+    for added_asset in [added_asset0] {
+        let added_note = mock_chain
+            .add_pending_p2id_note(
+                account_id,
+                account_id,
+                &[Asset::from(added_asset)],
+                NoteType::Public,
+            )
+            .context("failed to add note with asset")?;
+        added_notes.push(added_note);
+    }
+    mock_chain.prove_next_block();
+
+    let executed_tx = mock_chain
+        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])
+        .tx_script(default_tx_script())
+        .build()
+        .execute()
+        .context("failed to execute transaction")?;
+
+    let mut vault_delta = executed_tx
+        .account_delta()
+        .vault()
+        .added_assets()
+        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_fungible().amount()))
+        .collect::<BTreeMap<_, _>>();
+
+    assert_eq!(
+        vault_delta.remove(&Digest::from(added_asset0.vault_key())).unwrap(),
+        added_asset0.amount()
+    );
+
+    Ok(())
+}
+
 /// Validates that the given host-computed account delta has the same commitment as the in-kernel
 /// computed account delta.
 ///
@@ -195,7 +259,7 @@ struct TestSetup {
     account_id: AccountId,
 }
 
-fn setup_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
+fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
     let account = AccountBuilder::new([8; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_component(
@@ -205,6 +269,22 @@ fn setup_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
             )
             .unwrap(),
         )
+        .build_existing()
+        .unwrap();
+
+    let account_id = account.id();
+    let mock_chain = MockChain::with_accounts(&[account]);
+
+    TestSetup { mock_chain, account_id }
+}
+
+fn setup_asset_test(assets: impl IntoIterator<Item = Asset>) -> TestSetup {
+    let account = AccountBuilder::new([3; 32])
+        .with_component(
+            AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
+                .unwrap(),
+        )
+        .with_assets(assets)
         .build_existing()
         .unwrap();
 
@@ -228,6 +308,18 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )
     .context("failed to compile tx script")
+}
+
+fn default_tx_script() -> TransactionScript {
+    compile_tx_script(
+        "
+  begin
+      # nonce must increase for state changing transactions
+      push.1 exec.incr_nonce
+  end
+  ",
+    )
+    .expect("tx script should be valid")
 }
 
 fn word(data: [u32; 4]) -> Word {

@@ -1,4 +1,5 @@
 use.kernel::memory
+use.kernel::link_map
 use.kernel::constants
 use.kernel::account
 use.std::crypto::hashes::rpo
@@ -15,6 +16,9 @@ const.DOMAIN_MAP=3
 
 # PROCEDURES
 # =================================================================================================
+
+# DELTA COMPUTATION
+# -------------------------------------------------------------------------------------------------
 
 #! Computes the commitment to the native account's delta.
 #!
@@ -182,4 +186,50 @@ proc.get_item_initial
     # get the item from storage
     swap mul.8 add padw movup.4 mem_loadw
     # => [INIT_VALUE]
+end
+
+# DELTA BOOKKEEPING
+# -------------------------------------------------------------------------------------------------
+
+#! Adds the given amount to the fungible asset delta for the asset identified by the asset key.
+#!
+#! Inputs:  [ASSET_KEY, amount]
+#! Outputs: []
+#!
+#! Where:
+#! - ASSET_KEY is the asset key of the fungible asset.
+#! - amount is the amount by which the fungible asset's amount increases.
+export.add_fungible_asset_delta
+    dupw exec.memory::get_account_delta_fungible_asset_ptr
+    # => [fungible_delta_map_ptr, ASSET_KEY, ASSET_KEY, amount]
+
+    # retrieve the current delta amount
+    # contains_key can be ignored because the default value is a delta amount of 0
+    # VALUE1 is unused so we drop it as well
+    exec.link_map::get drop swapw dropw
+    # => [delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY, amount]
+
+    movup.8 u32split
+    # => [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY]
+
+    exec.add_asset_amount
+    # => [delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY]
+
+    # pad VALUE1 of the link map
+    swapw padw movdnw.2
+    # => [ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+
+    exec.memory::get_account_delta_fungible_asset_ptr
+    # => [fungible_delta_map_ptr, ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+
+    exec.link_map::set drop
+    # => []
+end
+
+#! TODO: Document asset amount math.
+#!
+#! Inputs:  [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo]
+#! Outputs: [delta_amount_hi, delta_amount_lo]
+proc.add_asset_amount
+    exec.::std::math::u64::wrapping_add
 end

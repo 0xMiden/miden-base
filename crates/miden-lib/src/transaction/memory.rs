@@ -294,6 +294,9 @@ pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
 /// The memory address at which the nonce delta is stored.
 pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
 
+/// The link map pointer at which the delta of the fungible asset vault is stored.
+pub const ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR: MemoryAddress = ACCOUNT_DELTA_NONCE_PTR + 4;
+
 // NOTES DATA
 // ================================================================================================
 

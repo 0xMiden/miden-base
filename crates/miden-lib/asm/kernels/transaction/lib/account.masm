@@ -5,6 +5,7 @@ use.std::mem
 
 use.kernel::account_id
 use.kernel::asset_vault
+use.kernel::account_delta
 use.kernel::constants
 use.kernel::memory
 
@@ -760,11 +761,20 @@ export.add_asset_to_vault
     # => [ASSET, acct_vault_root_ptr, ASSET]
 
     # add the asset to the account vault
-    exec.asset_vault::add_asset
-    # => [ASSET', ASSET]
+    exec.asset_vault::add_asset swapw
+    # => [ASSET, ASSET']
+
+    dupw dup.3 movdn.3
+    # => [ASSET, amount, ASSET, ASSET']
+
+    exec.asset_vault::build_fungible_asset_vault_key
+    # => [ASSET_KEY, amount, ASSET, ASSET']
+
+    # dropw drop
+    exec.account_delta::add_fungible_asset_delta
+    # => [ASSET, ASSET']
 
     # emit event to signal that an asset is being added to the account vault
-    swapw
     emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT dropw
     # => [ASSET']
 end
