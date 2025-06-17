@@ -429,7 +429,7 @@ fn test_note_setup() {
 }
 
 #[test]
-fn test_note_script_and_note_args() {
+fn test_note_script_and_note_args() -> miette::Result<()> {
     let note_args = [
         [Felt::new(91), Felt::new(91), Felt::new(91), Felt::new(91)],
         [Felt::new(92), Felt::new(92), Felt::new(92), Felt::new(92)],
@@ -469,11 +469,13 @@ fn test_note_script_and_note_args() {
     );
 
     tx_context.set_tx_args(tx_args);
-    let process = tx_context.execute_code(code).unwrap();
+    let process = tx_context.execute_code(code)?;
 
     assert_eq!(process.stack.get_word(0), note_args[0]);
 
     assert_eq!(process.stack.get_word(1), note_args[1]);
+
+    Ok(())
 }
 
 fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {

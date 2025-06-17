@@ -315,7 +315,6 @@ impl TransactionContextBuilder {
 
                 # NOTE 0
                 # ---------------------------------------------------------------------------------
-
                 padw padw
                 push.{recipient0}
                 push.{execution_hint_always}

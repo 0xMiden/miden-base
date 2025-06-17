@@ -10,6 +10,7 @@ use ::assembly::{
     ast::{Module, ModuleKind},
 };
 use anyhow::Context;
+use assembly::diagnostics::WrapErr;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -405,7 +406,7 @@ fn test_empty_delta_nonce_update() {
 }
 
 #[test]
-fn test_send_note_proc() {
+fn test_send_note_proc() -> miette::Result<()> {
     // removed assets
     let removed_asset_1 = FungibleAsset::mock(FUNGIBLE_ASSET_AMOUNT / 2);
     let removed_asset_2 = Asset::Fungible(
@@ -510,7 +511,8 @@ fn test_send_note_proc() {
         // execute the transaction and get the witness
         let executed_transaction = tx_context
             .execute()
-            .unwrap_or_else(|_| panic!("test failed in iteration {idx}"));
+            .into_diagnostic()
+            .wrap_err(format!("test failed in iteration {idx}"))?;
 
         // nonce delta
         // --------------------------------------------------------------------------------------------
@@ -531,6 +533,8 @@ fn test_send_note_proc() {
             executed_transaction.account_delta().vault().removed_assets().count()
         );
     }
+
+    Ok(())
 }
 
 #[test]
