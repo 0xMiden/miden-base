@@ -7,7 +7,7 @@ use miden_objects::{
     account::{
         AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, StorageSlot,
     }, asset::{Asset, FungibleAsset}, note::{Note, NoteType}, testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        account_component::AccountMockComponent, account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2},
     }, transaction::{ExecutedTransaction, TransactionScript}, vm::AdviceMap, Digest, Felt, Hasher, Word, EMPTY_WORD
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
@@ -147,8 +147,8 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     // FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
 
     let added_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 100)?;
-    // let added_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
-    // let added_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 200)?;
+    let added_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
+    let added_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 200)?;
 
     // let removed_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 200)?;
     // let removed_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
@@ -165,7 +165,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     );
 
     let mut added_notes = vec![];
-    for added_asset in [added_asset0] {
+    for added_asset in [added_asset0, added_asset1, added_asset2] {
         let added_note = mock_chain
             .add_pending_p2id_note(
                 account_id,
