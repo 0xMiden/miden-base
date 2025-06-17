@@ -335,7 +335,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
-    // ───────────────────── advance chain past height 7 ──────────────────────
+    // ───────────────────── advance chain past timelock height ──────────────────────
     mock_chain.prove_until_block(timelock_block_height + 1).unwrap();
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
@@ -346,7 +346,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED);
 
-    // ───────────────────── advance chain past height 10 ──────────────────────
+    // ───────────────────── advance chain past reclaim height ──────────────────────
     mock_chain.prove_until_block(reclaim_block_height + 1).unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
@@ -376,6 +376,68 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     );
 
     assert_eq!(final_tx.final_account().commitment(), target_after.commitment());
+
+    Ok(())
+}
+
+/// Test that the P2IDE note can be reclaimed after timelock
+#[test]
+fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
+    let mut mock_chain = MockChain::new();
+    mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
+
+    // Create sender and target account
+    let sender_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    let target_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+
+    let fungible_asset: Asset = FungibleAsset::mock(100);
+
+    let reclaim_block_height = 5;
+    let timelock_block_height = 3;
+
+    let p2id_extended = create_p2ide_note(
+        sender_account.id(),
+        target_account.id(),
+        vec![fungible_asset],
+        Some(reclaim_block_height.into()),
+        Some(timelock_block_height.into()),
+        NoteType::Public,
+        Felt::new(0),
+        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+    )
+    .unwrap();
+
+    // push note on-chain
+    mock_chain.add_pending_note(OutputNote::Full(p2id_extended.clone()));
+    mock_chain.prove_next_block();
+
+    // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
+    let early_reclaim = mock_chain
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
+        .build()
+        .execute();
+
+    assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
+
+    // ───────────────────── advance chain past reclaim height ──────────────────────
+    mock_chain.prove_until_block(reclaim_block_height + 1).unwrap();
+
+    // ───────────────────── sender reclaims successfully ───────────────────────
+    let final_tx = mock_chain
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
+        .build()
+        .execute()
+        .unwrap();
+
+    let sender_after = Account::from_parts(
+        sender_account.id(),
+        AssetVault::new(&[fungible_asset])?,
+        sender_account.storage().clone(),
+        sender_account.code().clone(),
+        Felt::new(2),
+    );
+
+    assert_eq!(final_tx.final_account().commitment(), sender_after.commitment());
 
     Ok(())
 }

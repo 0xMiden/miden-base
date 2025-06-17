@@ -16,11 +16,6 @@ const.ERR_P2IDE_RECLAIM_DISABLED="P2IDE reclaim is disabled"
 
 const.ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note because the note is still timelocked"
 
-# CONSTANTS
-# =================================================================================================
-
-const.CURRENT_BLOCK_HEIGHT_MEM_ADDR=5
-
 # HELPER PROCEDURES
 # =================================================================================================
 
@@ -78,25 +73,22 @@ end
 
 #! Helper procedure to check if the P2IDE note is unlocked.
 #!
-#! Inputs:  [timelock_block_height]
-#! Outputs: []
+#! Inputs:  [current_block_height, timelock_block_height]
+#! Outputs: [current_block_height]
 proc.verify_unlocked
-    # get current block number and store in memory for later
-    exec.tx::get_block_number dup mem_store.CURRENT_BLOCK_HEIGHT_MEM_ADDR
-    # => [current_block_height, timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+    dup movdn.2
+    # => [current_block_height, timelock_block_height, current_block_height]
 
     # check timelock_block_height <= current_block_height
-    lte
-    # => [is_unlockable, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
-
-    assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
+    lte assert.err=ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
+    # => [current_block_height]
 end
 
 #! Helper procedure which adds the note assets to the sender account.
 #!
 #! Checks if P2IDE reclaim is enabled and if true, if reclaim height has been reached.
 #!
-#! Inputs:  [account_id_prefix, account_id_suffix, reclaim_block_height]
+#! Inputs:  [account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height]
 #! Outputs: []
 #!
 #! Panics if:
@@ -105,11 +97,11 @@ end
 #! - the account attempting to reclaim the note is not the sender account.
 proc.reclaim_note
     # check that the reclaim of the current note is enabled
-    movup.2 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
-    # => [reclaim_block_height, account_id_prefix, account_id_suffix]
+    movup.3 dup neq.0 assert.err=ERR_P2IDE_RECLAIM_DISABLED
+    # => [reclaim_block_height, account_id_prefix, account_id_suffix, current_block_height]
 
     # now check that sender is allowed to reclaim, reclaim block height <= current block height
-    mem_load.CURRENT_BLOCK_HEIGHT_MEM_ADDR
+    movup.3
     # => [current_block_height, reclaim_block_height, account_id_prefix, account_id_suffix]
 
     lte assert.err=ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED
@@ -172,17 +164,21 @@ begin
     mem_loadw
     # => [timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
+    # read the current block number
+    exec.tx::get_block_number
+    # => [current_block_height, timelock_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+
     # fails if note is locked
     exec.verify_unlocked
-    # => [reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+    # => [current_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # get current account id
     exec.account::get_id dup.1 dup.1
-    # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
+    # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # determine if the current account is the target account
-    movup.6 movup.6 exec.account::is_id_equal
-    # => [is_target, account_id_prefix, account_id_suffix, reclaim_block_height]
+    movup.7 movup.7 exec.account::is_id_equal
+    # => [is_target, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height]
 
     if.true
         # we can safely consume the note since the current account is the target of the note

@@ -20,7 +20,7 @@ pub mod well_known_note;
 // STANDARDIZED SCRIPTS
 // ================================================================================================
 
-/// Generates a P2ID note - pay to id note.
+/// Generates a P2ID note - Pay-to-ID note.
 ///
 /// This script enables the transfer of assets from the `sender` account to the `target` account
 /// by specifying the target's account ID.
@@ -49,7 +49,7 @@ pub fn create_p2id_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
-/// Generates a P2IDR note - pay to id with recall after a certain block height.
+/// Generates a P2IDR note - Pay-to-ID note with recall after a certain block height.
 ///
 /// This script enables the transfer of assets from the `sender` account to the `target`
 /// account by specifying the target's account ID. Additionally it adds the possibility for the
@@ -83,7 +83,7 @@ pub fn create_p2idr_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
-/// Generates a P2IDE note - pay to id with optional recall after a certain block height and
+/// Generates a P2IDE note - Pay-to-ID note with optional recall after a certain block height and
 /// optional timelock.
 ///
 /// This script enables the transfer of assets from the `sender` account to the `target`
