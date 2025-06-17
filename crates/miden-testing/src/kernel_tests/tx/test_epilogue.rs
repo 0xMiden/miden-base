@@ -13,6 +13,8 @@ use miden_lib::{
 };
 use miden_objects::{
     account::Account,
+    note::{NoteTag, NoteType},
+    testing::account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     transaction::{OutputNote, OutputNotes},
 };
 use miden_tx::TransactionExecutorError;
@@ -439,4 +441,63 @@ fn test_epilogue_execute_empty_transaction() {
     };
 
     assert_execution_error!(Err::<(), _>(err), ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
+}
+
+#[test]
+fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()> {
+    let tag = NoteTag::from_account_id(
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+    );
+    let aux = Felt::new(26);
+    let note_type = NoteType::Private;
+
+    // create an empty output note in the transaction script
+    let tx_script_source = format!(
+        r#"
+        use.miden::tx
+        use.kernel::prologue
+        use.kernel::epilogue
+        use.kernel::note
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # prepare the values for note creation
+            push.1.2.3.4      # recipient
+            push.1            # note_execution_hint (NoteExecutionHint::Always)
+            push.{note_type}  # note_type
+            push.{aux}        # aux
+            push.{tag}        # tag
+            # => [tag, aux, note_type, note_execution_hint, RECIPIENT]
+
+            # pad the stack with zeros before calling the `create_note`.
+            padw padw swapdw
+            # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
+
+            # create the note
+            call.tx::create_note
+            # => [note_idx, GARBAGE(15)]
+
+            # make sure that output note was created: compare the output note hash with an empty 
+            # word
+            exec.note::compute_output_notes_commitment
+            padw eqw assertz.err="output note was created, but the output notes hash remains to be zeros"
+
+            # clean the stack
+            dropw dropw dropw dropw
+
+            exec.epilogue::finalize_transaction
+        end
+    "#,
+        note_type = note_type as u8,
+    );
+
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+
+    let result = tx_context.execute_code(&tx_script_source).map(|_| ());
+
+    // assert that even if the output note was created, the transaction is considered empty
+    assert_execution_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
+
+    Ok(())
 }
