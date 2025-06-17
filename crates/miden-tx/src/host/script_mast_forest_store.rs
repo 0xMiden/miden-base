@@ -38,6 +38,17 @@ impl ScriptMastForestStore {
             self.mast_forests.insert(proc_digest, mast_forest.clone());
         }
     }
+
+    /// Returns an iterator over unique MAST forests stored in this store.
+    pub fn forests(&self) -> impl Iterator<Item = &Arc<MastForest>> {
+        // Deduplicate forests since multiple procedure digests can point to the same forest
+        let mut seen = alloc::collections::BTreeSet::new();
+        self.mast_forests.values().filter(move |forest| {
+            // Use pointer address for deduplication since we're dealing with Arc<MastForest>
+            let ptr = Arc::as_ptr(forest) as usize;
+            seen.insert(ptr)
+        })
+    }
 }
 
 // MAST FOREST STORE IMPLEMENTATION
