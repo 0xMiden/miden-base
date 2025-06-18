@@ -1,4 +1,5 @@
 use.kernel::account
+use.kernel::account_delta
 use.kernel::asset_vault
 use.kernel::constants
 use.kernel::memory
@@ -301,6 +302,22 @@ export.finalize_transaction
     swapw dropw
     # => [FINAL_ACCOUNT_COMMITMENT]
 
+    exec.account_delta::compute_commitment
+    # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+
+    # pad capacity element of the hasher
+    padw movdnw.2
+    # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT, EMPTY_WORD]
+
+    # insert into advice map ACCOUNT_UPDATE_COMMITMENT: (FINAL_ACCOUNT_COMMITMENT, ACCOUNT_DELTA_COMMITMENT),
+    # where ACCOUNT_UPDATE_COMMITMENT = hash(FINAL_ACCOUNT_COMMITMENT || ACCOUNT_DELTA_COMMITMENT)
+    adv.insert_hdword
+    # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT, EMPTY_WORD]
+
+    # drop delta commitment and hasher capacity
+    dropw swapw dropw
+    # => [FINAL_ACCOUNT_COMMITMENT]
+
     # build the output vault
     exec.build_output_vault
     # => [FINAL_ACCOUNT_COMMITMENT]
@@ -319,5 +336,5 @@ export.finalize_transaction
     # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     exec.memory::get_expiration_block_num movdn.8
-    # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_HASH, tx_expiration_block_num]
+    # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT, tx_expiration_block_num]
 end

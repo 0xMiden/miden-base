@@ -127,65 +127,6 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that the delta computed in the kernel and in Rust is the same.
-#[test]
-fn delta_commitment() -> anyhow::Result<()> {
-    let storage_slots = vec![
-        StorageSlot::Value(word([9, 8, 7, 6u32])),
-        StorageSlot::Value(word([6, 5, 4, 3u32])),
-    ];
-    let num_slots = storage_slots.len() as u8;
-    let TestSetup { mock_chain, account_id } = setup_test(storage_slots);
-
-    let slot_0_value = word([5, 4, 3, 2u32]);
-
-    // let code = format!(
-    //     "
-    //   use.kernel::prologue
-    //   use.kernel::account
-    //   use.kernel::account_delta
-
-    //   begin
-    //       exec.prologue::prepare_transaction
-
-    //       push.3 exec.account::incr_nonce
-    //       # => []
-
-    //       # set some value on slot 0
-    //       push.{slot_0_value}.0 exec.account::set_item dropw
-    //       # => []
-
-    //       # TODO: insert commitment into advice map
-    //       exec.account_delta::compute_commitment
-    //       # => [DELTA_COMMITMENT]
-    //       swapw dropw
-    //   end
-    //   ",
-    //     slot_0_value = word_to_masm_push_string(&slot_0_value)
-    // );
-
-    let executed_tx = mock_chain
-        .build_tx_context(account_id, &[], &[])
-        .build()
-        .execute()
-        .context("failed to execute code")?;
-
-    let account_delta = executed_tx.account_delta();
-    let delta_commitment = account_delta.commitment(account_id, num_slots);
-    let advice_key = miden_objects::Hasher::merge(&[delta_commitment, Digest::from(EMPTY_WORD)]);
-    let kernel_delta_commitment = executed_tx
-        .advice_witness()
-        .map
-        .get(&advice_key)
-        .context("failed to lookup account delta in advice map")?;
-
-    assert_eq!(account_delta.nonce(), Some(miden_objects::Felt::new(3)));
-    assert_eq!(*account_delta.storage().values().get(&0).unwrap(), slot_0_value);
-    assert_eq!(delta_commitment.as_slice(), kernel_delta_commitment);
-
-    Ok(())
-}
-
 // TEST HELPERS
 // ================================================================================================
 

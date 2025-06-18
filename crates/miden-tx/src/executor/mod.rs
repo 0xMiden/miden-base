@@ -2,8 +2,8 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
-    account::AccountId,
+    Digest, Felt, Hasher, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
+    account::{Account, AccountDelta, AccountHeader, AccountId},
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
@@ -11,10 +11,12 @@ use miden_objects::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
-    vm::StackOutputs,
+    vm::{AdviceMap, StackOutputs},
 };
 pub use vm_processor::MastForestStore;
-use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{
+    AdviceInputs, EMPTY_WORD, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider,
+};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
@@ -363,22 +365,14 @@ fn build_executed_transaction(
 
     let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
 
+    let advice_map = AdviceMap::from(map);
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &map.into(), output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
     let initial_account = tx_inputs.account();
 
-    // TODO: Eventually we will check if account delta computed via the host and in-kernel account
-    // delta match. For now, just lookup if the delta exists in the advice map.
-    // let host_delta_commitment =
-    //     account_delta.commitment(initial_account.id(), initial_account.storage().num_slots());
-    // if tx_outputs.account_delta_commitment != host_delta_commitment {
-    //     return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
-    //         in_kernel_commitment: tx_outputs.account_delta_commitment,
-    //         host_commitment: host_delta_commitment,
-    //     });
-    // }
+    validate_account_delta(&account_delta, initial_account, &advice_map, &tx_outputs.account)?;
 
     let final_account = &tx_outputs.account;
 
@@ -460,6 +454,55 @@ fn validate_input_notes(
     }
 
     Ok(ref_blocks)
+}
+
+/// Validates that the given host-computed account delta has the same commitment as the in-kernel
+/// computed account delta.
+fn validate_account_delta(
+    account_delta: &AccountDelta,
+    initial_account: &Account,
+    advice_map: &AdviceMap,
+    final_account_header: &AccountHeader,
+) -> Result<(), TransactionExecutorError> {
+    let host_delta_commitment =
+        account_delta.commitment(initial_account.id(), initial_account.storage().num_slots());
+    let account_update_commitment =
+        Hasher::merge(&[final_account_header.commitment(), host_delta_commitment]);
+
+    let account_update_data = advice_map.get(&account_update_commitment).ok_or_else(|| {
+        TransactionExecutorError::AccountUpdateCommitment(
+            "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map",
+        )
+    })?;
+
+    if account_update_data.len() != 8 {
+        return Err(TransactionExecutorError::AccountUpdateCommitment(
+            "expected account update commitment advice map entry to contain exactly 8 elements",
+        ));
+    }
+
+    // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
+    // is fine.
+    // TODO: The final account commitment will eventually be taken from here once the account update
+    // commitment becomes a transaction output, but for now it is unused.
+    let _final_account_commitment = Digest::from(
+        <[Felt; 4]>::try_from(&account_update_data[0..4])
+            .expect("we should have sliced off exactly four elements"),
+    );
+    let account_delta_commitment = Digest::from(
+        <[Felt; 4]>::try_from(&account_update_data[4..8])
+            .expect("we should have sliced off exactly four elements"),
+    );
+
+    if account_delta_commitment != host_delta_commitment {
+        return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
+            // TODO: Update once in kernel commitment is read from tx outputs.
+            in_kernel_commitment: Digest::from(EMPTY_WORD),
+            host_commitment: host_delta_commitment,
+        });
+    }
+
+    Ok(())
 }
 
 // HELPER ENUM
