@@ -5,12 +5,7 @@ use alloc::{
     vec::Vec,
 };
 
-use ::assembly::{
-    LibraryPath,
-    ast::{Module, ModuleKind},
-};
 use anyhow::Context;
-use assembly::diagnostics::WrapErr;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -20,10 +15,7 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::{
-        DefaultSourceManager,
-        diagnostics::{IntoDiagnostic, miette},
-    },
+    assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -990,31 +982,19 @@ fn transaction_executor_account_code_using_custom_library() {
         push.4 exec.external_module::incr_nonce_by_four
       end";
 
-    let source_manager = Arc::new(DefaultSourceManager::default());
-    let external_library_module = Module::parser(ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("external_library::external_module").unwrap(),
-            EXTERNAL_LIBRARY_CODE,
-            &source_manager,
-        )
-        .unwrap();
+    let external_library_source =
+        NamedSource::new("external_library::external_module", EXTERNAL_LIBRARY_CODE);
     let external_library = TransactionKernel::assembler()
-        .assemble_library([external_library_module])
+        .assemble_library([external_library_source])
         .unwrap();
 
     let mut assembler = TransactionKernel::assembler();
     assembler.add_vendored_library(&external_library).unwrap();
 
-    let account_component_module = Module::parser(ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("account_component::account_module").unwrap(),
-            ACCOUNT_COMPONENT_CODE,
-            &source_manager,
-        )
-        .unwrap();
-
+    let account_component_source =
+        NamedSource::new("account_component::account_module", ACCOUNT_COMPONENT_CODE);
     let account_component_lib =
-        assembler.clone().assemble_library([account_component_module]).unwrap();
+        assembler.clone().assemble_library([account_component_source]).unwrap();
 
     let tx_script_src = "\
           use.account_component::account_module
@@ -1064,16 +1044,10 @@ fn test_execute_program() {
         end
     ";
 
+    let source = NamedSource::new("test::module_1", test_module_source);
     let assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    let test_module = Module::parser(assembly::ast::ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("test::module_1").unwrap(),
-            test_module_source,
-            &assembler.source_manager(),
-        )
-        .unwrap();
-    let assembler = assembler.with_module(test_module).unwrap();
+    let assembler = assembler.with_module(source).unwrap();
 
     let source = "
     use.test::module_1
