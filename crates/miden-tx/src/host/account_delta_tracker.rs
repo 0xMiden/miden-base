@@ -1,6 +1,6 @@
 use miden_objects::{
     Felt, ZERO,
-    account::{AccountDelta, AccountHeader, AccountStorageDelta, AccountVaultDelta},
+    account::{AccountDelta, AccountStorageDelta, AccountVaultDelta},
 };
 // ACCOUNT DELTA TRACKER
 // ================================================================================================
@@ -19,25 +19,26 @@ use miden_objects::{
 pub struct AccountDeltaTracker {
     storage: AccountStorageDelta,
     vault: AccountVaultDelta,
-    init_nonce: Felt,
     nonce_delta: Felt,
 }
 
 impl AccountDeltaTracker {
     /// Returns a new [AccountDeltaTracker] instantiated for the specified account.
-    pub fn new(account: &AccountHeader) -> Self {
+    pub fn new() -> Self {
         Self {
             storage: AccountStorageDelta::default(),
             vault: AccountVaultDelta::default(),
-            init_nonce: account.nonce(),
             nonce_delta: ZERO,
         }
     }
 
     /// Consumes `self` and returns the resulting [AccountDelta].
     pub fn into_delta(self) -> AccountDelta {
-        let nonce_delta = (self.nonce_delta != ZERO).then_some(self.init_nonce + self.nonce_delta);
-
+        let nonce_delta = if self.nonce_delta != ZERO {
+            Some(self.nonce_delta)
+        } else {
+            None
+        };
         AccountDelta::new(self.storage, self.vault, nonce_delta).expect("invalid account delta")
     }
 

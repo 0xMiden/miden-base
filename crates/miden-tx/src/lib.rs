@@ -9,8 +9,6 @@ extern crate std;
 pub use miden_objects::transaction::TransactionInputs;
 
 mod executor;
-#[cfg(any(feature = "testing", test))]
-pub use executor::AccountDeltaBuilder;
 pub use executor::{
     DataStore, MastForestStore, NoteAccountExecution, NoteConsumptionChecker, NoteInputsCheck,
     TransactionExecutor,

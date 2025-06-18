@@ -3,7 +3,7 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
-    account::{AccountDelta, AccountId, AccountStorageDelta},
+    account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
@@ -25,9 +25,6 @@ pub use data_store::DataStore;
 
 mod notes_checker;
 pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
-
-mod account_delta_builder;
-pub use account_delta_builder::AccountDeltaBuilder;
 
 // TRANSACTION EXECUTOR
 // ================================================================================================
@@ -162,27 +159,16 @@ impl TransactionExecutor {
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         // Execute the transaction kernel
-        // This is essentially a copy of vm_processor::execute but allows us to access the Process
-        // afterwards.
-        let program = TransactionKernel::main();
-        let mut process = Process::new(program.kernel().clone(), stack_inputs, self.exec_options)
-            .with_source_manager(source_manager);
-        let stack_outputs = process
-            .execute(&program, &mut host)
-            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
-
-        let account_delta = AccountDeltaBuilder::new(&process).build();
-
-        let trace = vm_processor::ExecutionTrace::new(process, stack_outputs);
-        assert_eq!(&program.hash(), trace.program_hash(), "inconsistent program hash");
-
-        build_executed_transaction(
-            tx_args,
-            tx_inputs,
-            trace.stack_outputs().clone(),
-            host,
-            account_delta,
+        let trace = vm_processor::execute(
+            &TransactionKernel::main(),
+            stack_inputs,
+            &mut host,
+            self.exec_options,
+            source_manager,
         )
+        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+
+        build_executed_transaction(tx_args, tx_inputs, trace.stack_outputs().clone(), host)
     }
 
     // SCRIPT EXECUTION
@@ -371,14 +357,9 @@ fn build_executed_transaction(
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
     host: TransactionHost<RecAdviceProvider>,
-    new_account_delta: AccountDelta,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (advice_recorder, old_account_delta, output_notes, generated_signatures, tx_progress) =
+    let (advice_recorder, account_delta, output_notes, generated_signatures, tx_progress) =
         host.into_parts();
-
-    // TODO: Temporarily merge the new account delta and the old one, until the new one contains all
-    // the changes.
-    let account_delta = tmp_merge_deltas(new_account_delta, old_account_delta);
 
     let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
 
@@ -386,9 +367,20 @@ fn build_executed_transaction(
         TransactionKernel::from_transaction_parts(&stack_outputs, &map.into(), output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
-    let final_account = &tx_outputs.account;
-
     let initial_account = tx_inputs.account();
+
+    // TODO: Eventually we will check if account delta computed via the host and in-kernel account
+    // delta match. For now, just lookup if the delta exists in the advice map.
+    // let host_delta_commitment =
+    //     account_delta.commitment(initial_account.id(), initial_account.storage().num_slots());
+    // if tx_outputs.account_delta_commitment != host_delta_commitment {
+    //     return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
+    //         in_kernel_commitment: tx_outputs.account_delta_commitment,
+    //         host_commitment: host_delta_commitment,
+    //     });
+    // }
+
+    let final_account = &tx_outputs.account;
 
     if initial_account.id() != final_account.id() {
         return Err(TransactionExecutorError::InconsistentAccountId {
@@ -486,19 +478,4 @@ pub enum NoteAccountExecution {
         successful_notes: Vec<NoteId>,
         error: Option<TransactionExecutorError>,
     },
-}
-
-fn tmp_merge_deltas(new_delta: AccountDelta, old_delta: AccountDelta) -> AccountDelta {
-    // The parts we take from the new delta.
-    let (new_storage_delta, _vault_delta, nonce_delta) = new_delta.into_parts();
-
-    let (old_storage_delta, vault_delta, _nonce_delta) = old_delta.into_parts();
-
-    let storage_delta = AccountStorageDelta::new(
-        new_storage_delta.values().clone(),
-        old_storage_delta.maps().clone(),
-    )
-    .expect("storage delta should be valid");
-
-    AccountDelta::new(storage_delta, vault_delta, nonce_delta).expect("delta should still be valid")
 }

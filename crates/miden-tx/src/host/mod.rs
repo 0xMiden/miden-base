@@ -111,7 +111,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
             adv_provider,
             mast_store,
             scripts_mast_store,
-            account_delta: AccountDeltaTracker::new(&account),
+            account_delta: AccountDeltaTracker::new(),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
             authenticator,
