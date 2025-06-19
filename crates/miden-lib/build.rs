@@ -15,6 +15,7 @@ use assembly::{
 };
 use regex::Regex;
 use walkdir::WalkDir;
+use miette;
 
 /// A map where the key is the error name and the value is the error code with the message.
 type ErrorCategoryMap = BTreeMap<ErrorCategory, Vec<NamedError>>;
@@ -267,7 +268,7 @@ pub const KERNEL0_PROCEDURES: [Digest; {proc_count}] = [
 }
 
 fn parse_proc_offsets(filename: impl AsRef<Path>) -> Result<BTreeMap<String, usize>> {
-    let regex: Regex = Regex::new(r"^const\.(?P<name>\w+)_OFFSET\s*=\s*(?P<offset>\d+)").unwrap();
+    let regex: Regex = Regex::new(r"^const.(?P<name>\w+)_OFFSET\s*=\s*(?P<offset>\d+)").unwrap();
     let mut result = BTreeMap::new();
     for line in fs::read_to_string(filename).into_diagnostic()?.lines() {
         if let Some(captures) = regex.captures(line) {
@@ -314,23 +315,35 @@ fn compile_miden_lib(
 ///
 /// The source files are expected to contain executable programs.
 fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
-    if let Err(e) = fs::create_dir_all(target_dir) {
-        println!("Failed to create note_scripts directory: {}", e);
-    }
+    fs::create_dir_all(target_dir).into_diagnostic()
+        .context("Failed to create note_scripts directory")?;
 
-    for masm_file_path in get_masm_files(source_dir).unwrap() {
+    // Get the list of MASM files
+    let masm_files = get_masm_files(source_dir)
+        .into_diagnostic()
+        .context("Failed to get MASM files")?;
+
+    for masm_file_path in masm_files {
         // read the MASM file, parse it, and serialize the parsed AST to bytes
         let code = assembler.clone().assemble_program(masm_file_path.clone())?;
-
         let bytes = code.to_bytes();
 
-        // TODO: get rid of unwraps
-        let masb_file_name = masm_file_path.file_name().unwrap().to_str().unwrap();
+        // Safely get the file name
+        let masb_file_name = masm_file_path.file_name()
+            .ok_or_else(|| miette::miette!("Failed to get file name"))
+            .into_diagnostic()?;
+            
+        let masb_file_name = masb_file_name.to_str()
+            .ok_or_else(|| miette::miette!("File name contains invalid UTF-8"))
+            .into_diagnostic()?;
+            
         let mut masb_file_path = target_dir.join(masb_file_name);
 
         // write the binary MASB to the output dir
         masb_file_path.set_extension("masb");
-        fs::write(masb_file_path, bytes).unwrap();
+        fs::write(masb_file_path, bytes)
+            .into_diagnostic()
+            .context("Failed to write compiled MASB file")?;
     }
     Ok(())
 }
