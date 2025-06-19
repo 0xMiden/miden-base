@@ -1,19 +1,12 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    string::ToString,
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
 use assembly::{Assembler, Compile, Library};
-use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{AccountInputs, Digest, Felt, Word};
+use super::{Digest, Felt, Word};
 use crate::{
     Hasher, MastForest, MastNodeId, TransactionScriptError,
-    note::{NoteId, NoteRecipient},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::{AdviceInputs, AdviceMap, Program},
+    vm::Program,
 };
 
 // TRANSACTION SCRIPT
@@ -155,12 +148,10 @@ impl TransactionScript {
 
     /// Compiles the provided transaction script source, inputs, and libraries into a
     /// [`TransactionScript`].
-    ///
-    /// This allows the user to compile a transaction against multiple libraries.
     pub fn compile_tx_script<T>(
-        inputs: T,
-        libraries: Vec<Library>,
+        libraries: Option<Vec<Library>>,
         program: &str,
+        inputs: T,
         assembler: Assembler,
     ) -> Result<TransactionScript, TransactionScriptError>
     where
@@ -168,10 +159,12 @@ impl TransactionScript {
     {
         let mut assembler = assembler;
 
-        for lib in libraries {
-            assembler = assembler
-                .with_library(lib)
-                .map_err(|err| TransactionScriptError::AssemblyError(err))?;
+        if let Some(libraries) = libraries {
+            for lib in libraries {
+                assembler = assembler
+                    .with_library(lib)
+                    .map_err(|err| TransactionScriptError::AssemblyError(err))?;
+            }
         }
 
         TransactionScript::compile(program, inputs, assembler)

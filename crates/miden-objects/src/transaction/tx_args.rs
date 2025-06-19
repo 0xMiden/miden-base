@@ -1,19 +1,15 @@
 use alloc::{
     collections::{BTreeMap, BTreeSet},
-    string::ToString,
-    sync::Arc,
     vec::Vec,
 };
 
-use assembly::{Assembler, Compile};
 use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{AccountInputs, Digest, Felt, Word, TransactionScript};
+use super::{AccountInputs, Digest, Felt, TransactionScript, Word};
 use crate::{
-    Hasher, MastForest, MastNodeId, TransactionScriptError,
     note::{NoteId, NoteRecipient},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::{AdviceInputs, AdviceMap, Program},
+    vm::{AdviceInputs, AdviceMap},
 };
 
 // TRANSACTION ARGS
