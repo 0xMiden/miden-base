@@ -161,9 +161,8 @@ impl TransactionScript {
 
         if let Some(libraries) = libraries {
             for lib in libraries {
-                assembler = assembler
-                    .with_library(lib)
-                    .map_err(|err| TransactionScriptError::AssemblyError(err))?;
+                assembler =
+                    assembler.with_library(lib).map_err(TransactionScriptError::AssemblyError)?
             }
         }
 
