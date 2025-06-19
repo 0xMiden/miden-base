@@ -15,6 +15,7 @@ mod proven_tx;
 mod transaction_id;
 mod tx_args;
 mod tx_header;
+mod tx_script;
 mod tx_witness;
 
 pub use executed_tx::{ExecutedTransaction, TransactionMeasurements};
@@ -26,6 +27,7 @@ pub use proven_tx::{
     InputNoteCommitment, ProvenTransaction, ProvenTransactionBuilder, TxAccountUpdate,
 };
 pub use transaction_id::TransactionId;
-pub use tx_args::{TransactionArgs, TransactionScript};
+pub use tx_args::TransactionArgs;
 pub use tx_header::TransactionHeader;
+pub use tx_script::TransactionScript;
 pub use tx_witness::TransactionWitness;

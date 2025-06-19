@@ -20,6 +20,7 @@
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
+- Add `compile_tx_script` helper function to `TransactionScript` (#1467).
 
 ## 0.9.1 (2025-05-30)
 
