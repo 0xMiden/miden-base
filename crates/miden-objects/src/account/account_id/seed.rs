@@ -43,13 +43,23 @@ fn compute_account_seed_single(
     code_commitment: Digest,
     storage_commitment: Digest,
 ) -> Result<Word, AccountError> {
-    let init_seed: Vec<[u8; 8]> =
-        init_seed.chunks(8).map(|chunk| chunk.try_into().unwrap()).collect();
-    let mut current_seed: Word = [
-        Felt::new(u64::from_le_bytes(init_seed[0])),
-        Felt::new(u64::from_le_bytes(init_seed[1])),
-        Felt::new(u64::from_le_bytes(init_seed[2])),
-        Felt::new(u64::from_le_bytes(init_seed[3])),
+    let current_seed: Word = [
+        Felt::new(u64::from_le_bytes([
+            init_seed[0], init_seed[1], init_seed[2], init_seed[3],
+            init_seed[4], init_seed[5], init_seed[6], init_seed[7],
+        ])),
+        Felt::new(u64::from_le_bytes([
+            init_seed[8], init_seed[9], init_seed[10], init_seed[11],
+            init_seed[12], init_seed[13], init_seed[14], init_seed[15],
+        ])),
+        Felt::new(u64::from_le_bytes([
+            init_seed[16], init_seed[17], init_seed[18], init_seed[19],
+            init_seed[20], init_seed[21], init_seed[22], init_seed[23],
+        ])),
+        Felt::new(u64::from_le_bytes([
+            init_seed[24], init_seed[25], init_seed[26], init_seed[27],
+            init_seed[28], init_seed[29], init_seed[30], init_seed[31],
+        ])),
     ];
     let mut current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
 
