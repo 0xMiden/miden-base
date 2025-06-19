@@ -48,7 +48,7 @@ use crate::{auth::TransactionAuthenticator, errors::TransactionHostError};
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
 /// execution.
-pub struct TransactionHost<'store, A> {
+pub struct TransactionHost<'store, 'auth, A> {
     /// Advice provider which is used to provide non-deterministic inputs to the transaction
     /// runtime.
     adv_provider: A,
@@ -75,7 +75,7 @@ pub struct TransactionHost<'store, A> {
 
     /// Serves signature generation requests from the transaction runtime for signatures which are
     /// not present in the `generated_signatures` field.
-    authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+    authenticator: Option<&'auth dyn TransactionAuthenticator>,
 
     /// Contains previously generated signatures (as a message |-> signature map) required for
     /// transaction execution.
@@ -90,14 +90,14 @@ pub struct TransactionHost<'store, A> {
     tx_progress: TransactionProgress,
 }
 
-impl<'store, A: AdviceProvider> TransactionHost<'store, A> {
+impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
     pub fn new(
         account: AccountHeader,
         adv_provider: A,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
-        authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
         mut foreign_account_code_commitments: BTreeSet<Digest>,
     ) -> Result<Self, TransactionHostError> {
         // currently, the executor/prover do not keep track of the code commitment of the native
@@ -477,7 +477,7 @@ impl<'store, A: AdviceProvider> TransactionHost<'store, A> {
 // HOST IMPLEMENTATION FOR TRANSACTION HOST
 // ================================================================================================
 
-impl<A: AdviceProvider> Host for TransactionHost<'_, A> {
+impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
     type AdviceProvider = A;
 
     fn advice_provider(&self) -> &Self::AdviceProvider {

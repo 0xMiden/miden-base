@@ -38,21 +38,21 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 /// The transaction executor uses dynamic dispatch with trait objects for the [DataStore] and
 /// [TransactionAuthenticator], allowing it to be used with different backend implementations.
 /// At the moment of execution, the [DataStore] is expected to provide all required MAST nodes.
-pub struct TransactionExecutor<'a> {
-    data_store: &'a dyn DataStore,
-    authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+pub struct TransactionExecutor<'store, 'auth> {
+    data_store: &'store dyn DataStore,
+    authenticator: Option<&'auth dyn TransactionAuthenticator>,
     exec_options: ExecutionOptions,
 }
 
-impl<'a> TransactionExecutor<'a> {
+impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
     pub fn new(
-        data_store: &'a dyn DataStore,
-        authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+        data_store: &'store dyn DataStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
     ) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
@@ -153,7 +153,7 @@ impl<'a> TransactionExecutor<'a> {
             advice_recorder,
             self.data_store,
             script_mast_store,
-            self.authenticator.clone(),
+            self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
@@ -228,7 +228,7 @@ impl<'a> TransactionExecutor<'a> {
             advice_recorder,
             self.data_store,
             scripts_mast_store,
-            self.authenticator.clone(),
+            self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
@@ -302,7 +302,7 @@ impl<'a> TransactionExecutor<'a> {
             advice_provider,
             self.data_store,
             scripts_mast_store,
-            self.authenticator.clone(),
+            self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
