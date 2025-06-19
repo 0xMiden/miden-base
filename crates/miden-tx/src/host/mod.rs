@@ -112,13 +112,10 @@ impl<A: AdviceProvider> TransactionHost<A> {
             adv_provider.insert_into_map(*key, values);
         }
 
-        // Iterate over all MAST forests in scripts_mast_store and add their advice_map to the
-        // adv_provider This ensures the advice provider has all the necessary data for
-        // script execution
-        for forest in scripts_mast_store.forests() {
-            for (key, values) in forest.advice_map().clone() {
-                adv_provider.insert_into_map(*key, values);
-            }
+        // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
+        // advice provider has all the necessary data for script execution
+        for (key, values) in scripts_mast_store.advice_data().clone() {
+            adv_provider.insert_into_map(*key, values);
         }
 
         let proc_index_map =
