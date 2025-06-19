@@ -48,13 +48,13 @@ use crate::{auth::TransactionAuthenticator, errors::TransactionHostError};
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
 /// execution.
-pub struct TransactionHost<A> {
+pub struct TransactionHost<'store, A> {
     /// Advice provider which is used to provide non-deterministic inputs to the transaction
     /// runtime.
     adv_provider: A,
 
     /// MAST store which contains the code required to execute account code functions.
-    mast_store: Arc<dyn MastForestStore>,
+    mast_store: &'store dyn MastForestStore,
 
     /// MAST store which contains the forests of all scripts involved in the transaction. These
     /// include input note scripts and the transaction script, but not account code.
@@ -90,12 +90,12 @@ pub struct TransactionHost<A> {
     tx_progress: TransactionProgress,
 }
 
-impl<A: AdviceProvider> TransactionHost<A> {
+impl<'store, A: AdviceProvider> TransactionHost<'store, A> {
     /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
     pub fn new(
         account: AccountHeader,
         adv_provider: A,
-        mast_store: Arc<dyn MastForestStore>,
+        mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
         authenticator: Option<Arc<dyn TransactionAuthenticator>>,
         mut foreign_account_code_commitments: BTreeSet<Digest>,
@@ -477,7 +477,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
 // HOST IMPLEMENTATION FOR TRANSACTION HOST
 // ================================================================================================
 
-impl<A: AdviceProvider> Host for TransactionHost<A> {
+impl<A: AdviceProvider> Host for TransactionHost<'_, A> {
     type AdviceProvider = A;
 
     fn advice_provider(&self) -> &Self::AdviceProvider {
