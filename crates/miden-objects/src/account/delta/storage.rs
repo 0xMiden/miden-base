@@ -10,7 +10,7 @@ use super::{
 };
 use crate::{
     Digest, EMPTY_WORD, Felt, ONE, ZERO,
-    account::{AccountStorage, StorageMap, StorageSlot},
+    account::{AccountStorage, AccountStorageHeader, StorageMap, StorageSlot, StorageSlotType},
 };
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -112,35 +112,58 @@ impl AccountStorageDelta {
     /// Appends the storage slots delta to the given `elements` from which the delta commitment will
     /// be computed.
     ///
-    /// TODO: Make num_slots part of this struct.
-    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>, num_slots: u8) {
-        // The value slots take precedence here, but since this type ensures that no slot appears in
-        // both value and map slots, this does not change the overall behavior.
-        for slot_idx in 0..num_slots {
-            match self.values().get(&slot_idx) {
-                Some(new_slot_value) => {
-                    // Append was_slot_changed
-                    elements.extend_from_slice(&[ONE, ZERO, ZERO, ZERO]);
-                    elements.extend_from_slice(new_slot_value);
-                },
-                None => match self.maps().get(&slot_idx) {
-                    Some(map_delta) => {
-                        let was_slot_changed = if !map_delta.is_empty() { ONE } else { ZERO };
+    /// TODO: Make storage_header part of this struct.
+    pub(super) fn append_delta_elements(
+        &self,
+        elements: &mut Vec<Felt>,
+        storage_header: &AccountStorageHeader,
+    ) {
+        const DOMAIN_VALUE: Felt = Felt::new(3);
+        const DOMAIN_MAP: Felt = Felt::new(4);
 
+        // TODO: Make num_slots return a u8.
+        for slot_idx in 0..storage_header.num_slots() as u8 {
+            let slot_idx_felt = Felt::from(slot_idx);
+
+            match storage_header.slot(slot_idx as usize).expect("index should be in bounds").0 {
+                StorageSlotType::Value => {
+                    let (was_slot_changed, new_value) = match self.values().get(&slot_idx) {
+                        Some(new_slot_value) => (true, *new_slot_value),
+                        None => (false, EMPTY_WORD),
+                    };
+
+                    let was_slot_changed = if was_slot_changed { ONE } else { ZERO };
+                    elements.extend_from_slice(&[
+                        DOMAIN_VALUE,
+                        was_slot_changed,
+                        slot_idx_felt,
+                        ZERO,
+                    ]);
+                    elements.extend_from_slice(&new_value);
+                },
+                StorageSlotType::Map => {
+                    let was_slot_changed = if let Some(map_delta) = self.maps().get(&slot_idx) {
                         for (key, value) in map_delta.leaves() {
+                            elements.extend_from_slice(&[DOMAIN_MAP, ZERO, slot_idx_felt, ZERO]);
                             elements.extend_from_slice(key.as_elements());
+
+                            elements.extend_from_slice(&[DOMAIN_MAP, ZERO, slot_idx_felt, ZERO]);
                             elements.extend_from_slice(value);
                         }
-                        // Append was_slot_changed
-                        elements.extend_from_slice(&EMPTY_WORD);
-                        elements.extend_from_slice(&[was_slot_changed, ZERO, ZERO, ZERO]);
-                    },
-                    None => {
-                        // Unchanged slot.
-                        // Append was_slot_changed (= false)
-                        elements.extend_from_slice(&EMPTY_WORD);
-                        elements.extend_from_slice(&EMPTY_WORD);
-                    },
+
+                        !map_delta.is_empty()
+                    } else {
+                        false
+                    };
+
+                    let was_slot_changed = if was_slot_changed { ONE } else { ZERO };
+                    elements.extend_from_slice(&[
+                        DOMAIN_MAP,
+                        was_slot_changed,
+                        slot_idx_felt,
+                        ZERO,
+                    ]);
+                    elements.extend_from_slice(&EMPTY_WORD);
                 },
             }
         }

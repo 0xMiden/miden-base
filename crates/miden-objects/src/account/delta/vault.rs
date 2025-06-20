@@ -4,8 +4,6 @@ use alloc::{
     vec::Vec,
 };
 
-use vm_core::EMPTY_WORD;
-
 use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
@@ -333,31 +331,20 @@ impl FungibleAssetDelta {
     /// Appends the fungible asset vault delta to the given `elements` from which the delta
     /// commitment will be computed.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
-        // This is the number of assets whose amount delta is non-zero.
-        let num_changed_assets = self.num_assets();
-        let num_changed_assets = Felt::try_from(num_changed_assets)
-            .expect("number of changed assets should never exceed the max representable felt");
+        const DOMAIN_FUNGIBLE: Felt = Felt::new(1);
 
         for (faucet_id, amount_delta) in self.iter() {
             let amount_delta = *amount_delta as u64;
             let amount_hi = (amount_delta / (1 << 32)) as u32;
             let amount_lo = (amount_delta % (1 << 32)) as u32;
 
+            elements.extend_from_slice(&[DOMAIN_FUNGIBLE, ZERO, ZERO, ZERO]);
             elements.extend_from_slice(&[
                 Felt::from(amount_hi),
                 Felt::from(amount_lo),
                 faucet_id.suffix(),
                 faucet_id.prefix().as_felt(),
             ]);
-        }
-
-        // If an odd number of words was added, append only the num changed assets word to make it
-        // even. If it was even, append the num changed assets word and an additional empty
-        // word to make it even.
-        elements.extend_from_slice(&[num_changed_assets, ZERO, ZERO, ZERO]);
-
-        if num_changed_assets.as_int() % 2 == 0 {
-            elements.extend_from_slice(&EMPTY_WORD);
         }
     }
 }
@@ -496,13 +483,16 @@ impl NonFungibleAssetDelta {
     /// Appends the non-fungible asset vault delta to the given `elements` from which the delta
     /// commitment will be computed.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
+        const DOMAIN_NON_FUNGIBLE: Felt = Felt::new(2);
+
         for (asset, action) in self.iter() {
-            elements.extend_from_slice(&Word::from(*asset));
             let action_felt = match action {
                 NonFungibleDeltaAction::Remove => ZERO,
                 NonFungibleDeltaAction::Add => ONE,
             };
-            elements.extend_from_slice(&[action_felt, ZERO, ZERO, ZERO]);
+
+            elements.extend_from_slice(&[DOMAIN_NON_FUNGIBLE, action_felt, ZERO, ZERO]);
+            elements.extend_from_slice(&Word::from(*asset));
         }
     }
 }
