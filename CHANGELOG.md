@@ -21,6 +21,7 @@
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing.
+- [BREAKING] Implement account delta commitment (#1471).
 
 ## 0.9.1 (2025-05-30)
 
