@@ -3,6 +3,7 @@ use alloc::{string::ToString, vec::Vec};
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
+        ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
         ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME, ERR_TX_INVALID_EXPIRATION_DELTA,
     },
     transaction::{
@@ -12,8 +13,11 @@ use miden_lib::{
 };
 use miden_objects::{
     account::Account,
+    note::{NoteTag, NoteType},
+    testing::account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     transaction::{OutputNote, OutputNotes},
 };
+use miden_tx::TransactionExecutorError;
 use vm_processor::{Felt, ONE, ProcessState};
 
 use super::{ZERO, output_notes_data_procedure};
@@ -234,6 +238,7 @@ fn test_block_expiration_height_monotonically_decreases() {
         use.kernel::prologue
         use.kernel::tx
         use.kernel::epilogue
+        use.kernel::account
 
         begin
             exec.prologue::prepare_transaction
@@ -243,6 +248,9 @@ fn test_block_expiration_height_monotonically_decreases() {
             exec.tx::update_expiration_block_num
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
+
+            # update the nonce to make the transaction non-empty
+            push.1 exec.account::incr_nonce
 
             exec.epilogue::finalize_transaction
                         
@@ -306,11 +314,15 @@ fn test_no_expiration_delta_set() {
     use.kernel::prologue
     use.kernel::epilogue
     use.kernel::tx
+    use.kernel::account
 
     begin
         exec.prologue::prepare_transaction
 
         exec.tx::get_expiration_delta assertz
+
+        # update the nonce to make the transaction non-empty
+        push.1 exec.account::incr_nonce
 
         exec.epilogue::finalize_transaction
                     
@@ -417,4 +429,75 @@ fn test_epilogue_increment_nonce_violation() {
         TransactionKernel::testing_assembler_with_mock_account(),
     );
     assert_execution_error!(process, ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE)
+}
+
+#[test]
+fn test_epilogue_execute_empty_transaction() {
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+
+    let err = tx_context.execute().unwrap_err();
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        panic!("unexpected error")
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
+}
+
+#[test]
+fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()> {
+    let tag = NoteTag::from_account_id(
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+    );
+    let aux = Felt::new(26);
+    let note_type = NoteType::Private;
+
+    // create an empty output note in the transaction script
+    let tx_script_source = format!(
+        r#"
+        use.miden::tx
+        use.kernel::prologue
+        use.kernel::epilogue
+        use.kernel::note
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # prepare the values for note creation
+            push.1.2.3.4      # recipient
+            push.1            # note_execution_hint (NoteExecutionHint::Always)
+            push.{note_type}  # note_type
+            push.{aux}        # aux
+            push.{tag}        # tag
+            # => [tag, aux, note_type, note_execution_hint, RECIPIENT]
+
+            # pad the stack with zeros before calling the `create_note`.
+            padw padw swapdw
+            # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
+
+            # create the note
+            call.tx::create_note
+            # => [note_idx, GARBAGE(15)]
+
+            # make sure that output note was created: compare the output note hash with an empty 
+            # word
+            exec.note::compute_output_notes_commitment
+            padw eqw assertz.err="output note was created, but the output notes hash remains to be zeros"
+
+            # clean the stack
+            dropw dropw dropw dropw
+
+            exec.epilogue::finalize_transaction
+        end
+    "#,
+        note_type = note_type as u8,
+    );
+
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+
+    let result = tx_context.execute_code(&tx_script_source).map(|_| ());
+
+    // assert that even if the output note was created, the transaction is considered empty
+    assert_execution_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
+
+    Ok(())
 }

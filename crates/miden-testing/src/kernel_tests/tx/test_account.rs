@@ -673,6 +673,14 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 /// Tests that we can successfully create regular and faucet accounts with empty storage.
 #[test]
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
+    // transaction code which only increases the nonce to make the transaction non-empty
+    let default_tx_code = "
+        use.kernel::account 
+        
+        begin 
+            push.1 exec.account::incr_nonce 
+        end";
+
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
         let mock_chain = MockChain::new();
         let (account, seed) = AccountBuilder::new([5; 32])
@@ -690,7 +698,8 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
             .tx_inputs(tx_inputs)
             .build();
         tx_context
-            .execute()
+            .execute_code(default_tx_code)
+            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
             .context(format!("failed to execute {account_type} account creating tx"))?;
     }
 
