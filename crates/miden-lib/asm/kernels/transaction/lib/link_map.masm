@@ -732,7 +732,7 @@ proc.assert_key_is_equal
     exec.get_key swapw
     # => [KEY, ENTRY_KEY]
 
-    exec.is_key_equal assert.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY
+    assert_eqw.err=ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY
     # => []
 end
 
@@ -828,33 +828,6 @@ end
 
 # COMPARISON OPERATIONS
 # -------------------------------------------------------------------------------------------------
-
-#! Returns true if KEY1 is equal to KEY2, false otherwise.
-#!
-#! The implementation avoids branching for performance reasons.
-#! The procedure is exported for testing purposes only.
-#!
-#! Inputs:  [KEY1, KEY2]
-#! Outputs: [is_key_equal]
-export.is_key_equal
-    exec.arrange_words_adjacent
-    # => [2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-    push.1
-    # => [is_key_equal, 2_3, 1_3, 2_2, 1_2, 2_1, 1_1, 2_0, 1_0]
-
-    repeat.4
-        swap movup.2
-        # => [2_x, 1_x, is_key_equal, <remaining_felts>]
-
-        eq
-        # => [felts_x_equal, is_key_equal, <remaining_felts>]
-
-        and
-        # => [is_key_equal, <remaining_felts>]
-    end
-    # => [is_key_equal]
-end
 
 #! Returns true if KEY1 is strictly greater than KEY2, false otherwise.
 #!
