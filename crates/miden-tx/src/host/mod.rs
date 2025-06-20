@@ -11,7 +11,7 @@ use miden_lib::transaction::{
 };
 use miden_objects::{
     Digest, Hasher,
-    account::{Account, AccountDelta},
+    account::{AccountDelta, PartialAccount},
     assembly::mast::MastNodeExt,
     asset::Asset,
     note::NoteId,
@@ -93,7 +93,7 @@ pub struct TransactionHost<A> {
 impl<A: AdviceProvider> TransactionHost<A> {
     /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
     pub fn new(
-        account: &Account,
+        account: &PartialAccount,
         mut adv_provider: A,
         mast_store: Arc<dyn MastForestStore>,
         scripts_mast_store: ScriptMastForestStore,

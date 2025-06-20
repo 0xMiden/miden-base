@@ -20,8 +20,8 @@
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
-- [BREAKING] `TransactionHost::new` now expects `&Account` instead `AccountHeader`.
-- Load account and input notes advice maps into the advice provider before executing them (#1452)
+- [BREAKING] `TransactionHost::new` now expects `&PartialAccount` instead `AccountHeader` (#1452).
+- Load account and input notes advice maps into the advice provider before executing them (#1452).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 
 ## 0.9.1 (2025-05-30)

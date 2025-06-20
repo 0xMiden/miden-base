@@ -88,7 +88,7 @@ fn transaction_executor_witness() -> miette::Result<()> {
     mast_store.load_account_code(tx_inputs.account().code());
 
     let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
-        tx_inputs.account(),
+        &tx_inputs.account().into(),
         mem_advice_provider,
         mast_store,
         scripts_mast_store,
