@@ -198,6 +198,9 @@ impl AccountDelta {
     /// the vault and their commitments would match.
     ///
     /// TODO: Make account ID and storage_header part of delta.
+    /// TODO: Currently does not implement the sorting mentioned above. This is easy to add later
+    /// but depends on the link map which is currently not in next and this PR should branch off of
+    /// next so it can be merged sooner than later.
     pub fn commitment(
         &self,
         account_id: AccountId,
