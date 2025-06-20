@@ -20,7 +20,9 @@
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
+- Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
+
 
 ## 0.9.1 (2025-05-30)
 
