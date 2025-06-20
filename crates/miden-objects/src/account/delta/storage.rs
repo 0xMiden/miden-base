@@ -9,8 +9,8 @@ use super::{
     Word,
 };
 use crate::{
-    Digest, EMPTY_WORD,
-    account::{AccountStorage, StorageMap, StorageSlot},
+    Digest, EMPTY_WORD, Felt, ONE, ZERO,
+    account::{AccountStorage, AccountStorageHeader, StorageMap, StorageSlot, StorageSlotType},
 };
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -107,6 +107,66 @@ impl AccountStorageDelta {
     /// Returns an iterator of all the updated storage slots.
     fn updated_slots(&self) -> impl Iterator<Item = (&u8, &Word)> + '_ {
         self.values.iter().filter(|&(_, value)| value != &EMPTY_WORD)
+    }
+
+    /// Appends the storage slots delta to the given `elements` from which the delta commitment will
+    /// be computed.
+    ///
+    /// TODO: Make storage_header part of this struct.
+    pub(super) fn append_delta_elements(
+        &self,
+        elements: &mut Vec<Felt>,
+        storage_header: &AccountStorageHeader,
+    ) {
+        const DOMAIN_VALUE: Felt = Felt::new(3);
+        const DOMAIN_MAP: Felt = Felt::new(4);
+
+        // TODO: Make num_slots return a u8.
+        for slot_idx in 0..storage_header.num_slots() as u8 {
+            let slot_idx_felt = Felt::from(slot_idx);
+
+            match storage_header.slot(slot_idx as usize).expect("index should be in bounds").0 {
+                StorageSlotType::Value => {
+                    let (was_slot_changed, new_value) = match self.values().get(&slot_idx) {
+                        Some(new_slot_value) => (true, *new_slot_value),
+                        None => (false, EMPTY_WORD),
+                    };
+
+                    let was_slot_changed = if was_slot_changed { ONE } else { ZERO };
+                    elements.extend_from_slice(&[
+                        DOMAIN_VALUE,
+                        was_slot_changed,
+                        slot_idx_felt,
+                        ZERO,
+                    ]);
+                    elements.extend_from_slice(&new_value);
+                },
+                StorageSlotType::Map => {
+                    let was_slot_changed = if let Some(map_delta) = self.maps().get(&slot_idx) {
+                        for (key, value) in map_delta.leaves() {
+                            elements.extend_from_slice(&[DOMAIN_MAP, ZERO, slot_idx_felt, ZERO]);
+                            elements.extend_from_slice(key.as_elements());
+
+                            elements.extend_from_slice(&[DOMAIN_MAP, ZERO, slot_idx_felt, ZERO]);
+                            elements.extend_from_slice(value);
+                        }
+
+                        !map_delta.is_empty()
+                    } else {
+                        false
+                    };
+
+                    let was_slot_changed = if was_slot_changed { ONE } else { ZERO };
+                    elements.extend_from_slice(&[
+                        DOMAIN_MAP,
+                        was_slot_changed,
+                        slot_idx_felt,
+                        ZERO,
+                    ]);
+                    elements.extend_from_slice(&EMPTY_WORD);
+                },
+            }
+        }
     }
 }
 
