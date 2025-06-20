@@ -381,7 +381,7 @@ mod tests {
         },
         asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
         testing::account_id::{
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
             AccountIdBuilder,
         },
     };
@@ -485,5 +485,51 @@ mod tests {
 
         let update_details_new = AccountUpdateDetails::New(account);
         assert_eq!(update_details_new.to_bytes().len(), update_details_new.get_size_hint());
+    }
+
+    /// Tests that the account delta can be computed.
+    #[test]
+    fn account_delta_commitment() {
+        let account_id: AccountId = ACCOUNT_ID_PRIVATE_SENDER.try_into().unwrap();
+        let num_slots = 5u8;
+        let storage_delta = AccountStorageDelta::from_iters(
+            [1],
+            [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
+            [(
+                4,
+                StorageMapDelta::from_iters(
+                    [[ONE, ONE, ONE, ZERO], [ZERO, ONE, ONE, ONE]],
+                    [([ONE, ONE, ONE, ONE], [ONE, ONE, ONE, ONE])],
+                ),
+            )],
+        );
+
+        let non_fungible: Asset = NonFungibleAsset::new(
+            &NonFungibleAssetDetails::new(
+                AccountIdBuilder::new()
+                    .account_type(AccountType::NonFungibleFaucet)
+                    .storage_mode(AccountStorageMode::Public)
+                    .build_with_rng(&mut rand::rng())
+                    .prefix(),
+                vec![6],
+            )
+            .unwrap(),
+        )
+        .unwrap()
+        .into();
+        let fungible_2: Asset = FungibleAsset::new(
+            AccountIdBuilder::new()
+                .account_type(AccountType::FungibleFaucet)
+                .storage_mode(AccountStorageMode::Public)
+                .build_with_rng(&mut rand::rng()),
+            10,
+        )
+        .unwrap()
+        .into();
+        let vault_delta = AccountVaultDelta::from_iters([non_fungible], [fungible_2]);
+
+        let account_delta = AccountDelta::new(storage_delta, vault_delta, Some(ONE)).unwrap();
+
+        let _ = account_delta.commitment(account_id, num_slots);
     }
 }
