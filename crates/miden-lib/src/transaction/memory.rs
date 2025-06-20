@@ -24,7 +24,7 @@ pub type StorageSlot = u8;
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
-// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16777215)               | Enough for 2_097_151 key-value pairs        |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)               | Enough for 2_097_151 key-value pairs        |
 
 // Relative layout of one account
 //
@@ -382,7 +382,7 @@ pub const LINK_MAP_MEMORY_END_PTR: MemoryAddress = 67_108_864;
 /// that will be allocated.
 pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33_554_432;
 
-/// The size of each map entry, i.e. three words.
+/// The size of each map entry, i.e. four words.
 pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 16;
 
 const _: () = assert!(

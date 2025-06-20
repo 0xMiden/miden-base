@@ -54,7 +54,7 @@ use.kernel::memory
 # having to split up this chunk into smaller chunks per map, which would impose more limitations
 # on the overall system.
 #
-# Security
+# # Security
 #
 # The in-VM link map works closely together with a link map part of the VM host. For set
 # operations this means the host does the expensive iteration to find the place where a key-value
@@ -74,7 +74,7 @@ use.kernel::memory
 #
 # Each map entry is allocated from a dedicated range of memory. That way, it is simple to assert
 # that a host-provided entry_ptr lies within that range. That ensures that no other piece of
-# memory can be abused as an entry. Moreover, each entry takes up exactly three words, so each
+# memory can be abused as an entry. Moreover, each entry takes up exactly four words, so each
 # entry pointer can be checked for entry-alignment. Finally, because entries from _different_ link
 # maps are allocated from the same memory region means it would still be possible for a host to
 # provide an entry pointer from map 1 to an operation in map 2. To avoid this, each entry is
