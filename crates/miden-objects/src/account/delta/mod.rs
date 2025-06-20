@@ -225,7 +225,7 @@ impl AccountDelta {
         self.storage.append_delta_elements(&mut elements, storage_header);
 
         debug_assert!(
-            elements.len() % crate::WORD_SIZE == 0,
+            elements.len() % (2 * crate::WORD_SIZE) == 0,
             "expected elements to contain an even number of words, but it contained {} elements",
             elements.len()
         );
