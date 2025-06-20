@@ -45,7 +45,7 @@ A `Transaction` requires several inputs:
 3. **Transaction script processing**
    `Transaction` scripts are an optional piece of code defined by the executor which interacts with account methods after all notes have been executed. For example, `Transaction` scripts can be used to sign the `Transaction` (e.g., sign the transaction by incrementing the nonce of the account, without which, the transaction would fail), to mint tokens from a faucet, create notes, or modify account storage. `Transaction` scripts can also invoke methods of foreign accounts to read their state.
 4. **Epilogue**
-   Completes the execution, resulting in an updated account state and a generated zero-knowledge proof. The validity of the resulting state change is checked. The account's `Nonce` must have been incremented, which is how the entire transaction is authenticated. Also, the net sum of all involved assets must be `0` (if the account is not a faucet).
+   Completes the execution, resulting in an updated account state and a generated zero-knowledge proof. The validity of the resulting transaction is checked. The account's state must have changed or at least one input note must have been consumed to make the transaction non-empty. This check ensures that a transaction can only be submitted once to the network. If the account's state has changed, the `nonce` must have been incremented, which is how the entire transaction is authenticated. Additionally, the net sum of all involved assets must be `0` (if the account is not a faucet).
 
 The proof together with the corresponding data needed for verification and updates of the global state can then be submitted and processed by the network.
 

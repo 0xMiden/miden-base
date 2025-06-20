@@ -57,6 +57,8 @@ pub const ERR_ACCOUNT_TOO_MANY_PROCEDURES: MasmError = MasmError::from_static_st
 /// Error Message: "number of account storage slots exceeds the maximum limit of 255"
 pub const ERR_ACCOUNT_TOO_MANY_STORAGE_SLOTS: MasmError = MasmError::from_static_str("number of account storage slots exceeds the maximum limit of 255");
 
+/// Error Message: "executed transaction neither changed the account state, nor consumed any notes"
+pub const ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY: MasmError = MasmError::from_static_str("executed transaction neither changed the account state, nor consumed any notes");
 /// Error Message: "total number of assets in the account and all involved notes must stay the same"
 pub const ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME: MasmError = MasmError::from_static_str("total number of assets in the account and all involved notes must stay the same");
 
