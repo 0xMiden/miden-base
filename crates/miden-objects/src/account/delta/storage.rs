@@ -9,7 +9,7 @@ use super::{
     Word,
 };
 use crate::{
-    Digest, EMPTY_WORD,
+    Digest, EMPTY_WORD, Felt, ONE, ZERO,
     account::{AccountStorage, StorageMap, StorageSlot},
 };
 // ACCOUNT STORAGE DELTA
@@ -107,6 +107,43 @@ impl AccountStorageDelta {
     /// Returns an iterator of all the updated storage slots.
     fn updated_slots(&self) -> impl Iterator<Item = (&u8, &Word)> + '_ {
         self.values.iter().filter(|&(_, value)| value != &EMPTY_WORD)
+    }
+
+    /// Appends the storage slots delta to the given `elements` from which the delta commitment will
+    /// be computed.
+    ///
+    /// TODO: Make num_slots part of this struct.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>, num_slots: u8) {
+        // The value slots take precedence here, but since this type ensures that no slot appears in
+        // both value and map slots, this does not change the overall behavior.
+        for slot_idx in 0..num_slots {
+            match self.values().get(&slot_idx) {
+                Some(new_slot_value) => {
+                    // Append was_slot_changed
+                    elements.extend_from_slice(&[ONE, ZERO, ZERO, ZERO]);
+                    elements.extend_from_slice(new_slot_value);
+                },
+                None => match self.maps().get(&slot_idx) {
+                    Some(map_delta) => {
+                        let was_slot_changed = if !map_delta.is_empty() { ONE } else { ZERO };
+
+                        for (key, value) in map_delta.leaves() {
+                            elements.extend_from_slice(key.as_elements());
+                            elements.extend_from_slice(value);
+                        }
+                        // Append was_slot_changed
+                        elements.extend_from_slice(&EMPTY_WORD);
+                        elements.extend_from_slice(&[was_slot_changed, ZERO, ZERO, ZERO]);
+                    },
+                    None => {
+                        // Unchanged slot.
+                        // Append was_slot_changed (= false)
+                        elements.extend_from_slice(&EMPTY_WORD);
+                        elements.extend_from_slice(&EMPTY_WORD);
+                    },
+                },
+            }
+        }
     }
 }
 

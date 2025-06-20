@@ -1,10 +1,10 @@
-use alloc::string::ToString;
+use alloc::{string::ToString, vec::Vec};
 
 use super::{
     Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
     Word, ZERO,
 };
-use crate::AccountDeltaError;
+use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -93,6 +93,96 @@ impl AccountDelta {
     /// Converts this storage delta into individual delta components.
     pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Option<Felt>) {
         (self.storage, self.vault, self.nonce)
+    }
+
+    /// Computes the commitment to the account delta.
+    ///
+    /// The delta is a sequential hash over a vector of field elements which starts out empty and
+    /// is appended to in the following way. Whenever sorting is expected, it is that of a link map
+    /// key. The WORD layout is in stack-order, i.e. as it would appear on the MASM stack.
+    ///
+    /// - Append [account_id_prefix, account_id_suffix, 0, nonce_delta], where
+    ///   account_id_{prefix,suffix} are the prefix and suffix felts of the native account id and
+    ///   nonce_delta is the value by which the nonce was incremented.
+    /// - Fungible Asset Delta
+    ///   - For each updated fungible asset, sorted by its vault key, whose amount delta is
+    ///     **non-zero**:
+    ///     - Append [amount_hi, amount_lo, faucet_id_suffix, faucet_id_prefix] where amount_hi and
+    ///       amount_lo are the u32 limbs of the amount delta by which the fungible asset's amount
+    ///       has changed.
+    ///   - Append [0, 0, 0, num_updated_fungible_assets] where num_updated_fungible_assets is the
+    ///     number of fungible assets that were changed.
+    ///   - Append an empty word if num_updated_fungible_assets is even to make the total number of
+    ///     added words even.
+    /// - Non-Fungible Asset Delta
+    ///   - For each **updated** non-fungible asset, sorted by its vault key:
+    ///     - Append the ASSET word.
+    ///     - Append [was_added, 0, 0, 0] where was_added is a boolean flag indicating whether the
+    ///       asset was added (1) or removed (0).
+    /// - Storage Slots - for each slot, depending on the slot type:
+    ///   - Value Slot
+    ///     - Append [NEW_VALUE, [0, 0, 0, was_slot_changed] where NEW_VALUE is the new value of the
+    ///       slot, or EMPTY_WORD if the slot did not change. was_slot_changed is a boolean flag
+    ///       indicating whether the slot was changed or not.
+    ///   - Map Slot
+    ///     - For each key-value pair, sorted by key, whose new value is different from the previous
+    ///       value in the map:
+    ///       - Append [KEY, NEW_VALUE]
+    ///     - Append [0, 0, 0, 0, 0, 0, 0, was_slot_changed]
+    ///   - Note that unchanged slots implicitly append two empty words.
+    ///
+    /// The rationale for this layout is that hashing in the VM should minimize the number of
+    /// branches to be as efficient as possible. For that reason, for example, unchanged slots
+    /// append empty words instead of not appending anything.
+    /// Furthermore, every high-level section in this bullet point list should add an even number of
+    /// words since the hasher operates on double words. In the VM, each permutation is done
+    /// immediately, so adding an uneven number of words in a given step will result in more
+    /// difficulty in the MASM implementation. In case of the fungible asset hashing, this is
+    /// justified since it avoids adding an empty word in each iteration and instead deal with
+    /// the potential padding using a single branch after the iteration.
+    ///
+    /// The was_slot_changed boolean flag indicates whether a slot was changed or not. This is
+    /// needed to differentiate the case where a slot's value was set to the empty word and the
+    /// case when a slot's value is unchanged. Without this, the delta commitment for these cases
+    /// would be the same which would allow a malicious delta creator to choose which of these
+    /// updates to provide.
+    /// Similarly for map slots it is needed to disambiguate the case where [KEY = EMPTY_WORD,
+    /// NEW_VALUE = EMPTY_WORD] is appended. Without an additional flag to indicate whether the slot
+    /// has changed, the delta could be interpreted as the empty word key being set to the empty
+    /// word or that nothing about this map has changed, since unchanged slots implicitly append
+    /// [EMPTY_WORD, EMPTY_WORD].
+    ///
+    /// Inputs:  []
+    /// Outputs: [DELTA_COMMITMENT]
+    ///
+    /// Where:
+    /// - DELTA_COMMITMENT is the commitment to the account delta.
+    ///
+    /// TODO: Make account ID and num_slots part of delta.
+    pub fn commitment(&self, account_id: AccountId, num_slots: u8) -> Digest {
+        let mut elements = Vec::with_capacity(16);
+
+        // ID and nonce
+        elements.extend_from_slice(&[
+            self.nonce.unwrap_or(ZERO),
+            ZERO,
+            account_id.suffix(),
+            account_id.prefix().as_felt(),
+        ]);
+        elements.extend_from_slice(&EMPTY_WORD);
+
+        // Vault Delta
+        self.vault.append_delta_elements(&mut elements);
+
+        // Storage Delta
+        self.storage.append_delta_elements(&mut elements, num_slots);
+
+        debug_assert!(
+            elements.len() % 2 == 0,
+            "expected elements to contain an even number of words"
+        );
+
+        Hasher::hash_elements(&elements)
     }
 }
 
@@ -291,7 +381,8 @@ mod tests {
         },
         asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
         testing::account_id::{
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, AccountIdBuilder,
+            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+            AccountIdBuilder,
         },
     };
 
