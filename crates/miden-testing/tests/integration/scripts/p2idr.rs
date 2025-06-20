@@ -106,7 +106,7 @@ fn p2idr_script() -> anyhow::Result<()> {
         .execute()
         .unwrap();
 
-    assert_eq!(executed_transaction_4.account_delta().nonce(), Some(Felt::new(2)));
+    assert_eq!(executed_transaction_4.account_delta().nonce(), Some(Felt::new(1)));
 
     // CONSTRUCT AND EXECUTE TX (Success - Sender Account consumes reclaimable note)
     let executed_transaction_5 = mock_chain
@@ -115,7 +115,7 @@ fn p2idr_script() -> anyhow::Result<()> {
         .execute()
         .unwrap();
 
-    assert_eq!(executed_transaction_5.account_delta().nonce(), Some(Felt::new(2)));
+    assert_eq!(executed_transaction_5.account_delta().nonce(), Some(Felt::new(1)));
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account tries to consume reclaimable note)
     let executed_transaction_6 = mock_chain

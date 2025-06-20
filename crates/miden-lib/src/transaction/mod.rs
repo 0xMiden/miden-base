@@ -244,12 +244,12 @@ impl TransactionKernel {
     ) -> Result<(Digest, Digest, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
-            .expect("first word missing")
+            .expect("output_notes_commitment (first word) missing")
             .into();
 
         let final_account_commitment = stack
             .get_stack_word(FINAL_ACCOUNT_COMMITMENT_WORD_IDX * 4)
-            .expect("second word missing")
+            .expect("final_account_commitment (second word) missing")
             .into();
 
         let expiration_block_num = stack
