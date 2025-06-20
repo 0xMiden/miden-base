@@ -76,7 +76,7 @@ impl TransactionProver for LocalTransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
+        let TransactionWitness { tx_inputs, tx_params, advice_witness } = tx_witness;
 
         let account = tx_inputs.account();
         let input_notes = tx_inputs.input_notes();
@@ -85,21 +85,21 @@ impl TransactionProver for LocalTransactionProver {
 
         // execute and prove
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_params, Some(advice_witness))
                 .map_err(TransactionProverError::InvalidTransactionInputs)?;
         let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());
 
-        let account_code_commitments: BTreeSet<Digest> = tx_args
+        let account_code_commitments: BTreeSet<Digest> = tx_params
             .foreign_account_inputs()
             .iter()
             .map(|acc| acc.code().commitment())
             .collect();
 
         let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
+            tx_params.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
 

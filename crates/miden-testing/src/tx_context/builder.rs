@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 
 use miden_lib::{transaction::TransactionKernel, utils::word_to_masm_push_string};
 use miden_objects::{
-    FieldElement,
+    EMPTY_WORD, FieldElement,
     account::{Account, AccountId},
     assembly::Assembler,
     asset::{Asset, FungibleAsset, NonFungibleAsset},
@@ -24,7 +24,7 @@ use miden_objects::{
         storage::prepare_assets,
     },
     transaction::{
-        AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
+        AccountInputs, OutputNote, TransactionInputs, TransactionParams, TransactionScript,
     },
     vm::AdviceMap,
 };
@@ -78,6 +78,7 @@ pub struct TransactionContextBuilder {
     foreign_account_inputs: Vec<AccountInputs>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
+    tx_script_arg: Word,
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     rng: ChaCha20Rng,
@@ -93,6 +94,7 @@ impl TransactionContextBuilder {
             expected_output_notes: Vec::new(),
             rng: ChaCha20Rng::from_seed([0_u8; 32]),
             tx_script: None,
+            tx_script_arg: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
             transaction_inputs: None,
@@ -122,6 +124,7 @@ impl TransactionContextBuilder {
             advice_inputs: Default::default(),
             rng: ChaCha20Rng::from_seed([0_u8; 32]),
             tx_script: None,
+            tx_script_arg: EMPTY_WORD,
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
@@ -158,9 +161,16 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Override and set the [AdviceInputs]
+    /// Extend the advice inputs with the provided [AdviceInputs] instance.
     pub fn advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
-        self.advice_inputs = advice_inputs;
+        self.advice_inputs.extend(advice_inputs);
+        self
+    }
+
+    /// Extend the advice inputs map with the provided iterator.
+    pub fn advice_map(mut self, map_entries: impl IntoIterator<Item = (Word, Vec<Felt>)>) -> Self {
+        self.advice_inputs
+            .extend_map(map_entries.into_iter().map(|(hash, input)| (hash.into(), input)));
         self
     }
 
@@ -182,21 +192,27 @@ impl TransactionContextBuilder {
         self
     }
 
-    // Set the desired note args
-    pub fn note_args(mut self, args: BTreeMap<NoteId, Word>) -> Self {
-        self.note_args = args;
-        self
-    }
-
     /// Set the desired transaction script
     pub fn tx_script(mut self, tx_script: TransactionScript) -> Self {
         self.tx_script = Some(tx_script);
         self
     }
 
+    /// Set the transaction script argument
+    pub fn tx_script_arg(mut self, tx_script_arg: Word) -> Self {
+        self.tx_script_arg = tx_script_arg;
+        self
+    }
+
     /// Set the desired transaction inputs
     pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
         self.transaction_inputs = Some(tx_inputs);
+        self
+    }
+
+    /// Set the note arguments
+    pub fn note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
+        self.note_args.extend(note_args);
         self
     }
 
@@ -662,21 +678,29 @@ impl TransactionContextBuilder {
             },
         };
 
-        let mut tx_args = TransactionArgs::new(
+        let tx_params = TransactionParams::new(
             self.tx_script,
-            Some(self.note_args),
             AdviceMap::default(),
             self.foreign_account_inputs,
-        );
+        )
+        .with_note_args(self.note_args);
 
-        tx_args.extend_advice_inputs(self.advice_inputs.clone());
-        tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
+        let mut tx_params = if tx_params.tx_script().is_some() {
+            tx_params
+                .with_tx_script_arg(self.tx_script_arg)
+                .expect("transaction parameters creation failed")
+        } else {
+            tx_params
+        };
+
+        tx_params.extend_advice_inputs(self.advice_inputs.clone());
+        tx_params.extend_output_note_recipients(self.expected_output_notes.clone());
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
 
-            for acc_inputs in tx_args.foreign_account_inputs() {
+            for acc_inputs in tx_params.foreign_account_inputs() {
                 mast_forest_store.insert(acc_inputs.code().mast());
             }
 
@@ -685,7 +709,7 @@ impl TransactionContextBuilder {
 
         TransactionContext {
             expected_output_notes: self.expected_output_notes,
-            tx_args,
+            tx_params,
             tx_inputs,
             mast_store,
             authenticator: self.authenticator,

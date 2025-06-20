@@ -647,7 +647,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     "
     );
     let tx_script_program = assembler.assemble_program(tx_script_source_code).unwrap();
-    let tx_script = TransactionScript::new(tx_script_program, vec![]);
+    let tx_script = TransactionScript::new(tx_script_program);
 
     // setup transaction context
     let tx_context = TransactionContextBuilder::new(account.clone()).tx_script(tx_script).build();
