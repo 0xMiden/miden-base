@@ -150,7 +150,7 @@ impl TransactionAdviceInputs {
         // --- number of notes, script root and args key ----------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
         self.extend_stack(tx_params.tx_script().map_or(Word::default(), |script| *script.root()));
-        self.extend_stack(tx_params.tx_script_args_key().unwrap_or_default());
+        self.extend_stack(tx_params.tx_script_arg());
     }
 
     // BLOCKCHAIN INJECTIONS

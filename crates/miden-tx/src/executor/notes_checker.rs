@@ -44,7 +44,7 @@ impl<'a> NoteConsumptionChecker<'a> {
         target_account_id: AccountId,
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
-        tx_args: TransactionParams,
+        tx_params: TransactionParams,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         // Check input notes
@@ -99,7 +99,7 @@ impl<'a> NoteConsumptionChecker<'a> {
             target_account_id,
             block_ref,
             input_notes,
-            tx_args,
+            tx_params,
             source_manager
         ))
     }

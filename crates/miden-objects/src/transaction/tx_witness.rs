@@ -25,7 +25,7 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionWitness {
     pub tx_inputs: TransactionInputs,
-    pub tx_args: TransactionParams,
+    pub tx_params: TransactionParams,
     pub advice_witness: AdviceInputs,
 }
 
@@ -35,7 +35,7 @@ pub struct TransactionWitness {
 impl Serializable for TransactionWitness {
     fn write_into<W: miden_crypto::utils::ByteWriter>(&self, target: &mut W) {
         self.tx_inputs.write_into(target);
-        self.tx_args.write_into(target);
+        self.tx_params.write_into(target);
         self.advice_witness.write_into(target);
     }
 }
@@ -43,8 +43,8 @@ impl Serializable for TransactionWitness {
 impl Deserializable for TransactionWitness {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_inputs = TransactionInputs::read_from(source)?;
-        let tx_args = TransactionParams::read_from(source)?;
+        let tx_params = TransactionParams::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
-        Ok(Self { tx_inputs, tx_args, advice_witness })
+        Ok(Self { tx_inputs, tx_params, advice_witness })
     }
 }

@@ -1,17 +1,15 @@
 use alloc::{
     collections::{BTreeMap, BTreeSet},
-    string::ToString,
     sync::Arc,
     vec::Vec,
 };
 
 use assembly::{Assembler, Compile};
 use miden_crypto::merkle::InnerNodeInfo;
-use vm_processor::KvMap;
 
 use super::{AccountInputs, Digest, Felt, Word};
 use crate::{
-    Hasher, MastForest, MastNodeId, TransactionParamsError,
+    EMPTY_WORD, MastForest, MastNodeId, TransactionParamsError,
     note::{NoteId, NoteRecipient},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
     vm::{AdviceInputs, AdviceMap, Program},
@@ -24,9 +22,9 @@ use crate::{
 ///
 /// - Transaction script: a program that is executed in a transaction after all input notes scripts
 ///   have been executed.
-/// - Transaction script arguments key: an optional [`Digest`], which, if present, will be pushed to
-///   the operand stack before the transaction script execution and could be used to get the script
-///   arguments array. See [`TransactionParams::with_tx_script_args`] for more details.
+/// - Transaction script argument: a [`Word`], which will be pushed to the operand stack before the
+///   transaction script execution. If this argument is not specified, the [`EMPTY_WORD`] would be
+///   used as a default value.
 /// - Note arguments: data put onto the stack right before a note script is executed. These are
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.
@@ -35,7 +33,7 @@ use crate::{
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TransactionParams {
     tx_script: Option<TransactionScript>,
-    tx_script_args_key: Option<Digest>,
+    tx_script_arg: Word,
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
     foreign_account_inputs: Vec<AccountInputs>,
@@ -45,7 +43,8 @@ impl TransactionParams {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns new [TransactionParams] instantiated with the provided transaction script.
+    /// Returns new [TransactionParams] instantiated with the provided transaction script, advice
+    /// map and foreign account inputs.
     pub fn new(
         tx_script: Option<TransactionScript>,
         advice_map: AdviceMap,
@@ -53,7 +52,7 @@ impl TransactionParams {
     ) -> Self {
         Self {
             tx_script,
-            tx_script_args_key: None,
+            tx_script_arg: EMPTY_WORD,
             note_args: Default::default(),
             advice_inputs: AdviceInputs::default().with_map(advice_map),
             foreign_account_inputs,
@@ -67,46 +66,29 @@ impl TransactionParams {
         self
     }
 
-    /// Returns new [TransactionParams] with `tx_script_args_key` set to the commitment of the
-    /// provided arguments slice, extends the map in the `advice_inputs` with the
-    /// `COMPUTED_COMMITMENT -> [[script_args]]` entry.
-    ///
-    /// Script arguments is an optional array of [`Felt`]s which could be easily accessed at the
-    /// beginning of the transaction script execution. The commitment of this array
-    /// (`tx_script_args_key`) is automatically pushed to the operand stack at the beginning of the
-    /// transaction script execution and the underlying arguments can be accessed using the
-    /// `adv.push_mapval` and `adv_push.n` instructions.
-    pub fn with_tx_script_args(
+    /// Returns new [TransactionParams] instantiated with the provided transaction script argument.
+    pub fn with_tx_script_arg(
         mut self,
-        script_args: &[Felt],
+        tx_script_arg: Word,
     ) -> Result<Self, TransactionParamsError> {
-        let args_key = Hasher::hash_elements(script_args);
-        let old_map_value = self.advice_inputs.map.insert(args_key, script_args.to_vec());
-
-        // check that a new map entry will not overwrite an existing one
-        if let Some(old_value) = old_map_value {
-            if old_value != script_args {
-                return Err(TransactionParamsError::ScriptArgsCollision {
-                    key: args_key,
-                    new_value: script_args.to_vec(),
-                    old_value,
-                });
-            }
+        if self.tx_script.is_none() {
+            return Err(TransactionParamsError::ArgWithoutScript);
         }
 
-        self.tx_script_args_key = Some(args_key);
+        self.tx_script_arg = tx_script_arg;
         Ok(self)
     }
 
-    /// Returns new [TransactionParams] instantiated with the provided transaction script inputs.
+    /// Returns new [TransactionParams] instantiated with the provided transaction script and its
+    /// argument.
     #[must_use]
-    pub fn with_tx_script_inputs(
+    pub fn with_tx_script_and_args(
         mut self,
-        script_inputs: impl IntoIterator<Item = (Word, Vec<Felt>)>,
+        tx_script: TransactionScript,
+        tx_script_arg: Word,
     ) -> Self {
-        // add transaction script inputs to the advice inputs' map
-        self.advice_inputs
-            .extend_map(script_inputs.into_iter().map(|(hash, input)| (hash.into(), input)));
+        self.tx_script = Some(tx_script);
+        self.tx_script_arg = tx_script_arg;
         self
     }
 
@@ -125,10 +107,14 @@ impl TransactionParams {
         self.tx_script.as_ref()
     }
 
-    /// Returns the transaction script arguments key, or [`None`] if the arguments were not
+    /// Returns the transaction script argument, or [`EMPTY_WORD`] if the argument was not
     /// specified.
-    pub fn tx_script_args_key(&self) -> Option<Digest> {
-        self.tx_script_args_key
+    ///
+    /// This argument could be potentially used as a key to access the advice map during the
+    /// transaction script execution. Notice that the corresponding map entry should be provided
+    /// separately using the [`TransactionParams::extend_advice_map`] method.
+    pub fn tx_script_arg(&self) -> Word {
+        self.tx_script_arg
     }
 
     /// Returns a reference to a specific note argument.
@@ -136,12 +122,12 @@ impl TransactionParams {
         self.note_args.get(&note_id)
     }
 
-    /// Returns a reference to the args [AdviceInputs].
+    /// Returns a reference to the params [AdviceInputs].
     pub fn advice_inputs(&self) -> &AdviceInputs {
         &self.advice_inputs
     }
 
-    /// Returns a reference to the foreign account inputs in the transaction args.
+    /// Returns a reference to the foreign account inputs in the transaction params.
     pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
         &self.foreign_account_inputs
     }
@@ -215,7 +201,7 @@ impl TransactionParams {
 impl Serializable for TransactionParams {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.tx_script.write_into(target);
-        self.tx_script_args_key.write_into(target);
+        self.tx_script_arg.write_into(target);
         self.note_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_inputs.write_into(target);
@@ -225,23 +211,14 @@ impl Serializable for TransactionParams {
 impl Deserializable for TransactionParams {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_script = Option::<TransactionScript>::read_from(source)?;
-        let tx_script_args_key = Option::<Digest>::read_from(source)?;
+        let tx_script_arg = Word::read_from(source)?;
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
 
-        // check that the obtained `tx_script_args_key` is presented in the `advice_inputs`
-        if let Some(args_key) = tx_script_args_key {
-            if !advice_inputs.map.contains_key(&args_key) {
-                return Err(DeserializationError::InvalidValue(
-                    TransactionParamsError::MissingScriptArgsKeyEntry(args_key).to_string(),
-                ));
-            }
-        }
-
         Ok(Self {
             tx_script,
-            tx_script_args_key,
+            tx_script_arg,
             note_args,
             advice_inputs,
             foreign_account_inputs,
@@ -257,10 +234,8 @@ impl Deserializable for TransactionParams {
 /// A transaction script is a program that is executed in a transaction after all input notes
 /// have been executed.
 ///
-/// The [TransactionScript] object is composed of:
-/// - An executable program defined by a [MastForest] and an associated entrypoint.
-/// - A set of transaction script inputs defined by a map of key-value inputs that are loaded into
-///   the advice inputs' map such that the transaction script can access them.
+/// The [TransactionScript] object is composed of an executable program defined by a [MastForest]
+/// and an associated entrypoint.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionScript {
     mast: Arc<MastForest>,
@@ -271,16 +246,13 @@ impl TransactionScript {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new [TransactionScript] instantiated with the provided code and inputs.
+    /// Returns a new [TransactionScript] instantiated with the provided code.
     pub fn new(code: Program) -> Self {
-        Self {
-            entrypoint: code.entrypoint(),
-            mast: code.mast_forest().clone(),
-        }
+        Self::from_parts(code.mast_forest().clone(), code.entrypoint())
     }
 
-    /// Returns a new [TransactionScript] compiled from the provided source code and inputs using
-    /// the specified assembler.
+    /// Returns a new [TransactionScript] compiled from the provided source code using the specified
+    /// assembler.
     ///
     /// # Errors
     /// Returns an error if the compilation of the provided source code fails.
@@ -294,17 +266,14 @@ impl TransactionScript {
         Ok(Self::new(program))
     }
 
-    /// Returns a new [TransactionScript] instantiated from the provided components.
+    /// Returns a new [TransactionScript] instantiated from the provided MAST forest and entrypoint.
     ///
     /// # Panics
     /// Panics if the specified entrypoint is not in the provided MAST forest.
-    pub fn from_parts(
-        mast: Arc<MastForest>,
-        entrypoint: MastNodeId,
-    ) -> Result<Self, TransactionParamsError> {
+    pub fn from_parts(mast: Arc<MastForest>, entrypoint: MastNodeId) -> Self {
         assert!(mast.get_node_by_id(entrypoint).is_some());
 
-        Ok(Self { mast, entrypoint })
+        Self { mast, entrypoint }
     }
 
     // PUBLIC ACCESSORS
@@ -336,8 +305,7 @@ impl Deserializable for TransactionScript {
         let mast = MastForest::read_from(source)?;
         let entrypoint = MastNodeId::from_u32_safe(source.read_u32()?, &mast)?;
 
-        Self::from_parts(Arc::new(mast), entrypoint)
-            .map_err(|e| DeserializationError::InvalidValue(e.to_string()))
+        Ok(Self::from_parts(Arc::new(mast), entrypoint))
     }
 }
 
@@ -351,11 +319,11 @@ mod tests {
     use crate::transaction::TransactionParams;
 
     #[test]
-    fn test_tx_args_serialization() {
-        let args = TransactionParams::new(None, AdviceMap::default(), std::vec::Vec::default());
-        let bytes: std::vec::Vec<u8> = args.to_bytes();
+    fn test_tx_params_serialization() {
+        let params = TransactionParams::new(None, AdviceMap::default(), std::vec::Vec::default());
+        let bytes: std::vec::Vec<u8> = params.to_bytes();
         let decoded = TransactionParams::read_from_bytes(&bytes).unwrap();
 
-        assert_eq!(args, decoded);
+        assert_eq!(params, decoded);
     }
 }

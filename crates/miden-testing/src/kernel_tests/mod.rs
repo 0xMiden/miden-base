@@ -18,7 +18,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionParamsError, Word,
+    Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
     assembly::{
         DefaultSourceManager,
@@ -41,8 +41,7 @@ use miden_objects::{
         note::{DEFAULT_NOTE_CODE, NoteBuilder},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
-    transaction::{OutputNote, ProvenTransaction, TransactionParams, TransactionScript},
-    vm::AdviceMap,
+    transaction::{OutputNote, ProvenTransaction, TransactionScript},
 };
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
@@ -52,7 +51,7 @@ use miden_tx::{
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{
-    Digest, ExecutionError, MemAdviceProvider, ONE,
+    AdviceInputs, Digest, ExecutionError, MemAdviceProvider, ONE,
     crypto::RpoRandomCoin,
     utils::{Deserializable, Serializable},
 };
@@ -76,17 +75,17 @@ fn transaction_executor_witness() -> miette::Result<()> {
     let executed_transaction = tx_context.execute().into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
-    let tx_args = executed_transaction.tx_args();
+    let tx_params = executed_transaction.tx_params();
 
     let scripts_mast_store = ScriptMastForestStore::new(
-        tx_args.tx_script(),
+        tx_params.tx_script(),
         tx_inputs.input_notes().iter().map(|n| n.note().script()),
     );
 
     // use the witness to execute the transaction again
     let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
         tx_inputs,
-        tx_args,
+        tx_params,
         Some(executed_transaction.advice_witness().clone()),
     )
     .unwrap();
@@ -802,10 +801,10 @@ fn prove_witness_and_verify() {
 
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let notes = tx_context.tx_inputs().input_notes().clone();
-    let tx_args = tx_context.tx_args().clone();
+    let tx_params = tx_context.tx_params().clone();
     let executor = TransactionExecutor::new(Arc::new(tx_context), None);
     let executed_transaction = executor
-        .execute_transaction(account_id, block_ref, notes, tx_args, Arc::clone(&source_manager))
+        .execute_transaction(account_id, block_ref, notes, tx_params, Arc::clone(&source_manager))
         .unwrap();
     let executed_transaction_id = executed_transaction.id();
 
@@ -850,7 +849,7 @@ fn test_tx_script_inputs() {
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
-        .tx_script_inputs([(tx_script_input_key, tx_script_input_value.into())])
+        .advice_map([(tx_script_input_key, tx_script_input_value.into())])
         .build();
 
     let executed_transaction = tx_context.execute();
@@ -864,87 +863,45 @@ fn test_tx_script_inputs() {
 
 #[test]
 fn test_tx_script_args() -> anyhow::Result<()> {
+    let tx_script_arg = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
+
     let tx_script_src = r#"
         begin
-            # => [TX_SCRIPT_ARGS_KEY]
-            # `TX_SCRIPT_ARGS_KEY` value, which is located on the stack at the beginning of 
-            # the execution, is the advice map key which allows to obtain transaction script args 
-            # which were specified during the `TransactionScript` creation (see below). In this
-            # example transaction args is an array of Felts from 1 to 7.
+            # => [TX_SCRIPT_ARG]
+            # `TX_SCRIPT_ARG` value is a user provided word, which could be used during the
+            # transaction execution. In this example it is a `[1, 2, 3, 4]` word.
 
-            # move the transaction args from advice map to the advice stack
-            adv.push_mapval
-            # OS => [TX_SCRIPT_ARGS_KEY]
-            # AS => [7, 6, 5, 4, 3, 2, 1]
+            # assert the correctness of the argument
+            dupw push.1.2.3.4 assert_eqw.err="provided transaction argument doesn't match the expected one"
+            # => [TX_SCRIPT_ARG]
 
-            # drop the args commitment
-            dropw
-            # OS => []
-            # AS => [7, 6, 5, 4, 3, 2, 1]
+            # since we provided an advice map entry with the transaction script argument as a key, 
+            # we can obtain the value of this entry
+            adv.push_mapval adv_push.4
+            # => [[map_entry_values], TX_SCRIPT_ARG]
 
-            # Move the transaction arguments array from advice stack to the operand stack. It 
-            # consists of 7 Felts, so we could use `adv_push.7` instruction to load them all at once
-            adv_push.7
-            # OS => [7, 6, 5, 4, 3, 2, 1]
-            # AS => []
-
-            # assert that the transaction arguments array consists of correct values
-            push.4.5.6.7
-            assert_eqw.err="last four values in the transaction args array are incorrect"
-            # OS => [3, 2, 1]
-            # AS => []
-            
-            # To use more convenient `assert_eqw` instruction we should push `0` first, but notice 
-            # that there are only three values from the original array left on the stack. We could 
-            # do so because there are no other elements on the stack left except for the argument 
-            # values (hidden values deeper on the stack are zeros). In case there are some values 
-            # deeper on the stack, we should assert values one by one using `push.n assert_eq`.
-            push.0.1.2.3
-            assert_eqw.err="first three values in the transaction args array are incorrect"
+            # assert the correctness of the map entry values
+            push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
         end"#;
 
     let tx_script =
         TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())
             .context("failed to compile transaction script")?;
 
+    // create an advice inputs containing the entry which could be accessed using the provided
+    // transaction script argument
+    let advice_inputs = AdviceInputs::default().with_map([(
+        Digest::new(tx_script_arg),
+        vec![Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)],
+    )]);
+
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
-        .tx_script_args(vec![
-            ONE,
-            Felt::new(2),
-            Felt::new(3),
-            Felt::new(4),
-            Felt::new(5),
-            Felt::new(6),
-            Felt::new(7),
-        ])
+        .advice_inputs(advice_inputs)
+        .tx_script_arg(tx_script_arg)
         .build();
 
     tx_context.execute().context("failed to execute transaction")?;
-
-    Ok(())
-}
-
-#[test]
-fn test_tx_script_args_collision() -> anyhow::Result<()> {
-    let collision_elements = vec![ONE, Felt::new(2), Felt::new(3), Felt::new(4)];
-    let collision_key = Hasher::hash_elements(&collision_elements);
-
-    let advice_map = AdviceMap::from_iter([(collision_key, vec![ONE, Felt::new(2)])]);
-
-    let script_args_collision_err = TransactionParams::new(None, advice_map, vec![])
-        .with_tx_script_args(&collision_elements)
-        .unwrap_err();
-
-    assert_matches!(script_args_collision_err, TransactionParamsError::ScriptArgsCollision {
-        key,
-        new_value,
-        old_value,
-    } => {
-        assert_eq!(key, collision_key);
-        assert_eq!(new_value, collision_elements);
-        assert_eq!(old_value, [ONE, Felt::new(2)]);
-    });
 
     Ok(())
 }
@@ -1074,7 +1031,7 @@ fn test_execute_program() {
         .build();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let advice_inputs = tx_context.tx_args().advice_inputs().clone();
+    let advice_inputs = tx_context.tx_params().advice_inputs().clone();
 
     let executor = TransactionExecutor::new(Arc::new(tx_context), None);
 
@@ -1126,7 +1083,7 @@ fn test_check_note_consumability() {
     let input_notes = tx_context.input_notes().clone();
     let target_account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let tx_args = tx_context.tx_args().clone();
+    let tx_params = tx_context.tx_params().clone();
 
     let executor: TransactionExecutor =
         TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
@@ -1137,7 +1094,7 @@ fn test_check_note_consumability() {
             target_account_id,
             block_ref,
             input_notes,
-            tx_args,
+            tx_params,
             source_manager,
         )
         .unwrap();
@@ -1153,14 +1110,14 @@ fn test_check_note_consumability() {
     let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let tx_args = tx_context.tx_args().clone();
+    let tx_params = tx_context.tx_params().clone();
 
     let executor: TransactionExecutor =
         TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_params, source_manager)
         .unwrap();
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
@@ -1195,14 +1152,14 @@ fn test_check_note_consumability() {
         input_notes.iter().map(|input_note| input_note.id()).collect::<Vec<NoteId>>();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let tx_args = tx_context.tx_args().clone();
+    let tx_params = tx_context.tx_params().clone();
 
     let executor: TransactionExecutor =
         TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_params, source_manager)
         .unwrap();
 
     assert_matches!(execution_check_result, NoteAccountExecution::Failure {

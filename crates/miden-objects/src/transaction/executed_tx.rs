@@ -30,7 +30,7 @@ pub struct ExecutedTransaction {
     tx_inputs: TransactionInputs,
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
-    tx_args: TransactionParams,
+    tx_params: TransactionParams,
     advice_witness: AdviceInputs,
     tx_measurements: TransactionMeasurements,
 }
@@ -47,7 +47,7 @@ impl ExecutedTransaction {
         tx_inputs: TransactionInputs,
         tx_outputs: TransactionOutputs,
         account_delta: AccountDelta,
-        tx_args: TransactionParams,
+        tx_params: TransactionParams,
         advice_witness: AdviceInputs,
         tx_measurements: TransactionMeasurements,
     ) -> Self {
@@ -59,7 +59,7 @@ impl ExecutedTransaction {
             tx_inputs,
             tx_outputs,
             account_delta,
-            tx_args,
+            tx_params,
             advice_witness,
             tx_measurements,
         }
@@ -103,9 +103,9 @@ impl ExecutedTransaction {
         self.tx_outputs.expiration_block_num
     }
 
-    /// Returns a reference to the transaction args.
-    pub fn tx_args(&self) -> &TransactionParams {
-        &self.tx_args
+    /// Returns a reference to the transaction params.
+    pub fn tx_params(&self) -> &TransactionParams {
+        &self.tx_params
     }
 
     /// Returns the block header for the block against which the transaction was executed.
@@ -144,7 +144,7 @@ impl ExecutedTransaction {
     ) -> (AccountDelta, TransactionOutputs, TransactionWitness, TransactionMeasurements) {
         let tx_witness = TransactionWitness {
             tx_inputs: self.tx_inputs,
-            tx_args: self.tx_args,
+            tx_params: self.tx_params,
             advice_witness: self.advice_witness,
         };
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
@@ -170,7 +170,7 @@ impl Serializable for ExecutedTransaction {
         self.tx_inputs.write_into(target);
         self.tx_outputs.write_into(target);
         self.account_delta.write_into(target);
-        self.tx_args.write_into(target);
+        self.tx_params.write_into(target);
         self.advice_witness.write_into(target);
         self.tx_measurements.write_into(target);
     }
@@ -181,7 +181,7 @@ impl Deserializable for ExecutedTransaction {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_outputs = TransactionOutputs::read_from(source)?;
         let account_delta = AccountDelta::read_from(source)?;
-        let tx_args = TransactionParams::read_from(source)?;
+        let tx_params = TransactionParams::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 
@@ -189,7 +189,7 @@ impl Deserializable for ExecutedTransaction {
             tx_inputs,
             tx_outputs,
             account_delta,
-            tx_args,
+            tx_params,
             advice_witness,
             tx_measurements,
         ))

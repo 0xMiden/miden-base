@@ -89,14 +89,14 @@ fn test_transaction_prologue() {
         (tx_context.input_notes().get_note(1).note().id(), note_args[1]),
     ]);
 
-    let tx_args = TransactionParams::new(
+    let tx_params = TransactionParams::new(
         Some(tx_script),
-        tx_context.tx_args().advice_inputs().clone().map,
+        tx_context.tx_params().advice_inputs().clone().map,
         Vec::<AccountInputs>::new(),
     )
     .with_note_args(note_args_map);
 
-    tx_context.set_tx_args(tx_args);
+    tx_context.set_tx_params(tx_params);
     let process = &tx_context.execute_code(code).unwrap();
 
     global_input_memory_assertions(process, &tx_context);
@@ -145,7 +145,7 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
 
     assert_eq!(
         read_root_mem_word(&process.into(), TX_SCRIPT_ROOT_PTR),
-        *inputs.tx_args().tx_script().as_ref().unwrap().root(),
+        *inputs.tx_params().tx_script().as_ref().unwrap().root(),
         "The transaction script root should be stored at the TX_SCRIPT_ROOT_PTR"
     );
 }
