@@ -170,7 +170,7 @@ impl AccountDelta {
     ///
     /// As an example, consider these two deltas:
     ///
-    /// ```
+    /// ```text
     /// [
     ///     ID_AND_NONCE,
     ///     EMPTY_WORD,
@@ -180,7 +180,7 @@ impl AccountDelta {
     /// ]
     /// ```
     ///
-    /// ```
+    /// ```text
     /// [
     ///     ID_AND_NONCE,
     ///     EMPTY_WORD,
