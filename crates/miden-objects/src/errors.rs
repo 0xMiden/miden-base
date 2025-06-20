@@ -556,6 +556,8 @@ pub enum ProvenTransactionError {
         account_id: AccountId,
         update_size: usize,
     },
+    #[error("proven transaction neither changed the account state, nor consumed any notes")]
+    EmptyTransaction,
 }
 
 // PROPOSED BATCH ERROR

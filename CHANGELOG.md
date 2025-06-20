@@ -7,6 +7,7 @@
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
 - Implement map in transaction kernel library (#1396).
+- Add P2IDE standard note (#1421).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 - Add support for workers configuration in the proxy with environment variables (#1412).
@@ -18,6 +19,8 @@
 - [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
+- [BREAKING] Forbid the execution of the empty transactions (#1459).
+- Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing.
 
 ## 0.9.1 (2025-05-30)
 

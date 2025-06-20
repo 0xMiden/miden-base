@@ -30,8 +30,8 @@ pub const ERR_P2IDR_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_s
 
 /// Error Message: "P2ID's target account address and transaction address do not match"
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");
-/// Error Message: "P2ID script expects exactly 2 note inputs"
-pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID script expects exactly 2 note inputs");
+/// Error Message: "P2ID note expects exactly 2 note inputs"
+pub const ERR_P2ID_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2ID note expects exactly 2 note inputs");
 
 /// Error Message: "SWAP script requires exactly 1 note asset"
 pub const ERR_SWAP_WRONG_NUMBER_OF_ASSETS: MasmError = MasmError::from_static_str("SWAP script requires exactly 1 note asset");

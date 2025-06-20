@@ -359,7 +359,7 @@ impl TransactionKernel {
     /// Returns the testing assembler, and additionally contains the library for
     /// [AccountCode::mock_library()], which is a mock wallet used in tests.
     pub fn testing_assembler_with_mock_account() -> Assembler {
-        let assembler = Self::testing_assembler();
+        let assembler = Self::testing_assembler().with_debug_mode(true);
         let library = AccountCode::mock_library(assembler.clone());
 
         assembler.with_library(library).expect("failed to add mock account code")

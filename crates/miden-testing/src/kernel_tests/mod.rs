@@ -5,12 +5,7 @@ use alloc::{
     vec::Vec,
 };
 
-use ::assembly::{
-    LibraryPath,
-    ast::{Module, ModuleKind},
-};
 use anyhow::Context;
-use assembly::diagnostics::WrapErr;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2idr_note},
@@ -20,10 +15,7 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::{
-        DefaultSourceManager,
-        diagnostics::{IntoDiagnostic, miette},
-    },
+    assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -829,6 +821,8 @@ fn test_tx_script_inputs() {
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
         "
+        use.miden::account
+
         begin
             # push the tx script input key onto the stack
             push.{key}
@@ -838,6 +832,9 @@ fn test_tx_script_inputs() {
 
             # assert that the value is correct
             push.{value} assert_eqw
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
         end
         ",
         key = word_to_masm_push_string(&tx_script_input_key),
@@ -866,6 +863,8 @@ fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_arg = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
 
     let tx_script_src = r#"
+        use.miden::account
+
         begin
             # => [TX_SCRIPT_ARG]
             # `TX_SCRIPT_ARG` value is a user provided word, which could be used during the
@@ -882,6 +881,9 @@ fn test_tx_script_args() -> anyhow::Result<()> {
 
             # assert the correctness of the map entry values
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
         end"#;
 
     let tx_script =
@@ -928,31 +930,19 @@ fn transaction_executor_account_code_using_custom_library() {
         push.4 exec.external_module::incr_nonce_by_four
       end";
 
-    let source_manager = Arc::new(DefaultSourceManager::default());
-    let external_library_module = Module::parser(ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("external_library::external_module").unwrap(),
-            EXTERNAL_LIBRARY_CODE,
-            &source_manager,
-        )
-        .unwrap();
+    let external_library_source =
+        NamedSource::new("external_library::external_module", EXTERNAL_LIBRARY_CODE);
     let external_library = TransactionKernel::assembler()
-        .assemble_library([external_library_module])
+        .assemble_library([external_library_source])
         .unwrap();
 
     let mut assembler = TransactionKernel::assembler();
     assembler.add_vendored_library(&external_library).unwrap();
 
-    let account_component_module = Module::parser(ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("account_component::account_module").unwrap(),
-            ACCOUNT_COMPONENT_CODE,
-            &source_manager,
-        )
-        .unwrap();
-
+    let account_component_source =
+        NamedSource::new("account_component::account_module", ACCOUNT_COMPONENT_CODE);
     let account_component_lib =
-        assembler.clone().assemble_library([account_component_module]).unwrap();
+        assembler.clone().assemble_library([account_component_source]).unwrap();
 
     let tx_script_src = "\
           use.account_component::account_module
@@ -1001,16 +991,10 @@ fn test_execute_program() {
         end
     ";
 
+    let source = NamedSource::new("test::module_1", test_module_source);
     let assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    let test_module = Module::parser(assembly::ast::ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("test::module_1").unwrap(),
-            test_module_source,
-            &assembler.source_manager(),
-        )
-        .unwrap();
-    let assembler = assembler.with_module(test_module).unwrap();
+    let assembler = assembler.with_module(source).unwrap();
 
     let source = "
     use.test::module_1
