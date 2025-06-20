@@ -9,7 +9,7 @@ use super::{
     Word,
 };
 use crate::{
-    Digest, EMPTY_WORD,
+    Digest, EMPTY_WORD, Felt, ONE, ZERO,
     account::{AccountStorage, StorageMap, StorageSlot},
 };
 // ACCOUNT STORAGE DELTA
@@ -114,6 +114,24 @@ impl AccountStorageDelta {
     /// Returns an iterator of all the updated storage slots.
     fn updated_slots(&self) -> impl Iterator<Item = (&u8, &Word)> + '_ {
         self.values.iter().filter(|&(_, value)| value != &EMPTY_WORD)
+    }
+
+    /// TODO: Make num_slots part of this struct.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>, num_slots: u8) {
+        for slot_idx in 0..num_slots {
+            match self.values().get(&slot_idx) {
+                Some(new_slot_value) => {
+                    // Append [was_slot_changed, 0, 0, 0].
+                    elements.extend_from_slice(&[ONE, ZERO, ZERO, ZERO]);
+                    elements.extend_from_slice(new_slot_value);
+                },
+                None => {
+                    // TODO: Handle map slots and slots for which no delta is provided.
+                    elements.extend_from_slice(&EMPTY_WORD);
+                    elements.extend_from_slice(&EMPTY_WORD);
+                },
+            }
+        }
     }
 }
 

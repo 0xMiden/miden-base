@@ -163,7 +163,7 @@ const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 # -------------------------------------------------------------------------------------------------
 
 # The pointer at which the delta of the nonce is stored.
-# Layout: [0, 0, 0, account_id_suffix]
+# Layout: [nonce_delta, 0, 0, 0]
 const.ACCOUNT_DELTA_NONCE_PTR=532480
 
 # Exact copy of the account's storage slot section starting at ACCT_STORAGE_SLOTS_SECTION_OFFSET.

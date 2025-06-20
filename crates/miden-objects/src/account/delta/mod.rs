@@ -6,7 +6,7 @@ use super::{
     Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
     Word, ZERO,
 };
-use crate::{AccountDeltaError, Digest, Hasher, ONE, account::AccountId};
+use crate::{AccountDeltaError, Digest, Hasher, account::AccountId};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -103,10 +103,12 @@ impl AccountDelta {
         let mut elements = Vec::with_capacity(16);
 
         // ID and nonce
-        elements.push(self.nonce.unwrap_or(ZERO));
-        elements.push(ZERO);
-        elements.push(account_id.suffix());
-        elements.push(account_id.prefix().as_felt());
+        elements.extend_from_slice(&[
+            self.nonce.unwrap_or(ZERO),
+            ZERO,
+            account_id.suffix(),
+            account_id.prefix().as_felt(),
+        ]);
 
         // Fungible Vault Delta Commitment
         elements.extend_from_slice(&EMPTY_WORD);
@@ -116,19 +118,7 @@ impl AccountDelta {
         // Empty Word for padding
         elements.extend_from_slice(&EMPTY_WORD);
 
-        for slot_idx in 0..num_slots {
-            match self.storage().values().get(&slot_idx) {
-                Some(new_slot_value) => {
-                    elements.extend_from_slice(&[ONE, ZERO, ZERO, ZERO]);
-                    elements.extend_from_slice(new_slot_value);
-                },
-                None => {
-                    // TODO: Handle map slots and slots for which no delta is provided.
-                    elements.extend_from_slice(&EMPTY_WORD);
-                    elements.extend_from_slice(&EMPTY_WORD);
-                },
-            }
-        }
+        self.storage.append_delta_elements(&mut elements, num_slots);
 
         Hasher::hash_elements(&elements)
     }
