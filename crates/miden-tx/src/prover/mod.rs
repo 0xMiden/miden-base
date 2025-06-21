@@ -106,7 +106,7 @@ impl TransactionProver for LocalTransactionProver {
         let mut host: TransactionHost<_> = TransactionHost::new(
             &account.into(),
             advice_provider,
-            self.mast_store.clone(),
+            self.mast_store.as_ref(),
             script_mast_store,
             None,
             account_code_commitments,
