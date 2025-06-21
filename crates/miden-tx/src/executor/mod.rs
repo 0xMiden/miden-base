@@ -149,7 +149,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         );
 
         let mut host = TransactionHost::new(
-            tx_inputs.account().into(),
+            &tx_inputs.account().into(),
             advice_recorder,
             self.data_store,
             script_mast_store,
@@ -224,7 +224,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             ScriptMastForestStore::new(Some(&tx_script), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
-            tx_inputs.account().into(),
+            &tx_inputs.account().into(),
             advice_recorder,
             self.data_store,
             scripts_mast_store,
@@ -298,7 +298,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         );
 
         let mut host = TransactionHost::new(
-            tx_inputs.account().into(),
+            &tx_inputs.account().into(),
             advice_provider,
             self.data_store,
             scripts_mast_store,

@@ -11,7 +11,7 @@ use miden_lib::transaction::{
 };
 use miden_objects::{
     Digest, Hasher,
-    account::{AccountDelta, AccountHeader},
+    account::{AccountDelta, PartialAccount},
     assembly::mast::MastNodeExt,
     asset::Asset,
     note::NoteId,
@@ -93,8 +93,8 @@ pub struct TransactionHost<'store, 'auth, A> {
 impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
     pub fn new(
-        account: AccountHeader,
-        adv_provider: A,
+        account: &PartialAccount,
+        mut adv_provider: A,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
@@ -102,7 +102,21 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     ) -> Result<Self, TransactionHostError> {
         // currently, the executor/prover do not keep track of the code commitment of the native
         // account, so we add it to the set here
-        foreign_account_code_commitments.insert(account.code_commitment());
+        foreign_account_code_commitments.insert(account.code().commitment());
+
+        // Insert the account advice map into the advice recorder.
+        // This ensures that the advice map is available during the note script execution when it
+        // calls the account's code that relies on the it's advice map data (data segments) loaded
+        // into the advice provider
+        for (key, values) in account.code().mast().advice_map().clone() {
+            adv_provider.insert_into_map(*key, values);
+        }
+
+        // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
+        // advice provider has all the necessary data for script execution
+        for (key, values) in scripts_mast_store.advice_data().clone() {
+            adv_provider.insert_into_map(*key, values);
+        }
 
         let proc_index_map =
             AccountProcedureIndexMap::new(foreign_account_code_commitments, &adv_provider)?;
@@ -111,7 +125,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             adv_provider,
             mast_store,
             scripts_mast_store,
-            account_delta: AccountDeltaTracker::new(&account),
+            account_delta: AccountDeltaTracker::new(&account.into()),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
             authenticator,
