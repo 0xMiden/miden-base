@@ -5,7 +5,7 @@ use.miden::contracts::wallets::basic->wallet
 # ERRORS
 # =================================================================================================
 
-const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID script expects exactly 2 note inputs"
+const.ERR_P2ID_WRONG_NUMBER_OF_INPUTS="P2ID note expects exactly 2 note inputs"
 
 const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transaction address do not match"
 

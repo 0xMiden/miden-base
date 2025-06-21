@@ -38,14 +38,10 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
     end
 
     # Stack:  [index, VALUE_TO_SET, pad(11)]
-    # Output: [NEW_STORAGE_ROOT, PREVIOUS_STORAGE_VALUE, pad(8)]
+    # Output: [PREVIOUS_STORAGE_VALUE, pad(12)]
     export.set_item
         exec.account::set_item
-        # => [R', V, pad(11)]
-
-        # truncate the stack
-        movup.8 drop movup.8 drop movup.8 drop
-        # => [R', V, pad(8)]
+        # => [V, pad(12)]
     end
 
     # Stack:  [index, pad(15)]

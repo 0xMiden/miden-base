@@ -171,14 +171,13 @@ end
 
 #! Sets an item in the account storage. Panics if the index is out of bounds.
 #!
-#! Inputs:  [index, V']
-#! Outputs: [R', V]
+#! Inputs:  [index, VALUE]
+#! Outputs: [OLD_VALUE]
 #!
 #! Where:
 #! - index is the index of the item to set.
-#! - V' is the value to set.
-#! - V is the previous value of the item.
-#! - R' is the new storage commitment.
+#! - VALUE is the value to set.
+#! - OLD_VALUE is the previous value of the item.
 #!
 #! Panics if:
 #! - the index of the item is out of bounds.
@@ -186,18 +185,18 @@ end
 #! Invocation: exec
 export.set_item
     exec.kernel_proc_offsets::account_set_item_offset
-    # => [offset, index, V']
+    # => [offset, index, VALUE]
 
     # pad the stack
     push.0.0 movdn.7 movdn.7 padw padw swapdw
-    # => [offset, index, V', pad(10)]
+    # => [offset, index, VALUE, pad(10)]
 
     syscall.exec_kernel_proc
-    # => [R', V, pad(8)]
+    # => [OLD_VALUE, pad(12)]
 
     # clean the stack
-    swapdw dropw dropw
-    # => [R', V]
+    swapw.3 dropw dropw dropw
+    # => [OLD_VALUE]
 end
 
 #! Gets a map item from the account storage.

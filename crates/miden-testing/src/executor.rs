@@ -1,4 +1,4 @@
-use alloc::sync::Arc;
+use alloc::{borrow::ToOwned, sync::Arc};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::SourceManager;
@@ -37,14 +37,25 @@ impl<H: Host> CodeExecutor<H> {
         self
     }
 
-    /// Compiles and runs the desired code in the host and returns the [Process] state
+    /// Compiles and runs the desired code in the host and returns the [`Process`] state.
+    ///
+    /// To improve the error message quality, convert the returned [`ExecutionError`] into a
+    /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::testing_assembler();
+        let assembler = TransactionKernel::testing_assembler().with_debug_mode(true);
         let source_manager = assembler.source_manager();
-        let program = assembler.assemble_program(code).unwrap();
+
+        // Virtual file name should be unique.
+        let virtual_source_file = source_manager.load("_user_code", code.to_owned());
+        let program = assembler.assemble_program(virtual_source_file).unwrap();
+
         self.execute_program(program, source_manager)
     }
 
+    /// Executes the provided [`Program`] and returns the [`Process`] state.
+    ///
+    /// To improve the error message quality, convert the returned [`ExecutionError`] into a
+    /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn execute_program(
         mut self,
         program: Program,

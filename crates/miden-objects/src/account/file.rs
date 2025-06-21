@@ -1,9 +1,9 @@
+use alloc::vec::Vec;
 #[cfg(feature = "std")]
 use std::{
     fs::{self, File},
     io::{self, Read},
     path::Path,
-    vec::Vec,
 };
 
 use miden_crypto::utils::SliceReader;
@@ -20,8 +20,11 @@ const MAGIC: &str = "acct";
 // ACCOUNT FILE
 // ================================================================================================
 
-/// Account file contains a complete description of an account, including the [Account] struct as
+/// Account file contains a complete description of an account, including the [`Account`] struct as
 /// well as account seed and account authentication info.
+///
+/// The account authentication info consists of a list of [`AuthSecretKey`] that the account may
+/// use within its code.
 ///
 /// The intent of this struct is to provide an easy way to serialize and deserialize all
 /// account-related data as a single unit (e.g., to/from files).
@@ -29,15 +32,19 @@ const MAGIC: &str = "acct";
 pub struct AccountFile {
     pub account: Account,
     pub account_seed: Option<Word>,
-    pub auth_secret_key: AuthSecretKey,
+    pub auth_secret_keys: Vec<AuthSecretKey>,
 }
 
 impl AccountFile {
-    pub fn new(account: Account, account_seed: Option<Word>, auth: AuthSecretKey) -> Self {
+    pub fn new(
+        account: Account,
+        account_seed: Option<Word>,
+        auth_keys: Vec<AuthSecretKey>,
+    ) -> Self {
         Self {
             account,
             account_seed,
-            auth_secret_key: auth,
+            auth_secret_keys: auth_keys,
         }
     }
 }
@@ -70,7 +77,7 @@ impl Serializable for AccountFile {
         let AccountFile {
             account,
             account_seed,
-            auth_secret_key: auth,
+            auth_secret_keys: auth,
         } = self;
 
         account.write_into(target);
@@ -89,9 +96,9 @@ impl Deserializable for AccountFile {
         }
         let account = Account::read_from(source)?;
         let account_seed = <Option<Word>>::read_from(source)?;
-        let auth_secret_key = AuthSecretKey::read_from(source)?;
+        let auth_secret_keys = <Vec<AuthSecretKey>>::read_from(source)?;
 
-        Ok(Self::new(account, account_seed, auth_secret_key))
+        Ok(Self::new(account, account_seed, auth_secret_keys))
     }
 
     fn read_from_bytes(bytes: &[u8]) -> Result<Self, DeserializationError> {
@@ -130,8 +137,9 @@ mod tests {
         let account = Account::from_parts(id, vault, storage, code, nonce);
         let account_seed = Some(Word::default());
         let auth_secret_key = AuthSecretKey::RpoFalcon512(SecretKey::new());
+        let auth_secret_key_2 = AuthSecretKey::RpoFalcon512(SecretKey::new());
 
-        AccountFile::new(account, account_seed, auth_secret_key)
+        AccountFile::new(account, account_seed, vec![auth_secret_key, auth_secret_key_2])
     }
 
     #[test]
@@ -142,8 +150,8 @@ mod tests {
         assert_eq!(deserialized.account, account_file.account);
         assert_eq!(deserialized.account_seed, account_file.account_seed);
         assert_eq!(
-            deserialized.auth_secret_key.to_bytes(),
-            account_file.auth_secret_key.to_bytes()
+            deserialized.auth_secret_keys.to_bytes(),
+            account_file.auth_secret_keys.to_bytes()
         );
     }
 
@@ -160,8 +168,8 @@ mod tests {
         assert_eq!(deserialized.account, account_file.account);
         assert_eq!(deserialized.account_seed, account_file.account_seed);
         assert_eq!(
-            deserialized.auth_secret_key.to_bytes(),
-            account_file.auth_secret_key.to_bytes()
+            deserialized.auth_secret_keys.to_bytes(),
+            account_file.auth_secret_keys.to_bytes()
         );
     }
 }

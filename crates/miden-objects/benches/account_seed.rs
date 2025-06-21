@@ -42,7 +42,6 @@ fn grind_account_seed(c: &mut Criterion) {
                 AccountIdVersion::Version0,
                 Digest::default(),
                 Digest::default(),
-                Digest::default(),
             )
         })
     });

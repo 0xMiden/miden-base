@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use miden_crypto::merkle::SmtProof;
+use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 use vm_core::utils::{Deserializable, Serializable};
 use vm_processor::Digest;
 
@@ -16,7 +16,7 @@ use crate::AccountError;
 pub struct PartialStorage {
     /// Commitment of the account's storage slots.
     commitment: Digest,
-    /// Account's storage heaer, containing top-level slot values.
+    /// Account's storage header, containing top-level slot values.
     header: AccountStorageHeader,
     /// Merkle proofs for a subset of the account's storage maps keys
     storage_map_proofs: Vec<SmtProof>,
@@ -55,6 +55,24 @@ impl PartialStorage {
     }
 
     // TODO: Add from account storage with (slot/[key])?
+
+    /// Returns an iterator over inner nodes of all storage map proofs contained in this
+    /// partial storage.
+    pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> {
+        // SAFETY: any u64 value is a valid SMT leaf index
+        self.storage_map_proofs.iter().flat_map(|proof| {
+            proof
+                .path()
+                .inner_nodes(proof.leaf().index().value(), proof.leaf().hash())
+                .expect("invalid SMT leaf index")
+        })
+    }
+
+    /// Returns an iterator over leaves of all storage map entries contained in this partial
+    /// storage.
+    pub fn leaves(&self) -> impl Iterator<Item = &SmtLeaf> {
+        self.storage_map_proofs.iter().map(SmtProof::leaf)
+    }
 }
 
 impl From<&AccountStorage> for PartialStorage {

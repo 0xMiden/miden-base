@@ -6,7 +6,7 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
-    note::NoteId,
+    note::{NoteId, NoteScript},
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
@@ -18,7 +18,7 @@ use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, R
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
-use crate::auth::TransactionAuthenticator;
+use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
 
 mod data_store;
 pub use data_store::DataStore;
@@ -29,7 +29,7 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 // TRANSACTION EXECUTOR
 // ================================================================================================
 
-/// The transaction executor is responsible for executing Miden rollup transactions.
+/// The transaction executor is responsible for executing Miden blockchain transactions.
 ///
 /// Transaction execution consists of the following steps:
 /// - Fetch the data required to execute a transaction from the [DataStore].
@@ -38,21 +38,21 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 /// The transaction executor uses dynamic dispatch with trait objects for the [DataStore] and
 /// [TransactionAuthenticator], allowing it to be used with different backend implementations.
 /// At the moment of execution, the [DataStore] is expected to provide all required MAST nodes.
-pub struct TransactionExecutor {
-    data_store: Arc<dyn DataStore>,
-    authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+pub struct TransactionExecutor<'store, 'auth> {
+    data_store: &'store dyn DataStore,
+    authenticator: Option<&'auth dyn TransactionAuthenticator>,
     exec_options: ExecutionOptions,
 }
 
-impl TransactionExecutor {
+impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
     pub fn new(
-        data_store: Arc<dyn DataStore>,
-        authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+        data_store: &'store dyn DataStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
     ) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
@@ -141,13 +141,19 @@ impl TransactionExecutor {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
-        let advice_recorder: RecAdviceProvider = advice_inputs.into();
+        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
+
+        let script_mast_store = ScriptMastForestStore::new(
+            tx_args.tx_script(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+        );
 
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
             advice_recorder,
-            self.data_store.clone(),
-            self.authenticator.clone(),
+            self.data_store,
+            script_mast_store,
+            self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
@@ -212,13 +218,17 @@ impl TransactionExecutor {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
-        let advice_recorder: RecAdviceProvider = advice_inputs.into();
+        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
+
+        let scripts_mast_store =
+            ScriptMastForestStore::new(Some(&tx_script), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
             advice_recorder,
-            self.data_store.clone(),
-            self.authenticator.clone(),
+            self.data_store,
+            scripts_mast_store,
+            self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
@@ -280,13 +290,19 @@ impl TransactionExecutor {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
-        let advice_provider: MemAdviceProvider = advice_inputs.into();
+        let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
+
+        let scripts_mast_store = ScriptMastForestStore::new(
+            tx_args.tx_script(),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+        );
 
         let mut host = TransactionHost::new(
             tx_inputs.account().into(),
             advice_provider,
-            self.data_store.clone(),
-            self.authenticator.clone(),
+            self.data_store,
+            scripts_mast_store,
+            self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;

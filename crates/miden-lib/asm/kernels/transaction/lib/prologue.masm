@@ -1087,20 +1087,30 @@ end
 #!
 #! Inputs:
 #!   Operand stack: []
-#!   Advice stack: [TX_SCRIPT_ROOT]
+#!   Advice stack: [TX_SCRIPT_ROOT, TX_SCRIPT_ARGS_KEY]
 #! Outputs:
 #!   Operand stack: []
 #!   Advice stack: []
 #!
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction's script root.
-proc.process_tx_script_root
+#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script args used to obtain them from 
+#!   the advice map.
+proc.process_tx_script_data
     # read the transaction script root from the advice stack
     adv_loadw
     # => [TX_SCRIPT_ROOT]
 
     # store the transaction script root in memory
     exec.memory::set_tx_script_root dropw
+    # => []
+
+    # read the transaction script args key from the advice stack
+    adv_loadw
+    # => [TX_SCRIPT_ARGS_KEY]
+
+    # store the transaction script args key in memory
+    exec.memory::set_tx_script_args_key dropw
     # => []
 end
 
@@ -1137,6 +1147,7 @@ end
 #!     ACCOUNT_CODE_COMMITMENT,
 #!     number_of_input_notes,
 #!     TX_SCRIPT_ROOT,
+#!     TX_SCRIPT_ARGS_KEY,
 #!   ]
 #!   Advice map: {
 #!      PARTIAL_BLOCKCHAIN_COMMITMENT: [MMR_PEAKS],
@@ -1195,7 +1206,7 @@ export.prepare_transaction
     exec.process_chain_data
     exec.process_account_data
     exec.process_input_notes_data
-    exec.process_tx_script_root
+    exec.process_tx_script_data
     # => []
 
     push.MAX_BLOCK_NUM exec.memory::set_expiration_block_num

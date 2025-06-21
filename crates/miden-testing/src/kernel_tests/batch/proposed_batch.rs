@@ -674,3 +674,102 @@ fn expired_transaction() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Tests that a NOOP transaction with state commitments X -> X against account A can appear
+/// _before_ a state-updating transaction with state commitments X -> Y against account A.
+#[test]
+fn noop_tx_before_state_updating_tx_against_same_account() -> anyhow::Result<()> {
+    let TestSetup { mut chain, account1, .. } = setup_chain();
+    let block1 = chain.block_header(1);
+    let block2 = chain.prove_next_block();
+
+    let random_final_state_commitment = Digest::from([1, 2, 3, 4u32]);
+
+    let note = mock_note(40);
+    let noop_tx1 = MockProvenTxBuilder::with_account(
+        account1.id(),
+        account1.commitment(),
+        account1.commitment(),
+    )
+    .ref_block_commitment(block1.commitment())
+    .output_notes(vec![OutputNote::Full(note.clone())])
+    .build()?;
+
+    // sanity check
+    assert_eq!(
+        noop_tx1.account_update().initial_state_commitment(),
+        noop_tx1.account_update().final_state_commitment()
+    );
+
+    let tx2 = MockProvenTxBuilder::with_account(
+        account1.id(),
+        account1.commitment(),
+        random_final_state_commitment,
+    )
+    .ref_block_commitment(block1.commitment())
+    .unauthenticated_notes(vec![note.clone()])
+    .build()?;
+
+    let batch = ProposedBatch::new(
+        [noop_tx1, tx2].into_iter().map(Arc::new).collect(),
+        block2.header().clone(),
+        chain.latest_partial_blockchain(),
+        BTreeMap::default(),
+    )?;
+
+    let update = batch.account_updates().get(&account1.id()).unwrap();
+    assert_eq!(update.initial_state_commitment(), account1.commitment());
+    assert_eq!(update.final_state_commitment(), random_final_state_commitment);
+
+    Ok(())
+}
+
+/// Tests that a NOOP transaction with state commitments X -> X against account A can appear
+/// _after_ a state-updating transaction with state commitments X -> Y against account A.
+#[test]
+fn noop_tx_after_state_updating_tx_against_same_account() -> anyhow::Result<()> {
+    let TestSetup { mut chain, account1, .. } = setup_chain();
+    let block1 = chain.block_header(1);
+    let block2 = chain.prove_next_block();
+
+    let random_final_state_commitment = Digest::from([1, 2, 3, 4u32]);
+
+    let note = mock_note(40);
+
+    let tx1 = MockProvenTxBuilder::with_account(
+        account1.id(),
+        account1.commitment(),
+        random_final_state_commitment,
+    )
+    .ref_block_commitment(block1.commitment())
+    .unauthenticated_notes(vec![note.clone()])
+    .build()?;
+
+    let noop_tx2 = MockProvenTxBuilder::with_account(
+        account1.id(),
+        random_final_state_commitment,
+        random_final_state_commitment,
+    )
+    .ref_block_commitment(block1.commitment())
+    .output_notes(vec![OutputNote::Full(note.clone())])
+    .build()?;
+
+    // sanity check
+    assert_eq!(
+        noop_tx2.account_update().initial_state_commitment(),
+        noop_tx2.account_update().final_state_commitment()
+    );
+
+    let batch = ProposedBatch::new(
+        [tx1, noop_tx2].into_iter().map(Arc::new).collect(),
+        block2.header().clone(),
+        chain.latest_partial_blockchain(),
+        BTreeMap::default(),
+    )?;
+
+    let update = batch.account_updates().get(&account1.id()).unwrap();
+    assert_eq!(update.initial_state_commitment(), account1.commitment());
+    assert_eq!(update.final_state_commitment(), random_final_state_commitment);
+
+    Ok(())
+}

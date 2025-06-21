@@ -1,5 +1,29 @@
 # Changelog
 
+## 0.10.0 (TBD)
+
+- [BREAKING] Refactor `NoteTag` to an enum (#1322).
+- Add `bench-prover` crate to benchmark proving times (#1378).
+- [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
+- Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
+- Implement map in transaction kernel library (#1396).
+- Add P2IDE standard note (#1421).
+- Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
+- [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
+- Add support for workers configuration in the proxy with environment variables (#1412).
+- Implement Display for `NoteType` (#1420).
+- [BREAKING] Remove `NoteExecutionMode` from `from_account_id` (#1422).
+- [BREAKING] Refactor transaction kernel advice inputs (#1425).
+- Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
+- Remove doc update checks on CI (#1435).
+- [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
+- [BREAKING] Allow list of keys in `AccountFile` (#1451).
+- Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
+- [BREAKING] Forbid the execution of the empty transactions (#1459).
+- Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
+- [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
+
+
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
 - Added `symbol()`, `decimals()`, and `max_supply()` accessors to the `TokenSymbol` struct.
@@ -20,8 +44,8 @@
 
 ### Fixes
 
-- Version check always fails in proxy (#1407).
 - Expose types used in public APIs (#1385).
+- Version check always fails in proxy (#1407).
 
 ## 0.9.0 (2025-05-20)
 

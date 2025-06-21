@@ -134,6 +134,10 @@ proc.main.1
     # => [has_tx_script, tx_script_root_ptr]
 
     if.true
+        # load the transaction script arguments onto the stack
+        exec.memory::get_tx_script_args_key movup.4
+        # => [tx_script_root_ptr, TX_SCRIPT_ARGS_KEY]
+
         # execute the transaction script
         dyncall
         # => [OUTPUT_3, OUTPUT_2, OUTPUT_1, OUTPUT_0]

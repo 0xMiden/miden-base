@@ -19,7 +19,7 @@ const.TWO_POW_38=274877906944
 const.EXPIRY_UPPER_LIMIT=0xFFFF+1
 
 # The note type must be PUBLIC, unless the high bits are `0b11`. (See the table below.)
-const.ALL_NOTE_TYPES_ALLOWED=3 # 0b11
+const.LOCAL_ANY_PREFIX=3 # 0b11
 
 # Max U32 value, used for initializing the expiration block number
 const.MAX_BLOCK_NUM=0xFFFFFFFF
@@ -33,12 +33,12 @@ const.ERR_NOTE_INVALID_TYPE="invalid note type"
 
 # The 2 highest bits in the u32 tag have the following meaning:
 #
-# | bits | Execution | Target    | Note type |
-# | ---- | --------- | --------- | --------- |
-# | 00   | Network   | Specific  | Public    |
-# | 01   | Network   | Use case  | Public    |
-# | 10   | Local     | Any       | Public    |
-# | 11   | Local     | Any       | Any       |
+# | Prefix | Name                   | [`NoteExecutionMode`] | Target                   | Allowed [`NoteType`] |
+# | :----: | :--------------------: | :-------------------: | :----------------------: | :------------------: |
+# | `0b00` | `NetworkAccount`       | Network               | Network Account          | [`NoteType::Public`] |
+# | `0b01` | `NetworkUseCase`       | Network               | Use case                 | [`NoteType::Public`] |
+# | `0b10` | `LocalPublicAny`       | Local                 | Any                      | [`NoteType::Public`] |
+# | `0b11` | `LocalAny`             | Local                 | Any                      | Any                  |
 #
 # Execution: Is a hint for the network, to check if the note can be consumed by a network controlled
 #   account
@@ -389,7 +389,7 @@ export.build_note_metadata
     # => [tag, note_type, public_note, note_type, tag, aux, note_type, execution_hint]
 
     # enforce the note type depending on the tag' bits
-    u32shr.30 push.ALL_NOTE_TYPES_ALLOWED eq cdrop
+    u32shr.30 push.LOCAL_ANY_PREFIX eq cdrop
     assert_eq.err=ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX
     # => [tag, aux, note_type, execution_hint]
 

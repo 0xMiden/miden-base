@@ -25,10 +25,9 @@ mod errors;
 pub use constants::*;
 pub use errors::{
     AccountDeltaError, AccountError, AccountIdError, AccountTreeError, AssetError, AssetVaultError,
-    BatchAccountUpdateError, FungibleFaucetError, NetworkIdError, NoteError, NullifierTreeError,
-    PartialBlockchainError, ProposedBatchError, ProposedBlockError, ProvenBatchError,
-    ProvenTransactionError, TokenSymbolError, TransactionInputError, TransactionOutputError,
-    TransactionScriptError,
+    BatchAccountUpdateError, NetworkIdError, NoteError, NullifierTreeError, PartialBlockchainError,
+    ProposedBatchError, ProposedBlockError, ProvenBatchError, ProvenTransactionError,
+    TokenSymbolError, TransactionInputError, TransactionOutputError, TransactionScriptError,
 };
 pub use miden_crypto::hash::rpo::{Rpo256 as Hasher, RpoDigest as Digest};
 pub use vm_core::{
@@ -40,7 +39,7 @@ pub use vm_core::{
 pub mod assembly {
     pub use assembly::{
         Assembler, AssemblyError, Compile, CompileOptions, DefaultSourceManager, KernelLibrary,
-        Library, LibraryNamespace, LibraryPath, SourceManager, Version,
+        Library, LibraryNamespace, LibraryPath, SourceFile, SourceId, SourceManager, Version,
         ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName},
         diagnostics, mast,
     };

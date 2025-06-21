@@ -7,14 +7,11 @@ use miden_crypto::{EMPTY_WORD, Felt, FieldElement};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     AccountTreeError, Digest, NullifierTreeError,
-    account::{
-        Account, AccountBuilder, AccountId, AccountIdAnchor, StorageSlot,
-        delta::AccountUpdateDetails,
-    },
+    account::{Account, AccountBuilder, AccountId, StorageSlot, delta::AccountUpdateDetails},
     batch::ProvenBatch,
     block::{BlockInputs, BlockNumber, ProposedBlock},
     testing::account_component::AccountMockComponent,
-    transaction::{ProvenTransaction, ProvenTransactionBuilder},
+    transaction::{ProvenTransaction, ProvenTransactionBuilder, TransactionScript},
     vm::ExecutionProof,
 };
 use winterfell::Proof;
@@ -258,9 +255,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // --------------------------------------------------------------------------------------------
 
     let mut mock_chain = MockChain::new();
-    let anchor_block = mock_chain.block_header(0);
     let (account, seed) = AccountBuilder::new([5; 32])
-        .anchor(AccountIdAnchor::try_from(&anchor_block)?)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -303,8 +298,20 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
+    // transaction code which only increases the nonce to make the transaction non-empty
+    let default_tx_code = "
+        use.miden::account 
+        
+        begin 
+            push.1 call.account::incr_nonce drop
+        end";
+    let default_tx_script =
+        TransactionScript::compile(default_tx_code, [], TransactionKernel::testing_assembler())
+            .context("failed to compile the transaction script")?;
+
     let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
     let tx_context = TransactionContextBuilder::new(account)
+        .tx_script(default_tx_script)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .build();
@@ -358,9 +365,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // --------------------------------------------------------------------------------------------
 
     let mut mock_chain = MockChain::new();
-    let anchor_block = mock_chain.block_header(0);
     let (account, _) = AccountBuilder::new([5; 32])
-        .anchor(AccountIdAnchor::try_from(&anchor_block)?)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -392,14 +397,16 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // same ID prefix but not the suffix.
     // --------------------------------------------------------------------------------------------
 
+    let genesis_block = mock_chain.block_header(0);
+
     let [tx0, tx1] =
         [(id0, [0, 0, 0, 1u32]), (id1, [0, 0, 0, 2u32])].map(|(id, final_state_comm)| {
             ProvenTransactionBuilder::new(
                 id,
                 Digest::default(),
                 Digest::from(final_state_comm),
-                anchor_block.block_num(),
-                anchor_block.commitment(),
+                genesis_block.block_num(),
+                genesis_block.commitment(),
                 BlockNumber::from(u32::MAX),
                 ExecutionProof::new(Proof::new_dummy(), Default::default()),
             )

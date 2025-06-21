@@ -38,6 +38,22 @@ pub trait TransactionAuthenticator {
     ) -> Result<Vec<Felt>, AuthenticationError>;
 }
 
+/// This blanket implementation is required to allow `Option<&T>` to be mapped to `Option<&dyn
+/// TransactionAuthenticator`>.
+impl<T> TransactionAuthenticator for &T
+where
+    T: TransactionAuthenticator + ?Sized,
+{
+    fn get_signature(
+        &self,
+        pub_key: Word,
+        message: Word,
+        account_delta: &AccountDelta,
+    ) -> Result<Vec<Felt>, AuthenticationError> {
+        TransactionAuthenticator::get_signature(*self, pub_key, message, account_delta)
+    }
+}
+
 // BASIC AUTHENTICATOR
 // ================================================================================================
 

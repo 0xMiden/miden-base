@@ -1,9 +1,9 @@
-use alloc::{string::ToString, sync::Arc, vec::Vec};
+use alloc::{string::ToString, vec::Vec};
 
 use miden_objects::{
     AccountError, Digest, Felt, ONE, ZERO,
     account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
-    assembly::{Assembler, DefaultSourceManager, LibraryPath, Module, ModuleKind},
+    assembly::{Assembler, diagnostics::NamedSource},
     asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
     block::BlockNumber,
     crypto::{
@@ -11,8 +11,8 @@ use miden_objects::{
         rand::{FeltRng, RpoRandomCoin},
     },
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
+        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
+        NoteTag, NoteType,
     },
     testing::account_id::{
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -216,7 +216,7 @@ fn test_basic_wallet_custom_notes() {
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(wallet_account.id(), NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_account_id,
         NoteType::Public,
@@ -313,7 +313,7 @@ fn test_basic_fungible_faucet_custom_notes() {
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(faucet_account.id(), NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_account_id,
         NoteType::Public,
@@ -410,7 +410,7 @@ fn test_custom_account_custom_notes() {
         account_custom_code_source,
         TransactionKernel::testing_assembler(),
         vec![],
-        LibraryPath::new("test::account::component_1").unwrap(),
+        "test::account::component_1",
     )
     .unwrap()
     .with_supports_all_types();
@@ -431,7 +431,7 @@ fn test_custom_account_custom_notes() {
 
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id(), NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
         NoteType::Public,
@@ -527,7 +527,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         account_custom_code_source,
         TransactionKernel::testing_assembler(),
         vec![],
-        LibraryPath::new("test::account::component_1").unwrap(),
+        "test::account::component_1",
     )
     .unwrap()
     .with_supports_all_types();
@@ -553,7 +553,7 @@ fn test_custom_account_multiple_components_custom_notes() {
 
     let serial_num =
         RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
-    let tag = NoteTag::from_account_id(target_account.id(), NoteExecutionMode::Local).unwrap();
+    let tag = NoteTag::from_account_id(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
         NoteType::Public,
@@ -662,7 +662,7 @@ trait AccountComponentExt {
         source_code: impl ToString,
         assembler: Assembler,
         storage_slots: Vec<StorageSlot>,
-        library_path: LibraryPath,
+        library_path: impl AsRef<str>,
     ) -> Result<AccountComponent, AccountError>;
 }
 
@@ -683,15 +683,11 @@ impl AccountComponentExt for AccountComponent {
         source_code: impl ToString,
         assembler: Assembler,
         storage_slots: Vec<StorageSlot>,
-        library_path: LibraryPath,
+        library_path: impl AsRef<str>,
     ) -> Result<Self, AccountError> {
-        let source_manager = Arc::new(DefaultSourceManager::default());
-        let module = Module::parser(ModuleKind::Library)
-            .parse_str(library_path, source_code, &source_manager)
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-
+        let source = NamedSource::new(library_path, source_code.to_string());
         let library = assembler
-            .assemble_library(&[*module])
+            .assemble_library([source])
             .map_err(AccountError::AccountComponentAssemblyError)?;
 
         Self::new(library, storage_slots)

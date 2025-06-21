@@ -7,8 +7,8 @@ use miden_objects::{
     block::BlockNumber,
     crypto::rand::FeltRng,
     note::{
-        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteExecutionMode, NoteInputs,
-        NoteMetadata, NoteRecipient, NoteTag, NoteType,
+        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient,
+        NoteTag, NoteType,
     },
 };
 use utils::build_swap_tag;
@@ -20,7 +20,7 @@ pub mod well_known_note;
 // STANDARDIZED SCRIPTS
 // ================================================================================================
 
-/// Generates a P2ID note - pay to id note.
+/// Generates a P2ID note - Pay-to-ID note.
 ///
 /// This script enables the transfer of assets from the `sender` account to the `target` account
 /// by specifying the target's account ID.
@@ -41,7 +41,7 @@ pub fn create_p2id_note<R: FeltRng>(
     let serial_num = rng.draw_word();
     let recipient = utils::build_p2id_recipient(target, serial_num)?;
 
-    let tag = NoteTag::from_account_id(target, NoteExecutionMode::Local)?;
+    let tag = NoteTag::from_account_id(target);
 
     let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
     let vault = NoteAssets::new(assets)?;
@@ -49,9 +49,9 @@ pub fn create_p2id_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
-/// Generates a P2IDR note - pay to id with recall after a certain block height.
+/// Generates a P2IDR note - Pay-to-ID note with recall after a certain block height.
 ///
-/// This script enables the transfer of assets from the sender `sender` account to the `target`
+/// This script enables the transfer of assets from the `sender` account to the `target`
 /// account by specifying the target's account ID. Additionally it adds the possibility for the
 /// sender to reclaiming the assets if the note has not been consumed by the target within the
 /// specified timeframe.
@@ -74,12 +74,51 @@ pub fn create_p2idr_note<R: FeltRng>(
 
     let inputs =
         NoteInputs::new(vec![target.suffix(), target.prefix().as_felt(), recall_height.into()])?;
-    let tag = NoteTag::from_account_id(target, NoteExecutionMode::Local)?;
+    let tag = NoteTag::from_account_id(target);
     let serial_num = rng.draw_word();
 
     let vault = NoteAssets::new(assets)?;
     let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+    Ok(Note::new(vault, metadata, recipient))
+}
+
+/// Generates a P2IDE note - Pay-to-ID note with optional recall after a certain block height and
+/// optional timelock.
+///
+/// This script enables the transfer of assets from the `sender` account to the `target`
+/// account by specifying the target's account ID. It adds the optional possibility for the
+/// sender to reclaiming the assets if the note has not been consumed by the target within the
+/// specified timeframe and the optional possibility to add a timelock to the asset transfer.
+///
+/// The passed-in `rng` is used to generate a serial number for the note. The returned note's tag
+/// is set to the target's account ID.
+///
+/// # Errors
+/// Returns an error if deserialization or compilation of the `P2ID` script fails.
+pub fn create_p2ide_note<R: FeltRng>(
+    sender: AccountId,
+    target: AccountId,
+    assets: Vec<Asset>,
+    recall_height: Option<BlockNumber>,
+    timelock_height: Option<BlockNumber>,
+    note_type: NoteType,
+    aux: Felt,
+    rng: &mut R,
+) -> Result<Note, NoteError> {
+    let serial_num = rng.draw_word();
+    let recipient =
+        utils::build_p2ide_recipient(target, recall_height, timelock_height, serial_num)?;
+    let tag = NoteTag::from_account_id(target);
+
+    let execution_hint = match timelock_height {
+        Some(height) => NoteExecutionHint::after_block(height)?,
+        None => NoteExecutionHint::always(),
+    };
+
+    let metadata = NoteMetadata::new(sender, note_type, tag, execution_hint, aux)?;
+    let vault = NoteAssets::new(assets)?;
+
     Ok(Note::new(vault, metadata, recipient))
 }
 
@@ -107,7 +146,7 @@ pub fn create_swap_note<R: FeltRng>(
 
     let payback_recipient_word: Word = payback_recipient.digest().into();
     let requested_asset_word: Word = requested_asset.into();
-    let payback_tag = NoteTag::from_account_id(sender, NoteExecutionMode::Local)?;
+    let payback_tag = NoteTag::from_account_id(sender);
 
     let inputs = NoteInputs::new(vec![
         payback_recipient_word[0],
@@ -118,7 +157,7 @@ pub fn create_swap_note<R: FeltRng>(
         requested_asset_word[1],
         requested_asset_word[2],
         requested_asset_word[3],
-        payback_tag.inner().into(),
+        payback_tag.as_u32().into(),
         NoteExecutionHint::always().into(),
     ])?;
 

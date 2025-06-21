@@ -1,10 +1,9 @@
-use alloc::{sync::Arc, vec::Vec};
-
-use assembly::{Assembler, Library, LibraryPath, ast::Module};
+use alloc::vec::Vec;
 
 use crate::{
     AccountError,
     account::{AccountComponent, StorageSlot},
+    assembly::{Assembler, Library, diagnostics::NamedSource},
     testing::account_code::MOCK_ACCOUNT_CODE,
 };
 
@@ -36,17 +35,9 @@ impl AccountMockComponent {
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))?;
 
-        let source_manager = Arc::new(assembly::DefaultSourceManager::default());
-        let module = Module::parser(assembly::ast::ModuleKind::Library)
-            .parse_str(
-                LibraryPath::new("test::account").unwrap(),
-                MOCK_ACCOUNT_CODE,
-                &source_manager,
-            )
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-
+        let source = NamedSource::new("test::account", MOCK_ACCOUNT_CODE);
         let library = assembler
-            .assemble_library(&[*module])
+            .assemble_library([source])
             .map_err(AccountError::AccountComponentAssemblyError)?;
 
         Ok(Self { library, storage_slots })

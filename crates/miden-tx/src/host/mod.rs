@@ -32,6 +32,9 @@ pub use account_procedures::AccountProcedureIndexMap;
 mod note_builder;
 use note_builder::OutputNoteBuilder;
 
+mod script_mast_forest_store;
+pub use script_mast_forest_store::ScriptMastForestStore;
+
 mod tx_progress;
 pub use tx_progress::TransactionProgress;
 
@@ -45,13 +48,17 @@ use crate::{auth::TransactionAuthenticator, errors::TransactionHostError};
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
 /// execution.
-pub struct TransactionHost<A> {
+pub struct TransactionHost<'store, 'auth, A> {
     /// Advice provider which is used to provide non-deterministic inputs to the transaction
     /// runtime.
     adv_provider: A,
 
-    /// MAST store which contains the code required to execute the transaction.
-    mast_store: Arc<dyn MastForestStore>,
+    /// MAST store which contains the code required to execute account code functions.
+    mast_store: &'store dyn MastForestStore,
+
+    /// MAST store which contains the forests of all scripts involved in the transaction. These
+    /// include input note scripts and the transaction script, but not account code.
+    scripts_mast_store: ScriptMastForestStore,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -68,7 +75,7 @@ pub struct TransactionHost<A> {
 
     /// Serves signature generation requests from the transaction runtime for signatures which are
     /// not present in the `generated_signatures` field.
-    authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+    authenticator: Option<&'auth dyn TransactionAuthenticator>,
 
     /// Contains previously generated signatures (as a message |-> signature map) required for
     /// transaction execution.
@@ -83,13 +90,14 @@ pub struct TransactionHost<A> {
     tx_progress: TransactionProgress,
 }
 
-impl<A: AdviceProvider> TransactionHost<A> {
+impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
     pub fn new(
         account: AccountHeader,
         adv_provider: A,
-        mast_store: Arc<dyn MastForestStore>,
-        authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+        mast_store: &'store dyn MastForestStore,
+        scripts_mast_store: ScriptMastForestStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
         mut foreign_account_code_commitments: BTreeSet<Digest>,
     ) -> Result<Self, TransactionHostError> {
         // currently, the executor/prover do not keep track of the code commitment of the native
@@ -102,6 +110,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
         Ok(Self {
             adv_provider,
             mast_store,
+            scripts_mast_store,
             account_delta: AccountDeltaTracker::new(&account),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
@@ -468,7 +477,7 @@ impl<A: AdviceProvider> TransactionHost<A> {
 // HOST IMPLEMENTATION FOR TRANSACTION HOST
 // ================================================================================================
 
-impl<A: AdviceProvider> Host for TransactionHost<A> {
+impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
     type AdviceProvider = A;
 
     fn advice_provider(&self) -> &Self::AdviceProvider {
@@ -480,7 +489,11 @@ impl<A: AdviceProvider> Host for TransactionHost<A> {
     }
 
     fn get_mast_forest(&self, node_digest: &Digest) -> Option<Arc<MastForest>> {
-        self.mast_store.get(node_digest)
+        // Search in the note MAST forest store, otherwise fall back to the user-provided store
+        match self.scripts_mast_store.get(node_digest) {
+            Some(forest) => Some(forest),
+            None => self.mast_store.get(node_digest),
+        }
     }
 
     fn on_event(

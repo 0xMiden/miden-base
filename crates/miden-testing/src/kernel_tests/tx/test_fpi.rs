@@ -556,6 +556,7 @@ fn test_fpi_execute_foreign_procedure() {
         use.std::sys
 
         use.miden::tx
+        use.miden::account
 
         begin
             # get the storage item at index 0
@@ -604,6 +605,9 @@ fn test_fpi_execute_foreign_procedure() {
             # assert the correctness of the obtained value
             push.1.2.3.4 assert_eqw
             # => []
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce
 
             # truncate the stack
             exec.sys::truncate_stack
@@ -795,6 +799,7 @@ fn test_nested_fpi_cyclic_invocation() {
         use.std::sys
 
         use.miden::tx
+        use.miden::account
 
         begin
             # pad the stack for the `execute_foreign_procedure` execution
@@ -816,7 +821,10 @@ fn test_nested_fpi_cyclic_invocation() {
 
             # assert that the resulting value equals 18
             push.18 assert_eq.err="sum should be 18"
-            # => []
+            # => []        
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce
 
             exec.sys::truncate_stack
         end
