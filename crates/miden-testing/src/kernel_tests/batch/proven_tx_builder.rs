@@ -1,10 +1,10 @@
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_crypto::merkle::MerklePath;
 use miden_objects::{
     account::AccountId,
     block::BlockNumber,
+    crypto::merkle::MerklePath,
     note::{Note, NoteInclusionProof, Nullifier},
     transaction::{InputNote, OutputNote, ProvenTransaction, ProvenTransactionBuilder},
     vm::ExecutionProof,

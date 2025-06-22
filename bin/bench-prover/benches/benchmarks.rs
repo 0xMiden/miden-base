@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{hint::black_box, time::Duration};
 
 use bench_prover::{
     bench_functions::{
@@ -6,7 +6,7 @@ use bench_prover::{
     },
     benchmark_names::{BENCH_CONSUME_MULTIPLE_NOTES, BENCH_CONSUME_NOTE_NEW_ACCOUNT, BENCH_GROUP},
 };
-use criterion::{Criterion, SamplingMode, black_box, criterion_group, criterion_main};
+use criterion::{Criterion, SamplingMode, criterion_group, criterion_main};
 
 fn core_benchmarks(c: &mut Criterion) {
     let mut group = c.benchmark_group(BENCH_GROUP);

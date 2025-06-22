@@ -21,16 +21,20 @@ async = ["winter-maybe-async/async"]
 masm-debug = ["miden-lib/with-debug-info"]
 
 [dependencies]
-anyhow = { version = "1.0", default-features = false }
-async-trait = "0.1"
+# Workspace dependencies
 miden-block-prover = { workspace = true, features = ["testing"] }
-miden-crypto = { workspace = true }
 miden-lib = { workspace = true, features = ["testing"] }
 miden-objects = { workspace = true, features = ["testing"] }
 miden-tx = { workspace = true, features = ["testing"] }
-rand_chacha = { version = "0.9", default-features = false }
-rand = { workspace = true }
+
+# Miden dependencies
 vm-processor = { workspace = true }
+
+# External dependencies
+anyhow = { version = "1.0", default-features = false }
+async-trait = "0.1"
+rand = { workspace = true }
+rand_chacha = { version = "0.9", default-features = false }
 winter-maybe-async = { version = "0.12" }
 winterfell = { version = "0.12" }
 

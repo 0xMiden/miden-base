@@ -25,20 +25,23 @@ std = ["assembly/std", "miden-crypto/std", "miden-verifier/std", "vm-core/std", 
 testing = ["dep:winter-rand-utils", "dep:rand", "dep:rand_xoshiro"]
 
 [dependencies]
+# Miden dependencies
 assembly = { workspace = true }
-bech32 = { version = "0.11", default-features = false, features = ["alloc"] }
-log = { version = "0.4", optional = true }
 miden-crypto = { workspace = true }
 miden-verifier = { workspace = true }
-rand = { workspace = true, optional = true }
-rand_xoshiro = { version = "0.7", default-features = false, optional = true }
-semver = { version = "1.0", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"], optional = true }
-toml = { version = "0.8", optional = true }
-thiserror = { workspace = true }
 vm-core = { workspace = true }
 vm-processor = { workspace = true }
 winter-rand-utils = { version = "0.12", optional = true }
+
+# External dependencies
+bech32 = { version = "0.11", default-features = false, features = ["alloc"] }
+log = { version = "0.4", optional = true }
+semver = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"], optional = true }
+rand = { workspace = true, optional = true }
+rand_xoshiro = { version = "0.7", default-features = false, optional = true }
+toml = { version = "0.8", optional = true }
+thiserror = { workspace = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
