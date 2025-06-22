@@ -450,11 +450,9 @@ impl PartialBlockchainError {
 // ================================================================================================
 
 #[derive(Debug, Error)]
-pub enum TransactionParamsError {
+pub enum TransactionScriptError {
     #[error("failed to assemble transaction script:\n{}", PrintDiagnostic::new(.0))]
     AssemblyError(Report),
-    #[error("transaction script argument cannot be provided without transaction script")]
-    ArgWithoutScript,
 }
 
 // TRANSACTION INPUT ERROR

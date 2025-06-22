@@ -30,7 +30,7 @@ use miden_objects::{
         },
         constants::NON_FUNGIBLE_ASSET_DATA_2,
     },
-    transaction::{InputNotes, OutputNote, OutputNotes, TransactionParams},
+    transaction::{InputNotes, OutputNote, OutputNotes, TransactionAdvice},
 };
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
@@ -104,7 +104,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
         account.id(),
         BlockNumber::from(1),
         InputNotes::new(vec![input_note]).unwrap(),
-        TransactionParams::default(),
+        TransactionAdvice::default(),
         source_manager,
     );
 

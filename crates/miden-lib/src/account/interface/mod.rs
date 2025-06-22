@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Digest, TransactionParamsError,
+    Digest, TransactionScriptError,
     account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
     assembly::mast::{MastForest, MastNode, MastNodeId},
     crypto::dsa::rpo_falcon512,
@@ -427,7 +427,7 @@ pub enum AccountInterfaceError {
     #[error("note created by the basic fungible faucet doesn't contain exactly one asset")]
     FaucetNoteWithoutAsset,
     #[error("invalid transaction script")]
-    InvalidTransactionScript(#[source] TransactionParamsError),
+    InvalidTransactionScript(#[source] TransactionScriptError),
     #[error("invalid sender account: {0}")]
     InvalidSenderAccount(AccountId),
     #[error("{} interface does not support the generation of the standard send_note script", interface.name())]

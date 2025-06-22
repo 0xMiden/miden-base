@@ -24,7 +24,7 @@ use miden_objects::{
         storage::prepare_assets,
     },
     transaction::{
-        AccountInputs, OutputNote, TransactionInputs, TransactionParams, TransactionScript,
+        AccountInputs, OutputNote, TransactionAdvice, TransactionInputs, TransactionScript,
     },
     vm::AdviceMap,
 };
@@ -678,29 +678,23 @@ impl TransactionContextBuilder {
             },
         };
 
-        let tx_params = TransactionParams::new(
-            self.tx_script,
-            AdviceMap::default(),
-            self.foreign_account_inputs,
-        )
-        .with_note_args(self.note_args);
+        let tx_advice = TransactionAdvice::new(AdviceMap::default(), self.foreign_account_inputs)
+            .with_note_args(self.note_args);
 
-        let mut tx_params = if tx_params.tx_script().is_some() {
-            tx_params
-                .with_tx_script_arg(self.tx_script_arg)
-                .expect("transaction parameters creation failed")
+        let mut tx_advice = if let Some(tx_script) = self.tx_script {
+            tx_advice.with_tx_script_and_arg(tx_script, self.tx_script_arg)
         } else {
-            tx_params
+            tx_advice
         };
 
-        tx_params.extend_advice_inputs(self.advice_inputs.clone());
-        tx_params.extend_output_note_recipients(self.expected_output_notes.clone());
+        tx_advice.extend_advice_inputs(self.advice_inputs.clone());
+        tx_advice.extend_output_note_recipients(self.expected_output_notes.clone());
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
 
-            for acc_inputs in tx_params.foreign_account_inputs() {
+            for acc_inputs in tx_advice.foreign_account_inputs() {
                 mast_forest_store.insert(acc_inputs.code().mast());
             }
 
@@ -709,7 +703,7 @@ impl TransactionContextBuilder {
 
         TransactionContext {
             expected_output_notes: self.expected_output_notes,
-            tx_params,
+            tx_advice,
             tx_inputs,
             mast_store,
             authenticator: self.authenticator,

@@ -24,7 +24,7 @@ use miden_objects::{
         account_id::{ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER},
         note::NoteBuilder,
     },
-    transaction::{AccountInputs, OutputNote, TransactionParams},
+    transaction::{AccountInputs, OutputNote, TransactionAdvice},
 };
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
@@ -461,14 +461,13 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
         (tx_context.input_notes().get_note(1).note().id(), note_args[0]),
     ]);
 
-    let tx_params = TransactionParams::new(
-        None,
-        tx_context.tx_params().advice_inputs().clone().map,
+    let tx_advice = TransactionAdvice::new(
+        tx_context.tx_advice().advice_inputs().clone().map,
         Vec::<AccountInputs>::new(),
     )
     .with_note_args(note_args_map);
 
-    tx_context.set_tx_params(tx_params);
+    tx_context.set_tx_advice(tx_advice);
     let process = tx_context.execute_code(code)?;
 
     assert_eq!(process.stack.get_word(0), note_args[0]);
