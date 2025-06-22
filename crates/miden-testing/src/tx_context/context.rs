@@ -116,14 +116,10 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_advice = self.tx_advice().clone();
-
-        let authenticator = self
-            .authenticator()
-            .cloned()
-            .map(|auth| Arc::new(auth) as Arc<dyn TransactionAuthenticator>);
+        let authenticator = self.authenticator().map(|x| x as &dyn TransactionAuthenticator);
 
         let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(Arc::new(self), authenticator).with_debug_mode();
+        let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
 
         maybe_await!(tx_executor.execute_transaction(
             account_id,

@@ -38,21 +38,21 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 /// The transaction executor uses dynamic dispatch with trait objects for the [DataStore] and
 /// [TransactionAuthenticator], allowing it to be used with different backend implementations.
 /// At the moment of execution, the [DataStore] is expected to provide all required MAST nodes.
-pub struct TransactionExecutor {
-    data_store: Arc<dyn DataStore>,
-    authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+pub struct TransactionExecutor<'store, 'auth> {
+    data_store: &'store dyn DataStore,
+    authenticator: Option<&'auth dyn TransactionAuthenticator>,
     exec_options: ExecutionOptions,
 }
 
-impl TransactionExecutor {
+impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
     pub fn new(
-        data_store: Arc<dyn DataStore>,
-        authenticator: Option<Arc<dyn TransactionAuthenticator>>,
+        data_store: &'store dyn DataStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
     ) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
@@ -149,11 +149,11 @@ impl TransactionExecutor {
         );
 
         let mut host = TransactionHost::new(
-            tx_inputs.account().into(),
+            &tx_inputs.account().into(),
             advice_recorder,
-            self.data_store.clone(),
+            self.data_store,
             script_mast_store,
-            self.authenticator.clone(),
+            self.authenticator,
             tx_advice.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
@@ -220,11 +220,11 @@ impl TransactionExecutor {
             ScriptMastForestStore::new(tx_advice.tx_script(), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
-            tx_inputs.account().into(),
+            &tx_inputs.account().into(),
             advice_recorder,
-            self.data_store.clone(),
+            self.data_store,
             scripts_mast_store,
-            self.authenticator.clone(),
+            self.authenticator,
             tx_advice.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
@@ -294,11 +294,11 @@ impl TransactionExecutor {
         );
 
         let mut host = TransactionHost::new(
-            tx_inputs.account().into(),
+            &tx_inputs.account().into(),
             advice_provider,
-            self.data_store.clone(),
+            self.data_store,
             scripts_mast_store,
-            self.authenticator.clone(),
+            self.authenticator,
             tx_advice.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
