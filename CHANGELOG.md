@@ -21,6 +21,8 @@
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing.
+- [BREAKING] Move transaction script argument from `TransactionScript` to `TransactionArgs`. (#1426).
+- [BREAKING] Remove transaction inputs from `TransactionScript`, rename `TransactionArgs` to `TransactionAdvice`. (#1426).
 
 ## 0.9.1 (2025-05-30)
 
