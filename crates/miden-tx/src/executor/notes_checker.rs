@@ -19,7 +19,7 @@ use super::{NoteAccountExecution, TransactionExecutor, TransactionExecutorError}
 /// The check is performed using the [NoteConsumptionChecker::check_notes_consumability] procedure.
 /// Essentially runs the transaction to make sure that provided input notes could be consumed by the
 /// account.
-pub struct NoteConsumptionChecker<'a>(&'a TransactionExecutor);
+pub struct NoteConsumptionChecker<'a>(&'a TransactionExecutor<'a, 'a>);
 
 impl<'a> NoteConsumptionChecker<'a> {
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
