@@ -36,12 +36,12 @@ winter-rand-utils = { version = "0.12", optional = true }
 # External dependencies
 bech32 = { version = "0.11", default-features = false, features = ["alloc"] }
 log = { version = "0.4", optional = true }
-semver = { version = "1.0", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"], optional = true }
 rand = { workspace = true, optional = true }
 rand_xoshiro = { version = "0.7", default-features = false, optional = true }
-toml = { version = "0.8", optional = true }
+semver = { version = "1.0", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"], optional = true }
 thiserror = { workspace = true }
+toml = { version = "0.8", optional = true }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3", features = ["wasm_js"] }
