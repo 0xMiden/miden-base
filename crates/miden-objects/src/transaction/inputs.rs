@@ -308,7 +308,7 @@ impl<T: ToInputNoteCommitments> Default for InputNotes<T> {
 }
 
 // SERIALIZATION
-// ================================================================================================
+// ------------------------------------------------------------------------------------------------
 
 impl<T: Serializable> Serializable for InputNotes<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
@@ -328,7 +328,7 @@ impl<T: Deserializable + ToInputNoteCommitments> Deserializable for InputNotes<T
 }
 
 // HELPER FUNCTIONS
-// ================================================================================================
+// ------------------------------------------------------------------------------------------------
 
 fn build_input_note_commitment<T: ToInputNoteCommitments>(notes: &[T]) -> Digest {
     // Note: This implementation must be kept in sync with the kernel's `process_input_notes_data`
@@ -347,6 +347,45 @@ fn build_input_note_commitment<T: ToInputNoteCommitments>(notes: &[T]) -> Digest
         elements.extend_from_slice(empty_word_or_note_commitment);
     }
     Hasher::hash_elements(&elements)
+}
+
+// TESTS
+// ------------------------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod input_notes_tests {
+    use anyhow::Context;
+    use assembly::Assembler;
+    use assert_matches::assert_matches;
+
+    use super::InputNotes;
+    use crate::{
+        TransactionInputError,
+        account::AccountId,
+        testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
+        transaction::InputNote,
+    };
+
+    #[test]
+    fn test_duplicate_input_notes() -> anyhow::Result<()> {
+        let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
+
+        let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
+            .build(&Assembler::default())
+            .context("failed to create mock note")?;
+        let mock_note_nullifier = mock_note.nullifier();
+        let mock_note_clone = mock_note.clone();
+
+        let error = InputNotes::new(vec![
+            InputNote::Unauthenticated { note: mock_note },
+            InputNote::Unauthenticated { note: mock_note_clone },
+        ])
+        .expect_err("input notes creation should fail");
+
+        assert_matches!(error, TransactionInputError::DuplicateInputNote(nullifier) if nullifier == mock_note_nullifier);
+
+        Ok(())
+    }
 }
 
 // INPUT NOTE
@@ -485,7 +524,7 @@ impl Deserializable for InputNote {
     }
 }
 
-// INPUT NOTE
+// SEED VALIDATION
 // ================================================================================================
 
 /// Validates that the provided seed is valid for this account.
@@ -603,7 +642,7 @@ impl Deserializable for AccountInputs {
 }
 
 #[cfg(test)]
-mod tests {
+mod account_inputs_tests {
     use alloc::vec::Vec;
 
     use miden_crypto::merkle::MerklePath;

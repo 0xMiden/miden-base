@@ -159,6 +159,43 @@ fn build_output_notes_commitment(notes: &[OutputNote]) -> Digest {
     Hasher::hash_elements(&elements)
 }
 
+// TESTS
+// ------------------------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod output_notes_tests {
+    use anyhow::Context;
+    use assembly::Assembler;
+    use assert_matches::assert_matches;
+
+    use super::OutputNotes;
+    use crate::{
+        TransactionOutputError,
+        account::AccountId,
+        testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
+        transaction::OutputNote,
+    };
+
+    #[test]
+    fn test_duplicate_input_notes() -> anyhow::Result<()> {
+        let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
+
+        let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
+            .build(&Assembler::default())
+            .context("failed to create mock note")?;
+        let mock_note_id = mock_note.id();
+        let mock_note_clone = mock_note.clone();
+
+        let error =
+            OutputNotes::new(vec![OutputNote::Full(mock_note), OutputNote::Full(mock_note_clone)])
+                .expect_err("input notes creation should fail");
+
+        assert_matches!(error, TransactionOutputError::DuplicateOutputNote(note_id) if note_id == mock_note_id);
+
+        Ok(())
+    }
+}
+
 // OUTPUT NOTE
 // ================================================================================================
 
