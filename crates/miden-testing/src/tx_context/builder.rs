@@ -162,13 +162,16 @@ impl TransactionContextBuilder {
     }
 
     /// Extend the advice inputs with the provided [AdviceInputs] instance.
-    pub fn advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
+    pub fn extend_advice_inputs(mut self, advice_inputs: AdviceInputs) -> Self {
         self.advice_inputs.extend(advice_inputs);
         self
     }
 
     /// Extend the advice inputs map with the provided iterator.
-    pub fn advice_map(mut self, map_entries: impl IntoIterator<Item = (Word, Vec<Felt>)>) -> Self {
+    pub fn extend_advice_map(
+        mut self,
+        map_entries: impl IntoIterator<Item = (Word, Vec<Felt>)>,
+    ) -> Self {
         self.advice_inputs
             .extend_map(map_entries.into_iter().map(|(hash, input)| (hash.into(), input)));
         self
@@ -187,7 +190,7 @@ impl TransactionContextBuilder {
     }
 
     /// Extend the set of used input notes
-    pub fn input_notes(mut self, input_notes: Vec<Note>) -> Self {
+    pub fn extend_input_notes(mut self, input_notes: Vec<Note>) -> Self {
         self.input_notes.extend(input_notes);
         self
     }
@@ -217,7 +220,7 @@ impl TransactionContextBuilder {
     }
 
     /// Defines the expected output notes
-    pub fn expected_notes(mut self, output_notes: Vec<OutputNote>) -> Self {
+    pub fn extend_output_notes(mut self, output_notes: Vec<OutputNote>) -> Self {
         let output_notes = output_notes.into_iter().filter_map(|n| match n {
             OutputNote::Full(note) => Some(note),
             OutputNote::Partial(_) => None,
@@ -481,7 +484,7 @@ impl TransactionContextBuilder {
             fungible_asset_1,
         );
 
-        self.input_notes(vec![input_note1])
+        self.extend_input_notes(vec![input_note1])
     }
 
     /// Adds a set of input notes that output notes in an asset-preserving manner.
@@ -520,7 +523,7 @@ impl TransactionContextBuilder {
             &output_note2,
         );
 
-        self.input_notes(vec![input_note1, input_note2])
+        self.extend_input_notes(vec![input_note1, input_note2])
     }
 
     pub fn with_mock_notes_preserved_with_account_vault_delta(mut self) -> Self {
@@ -562,7 +565,7 @@ impl TransactionContextBuilder {
         let input_note5 = self
             .input_note_transfer(sender, [fungible_asset_1, fungible_asset_3, nonfungible_asset_1]);
 
-        self.input_notes(vec![input_note1, input_note2, input_note5])
+        self.extend_input_notes(vec![input_note1, input_note2, input_note5])
     }
 
     pub fn with_mock_notes_too_many_fungible_input(mut self) -> Self {
@@ -602,7 +605,7 @@ impl TransactionContextBuilder {
         let input_note3 =
             self.input_note_simple(sender, [fungible_asset_2, fungible_asset_3], [2u32.into()]);
 
-        self.input_notes(vec![input_note1, input_note2, input_note3])
+        self.extend_input_notes(vec![input_note1, input_note2, input_note3])
     }
 
     pub fn with_mock_notes_too_many_non_fungible_input(mut self) -> Self {
@@ -642,7 +645,7 @@ impl TransactionContextBuilder {
         );
         let input_note4 = self.input_note_simple(sender, [nonfungible_asset_1], [1u32.into()]);
 
-        self.input_notes(vec![input_note1, input_note2, input_note4])
+        self.extend_input_notes(vec![input_note1, input_note2, input_note4])
     }
 
     /// Builds the [TransactionContext].

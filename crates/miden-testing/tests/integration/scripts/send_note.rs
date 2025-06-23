@@ -50,7 +50,7 @@ fn test_send_note_script_basic_wallet() {
     let _executed_transaction = mock_chain
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
         .tx_script(send_note_transaction_script)
-        .expected_notes(vec![OutputNote::Full(note)])
+        .extend_output_notes(vec![OutputNote::Full(note)])
         .build()
         .execute()
         .unwrap();
@@ -99,7 +99,7 @@ fn test_send_note_script_basic_fungible_faucet() {
     let _executed_transaction = mock_chain
         .build_tx_context(sender_basic_fungible_faucet_account.id(), &[], &[])
         .tx_script(send_note_transaction_script)
-        .expected_notes(vec![OutputNote::Full(note)])
+        .extend_output_notes(vec![OutputNote::Full(note)])
         .build()
         .execute()
         .unwrap();

@@ -18,7 +18,7 @@ use crate::{
 // TRANSACTION ADVICE
 // ================================================================================================
 
-/// Optional transaction parameters.
+/// Optional transaction advice data.
 ///
 /// - Transaction script: a program that is executed in a transaction after all input notes scripts
 ///   have been executed.
@@ -114,12 +114,12 @@ impl TransactionAdvice {
         self.note_args.get(&note_id)
     }
 
-    /// Returns a reference to the params [AdviceInputs].
+    /// Returns a reference to the internal [AdviceInputs].
     pub fn advice_inputs(&self) -> &AdviceInputs {
         &self.advice_inputs
     }
 
-    /// Returns a reference to the foreign account inputs in the transaction params.
+    /// Returns a reference to the foreign account inputs in the transaction advice.
     pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
         &self.foreign_account_inputs
     }
@@ -312,10 +312,10 @@ mod tests {
 
     #[test]
     fn test_tx_advice_serialization() {
-        let params = TransactionAdvice::new(AdviceMap::default(), std::vec::Vec::default());
-        let bytes: std::vec::Vec<u8> = params.to_bytes();
+        let tx_advice = TransactionAdvice::new(AdviceMap::default(), std::vec::Vec::default());
+        let bytes: std::vec::Vec<u8> = tx_advice.to_bytes();
         let decoded = TransactionAdvice::read_from_bytes(&bytes).unwrap();
 
-        assert_eq!(params, decoded);
+        assert_eq!(tx_advice, decoded);
     }
 }

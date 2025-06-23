@@ -630,7 +630,7 @@ pub fn create_account_invalid_seed() {
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
-        .advice_inputs(adv_inputs)
+        .extend_advice_inputs(adv_inputs)
         .build();
 
     let code = "

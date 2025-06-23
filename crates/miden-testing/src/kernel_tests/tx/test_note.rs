@@ -375,7 +375,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
 
     // provide this input note to the transaction context
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .input_notes(vec![input_note])
+        .extend_input_notes(vec![input_note])
         .build();
 
     let tx_code = "
@@ -833,7 +833,7 @@ fn test_public_key_as_note_input() {
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
 
     let tx_context = TransactionContextBuilder::new(target_account)
-        .input_notes(vec![note_with_pub_key])
+        .extend_input_notes(vec![note_with_pub_key])
         .build();
     tx_context.execute().unwrap();
 }

@@ -101,7 +101,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
         TransactionScript::compile(DEFAULT_AUTH_SCRIPT, TransactionKernel::assembler()).unwrap();
 
     let tx_context = TransactionContextBuilder::new(target_account.clone())
-        .input_notes(vec![note])
+        .extend_input_notes(vec![note])
         .tx_script(tx_script_target)
         .authenticator(Some(falcon_auth))
         .build();

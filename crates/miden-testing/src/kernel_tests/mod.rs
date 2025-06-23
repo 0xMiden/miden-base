@@ -724,7 +724,7 @@ fn executed_transaction_output_notes() {
     let tx_context = TransactionContextBuilder::new(executor_account)
         .with_mock_notes_preserved_with_account_vault_delta()
         .tx_script(tx_script)
-        .expected_notes(vec![
+        .extend_output_notes(vec![
             OutputNote::Full(expected_output_note_2.clone()),
             OutputNote::Full(expected_output_note_3.clone()),
         ])
@@ -846,7 +846,7 @@ fn test_tx_script_inputs() {
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
-        .advice_map([(tx_script_input_key, tx_script_input_value.into())])
+        .extend_advice_map([(tx_script_input_key, tx_script_input_value.into())])
         .build();
 
     let executed_transaction = tx_context.execute();
@@ -899,7 +899,7 @@ fn test_tx_script_args() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
-        .advice_inputs(advice_inputs)
+        .extend_advice_inputs(advice_inputs)
         .tx_script_arg(tx_script_arg)
         .build();
 
@@ -1060,7 +1060,7 @@ fn test_check_note_consumability() {
     .unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .input_notes(vec![p2id_note, p2idr_note])
+        .extend_input_notes(vec![p2id_note, p2idr_note])
         .build();
     let source_manager = tx_context.source_manager();
 
@@ -1125,7 +1125,7 @@ fn test_check_note_consumability() {
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
-        .input_notes(vec![failing_note_1, failing_note_2.clone()])
+        .extend_input_notes(vec![failing_note_1, failing_note_2.clone()])
         .build();
     let source_manager = tx_context.source_manager();
 

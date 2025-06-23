@@ -160,7 +160,7 @@ pub fn generate_noop_tx(
 
     let tx_context = chain
         .build_tx_context(input.into(), &[noop_note.id()], &[])
-        .input_notes(vec![noop_note])
+        .extend_input_notes(vec![noop_note])
         .build();
     tx_context.execute().unwrap()
 }
