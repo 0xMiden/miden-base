@@ -14,9 +14,7 @@ use miden_objects::{
     vm::{AdviceMap, StackOutputs},
 };
 pub use vm_processor::MastForestStore;
-use vm_processor::{
-    AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider,
-};
+use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
