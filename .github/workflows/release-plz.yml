@@ -13,6 +13,29 @@ jobs:
 
   # dry-run cargo release
   release-plz-dry-run-release:
+    name: Release-plz release (dry-run)
+    runs-on: ubuntu-latest
+    if: ${{ github.repository_owner == '0xMiden' }}
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+      - name: Run release-plz
+        uses: release-plz/action@v0.5
+        config: .release-plz-dry-run.toml
+        with:
+          command: release --dry-run
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
+
+  # cargo release
+  release-plz-release:
     name: Release-plz release
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == '0xMiden' }}
@@ -28,7 +51,7 @@ jobs:
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
-          command: release --dry-run
+          command: release --dry-run # Remove `--dry-run` once we are confident in the release-plz workflow. Till then, it serves the same purpose as the dry-run above.
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}
