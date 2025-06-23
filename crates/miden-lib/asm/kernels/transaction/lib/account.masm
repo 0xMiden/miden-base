@@ -5,6 +5,7 @@ use.std::mem
 
 use.kernel::account_id
 use.kernel::asset_vault
+use.kernel::asset
 use.kernel::account_delta
 use.kernel::constants
 use.kernel::memory
@@ -760,19 +761,40 @@ export.add_asset_to_vault
     exec.memory::get_acct_vault_root_ptr movdn.4
     # => [ASSET, acct_vault_root_ptr, ASSET]
 
-    # add the asset to the account vault
-    exec.asset_vault::add_asset swapw
-    # => [ASSET, ASSET']
+    exec.asset::is_fungible_asset
+    # => [is_fungible_asset, ASSET, acct_vault_root_ptr, ASSET]
 
-    dupw dup.3 movdn.3
-    # => [ASSET, amount, ASSET, ASSET']
+    # add the asset to the asset vault
+    if.true
+        # validate the fungible asset
+        exec.asset::validate_fungible_asset
+        # => [ASSET, acct_vault_root_ptr, ASSET]
 
-    exec.asset_vault::build_fungible_asset_vault_key
-    # => [ASSET_KEY, amount, ASSET, ASSET']
+        exec.asset_vault::add_fungible_asset
+        # => [ASSET', ASSET]
 
-    # dropw drop
-    exec.account_delta::add_fungible_asset_delta
-    # => [ASSET, ASSET']
+        swapw
+        # => [ASSET, ASSET']
+
+        dupw dup.3 movdn.3
+        # => [ASSET, amount, ASSET, ASSET']
+
+        exec.asset_vault::build_fungible_asset_vault_key
+        # => [ASSET_KEY, amount, ASSET, ASSET']
+
+        exec.account_delta::add_fungible_asset
+        # => [ASSET, ASSET']
+    else
+        # validate the non-fungible asset
+        exec.asset::validate_non_fungible_asset
+        # => [ASSET, acct_vault_root_ptr, ASSET]
+
+        exec.asset_vault::add_non_fungible_asset
+        # => [ASSET', ASSET]
+
+        swapw
+        # => [ASSET, ASSET']
+    end
 
     # emit event to signal that an asset is being added to the account vault
     emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT dropw
@@ -800,9 +822,26 @@ export.remove_asset_from_vault
     exec.memory::get_acct_vault_root_ptr movdn.4
     # => [ASSET, acct_vault_root_ptr]
 
-    # remove the asset from the account vault
-    exec.asset_vault::remove_asset
-    # => [ASSET]
+    exec.asset::is_fungible_asset
+    # => [is_fungible_asset, ASSET, acct_vault_root_ptr]
+
+    # remove the asset from the asset vault
+    if.true
+        exec.asset_vault::remove_fungible_asset
+        # => [ASSET]
+
+        dupw dup.3 movdn.3
+        # => [ASSET, amount, ASSET]
+
+        exec.asset_vault::build_fungible_asset_vault_key
+        # => [ASSET_KEY, amount, ASSET]
+
+        exec.account_delta::remove_fungible_asset
+        # => [ASSET]
+    else
+        exec.asset_vault::remove_non_fungible_asset
+        # => [ASSET]
+    end
 
     # emit event to signal that an asset is being removed from the account vault
     emit.ACCOUNT_VAULT_AFTER_REMOVE_ASSET_EVENT

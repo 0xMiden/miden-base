@@ -334,17 +334,17 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
     .context("failed to compile tx script")
 }
 
-fn default_tx_script() -> TransactionScript {
-    compile_tx_script(
-        "
-  begin
-      # nonce must increase for state changing transactions
-      push.1 exec.incr_nonce
-  end
-  ",
-    )
-    .expect("tx script should be valid")
-}
+// fn default_tx_script() -> TransactionScript {
+//     compile_tx_script(
+//         "
+//   begin
+//       # nonce must increase for state changing transactions
+//       push.1 exec.incr_nonce
+//   end
+//   ",
+//     )
+//     .expect("tx script should be valid")
+// }
 
 fn word(data: [u32; 4]) -> Word {
     Word::from(Digest::from(data))

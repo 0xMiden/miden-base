@@ -32,9 +32,9 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_get_vault_root
     digest!("0x279b4a9e5adca07f01cadf8ecc1303fa3c670003a7a4e69f09506b070c4023df"),
     // account_add_asset
-    digest!("0xa2be189aa283792110060f17d3c885021e47b3da2e918ec06c116d5ea319542d"),
+    digest!("0xe4b5efe8ab5ad2ea05b76e121a1cce505323f70073588917973a296bc44c2776"),
     // account_remove_asset
-    digest!("0x7378a9d10a2b92e9576ae61ebc117603e49c41f5e7f3b6ff4122fab8c7ece3e5"),
+    digest!("0x53d62ae6f67a1d3b11184f4a2c374123ba73fe1e4e56e5a2524d6d7d1d4945aa"),
     // account_get_balance
     digest!("0xc3385953bc66def5211f53a3c44de8facfb4060abbb1c9708859c314268989e8"),
     // account_has_non_fungible_asset
