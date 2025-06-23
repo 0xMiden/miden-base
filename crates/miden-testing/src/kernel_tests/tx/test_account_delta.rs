@@ -4,11 +4,21 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
+    Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
         AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, StorageSlot,
-    }, asset::{Asset, FungibleAsset}, note::{Note, NoteType}, testing::{
-        account_component::AccountMockComponent, account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2},
-    }, transaction::{ExecutedTransaction, TransactionScript}, vm::AdviceMap, Digest, Felt, Hasher, Word, EMPTY_WORD
+    },
+    asset::{Asset, FungibleAsset},
+    note::{Note, NoteType},
+    testing::{
+        account_component::AccountMockComponent,
+        account_id::{
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+        },
+    },
+    transaction::{ExecutedTransaction, TransactionScript},
+    vm::AdviceMap,
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
 
@@ -221,6 +231,8 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         removed_asset0.amount() - added_asset0.amount()
     );
 
+    validate_account_delta(&executed_tx)?;
+
     Ok(())
 }
 
@@ -304,6 +316,7 @@ fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
 
 fn setup_asset_test(assets: impl IntoIterator<Item = Asset>) -> TestSetup {
     let account = AccountBuilder::new([3; 32])
+        .storage_mode(AccountStorageMode::Public)
         .with_component(
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),

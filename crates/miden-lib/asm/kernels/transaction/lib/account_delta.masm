@@ -47,7 +47,8 @@ export.compute_commitment
     hperm
     # => [RATE, RATE, PERM]
 
-    # TODO: Compute vault commitment
+    exec.update_fungible_asset_delta
+    # => [RATE, RATE, PERM]
 
     exec.update_storage_delta
     # => [RATE, RATE, PERM]
@@ -164,6 +165,88 @@ proc.update_value_slot_delta
       dropw dropw drop
       # => [RATE, RATE, PERM]
     end
+    # => [RATE, RATE, PERM]
+end
+
+#! Updates the given delta hasher with the fungible asset vault delta.
+#!
+#! Inputs:  [RATE, RATE, PERM]
+#! Outputs: [RATE, RATE, PERM]
+proc.update_fungible_asset_delta.2
+    exec.memory::get_account_delta_fungible_asset_ptr
+    # => [account_delta_fungible_asset_ptr, RATE, RATE, PERM]
+
+    exec.link_map::iter
+    # => [has_next, iter, RATE, RATE, PERM]
+
+    # enter loop if the link map is not empty
+    while.true
+        exec.link_map::next_key_value
+        # => [KEY, VALUE0, has_next, iter, ...]
+
+        # store has_next
+        movup.8 loc_store.0
+        # => [KEY, VALUE0, iter, ...]
+
+        # store iter
+        movup.8 loc_store.1
+        # => [KEY, VALUE0, ...]
+        # this stack state is equivalent to:
+        # => [[faucet_id_prefix, faucet_id_suffix, 0, 0], [delta_amount_hi, delta_amount_lo, 0, 0], ...]
+
+        swapw
+        # => [[delta_amount_hi, delta_amount_lo, 0, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
+
+        exec.i64_unsigned_abs not
+        # => [is_amount_unsigned, [delta_amount_abs_hi, delta_amount_abs_lo, 0, 0], ...]
+
+        # rename is_amount_unsigned to was_added
+        movdn.3
+        # => [[delta_amount_abs_hi, delta_amount_abs_lo, 0, was_added,  0], ...]
+
+        # reassemble the delta amount to a felt by multiplying the high part with 2^32 and adding the lo part
+        # this is safe to do because the delta amount is in range [-2^63 + 1, 2^63 - 1], so its
+        # absolute value will fit into a felt.
+        mul.0x0100000000 add
+        # => [[delta_amount_abs, 0, was_added, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
+
+        dup neq.0
+        # => [is_delta_amount_non_zero, [delta_amount_abs, 0, was_added, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
+
+        # if delta amount is non-zero, update the hasher
+        if.true
+            movup.5 movdn.2
+            # => [faucet_id_prefix, faucet_id_suffix, delta_amount_lo, 0, 0, delta_amount_hi, 0, 0, ...]
+
+            movup.5 movdn.3
+            # => [[faucet_id_prefix, faucet_id_suffix, delta_amount_lo, delta_amount_hi], 0, 0, 0, 0, ...]
+
+            push.DOMAIN_ASSET swap.8 drop
+            # => [[faucet_id_prefix, faucet_id_suffix, amount_lo, amount_hi], [0, 0, 0, domain], RATE, RATE, PERM
+
+            # drop previous RATE elements
+            swapdw dropw dropw
+            # => [[faucet_id_prefix, faucet_id_suffix, amount_lo, amount_hi], [0, 0, 0, domain], PERM]
+
+            hperm
+            # => [RATE, RATE, PERM]
+        else
+          # discard values loaded from map: KEY, VALUE0
+          dropw dropw
+          # => [RATE, RATE, PERM]
+        end
+        # => [RATE, RATE, PERM]
+
+        # load iter and has_next
+        loc_load.1
+        # => [iter, RATE, RATE, PERM]
+
+        loc_load.0
+        # => [has_next, iter, RATE, RATE, PERM]
+    end
+
+    # drop iter
+    drop
     # => [RATE, RATE, PERM]
 end
 
