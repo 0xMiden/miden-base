@@ -670,6 +670,9 @@ export.get_storage_slot_type
     dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
     # => [index]
 
+    exec.memory::get_acct_storage_slots_section_ptr
+    # => [curr_account_storage_slots_section_ptr, index]
+
     exec.memory::get_storage_slot_type
     # => [slot_type]
 end

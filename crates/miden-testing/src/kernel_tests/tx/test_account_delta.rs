@@ -15,6 +15,9 @@ use crate::MockChain;
 
 // ACCOUNT DELTA TESTS
 // ================================================================================================
+// TODO:
+// - Add test for calling account_delta::compute_commitment from foreign account and make sure it
+//   returns the correct value (i.e. no part of the computation is using foreign account data).
 
 /// Tests that incrementing the nonce by 3 and 2 results in a nonce delta of 5.
 #[test]

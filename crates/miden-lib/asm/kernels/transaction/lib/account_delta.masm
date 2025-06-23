@@ -6,6 +6,8 @@ use.std::crypto::hashes::rpo
 # CONSTANTS
 # =================================================================================================
 
+# The domain of an asset in the delta commitment.
+const.DOMAIN_ASSET=1
 # The domain of a value storage slot in the delta commitment.
 const.DOMAIN_VALUE=2
 # The domain of a map storage slot in the delta commitment.
@@ -14,9 +16,9 @@ const.DOMAIN_MAP=3
 # PROCEDURES
 # =================================================================================================
 
-#! Computes the commitment to the account delta.
+#! Computes the commitment to the native account's delta.
 #!
-#! See the Rust type `AccountDelta::commitment` for a detailed description
+#! See the Rust function `AccountDelta::commitment` for a detailed description
 #! of how it is computed.
 #!
 #! Inputs:  []
@@ -95,7 +97,10 @@ end
 proc.update_slot_delta
     # we use memory::get_storage_slot_type instead of the procedure in account to
     # avoid the assertion overhead
-    dup exec.memory::get_storage_slot_type
+    dup exec.memory::get_native_account_data_ptr
+    # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
+
+    exec.memory::get_storage_slot_type
     # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
 
     # check if type == slot
@@ -156,11 +161,14 @@ proc.update_value_slot_delta
     # => [RATE, RATE, PERM]
 end
 
-#! TODO: Should this be a procedure on the account?
-#!
-#! Gets the initial value of a storage slot from the account storage.
+#! Returns the initial value of a storage slot from the account storage.
 #!
 #! This is the value of the slot at the beginning of the transaction.
+#!
+#! If this this procedure is moved to the account, additional assertions are necessary to make it
+#! safe to use.
+#!
+#! Note: Assumes the index is within bounds.
 #!
 #! Inputs:  [index]
 #! Outputs: [INIT_VALUE]

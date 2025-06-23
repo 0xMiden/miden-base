@@ -158,10 +158,10 @@ const.NUM_ACCT_PROCEDURES_OFFSET=28
 const.ACCT_PROCEDURES_SECTION_OFFSET=32
 const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2084
 const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
-# Offset at which an exact copy of the **native** account's storage slot section starting at
+# Offset at which an exact copy of the account's storage slot section starting at
 # ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
 # slots accessible to enable computing a diff between the initial and current account storage slots
-# for use in the account delta.
+# for use in the account delta. This section is only present for the native account.
 const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4128
 
 # NATIVE ACCOUNT DELTA
@@ -1104,17 +1104,13 @@ end
 
 #! Returns the type of the requested storage slot.
 #!
-#! Inputs:  [index]
+#! Inputs:  [acct_storage_slots_section_ptr, index]
 #! Outputs: [slot_type]
 #!
 #! Where:
 #! - index is the location in memory of the storage slot.
 #! - slot_type is the type of the storage slot.
 export.get_storage_slot_type
-    # get account storage slots section offset
-    exec.get_acct_storage_slots_section_ptr
-    # => [acct_storage_slots_section_offset, index]
-
     # get storage slot type
     swap mul.8 add add.4 mem_load
     # => [slot_type]
@@ -1138,7 +1134,7 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
-export.get_native_account_storage_slots_section_ptr
+export.get_native_account_storage_slots_ptr
     exec.get_native_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
 end
 
@@ -1186,7 +1182,7 @@ end
 #! Outputs: []
 export.mem_copy_initial_storage_slots
   exec.get_native_account_initial_storage_slots_ptr
-  exec.get_native_account_storage_slots_section_ptr
+  exec.get_native_account_storage_slots_ptr
   # => [storage_slots_section_ptr, initial_storage_slots_ptr]
 
   # each slot takes up two words

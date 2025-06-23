@@ -293,9 +293,6 @@ pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
 /// The memory address at which the nonce delta is stored.
 pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
 
-/// The memory address at which the initial storage slot values are stored.
-pub const ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS: MemoryAddress = ACCOUNT_DELTA_NONCE_PTR + 1032;
-
 // NOTES DATA
 // ================================================================================================
 
