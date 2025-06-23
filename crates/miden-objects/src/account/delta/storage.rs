@@ -124,8 +124,8 @@ impl AccountStorageDelta {
             // slot indices, so at most one of them will return `Some` for a given slot index.
             match self.values.get(&slot_idx) {
                 Some(new_value) => {
-                    elements.extend_from_slice(new_value);
                     elements.extend_from_slice(&[DOMAIN_VALUE, slot_idx_felt, ZERO, ZERO]);
+                    elements.extend_from_slice(new_value);
                 },
                 None => {
                     if let Some(map_delta) = self.maps().get(&slot_idx) {

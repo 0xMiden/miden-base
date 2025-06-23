@@ -107,92 +107,122 @@ impl AccountDelta {
     /// - Fungible Asset Delta
     ///   - For each **updated** fungible asset, sorted by its vault key, whose amount delta is
     ///     **non-zero**:
+    ///     - Append `[domain = 1, 0, 0, 0]`.
     ///     - Append `[amount_hi, amount_lo, faucet_id_suffix, faucet_id_prefix]` where amount_hi
     ///       and amount_lo are the u32 limbs of the amount delta by which the fungible asset's
     ///       amount has changed.
-    ///     - Append `[0, 0, 0, domain = 1]`.
     /// - Non-Fungible Asset Delta
     ///   - For each **updated** non-fungible asset, sorted by its vault key:
-    ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
-    ///     - Append `[0, 0, was_added, domain = 1]` where was_added is a boolean flag indicating
+    ///     - Append `[domain = 1, was_added, 0, 0]` where was_added is a boolean flag indicating
     ///       whether the asset was added (1) or removed (0). Note that the domain is the same for
     ///       assets since `faucet_id_prefix` is at the same position in the layout for both assets,
     ///       and, by design, it is never the same for fungible and non-fungible assets.
+    ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
     /// - Storage Slots - for each slot **whose value has changed**, depending on the slot type:
     ///   - Value Slot
-    ///     - Append `[NEW_VALUE, [domain = 2, slot_idx, 0, 0]]` where NEW_VALUE is the new value of
+    ///     - Append `[[domain = 2, slot_idx, 0, 0], NEW_VALUE]` where NEW_VALUE is the new value of
     ///       the slot and slot_idx is the index of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[domain = 3, slot_idx, num_changed_entries, 0, 0, 0, 0, 0]` where slot_idx is
-    ///       the index of the slot and `num_changed_entries` is the number of changed key-value
+    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]` where slot_idx
+    ///       is the index of the slot and `num_changed_entries` is the number of changed key-value
     ///       pairs in the map.
     ///
-    /// ## Rationale
+    /// # Rationale
     ///
-    /// The rationale for this layout is that hashing in the VM should minimize the number of
-    /// branches to be as efficient as possible. For that reason, for example, unchanged slots
-    /// append empty words instead of not appending anything.
-    /// Furthermore, every high-level section in this bullet point list should add an even number of
-    /// words since the hasher operates on double words. In the VM, each permutation is done
-    /// immediately, so adding an uneven number of words in a given step will result in more
-    /// difficulty in the MASM implementation.
+    /// The rationale for this layout is that hashing in the VM should be as efficient as possible
+    /// and minimize the number of branches to be as efficient as possible. Every high-level section
+    /// in this bullet point list should add an even number of words since the hasher operates
+    /// on double words. In the VM, each permutation is done immediately, so adding an uneven
+    /// number of words in a given step will result in more difficulty in the MASM implementation.
     ///
-    /// ## Security
+    /// # Security
     ///
-    /// The general concern with the commitment is that two deltas must never have the same hash.
-    /// E.g. a commitment of a delta that changes a key-value pair in a storage map slot should be
-    /// different from a delta that adds a non-fungible asset to the vault. If not, a delta can be
-    /// crafted in the VM that sets a map key but a malicious actor crafts a delta outside the VM
-    /// that adds a non-fungible asset. To prevent that, a couple of measures are taken.
+    /// The general concern with the commitment is that two deltas must never has to the same
+    /// commitment. E.g. a commitment of a delta that changes a key-value pair in a storage map
+    /// slot should be different from a delta that adds a non-fungible asset to the vault. If
+    /// not, a delta can be crafted in the VM that sets a map key but a malicious actor crafts a
+    /// delta outside the VM that adds a non-fungible asset. To prevent that, a couple of
+    /// measures are taken.
     ///
     /// - Because multiple unrelated contexts (e.g. vaults and storage slots) are hashed in the same
-    ///   hasher, domain separators are used to disambiguate. Essentially, in each permutation a
-    ///   non-user-controllable domain separator is included to avoid ambiguity. The domain
-    ///   separator is always at the same index within the word.
+    ///   hasher, domain separators are used to disambiguate. For each changed asset and each
+    ///   changed slot in the delta, a domain separator is hashed into the delta. The domain
+    ///   separator is always at the same index in each layout so it cannot be maliciously crafted
+    ///   (see below for an example).
     /// - Storage value slots:
-    ///   - the `was_slot_changed` flag disambiguates between a value slot being set to the empty
-    ///     word and not being updated.
+    ///   - since only changed value slots are included in the delta, there is no ambiguity between
+    ///     a value slot being set to EMPTY_WORD and its value being unchanged.
     /// - Storage map slots:
-    ///   - Two storage map slots use the same domain but are further disambiguated due to inclusion
-    ///     of the slot index.
-    ///   - Key and value are hashed in different permutation steps, otherwise an appended `[KEY,
-    ///     VALUE]` hash could be user-crafted to match a storage value slot.
-    /// - Unchanged slots will always have was_slot_changed = false while changed slots will have
-    ///   that value set to true.
+    ///   - Map slots append a header which summarizes the changes in the slot, in particular the
+    ///     slot index and number of changed entries. Since only changed slots are included, the
+    ///     number of changed entries is never zero.
+    ///   - Two distinct storage map slots use the same domain but are disambiguated due to
+    ///     inclusion of the slot index.
     ///
-    /// As an example, consider these two deltas:
+    /// **Domain Separators**
+    ///
+    /// As an example for ambiguity, consider these two deltas:
     ///
     /// ```text
     /// [
-    ///     ID_AND_NONCE,
-    ///     EMPTY_WORD,
-    ///     [/* no fungible asset delta */],
-    ///     [NON_FUNGIBLE_ASSET, [0, 0, was_added = 1, domain = 2]],
-    ///     [/* no storage slots */],
+    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   [/* no fungible asset delta */],
+    ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
+    ///   [/* no storage delta */]
     /// ]
     /// ```
     ///
     /// ```text
     /// [
-    ///     ID_AND_NONCE,
-    ///     EMPTY_WORD,
-    ///     [/* no fungible asset delta */],
-    ///     [/* no non-fungible asset delta */],
-    ///     [NEW_VALUE, [0, slot_idx = 0, was_slot_changed = 1, domain = 3]],
+    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   [/* no fungible asset delta */],
+    ///   [/* no non-fungible asset delta */],
+    ///   [[domain = 2, slot_idx = 1, 0, 0], NEW_VALUE]
     /// ]
     /// ```
     ///
-    /// `NEW_VALUE` is a user-controllable value so it could be crafted to match
-    /// `NON_FUNGIBLE_ASSET`, while `was_added` could also be easily made to match
-    /// `was_slot_changed`. Hence if the domain separators **did not exist**, i.e. were both 0, this
-    /// would allow crafting a delta in the VM by trivially setting a value in storage and then
-    /// maliciously crafting a corresponding delta outside the VM that adds a non-fungible asset to
-    /// the vault and their commitments would match.
+    /// `NEW_VALUE` is user-controllable so it can be crafted to match `NON_FUNGIBLE_ASSET`. The
+    /// domain separator is then the only value that differentiates these two deltas. This shows the
+    /// importance of placing the domain separators in the same index within each word's layout
+    /// which makes it easy to see that this value cannot be crafted to be the same.
     ///
-    /// TODO: Make account ID and storage_header part of delta.
+    /// **Number of Changed Entries**
+    ///
+    /// As an example for ambiguity, consider these two deltas:
+    ///
+    /// ```text
+    /// [
+    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   [/* no fungible asset delta */],
+    ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
+    ///   [/* no storage delta */],
+    /// ]
+    /// ```
+    ///
+    /// ```text
+    /// [
+    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   [/* no fungible asset delta */],
+    ///   [/* no non-fungible asset delta */],
+    ///   [KEY0, VALUE0],
+    ///   [KEY1, VALUE1],
+    ///   [domain = 3, slot_idx = 0, num_changed_entries = 2, 0, 0, 0, 0, 0]
+    /// ]
+    /// ```
+    ///
+    /// The keys and values of map slots are user-controllable so `KEY0` and `VALUE0` can be crafted
+    /// to match `NON_FUNGIBLE_ASSET` and its metadata. Including the header of the map slot
+    /// additionally hashes the map domain into the delta, but if the header was included whenever
+    /// _any_ value in the map has changed, it would cause ambiguity about whether `KEY0`/`VALUE0`
+    /// are in fact map keys or a non-fungible asset (or any asset or a value storage slot more
+    /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
+    /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
+    /// pair have changed and 2) when two key-value pairs have changed.
+    ///
+    /// TODO: Make account ID and num_slots part of delta.
     /// TODO: Currently does not implement the sorting mentioned above. This is easy to add later
     /// but depends on the link map which is currently not in next and this PR should branch off of
     /// next so it can be merged sooner than later.
