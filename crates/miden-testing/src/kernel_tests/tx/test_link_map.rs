@@ -317,6 +317,25 @@ fn multiple_link_maps() -> anyhow::Result<()> {
 }
 
 #[test]
+fn iteration() -> anyhow::Result<()> {
+    const MAP_PTR: u32 = 12;
+
+    let entries = generate_entries(100);
+
+    // Insert all entries into the map.
+    let set_ops = generate_set_ops(MAP_PTR, &entries);
+    // Fetch all values and ensure they are as expected.
+    let get_ops = generate_get_ops(MAP_PTR, &entries);
+
+    let mut test_operations = set_ops;
+    test_operations.extend(get_ops);
+    // Iterate the map.
+    test_operations.push(TestOperation::iter(MAP_PTR));
+
+    execute_link_map_test(test_operations)
+}
+
+#[test]
 fn set_update_get_random_entries() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 12;
 
@@ -429,6 +448,9 @@ enum TestOperation {
         map_ptr: u32,
         key: Digest,
     },
+    Iter {
+        map_ptr: u32,
+    },
 }
 
 impl TestOperation {
@@ -442,6 +464,9 @@ impl TestOperation {
     }
     pub fn get(map_ptr: u32, key: Digest) -> Self {
         Self::Get { map_ptr, key }
+    }
+    pub fn iter(map_ptr: u32) -> Self {
+        Self::Iter { map_ptr }
     }
 }
 
@@ -503,6 +528,56 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 );
 
                 test_code.push_str(&get_code);
+            },
+            TestOperation::Iter { map_ptr } => {
+                let control_map: &mut BTreeMap<_, _> = control_maps.entry(map_ptr).or_default();
+                let mut control_entries: Vec<_> = control_map.iter().collect();
+                control_entries.sort_by(|(key0, _), (key1, _)| {
+                    LinkMap::compare_keys(Word::from(*key0), Word::from(*key1))
+                });
+
+                let mut control_iter = control_entries.into_iter().peekable();
+
+                // Initialize iteration.
+                let mut iter_code = format!(
+                    r#"
+                push.{map_ptr}
+                # => [map_ptr]
+                exec.link_map::iter
+                # => [has_next, iter]
+                push.{control_has_next} assert_eq.err="has_next returned by iter did not match control"
+                # => [iter]
+              "#,
+                    control_has_next = if control_iter.peek().is_some() { ONE } else { ZERO },
+                );
+
+                while let Some((control_key, (control_value0, control_value1))) =
+                    control_iter.next()
+                {
+                    iter_code.push_str(&format!(
+                        r#"
+                      exec.link_map::next
+                      # => [KEY, VALUE0, VALUE1, has_next, next_iter]
+                      push.{control_key} assert_eqw.err="returned key did not match {control_key}"
+                      # => [VALUE0, VALUE1, has_next, next_iter]
+                      push.{control_value0} assert_eqw.err="returned value0 did not match {control_value0}"
+                      # => [VALUE1, has_next, next_iter]
+                      push.{control_value1} assert_eqw.err="returned value0 did not match {control_value1}"
+                      # => [has_next, next_iter]
+                      push.{control_has_next} assert_eq.err="returned has_next did not match {control_has_next}"
+                      # => [next_iter]
+                  "#,
+                        control_key = word_to_masm_push_string(control_key),
+                        control_value0 = word_to_masm_push_string(control_value0),
+                        control_value1 = word_to_masm_push_string(control_value1),
+                        control_has_next = if control_iter.peek().is_some() { ONE } else { ZERO },
+                    ));
+                }
+
+                // Drop the iterator.
+                iter_code.push_str("drop");
+
+                test_code.push_str(&iter_code);
             },
         }
     }

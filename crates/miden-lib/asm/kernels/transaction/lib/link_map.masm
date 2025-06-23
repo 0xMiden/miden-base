@@ -319,6 +319,46 @@ export.is_empty
     mem_load eq.0
 end
 
+#! Initializes an iterator over the provided link map.
+#!
+#! The returned iter can be passed to the link_map::next procedure to advance the iterator.
+#!
+#! Inputs:  [map_ptr]
+#! Outputs: [has_next, iter]
+export.iter
+    exec.get_head
+    # => [entry_ptr]
+
+    # a next item exists if the entry_ptr does not point to 0
+    dup neq.0
+    # => [has_next, entry_ptr]
+end
+
+#! Returns the item at the current iterator entry and advances the iterator to the next entry.
+#!
+#! The iter can be obtained by link_map::iter.
+#!
+#! The returned next_iter can be passed to the next call to link_map::next if has_next = true.
+#!
+#! Once has_next = false has been returned, this procedure should not be called again. The behavior
+#! of calling it again with the returned next_iter is undefined.
+#!
+#! Inputs:  [iter]
+#! Outputs: [KEY, VALUE0, VALUE1, has_next, next_iter]
+export.next
+    dup exec.get_next_entry_ptr
+    # => [next_entry_ptr, entry_ptr]
+
+    dup neq.0
+    # => [has_next, next_entry_ptr, entry_ptr]
+
+    dup.2 exec.get_value
+    # => [VALUE0, VALUE1, has_next, next_entry_ptr, entry_ptr]
+
+    movup.10 exec.get_key
+    # => [KEY, VALUE0, VALUE1, has_next, next_entry_ptr]
+end
+
 # SET HELPERS
 # -------------------------------------------------------------------------------------------------
 
