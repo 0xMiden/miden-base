@@ -103,7 +103,7 @@ impl ExecutedTransaction {
         self.tx_outputs.expiration_block_num
     }
 
-    /// Returns a reference to the transaction params.
+    /// Returns a reference to the transaction advice.
     pub fn tx_advice(&self) -> &TransactionAdvice {
         &self.tx_advice
     }

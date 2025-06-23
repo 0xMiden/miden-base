@@ -446,7 +446,7 @@ impl PartialBlockchainError {
     }
 }
 
-// TRANSACTION PARAMETERS ERROR
+// TRANSACTION SCRIPT ERROR
 // ================================================================================================
 
 #[derive(Debug, Error)]
