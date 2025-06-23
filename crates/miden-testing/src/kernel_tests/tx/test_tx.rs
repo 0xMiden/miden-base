@@ -1,4 +1,4 @@
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, vec::Vec};
 
 use miden_lib::{
     errors::tx_kernel_errors::{
@@ -98,7 +98,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[]).build();
     let source_manager = tx_context.source_manager();
 
-    let tx_executor = TransactionExecutor::new(Arc::new(tx_context), None);
+    let tx_executor = TransactionExecutor::new(&tx_context, None);
     // Try to execute with block_ref==1
     let error = tx_executor.execute_transaction(
         account.id(),

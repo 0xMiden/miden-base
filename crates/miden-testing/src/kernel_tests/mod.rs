@@ -88,9 +88,9 @@ fn transaction_executor_witness() -> miette::Result<()> {
     mast_store.load_account_code(tx_inputs.account().code());
 
     let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
-        tx_inputs.account().into(),
+        &tx_inputs.account().into(),
         mem_advice_provider,
-        mast_store,
+        mast_store.as_ref(),
         scripts_mast_store,
         None,
         BTreeSet::new(),
@@ -804,7 +804,7 @@ fn prove_witness_and_verify() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let notes = tx_context.tx_inputs().input_notes().clone();
     let tx_args = tx_context.tx_args().clone();
-    let executor = TransactionExecutor::new(Arc::new(tx_context), None);
+    let executor = TransactionExecutor::new(&tx_context, None);
     let executed_transaction = executor
         .execute_transaction(account_id, block_ref, notes, tx_args, Arc::clone(&source_manager))
         .unwrap();
@@ -1076,7 +1076,7 @@ fn test_execute_program() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let advice_inputs = tx_context.tx_args().advice_inputs().clone();
 
-    let executor = TransactionExecutor::new(Arc::new(tx_context), None);
+    let executor = TransactionExecutor::new(&tx_context, None);
 
     let stack_outputs = executor
         .execute_tx_view_script(
@@ -1128,8 +1128,7 @@ fn test_check_note_consumability() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor =
-        TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
+    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -1155,8 +1154,7 @@ fn test_check_note_consumability() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor =
-        TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
+    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -1197,8 +1195,7 @@ fn test_check_note_consumability() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor =
-        TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
+    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
