@@ -142,27 +142,19 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 #[test]
 fn fungible_asset_delta() -> anyhow::Result<()> {
     let original_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 300)?;
-    // let original_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
-    // 200)?; let original_asset2 =
-    // FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
+    let original_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 200)?;
+    let original_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
 
     let added_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 100)?;
     let added_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
     let added_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 200)?;
 
-    // let removed_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 200)?;
-    // let removed_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
-    // 100)?; let removed_asset2 =
-    // FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
+    let removed_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 200)?;
+    let removed_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
+    let removed_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
 
-    let TestSetup { mut mock_chain, account_id } = setup_asset_test(
-        [
-            original_asset0,
-            // original_asset1,
-            // original_asset2
-        ]
-        .map(Asset::from),
-    );
+    let TestSetup { mut mock_chain, account_id } =
+        setup_asset_test([original_asset0, original_asset1, original_asset2].map(Asset::from));
 
     let mut added_notes = vec![];
     for added_asset in [added_asset0, added_asset1, added_asset2] {
@@ -178,23 +170,55 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     }
     mock_chain.prove_next_block();
 
+    let tx_script = compile_tx_script(format!(
+        "
+    begin
+        push.{asset0} exec.create_note_with_asset
+        # => []
+        push.{asset1} exec.create_note_with_asset
+        # => []
+        push.{asset2} exec.create_note_with_asset
+        # => []
+
+        # nonce must increase for state changing transactions
+        push.1 exec.incr_nonce
+    end
+    ",
+        asset0 = word_to_masm_push_string(&removed_asset0.into()),
+        asset1 = word_to_masm_push_string(&removed_asset1.into()),
+        asset2 = word_to_masm_push_string(&removed_asset2.into()),
+    ))?;
+
     let executed_tx = mock_chain
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])
-        .tx_script(default_tx_script())
+        .tx_script(tx_script)
         .build()
         .execute()
         .context("failed to execute transaction")?;
 
-    let mut vault_delta = executed_tx
+    let mut added_assets = executed_tx
         .account_delta()
         .vault()
         .added_assets()
         .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
+    let mut removed_assets = executed_tx
+        .account_delta()
+        .vault()
+        .removed_assets()
+        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_fungible().amount()))
+        .collect::<BTreeMap<_, _>>();
+
+    assert_eq!(added_assets.len(), 1);
+    assert_eq!(removed_assets.len(), 1);
 
     assert_eq!(
-        vault_delta.remove(&Digest::from(added_asset0.vault_key())).unwrap(),
-        added_asset0.amount()
+        added_assets.remove(&Digest::from(added_asset2.vault_key())).unwrap(),
+        added_asset2.amount() - removed_asset2.amount()
+    );
+    assert_eq!(
+        removed_assets.remove(&Digest::from(added_asset0.vault_key())).unwrap(),
+        removed_asset0.amount() - added_asset0.amount()
     );
 
     Ok(())
@@ -345,12 +369,56 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       #! Outputs: []
       proc.set_item
           repeat.11 push.0 movdn.5 end
-
           # => [index, VALUE, pad(11)]
 
           call.account::set_item
           # => [OLD_VALUE, pad(12)]
 
+          dropw dropw dropw dropw
+      end
+
+      #! Inputs:  [ASSET]
+      #! Outputs: []
+      proc.create_note_with_asset
+          push.0.1.2.3           # recipient
+          push.1                 # note_execution_hint
+          push.2                 # note_type private
+          push.0                 # aux
+          push.0xC0000000        # tag
+          # => [tag, aux, note_type, execution_hint, RECIPIENT, ASSET]
+
+          exec.create_note
+          # => [note_idx, ASSET]
+
+          movdn.4
+          # => [ASSET, note_idx]
+
+          exec.move_asset_to_note
+          # => []
+      end
+
+      #! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
+      #! Outputs: [note_idx]
+      proc.create_note
+          repeat.8 push.0 movdn.8 end
+          # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+          call.account::create_note
+          # => [note_idx, pad(15)]
+
+          repeat.15 swap drop end
+          # => [note_idx]
+      end
+
+      #! Inputs:  [ASSET, note_idx]
+      #! Outputs: []
+      proc.move_asset_to_note
+          repeat.11 push.0 movdn.5 end
+          # => [ASSET, note_idx, pad(11)]
+
+          call.account::move_asset_to_note
+
+          # return values are unused
           dropw dropw dropw dropw
       end
 ";
