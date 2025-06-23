@@ -1,0 +1,8 @@
+[workspace]
+changelog_update = false # For now we have our own changelog.
+
+# `cargo-semver` breaks because of the `async` feature (by default it runs with `--all-features`).
+# We will either remove the feature (as discussed) or need to add an ability to release-plz to pass flags to `cargo-semver`.
+[[package]]
+name = "miden-testing"
+semver_check = false
