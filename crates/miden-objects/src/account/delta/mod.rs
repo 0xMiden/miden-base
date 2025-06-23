@@ -4,10 +4,7 @@ use super::{
     Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
     Word, ZERO,
 };
-use crate::{
-    AccountDeltaError, Digest, EMPTY_WORD, Hasher,
-    account::{AccountId, AccountStorageHeader},
-};
+use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -102,9 +99,9 @@ impl AccountDelta {
     ///
     /// The delta is a sequential hash over a vector of field elements which starts out empty and
     /// is appended to in the following way. Whenever sorting is expected, it is that of a link map
-    /// key. The WORD layout is in stack-order, i.e. as it would appear on the MASM stack.
+    /// key. The WORD layout is in memory-order.
     ///
-    /// - Append `[account_id_prefix, account_id_suffix, 0, nonce_delta, 0, 0, 0, 0]`, where
+    /// - Append `[0, 0, 0, 0, nonce_delta, 0, account_id_suffix, account_id_prefix]`, where
     ///   account_id_{prefix,suffix} are the prefix and suffix felts of the native account id and
     ///   nonce_delta is the value by which the nonce was incremented.
     /// - Fungible Asset Delta
@@ -116,24 +113,22 @@ impl AccountDelta {
     ///     - Append `[0, 0, 0, domain = 1]`.
     /// - Non-Fungible Asset Delta
     ///   - For each **updated** non-fungible asset, sorted by its vault key:
-    ///     - Append the ASSET word.
-    ///     - Append `[0, 0, was_added, domain = 2]` where was_added is a boolean flag indicating
-    ///       whether the asset was added (1) or removed (0).
-    /// - Storage Slots - for each slot, **changed or not**, depending on the slot type:
+    ///     - Append `[hash0, hash1, hash2, faucet_id_prefix]`, i.e. the non-fungible asset.
+    ///     - Append `[0, 0, was_added, domain = 1]` where was_added is a boolean flag indicating
+    ///       whether the asset was added (1) or removed (0). Note that the domain is the same for
+    ///       assets since `faucet_id_prefix` is at the same position in the layout for both assets,
+    ///       and, by design, it is never the same for fungible and non-fungible assets.
+    /// - Storage Slots - for each slot **whose value has changed**, depending on the slot type:
     ///   - Value Slot
-    ///     - Append `[NEW_VALUE, [0, slot_idx, was_slot_changed, domain = 3]]` where NEW_VALUE is
-    ///       the new value of the slot, or EMPTY_WORD if it wasn't changed. slot_idx is the index
-    ///       of the slot and was_slot_changed is a boolean flag indicating whether the slot was
-    ///       changed or not.
+    ///     - Append `[NEW_VALUE, [domain = 2, slot_idx, 0, 0]]` where NEW_VALUE is the new value of
+    ///       the slot and slot_idx is the index of the slot.
     ///   - Map Slot
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
-    ///       - Append `[KEY, 0, slot_idx, 0, domain = 4]`.
-    ///       - Append `[NEW_VALUE, 0, slot_idx, 0, domain = 4]`, where slot_idx is the index of the
-    ///         slot.
-    ///     - Append `[0, 0, 0, 0, 0, slot_idx, was_slot_changed, domain = 4]`.
-    ///   - Note that unchanged slots implicitly append an empty word plus the slot idx,
-    ///     was_slot_changed = false and the respective domain of the slot.
+    ///       - Append `[KEY, NEW_VALUE]`.
+    ///     - Append `[domain = 3, slot_idx, num_changed_entries, 0, 0, 0, 0, 0]` where slot_idx is
+    ///       the index of the slot and `num_changed_entries` is the number of changed key-value
+    ///       pairs in the map.
     ///
     /// ## Rationale
     ///
@@ -201,11 +196,7 @@ impl AccountDelta {
     /// TODO: Currently does not implement the sorting mentioned above. This is easy to add later
     /// but depends on the link map which is currently not in next and this PR should branch off of
     /// next so it can be merged sooner than later.
-    pub fn commitment(
-        &self,
-        account_id: AccountId,
-        storage_header: &AccountStorageHeader,
-    ) -> Digest {
+    pub fn commitment(&self, account_id: AccountId, num_slots: u8) -> Digest {
         // Minor optimization: At least 24 elements are always added.
         let mut elements = Vec::with_capacity(24);
 
@@ -222,7 +213,7 @@ impl AccountDelta {
         self.vault.append_delta_elements(&mut elements);
 
         // Storage Delta
-        self.storage.append_delta_elements(&mut elements, storage_header);
+        self.storage.append_delta_elements(&mut elements, num_slots);
 
         debug_assert!(
             elements.len() % (2 * crate::WORD_SIZE) == 0,
@@ -418,15 +409,14 @@ fn validate_nonce(
 #[cfg(test)]
 mod tests {
 
-    use vm_core::{EMPTY_WORD, Felt, FieldElement, utils::Serializable};
+    use vm_core::{Felt, FieldElement, utils::Serializable};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::{
         ONE, ZERO,
         account::{
-            Account, AccountCode, AccountId, AccountStorage, AccountStorageHeader,
-            AccountStorageMode, AccountType, StorageMapDelta, StorageSlotType,
-            delta::AccountUpdateDetails,
+            Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
+            StorageMapDelta, delta::AccountUpdateDetails,
         },
         asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
         testing::account_id::{
@@ -540,6 +530,7 @@ mod tests {
     #[test]
     fn account_delta_commitment() {
         let account_id: AccountId = ACCOUNT_ID_PRIVATE_SENDER.try_into().unwrap();
+        let num_slots: u8 = 5;
 
         let storage_delta = AccountStorageDelta::from_iters(
             [1],
@@ -552,13 +543,6 @@ mod tests {
                 ),
             )],
         );
-
-        let storage_header = AccountStorageHeader::new(vec![
-            (StorageSlotType::Value, EMPTY_WORD),
-            (StorageSlotType::Value, EMPTY_WORD),
-            (StorageSlotType::Value, EMPTY_WORD),
-            (StorageSlotType::Map, EMPTY_WORD),
-        ]);
 
         let non_fungible: Asset = NonFungibleAsset::new(
             &NonFungibleAssetDetails::new(
@@ -586,6 +570,6 @@ mod tests {
 
         let account_delta = AccountDelta::new(storage_delta, vault_delta, Some(ONE)).unwrap();
 
-        let _ = account_delta.commitment(account_id, &storage_header);
+        let _ = account_delta.commitment(account_id, num_slots);
     }
 }

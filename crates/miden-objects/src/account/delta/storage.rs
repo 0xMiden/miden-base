@@ -9,8 +9,8 @@ use super::{
     Word,
 };
 use crate::{
-    Digest, EMPTY_WORD, Felt, ONE, ZERO,
-    account::{AccountStorage, AccountStorageHeader, StorageMap, StorageSlot, StorageSlotType},
+    Digest, EMPTY_WORD, Felt, ZERO,
+    account::{AccountStorage, StorageMap, StorageSlot},
 };
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -112,58 +112,44 @@ impl AccountStorageDelta {
     /// Appends the storage slots delta to the given `elements` from which the delta commitment will
     /// be computed.
     ///
-    /// TODO: Make storage_header part of this struct.
-    pub(super) fn append_delta_elements(
-        &self,
-        elements: &mut Vec<Felt>,
-        storage_header: &AccountStorageHeader,
-    ) {
-        const DOMAIN_VALUE: Felt = Felt::new(3);
-        const DOMAIN_MAP: Felt = Felt::new(4);
+    /// TODO: Make num_slots part of this struct.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>, num_slots: u8) {
+        const DOMAIN_VALUE: Felt = Felt::new(2);
+        const DOMAIN_MAP: Felt = Felt::new(3);
 
-        // TODO: Make num_slots return a u8.
-        for slot_idx in 0..storage_header.num_slots() as u8 {
+        for slot_idx in 0..num_slots {
             let slot_idx_felt = Felt::from(slot_idx);
 
-            match storage_header.slot(slot_idx as usize).expect("index should be in bounds").0 {
-                StorageSlotType::Value => {
-                    let (was_slot_changed, new_value) = match self.values().get(&slot_idx) {
-                        Some(new_slot_value) => (true, *new_slot_value),
-                        None => (false, EMPTY_WORD),
-                    };
-
-                    let was_slot_changed = if was_slot_changed { ONE } else { ZERO };
-                    elements.extend_from_slice(&[
-                        DOMAIN_VALUE,
-                        was_slot_changed,
-                        slot_idx_felt,
-                        ZERO,
-                    ]);
-                    elements.extend_from_slice(&new_value);
+            // The storage delta ensures that the value slots and map slots do not have overlapping
+            // slot indices, so at most one of them will return `Some` for a given slot index.
+            match self.values.get(&slot_idx) {
+                Some(new_value) => {
+                    elements.extend_from_slice(new_value);
+                    elements.extend_from_slice(&[DOMAIN_VALUE, slot_idx_felt, ZERO, ZERO]);
                 },
-                StorageSlotType::Map => {
-                    let was_slot_changed = if let Some(map_delta) = self.maps().get(&slot_idx) {
-                        for (key, value) in map_delta.leaves() {
-                            elements.extend_from_slice(&[DOMAIN_MAP, ZERO, slot_idx_felt, ZERO]);
-                            elements.extend_from_slice(key.as_elements());
+                None => {
+                    if let Some(map_delta) = self.maps().get(&slot_idx) {
+                        if map_delta.is_empty() {
+                            continue;
+                        }
 
-                            elements.extend_from_slice(&[DOMAIN_MAP, ZERO, slot_idx_felt, ZERO]);
+                        for (key, value) in map_delta.leaves() {
+                            elements.extend_from_slice(key.as_elements());
                             elements.extend_from_slice(value);
                         }
 
-                        !map_delta.is_empty()
-                    } else {
-                        false
-                    };
+                        let num_changed_entries = Felt::try_from(map_delta.num_entries()).expect(
+                            "number of changed entries should not exceed max representable felt",
+                        );
 
-                    let was_slot_changed = if was_slot_changed { ONE } else { ZERO };
-                    elements.extend_from_slice(&[
-                        DOMAIN_MAP,
-                        was_slot_changed,
-                        slot_idx_felt,
-                        ZERO,
-                    ]);
-                    elements.extend_from_slice(&EMPTY_WORD);
+                        elements.extend_from_slice(&[
+                            DOMAIN_MAP,
+                            slot_idx_felt,
+                            num_changed_entries,
+                            ZERO,
+                        ]);
+                        elements.extend_from_slice(&EMPTY_WORD);
+                    }
                 },
             }
         }
@@ -282,6 +268,11 @@ impl StorageMapDelta {
     /// Creates a new storage map delta from the provided leaves.
     pub fn new(map: BTreeMap<Digest, Word>) -> Self {
         Self(map)
+    }
+
+    /// Returns the number of changed entries in this map delta.
+    pub fn num_entries(&self) -> usize {
+        self.0.len()
     }
 
     /// Returns a reference to the updated leaves in this storage map delta.
