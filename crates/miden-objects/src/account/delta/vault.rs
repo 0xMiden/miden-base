@@ -8,11 +8,16 @@ use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{
+    Felt, ONE, Word, ZERO,
     account::{AccountId, AccountType},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
 };
+
 // ACCOUNT VAULT DELTA
 // ================================================================================================
+
+/// The domain for the assets in the delta commitment.
+const DOMAIN_ASSET: Felt = Felt::new(1);
 
 /// [AccountVaultDelta] stores the difference between the initial and final account vault states.
 ///
@@ -144,6 +149,13 @@ impl AccountVaultDelta {
             .chain(self.non_fungible.filter_by_action(NonFungibleDeltaAction::Remove).map(|key| {
                 Asset::NonFungible(unsafe { NonFungibleAsset::new_unchecked(key.into()) })
             }))
+    }
+
+    /// Appends the vault delta to the given `elements` from which the delta commitment will be
+    /// computed.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
+        self.fungible().append_delta_elements(elements);
+        self.non_fungible().append_delta_elements(elements);
     }
 }
 
@@ -319,6 +331,24 @@ impl FungibleAssetDelta {
 
         Ok(())
     }
+
+    /// Appends the fungible asset vault delta to the given `elements` from which the delta
+    /// commitment will be computed.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
+        for (faucet_id, amount_delta) in self.iter() {
+            let amount_delta = *amount_delta as u64;
+            let amount_hi = (amount_delta / (1 << 32)) as u32;
+            let amount_lo = (amount_delta % (1 << 32)) as u32;
+
+            elements.extend_from_slice(&[DOMAIN_ASSET, ZERO, ZERO, ZERO]);
+            elements.extend_from_slice(&[
+                Felt::from(amount_hi),
+                Felt::from(amount_lo),
+                faucet_id.suffix(),
+                faucet_id.prefix().as_felt(),
+            ]);
+        }
+    }
 }
 
 impl Serializable for FungibleAssetDelta {
@@ -450,6 +480,20 @@ impl NonFungibleAssetDelta {
             .iter()
             .filter(move |&(_, cur_action)| cur_action == &action)
             .map(|(key, _)| *key)
+    }
+
+    /// Appends the non-fungible asset vault delta to the given `elements` from which the delta
+    /// commitment will be computed.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
+        for (asset, action) in self.iter() {
+            let action_felt = match action {
+                NonFungibleDeltaAction::Remove => ZERO,
+                NonFungibleDeltaAction::Add => ONE,
+            };
+
+            elements.extend_from_slice(&[DOMAIN_ASSET, action_felt, ZERO, ZERO]);
+            elements.extend_from_slice(&Word::from(*asset));
+        }
     }
 }
 

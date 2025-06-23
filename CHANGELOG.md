@@ -24,7 +24,7 @@
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
-- [BREAKING] Implement in-kernel account delta tracking (#1404).
+- [BREAKING] Implement in-kernel account delta tracking (#1471, #1404).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
