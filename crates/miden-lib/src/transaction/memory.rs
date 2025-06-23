@@ -42,7 +42,8 @@ pub type StorageSlot = u8;
 // | Padding           | 2_080 (520)                           | 2_083 (520)                         |                                     |
 // | Num storage slots | 2_084 (521)                           | 2_087 (521)                         |                                     |
 // | Storage slot info | 2_088 (522)                           | 4_127 (1031)                        | 255 slots max, 8 elements each      |
-// | Padding           | 4_128 (1032)                          | 8_191 (2047)                        |                                     |
+// | Initial slot info | 4_128 (1032)                          | 6_167 (1541)                        | Only present on the native account  |
+// | Padding           | 6_168 (1541)                          | 8_191 (2047)                        |                                     |
 
 // Relative layout of the native account's delta.
 //
@@ -57,7 +58,6 @@ pub type StorageSlot = u8;
 // | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
 // | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
 // | Storage Map Delta Ptrs       | 12 (3)                       | 1031 (257)                 | Max 255 storage map deltas          |
-// | Initial Storage Slots        | 1032 (258)                   | 3071 (767)                 | Max 255 slots, 8 elements each      |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------

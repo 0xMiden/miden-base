@@ -158,6 +158,11 @@ const.NUM_ACCT_PROCEDURES_OFFSET=28
 const.ACCT_PROCEDURES_SECTION_OFFSET=32
 const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2084
 const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
+# Offset at which an exact copy of the **native** account's storage slot section starting at
+# ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
+# slots accessible to enable computing a diff between the initial and current account storage slots
+# for use in the account delta.
+const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4128
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
@@ -165,12 +170,6 @@ const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 # The pointer at which the delta of the nonce is stored.
 # Layout: [nonce_delta, 0, 0, 0]
 const.ACCOUNT_DELTA_NONCE_PTR=532480
-
-# Exact copy of the account's storage slot section starting at ACCT_STORAGE_SLOTS_SECTION_OFFSET.
-# This keeps the initial values of the account storage slots to enable computing a diff
-# between the initial and current account storage **value** slots.
-# This is only used for **value** slots and the map type slots are unused.
-const.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS=ACCOUNT_DELTA_NONCE_PTR+1032
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -1132,19 +1131,29 @@ export.get_acct_storage_slots_section_ptr
     exec.get_current_account_data_ptr push.ACCT_STORAGE_SLOTS_SECTION_OFFSET add
 end
 
-### ACCOUNT DELTA #################################################
-
-#! Returns the memory pointer to the initial account storage slots.
+#! Returns the memory pointer to the native account's storage slots section.
 #!
 #! Inputs:  []
-#! Outputs: [account_delta_initial_storage_slots_ptr]
+#! Outputs: [storage_slots_section_ptr]
 #!
 #! Where:
-#! - account_delta_initial_storage_slots_ptr is the memory pointer to the initial account storage
-#!   slots section.
-export.get_account_delta_initial_storage_slots_ptr
-  push.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS
+#! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
+export.get_native_account_storage_slots_section_ptr
+    exec.get_native_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
 end
+
+#! Returns the memory pointer to the initial storage slots of the native account.
+#!
+#! Inputs:  []
+#! Outputs: [account_initial_storage_slots_ptr]
+#!
+#! Where:
+#! - account_initial_storage_slots_ptr is the memory pointer to the initial storage slot values.
+export.get_native_account_initial_storage_slots_ptr
+  exec.get_native_account_data_ptr add.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET
+end
+
+### ACCOUNT DELTA #################################################
 
 #! Increments the delta of the account's nonce.
 #!
@@ -1176,7 +1185,8 @@ end
 #! Inputs:  []
 #! Outputs: []
 export.mem_copy_initial_storage_slots
-  push.ACCOUNT_DELTA_INITIAL_STORAGE_SLOTS exec.get_acct_storage_slots_section_ptr
+  exec.get_native_account_initial_storage_slots_ptr
+  exec.get_native_account_storage_slots_section_ptr
   # => [storage_slots_section_ptr, initial_storage_slots_ptr]
 
   # each slot takes up two words

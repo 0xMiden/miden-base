@@ -172,7 +172,7 @@ end
 #! Outputs: [INIT_VALUE]
 proc.get_item_initial
     # get account storage slots section offset
-    exec.memory::get_account_delta_initial_storage_slots_ptr
+    exec.memory::get_native_account_initial_storage_slots_ptr
     # => [account_delta_initial_storage_slots_ptr, index]
 
     # get the item from storage
