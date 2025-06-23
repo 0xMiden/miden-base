@@ -4,12 +4,13 @@ use anyhow::Context;
 use miden_crypto::{EMPTY_WORD, Word};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest,
-    account::{AccountBuilder, AccountId, StorageSlot},
+    Digest, Felt, Hasher,
+    account::{Account, AccountBuilder, AccountDelta, AccountHeader, AccountId, StorageSlot},
     testing::account_component::AccountMockComponent,
-    transaction::TransactionScript,
+    transaction::{ExecutedTransaction, TransactionScript},
+    vm::AdviceMap,
 };
-use miden_tx::utils::word_to_masm_push_string;
+use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
 
 use crate::MockChain;
 
@@ -45,7 +46,9 @@ fn delta_nonce() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute transaction")?;
 
-    assert_eq!(executed_tx.account_delta().nonce(), Some(miden_objects::Felt::new(5)));
+    assert_eq!(executed_tx.account_delta().nonce(), Some(Felt::new(5)));
+
+    validate_account_delta(&executed_tx).context("failed to validate delta")?;
 
     Ok(())
 }
@@ -126,6 +129,61 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     // Note that slot 2 is absent because its value hasn't changed.
     assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
+
+    validate_account_delta(&executed_tx).context("failed to validate delta")?;
+
+    Ok(())
+}
+
+/// Validates that the given host-computed account delta has the same commitment as the in-kernel
+/// computed account delta.
+///
+/// TODO: This will eventually be done in `build_executed_transaction`.
+fn validate_account_delta(
+    executed_tx: &ExecutedTransaction,
+) -> Result<(), TransactionExecutorError> {
+    let account_delta: &AccountDelta = executed_tx.account_delta();
+    let initial_account: &Account = executed_tx.initial_account();
+    let advice_map: &AdviceMap = &executed_tx.advice_witness().map;
+    let final_account_header: &AccountHeader = executed_tx.final_account();
+
+    let host_delta_commitment =
+        account_delta.commitment(initial_account.id(), initial_account.storage().num_slots());
+    let account_update_commitment =
+        Hasher::merge(&[final_account_header.commitment(), host_delta_commitment]);
+
+    let account_update_data = advice_map.get(&account_update_commitment).ok_or_else(|| {
+        TransactionExecutorError::AccountUpdateCommitment(
+            "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map",
+        )
+    })?;
+
+    if account_update_data.len() != 8 {
+        return Err(TransactionExecutorError::AccountUpdateCommitment(
+            "expected account update commitment advice map entry to contain exactly 8 elements",
+        ));
+    }
+
+    // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
+    // is fine.
+    // TODO: The final account commitment will eventually be taken from here once the account update
+    // commitment becomes a transaction output, but for now it is unused.
+    let _final_account_commitment = Digest::from(
+        <[Felt; 4]>::try_from(&account_update_data[0..4])
+            .expect("we should have sliced off exactly four elements"),
+    );
+    let account_delta_commitment = Digest::from(
+        <[Felt; 4]>::try_from(&account_update_data[4..8])
+            .expect("we should have sliced off exactly four elements"),
+    );
+
+    if account_delta_commitment != host_delta_commitment {
+        return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
+            // TODO: Update once in kernel commitment is read from tx outputs.
+            in_kernel_commitment: Digest::from(EMPTY_WORD),
+            host_commitment: host_delta_commitment,
+        });
+    }
 
     Ok(())
 }

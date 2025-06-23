@@ -97,7 +97,7 @@ end
 proc.update_slot_delta
     # we use memory::get_storage_slot_type instead of the procedure in account to
     # avoid the assertion overhead
-    dup exec.memory::get_native_account_data_ptr
+    dup exec.memory::get_native_account_storage_slots_ptr
     # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
 
     exec.memory::get_storage_slot_type
