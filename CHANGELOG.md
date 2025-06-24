@@ -26,6 +26,7 @@
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
 - [BREAKING] Move transaction script argument from `TransactionScript` to `TransactionArgs`. (#1426).
 - [BREAKING] Remove transaction inputs from `TransactionScript`, rename `TransactionArgs` to `TransactionAdvice`. (#1426).
+- [BREAKING] Implement account delta commitment (#1471).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
