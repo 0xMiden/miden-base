@@ -713,7 +713,7 @@ export.get_auth_procedure_ptr
     # => [index]
 
     # get procedure pointer
-    exec.memory::get_acct_procedures_section_ptr add.4
+    exec.memory::get_acct_procedures_section_ptr
     # => [proc_ptr]
 end
 
