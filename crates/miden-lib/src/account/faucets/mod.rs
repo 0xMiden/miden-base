@@ -206,7 +206,7 @@ pub fn create_basic_fungible_faucet(
     let (account, account_seed) = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(account_storage_mode)
-        .with_component(auth_component)
+        .with_auth_component(auth_component)
         .with_component(BasicFungibleFaucet::new(symbol, decimals, max_supply)?)
         .build()
         .map_err(FungibleFaucetError::AccountError)?;
@@ -311,7 +311,7 @@ mod tests {
                 BasicFungibleFaucet::new(token_symbol, 10, Felt::new(100))
                     .expect("failed to create a fungible faucet component"),
             )
-            .with_component(RpoFalcon512::new(mock_public_key))
+            .with_auth_component(RpoFalcon512::new(mock_public_key))
             .build_existing()
             .expect("failed to create wallet account");
 
@@ -324,7 +324,7 @@ mod tests {
         // invalid account: basic fungible faucet component is missing
         let invalid_faucet_account = AccountBuilder::new(mock_seed)
             .account_type(AccountType::FungibleFaucet)
-            .with_component(RpoFalcon512::new(mock_public_key))
+            .with_auth_component(RpoFalcon512::new(mock_public_key))
             .build_existing()
             .expect("failed to create wallet account");
 

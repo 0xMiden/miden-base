@@ -31,6 +31,11 @@ use crate::{
     transaction::TransactionKernel,
 };
 
+fn get_mock_auth_component() -> RpoFalcon512 {
+    let mock_public_key = PublicKey::new([ZERO, ONE, Felt::new(2), Felt::new(3)]);
+    RpoFalcon512::new(mock_public_key)
+}
+
 // DEFAULT NOTES
 // ================================================================================================
 
@@ -38,6 +43,7 @@ use crate::{
 fn test_basic_wallet_default_notes() {
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
         .with_assets(vec![FungibleAsset::mock(20)])
         .build_existing()
@@ -49,6 +55,7 @@ fn test_basic_wallet_default_notes() {
         Digest::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
     let faucet_account = AccountBuilder::new(mock_seed)
         .account_type(AccountType::FungibleFaucet)
+        .with_auth_component(get_mock_auth_component())
         .with_component(
             BasicFungibleFaucet::new(
                 TokenSymbol::new("POL").expect("invalid token symbol"),
@@ -147,6 +154,7 @@ fn test_custom_account_default_note() {
 
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(account_component.clone())
         .build_existing()
         .unwrap();
@@ -207,6 +215,7 @@ fn test_custom_account_default_note() {
 fn test_basic_wallet_custom_notes() {
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
         .with_assets(vec![FungibleAsset::mock(20)])
         .build_existing()
@@ -298,6 +307,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         Digest::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
     let faucet_account = AccountBuilder::new(mock_seed)
         .account_type(AccountType::FungibleFaucet)
+        .with_auth_component(get_mock_auth_component())
         .with_component(
             BasicFungibleFaucet::new(
                 TokenSymbol::new("POL").expect("invalid token symbol"),
@@ -417,6 +427,7 @@ fn test_custom_account_custom_notes() {
 
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(account_component.clone())
         .build_existing()
         .unwrap();
@@ -424,6 +435,7 @@ fn test_custom_account_custom_notes() {
 
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
         .with_assets(vec![FungibleAsset::mock(20)])
         .build_existing()
@@ -532,20 +544,18 @@ fn test_custom_account_multiple_components_custom_notes() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_public_key = PublicKey::new([ZERO, ONE, Felt::new(2), Felt::new(3)]);
-    let rpo_component = RpoFalcon512::new(mock_public_key);
-
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(custom_component.clone())
         .with_component(BasicWallet)
-        .with_component(rpo_component)
         .build_existing()
         .unwrap();
     let target_account_interface = AccountInterface::from(&target_account);
 
     let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
         .with_assets(vec![FungibleAsset::mock(20)])
         .build_existing()
