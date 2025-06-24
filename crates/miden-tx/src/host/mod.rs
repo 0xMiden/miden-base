@@ -27,7 +27,7 @@ mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
 mod link_map;
-pub use link_map::{Entry, EntryMetadata, LinkMap};
+pub use link_map::{Entry, EntryMetadata, LinkMap, LinkMapKey};
 
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
