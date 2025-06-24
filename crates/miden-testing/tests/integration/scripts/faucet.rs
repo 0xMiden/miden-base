@@ -2,7 +2,7 @@ extern crate alloc;
 
 use miden_lib::{
     errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
-    transaction::TransactionKernel,
+    transaction::{TransactionKernel, memory::FAUCET_STORAGE_DATA_SLOT},
 };
 use miden_objects::{
     Felt,
@@ -163,14 +163,17 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() {
 
     let fungible_asset = FungibleAsset::new(faucet.account().id(), 100).unwrap();
 
-    // The Fungible Faucet component is added as the first component, so it's storage slot offset
-    // will be 1. Check that max_supply at the word's index 0 is 200. The remainder of the word
-    // is initialized with the metadata of the faucet which we don't need to check.
-    assert_eq!(faucet.account().storage().get_item(1).unwrap()[0], Felt::new(200));
+    // The Fungible Faucet component is added as the second component after auth, so it's storage
+    // slot offset will be 2. Check that max_supply at the word's index 0 is 200. The remainder of
+    // the word is initialized with the metadata of the faucet which we don't need to check.
+    assert_eq!(faucet.account().storage().get_item(2).unwrap()[0], Felt::new(200));
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
-    assert_eq!(faucet.account().storage().get_item(0).unwrap()[3], Felt::new(100));
+    assert_eq!(
+        faucet.account().storage().get_item(FAUCET_STORAGE_DATA_SLOT).unwrap()[3],
+        Felt::new(100)
+    );
 
     // need to create a note with the fungible asset to be burned
     let note_script = "
