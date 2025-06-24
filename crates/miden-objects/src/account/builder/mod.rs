@@ -40,7 +40,7 @@ pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]
     assets: Vec<crate::asset::Asset>,
     components: Vec<AccountComponent>,
-    auth_components: Option<AccountComponent>,
+    auth_component: Option<AccountComponent>,
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     init_seed: [u8; 32],
@@ -57,7 +57,7 @@ impl AccountBuilder {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
             components: vec![],
-            auth_components: None,
+            auth_component: None,
             init_seed,
             account_type: AccountType::RegularAccountUpdatableCode,
             storage_mode: AccountStorageMode::Private,
@@ -92,11 +92,21 @@ impl AccountBuilder {
         self
     }
 
-    /// Adds a designated [`AccountComponent`] to the builder.
+    /// Adds a designated authentication [`AccountComponent`] to the builder.
     ///
     /// This component will be placed at index 0 of the account procedures list.
     pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
-        self.auth_components = Some(account_component.into());
+        let component = account_component.into();
+
+        // Validate that the component has exactly one procedure
+        let procedure_count = component
+            .library()
+            .module_infos()
+            .map(|module| module.procedures().count())
+            .sum::<usize>();
+        assert_eq!(procedure_count, 1, "Auth component must have exactly one procedure");
+
+        self.auth_component = Some(component);
         self
     }
 
@@ -111,7 +121,7 @@ impl AccountBuilder {
         let vault = AssetVault::default();
 
         let auth_component = self
-            .auth_components
+            .auth_component
             .clone()
             .ok_or(AccountError::BuildError("auth component must be set".into(), None))?;
 
