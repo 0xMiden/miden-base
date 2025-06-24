@@ -1,6 +1,6 @@
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
+use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
@@ -51,7 +51,11 @@ impl TransactionContext {
     /// which is loaded with the procedures exposed by the transaction kernel, and also individual
     /// kernel functions (not normally exposed).
     ///
+    /// To improve the error message quality, convert the returned [`ExecutionError`] into a
+    /// [`Report`](miden_objects::assembly::diagnostics::Report).
+    ///
     /// # Errors
+    ///
     /// Returns an error if the assembly or execution of the provided code fails.
     pub fn execute_code_with_assembler(
         &self,
@@ -68,9 +72,13 @@ impl TransactionContext {
         let test_lib = TransactionKernel::kernel_as_library();
 
         let source_manager = assembler.source_manager();
+
+        // Virtual file name should be unique.
+        let virtual_source_file = source_manager.load("_tx_context_code", code.to_owned());
+
         let program = assembler
             .with_debug_mode(true)
-            .assemble_program(code)
+            .assemble_program(virtual_source_file)
             .expect("compilation of the provided code failed");
 
         let mast_store = Rc::new(TransactionMastStore::new());
@@ -108,14 +116,10 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-
-        let authenticator = self
-            .authenticator()
-            .cloned()
-            .map(|auth| Arc::new(auth) as Arc<dyn TransactionAuthenticator>);
+        let authenticator = self.authenticator().map(|x| x as &dyn TransactionAuthenticator);
 
         let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(Arc::new(self), authenticator).with_debug_mode();
+        let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
 
         maybe_await!(tx_executor.execute_transaction(
             account_id,

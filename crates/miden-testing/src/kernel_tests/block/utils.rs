@@ -9,7 +9,9 @@ use miden_objects::{
     batch::ProvenBatch,
     block::BlockNumber,
     note::{Note, NoteId, NoteTag, NoteType},
-    testing::{account_component::AccountMockComponent, note::NoteBuilder},
+    testing::{
+        account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
+    },
     transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
     utils::word_to_masm_push_string,
 };
@@ -63,7 +65,7 @@ pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
     NoteBuilder::new(sender, &mut rng)
         .note_type(NoteType::Private)
         .tag(NoteTag::for_local_use_case(0, 0).unwrap().into())
-        .build(&TransactionKernel::assembler())
+        .build(&TransactionKernel::assembler().with_debug_mode(true))
         .unwrap()
 }
 
@@ -144,11 +146,22 @@ pub fn generate_tx_with_authenticated_notes(
 }
 
 /// Generates a NOOP transaction, i.e. one that doesn't change the state of the account.
+///
+/// To make this transaction non-empty, it consumes one "noop note", which does nothing.
 pub fn generate_noop_tx(
     chain: &mut MockChain,
     input: impl Into<TxContextInput>,
 ) -> ExecutedTransaction {
-    let tx_context = chain.build_tx_context(input, &[], &[]).build();
+    let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
+        .build(&TransactionKernel::assembler())
+        .expect("failed to create the noop note");
+    chain.add_pending_note(OutputNote::Full(noop_note.clone()));
+    chain.prove_next_block();
+
+    let tx_context = chain
+        .build_tx_context(input.into(), &[noop_note.id()], &[])
+        .input_notes(vec![noop_note])
+        .build();
     tx_context.execute().unwrap()
 }
 

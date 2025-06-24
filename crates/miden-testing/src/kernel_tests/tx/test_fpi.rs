@@ -19,7 +19,7 @@ use miden_objects::{
     FieldElement,
     account::{
         Account, AccountBuilder, AccountComponent, AccountProcedureInfo, AccountStorage,
-        PartialAccount, StorageSlot,
+        AccountStorageMode, PartialAccount, StorageSlot,
     },
     testing::{account_component::AccountMockComponent, storage::STORAGE_LEAVES_2},
     transaction::{AccountInputs, TransactionScript},
@@ -88,6 +88,7 @@ fn test_fpi_memory() {
             )
             .unwrap(),
         )
+        .storage_mode(AccountStorageMode::Public)
         .build_existing()
         .unwrap();
 
@@ -348,6 +349,7 @@ fn test_fpi_memory_two_accounts() {
             AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                 .unwrap(),
         )
+        .storage_mode(AccountStorageMode::Public)
         .build_existing()
         .unwrap();
 
@@ -544,6 +546,7 @@ fn test_fpi_execute_foreign_procedure() {
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
         )
+        .storage_mode(AccountStorageMode::Public)
         .build_existing()
         .unwrap();
 
@@ -556,6 +559,7 @@ fn test_fpi_execute_foreign_procedure() {
         use.std::sys
 
         use.miden::tx
+        use.miden::account
 
         begin
             # get the storage item at index 0
@@ -604,6 +608,9 @@ fn test_fpi_execute_foreign_procedure() {
             # assert the correctness of the obtained value
             push.1.2.3.4 assert_eqw
             # => []
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce
 
             # truncate the stack
             exec.sys::truncate_stack
@@ -761,6 +768,7 @@ fn test_nested_fpi_cyclic_invocation() {
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
         )
+        .storage_mode(AccountStorageMode::Public)
         .build_existing()
         .unwrap();
 
@@ -795,6 +803,7 @@ fn test_nested_fpi_cyclic_invocation() {
         use.std::sys
 
         use.miden::tx
+        use.miden::account
 
         begin
             # pad the stack for the `execute_foreign_procedure` execution
@@ -816,7 +825,10 @@ fn test_nested_fpi_cyclic_invocation() {
 
             # assert that the resulting value equals 18
             push.18 assert_eq.err="sum should be 18"
-            # => []
+            # => []        
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce
 
             exec.sys::truncate_stack
         end
@@ -948,6 +960,7 @@ fn test_nested_fpi_stack_overflow() {
                     )
                     .unwrap(),
                 )
+                .storage_mode(AccountStorageMode::Public)
                 .build_existing()
                 .unwrap();
 
@@ -1066,6 +1079,7 @@ fn test_nested_fpi_native_account_invocation() {
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
         )
+        .storage_mode(AccountStorageMode::Public)
         .build_existing()
         .unwrap();
 
@@ -1208,7 +1222,7 @@ fn test_fpi_stale_account() {
     // original unmodified foreign account. This should result in the foreign account's proof to be
     // invalid for this account tree root.
     let tx_context = mock_chain
-        .build_tx_context(native_account.id(), &[], &[])
+        .build_tx_context(native_account, &[], &[])
         .foreign_accounts(vec![overridden_foreign_account_inputs])
         .build();
 

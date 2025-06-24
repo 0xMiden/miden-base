@@ -7,6 +7,7 @@
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
 - Implement map in transaction kernel library (#1396).
+- Add P2IDE standard note (#1421).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 - Add support for workers configuration in the proxy with environment variables (#1412).
@@ -17,6 +18,29 @@
 - Remove doc update checks on CI (#1435).
 - [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
+- [BREAKING] `TransactionHost::new` now expects `&PartialAccount` instead `AccountHeader` (#1452).
+- Load account and input notes advice maps into the advice provider before executing them (#1452).
+- Support private accounts in `MockChain` (#1453).
+- Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
+- [BREAKING] Forbid the execution of the empty transactions (#1459).
+- Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
+- [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
+
+## 0.9.5 (2025-06-20) - `miden-lib` crate only
+
+- Added `symbol()`, `decimals()`, and `max_supply()` accessors to the `TokenSymbol` struct.
+
+## 0.9.4 (2025-06-12)
+
+- Refactor proving service client errors (#1448)
+
+## 0.9.3 (2025-06-12)
+
+- Add TLS support to `miden-proving-service-client` (#1447)
+
+## 0.9.2 (2025-06-10)
+
+- Refreshed Cargo.lock file.
 
 ## 0.9.1 (2025-05-30)
 

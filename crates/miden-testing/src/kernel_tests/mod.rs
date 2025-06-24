@@ -5,10 +5,6 @@ use alloc::{
     vec::Vec,
 };
 
-use ::assembly::{
-    LibraryPath,
-    ast::{Module, ModuleKind},
-};
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
@@ -19,7 +15,7 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::DefaultSourceManager,
+    assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -62,12 +58,13 @@ mod tx;
 // ================================================================================================
 
 #[test]
-fn transaction_executor_witness() {
+fn transaction_executor_witness() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
         .build();
 
-    let executed_transaction = tx_context.execute().unwrap();
+    let source_manager = tx_context.source_manager();
+    let executed_transaction = tx_context.execute().into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
     let tx_args = executed_transaction.tx_args();
@@ -91,9 +88,9 @@ fn transaction_executor_witness() {
     mast_store.load_account_code(tx_inputs.account().code());
 
     let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
-        tx_inputs.account().into(),
+        &tx_inputs.account().into(),
         mem_advice_provider,
-        mast_store,
+        mast_store.as_ref(),
         scripts_mast_store,
         None,
         BTreeSet::new(),
@@ -104,7 +101,7 @@ fn transaction_executor_witness() {
         stack_inputs,
         &mut host,
         Default::default(),
-        Arc::new(DefaultSourceManager::default()),
+        source_manager,
     )
     .unwrap();
 
@@ -122,6 +119,8 @@ fn transaction_executor_witness() {
         tx_outputs.account.commitment()
     );
     assert_eq!(executed_transaction.output_notes(), &tx_outputs.output_notes);
+
+    Ok(())
 }
 
 #[test]
@@ -399,7 +398,7 @@ fn test_empty_delta_nonce_update() {
 }
 
 #[test]
-fn test_send_note_proc() {
+fn test_send_note_proc() -> miette::Result<()> {
     // removed assets
     let removed_asset_1 = FungibleAsset::mock(FUNGIBLE_ASSET_AMOUNT / 2);
     let removed_asset_2 = Asset::Fungible(
@@ -504,7 +503,8 @@ fn test_send_note_proc() {
         // execute the transaction and get the witness
         let executed_transaction = tx_context
             .execute()
-            .unwrap_or_else(|_| panic!("test failed in iteration {idx}"));
+            .into_diagnostic()
+            .wrap_err(format!("test failed in iteration {idx}"))?;
 
         // nonce delta
         // --------------------------------------------------------------------------------------------
@@ -525,6 +525,8 @@ fn test_send_note_proc() {
             executed_transaction.account_delta().vault().removed_assets().count()
         );
     }
+
+    Ok(())
 }
 
 #[test]
@@ -796,7 +798,7 @@ fn prove_witness_and_verify() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let notes = tx_context.tx_inputs().input_notes().clone();
     let tx_args = tx_context.tx_args().clone();
-    let executor = TransactionExecutor::new(Arc::new(tx_context), None);
+    let executor = TransactionExecutor::new(&tx_context, None);
     let executed_transaction = executor
         .execute_transaction(account_id, block_ref, notes, tx_args, Arc::clone(&source_manager))
         .unwrap();
@@ -823,6 +825,8 @@ fn test_tx_script_inputs() {
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
         "
+        use.miden::account
+
         begin
             # push the tx script input key onto the stack
             push.{key}
@@ -832,6 +836,9 @@ fn test_tx_script_inputs() {
 
             # assert that the value is correct
             push.{value} assert_eqw
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
         end
         ",
         key = word_to_masm_push_string(&tx_script_input_key),
@@ -861,6 +868,8 @@ fn test_tx_script_inputs() {
 #[test]
 fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_script_src = r#"
+        use.miden::account
+
         begin
             # => [TX_SCRIPT_ARGS_KEY]
             # `TX_SCRIPT_ARGS_KEY` value, which is located on the stack at the beginning of 
@@ -897,6 +906,9 @@ fn test_tx_script_args() -> anyhow::Result<()> {
             # deeper on the stack, we should assert values one by one using `push.n assert_eq`.
             push.0.1.2.3
             assert_eqw.err="first three values in the transaction args array are incorrect"
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
         end"#;
 
     let tx_script =
@@ -970,31 +982,19 @@ fn transaction_executor_account_code_using_custom_library() {
         push.4 exec.external_module::incr_nonce_by_four
       end";
 
-    let source_manager = Arc::new(DefaultSourceManager::default());
-    let external_library_module = Module::parser(ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("external_library::external_module").unwrap(),
-            EXTERNAL_LIBRARY_CODE,
-            &source_manager,
-        )
-        .unwrap();
+    let external_library_source =
+        NamedSource::new("external_library::external_module", EXTERNAL_LIBRARY_CODE);
     let external_library = TransactionKernel::assembler()
-        .assemble_library([external_library_module])
+        .assemble_library([external_library_source])
         .unwrap();
 
     let mut assembler = TransactionKernel::assembler();
     assembler.add_vendored_library(&external_library).unwrap();
 
-    let account_component_module = Module::parser(ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("account_component::account_module").unwrap(),
-            ACCOUNT_COMPONENT_CODE,
-            &source_manager,
-        )
-        .unwrap();
-
+    let account_component_source =
+        NamedSource::new("account_component::account_module", ACCOUNT_COMPONENT_CODE);
     let account_component_lib =
-        assembler.clone().assemble_library([account_component_module]).unwrap();
+        assembler.clone().assemble_library([account_component_source]).unwrap();
 
     let tx_script_src = "\
           use.account_component::account_module
@@ -1044,16 +1044,10 @@ fn test_execute_program() {
         end
     ";
 
+    let source = NamedSource::new("test::module_1", test_module_source);
     let assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    let test_module = Module::parser(assembly::ast::ModuleKind::Library)
-        .parse_str(
-            LibraryPath::new("test::module_1").unwrap(),
-            test_module_source,
-            &assembler.source_manager(),
-        )
-        .unwrap();
-    let assembler = assembler.with_module(test_module).unwrap();
+    let assembler = assembler.with_module(source).unwrap();
 
     let source = "
     use.test::module_1
@@ -1076,7 +1070,7 @@ fn test_execute_program() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let advice_inputs = tx_context.tx_args().advice_inputs().clone();
 
-    let executor = TransactionExecutor::new(Arc::new(tx_context), None);
+    let executor = TransactionExecutor::new(&tx_context, None);
 
     let stack_outputs = executor
         .execute_tx_view_script(
@@ -1128,8 +1122,7 @@ fn test_check_note_consumability() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor =
-        TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
+    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -1155,8 +1148,7 @@ fn test_check_note_consumability() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor =
-        TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
+    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -1197,8 +1189,7 @@ fn test_check_note_consumability() {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor =
-        TransactionExecutor::new(Arc::new(tx_context), None).with_tracing();
+    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker

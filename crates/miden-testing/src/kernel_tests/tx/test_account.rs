@@ -1,5 +1,5 @@
 use anyhow::Context;
-use assembly::diagnostics::{WrapErr, miette};
+use assembly::diagnostics::{IntoDiagnostic, WrapErr, miette};
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
@@ -15,7 +15,7 @@ use miden_objects::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
-    assembly::Library,
+    assembly::{Library, diagnostics::Report},
     asset::AssetVault,
     testing::{
         account_component::AccountMockComponent,
@@ -40,7 +40,7 @@ use crate::{MockChain, TransactionContextBuilder, assert_execution_error, execut
 // ================================================================================================
 
 #[test]
-pub fn test_get_code() {
+pub fn test_get_code() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
     let code = "
         use.kernel::prologue
@@ -52,7 +52,7 @@ pub fn test_get_code() {
         end
         ";
 
-    let process = &tx_context.execute_code(code).unwrap();
+    let process = &tx_context.execute_code(code).wrap_err("failed to execute code")?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(
@@ -60,13 +60,15 @@ pub fn test_get_code() {
         tx_context.account().code().commitment().as_elements(),
         "obtained code commitment is not equal to the account code commitment",
     );
+
+    Ok(())
 }
 
 // ACCOUNT ID TESTS
 // ================================================================================================
 
 #[test]
-pub fn test_account_type() {
+pub fn test_account_type() -> miette::Result<()> {
     let procedures = vec![
         ("is_fungible_faucet", AccountType::FungibleFaucet),
         ("is_non_fungible_faucet", AccountType::NonFungibleFaucet),
@@ -100,8 +102,7 @@ pub fn test_account_type() {
 
             let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
                 .stack_inputs(StackInputs::new(vec![account_id.prefix().as_felt()]).unwrap())
-                .run(&code)
-                .unwrap();
+                .run(&code)?;
 
             let type_matches = account_id.account_type() == expected_type;
             let expected_result = Felt::from(type_matches);
@@ -120,10 +121,12 @@ pub fn test_account_type() {
 
         assert!(has_type, "missing test for type {:?}", expected_type);
     }
+
+    Ok(())
 }
 
 #[test]
-pub fn test_account_validate_id() -> anyhow::Result<()> {
+pub fn test_account_validate_id() -> miette::Result<()> {
     let test_cases = [
         (ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE, None),
         (ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, None),
@@ -172,21 +175,23 @@ pub fn test_account_validate_id() -> anyhow::Result<()> {
         match (result, expected_error) {
             (Ok(_), None) => (),
             (Ok(_), Some(err)) => {
-                anyhow::bail!("expected error {err} but validation was successful")
+                miette::bail!("expected error {err} but validation was successful")
             },
             (Err(ExecutionError::FailedAssertion { err_code, err_msg, .. }), Some(err)) => {
                 if err_code != err.code() {
-                    anyhow::bail!(
+                    miette::bail!(
                         "actual error \"{}\" (code: {err_code}) did not match expected error {err}",
                         err_msg.as_ref().map(AsRef::as_ref).unwrap_or("<no message>")
                     );
                 }
             },
+            // Construct Reports to get the diagnostics-based error messages.
             (Err(err), None) => {
-                anyhow::bail!("validation is supposed to succeed but error occurred: {}", err)
+                return Err(Report::from(err)
+                    .context("validation is supposed to succeed but error occurred"));
             },
             (Err(err), Some(_)) => {
-                anyhow::bail!("unexpected different error than expected {}", err)
+                return Err(Report::from(err).context("unexpected different error than expected"));
             },
         }
     }
@@ -242,7 +247,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 // ================================================================================================
 
 #[test]
-fn test_get_item() {
+fn test_get_item() -> miette::Result<()> {
     for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
         let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
 
@@ -267,12 +272,14 @@ fn test_get_item() {
             item_value = word_to_masm_push_string(&storage_item.slot.value())
         );
 
-        tx_context.execute_code(&code).unwrap();
+        tx_context.execute_code(&code).wrap_err("failed to execute code")?;
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_get_map_item() {
+fn test_get_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_component(
             AccountMockComponent::new_with_slots(
@@ -312,7 +319,7 @@ fn test_get_map_item() {
                 &code,
                 TransactionKernel::testing_assembler_with_mock_account(),
             )
-            .unwrap();
+            .wrap_err("failed to execute code")?;
         let process_state: ProcessState = process.into();
 
         assert_eq!(
@@ -336,10 +343,12 @@ fn test_get_map_item() {
             "The rest of the stack must be cleared",
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_get_storage_slot_type() {
+fn test_get_storage_slot_type() -> miette::Result<()> {
     for storage_item in [
         AccountStorage::mock_item_0(),
         AccountStorage::mock_item_1(),
@@ -368,7 +377,7 @@ fn test_get_storage_slot_type() {
             item_index = storage_item.index,
         );
 
-        let process = &tx_context.execute_code(&code).unwrap();
+        let process = &tx_context.execute_code(&code).wrap_err("failed to execute code")?;
         let process_state: ProcessState = process.into();
 
         let storage_slot_type = storage_item.slot.slot_type();
@@ -393,10 +402,12 @@ fn test_get_storage_slot_type() {
             "the rest of the stack is empty"
         );
     }
+
+    Ok(())
 }
 
 #[test]
-fn test_set_item() {
+fn test_set_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
 
     let new_storage_item: Word = [Felt::new(91), Felt::new(92), Felt::new(93), Felt::new(94)];
@@ -428,11 +439,13 @@ fn test_set_item() {
         new_storage_item_index = 0,
     );
 
-    tx_context.execute_code(&code).unwrap();
+    tx_context.execute_code(&code).wrap_err("failed to execute code")?;
+
+    Ok(())
 }
 
 #[test]
-fn test_set_map_item() {
+fn test_set_map_item() -> miette::Result<()> {
     let (new_key, new_value) = (
         Digest::new([Felt::new(109), Felt::new(110), Felt::new(111), Felt::new(112)]),
         [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
@@ -486,7 +499,7 @@ fn test_set_map_item() {
             &code,
             TransactionKernel::testing_assembler_with_mock_account(),
         )
-        .unwrap();
+        .wrap_err("failed to execute code")?;
     let process_state: ProcessState = process.into();
 
     let mut new_storage_map = AccountStorage::mock_map();
@@ -502,10 +515,12 @@ fn test_set_map_item() {
         process_state.get_stack_word(1),
         "The original value stored in the map doesn't match the expected value",
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_account_component_storage_offset() {
+fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
     let assembler = TransactionKernel::testing_assembler();
 
@@ -638,7 +653,7 @@ fn test_account_component_storage_offset() {
     let tx_context = TransactionContextBuilder::new(account.clone()).tx_script(tx_script).build();
 
     // execute code in context
-    let tx = tx_context.execute().unwrap();
+    let tx = tx_context.execute().into_diagnostic()?;
     account.apply_delta(tx.account_delta()).unwrap();
 
     // assert that elements have been set at the correct locations in storage
@@ -651,11 +666,21 @@ fn test_account_component_storage_offset() {
         account.storage().get_item(1).unwrap(),
         [Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)].into()
     );
+
+    Ok(())
 }
 
 /// Tests that we can successfully create regular and faucet accounts with empty storage.
 #[test]
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
+    // transaction code which only increases the nonce to make the transaction non-empty
+    let default_tx_code = "
+        use.kernel::account 
+        
+        begin 
+            push.1 exec.account::incr_nonce 
+        end";
+
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
         let mock_chain = MockChain::new();
         let (account, seed) = AccountBuilder::new([5; 32])
@@ -673,7 +698,8 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
             .tx_inputs(tx_inputs)
             .build();
         tx_context
-            .execute()
+            .execute_code(default_tx_code)
+            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
             .context(format!("failed to execute {account_type} account creating tx"))?;
     }
 
@@ -817,7 +843,7 @@ fn test_get_vault_root() {
 // ================================================================================================
 
 #[test]
-fn test_authenticate_procedure() {
+fn test_authenticate_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
     let account_code = AccountCode::from_components(
@@ -867,4 +893,6 @@ fn test_authenticate_procedure() {
             false => assert!(process.is_err(), "An invalid procedure should fail to authenticate"),
         }
     }
+
+    Ok(())
 }
