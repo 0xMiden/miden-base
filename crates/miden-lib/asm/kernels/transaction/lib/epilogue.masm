@@ -16,6 +16,8 @@ const.ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME="total number of as
 
 const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither changed the account state, nor consumed any notes"
 
+const.ERR_EPILOGUE_AUTH_PROCEDURE_FAILED="account authentication procedure failed"
+
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
 
@@ -227,6 +229,26 @@ proc.update_account_storage_commitment
     end
 end
 
+# AUTH PROCEDURE
+# =================================================================================================
+
+#! Executes the auth procedure.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.execute_auth_procedure
+    # get the memory address of the account auth procedure
+    exec.account::get_auth_procedure_ptr
+    # => [auth_procedure_ptr]
+
+    # execute the auth procedure
+    dyncall
+    # => [OUTPUT_3, OUTPUT_2, OUTPUT_1, OUTPUT_0]
+
+    # clean up auth procedure outputs
+    dropw dropw dropw dropw
+end
+
 # TRANSACTION EPILOGUE PROCEDURE
 # =================================================================================================
 
@@ -254,6 +276,10 @@ export.finalize_transaction
 
     # update account storage commitment
     exec.update_account_storage_commitment
+    # => []
+
+    # execute the account authentication procedure
+    exec.execute_auth_procedure
     # => []
 
     # get the initial account commitment

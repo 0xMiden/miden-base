@@ -700,6 +700,23 @@ export.get_procedure_info
     # => [PROC_ROOT, storage_offset, storage_size]
 end
 
+#! Returns the pointer to the account auth procedure.
+#!
+#! Inputs:  []
+#! Outputs: [auth_procedure_ptr]
+#!
+#! Where:
+#! - auth_procedure_ptr is the pointer to the account auth procedure.
+export.get_auth_procedure_ptr
+    # account auth procedure is always at index 0
+    push.0
+    # => [index]
+
+    # get procedure pointer
+    exec.memory::get_acct_procedures_section_ptr add.4
+    # => [proc_ptr]
+end
+
 #! Verifies that the procedure root is part of the account code.
 #!
 #! Inputs:  [PROC_ROOT]
