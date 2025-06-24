@@ -2,7 +2,7 @@ use alloc::{collections::BTreeMap, string::String, vec::Vec};
 
 use anyhow::Context;
 use miden_crypto::{
-    dsa::rpo_falcon512::PublicKey,
+    dsa::rpo_falcon512::SecretKey,
     rand::{FeltRng, RpoRandomCoin},
 };
 use miden_lib::{
@@ -14,7 +14,7 @@ use miden_lib::{
 };
 use miden_objects::{
     Digest, EMPTY_WORD, ONE, WORD_SIZE,
-    account::{AccountBuilder, AccountComponent, AccountId},
+    account::{AccountBuilder, AccountComponent, AccountId, AuthSecretKey},
     assembly::diagnostics::miette,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
@@ -26,7 +26,7 @@ use miden_objects::{
     },
     transaction::{AccountInputs, OutputNote, TransactionArgs},
 };
-use miden_tx::TransactionExecutorError;
+use miden_tx::{TransactionExecutorError, auth::BasicAuthenticator};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{ProcessState, Word};
@@ -791,12 +791,14 @@ pub fn test_timelock() -> anyhow::Result<()> {
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
 #[test]
 fn test_public_key_as_note_input() {
+    let mut rng = ChaCha20Rng::from_seed(Default::default());
+    let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
     // well as the input of the input note
-    let public_key_value: Word = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let public_key = sec_key.public_key();
+    let public_key_value: Word = public_key.into();
 
-    let mock_public_key = PublicKey::new(public_key_value);
-    let rpo_component: AccountComponent = RpoFalcon512::new(mock_public_key).into();
+    let rpo_component: AccountComponent = RpoFalcon512::new(public_key).into();
 
     let mock_seed_1 = Digest::from([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed_1)
@@ -834,8 +836,14 @@ fn test_public_key_as_note_input() {
     );
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
 
+    let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
+        &[(public_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
+        rng,
+    );
+
     let tx_context = TransactionContextBuilder::new(target_account)
         .input_notes(vec![note_with_pub_key])
+        .authenticator(Some(authenticator))
         .build();
     tx_context.execute().unwrap();
 }
