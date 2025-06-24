@@ -20,27 +20,27 @@ pub enum Auth {
 }
 
 impl Auth {
-    /// Converts `self` into its corresponding authentication [`AccountComponent`] and a
-    /// [`BasicAuthenticator`] or `None` when [`Auth::NoAuth`] is passed.
+    /// Converts `self` into its corresponding authentication [`AccountComponent`] and an optional
+    /// [`BasicAuthenticator`]. The component is always returned, but the authenticator is `None`
+    /// when [`Auth::NoAuth`] is passed.
     pub(super) fn build_component(
         &self,
-    ) -> Option<(AccountComponent, BasicAuthenticator<ChaCha20Rng>)> {
+    ) -> (AccountComponent, Option<BasicAuthenticator<ChaCha20Rng>>) {
+        let mut rng = ChaCha20Rng::from_seed(Default::default());
+        let sec_key = SecretKey::with_rng(&mut rng);
+        let pub_key = sec_key.public_key();
+
+        let component = RpoFalcon512::new(pub_key).into();
         match self {
             Auth::BasicAuth => {
-                let mut rng = ChaCha20Rng::from_seed(Default::default());
-                let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = sec_key.public_key();
-
-                let component = RpoFalcon512::new(pub_key).into();
-
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,
                 );
 
-                Some((component, authenticator))
+                (component, Some(authenticator))
             },
-            Auth::NoAuth => None,
+            Auth::NoAuth => (component, None),
         }
     }
 }

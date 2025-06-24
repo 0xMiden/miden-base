@@ -936,13 +936,8 @@ impl MockChain {
             )
             .account_type(AccountType::FungibleFaucet);
 
-        let authenticator = match auth_method.build_component() {
-            Some((auth_component, authenticator)) => {
-                account_builder = account_builder.with_component(auth_component);
-                Some(authenticator)
-            },
-            None => None,
-        };
+        let (auth_component, authenticator) = auth_method.build_component();
+        account_builder = account_builder.with_auth_component(auth_component);
         let mut account = account_builder.build_existing().unwrap();
 
         // The faucet's reserved slot is initialized to an empty word by default.
@@ -978,13 +973,8 @@ impl MockChain {
         mut account_builder: AccountBuilder,
         account_state: AccountState,
     ) -> Account {
-        let authenticator = match auth_method.build_component() {
-            Some((auth_component, authenticator)) => {
-                account_builder = account_builder.with_component(auth_component);
-                Some(authenticator)
-            },
-            None => None,
-        };
+        let (auth_component, authenticator) = auth_method.build_component();
+        account_builder = account_builder.with_auth_component(auth_component);
 
         let (account, seed) = if let AccountState::New = account_state {
             account_builder.build().map(|(account, seed)| (account, Some(seed))).unwrap()
