@@ -144,6 +144,8 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 /// - Asset0 is increased by 100 and decreased by 200 -> Delta: -100.
 /// - Asset1 is increased by 100 and decreased by 100 -> Delta: 0.
 /// - Asset2 is increased by 200 and decreased by 100 -> Delta: 100.
+/// - Asset3 is decreased by [`FungibleAsset::MAX_AMOUNT`] -> Delta: -MAX_AMOUNT.
+/// - Asset4 is increased by [`FungibleAsset::MAX_AMOUNT`] -> Delta: MAX_AMOUNT.
 #[test]
 fn fungible_asset_delta() -> anyhow::Result<()> {
     // Test with random IDs to make sure the ordering in the MASM and Rust implementations
@@ -157,24 +159,34 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     let faucet2: AccountId = AccountIdBuilder::new()
         .account_type(AccountType::FungibleFaucet)
         .build_with_seed(rand::random());
+    let faucet3: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::FungibleFaucet)
+        .build_with_seed(rand::random());
+    let faucet4: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::FungibleFaucet)
+        .build_with_seed(rand::random());
 
     let original_asset0 = FungibleAsset::new(faucet0, 300)?;
     let original_asset1 = FungibleAsset::new(faucet1, 200)?;
     let original_asset2 = FungibleAsset::new(faucet2, 100)?;
+    let original_asset3 = FungibleAsset::new(faucet3, FungibleAsset::MAX_AMOUNT)?;
 
     let added_asset0 = FungibleAsset::new(faucet0, 100)?;
     let added_asset1 = FungibleAsset::new(faucet1, 100)?;
     let added_asset2 = FungibleAsset::new(faucet2, 200)?;
+    let added_asset4 = FungibleAsset::new(faucet4, FungibleAsset::MAX_AMOUNT)?;
 
     let removed_asset0 = FungibleAsset::new(faucet0, 200)?;
     let removed_asset1 = FungibleAsset::new(faucet1, 100)?;
     let removed_asset2 = FungibleAsset::new(faucet2, 100)?;
+    let removed_asset3 = FungibleAsset::new(faucet3, FungibleAsset::MAX_AMOUNT)?;
 
-    let TestSetup { mut mock_chain, account_id } =
-        setup_asset_test([original_asset0, original_asset1, original_asset2].map(Asset::from));
+    let TestSetup { mut mock_chain, account_id } = setup_asset_test(
+        [original_asset0, original_asset1, original_asset2, original_asset3].map(Asset::from),
+    );
 
     let mut added_notes = vec![];
-    for added_asset in [added_asset0, added_asset1, added_asset2] {
+    for added_asset in [added_asset0, added_asset1, added_asset2, added_asset4] {
         let added_note = mock_chain
             .add_pending_p2id_note(
                 account_id,
@@ -196,6 +208,8 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         # => []
         push.{asset2} exec.create_note_with_asset
         # => []
+        push.{asset3} exec.create_note_with_asset
+        # => []
 
         # nonce must increase for state changing transactions
         push.1 exec.incr_nonce
@@ -204,6 +218,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         asset0 = word_to_masm_push_string(&removed_asset0.into()),
         asset1 = word_to_masm_push_string(&removed_asset1.into()),
         asset2 = word_to_masm_push_string(&removed_asset2.into()),
+        asset3 = word_to_masm_push_string(&removed_asset3.into()),
     ))?;
 
     let executed_tx = mock_chain
@@ -226,16 +241,25 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
 
-    assert_eq!(added_assets.len(), 1);
-    assert_eq!(removed_assets.len(), 1);
+    assert_eq!(added_assets.len(), 2);
+    assert_eq!(removed_assets.len(), 2);
 
     assert_eq!(
-        added_assets.remove(&Digest::from(added_asset2.vault_key())).unwrap(),
+        added_assets.remove(&Digest::from(original_asset2.vault_key())).unwrap(),
         added_asset2.amount() - removed_asset2.amount()
     );
     assert_eq!(
-        removed_assets.remove(&Digest::from(added_asset0.vault_key())).unwrap(),
+        added_assets.remove(&Digest::from(added_asset4.vault_key())).unwrap(),
+        added_asset4.amount()
+    );
+
+    assert_eq!(
+        removed_assets.remove(&Digest::from(original_asset0.vault_key())).unwrap(),
         removed_asset0.amount() - added_asset0.amount()
+    );
+    assert_eq!(
+        removed_assets.remove(&Digest::from(original_asset3.vault_key())).unwrap(),
+        removed_asset3.amount()
     );
 
     validate_account_delta(&executed_tx)?;
