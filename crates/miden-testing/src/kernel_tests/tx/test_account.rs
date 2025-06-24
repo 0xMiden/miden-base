@@ -865,11 +865,11 @@ fn test_authenticate_procedure() -> miette::Result<()> {
     .unwrap();
 
     let tc_0: [Felt; 4] =
-        account_code.procedures()[0].mast_root().as_elements().try_into().unwrap();
-    let tc_1: [Felt; 4] =
         account_code.procedures()[1].mast_root().as_elements().try_into().unwrap();
-    let tc_2: [Felt; 4] =
+    let tc_1: [Felt; 4] =
         account_code.procedures()[2].mast_root().as_elements().try_into().unwrap();
+    let tc_2: [Felt; 4] =
+        account_code.procedures()[3].mast_root().as_elements().try_into().unwrap();
 
     let test_cases =
         vec![(tc_0, true), (tc_1, true), (tc_2, true), ([ONE, ZERO, ONE, ZERO], false)];

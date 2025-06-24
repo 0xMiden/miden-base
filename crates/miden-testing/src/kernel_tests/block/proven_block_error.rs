@@ -20,7 +20,7 @@ use super::utils::{
     TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
     generate_tracked_note, setup_chain,
 };
-use crate::{MockChain, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{Auth, MockChain, ProvenTransactionExt, TransactionContextBuilder};
 
 struct WitnessTestSetup {
     stale_block_inputs: BlockInputs,
@@ -255,7 +255,10 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // --------------------------------------------------------------------------------------------
 
     let mut mock_chain = MockChain::new();
+
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let (account, seed) = AccountBuilder::new([5; 32])
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -363,9 +366,11 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
+    let (auth_component, _) = Auth::NoAuth.build_component();
 
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),

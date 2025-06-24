@@ -48,7 +48,7 @@ use vm_processor::{
     utils::{Deserializable, Serializable},
 };
 
-use crate::TransactionContextBuilder;
+use crate::{Auth, TransactionContextBuilder};
 
 mod batch;
 mod block;
@@ -126,7 +126,10 @@ fn transaction_executor_witness() -> miette::Result<()> {
 #[test]
 fn executed_transaction_account_delta_new() {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
+
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -1008,8 +1011,11 @@ fn transaction_executor_account_code_using_custom_library() {
             .unwrap()
             .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
+
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(account_component)
         .build_existing()
         .unwrap();

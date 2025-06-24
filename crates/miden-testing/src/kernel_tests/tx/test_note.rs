@@ -14,7 +14,7 @@ use miden_lib::{
 };
 use miden_objects::{
     Digest, EMPTY_WORD, ONE, WORD_SIZE,
-    account::{AccountBuilder, AccountId},
+    account::{AccountBuilder, AccountComponent, AccountId},
     assembly::diagnostics::miette,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
@@ -796,18 +796,19 @@ fn test_public_key_as_note_input() {
     let public_key_value: Word = [ZERO, ONE, Felt::new(2), Felt::new(3)];
 
     let mock_public_key = PublicKey::new(public_key_value);
-    let rpo_component = RpoFalcon512::new(mock_public_key);
+    let rpo_component: AccountComponent = RpoFalcon512::new(mock_public_key).into();
 
     let mock_seed_1 = Digest::from([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed_1)
+        .with_auth_component(rpo_component.clone())
         .with_component(BasicWallet)
-        .with_component(rpo_component)
         .build_existing()
         .unwrap();
 
     let mock_seed_2 =
         Digest::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed_2)
+        .with_auth_component(rpo_component)
         .with_component(BasicWallet)
         .build_existing()
         .unwrap();
