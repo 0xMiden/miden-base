@@ -28,15 +28,18 @@ const.DOMAIN_MAP=3
 #! - DELTA_COMMITMENT is the commitment to the account delta.
 export.compute_commitment
     # pad capacity element of the hasher
-    padw padw
-    # => [EMPTY_WORD, CAPACITY]
+    padw
+    # => [CAPACITY]
 
     exec.memory::get_account_nonce_delta push.0
-    # => [0, nonce_delta, EMPTY_WORD, CAPACITY]
+    # => [0, nonce_delta, CAPACITY]
 
     exec.memory::get_native_account_id
-    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_delta, EMPTY_WORD, CAPACITY]
-    # => [ID_AND_NONCE, EMPTY_WORD, CAPACITY]
+    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_delta, CAPACITY]
+    # => [ID_AND_NONCE, CAPACITY]
+
+    padw
+    # => [EMPTY_WORD, ID_AND_NONCE, CAPACITY]
 
     hperm
     # => [RATE, RATE, PERM]
