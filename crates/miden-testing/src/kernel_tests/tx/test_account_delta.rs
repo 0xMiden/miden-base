@@ -11,11 +11,15 @@ use miden_objects::{
     },
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
-    testing::{account_component::AccountMockComponent, account_id::AccountIdBuilder},
+    testing::{
+        account_component::AccountMockComponent, account_id::AccountIdBuilder,
+        asset::NonFungibleAssetBuilder,
+    },
     transaction::{ExecutedTransaction, TransactionScript},
     vm::AdviceMap,
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
+use rand::Rng;
 
 use crate::MockChain;
 
@@ -267,6 +271,107 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that adding, removing non-fungible assets results in the correct delta.
+/// - Asset0 is added to the vault -> Delta: Add.
+/// - Asset1 is removed from the vault -> Delta: Remove.
+/// - Asset2 is added and removed -> Delta: No Change.
+/// - Asset3 is removed and added -> Delta: No Change.
+#[test]
+fn non_fungible_asset_delta() -> anyhow::Result<()> {
+    let mut rng = rand::rng();
+    // Test with random IDs to make sure the ordering in the MASM and Rust implementations
+    // matches.
+    let faucet0: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::NonFungibleFaucet)
+        .build_with_seed(rng.random());
+    let faucet1: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::NonFungibleFaucet)
+        .build_with_seed(rng.random());
+    let faucet2: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::NonFungibleFaucet)
+        .build_with_seed(rng.random());
+    let faucet3: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::NonFungibleFaucet)
+        .build_with_seed(rng.random());
+
+    let asset0 = NonFungibleAssetBuilder::new(faucet0.prefix(), &mut rng)?.build()?;
+    let asset1 = NonFungibleAssetBuilder::new(faucet1.prefix(), &mut rng)?.build()?;
+    let asset2 = NonFungibleAssetBuilder::new(faucet2.prefix(), &mut rng)?.build()?;
+    let asset3 = NonFungibleAssetBuilder::new(faucet3.prefix(), &mut rng)?.build()?;
+
+    let TestSetup { mut mock_chain, account_id } =
+        setup_asset_test([asset1, asset3].map(Asset::from));
+
+    let mut added_notes = vec![];
+    for added_asset in [asset0, asset2] {
+        let added_note = mock_chain
+            .add_pending_p2id_note(
+                account_id,
+                account_id,
+                &[Asset::from(added_asset)],
+                NoteType::Public,
+                None,
+            )
+            .context("failed to add note with asset")?;
+        added_notes.push(added_note);
+    }
+    mock_chain.prove_next_block();
+
+    let tx_script = compile_tx_script(format!(
+        "
+    begin
+        push.{asset1} exec.create_note_with_asset
+        # => []
+        push.{asset2} exec.create_note_with_asset
+        # => []
+
+        # remove and re-add asset 3
+        push.{asset3}
+        exec.remove_asset
+        # => [ASSET]
+        exec.add_asset dropw
+        # => []
+
+        # nonce must increase for state changing transactions
+        push.1 exec.incr_nonce
+    end
+    ",
+        asset1 = word_to_masm_push_string(&asset1.into()),
+        asset2 = word_to_masm_push_string(&asset2.into()),
+        asset3 = word_to_masm_push_string(&asset3.into()),
+    ))?;
+
+    let executed_tx = mock_chain
+        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])
+        .tx_script(tx_script)
+        .build()
+        .execute()
+        .context("failed to execute transaction")?;
+
+    let mut added_assets = executed_tx
+        .account_delta()
+        .vault()
+        .added_assets()
+        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_non_fungible()))
+        .collect::<BTreeMap<_, _>>();
+    let mut removed_assets = executed_tx
+        .account_delta()
+        .vault()
+        .removed_assets()
+        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_non_fungible()))
+        .collect::<BTreeMap<_, _>>();
+
+    assert_eq!(added_assets.len(), 1);
+    assert_eq!(removed_assets.len(), 1);
+
+    assert_eq!(added_assets.remove(&Digest::from(asset0.vault_key())).unwrap(), asset0);
+    assert_eq!(removed_assets.remove(&Digest::from(asset1.vault_key())).unwrap(), asset1);
+
+    validate_account_delta(&executed_tx).context("failed to validate delta")?;
+
+    Ok(())
+}
+
 /// Validates that the given host-computed account delta has the same commitment as the in-kernel
 /// computed account delta.
 ///
@@ -452,5 +557,31 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
 
           # return values are unused
           dropw dropw dropw dropw
+      end
+
+      #! Inputs:  [ASSET]
+      #! Outputs: [ASSET']
+      proc.add_asset
+          repeat.12 push.0 movdn.4 end
+          # => [ASSET, pad(12)]
+
+          call.account::add_asset
+          # => [ASSET', pad(12)]
+
+          repeat.12 movup.4 drop end
+          # => [ASSET']
+      end
+
+      #! Inputs:  [ASSET]
+      #! Outputs: [ASSET]
+      proc.remove_asset
+          repeat.12 push.0 movdn.4 end
+          # => [ASSET, pad(12)]
+
+          call.account::remove_asset
+          # => [ASSET, pad(12)]
+
+          repeat.12 movup.4 drop end
+          # => [ASSET]
       end
 ";

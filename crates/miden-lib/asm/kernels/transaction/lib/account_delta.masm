@@ -291,7 +291,15 @@ proc.update_non_fungible_asset_delta.2
 
         # if the asset was added or removed (i.e. if was_added != 0), update the hasher
         if.true
-            movup.4 movdn.6
+            movup.4
+            # => [was_added, ASSET, [0, 0, 0], ...]
+
+            # convert was_added to a boolean
+            # was_added is 1 if the asset was added and 0 - 1 if it was removed
+            eq.1
+            # => [was_added, ASSET, [0, 0, 0], ...]
+
+            movdn.6
             # => [ASSET, [0, 0, was_added, 0], ...]
 
             push.DOMAIN_ASSET swap.8 drop
