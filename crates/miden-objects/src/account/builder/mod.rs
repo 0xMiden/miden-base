@@ -40,6 +40,7 @@ pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]
     assets: Vec<crate::asset::Asset>,
     components: Vec<AccountComponent>,
+    auth_components: Option<AccountComponent>,
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     init_seed: [u8; 32],
@@ -56,6 +57,7 @@ impl AccountBuilder {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
             components: vec![],
+            auth_components: None,
             init_seed,
             account_type: AccountType::RegularAccountUpdatableCode,
             storage_mode: AccountStorageMode::Private,
@@ -90,6 +92,14 @@ impl AccountBuilder {
         self
     }
 
+    /// Adds a designated [`AccountComponent`] to the builder.
+    ///
+    /// This component will be placed at index 0 of the account procedures list.
+    pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
+        self.auth_components = Some(account_component.into());
+        self
+    }
+
     /// Builds the common parts of testing and non-testing code.
     fn build_inner(&self) -> Result<(AssetVault, AccountCode, AccountStorage), AccountError> {
         #[cfg(any(feature = "testing", test))]
@@ -100,15 +110,22 @@ impl AccountBuilder {
         #[cfg(all(not(feature = "testing"), not(test)))]
         let vault = AssetVault::default();
 
-        let (code, storage) =
-            Account::initialize_from_components(self.account_type, &self.components).map_err(
-                |err| {
-                    AccountError::BuildError(
-                        "account components failed to build".into(),
-                        Some(Box::new(err)),
-                    )
-                },
-            )?;
+        let auth_component = self
+            .auth_components
+            .clone()
+            .ok_or(AccountError::BuildError("auth component must be set".into(), None))?;
+
+        // Make sure the auth component is first.
+        let mut components = vec![auth_component];
+        components.extend_from_slice(&self.components);
+
+        let (code, storage) = Account::initialize_from_components(self.account_type, &components)
+            .map_err(|err| {
+            AccountError::BuildError(
+                "account components failed to build".into(),
+                Some(Box::new(err)),
+            )
+        })?;
 
         Ok((vault, code, storage))
     }
