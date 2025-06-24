@@ -23,7 +23,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
     export.::miden::contracts::wallets::basic::receive_asset
     export.::miden::contracts::wallets::basic::create_note
     export.::miden::contracts::wallets::basic::move_asset_to_note
-    export.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
     export.::miden::contracts::faucets::basic_fungible::distribute
 
     ### Note: all account's export procedures below should be only called or dyncall'ed, so it 
