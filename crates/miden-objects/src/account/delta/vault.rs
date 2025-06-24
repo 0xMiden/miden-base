@@ -396,6 +396,9 @@ impl Deserializable for FungibleAssetDelta {
 // ================================================================================================
 
 /// A binary tree map of non-fungible asset changes (addition and removal) in the account vault.
+///
+/// The [`LinkMapKey`] wrapper is necessary to order the assets in the same way as the in-kernel
+/// account delta which uses a link map.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct NonFungibleAssetDelta(BTreeMap<LinkMapKey<NonFungibleAsset>, NonFungibleDeltaAction>);
 
