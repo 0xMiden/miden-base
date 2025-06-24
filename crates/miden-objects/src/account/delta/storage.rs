@@ -140,7 +140,7 @@ impl AccountStorageDelta {
                             continue;
                         }
 
-                        for (key, value) in map_delta.leaves() {
+                        for (key, value) in map_delta.entries() {
                             elements.extend_from_slice(key.as_elements());
                             elements.extend_from_slice(value);
                         }
@@ -282,8 +282,8 @@ impl StorageMapDelta {
         self.0.len()
     }
 
-    /// Returns a reference to the updated leaves in this storage map delta.
-    pub fn leaves(&self) -> &BTreeMap<Digest, Word> {
+    /// Returns a reference to the updated entries in this storage map delta.
+    pub fn entries(&self) -> &BTreeMap<Digest, Word> {
         &self.0
     }
 

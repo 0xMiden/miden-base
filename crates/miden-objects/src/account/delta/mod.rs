@@ -100,7 +100,7 @@ impl AccountDelta {
     /// is appended to in the following way. Whenever sorting is expected, it is that of a link map
     /// key. The WORD layout is in memory-order.
     ///
-    /// - Append `[0, 0, 0, 0, nonce_delta, 0, account_id_suffix, account_id_prefix]`, where
+    /// - Append `[[nonce_delta, 0, account_id_suffix, account_id_prefix], EMPTY_WORD]`, where
     ///   account_id_{prefix,suffix} are the prefix and suffix felts of the native account id and
     ///   nonce_delta is the value by which the nonce was incremented.
     /// - Fungible Asset Delta
@@ -167,7 +167,7 @@ impl AccountDelta {
     ///
     /// ```text
     /// [
-    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [[domain = 1, was_added = 1, 0, 0], NON_FUNGIBLE_ASSET],
     ///   [/* no storage delta */]
@@ -176,7 +176,7 @@ impl AccountDelta {
     ///
     /// ```text
     /// [
-    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///   ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
     ///   [[domain = 2, slot_idx = 1, 0, 0], NEW_VALUE]
@@ -203,7 +203,7 @@ impl AccountDelta {
     ///
     /// ```text
     /// [
-    ///   EMPTY_WORD, ID_AND_NONCE,
+    ///    ID_AND_NONCE, EMPTY_WORD,
     ///   [/* no fungible asset delta */],
     ///   [/* no non-fungible asset delta */],
     ///   [KEY0, VALUE0],
@@ -230,13 +230,13 @@ impl AccountDelta {
         let mut elements = Vec::with_capacity(24);
 
         // ID and Nonce
-        elements.extend_from_slice(&EMPTY_WORD);
         elements.extend_from_slice(&[
             self.nonce.unwrap_or(ZERO),
             ZERO,
             account_id.suffix(),
             account_id.prefix().as_felt(),
         ]);
+        elements.extend_from_slice(&EMPTY_WORD);
 
         // Vault Delta
         self.vault.append_delta_elements(&mut elements);
