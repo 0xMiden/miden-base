@@ -8,7 +8,6 @@
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
 - Implement map in transaction kernel library (#1396).
 - Add P2IDE standard note (#1421).
-- Add P2IDE standard note (#1421).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
 - Add support for workers configuration in the proxy with environment variables (#1412).
