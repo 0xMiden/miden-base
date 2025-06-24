@@ -127,7 +127,7 @@ fn transaction_executor_witness() -> miette::Result<()> {
 fn executed_transaction_account_delta_new() {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(auth_component)
         .with_component(
@@ -1011,7 +1011,7 @@ fn transaction_executor_account_code_using_custom_library() {
             .unwrap()
             .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
 
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())

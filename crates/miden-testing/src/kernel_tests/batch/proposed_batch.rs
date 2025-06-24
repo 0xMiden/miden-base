@@ -58,7 +58,7 @@ fn generate_account(chain: &mut MockChain) -> Account {
         .with_component(
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
-    chain.add_pending_account_from_builder(Auth::NoAuth, account_builder, AccountState::Exists)
+    chain.add_pending_account_from_builder(Auth::Mock, account_builder, AccountState::Exists)
 }
 
 /// Tests that a note created and consumed in the same batch are erased from the input and

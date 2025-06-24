@@ -75,7 +75,7 @@ fn test_fpi_memory() {
     .unwrap()
     .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
@@ -336,7 +336,7 @@ fn test_fpi_memory_two_accounts() {
     .unwrap()
     .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let foreign_account_1 = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component_1)
@@ -541,7 +541,7 @@ fn test_fpi_execute_foreign_procedure() {
     .unwrap()
     .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
@@ -705,7 +705,7 @@ fn test_nested_fpi_cyclic_invocation() {
     .unwrap()
     .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let second_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(auth_component.clone())
         .with_component(second_foreign_account_component)
@@ -907,7 +907,7 @@ fn test_nested_fpi_stack_overflow() {
             .unwrap()
             .with_supports_all_types();
 
-            let (auth_component, _) = Auth::NoAuth.build_component();
+            let (auth_component, _) = Auth::Mock.build_component();
             let last_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
                 .with_auth_component(auth_component.clone())
                 .with_component(last_foreign_account_component)
@@ -1081,7 +1081,7 @@ fn test_nested_fpi_native_account_invocation() {
     .unwrap()
     .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
@@ -1185,7 +1185,7 @@ fn test_fpi_stale_account() {
     .unwrap()
     .with_supports_all_types();
 
-    let (auth_component, _) = Auth::NoAuth.build_component();
+    let (auth_component, _) = Auth::Mock.build_component();
     let mut foreign_account = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)

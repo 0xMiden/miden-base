@@ -19,14 +19,14 @@ pub enum Auth {
     /// for authenticating the account.
     BasicAuth,
 
-    /// Does not create any authentication mechanism for the account.
-    NoAuth,
+    /// Creates a dummy authentication mechanism for the account.
+    Mock,
 }
 
 impl Auth {
     /// Converts `self` into its corresponding authentication [`AccountComponent`] and an optional
     /// [`BasicAuthenticator`]. The component is always returned, but the authenticator is `None`
-    /// when [`Auth::NoAuth`] is passed.
+    /// when [`Auth::Mock`] is passed.
     pub fn build_component(&self) -> (AccountComponent, Option<BasicAuthenticator<ChaCha20Rng>>) {
         match self {
             Auth::BasicAuth => {
@@ -42,7 +42,7 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::NoAuth => (NoAuthComponent.into(), None),
+            Auth::Mock => (MockComponent.into(), None),
         }
     }
 }
@@ -58,9 +58,9 @@ static AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         .expect("code should be valid")
 });
 
-struct NoAuthComponent;
-impl From<NoAuthComponent> for AccountComponent {
-    fn from(_auth: NoAuthComponent) -> Self {
+struct MockComponent;
+impl From<MockComponent> for AccountComponent {
+    fn from(_auth: MockComponent) -> Self {
         AccountComponent::new(AUTH_LIBRARY.clone(), vec![])
             .expect("component should be valid")
             .with_supports_all_types()
