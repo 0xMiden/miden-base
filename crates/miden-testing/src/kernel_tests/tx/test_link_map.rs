@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, EMPTY_WORD, ONE, Word};
+use miden_objects::{Digest, EMPTY_WORD, ONE, Word, ZERO, transaction::LinkMapKey};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
 use vm_processor::{MemAdviceProvider, ProcessState};
