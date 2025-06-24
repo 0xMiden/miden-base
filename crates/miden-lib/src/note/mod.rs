@@ -49,40 +49,6 @@ pub fn create_p2id_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
-/// Generates a P2IDR note - Pay-to-ID note with recall after a certain block height.
-///
-/// This script enables the transfer of assets from the `sender` account to the `target`
-/// account by specifying the target's account ID. Additionally it adds the possibility for the
-/// sender to reclaiming the assets if the note has not been consumed by the target within the
-/// specified timeframe.
-///
-/// The passed-in `rng` is used to generate a serial number for the note. The returned note's tag
-/// is set to the target's account ID.
-///
-/// # Errors
-/// Returns an error if deserialization or compilation of the `P2IDR` script fails.
-pub fn create_p2idr_note<R: FeltRng>(
-    sender: AccountId,
-    target: AccountId,
-    assets: Vec<Asset>,
-    note_type: NoteType,
-    aux: Felt,
-    recall_height: BlockNumber,
-    rng: &mut R,
-) -> Result<Note, NoteError> {
-    let note_script = WellKnownNote::P2IDR.script();
-
-    let inputs =
-        NoteInputs::new(vec![target.suffix(), target.prefix().as_felt(), recall_height.into()])?;
-    let tag = NoteTag::from_account_id(target);
-    let serial_num = rng.draw_word();
-
-    let vault = NoteAssets::new(assets)?;
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
-    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
-    Ok(Note::new(vault, metadata, recipient))
-}
-
 /// Generates a P2IDE note - Pay-to-ID note with optional recall after a certain block height and
 /// optional timelock.
 ///

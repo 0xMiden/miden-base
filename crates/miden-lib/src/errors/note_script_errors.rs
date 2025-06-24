@@ -21,13 +21,6 @@ pub const ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED: MasmError = MasmError::from_sta
 /// Error Message: "P2IDE note expects exactly 4 note inputs"
 pub const ERR_P2IDE_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDE note expects exactly 4 note inputs");
 
-/// Error Message: "P2IDR's reclaimer is not the original sender"
-pub const ERR_P2IDR_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("P2IDR's reclaimer is not the original sender");
-/// Error Message: "P2IDR can not be reclaimed as the transaction's reference block is lower than the reclaim height"
-pub const ERR_P2IDR_RECLAIM_HEIGHT_NOT_REACHED: MasmError = MasmError::from_static_str("P2IDR can not be reclaimed as the transaction's reference block is lower than the reclaim height");
-/// Error Message: "P2IDR scripts expect exactly 3 note inputs"
-pub const ERR_P2IDR_WRONG_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("P2IDR scripts expect exactly 3 note inputs");
-
 /// Error Message: "P2ID's target account address and transaction address do not match"
 pub const ERR_P2ID_TARGET_ACCT_MISMATCH: MasmError = MasmError::from_static_str("P2ID's target account address and transaction address do not match");
 /// Error Message: "P2ID note expects exactly 2 note inputs"

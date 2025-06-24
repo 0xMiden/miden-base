@@ -8,7 +8,7 @@ use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::{
     account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
-    note::{create_p2id_note, create_p2idr_note},
+    note::{create_p2id_note, create_p2ide_note},
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
@@ -91,7 +91,8 @@ use crate::{
 ///         target.id(),
 ///         &[FungibleAsset::mock(10)],
 ///         NoteType::Public,
-///       None,
+///         None,
+///         None,
 ///     )
 ///   .unwrap();
 /// mock_chain.prove_next_block();
@@ -121,6 +122,7 @@ use crate::{
 ///         receiver.id(),
 ///         &[Asset::Fungible(fungible_asset)],
 ///         NoteType::Public,
+///         None,
 ///         None,
 ///     )
 ///     .unwrap();
@@ -816,17 +818,20 @@ impl MockChain {
         asset: &[Asset],
         note_type: NoteType,
         reclaim_height: Option<BlockNumber>,
+        timelock_height: Option<BlockNumber>,
     ) -> Result<Note, NoteError> {
         let mut rng = RpoRandomCoin::new(Word::default());
 
-        let note = if let Some(height) = reclaim_height {
-            create_p2idr_note(
+        // Use P2IDE if either reclaim_height or timelock_height is supplied, otherwise plain P2ID
+        let note = if reclaim_height.is_some() || timelock_height.is_some() {
+            create_p2ide_note(
                 sender_account_id,
                 target_account_id,
                 asset.to_vec(),
+                timelock_height,
+                reclaim_height,
                 note_type,
                 Default::default(),
-                height,
                 &mut rng,
             )?
         } else {
@@ -841,7 +846,6 @@ impl MockChain {
         };
 
         self.add_pending_note(OutputNote::Full(note.clone()));
-
         Ok(note)
     }
 

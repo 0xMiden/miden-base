@@ -83,6 +83,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
             &[],
             NoteType::Private,
             None,
+            None,
         )
         .unwrap();
     mock_chain.prove_next_block();

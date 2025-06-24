@@ -23,13 +23,6 @@ static P2ID_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     NoteScript::new(program)
 });
 
-// Initialize the P2IDR note script only once
-static P2IDR_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
-    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDR.masb"));
-    let program = Program::read_from_bytes(bytes).expect("Shipped P2IDR script is well-formed");
-    NoteScript::new(program)
-});
-
 // Initialize the P2IDE note script only once
 static P2IDE_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/P2IDE.masb"));
@@ -52,16 +45,6 @@ fn p2id() -> NoteScript {
 /// Returns the P2ID (Pay-to-ID) note script root.
 fn p2id_root() -> Digest {
     P2ID_SCRIPT.root()
-}
-
-/// Returns the P2IDR (Pay-to-ID with recall) note script.
-fn p2idr() -> NoteScript {
-    P2IDR_SCRIPT.clone()
-}
-
-/// Returns the P2IDR (Pay-to-ID with recall) note script root.
-fn p2idr_root() -> Digest {
-    P2IDR_SCRIPT.root()
 }
 
 /// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script.
@@ -90,7 +73,6 @@ fn swap_root() -> Digest {
 /// The enum holding the types of basic well-known notes provided by the `miden-lib`.
 pub enum WellKnownNote {
     P2ID,
-    P2IDR,
     P2IDE,
     SWAP,
 }
@@ -101,9 +83,6 @@ impl WellKnownNote {
 
     /// Expected number of inputs of the P2ID note.
     const P2ID_NUM_INPUTS: usize = 2;
-
-    /// Expected number of inputs of the P2IDR note.
-    const P2IDR_NUM_INPUTS: usize = 3;
 
     /// Expected number of inputs of the P2IDE note.
     const P2IDE_NUM_INPUTS: usize = 4;
@@ -122,8 +101,8 @@ impl WellKnownNote {
         if note_script_root == p2id_root() {
             return Some(Self::P2ID);
         }
-        if note_script_root == p2idr_root() {
-            return Some(Self::P2IDR);
+        if note_script_root == p2ide_root() {
+            return Some(Self::P2IDE);
         }
         if note_script_root == swap_root() {
             return Some(Self::SWAP);
@@ -139,7 +118,6 @@ impl WellKnownNote {
     pub fn num_expected_inputs(&self) -> usize {
         match self {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
-            Self::P2IDR => Self::P2IDR_NUM_INPUTS,
             Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
         }
@@ -149,7 +127,6 @@ impl WellKnownNote {
     pub fn script(&self) -> NoteScript {
         match self {
             Self::P2ID => p2id(),
-            Self::P2IDR => p2idr(),
             Self::P2IDE => p2ide(),
             Self::SWAP => swap(),
         }
@@ -159,7 +136,6 @@ impl WellKnownNote {
     pub fn script_root(&self) -> Digest {
         match self {
             Self::P2ID => p2id_root(),
-            Self::P2IDR => p2idr_root(),
             Self::P2IDE => p2ide_root(),
             Self::SWAP => swap_root(),
         }
@@ -174,9 +150,9 @@ impl WellKnownNote {
 
         let interface_proc_digests = account_interface.get_procedure_digests();
         match self {
-            Self::P2ID | &Self::P2IDR | &Self::P2IDE => {
+            Self::P2ID | &Self::P2IDE => {
                 // Get the hash of the "receive_asset" procedure and check that this procedure is
-                // presented in the provided account interfaces. P2ID and P2IDR notes requires only
+                // presented in the provided account interfaces. P2ID and P2IDE notes requires only
                 // this procedure to be consumed by the account.
                 let receive_asset_proc_name = QualifiedProcedureName::new(
                     Default::default(),
@@ -205,10 +181,6 @@ impl WellKnownNote {
     /// - for all notes: a check that note inputs have correct number of values.
     /// - for `P2ID` note: assertion that the account ID provided by the note inputs is equal to the
     ///   target account ID.
-    /// - for `P2IDR` note: assertion that the account ID provided by the note inputs is equal to
-    ///   the target account ID (which means that the note is going to be consumed by the target
-    ///   account) or that the target account ID is equal to the sender account ID (which means that
-    ///   the note is going to be consumed by the sender account)
     /// - for `P2IDE` note:
     ///   - assertion that the ID of the account, against which the transaction is being executed,
     ///     is equal to the target account ID specified in the note inputs (which means that the
@@ -240,44 +212,6 @@ impl WellKnownNote {
                     NoteAccountCompatibility::Yes
                 } else {
                     NoteAccountCompatibility::No
-                }
-            },
-            WellKnownNote::P2IDR => {
-                let note_inputs = note.inputs().values();
-                if note_inputs.len() != self.num_expected_inputs() {
-                    return NoteAccountCompatibility::No;
-                }
-
-                let recall_height: Result<u32, _> = note_inputs[2].try_into();
-                // Return `No` if the note input value which represents the recall height is invalid
-                let Ok(recall_height) = recall_height else {
-                    return NoteAccountCompatibility::No;
-                };
-
-                // Return `No` if the note input values used to construct the account ID are invalid
-                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
-                    return NoteAccountCompatibility::No;
-                };
-
-                if block_ref.as_u32() >= recall_height {
-                    let sender_account_id = note.metadata().sender();
-                    // if the sender can already reclaim the assets back, then:
-                    // - target account ID could be equal to the inputs account ID if the note is
-                    //   going to be consumed by the target account
-                    // - target account ID could be equal to the sender account ID if the note is
-                    //   going to be consumed by the sender account
-                    if [input_account_id, sender_account_id].contains(&target_account_id) {
-                        NoteAccountCompatibility::Yes
-                    } else {
-                        NoteAccountCompatibility::No
-                    }
-                } else {
-                    // in this case note could be consumed only by the target account
-                    if input_account_id == target_account_id {
-                        NoteAccountCompatibility::Yes
-                    } else {
-                        NoteAccountCompatibility::No
-                    }
                 }
             },
             WellKnownNote::P2IDE => {

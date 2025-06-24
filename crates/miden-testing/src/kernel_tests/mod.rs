@@ -8,7 +8,7 @@ use alloc::{
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
-    note::{create_p2id_note, create_p2idr_note},
+    note::{create_p2id_note, create_p2ide_note},
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
 };
@@ -17,7 +17,6 @@ use miden_objects::{
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    block::BlockNumber,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
         NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
@@ -1101,19 +1100,20 @@ fn test_check_note_consumability() {
     )
     .unwrap();
 
-    let p2idr_note = create_p2idr_note(
+    let p2ide_note = create_p2ide_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
         vec![FungibleAsset::mock(10)],
+        None,
+        None,
         NoteType::Public,
         Default::default(),
-        BlockNumber::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
     )
     .unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .input_notes(vec![p2id_note, p2idr_note])
+        .input_notes(vec![p2id_note, p2ide_note.clone()])
         .build();
     let source_manager = tx_context.source_manager();
 

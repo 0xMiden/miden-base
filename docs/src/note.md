@@ -102,7 +102,7 @@ Upon successful verification of the transaction:
 
 #### Note recipient restricting consumption
 
-Consumption of a `Note` can be restricted to certain accounts or entities. For instance, the P2ID and P2IDR `Note` scripts target a specific account ID. Alternatively, Miden defines a RECIPIENT (represented as 32 bytes) computed as:
+Consumption of a `Note` can be restricted to certain accounts or entities. For instance, the P2ID and P2IDE `Note` scripts target a specific account ID. Alternatively, Miden defines a RECIPIENT (represented as 32 bytes) computed as:
 
 ```arduino
 hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)
