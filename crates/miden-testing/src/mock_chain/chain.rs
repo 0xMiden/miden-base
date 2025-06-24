@@ -524,9 +524,7 @@ impl MockChain {
     ///   This is the initial account of the transaction with the account delta applied.
     ///
     /// In all cases, if the chain contains a seed or authenticator for the account, they are added
-    /// to the builder. Additionally, if the account is set to authenticate with
-    /// [`Auth::BasicAuth`], the executed transaction script is defaulted to
-    /// [`DEFAULT_AUTH_SCRIPT`].
+    /// to the builder.
     ///
     /// [`TxContextInput::Account`] and [`TxContextInput::ExecutedTransaction`] can be used to build
     /// a chain of transactions against the same account that build on top of each other. For
@@ -567,12 +565,10 @@ impl MockChain {
             unauthenticated_notes,
         );
 
-        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
+        TransactionContextBuilder::new(mock_account.account().clone())
             .authenticator(mock_account.authenticator().cloned())
             .account_seed(mock_account.seed().cloned())
-            .tx_inputs(tx_inputs);
-
-        tx_context_builder
+            .tx_inputs(tx_inputs)
     }
 
     // INPUTS APIS
