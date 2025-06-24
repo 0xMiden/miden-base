@@ -11,6 +11,7 @@ use crate::{
     },
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
+
 // TRANSACTION OUTPUTS
 // ================================================================================================
 
@@ -136,27 +137,6 @@ impl Deserializable for OutputNotes {
         let notes = source.read_many::<OutputNote>(num_notes.into())?;
         Self::new(notes).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
-}
-
-// HELPER FUNCTIONS
-// ------------------------------------------------------------------------------------------------
-
-/// Build a commitment to output notes.
-///
-/// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for the
-/// notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
-fn build_output_notes_commitment(notes: &[OutputNote]) -> Digest {
-    if notes.is_empty() {
-        return Digest::default();
-    }
-
-    let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
-    for note in notes.iter() {
-        elements.extend_from_slice(note.id().as_elements());
-        elements.extend_from_slice(&Word::from(note.metadata()));
-    }
-
-    Hasher::hash_elements(&elements)
 }
 
 // OUTPUT NOTE
@@ -301,5 +281,63 @@ impl Deserializable for OutputNote {
             HEADER => Ok(OutputNote::Header(NoteHeader::read_from(source)?)),
             v => Err(DeserializationError::InvalidValue(format!("invalid note type: {v}"))),
         }
+    }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Build a commitment to output notes.
+///
+/// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for the
+/// notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
+fn build_output_notes_commitment(notes: &[OutputNote]) -> Digest {
+    if notes.is_empty() {
+        return Digest::default();
+    }
+
+    let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
+    for note in notes.iter() {
+        elements.extend_from_slice(note.id().as_elements());
+        elements.extend_from_slice(&Word::from(note.metadata()));
+    }
+
+    Hasher::hash_elements(&elements)
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod output_notes_tests {
+    use anyhow::Context;
+    use assembly::Assembler;
+    use assert_matches::assert_matches;
+
+    use super::OutputNotes;
+    use crate::{
+        TransactionOutputError,
+        account::AccountId,
+        testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
+        transaction::OutputNote,
+    };
+
+    #[test]
+    fn test_duplicate_output_notes() -> anyhow::Result<()> {
+        let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
+
+        let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
+            .build(&Assembler::default())
+            .context("failed to create mock note")?;
+        let mock_note_id = mock_note.id();
+        let mock_note_clone = mock_note.clone();
+
+        let error =
+            OutputNotes::new(vec![OutputNote::Full(mock_note), OutputNote::Full(mock_note_clone)])
+                .expect_err("input notes creation should fail");
+
+        assert_matches!(error, TransactionOutputError::DuplicateOutputNote(note_id) if note_id == mock_note_id);
+
+        Ok(())
     }
 }

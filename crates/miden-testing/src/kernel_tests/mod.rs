@@ -319,7 +319,7 @@ fn executed_transaction_account_delta_new() {
             .maps()
             .get(&STORAGE_INDEX_2)
             .unwrap()
-            .leaves(),
+            .entries(),
         &Some((updated_map_key.into(), updated_map_value))
             .into_iter()
             .collect::<BTreeMap<Digest, _>>()
