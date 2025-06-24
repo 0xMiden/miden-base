@@ -26,11 +26,9 @@ use miden_objects::{
     },
     crypto::merkle::SmtProof,
     note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
-    testing::account_code::DEFAULT_AUTH_SCRIPT,
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, OrderedTransactionHeaders,
         OutputNote, PartialBlockchain, ProvenTransaction, TransactionHeader, TransactionInputs,
-        TransactionScript,
     },
 };
 use rand::{Rng, SeedableRng};
@@ -569,20 +567,10 @@ impl MockChain {
             unauthenticated_notes,
         );
 
-        let mut tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
+        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
             .authenticator(mock_account.authenticator().cloned())
             .account_seed(mock_account.seed().cloned())
             .tx_inputs(tx_inputs);
-
-        if mock_account.authenticator().is_some() {
-            let tx_script = TransactionScript::compile(
-                DEFAULT_AUTH_SCRIPT,
-                vec![],
-                TransactionKernel::testing_assembler_with_mock_account(),
-            )
-            .unwrap();
-            tx_context_builder = tx_context_builder.tx_script(tx_script);
-        }
 
         tx_context_builder
     }

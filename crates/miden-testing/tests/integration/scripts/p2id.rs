@@ -266,7 +266,6 @@ fn test_create_consume_multiple_notes() {
 
                 push.{asset_2}
                 call.::miden::contracts::wallets::basic::move_asset_to_note
-                call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
                 dropw dropw dropw dropw
             end
             ",

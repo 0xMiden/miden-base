@@ -54,9 +54,6 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() {
                 call.::miden::contracts::faucets::basic_fungible::distribute
                 # => [note_idx, pad(15)]
 
-                call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
-                # => [note_idx, pad(15)]
-
                 # truncate the stack
                 dropw dropw dropw dropw
             end
@@ -123,9 +120,6 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() {
                 # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
                 call.::miden::contracts::faucets::basic_fungible::distribute
-                # => [note_idx, pad(15)]
-
-                call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
                 # => [note_idx, pad(15)]
 
                 # truncate the stack

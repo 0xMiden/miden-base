@@ -130,15 +130,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
 
 // ACCOUNT ASSEMBLY CODE
 // ================================================================================================
-
-pub const DEFAULT_AUTH_SCRIPT: &str = "
-    begin
-        padw padw padw padw
-        call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
-        dropw dropw dropw dropw
-    end
-";
-
 impl AccountCode {
     /// Creates a mock [Library] which can be used to assemble programs and as a library to create a
     /// mock [AccountCode] interface. Transaction and note scripts that make use of this interface

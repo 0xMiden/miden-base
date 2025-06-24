@@ -589,7 +589,6 @@ fn test_custom_account_multiple_components_custom_notes() {
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
-                call.basic_auth::auth_tx_rpo_falcon512
             else
                 # supported procs
                 call.wallet::receive_asset
@@ -597,7 +596,6 @@ fn test_custom_account_multiple_components_custom_notes() {
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
-                call.basic_auth::auth_tx_rpo_falcon512
 
                 # unsupported proc
                 call.fungible_faucet::distribute
@@ -633,7 +631,6 @@ fn test_custom_account_multiple_components_custom_notes() {
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
-                call.basic_auth::auth_tx_rpo_falcon512
 
                 # unsupported proc
                 call.fungible_faucet::distribute
