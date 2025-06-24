@@ -724,7 +724,7 @@ fn executed_transaction_output_notes() {
     let tx_context = TransactionContextBuilder::new(executor_account)
         .with_mock_notes_preserved_with_account_vault_delta()
         .tx_script(tx_script)
-        .extend_output_notes(vec![
+        .extend_expected_output_notes(vec![
             OutputNote::Full(expected_output_note_2.clone()),
             OutputNote::Full(expected_output_note_3.clone()),
         ])

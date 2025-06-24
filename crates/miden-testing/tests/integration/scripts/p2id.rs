@@ -287,7 +287,10 @@ fn test_create_consume_multiple_notes() {
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[input_note_1.id(), input_note_2.id()], &[])
-        .extend_output_notes(vec![OutputNote::Full(output_note_1), OutputNote::Full(output_note_2)])
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(output_note_1),
+            OutputNote::Full(output_note_2),
+        ])
         .tx_script(tx_script)
         .build();
 

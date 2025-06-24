@@ -213,14 +213,14 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Set the note arguments
-    pub fn note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
+    /// Extend the note arguments map with the provided one.
+    pub fn extend_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
         self.note_args.extend(note_args);
         self
     }
 
-    /// Defines the expected output notes
-    pub fn extend_output_notes(mut self, output_notes: Vec<OutputNote>) -> Self {
+    /// Extend the expected output notes.
+    pub fn extend_expected_output_notes(mut self, output_notes: Vec<OutputNote>) -> Self {
         let output_notes = output_notes.into_iter().filter_map(|n| match n {
             OutputNote::Full(note) => Some(note),
             OutputNote::Partial(_) => None,

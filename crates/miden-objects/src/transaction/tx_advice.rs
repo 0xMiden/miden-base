@@ -84,9 +84,12 @@ impl TransactionAdvice {
     }
 
     /// Returns new [TransactionAdvice] instantiated with the provided note arguments.
+    ///
+    /// If the note arguments were already set, they will be overwritten with the newly provided
+    /// ones.
     #[must_use]
     pub fn with_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
-        self.note_args.extend(note_args);
+        self.note_args = note_args;
         self
     }
 
