@@ -3,6 +3,7 @@ use.kernel::link_map
 use.kernel::constants
 use.kernel::account
 use.std::crypto::hashes::rpo
+use.std::math::u64
 
 # CONSTANTS
 # =================================================================================================
@@ -215,18 +216,21 @@ proc.update_fungible_asset_delta.2
 
         # if delta amount is non-zero, update the hasher
         if.true
-            movup.5 movdn.2
-            # => [faucet_id_prefix, faucet_id_suffix, delta_amount_lo, 0, 0, delta_amount_hi, 0, 0, ...]
+            swap.7
+            # => [[0, 0, was_added, 0], [faucet_id_prefix, faucet_id_suffix, 0, delta_amount_abs], ...]
 
-            movup.5 movdn.3
-            # => [[faucet_id_prefix, faucet_id_suffix, delta_amount_lo, delta_amount_hi], 0, 0, 0, 0, ...]
+            drop push.DOMAIN_ASSET
+            # => [[domain, 0, was_added, 0], [faucet_id_prefix, faucet_id_suffix, 0, delta_amount_abs], ...]
 
-            push.DOMAIN_ASSET swap.8 drop
-            # => [[faucet_id_prefix, faucet_id_suffix, amount_lo, amount_hi], [0, 0, 0, domain], RATE, RATE, PERM
+            swap.3
+            # => [[0, 0, was_added, domain], [faucet_id_prefix, faucet_id_suffix, 0, delta_amount_abs], ...]
+
+            swapw
+            # => [[faucet_id_prefix, faucet_id_suffix, 0, delta_amount_abs], [0, 0, was_added, domain], RATE, RATE, PERM]
 
             # drop previous RATE elements
             swapdw dropw dropw
-            # => [[faucet_id_prefix, faucet_id_suffix, amount_lo, amount_hi], [0, 0, 0, domain], PERM]
+            # => [[faucet_id_prefix, faucet_id_suffix, 0, delta_amount_abs], [0, 0, was_added, domain], PERM]
 
             hperm
             # => [RATE, RATE, PERM]
@@ -346,18 +350,109 @@ export.remove_fungible_asset
     # => []
 end
 
-#! TODO: Document asset amount math.
+# i64 MATH
+# -------------------------------------------------------------------------------------------------
+
+# Asset Amount Deltas can be signed or unsigned and they can be in range [-2^63 + 1, 2^63 - 1]. To make
+# math operations on deltas easy and avoid branches, they are represented using the std::math::u64
+# representation of two u32 limbs. This u64 can be interpreted as an i64 to get the asset delta.
+# In order to get the correct behavior, we use wrapping operations on u64s which ignore the overflow.
+# This means that a calculation such as 100 - 200 + 300 correctly results in an overall delta of 200.
+
+#! Adds amount to the delta.
 #!
 #! Inputs:  [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo]
 #! Outputs: [delta_amount_hi, delta_amount_lo]
+#!
+#! Where:
+#! - amount_{hi, lo} are the u32 limbs of the amount to be added.
+#! - delta_amount_{hi, lo} are the u32 limbs of the delta amount to which amount is added.
 proc.add_asset_amount
-    exec.::std::math::u64::wrapping_add
+    exec.u64::wrapping_add
 end
 
-#! TODO: Document asset amount math.
+#! Subtracts amount from the delta.
 #!
 #! Inputs:  [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo]
 #! Outputs: [delta_amount_hi, delta_amount_lo]
+#!
+#! Where:
+#! - amount_{hi, lo} are the u32 limbs of the amount to be subtracted.
+#! - delta_amount_{hi, lo} are the u32 limbs of the delta amount from which amount is subtracted.
 proc.sub_asset_amount
-    exec.::std::math::u64::wrapping_sub
+    exec.u64::wrapping_sub
+end
+
+#! Computes the absolute value of the given i64 represented by two u32 limbs and returns a
+#! boolean flag indicating whether the value is signed.
+#!
+#! Inputs: [x_hi, x_lo]
+#! Outputs: [is_x_signed, x_abs_hi, x_abs_lo]
+#!
+#! Where:
+#! - x_{hi, lo} are the u32 limbs of an i64.
+#! - is_x_signed indicates whether x is signed.
+#! - x_abs_{hi, lo} are the absolute u32 limbs of a u64.
+proc.i64_unsigned_abs
+    exec.i64_is_signed
+    # => [is_x_signed, x_hi, x_lo]
+
+    movdn.2 push.0.0
+    # => [0, 0, x_hi, x_lo, is_x_signed]
+
+    dup.3 dup.3
+    # => [x_hi, x_lo, 0, 0, x_hi, x_lo, is_x_signed]
+
+    exec.i64_neg push.0.0
+    # => [0, 0, x_neg_hi, x_neg_lo, 0, 0, x_hi, x_lo, is_x_signed]
+
+    dup.8
+    # => [is_x_signed, 0, 0, x_neg_hi, x_neg_lo, 0, 0, x_hi, x_lo, is_x_signed]
+
+    # If is_x_signed the word with the negated values remains.
+    # If !is_x_signed the word with the original values remains.
+    cdropw drop drop
+    # => [x_abs_hi, x_abs_lo, is_x_signed]
+
+    movup.2
+    # => [is_x_signed, x_abs_hi, x_abs_lo]
+end
+
+#! Returns 1 if the given number is signed (its most significant bit is set)
+#! without consuming its inputs, 0 otherwise.
+#!
+#! Inputs: [x_hi, x_lo]
+#! Outputs: [is_x_signed, x_hi, x_lo]
+#!
+#! Where:
+#! - x_{hi, lo} are the u32 limbs of an i64.
+#! - is_x_signed indicates whether x is signed.
+proc.i64_is_signed
+  # 0x80000000 is a u32 bitmask with highest bit set to 1 and all others to 0.
+  dup u32and.0x80000000 u32shr.31
+  # => [is_signed, x_hi, x_lo]
+end
+
+#! Negates an i64 represented by two u32 limbs by computing its bitwise NOT and adding 1
+#! according to two complements.
+#!
+#! Inputs: [x_hi, x_lo]
+#! Outputs: [x_hi, x_lo]
+#!
+#! Where:
+#! - x_{hi, lo} are the u32 limbs of an i64.
+proc.i64_neg
+  u32not swap u32not swap
+  # => [x_inverted_hi, x_inverted_lo]
+
+  # Add 1 to get negative x.
+  push.1.0
+  # => [0, 1, x_inverted_hi, x_inverted_lo]
+
+  # This should never overflow except when negating zero.
+  # (Consider this 8-bit example: 0b0000_0000 would become 0b1111_1111
+  # and adding 1 would overflow the byte resulting in 0b0000_0000 again).
+  # This is why we ignore the overflow flag.
+  exec.u64::wrapping_add
+  # => [-x_hi, -x_lo]
 end

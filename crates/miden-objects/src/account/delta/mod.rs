@@ -122,10 +122,10 @@ impl AccountDelta {
     /// - Fungible Asset Delta
     ///   - For each **updated** fungible asset, sorted by its vault key, whose amount delta is
     ///     **non-zero**:
-    ///     - Append `[domain = 1, 0, 0, 0]`.
-    ///     - Append `[amount_hi, amount_lo, faucet_id_suffix, faucet_id_prefix]` where amount_hi
-    ///       and amount_lo are the u32 limbs of the amount delta by which the fungible asset's
-    ///       amount has changed.
+    ///     - Append `[domain = 1, was_added, 0, 0]`.
+    ///     - Append `[amount, 0, faucet_id_suffix, faucet_id_prefix]` where amount is the delta by
+    ///       which the fungible asset's amount has changed and was_added is a boolean flag
+    ///       indicating whether the amount was added (1) or subtracted (0).
     /// - Non-Fungible Asset Delta
     ///   - For each **updated** non-fungible asset, sorted by its vault key:
     ///     - Append `[domain = 1, was_added, 0, 0]` where was_added is a boolean flag indicating

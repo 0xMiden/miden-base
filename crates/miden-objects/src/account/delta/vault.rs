@@ -344,17 +344,19 @@ impl FungibleAssetDelta {
     /// link map key ordering, however this is subtle and fragile.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
         for (faucet_id, amount_delta) in self.iter() {
-            let amount_delta = *amount_delta as u64;
-            let amount_hi = (amount_delta / (1 << 32)) as u32;
-            let amount_lo = (amount_delta % (1 << 32)) as u32;
+            // Note that this iterator is guaranteed to never yield zero amounts, so we don't have
+            // to exclude those explicitly.
+            debug_assert_ne!(
+                *amount_delta, 0,
+                "fungible asset iterator should never yield amount deltas of 0"
+            );
 
-            elements.extend_from_slice(&[DOMAIN_ASSET, ZERO, ZERO, ZERO]);
-            elements.extend_from_slice(&[
-                Felt::from(amount_hi),
-                Felt::from(amount_lo),
-                faucet_id.suffix(),
-                faucet_id.prefix().as_felt(),
-            ]);
+            let asset = FungibleAsset::new(*faucet_id, amount_delta.unsigned_abs())
+                .expect("absolute amount delta should be less than i64::MAX");
+            let was_added = if *amount_delta > 0 { ONE } else { ZERO };
+
+            elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
+            elements.extend_from_slice(&Word::from(asset));
         }
     }
 }
@@ -494,12 +496,12 @@ impl NonFungibleAssetDelta {
     /// commitment will be computed.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
         for (asset, action) in self.iter() {
-            let action_felt = match action {
+            let was_added = match action {
                 NonFungibleDeltaAction::Remove => ZERO,
                 NonFungibleDeltaAction::Add => ONE,
             };
 
-            elements.extend_from_slice(&[DOMAIN_ASSET, action_felt, ZERO, ZERO]);
+            elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
             elements.extend_from_slice(&Word::from(*asset));
         }
     }
