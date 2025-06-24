@@ -23,7 +23,7 @@ impl Auth {
     /// Converts `self` into its corresponding authentication [`AccountComponent`] and an optional
     /// [`BasicAuthenticator`]. The component is always returned, but the authenticator is `None`
     /// when [`Auth::NoAuth`] is passed.
-    pub(super) fn build_component(
+    pub fn build_component(
         &self,
     ) -> (AccountComponent, Option<BasicAuthenticator<ChaCha20Rng>>) {
         let mut rng = ChaCha20Rng::from_seed(Default::default());

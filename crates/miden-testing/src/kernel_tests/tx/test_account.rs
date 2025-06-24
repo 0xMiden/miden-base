@@ -34,7 +34,9 @@ use rand_chacha::ChaCha20Rng;
 use vm_processor::{Digest, EMPTY_WORD, ExecutionError, MemAdviceProvider, ProcessState};
 
 use super::{Felt, ONE, StackInputs, Word, ZERO};
-use crate::{MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor};
+use crate::{
+    Auth, MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor,
+};
 
 // ACCOUNT CODE TESTS
 // ================================================================================================
@@ -280,7 +282,9 @@ fn test_get_item() -> miette::Result<()> {
 
 #[test]
 fn test_get_map_item() -> miette::Result<()> {
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::assembler(),
@@ -451,7 +455,9 @@ fn test_set_map_item() -> miette::Result<()> {
         [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
     );
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::assembler(),
@@ -607,7 +613,9 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     .unwrap()
     .with_supported_type(AccountType::RegularAccountUpdatableCode);
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let mut account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(component1)
         .with_component(component2)
         .build_existing()
@@ -683,8 +691,10 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
 
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
         let mock_chain = MockChain::new();
+        let (auth_component, _) = Auth::NoAuth.build_component();
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
+            .with_auth_component(auth_component)
             .with_component(
                 AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                     .unwrap(),
@@ -846,8 +856,10 @@ fn test_get_vault_root() {
 fn test_authenticate_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
+
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let account_code = AccountCode::from_components(
-        &[mock_component.into()],
+        &[auth_component, mock_component.into()],
         AccountType::RegularAccountUpdatableCode,
     )
     .unwrap();

@@ -31,7 +31,7 @@ use vm_processor::{AdviceInputs, Felt};
 
 use super::{Process, Word, ZERO};
 use crate::{
-    MockChain, assert_execution_error,
+    Auth, MockChain, assert_execution_error,
     kernel_tests::tx::{read_root_mem_word, try_read_root_mem_word},
 };
 
@@ -75,12 +75,15 @@ fn test_fpi_memory() {
     .unwrap()
     .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
         .build_existing()
         .unwrap();
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -139,7 +142,7 @@ fn test_fpi_memory() {
             ",
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
-        get_item_foreign_hash = foreign_account.code().procedures()[0].mast_root(),
+        get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
     let process = tx_context.execute_code(&code).unwrap();
@@ -193,7 +196,7 @@ fn test_fpi_memory() {
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
         map_key = STORAGE_LEAVES_2[0].0,
-        get_map_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
+        get_map_item_foreign_hash = foreign_account.code().procedures()[2].mast_root(),
     );
 
     let process = tx_context.execute_code(&code).unwrap();
@@ -263,7 +266,7 @@ fn test_fpi_memory() {
         ",
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
-        get_item_foreign_hash = foreign_account.code().procedures()[0].mast_root(),
+        get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
     let process = &tx_context.execute_code(&code).unwrap();
@@ -333,17 +336,21 @@ fn test_fpi_memory_two_accounts() {
     .unwrap()
     .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let foreign_account_1 = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component_1)
         .build_existing()
         .unwrap();
 
     let foreign_account_2 = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component_2)
         .build_existing()
         .unwrap();
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                 .unwrap(),
@@ -439,8 +446,8 @@ fn test_fpi_memory_two_accounts() {
             exec.sys::truncate_stack
         end
         ",
-        get_item_foreign_1_hash = foreign_account_1.code().procedures()[0].mast_root(),
-        get_item_foreign_2_hash = foreign_account_2.code().procedures()[0].mast_root(),
+        get_item_foreign_1_hash = foreign_account_1.code().procedures()[1].mast_root(),
+        get_item_foreign_2_hash = foreign_account_2.code().procedures()[1].mast_root(),
 
         foreign_1_prefix = foreign_account_1.id().prefix().as_felt(),
         foreign_1_suffix = foreign_account_1.id().suffix(),
@@ -534,12 +541,15 @@ fn test_fpi_execute_foreign_procedure() {
     .unwrap()
     .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
         .build_existing()
         .unwrap();
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
@@ -615,8 +625,8 @@ fn test_fpi_execute_foreign_procedure() {
         ",
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
-        get_item_foreign_hash = foreign_account.code().procedures()[0].mast_root(),
-        get_map_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
+        get_item_foreign_hash = foreign_account.code().procedures()[1].mast_root(),
+        get_map_item_foreign_hash = foreign_account.code().procedures()[2].mast_root(),
         map_key = STORAGE_LEAVES_2[0].0,
     );
 
@@ -695,7 +705,9 @@ fn test_nested_fpi_cyclic_invocation() {
     .unwrap()
     .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let second_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(second_foreign_account_component)
         .build_existing()
         .unwrap();
@@ -755,12 +767,14 @@ fn test_nested_fpi_cyclic_invocation() {
     .with_supports_all_types();
 
     let first_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(first_foreign_account_component)
         .build_existing()
         .unwrap();
 
     // ------ NATIVE ACCOUNT ---------------------------------------------------------------
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
@@ -782,13 +796,13 @@ fn test_nested_fpi_cyclic_invocation() {
     // push the hashes of the foreign procedures and account IDs to the advice stack to be able to
     // call them dynamically.
     let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.extend_stack(*second_foreign_account.code().procedures()[0].mast_root());
+    advice_inputs.extend_stack(*second_foreign_account.code().procedures()[1].mast_root());
     advice_inputs.extend_stack([
         second_foreign_account.id().suffix(),
         second_foreign_account.id().prefix().as_felt(),
     ]);
 
-    advice_inputs.extend_stack(*first_foreign_account.code().procedures()[1].mast_root());
+    advice_inputs.extend_stack(*first_foreign_account.code().procedures()[2].mast_root());
     advice_inputs.extend_stack([
         first_foreign_account.id().suffix(),
         first_foreign_account.id().prefix().as_felt(),
@@ -831,7 +845,7 @@ fn test_nested_fpi_cyclic_invocation() {
         "#,
         foreign_prefix = first_foreign_account.id().prefix().as_felt(),
         foreign_suffix = first_foreign_account.id().suffix(),
-        first_account_foreign_proc_hash = first_foreign_account.code().procedures()[0].mast_root(),
+        first_account_foreign_proc_hash = first_foreign_account.code().procedures()[1].mast_root(),
     );
 
     let tx_script = TransactionScript::compile(
@@ -893,7 +907,9 @@ fn test_nested_fpi_stack_overflow() {
             .unwrap()
             .with_supports_all_types();
 
+            let (auth_component, _) = Auth::NoAuth.build_component();
             let last_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+                .with_auth_component(auth_component.clone())
                 .with_component(last_foreign_account_component)
                 .build_existing()
                 .unwrap();
@@ -926,7 +942,7 @@ fn test_nested_fpi_stack_overflow() {
                     exec.sys::truncate_stack
                 end
             ",
-                    next_account_proc_hash = next_account.code().procedures()[0].mast_root(),
+                    next_account_proc_hash = next_account.code().procedures()[1].mast_root(),
                     next_foreign_suffix = next_account.id().suffix(),
                     next_foreign_prefix = next_account.id().prefix().as_felt(),
                 );
@@ -940,6 +956,7 @@ fn test_nested_fpi_stack_overflow() {
                 .with_supports_all_types();
 
                 let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+                    .with_auth_component(auth_component.clone())
                     .with_component(foreign_account_component)
                     .build_existing()
                     .unwrap();
@@ -949,6 +966,7 @@ fn test_nested_fpi_stack_overflow() {
 
             // ------ NATIVE ACCOUNT ---------------------------------------------------------------
             let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+                .with_auth_component(auth_component)
                 .with_component(
                     AccountMockComponent::new_with_slots(
                         TransactionKernel::testing_assembler(),
@@ -995,7 +1013,7 @@ fn test_nested_fpi_stack_overflow() {
             end
             ",
                 foreign_account_proc_hash =
-                    foreign_accounts.last().unwrap().code().procedures()[0].mast_root(),
+                    foreign_accounts.last().unwrap().code().procedures()[1].mast_root(),
                 foreign_prefix = foreign_accounts.last().unwrap().id().prefix().as_felt(),
                 foreign_suffix = foreign_accounts.last().unwrap().id().suffix(),
             );
@@ -1063,13 +1081,16 @@ fn test_nested_fpi_native_account_invocation() {
     .unwrap()
     .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
         .build_existing()
         .unwrap();
 
     // ------ NATIVE ACCOUNT ---------------------------------------------------------------
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
@@ -1085,7 +1106,7 @@ fn test_nested_fpi_native_account_invocation() {
     // push the hash of the native procedure and native account IDs to the advice stack to be able
     // to call them dynamically.
     let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.extend_stack(*native_account.code().procedures()[2].mast_root());
+    advice_inputs.extend_stack(*native_account.code().procedures()[3].mast_root());
     advice_inputs
         .extend_stack([native_account.id().suffix(), native_account.id().prefix().as_felt()]);
 
@@ -1115,7 +1136,7 @@ fn test_nested_fpi_native_account_invocation() {
         ",
         foreign_prefix = foreign_account.id().prefix().as_felt(),
         foreign_suffix = foreign_account.id().suffix(),
-        first_account_foreign_proc_hash = foreign_account.code().procedures()[0].mast_root(),
+        first_account_foreign_proc_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
     let tx_script = TransactionScript::compile(
@@ -1164,12 +1185,15 @@ fn test_fpi_stale_account() {
     .unwrap()
     .with_supports_all_types();
 
+    let (auth_component, _) = Auth::NoAuth.build_component();
     let mut foreign_account = AccountBuilder::new([5; 32])
+        .with_auth_component(auth_component.clone())
         .with_component(foreign_account_component)
         .build_existing()
         .unwrap();
 
     let native_account = AccountBuilder::new([4; 32])
+        .with_auth_component(auth_component)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
