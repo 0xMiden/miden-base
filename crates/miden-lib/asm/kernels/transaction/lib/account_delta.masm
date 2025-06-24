@@ -53,6 +53,9 @@ export.compute_commitment
     exec.update_fungible_asset_delta
     # => [RATE, RATE, PERM]
 
+    exec.update_non_fungible_asset_delta
+    # => [RATE, RATE, PERM]
+
     exec.update_storage_delta
     # => [RATE, RATE, PERM]
 
@@ -252,6 +255,74 @@ proc.update_fungible_asset_delta.2
     # => [RATE, RATE, PERM]
 end
 
+
+#! Updates the given delta hasher with the non-fungible asset vault delta.
+#!
+#! Inputs:  [RATE, RATE, PERM]
+#! Outputs: [RATE, RATE, PERM]
+proc.update_non_fungible_asset_delta.2
+    exec.memory::get_account_delta_non_fungible_asset_ptr
+    # => [account_delta_non_fungible_asset_ptr, RATE, RATE, PERM]
+
+    exec.link_map::iter
+    # => [has_next, iter, RATE, RATE, PERM]
+
+    # enter loop if the link map is not empty
+    while.true
+        exec.link_map::next
+        # => [KEY, VALUE0, VALUE1, has_next, iter, ...]
+
+        # store has_next
+        movup.12 loc_store.0
+        # => [KEY, VALUE0, VALUE1, iter, ...]
+
+        # store iter
+        movup.12 loc_store.1
+        # => [KEY, VALUE0, VALUE1, ...]
+        # this stack state is equivalent to:
+        # => [ASSET, [was_added, 0, 0, 0], EMPTY_WORD, ...]
+
+        # drop unused VALUE1 word
+        movupw.2 dropw
+        # => [ASSET, [was_added, 0, 0, 0], ...]
+
+        dup.4 neq.0
+        # => [was_added_or_removed, ASSET, [was_added, 0, 0, 0], ...]
+
+        # if the asset was added or removed (i.e. if was_added != 0), update the hasher
+        if.true
+            movup.4 movdn.6
+            # => [ASSET, [0, 0, was_added, 0], ...]
+
+            push.DOMAIN_ASSET swap.8 drop
+            # => [ASSET, [0, 0, was_added, domain], RATE, RATE, PERM]
+
+            # drop previous RATE elements
+            swapdw dropw dropw
+            # => [ASSET, [0, 0, was_added, domain], PERM]
+
+            hperm
+            # => [RATE, RATE, PERM]
+        else
+          # discard the two key and value words loaded from the map
+          dropw dropw
+          # => [RATE, RATE, PERM]
+        end
+        # => [RATE, RATE, PERM]
+
+        # load iter and has_next
+        loc_load.1
+        # => [iter, RATE, RATE, PERM]
+
+        loc_load.0
+        # => [has_next, iter, RATE, RATE, PERM]
+    end
+
+    # drop iter
+    drop
+    # => [RATE, RATE, PERM]
+end
+
 #! Returns the initial value of a storage slot from the account storage.
 #!
 #! This is the value of the slot at the beginning of the transaction.
@@ -300,8 +371,7 @@ export.add_asset
         exec.add_fungible_asset
         # => []
     else
-        # TODO: Handle non-fungible assets
-        dropw
+        exec.add_non_fungible_asset
         # => []
     end
 end
@@ -331,8 +401,7 @@ export.remove_asset
         exec.remove_fungible_asset
         # => []
     else
-        # TODO: Handle non-fungible assets
-        dropw
+        exec.remove_non_fungible_asset
         # => []
     end
 end
@@ -404,6 +473,85 @@ export.remove_fungible_asset
 
     exec.memory::get_account_delta_fungible_asset_ptr
     # => [fungible_delta_map_ptr, ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+
+    exec.link_map::set drop
+    # => []
+end
+
+#! Adds the given non-fungible asset to the non-fungible asset vault delta.
+#!
+#! ASSET must be a valid non-fungible asset.
+#!
+#! If the key does not exist in the delta map, the non-fungible asset's was_added value is 0.
+#! When it is added to the account vault, was_added is incremented by 1; when it is removed from
+#! the account vault, was_added is decremented by 1.
+#! Since an asset can only be added to or removed from a vault once, was_added will always have a
+#! value of -1, 0, or 1, where -1 is represented by `0 - 1` in felt operations.
+#! This means adding and removing or removing and adding the asset will correctly cancel out.
+#!
+#! The final was_added value after transaction execution is then interpreted as follows:
+#! -1 -> asset was removed
+#! 0 -> no change to the asset
+#! +1 -> asset was added
+#!
+#! Inputs:  [ASSET]
+#! Outputs: []
+#!
+#! Where:
+#! - ASSET is the non-fungible asset to be added.
+export.add_non_fungible_asset
+    dupw exec.memory::get_account_delta_non_fungible_asset_ptr
+    # => [non_fungible_delta_map_ptr, ASSET, ASSET]
+
+    # retrieve the current delta
+    # contains_key can be ignored because the default value is an empty word and the
+    # was_added value is therefore 0
+    exec.link_map::get drop
+    # => [was_added, 0, 0, 0, EMPTY_WORD, ASSET]
+
+    add.1
+    # => [was_added, 0, 0, 0, EMPTY_WORD, ASSET]
+
+    movupw.2
+    # => [ASSET, was_added, 0, 0, 0, EMPTY_WORD]
+
+    exec.memory::get_account_delta_non_fungible_asset_ptr
+    # => [non_fungible_delta_map_ptr, ASSET, was_added, 0, 0, 0, EMPTY_WORD]
+
+    exec.link_map::set drop
+    # => []
+end
+
+
+#! Removes the given non-fungible asset from the non-fungible asset vault delta.
+#!
+#! ASSET must be a valid non-fungible asset.
+#!
+#! See add_non_fungible_asset for documentation.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: []
+#!
+#! Where:
+#! - ASSET is the non-fungible asset to be removed.
+export.remove_non_fungible_asset
+    dupw exec.memory::get_account_delta_non_fungible_asset_ptr
+    # => [non_fungible_delta_map_ptr, ASSET, ASSET]
+
+    # retrieve the current delta
+    # contains_key can be ignored because the default value is an empty word and the
+    # was_added value is therefore 0
+    exec.link_map::get drop
+    # => [was_added, 0, 0, 0, EMPTY_WORD, ASSET]
+
+    sub.1
+    # => [was_added, 0, 0, 0, EMPTY_WORD, ASSET]
+
+    movupw.2
+    # => [ASSET, was_added, 0, 0, 0, EMPTY_WORD]
+
+    exec.memory::get_account_delta_non_fungible_asset_ptr
+    # => [non_fungible_delta_map_ptr, ASSET, was_added, 0, 0, 0, EMPTY_WORD]
 
     exec.link_map::set drop
     # => []
