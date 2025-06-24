@@ -6,17 +6,12 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
-        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, StorageSlot,
+        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType,
+        StorageSlot,
     },
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
-    testing::{
-        account_component::AccountMockComponent,
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-        },
-    },
+    testing::{account_component::AccountMockComponent, account_id::AccountIdBuilder},
     transaction::{ExecutedTransaction, TransactionScript},
     vm::AdviceMap,
 };
@@ -151,17 +146,29 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 /// - Asset2 is increased by 200 and decreased by 100 -> Delta: 100.
 #[test]
 fn fungible_asset_delta() -> anyhow::Result<()> {
-    let original_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 300)?;
-    let original_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 200)?;
-    let original_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
+    // Test with random IDs to make sure the ordering in the MASM and Rust implementations
+    // matches.
+    let faucet0: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::FungibleFaucet)
+        .build_with_seed(rand::random());
+    let faucet1: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::FungibleFaucet)
+        .build_with_seed(rand::random());
+    let faucet2: AccountId = AccountIdBuilder::new()
+        .account_type(AccountType::FungibleFaucet)
+        .build_with_seed(rand::random());
 
-    let added_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 100)?;
-    let added_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
-    let added_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 200)?;
+    let original_asset0 = FungibleAsset::new(faucet0, 300)?;
+    let original_asset1 = FungibleAsset::new(faucet1, 200)?;
+    let original_asset2 = FungibleAsset::new(faucet2, 100)?;
 
-    let removed_asset0 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?, 200)?;
-    let removed_asset1 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?, 100)?;
-    let removed_asset2 = FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 100)?;
+    let added_asset0 = FungibleAsset::new(faucet0, 100)?;
+    let added_asset1 = FungibleAsset::new(faucet1, 100)?;
+    let added_asset2 = FungibleAsset::new(faucet2, 200)?;
+
+    let removed_asset0 = FungibleAsset::new(faucet0, 200)?;
+    let removed_asset1 = FungibleAsset::new(faucet1, 100)?;
+    let removed_asset2 = FungibleAsset::new(faucet2, 100)?;
 
     let TestSetup { mut mock_chain, account_id } =
         setup_asset_test([original_asset0, original_asset1, original_asset2].map(Asset::from));
@@ -346,18 +353,6 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
     )
     .context("failed to compile tx script")
 }
-
-// fn default_tx_script() -> TransactionScript {
-//     compile_tx_script(
-//         "
-//   begin
-//       # nonce must increase for state changing transactions
-//       push.1 exec.incr_nonce
-//   end
-//   ",
-//     )
-//     .expect("tx script should be valid")
-// }
 
 fn word(data: [u32; 4]) -> Word {
     Word::from(Digest::from(data))

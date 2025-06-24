@@ -334,6 +334,14 @@ impl FungibleAssetDelta {
 
     /// Appends the fungible asset vault delta to the given `elements` from which the delta
     /// commitment will be computed.
+    ///
+    /// Note that the order in which elements are appended should be the link map key ordering. This
+    /// is fulfilled here because the link map key's most significant element takes precedence over
+    /// less significant ones. The most significant element in the fungible asset delta is the
+    /// account ID prefix and the delta happens to be sorted by account IDs. Since the account ID
+    /// prefix is unique, it will always decide on the ordering of a link map key, so less
+    /// significant elements are unimportant. This implicit sort should therefore always match the
+    /// link map key ordering, however this is subtle and fragile.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
         for (faucet_id, amount_delta) in self.iter() {
             let amount_delta = *amount_delta as u64;
