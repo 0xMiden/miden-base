@@ -11,6 +11,7 @@ use crate::{
     Felt, ONE, Word, ZERO,
     account::{AccountId, AccountType},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
+    transaction::LinkMapKey,
 };
 
 // ACCOUNT VAULT DELTA
@@ -176,7 +177,7 @@ impl From<&AssetVault> for AccountVaultDelta {
                     );
                 },
                 Asset::NonFungible(asset) => {
-                    non_fungible.insert(asset, NonFungibleDeltaAction::Add);
+                    non_fungible.insert(LinkMapKey::new(asset), NonFungibleDeltaAction::Add);
                 },
             }
         }
@@ -396,11 +397,11 @@ impl Deserializable for FungibleAssetDelta {
 
 /// A binary tree map of non-fungible asset changes (addition and removal) in the account vault.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NonFungibleAssetDelta(BTreeMap<NonFungibleAsset, NonFungibleDeltaAction>);
+pub struct NonFungibleAssetDelta(BTreeMap<LinkMapKey<NonFungibleAsset>, NonFungibleDeltaAction>);
 
 impl NonFungibleAssetDelta {
     /// Creates a new non-fungible asset delta.
-    pub const fn new(map: BTreeMap<NonFungibleAsset, NonFungibleDeltaAction>) -> Self {
+    pub const fn new(map: BTreeMap<LinkMapKey<NonFungibleAsset>, NonFungibleDeltaAction>) -> Self {
         Self(map)
     }
 
@@ -432,7 +433,7 @@ impl NonFungibleAssetDelta {
 
     /// Returns an iterator over the (key, value) pairs of the map.
     pub fn iter(&self) -> impl Iterator<Item = (&NonFungibleAsset, &NonFungibleDeltaAction)> {
-        self.0.iter()
+        self.0.iter().map(|(key, value)| (key.inner(), value))
     }
 
     /// Merges another delta into this one, overwriting any existing values.
@@ -444,7 +445,7 @@ impl NonFungibleAssetDelta {
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
         // Merge non-fungible assets. Each non-fungible asset can cancel others out.
         for (&key, &action) in other.0.iter() {
-            self.apply_action(key, action)?;
+            self.apply_action(key.into_inner(), action)?;
         }
 
         Ok(())
@@ -463,7 +464,7 @@ impl NonFungibleAssetDelta {
         asset: NonFungibleAsset,
         action: NonFungibleDeltaAction,
     ) -> Result<(), AccountDeltaError> {
-        match self.0.entry(asset) {
+        match self.0.entry(LinkMapKey::new(asset)) {
             Entry::Vacant(entry) => {
                 entry.insert(action);
             },
@@ -489,7 +490,7 @@ impl NonFungibleAssetDelta {
         self.0
             .iter()
             .filter(move |&(_, cur_action)| cur_action == &action)
-            .map(|(key, _)| *key)
+            .map(|(key, _)| key.into_inner())
     }
 
     /// Appends the non-fungible asset vault delta to the given `elements` from which the delta
@@ -537,13 +538,13 @@ impl Deserializable for NonFungibleAssetDelta {
         let num_added = source.read_usize()?;
         for _ in 0..num_added {
             let added_asset = source.read()?;
-            map.insert(added_asset, NonFungibleDeltaAction::Add);
+            map.insert(LinkMapKey::new(added_asset), NonFungibleDeltaAction::Add);
         }
 
         let num_removed = source.read_usize()?;
         for _ in 0..num_removed {
             let removed_asset = source.read()?;
-            map.insert(removed_asset, NonFungibleDeltaAction::Remove);
+            map.insert(LinkMapKey::new(removed_asset), NonFungibleDeltaAction::Remove);
         }
 
         Ok(Self::new(map))
