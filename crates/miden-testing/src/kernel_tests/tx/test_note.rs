@@ -1,10 +1,6 @@
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 
 use anyhow::Context;
-use miden_crypto::{
-    dsa::rpo_falcon512::PublicKey,
-    rand::{FeltRng, RpoRandomCoin},
-};
 use miden_lib::{
     account::{auth::RpoFalcon512, wallets::BasicWallet},
     errors::{
@@ -16,6 +12,10 @@ use miden_objects::{
     Digest, EMPTY_WORD, ONE, WORD_SIZE,
     account::{AccountBuilder, AccountId},
     assembly::diagnostics::miette,
+    crypto::{
+        dsa::rpo_falcon512::PublicKey,
+        rand::{FeltRng, RpoRandomCoin},
+    },
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteScript, NoteTag, NoteType,

@@ -1,9 +1,11 @@
 // AUTH
 // ================================================================================================
 
-use miden_crypto::dsa::rpo_falcon512::SecretKey;
 use miden_lib::account::auth::RpoFalcon512;
-use miden_objects::account::{AccountComponent, AuthSecretKey};
+use miden_objects::{
+    account::{AccountComponent, AuthSecretKey},
+    crypto::dsa::rpo_falcon512::SecretKey,
+};
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
