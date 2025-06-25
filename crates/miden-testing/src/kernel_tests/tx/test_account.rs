@@ -91,10 +91,10 @@ pub fn test_account_type() -> miette::Result<()> {
 
             let code = format!(
                 "
-                use.kernel::account
+                use.kernel::account_id
 
                 begin
-                    exec.account::{}
+                    exec.account_id::{}
                 end
                 ",
                 procedure
@@ -161,10 +161,10 @@ pub fn test_account_validate_id() -> miette::Result<()> {
         let suffix = Felt::try_from((account_id % (1u128 << 64)) as u64).unwrap();
 
         let code = "
-            use.kernel::account
+            use.kernel::account_id
 
             begin
-                exec.account::validate_id
+                exec.account_id::validate_id
             end
             ";
 
@@ -213,11 +213,11 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
+            use.kernel::account_id
 
             begin
                 push.{prefix}
-                exec.account::is_faucet
+                exec.account_id::is_faucet
                 # => [is_faucet, account_id_prefix]
 
                 # truncate the stack

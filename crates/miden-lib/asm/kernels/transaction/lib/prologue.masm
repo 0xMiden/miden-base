@@ -3,6 +3,7 @@ use.std::collections::mmr
 use.std::crypto::hashes::rpo
 
 use.kernel::account
+use.kernel::account_id
 use.kernel::asset_vault
 use.kernel::constants
 use.kernel::memory
@@ -315,7 +316,7 @@ end
 #! Outputs: []
 proc.validate_new_account
     # Assert the account ID of the account is valid
-    exec.memory::get_account_id exec.account::validate_id
+    exec.memory::get_account_id exec.account_id::validate_id
     # => []
 
     # Assert the account nonce is 0
@@ -338,7 +339,7 @@ proc.validate_new_account
     # Assert faucet reserved slot is correctly initialized
     # ---------------------------------------------------------------------------------------------
     # check if the account is a faucet
-    exec.account::get_id swap drop dup exec.account::is_faucet
+    exec.account::get_id swap drop dup exec.account_id::is_faucet
     # => [is_faucet, acct_id_prefix]
 
     # process conditional logic depending on whether the account is a faucet
@@ -348,7 +349,7 @@ proc.validate_new_account
         # => [FAUCET_RESERVED_SLOT, acct_id_prefix]
 
         # check if the account is a fungible faucet
-        movup.4 exec.account::is_fungible_faucet
+        movup.4 exec.account_id::is_fungible_faucet
         # => [is_fungible_faucet, FAUCET_RESERVED_SLOT]
 
         if.true
@@ -466,7 +467,7 @@ proc.process_account_data
     # assert the account ID matches the account ID in global inputs
     exec.memory::get_global_acct_id
     exec.memory::get_account_id
-    exec.account::is_id_equal assert.err=ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER
+    exec.account_id::is_id_equal assert.err=ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER
     # => [ACCOUNT_COMMITMENT]
 
     # store a copy of the initial nonce in global inputs

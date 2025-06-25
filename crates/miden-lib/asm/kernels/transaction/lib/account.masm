@@ -3,7 +3,7 @@ use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
 
-use.kernel::util::account_id
+use.kernel::account_id
 use.kernel::asset_vault
 use.kernel::constants
 use.kernel::memory
@@ -256,86 +256,6 @@ export.memory::get_acct_nonce->get_nonce
 #! - INIT_COMMITMENT is the initial account commitment.
 export.memory::get_init_account_commitment->get_initial_commitment
 
-#! Returns a boolean indicating whether the account is a fungible faucet.
-#!
-#! Inputs:  [acct_id_prefix]
-#! Outputs: [is_fungible_faucet]
-#!
-#! Where:
-#! - acct_id_prefix is the prefix of the account ID.
-#! - is_fungible_faucet is a boolean indicating whether the account is a fungible faucet.
-export.::kernel::util::account_id::is_fungible_faucet
-
-#! Returns a boolean indicating whether the account is a non-fungible faucet.
-#!
-#! Inputs:  [acct_id_prefix]
-#! Outputs: [is_non_fungible_faucet]
-#!
-#! Where:
-#! - acct_id_prefix is the prefix of the account ID.
-#! - is_non_fungible_faucet is a boolean indicating whether the account is a non-fungible faucet.
-export.::kernel::util::account_id::is_non_fungible_faucet
-
-#! Returns a boolean indicating whether the account is a faucet.
-#!
-#! Inputs:  [acct_id_prefix]
-#! Outputs: [is_faucet]
-#!
-#! Where:
-#! - acct_id_prefix is the prefix of the account ID.
-#! - is_faucet is a boolean indicating whether the account is a faucet.
-export.::kernel::util::account_id::is_faucet
-
-#! Returns a boolean indicating whether the account is a regular updatable account.
-#!
-#! Inputs:  [acct_id_prefix]
-#! Outputs: [is_updatable_account]
-#!
-#! Where:
-#! - acct_id_prefix is the prefix of the account ID.
-#! - is_updatable_account is a boolean indicating whether the account is a regular updatable
-#!   account.
-export.::kernel::util::account_id::is_updatable_account
-
-#! Returns a boolean indicating whether the account is a regular immutable account.
-#!
-#! Inputs:  [acct_id_prefix]
-#! Outputs: [is_immutable_account]
-#!
-#! Where:
-#! - acct_id_prefix is the prefix of the account ID.
-#! - is_immutable_account is a boolean indicating whether the account is a regular immutable
-#!   account.
-export.::kernel::util::account_id::is_immutable_account
-
-#! Returns a boolean indicating whether the given account_ids are equal.
-#!
-#! Inputs:  [acct_id_prefix, acct_id_suffix, other_acct_id_prefix, other_acct_id_suffix]
-#! Outputs: [is_id_equal]
-#!
-#! Where:
-#! - acct_id_{prefix,suffix} are the prefix and suffix felts of an account ID.
-#! - other_acct_id_{prefix,suffix} are the prefix and suffix felts of the other account ID to
-#!   compare against.
-#! - is_id_equal is a boolean indicating whether the account IDs are equal.
-export.::kernel::util::account_id::is_equal->is_id_equal
-
-#! Validates an account ID. Note that this does not validate anything about the account type,
-#! since any 2-bit pattern is a valid account type.
-#!
-#! Inputs:  [account_id_prefix, account_id_suffix]
-#! Outputs: []
-#!
-#! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
-#!
-#! Panics if:
-#! - account_id_prefix does not contain version zero.
-#! - account_id_prefix does not contain either the public, network or private storage mode.
-#! - account_id_suffix does not have its most significant bit set to zero.
-#! - account_id_suffix does not have its lower 8 bits set to zero.
-export.::kernel::util::account_id::validate->validate_id
-
 #! Gets the code commitment of the account the transaction is being executed against.
 #!
 #! Inputs:  []
@@ -407,7 +327,7 @@ export.validate_procedure_metadata
     # => [start_loop, index, num_storage_slots, num_account_procedures]
 
     # check if the account is a faucet
-    exec.get_id swap drop exec.is_faucet
+    exec.get_id swap drop exec.account_id::is_faucet
     # => [is_faucet, start_loop, index, num_storage_slots, num_account_procedures]
 
     # we do not check if num_account_procedures == 0 here because a valid
@@ -794,7 +714,7 @@ export.validate_seed
     # => [hashed_account_id_prefix, hashed_account_id_suffix, account_id_prefix, account_id_suffix]
 
     # assert the account ID matches the account ID of the new account
-    exec.is_id_equal assert.err=ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH
+    exec.account_id::is_id_equal assert.err=ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH
     # => []
 end
 
@@ -1114,7 +1034,7 @@ export.get_account_data_ptr
         # => [is_empty_block, maybe_account_id_prefix, maybe_account_id_suffix, curr_account_ptr', foreign_account_id_prefix, foreign_account_id_suffix]
 
         # check whether the current id matches the foreign id
-        movdn.2 dup.5 dup.5 exec.is_id_equal
+        movdn.2 dup.5 dup.5 exec.account_id::is_id_equal
         # => [is_equal_id, is_empty_word, curr_account_ptr', foreign_account_id_prefix, foreign_account_id_suffix]
 
         # get the loop flag
