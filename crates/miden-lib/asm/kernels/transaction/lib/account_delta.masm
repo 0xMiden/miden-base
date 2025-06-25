@@ -186,7 +186,7 @@ end
 proc.update_map_slot_delta.4
     # initialize num_changed_entries = 0
     # this is necessary because this procedure can be called multiple times and the second
-    # invocation shouldn't reuse the first invocations value
+    # invocation shouldn't reuse the first invocation's value
     push.0 loc_store.3
     # => [slot_idx, RATE, RATE, PERM]
 

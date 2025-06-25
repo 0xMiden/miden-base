@@ -533,20 +533,20 @@ export.set_map_item.12
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
     # check if storage type is map
-    dup exec.get_storage_slot_type
-    # => [slot_type, index, KEY, NEW_VALUE, OLD_ROOT]
+    exec.get_storage_slot_type
+    # => [slot_type, KEY, NEW_VALUE, OLD_ROOT]
 
     # check if slot_type == map
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
-    # => [index, KEY, NEW_VALUE, OLD_ROOT]
+    # => [KEY, NEW_VALUE, OLD_ROOT]
 
     emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
-    # => [index, KEY, NEW_VALUE, OLD_ROOT]
+    # => [KEY, NEW_VALUE, OLD_ROOT]
 
     # duplicate the original KEY and the NEW_VALUE to be able to emit an event after the
     # account storage item was updated
-    drop movupw.2 dupw.2 dupw.2
+    movupw.2 dupw.2 dupw.2
     # => [KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
 
     # see hash_map_key's docs for why this is done
