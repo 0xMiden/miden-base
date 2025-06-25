@@ -141,9 +141,9 @@ impl AccountDelta {
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]` where slot_idx
-    ///       is the index of the slot and `num_changed_entries` is the number of changed key-value
-    ///       pairs in the map.
+    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]`, except if
+    ///       `num_changed_entries` is 0, where slot_idx is the index of the slot and
+    ///       `num_changed_entries` is the number of changed key-value pairs in the map.
     ///
     /// # Rationale
     ///
