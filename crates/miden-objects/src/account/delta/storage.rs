@@ -292,6 +292,9 @@ impl Deserializable for AccountStorageDelta {
 ///
 /// The differences are represented as leaf updates: a map of updated item key ([Digest]) to
 /// value ([Word]). For cleared items the value is [EMPTY_WORD].
+///
+/// The [`LinkMapKey`] wrapper is necessary to order the keys in the same way as the in-kernel
+/// account delta which uses a link map.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct StorageMapDelta(BTreeMap<LinkMapKey<Digest>, Word>);
 
