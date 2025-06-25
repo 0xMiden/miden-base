@@ -4,9 +4,9 @@ extern crate std;
 
 use std::sync::LazyLock;
 
-use assembly::{Assembler, Library};
+use assembly::Library;
 use miden_crypto::dsa::rpo_falcon512::SecretKey;
-use miden_lib::account::auth::RpoFalcon512;
+use miden_lib::{account::auth::RpoFalcon512, transaction::TransactionKernel};
 use miden_objects::account::{AccountComponent, AuthSecretKey};
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
@@ -48,12 +48,14 @@ impl Auth {
 }
 
 const AUTH_CODE: &str = "
+    use.miden::account
+
     export.auth
-        push.1 assert
+        push.1 exec.account::incr_nonce
     end
 ";
 static AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    Assembler::default()
+    TransactionKernel::testing_assembler()
         .assemble_library([AUTH_CODE])
         .expect("code should be valid")
 });

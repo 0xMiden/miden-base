@@ -270,16 +270,16 @@ export.finalize_transaction
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
 
+    # execute the account authentication procedure
+    exec.execute_auth_procedure
+    # => []
+
     # update account code
     exec.update_account_code
     # => []
 
     # update account storage commitment
     exec.update_account_storage_commitment
-    # => []
-
-    # execute the account authentication procedure
-    exec.execute_auth_procedure
     # => []
 
     # get the initial account commitment

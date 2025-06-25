@@ -16,7 +16,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_get_nonce
     digest!("0xf1dfe3621b9147803b6668352915be7fb7f85df476c9d18052272270a854fa75"),
     // account_incr_nonce
-    digest!("0x726357558767a56aae315c4c8aa406cdf57ad400832222622eec58dc42cce406"),
+    digest!("0xc9fb323b73f8f32d11da2d45b8547f471b46be4f6f1643212838e2e442291d5e"),
     // account_get_code_commitment
     digest!("0xbab83830e881bdbee08fa1506d651388c20ebb0cadfb6794189542dd257841aa"),
     // account_get_storage_commitment

@@ -34,6 +34,8 @@ pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = Mas
 pub const ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32: MasmError = MasmError::from_static_str("account nonce cannot be increased by a greater than u32 value");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
+/// Error Message: "account procedure is not the authentication procedure"
+pub const ERR_ACCOUNT_PROC_NOT_AUTH_PROC: MasmError = MasmError::from_static_str("account procedure is not the authentication procedure");
 /// Error Message: "account procedure is not part of the account code"
 pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("account procedure is not part of the account code");
 /// Error Message: "failed to read an account map item from a non-map storage slot"

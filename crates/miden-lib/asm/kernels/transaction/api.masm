@@ -50,6 +50,25 @@ proc.authenticate_account_origin
     # => [storage_offset, storage_size]
 end
 
+#! Asserts that the invocation of a kernel procedure originates from the authentication procedure of the account.
+#!
+#! Inputs:  []
+#! Outputs: []
+#!
+#! Panics if:
+#! - the invocation of the kernel procedure does not originate from the authentication procedure of the account.
+#!
+#! Invocation: exec
+proc.assert_auth_procedure_origin
+    # get the hash of the caller
+    padw caller
+    # => [CALLER]
+
+    # assert that the caller is from the user context
+    exec.account::assert_auth_procedure
+    # => []
+end
+
 # KERNEL PROCEDURES
 # =================================================================================================
 
@@ -141,6 +160,7 @@ end
 #!
 #! Panics if:
 #! - the invocation of this procedure does not originate from the native account.
+#! - the invocation of this procedure does not originate from the authentication procedure of the account.
 #! - the increment is greater than 2^32 - 1.
 #!
 #! Invocation: dynexec
@@ -150,7 +170,7 @@ export.account_incr_nonce
     # => [increment, pad(15)]
 
     # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
+    exec.assert_auth_procedure_origin
     # => [increment, pad(15)]
 
     # increment the account nonce
