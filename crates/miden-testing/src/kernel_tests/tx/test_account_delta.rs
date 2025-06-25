@@ -1,10 +1,9 @@
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_crypto::{EMPTY_WORD, Word};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest, Felt, Hasher,
+    Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{Account, AccountBuilder, AccountDelta, AccountHeader, AccountId, StorageSlot},
     testing::account_component::AccountMockComponent,
     transaction::{ExecutedTransaction, TransactionScript},
