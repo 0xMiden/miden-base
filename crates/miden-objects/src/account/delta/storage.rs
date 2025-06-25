@@ -351,6 +351,11 @@ impl StorageMapDelta {
                 .chain(updated_leaves.into_iter().map(|(key, value)| (key.into(), value))),
         ))
     }
+
+    /// Consumes self and returns the underlying map.
+    pub fn into_map(self) -> BTreeMap<Digest, Word> {
+        self.0
+    }
 }
 
 /// Converts a [StorageMap] into a [StorageMapDelta] for initial delta construction.

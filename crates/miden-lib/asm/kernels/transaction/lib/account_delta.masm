@@ -561,6 +561,68 @@ export.remove_non_fungible_asset
     # => []
 end
 
+#! Updates the storage map delta of the given slot index with the given key-value pair and its previous value.
+#!
+#! The layout of a link map entry for a given KEY is: [KEY, INIT_VALUE, NEW_VALUE] where INIT_VALUE
+#! represents the initial value for the given KEY at the beginning of transaction execution and
+#! NEW_VALUE is the new value. The delta entry is a NOOP if INIT_VALUE and NEW_VALUE are equal.
+#!
+#! Inputs:  [slot_index, KEY, PREV_VALUE, NEW_VALUE]
+#! Outputs: []
+#!
+#! Where:
+#! - slot_index is the slot index of the storage map slot.
+#! - KEY is the key in the storage map that is being updated.
+#! - PREV_VALUE is the previous value of the key in the storage map that is being updated.
+#! - NEW_VALUE is the new value of the key in the storage map that is being updated.
+export.set_map_item.8
+    # retrieve the link map ptr to the storage map delta for the provided index
+    exec.memory::get_account_delta_storage_map_ptr
+    # => [account_delta_storage_map_ptr, KEY, PREV_VALUE, NEW_VALUE]
+
+    # store map ptr in local
+    loc_store.0
+    # => [KEY, PREV_VALUE, NEW_VALUE]
+
+    # store KEY in local
+    loc_storew.4
+    # => [KEY, PREV_VALUE, NEW_VALUE]
+
+    loc_load.0
+    # => [account_delta_storage_map_ptr, KEY, PREV_VALUE, NEW_VALUE]
+
+    # retrieve the current delta
+    exec.link_map::get
+    # => [contains_key, VALUE0, VALUE1, PREV_VALUE, NEW_VALUE]
+
+    movdn.12
+    # => [VALUE0, VALUE1, PREV_VALUE, contains_key, NEW_VALUE]
+
+    # VALUE1 was the previous "new value" if this key was already updated, so in any case,
+    # we can drop it since this update overwrites the previous one
+    swapw dropw
+    # => [VALUE0, PREV_VALUE, contains_key, NEW_VALUE]
+
+    movup.8
+    # => [contains_key, VALUE0, PREV_VALUE, NEW_VALUE]
+
+    # contains_key determines whether this is the first update to this KEY
+    # if this is the first update, PREV_VALUE is the *initial* value of the key-value pair
+    # if this is not the first update, VALUE0 is the initial value, so we want to store it back
+    # use cdropw to selectively keep the word that represents the initial value
+    # If contains_key VALUE0 remains.
+    # If !contains_key PREV_VALUE remains.
+    cdropw
+    # => [INITIAL_VALUE, NEW_VALUE]
+
+    # load key and index from locals
+    padw loc_loadw.4 loc_load.0
+    # => [account_delta_storage_map_ptr, KEY, INITIAL_VALUE, NEW_VALUE]
+
+    exec.link_map::set drop
+    # => []
+end
+
 # i64 MATH
 # -------------------------------------------------------------------------------------------------
 

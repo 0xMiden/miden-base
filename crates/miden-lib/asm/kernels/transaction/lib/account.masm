@@ -546,26 +546,40 @@ export.set_map_item.12
 
     # duplicate the original KEY and the NEW_VALUE to be able to emit an event after the
     # account storage item was updated
-    movdn.12 movupw.2 dupw.2 dupw.2
-    # => [KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE, index, ...]
+    drop movupw.2 dupw.2 dupw.2
+    # => [KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
 
     # see hash_map_key's docs for why this is done
     exec.hash_map_key
-    # => [HASHED_KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE, index, ...]
+    # => [HASHED_KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
 
     # set the NEW_VALUE under HASHED_KEY in the tree
-    # note smt::set expects the stack to be [NEW_VALUE, HASHED_KEY, OLD_ROOT, ...]
+    # note smt::set expects the stack to be [NEW_VALUE, HASHED_KEY, OLD_ROOT]
     swapw exec.smt::set
-    # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE, index, ...]
+    # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
     # store OLD_MAP_VALUE and NEW_ROOT until the end of the procedure
     loc_storew.4 dropw loc_storew.8 dropw
-    # => [KEY, NEW_VALUE, index, ...]
+    # => [KEY, NEW_VALUE]
+
+    dupw.1
+    # => [NEW_VALUE, KEY, NEW_VALUE]
+
+    padw loc_loadw.4
+    # => [OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+
+    dupw.2
+    # => [KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
 
     # emit event to signal that an account storage item is being updated
-    movup.8
-    emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT drop
-    # => [KEY, NEW_VALUE, ...]
+    loc_load.0
+    # => [index, KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+
+    emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT
+    # => [index, KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+
+    exec.account_delta::set_map_item
+    # => [KEY, NEW_VALUE]
 
     # load OLD_MAP_VALUE and NEW_ROOT on the top of the stack
     loc_loadw.8 swapw loc_loadw.4 swapw

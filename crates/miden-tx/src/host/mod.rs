@@ -327,10 +327,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
 
         // get the VALUE to which the slot is being updated
         let new_map_value = [
-            process.get_stack_item(8),
-            process.get_stack_item(7),
-            process.get_stack_item(6),
-            process.get_stack_item(5),
+            process.get_stack_item(12),
+            process.get_stack_item(11),
+            process.get_stack_item(10),
+            process.get_stack_item(9),
         ];
 
         let slot_index = slot_index.as_int() as u8;
