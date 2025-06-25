@@ -4,7 +4,10 @@ use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, Hasher, Word,
-    account::{Account, AccountBuilder, AccountDelta, AccountHeader, AccountId, StorageSlot},
+    account::{
+        Account, AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode,
+        StorageSlot,
+    },
     testing::account_component::AccountMockComponent,
     transaction::{ExecutedTransaction, TransactionScript},
     vm::AdviceMap,
@@ -197,6 +200,7 @@ struct TestSetup {
 
 fn setup_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
     let account = AccountBuilder::new([8; 32])
+        .storage_mode(AccountStorageMode::Public)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
