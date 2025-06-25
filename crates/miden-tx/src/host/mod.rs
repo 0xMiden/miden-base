@@ -325,6 +325,14 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             process.get_stack_item(1),
         ];
 
+        // get the previous VALUE of the slot
+        let prev_map_value = [
+            process.get_stack_item(8),
+            process.get_stack_item(7),
+            process.get_stack_item(6),
+            process.get_stack_item(5),
+        ];
+
         // get the VALUE to which the slot is being updated
         let new_map_value = [
             process.get_stack_item(12),
@@ -334,11 +342,13 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         ];
 
         let slot_index = slot_index.as_int() as u8;
-        self.account_delta.storage_delta().set_map_item(
-            slot_index,
-            new_map_key.into(),
-            new_map_value,
-        );
+        if new_map_value != prev_map_value {
+            self.account_delta.storage_delta().set_map_item(
+                slot_index,
+                new_map_key.into(),
+                new_map_value,
+            );
+        }
 
         Ok(())
     }

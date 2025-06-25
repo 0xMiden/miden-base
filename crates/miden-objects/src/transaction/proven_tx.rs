@@ -614,7 +614,7 @@ mod tests {
         testing::account_id::{
             ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         },
-        transaction::{ProvenTransactionBuilder, TxAccountUpdate},
+        transaction::{LinkMapKey, ProvenTransactionBuilder, TxAccountUpdate},
         utils::Serializable,
     };
 
@@ -667,7 +667,7 @@ mod tests {
         // 32 bytes in size.
         let required_entries = ACCOUNT_UPDATE_MAX_SIZE / (2 * 32);
         for _ in 0..required_entries {
-            map.insert(Digest::new(rand_array()), rand_array());
+            map.insert(LinkMapKey::new(Digest::new(rand_array())), rand_array());
         }
         let storage_delta = StorageMapDelta::new(map);
 

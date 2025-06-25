@@ -11,6 +11,7 @@ use super::{
 use crate::{
     Digest, EMPTY_WORD, Felt, ZERO,
     account::{AccountStorage, StorageMap, StorageSlot},
+    transaction::LinkMapKey,
 };
 
 // ACCOUNT STORAGE DELTA
@@ -157,7 +158,7 @@ impl AccountStorageDelta {
                         }
 
                         for (key, value) in map_delta.entries() {
-                            elements.extend_from_slice(key.as_elements());
+                            elements.extend_from_slice(key.inner().as_elements());
                             elements.extend_from_slice(value);
                         }
 
@@ -292,11 +293,11 @@ impl Deserializable for AccountStorageDelta {
 /// The differences are represented as leaf updates: a map of updated item key ([Digest]) to
 /// value ([Word]). For cleared items the value is [EMPTY_WORD].
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct StorageMapDelta(BTreeMap<Digest, Word>);
+pub struct StorageMapDelta(BTreeMap<LinkMapKey<Digest>, Word>);
 
 impl StorageMapDelta {
     /// Creates a new storage map delta from the provided leaves.
-    pub fn new(map: BTreeMap<Digest, Word>) -> Self {
+    pub fn new(map: BTreeMap<LinkMapKey<Digest>, Word>) -> Self {
         Self(map)
     }
 
@@ -306,13 +307,13 @@ impl StorageMapDelta {
     }
 
     /// Returns a reference to the updated entries in this storage map delta.
-    pub fn entries(&self) -> &BTreeMap<Digest, Word> {
+    pub fn entries(&self) -> &BTreeMap<LinkMapKey<Digest>, Word> {
         &self.0
     }
 
     /// Inserts an item into the storage map delta.
     pub fn insert(&mut self, key: Digest, value: Word) {
-        self.0.insert(key, value);
+        self.0.insert(LinkMapKey::new(key), value);
     }
 
     /// Returns true if storage map delta contains no updates.
@@ -328,12 +329,21 @@ impl StorageMapDelta {
 
     /// Returns an iterator of all the cleared keys in the storage map.
     fn cleared_keys(&self) -> impl Iterator<Item = &Digest> + '_ {
-        self.0.iter().filter(|&(_, value)| value == &EMPTY_WORD).map(|(key, _)| key)
+        self.0
+            .iter()
+            .filter(|&(_, value)| value == &EMPTY_WORD)
+            .map(|(key, _)| key.inner())
     }
 
     /// Returns an iterator of all the updated entries in the storage map.
     fn updated_entries(&self) -> impl Iterator<Item = (&Digest, &Word)> + '_ {
-        self.0.iter().filter(|&(_, value)| value != &EMPTY_WORD)
+        self.0.iter().filter_map(|(key, value)| {
+            if value != &EMPTY_WORD {
+                Some((key.inner(), value))
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -347,13 +357,17 @@ impl StorageMapDelta {
         Self(BTreeMap::from_iter(
             cleared_leaves
                 .into_iter()
-                .map(|key| (key.into(), EMPTY_WORD))
-                .chain(updated_leaves.into_iter().map(|(key, value)| (key.into(), value))),
+                .map(|key| (LinkMapKey::new(Digest::from(key)), EMPTY_WORD))
+                .chain(
+                    updated_leaves
+                        .into_iter()
+                        .map(|(key, value)| (LinkMapKey::new(Digest::from(key)), value)),
+                ),
         ))
     }
 
     /// Consumes self and returns the underlying map.
-    pub fn into_map(self) -> BTreeMap<Digest, Word> {
+    pub fn into_map(self) -> BTreeMap<LinkMapKey<Digest>, Word> {
         self.0
     }
 }
@@ -361,7 +375,12 @@ impl StorageMapDelta {
 /// Converts a [StorageMap] into a [StorageMapDelta] for initial delta construction.
 impl From<StorageMap> for StorageMapDelta {
     fn from(map: StorageMap) -> Self {
-        StorageMapDelta::new(map.into_entries())
+        StorageMapDelta::new(
+            map.into_entries()
+                .into_iter()
+                .map(|(key, value)| (LinkMapKey::new(key), value))
+                .collect(),
+        )
     }
 }
 
@@ -400,13 +419,13 @@ impl Deserializable for StorageMapDelta {
         let cleared_count = source.read_usize()?;
         for _ in 0..cleared_count {
             let cleared_key = source.read()?;
-            map.insert(cleared_key, EMPTY_WORD);
+            map.insert(LinkMapKey::new(cleared_key), EMPTY_WORD);
         }
 
         let updated_count = source.read_usize()?;
         for _ in 0..updated_count {
             let (updated_key, updated_value) = source.read()?;
-            map.insert(updated_key, updated_value);
+            map.insert(LinkMapKey::new(updated_key), updated_value);
         }
 
         Ok(Self::new(map))

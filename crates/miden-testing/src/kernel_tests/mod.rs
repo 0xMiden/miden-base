@@ -1,9 +1,4 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use assert_matches::assert_matches;
@@ -32,7 +27,7 @@ use miden_objects::{
         note::{DEFAULT_NOTE_CODE, NoteBuilder},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
-    transaction::{OutputNote, ProvenTransaction, TransactionScript},
+    transaction::{LinkMapKey, OutputNote, ProvenTransaction, TransactionScript},
 };
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
@@ -312,17 +307,16 @@ fn executed_transaction_account_delta_new() {
     );
 
     assert_eq!(executed_transaction.account_delta().storage().maps().len(), 1);
+    let map_delta = executed_transaction
+        .account_delta()
+        .storage()
+        .maps()
+        .get(&STORAGE_INDEX_2)
+        .unwrap()
+        .entries();
     assert_eq!(
-        executed_transaction
-            .account_delta()
-            .storage()
-            .maps()
-            .get(&STORAGE_INDEX_2)
-            .unwrap()
-            .entries(),
-        &Some((updated_map_key.into(), updated_map_value))
-            .into_iter()
-            .collect::<BTreeMap<Digest, _>>()
+        *map_delta.get(&LinkMapKey::new(Digest::from(updated_map_key))).unwrap(),
+        updated_map_value
     );
 
     // vault delta
