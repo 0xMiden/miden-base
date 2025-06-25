@@ -123,10 +123,9 @@ proc.update_slot_delta
     if.true
         exec.update_value_slot_delta
     else
-        # TODO: Update delta hasher with map.
-        # drop slot idx
-        drop
+        exec.update_map_slot_delta
     end
+    # => [RATE, RATE, PERM]
 end
 
 #! Updates the given delta hasher with the value storage slot at the provided index.
@@ -169,6 +168,108 @@ proc.update_value_slot_delta
     else
         # drop init value, current value and slot idx
         dropw dropw drop
+        # => [RATE, RATE, PERM]
+    end
+    # => [RATE, RATE, PERM]
+end
+
+#! Updates the given delta hasher with the map storage slot at the provided index.
+#!
+#! Inputs:  [slot_idx, RATE, RATE, PERM]
+#! Outputs: [RATE, RATE, PERM]
+#!
+#! Locals:
+#!   0: slot_idx
+#!   1: has_next
+#!   2: iter
+#!   3: num_changed_entries
+proc.update_map_slot_delta.4
+    # initialize num_changed_entries = 0
+    # this is necessary because this procedure can be called multiple times and the second
+    # invocation shouldn't reuse the first invocations value
+    push.0 loc_store.3
+    # => [slot_idx, RATE, RATE, PERM]
+
+    dup loc_store.0
+    # => [slot_idx, RATE, RATE, PERM]
+
+    exec.memory::get_account_delta_storage_map_ptr
+    # => [account_delta_storage_map_ptr, RATE, RATE, PERM]
+
+    exec.link_map::iter
+    # => [has_next, iter, RATE, RATE, PERM]
+
+    # enter loop if the link map is not empty
+    while.true
+        exec.link_map::next
+        # => [KEY, INIT_VALUE, NEW_VALUE, has_next, iter, ...]
+
+        # store has_next
+        movup.12 loc_store.1
+        # => [KEY, INIT_VALUE, NEW_VALUE, iter, ...]
+
+        # store iter
+        movup.12 loc_store.2
+        # => [KEY, INIT_VALUE, NEW_VALUE, ...]
+
+        movupw.2
+        # => [NEW_VALUE, KEY, INIT_VALUE, ...]
+
+        movupw.2
+        # => [INIT_VALUE, NEW_VALUE, KEY, ...]
+
+        eqw not
+        # => [was_changed, INIT_VALUE, NEW_VALUE, KEY, ...]
+
+        # if the key-value pair has actually changed, update the hasher
+        if.true
+            # drop the initial value
+            dropw
+            # => [NEW_VALUE, KEY, RATE, RATE, PERM]
+
+            # increment number of changed entries in local 3
+            loc_load.3 add.1 loc_store.3
+            # => [NEW_VALUE, KEY, RATE, RATE, PERM]
+
+            # drop previous RATE elements
+            swapdw dropw dropw
+            # => [NEW_VALUE, KEY, PERM]
+
+            hperm
+            # => [RATE, RATE, PERM]
+        else
+            # discard the key and init and new value words loaded from the map
+            dropw dropw dropw
+            # => [RATE, RATE, PERM]
+        end
+        # => [RATE, RATE, PERM]
+
+        # load iter and has_next
+        loc_load.2
+        # => [iter, RATE, RATE, PERM]
+
+        loc_load.1
+        # => [has_next, iter, RATE, RATE, PERM]
+    end
+
+    # drop iter
+    drop
+    # => [RATE, RATE, PERM]
+
+    # only include the map slot metadata if there were entries in the map that resulted in an
+    # update to the hasher state
+    loc_load.3 neq.0
+    # => [is_num_changed_entries_non_zero, RATE, RATE, PERM]
+
+    if.true
+        # drop the previous RATE elements
+        dropw dropw
+        # => [PERM]
+
+        push.DOMAIN_MAP loc_load.0 loc_load.3 push.0 padw
+        # => [EMPTY_WORD, [0, num_changed_entries, slot_idx, domain], PERM]
+
+        hperm
         # => [RATE, RATE, PERM]
     end
     # => [RATE, RATE, PERM]
