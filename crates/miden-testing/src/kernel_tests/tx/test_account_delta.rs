@@ -4,19 +4,12 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
-        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType,
-        StorageSlot,
-    },
-    asset::{Asset, FungibleAsset},
-    note::{Note, NoteType},
-    testing::{
+        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType, StorageMap, StorageSlot
+    }, asset::{Asset, FungibleAsset}, note::{Note, NoteType}, testing::{
         account_component::AccountMockComponent, account_id::AccountIdBuilder,
         asset::NonFungibleAssetBuilder,
-    },
-    transaction::{ExecutedTransaction, TransactionScript},
-    vm::AdviceMap,
+    }, transaction::{ExecutedTransaction, LinkMapKey, TransactionScript}, vm::AdviceMap, Digest, Felt, Hasher, Word, EMPTY_WORD
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
 use rand::Rng;
@@ -138,6 +131,118 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     // Note that slot 2 is absent because its value hasn't changed.
     assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
+
+    validate_account_delta(&executed_tx).context("failed to validate delta")?;
+
+    Ok(())
+}
+
+/// Tests that setting new values for value storage slots results in the correct delta.
+/// - Slot 0: key0: EMPTY_WORD -> [1,2,3,4]              -> Delta: [1,2,3,4]
+/// - Slot 0: key1: EMPTY_WORD -> [1,2,3,4] -> [2,3,4,5] -> Delta: [2,3,4,5]
+/// - Slot 1: key2: [1,2,3,4]  -> [1,2,3,4]              -> Delta: None
+/// - Slot 1: key3: [1,2,3,4]  -> EMPTY_WORD             -> Delta: EMPTY_WORD
+/// - TODO (once account delta tracker is updated):
+///   - Slot 1: key4: [1,2,3,4]  -> [2,3,4,5] -> [1,2,3,4] -> Delta: None
+#[test]
+fn storage_delta_for_map_slots() -> anyhow::Result<()> {
+    // Test with random keys to make sure the ordering in the MASM and Rust implementations
+    // matches.
+    let key0 = Digest::from(word(winter_rand_utils::rand_array()));
+    let key1 = Digest::from(word(winter_rand_utils::rand_array()));
+    let key2 = Digest::from(word(winter_rand_utils::rand_array()));
+    let key3 = Digest::from(word(winter_rand_utils::rand_array()));
+
+    let key0_init_value = EMPTY_WORD;
+    let key1_init_value = EMPTY_WORD;
+    let key2_init_value = word([1, 2, 3, 4u32]);
+    let key3_init_value = word([1, 2, 3, 4u32]);
+
+    let key0_final_value = word([1, 2, 3, 4u32]);
+    let key1_tmp_value = word([1, 2, 3, 4u32]);
+    let key1_final_value = word([2, 3, 4, 5u32]);
+    let key2_final_value = key2_init_value;
+    let key3_final_value = EMPTY_WORD;
+
+    let mut map0 = StorageMap::new();
+    map0.insert(key0, key0_init_value);
+    map0.insert(key1, key1_init_value);
+
+    let mut map1 = StorageMap::new();
+    map1.insert(key2, key2_init_value);
+    map1.insert(key3, key3_init_value);
+
+    let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
+        StorageSlot::Map(map0),
+        StorageSlot::Map(map1),
+        // Include an empty map which does not receive any updates, to test that the "metadata
+        // header" in the delta commitemnt is not appended if there are no updates to a map
+        // slot.
+        StorageSlot::Map(StorageMap::new()),
+    ]);
+
+    let tx_script = compile_tx_script(format!(
+        "
+      begin
+          push.{key0_value}.{key0}.0
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
+          push.{key1_tmp_value}.{key1}.0
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
+          push.{key1_value}.{key1}.0
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
+          push.{key2_value}.{key2}.1
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
+          push.{key3_value}.{key3}.1
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
+          # nonce must increase for state changing transactions
+          push.1 exec.incr_nonce
+      end
+      ",
+        key0 = word_to_masm_push_string(&key0),
+        key1 = word_to_masm_push_string(&key1),
+        key2 = word_to_masm_push_string(&key2),
+        key3 = word_to_masm_push_string(&key3),
+        key0_value = word_to_masm_push_string(&key0_final_value),
+        key1_tmp_value = word_to_masm_push_string(&key1_tmp_value),
+        key1_value = word_to_masm_push_string(&key1_final_value),
+        key2_value = word_to_masm_push_string(&key2_final_value),
+        key3_value = word_to_masm_push_string(&key3_final_value),
+    ))?;
+
+    let executed_tx = mock_chain
+        .build_tx_context(account_id, &[], &[])
+        .tx_script(tx_script)
+        .build()
+        .execute()
+        .context("failed to execute transaction")?;
+    let maps_delta = executed_tx.account_delta().storage().maps();
+
+    let mut map0_delta =
+        maps_delta.get(&0).expect("delta for map 0 should exist").clone().into_map();
+    let mut map1_delta =
+        maps_delta.get(&1).expect("delta for map 1 should exist").clone().into_map();
+
+    assert_eq!(map0_delta.len(), 2);
+    assert_eq!(map0_delta.remove(&LinkMapKey::new(key0)).unwrap(), key0_final_value);
+    assert_eq!(map0_delta.remove(&LinkMapKey::new(key1)).unwrap(), key1_final_value);
+
+    assert_eq!(map1_delta.len(), 1);
+    assert_eq!(map1_delta.remove(&LinkMapKey::new(key3)).unwrap(), key3_final_value);
 
     validate_account_delta(&executed_tx).context("failed to validate delta")?;
 
@@ -511,6 +616,19 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           # => [OLD_VALUE, pad(12)]
 
           dropw dropw dropw dropw
+      end
+
+      #! Inputs:  [index, KEY, VALUE]
+      #! Outputs: []
+      proc.set_map_item
+          repeat.7 push.0 movdn.9 end
+          # => [index, KEY, VALUE, pad(7)]
+
+          call.account::set_map_item
+          # => [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
+
+          dropw dropw dropw dropw
+          # => []
       end
 
       #! Inputs:  [ASSET]
