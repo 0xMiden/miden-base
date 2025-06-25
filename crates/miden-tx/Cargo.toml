@@ -20,14 +20,19 @@ std = ["miden-lib/std", "miden-objects/std", "miden-prover/std", "miden-verifier
 testing = ["miden-objects/testing", "miden-lib/testing", "vm-processor/testing"]
 
 [dependencies]
-async-trait = "0.1"
+# Workspace dependencies
 miden-lib = { workspace = true }
 miden-objects = { workspace = true }
+
+# Miden dependencies
 miden-prover = { workspace = true }
 miden-verifier = { workspace = true }
+vm-processor = { workspace = true }
+
+# External dependencies
+async-trait = "0.1"
 rand = { workspace = true }
 thiserror = { workspace = true }
-vm-processor = { workspace = true }
 winter-maybe-async = { version = "0.12" }
 
 [dev-dependencies]
