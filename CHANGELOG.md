@@ -27,7 +27,7 @@
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
-- [BREAKING] Implemented in-kernel account delta tracking (#1471, #1404, #1460, #1481).
+- [BREAKING] Implemented in-kernel account delta tracking (#1471, #1404, #1460, #1481, #1491).
 - [BREAKING] Store account ID in account delta (#1493).
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
 - Added `Note::is_network_note()` accessor (#1485).
