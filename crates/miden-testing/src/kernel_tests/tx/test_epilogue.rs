@@ -14,7 +14,10 @@ use miden_lib::{
 use miden_objects::{
     account::Account,
     note::{NoteTag, NoteType},
-    testing::account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    testing::{
+        account_component::MockAuthComponent,
+        account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    },
     transaction::{OutputNote, OutputNotes},
 };
 use miden_tx::TransactionExecutorError;
@@ -47,9 +50,6 @@ fn test_epilogue() {
 
             exec.create_mock_notes
 
-            push.1
-            exec.account::incr_nonce
-
             exec.epilogue::finalize_transaction
 
             # truncate the stack
@@ -65,10 +65,13 @@ fn test_epilogue() {
         )
         .unwrap();
 
+    let assembler = TransactionKernel::assembler();
+    let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,
-        TransactionKernel::assembler(),
+        auth_component,
+        assembler,
     );
 
     let output_notes = OutputNotes::new(
@@ -174,8 +177,6 @@ fn test_epilogue_asset_preservation_violation_too_few_input() {
         begin
             exec.prologue::prepare_transaction
             exec.create_mock_notes
-            push.1
-            call.account::incr_nonce
             exec.epilogue::finalize_transaction
             
             # truncate the stack
@@ -211,8 +212,6 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() {
         begin
             exec.prologue::prepare_transaction
             exec.create_mock_notes
-            push.1
-            call.account::incr_nonce
             exec.epilogue::finalize_transaction
                         
             # truncate the stack
@@ -248,9 +247,6 @@ fn test_block_expiration_height_monotonically_decreases() {
             exec.tx::update_expiration_block_num
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
-
-            # update the nonce to make the transaction non-empty
-            push.1 exec.account::incr_nonce
 
             exec.epilogue::finalize_transaction
                         
@@ -321,9 +317,6 @@ fn test_no_expiration_delta_set() {
 
         exec.tx::get_expiration_delta assertz
 
-        # update the nonce to make the transaction non-empty
-        push.1 exec.account::incr_nonce
-
         exec.epilogue::finalize_transaction
                     
         # truncate the stack
@@ -352,11 +345,14 @@ fn test_epilogue_increment_nonce_success() {
     let output_notes_data_procedure =
         output_notes_data_procedure(tx_context.expected_output_notes());
 
+    let expected_nonce = ONE + ONE;
+
     let code = format!(
         "
         use.kernel::prologue
         use.test::account
         use.kernel::epilogue
+        use.kernel::memory
 
         {output_notes_data_procedure}
 
@@ -370,13 +366,13 @@ fn test_epilogue_increment_nonce_success() {
             call.account::set_item
             dropw
 
-            push.1
-            call.account::incr_nonce
-
             exec.epilogue::finalize_transaction
 
             # clean the stack
             dropw dropw dropw dropw
+
+            exec.memory::get_acct_nonce
+            push.{expected_nonce} assert_eq
         end
         "
     );
@@ -391,7 +387,7 @@ fn test_epilogue_increment_nonce_success() {
 
 #[test]
 fn test_epilogue_increment_nonce_violation() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE)
         .with_mock_notes_preserved()
         .build();
 
@@ -433,7 +429,7 @@ fn test_epilogue_increment_nonce_violation() {
 
 #[test]
 fn test_epilogue_execute_empty_transaction() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build();
 
     let err = tx_context.execute().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -492,7 +488,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
         note_type = note_type as u8,
     );
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build();
 
     let result = tx_context.execute_code(&tx_script_source).map(|_| ());
 

@@ -6,13 +6,7 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_crypto::{EMPTY_WORD, Felt, FieldElement};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    AccountTreeError, Digest, NullifierTreeError,
-    account::{Account, AccountBuilder, AccountId, StorageSlot, delta::AccountUpdateDetails},
-    batch::ProvenBatch,
-    block::{BlockInputs, BlockNumber, ProposedBlock},
-    testing::account_component::AccountMockComponent,
-    transaction::{ProvenTransaction, ProvenTransactionBuilder, TransactionScript},
-    vm::ExecutionProof,
+    account::{delta::AccountUpdateDetails, Account, AccountBuilder, AccountComponent, AccountId, StorageSlot}, batch::ProvenBatch, block::{BlockInputs, BlockNumber, ProposedBlock}, testing::account_component::{AccountMockComponent, MockAuthComponent}, transaction::{ProvenTransaction, ProvenTransactionBuilder, TransactionScript}, vm::ExecutionProof, AccountTreeError, Digest, NullifierTreeError
 };
 use winterfell::Proof;
 
@@ -256,9 +250,12 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let mut mock_chain = MockChain::new();
 
-    let (auth_component, _) = Auth::Mock.build_component();
+    let assembler = TransactionKernel::testing_assembler();
+    let auth_component: AccountComponent =
+        MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+
     let (account, seed) = AccountBuilder::new([5; 32])
-        .with_auth_component(auth_component)
+        .with_auth_component(auth_component.clone())
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -293,8 +290,12 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     );
     assert_eq!(account.init_commitment(), miden_objects::Digest::from(EMPTY_WORD));
 
-    let existing_account =
-        Account::mock(existing_id.into(), Felt::ZERO, TransactionKernel::testing_assembler());
+    let existing_account = Account::mock(
+        existing_id.into(),
+        Felt::ZERO,
+        auth_component,
+        TransactionKernel::testing_assembler(),
+    );
     mock_chain.add_pending_account(existing_account.clone());
     mock_chain.prove_next_block();
 

@@ -91,9 +91,7 @@ impl MockAuthComponent {
 impl From<MockAuthComponent> for AccountComponent {
     fn from(mock_component: MockAuthComponent) -> Self {
         AccountComponent::new(mock_component.library, vec![])
-            .expect(
-                "component should be valid",
-            )
+            .expect("component should be valid")
             .with_supports_all_types()
     }
 }
@@ -105,3 +103,32 @@ const AUTH_CODE: &str = "
         push.1 exec.account::incr_nonce
     end
 ";
+
+const NOOP_AUTH_CODE: &str = "
+    use.miden::account
+
+    export.auth
+        push.0 drop
+    end
+";
+
+pub struct NoopAuthComponent {
+    library: Library,
+}
+
+impl NoopAuthComponent {
+    pub fn from_assembler(assembler: Assembler) -> Result<Self, AccountError> {
+        let library = assembler
+            .assemble_library([NOOP_AUTH_CODE])
+            .map_err(AccountError::AccountComponentAssemblyError)?;
+        Ok(Self { library })
+    }
+}
+
+impl From<NoopAuthComponent> for AccountComponent {
+    fn from(mock_component: NoopAuthComponent) -> Self {
+        AccountComponent::new(mock_component.library, vec![])
+            .expect("component should be valid")
+            .with_supports_all_types()
+    }
+}

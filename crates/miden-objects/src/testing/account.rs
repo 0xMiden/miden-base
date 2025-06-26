@@ -4,10 +4,12 @@ use vm_core::FieldElement;
 use super::constants::{self, FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use crate::{
     Felt, ZERO,
-    account::{Account, AccountCode, AccountId, AccountStorage, StorageMap, StorageSlot},
+    account::{
+        Account, AccountCode, AccountComponent, AccountId, AccountStorage, StorageMap, StorageSlot,
+    },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     testing::{
-        account_component::{AccountMockComponent, MockAuthComponent},
+        account_component::AccountMockComponent,
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -21,14 +23,17 @@ use crate::{
 
 impl Account {
     /// Creates a non-new mock account with a defined number of assets and storage
-    pub fn mock(account_id: u128, nonce: Felt, assembler: Assembler) -> Self {
+    pub fn mock(
+        account_id: u128,
+        nonce: Felt,
+        auth: AccountComponent,
+        assembler: Assembler,
+    ) -> Self {
         let account_vault = if nonce == Felt::ZERO {
             AssetVault::default()
         } else {
             AssetVault::mock()
         };
-
-        let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap();
 
         let account_id = AccountId::try_from(account_id).unwrap();
         let mock_component =
@@ -36,7 +41,7 @@ impl Account {
                 .unwrap();
         let (account_code, account_storage) = Account::initialize_from_components(
             account_id.account_type(),
-            &[auth_component.into(), mock_component.into()],
+            &[auth, mock_component.into()],
         )
         .unwrap();
 

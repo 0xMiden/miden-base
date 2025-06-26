@@ -13,27 +13,20 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
-    assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
-    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    block::BlockNumber,
-    note::{
+    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot}, assembly::diagnostics::{miette, IntoDiagnostic, NamedSource, WrapErr}, asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset}, block::BlockNumber, note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
         NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    testing::{
-        account_component::AccountMockComponent,
+    }, testing::{
+        account_component::{AccountMockComponent, MockAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
         },
         constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA},
-        note::{DEFAULT_NOTE_CODE, NoteBuilder},
+        note::{NoteBuilder, DEFAULT_NOTE_CODE},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
-    },
-    transaction::{OutputNote, ProvenTransaction, TransactionScript},
+    }, transaction::{OutputNote, ProvenTransaction, TransactionScript}, Felt, FieldElement, Hasher, TransactionScriptError, Word, MIN_PROOF_SECURITY_LEVEL
 };
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
@@ -522,10 +515,14 @@ fn test_send_note_proc() -> miette::Result<()> {
 
 #[test]
 fn executed_transaction_output_notes() {
+    let assembler = TransactionKernel::testing_assembler();
+    let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         Felt::ONE,
-        TransactionKernel::testing_assembler(),
+        auth_component,
+        assembler,
     );
     let account_id = executor_account.id();
 
