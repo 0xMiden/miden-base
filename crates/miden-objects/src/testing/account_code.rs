@@ -29,13 +29,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
     ### is assumed that the operand stack at the beginning of their execution is pad'ed and 
     ### doesn't have any other valuable information.
 
-    # Stack:  [value, pad(15)]
-    # Output: [pad(16)]
-    export.incr_nonce
-        exec.account::incr_nonce
-        # => [pad(16)]
-    end
-
     # Stack:  [index, VALUE_TO_SET, pad(11)]
     # Output: [PREVIOUS_STORAGE_VALUE, pad(12)]
     export.set_item
