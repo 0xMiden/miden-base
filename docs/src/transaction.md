@@ -1,6 +1,6 @@
 # Transactions
 
-A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](account.md) and zero or more [notes](note.md), and outputs the same account with an updated state, together with zero or more notes. Transactions in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
+A `Transaction` in Miden is the state transition of a single account. A `Transaction` takes as input a single [account](account/overview.md) and zero or more [notes](note.md), and outputs the same account with an updated state, together with zero or more notes. Transactions in Miden are Miden VM programs, their execution resulting in the generation of a zero-knowledge proof.
 
 Miden's `Transaction` model aims for the following:
 
