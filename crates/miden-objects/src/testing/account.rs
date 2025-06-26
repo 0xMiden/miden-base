@@ -7,7 +7,7 @@ use crate::{
     account::{Account, AccountCode, AccountId, AccountStorage, StorageMap, StorageSlot},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     testing::{
-        account_component::AccountMockComponent,
+        account_component::{AccountMockComponent, MockAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -28,13 +28,15 @@ impl Account {
             AssetVault::mock()
         };
 
+        let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap();
+
         let account_id = AccountId::try_from(account_id).unwrap();
         let mock_component =
             AccountMockComponent::new_with_slots(assembler, AccountStorage::mock_storage_slots())
                 .unwrap();
         let (account_code, account_storage) = Account::initialize_from_components(
             account_id.account_type(),
-            &[mock_component.into()],
+            &[auth_component.into(), mock_component.into()],
         )
         .unwrap();
 
