@@ -131,7 +131,6 @@ pub fn generate_executed_tx_with_authenticated_notes(
 ) -> ExecutedTransaction {
     let tx_context = chain
         .build_tx_context(input, notes, &[])
-        .tx_script(authenticate_mock_account_tx_script(u16::MAX))
         .build();
     tx_context.execute().unwrap()
 }
@@ -190,7 +189,6 @@ pub fn generate_tx_with_unauthenticated_notes(
 ) -> ProvenTransaction {
     let tx_context = chain
         .build_tx_context(account_id, &[], notes)
-        .tx_script(authenticate_mock_account_tx_script(u16::MAX))
         .build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)

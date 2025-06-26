@@ -6,7 +6,16 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_crypto::{EMPTY_WORD, Felt, FieldElement};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    account::{delta::AccountUpdateDetails, Account, AccountBuilder, AccountComponent, AccountId, StorageSlot}, batch::ProvenBatch, block::{BlockInputs, BlockNumber, ProposedBlock}, testing::account_component::{AccountMockComponent, MockAuthComponent}, transaction::{ProvenTransaction, ProvenTransactionBuilder, TransactionScript}, vm::ExecutionProof, AccountTreeError, Digest, NullifierTreeError
+    AccountTreeError, Digest, NullifierTreeError,
+    account::{
+        Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
+        delta::AccountUpdateDetails,
+    },
+    batch::ProvenBatch,
+    block::{BlockInputs, BlockNumber, ProposedBlock},
+    testing::account_component::{AccountMockComponent, MockAuthComponent},
+    transaction::{ProvenTransaction, ProvenTransactionBuilder},
+    vm::ExecutionProof,
 };
 use winterfell::Proof;
 
@@ -302,20 +311,8 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    // transaction code which only increases the nonce to make the transaction non-empty
-    let default_tx_code = "
-        use.miden::account 
-        
-        begin 
-            push.1 call.account::incr_nonce drop
-        end";
-    let default_tx_script =
-        TransactionScript::compile(default_tx_code, [], TransactionKernel::testing_assembler())
-            .context("failed to compile the transaction script")?;
-
     let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
     let tx_context = TransactionContextBuilder::new(account)
-        .tx_script(default_tx_script)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .build();
