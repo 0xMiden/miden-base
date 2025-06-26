@@ -4,7 +4,7 @@ use super::{
     Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
     Word, ZERO,
 };
-use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, ONE, account::AccountId};
+use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
 
 mod lexicographic_word;
 pub use lexicographic_word::LexicographicWord;
@@ -331,31 +331,6 @@ impl AccountUpdateDetails {
             AccountUpdateDetails::Private => "private",
             AccountUpdateDetails::New(_) => "new",
             AccountUpdateDetails::Delta(_) => "delta",
-        }
-    }
-}
-
-/// Converts an [Account] into an [AccountDelta] for initial delta construction.
-///
-/// TODO: This is unused; should we remove it?
-impl From<Account> for AccountDelta {
-    fn from(account: Account) -> Self {
-        let (_id, vault, storage, _code, _nonce) = account.into_parts();
-
-        let storage_delta = AccountStorageDelta::from(storage);
-        let vault_delta = AccountVaultDelta::from(&vault);
-
-        let nonce_increment = if !storage_delta.is_empty() || !vault_delta.is_empty() {
-            ONE
-        } else {
-            ZERO
-        };
-
-        AccountDelta {
-            account_id: _id,
-            storage: storage_delta,
-            vault: vault_delta,
-            nonce_increment,
         }
     }
 }

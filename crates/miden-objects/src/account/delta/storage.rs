@@ -10,7 +10,8 @@ use super::{
 };
 use crate::{
     Digest, EMPTY_WORD, Felt, ZERO,
-    account::{AccountStorage, StorageMap, StorageSlot},
+    account::StorageMap,
+    transaction::LinkMapKey,
 };
 
 // ACCOUNT STORAGE DELTA
@@ -199,27 +200,6 @@ impl AccountStorageDelta {
             ),
             maps: BTreeMap::from_iter(updated_maps),
         }
-    }
-}
-
-/// Converts an [AccountStorage] into an [AccountStorageDelta] for initial delta construction.
-impl From<AccountStorage> for AccountStorageDelta {
-    fn from(storage: AccountStorage) -> Self {
-        let mut values = BTreeMap::new();
-        let mut maps = BTreeMap::new();
-        for (slot_idx, slot) in storage.into_iter().enumerate() {
-            let slot_idx: u8 = slot_idx.try_into().expect("slot index must fit into `u8`");
-            match slot {
-                StorageSlot::Value(value) => {
-                    values.insert(slot_idx, value);
-                },
-                StorageSlot::Map(map) => {
-                    maps.insert(slot_idx, map.into());
-                },
-            }
-        }
-
-        Self { values, maps }
     }
 }
 
