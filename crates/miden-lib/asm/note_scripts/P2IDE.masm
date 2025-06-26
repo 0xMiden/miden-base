@@ -1,7 +1,6 @@
 use.miden::account
 use.miden::note
 use.miden::tx
-use.miden::contracts::wallets::basic->wallet
 use.note_scripts::utils
 
 # ERRORS
