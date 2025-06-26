@@ -81,7 +81,6 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_2_init_value = word([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
 
-    // Slot 3 is updated to some other value and then back to itself.
     let slot_3_init_value = word([1, 3, 5, 7u32]);
     let slot_3_tmp_value = word([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;

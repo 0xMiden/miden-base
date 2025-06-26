@@ -23,26 +23,35 @@ pub struct AccountInitialStorage {
 }
 
 impl AccountInitialStorage {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
     /// Constructs a new initial account storage from a storage header.
     pub fn new(header: AccountStorageHeader) -> Self {
         Self { header, maps: BTreeMap::new() }
     }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the storage header of the initial storage.
     pub fn storage_header(&self) -> &AccountStorageHeader {
         &self.header
     }
 
+    /// Returns a reference to the storage map at the provided index, if any changes have been made
+    /// to the map.
+    pub fn init_map(&self, slot_index: u8) -> Option<&BTreeMap<Digest, Word>> {
+        self.maps.get(&slot_index)
+    }
+
+    // PUBLIC MUTATORS
+    // --------------------------------------------------------------------------------------------
+
     /// Sets the initial value of the given key in the given slot to the given value, if no value is
     /// already tracked for that key.
     pub fn set_init_map_item(&mut self, slot_index: u8, key: Digest, new_value: Word) {
         let slot_map = self.maps.entry(slot_index).or_default();
         slot_map.entry(key).or_insert(new_value);
-    }
-
-    /// Returns a reference to the storage map at the provided index, if any changes have been made
-    /// to the map.
-    pub fn init_map(&self, slot_index: u8) -> Option<&BTreeMap<Digest, Word>> {
-        self.maps.get(&slot_index)
     }
 }
