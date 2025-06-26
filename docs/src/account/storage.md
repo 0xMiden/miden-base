@@ -6,7 +6,7 @@ Account storage in Miden is designed to be flexible, scalable, and privacy-prese
 
 Account storage is divided into up to 255 indexed **storage slots**. Each slot can store either:
 - A 32-byte value (`StorageSlot::Value`)
-- A pointer to a key-value store (`StorageSlot::Map`)
+- The root to a key-value map (`StorageSlot::Map`)
 
 ### Storage Slots
 
