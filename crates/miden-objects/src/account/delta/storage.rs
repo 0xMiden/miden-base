@@ -444,10 +444,12 @@ impl Deserializable for StorageMapDelta {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
+    use assert_matches::assert_matches;
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
     use crate::{
-        ONE, ZERO, account::StorageMapDelta, testing::storage::AccountStorageDeltaBuilder,
+        AccountDeltaError, EMPTY_WORD, ONE, ZERO, account::StorageMapDelta,
+        testing::storage::AccountStorageDeltaBuilder,
     };
 
     #[test]
@@ -604,5 +606,27 @@ mod tests {
         delta_x.merge(delta_y);
 
         assert_eq!(delta_x, expected);
+    }
+
+    #[test]
+    fn slot_index_out_of_bounds() {
+        const NUM_SLOTS: u8 = 2;
+        let err = AccountStorageDeltaBuilder::new(NUM_SLOTS)
+            .add_updated_values([(2, EMPTY_WORD)])
+            .build()
+            .unwrap_err();
+        assert_matches!(err, AccountDeltaError::StorageSlotIndexOutOfBounds { num_slots, slot_index } => {
+            assert_eq!(num_slots, NUM_SLOTS);
+            assert_eq!(slot_index, 2);
+        });
+
+        let err = AccountStorageDeltaBuilder::new(NUM_SLOTS)
+            .add_updated_maps([(3, StorageMapDelta::from_iters([[ONE, ONE, ONE, ZERO]], []))])
+            .build()
+            .unwrap_err();
+        assert_matches!(err, AccountDeltaError::StorageSlotIndexOutOfBounds { num_slots, slot_index } => {
+            assert_eq!(num_slots, NUM_SLOTS);
+            assert_eq!(slot_index, 3);
+        });
     }
 }
