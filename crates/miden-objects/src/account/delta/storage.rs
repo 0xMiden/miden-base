@@ -8,8 +8,10 @@ use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
     LexicographicWord, Serializable, Word,
 };
-use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap};
-
+use crate::{
+    Digest, EMPTY_WORD, Felt, ZERO,
+    account::{AccountStorageHeader, StorageMap},
+};
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
 
@@ -94,6 +96,15 @@ impl AccountStorageDelta {
         }
 
         self.validate()
+    }
+
+    pub fn normalize(&mut self, storage_header: &AccountStorageHeader) {
+        // Keep only the values whose new value is different from the initial value.
+        self.values.retain(|slot_idx, new_value| {
+            let (_, initial_value) =
+                storage_header.slot(*slot_idx as usize).expect("index should be in bounds");
+            new_value != initial_value
+        });
     }
 
     /// Checks whether this storage delta is valid.

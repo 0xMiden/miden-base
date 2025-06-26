@@ -26,6 +26,8 @@ use vm_processor::{
 mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
+mod account_storage_tracker;
+
 mod link_map;
 pub use link_map::{Entry, EntryMetadata, LinkMap};
 
@@ -128,7 +130,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             adv_provider,
             mast_store,
             scripts_mast_store,
-            account_delta: AccountDeltaTracker::new(account),
+            account_delta: AccountDeltaTracker::new(
+                account.id(),
+                account.storage().header().clone(),
+            ),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
             authenticator,

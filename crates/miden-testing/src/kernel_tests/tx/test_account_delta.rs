@@ -64,24 +64,33 @@ fn delta_nonce() -> anyhow::Result<()> {
 }
 
 /// Tests that setting new values for value storage slots results in the correct delta.
+///
+/// - Slot 0: [2,4,6,8]  -> [3,4,5,6] -> EMPTY_WORD -> Delta: EMPTY_WORD
+/// - Slot 1: EMPTY_WORD -> [3,4,5,6]               -> Delta: [3,4,5,6]
+/// - Slot 2: [1,3,5,7]  -> [1,3,5,7]               -> Delta: None
+/// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
 #[test]
 fn storage_delta_for_value_slots() -> anyhow::Result<()> {
-    // Slot 0 is updated from non-empty word to empty word.
     let slot_0_init_value = word([2, 4, 6, 8u32]);
+    let slot_0_tmp_value = word([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
 
-    // Slot 1 is updated from empty word to non-empty word.
     let slot_1_init_value = EMPTY_WORD;
     let slot_1_final_value = word([3, 4, 5, 6u32]);
 
-    // Slot 2 is updated to itself.
     let slot_2_init_value = word([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
+
+    // Slot 3 is updated to some other value and then back to itself.
+    let slot_3_init_value = word([1, 3, 5, 7u32]);
+    let slot_3_tmp_value = word([2, 3, 4, 5u32]);
+    let slot_3_final_value = slot_3_init_value;
 
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
         StorageSlot::Value(slot_0_init_value),
         StorageSlot::Value(slot_1_init_value),
         StorageSlot::Value(slot_2_init_value),
+        StorageSlot::Value(slot_3_init_value),
     ]);
 
     let tx_script = compile_tx_script(format!(
@@ -111,15 +120,29 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
           exec.set_item
           # => []
 
+          push.{tmp_slot_3_value}
+          push.3
+          # => [index, VALUE]
+          exec.set_item
+          # => []
+
+          push.{final_slot_3_value}
+          push.3
+          # => [index, VALUE]
+          exec.set_item
+          # => []
+
           # nonce must increase for state changing transactions
           push.1 exec.incr_nonce
       end
       ",
         // Set slot 0 to some other value initially.
-        tmp_slot_0_value = word_to_masm_push_string(&slot_1_final_value),
+        tmp_slot_0_value = word_to_masm_push_string(&slot_0_tmp_value),
         final_slot_0_value = word_to_masm_push_string(&slot_0_final_value),
         final_slot_1_value = word_to_masm_push_string(&slot_1_final_value),
-        final_slot_2_value = word_to_masm_push_string(&slot_2_final_value)
+        final_slot_2_value = word_to_masm_push_string(&slot_2_final_value),
+        tmp_slot_3_value = word_to_masm_push_string(&slot_3_tmp_value),
+        final_slot_3_value = word_to_masm_push_string(&slot_3_final_value),
     ))?;
 
     let executed_tx = mock_chain
@@ -138,7 +161,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .map(|(k, v)| (*k, *v))
         .collect::<Vec<_>>();
 
-    // Note that slot 2 is absent because its value hasn't changed.
+    // Note that slots 2 and 3 are absent because their values haven't effectively changed.
     assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
 
     validate_account_delta(&executed_tx).context("failed to validate delta")?;
@@ -146,7 +169,8 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that setting new values for value storage slots results in the correct delta.
+/// Tests that setting new values for map storage slots results in the correct delta.
+///
 /// - Slot 0: key0: EMPTY_WORD -> [1,2,3,4]              -> Delta: [1,2,3,4]
 /// - Slot 0: key1: EMPTY_WORD -> [1,2,3,4] -> [2,3,4,5] -> Delta: [2,3,4,5]
 /// - Slot 1: key2: [1,2,3,4]  -> [1,2,3,4]              -> Delta: None
