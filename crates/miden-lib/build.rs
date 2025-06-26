@@ -319,7 +319,7 @@ fn compile_miden_lib(
 /// The source files are expected to contain executable programs.
 fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
     if let Err(e) = fs::create_dir_all(target_dir) {
-        println!("Failed to create note_scripts directory: {}", e);
+        println!("Failed to create note_scripts directory: {e}");
     }
 
     for masm_file_path in get_masm_files(source_dir).unwrap() {
@@ -476,11 +476,11 @@ fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> io::Result<Vec<PathBuf>> {
                                 files.push(file_path);
                             }
                         },
-                        Err(e) => println!("Error reading directory entry: {}", e),
+                        Err(e) => println!("Error reading directory entry: {e}"),
                     }
                 }
             },
-            Err(e) => println!("Error reading directory: {}", e),
+            Err(e) => println!("Error reading directory: {e}"),
         }
     } else {
         println!("cargo:rerun-The specified path is not a directory.");

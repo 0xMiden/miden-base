@@ -49,7 +49,7 @@ impl TryFrom<u8> for NoteType {
             PRIVATE => Ok(NoteType::Private),
             ENCRYPTED => Ok(NoteType::Encrypted),
             PUBLIC => Ok(NoteType::Public),
-            _ => Err(NoteError::UnknownNoteType(format!("0b{:b}", value).into())),
+            _ => Err(NoteError::UnknownNoteType(format!("0b{value:b}").into())),
         }
     }
 }
@@ -76,7 +76,7 @@ impl TryFrom<u64> for NoteType {
     fn try_from(value: u64) -> Result<Self, Self::Error> {
         let value: u8 = value
             .try_into()
-            .map_err(|_| NoteError::UnknownNoteType(format!("0b{:b}", value).into()))?;
+            .map_err(|_| NoteError::UnknownNoteType(format!("0b{value:b}").into()))?;
         value.try_into()
     }
 }
@@ -121,8 +121,7 @@ impl Deserializable for NoteType {
             PUBLIC => NoteType::Public,
             v => {
                 return Err(DeserializationError::InvalidValue(format!(
-                    "value {} is not a valid NoteType",
-                    v
+                    "value {v} is not a valid NoteType"
                 )));
             },
         };

@@ -94,10 +94,9 @@ pub fn test_account_type() -> miette::Result<()> {
                 use.kernel::account_id
 
                 begin
-                    exec.account_id::{}
+                    exec.account_id::{procedure}
                 end
-                ",
-                procedure
+                "
             );
 
             let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
@@ -119,7 +118,7 @@ pub fn test_account_type() -> miette::Result<()> {
             );
         }
 
-        assert!(has_type, "missing test for type {:?}", expected_type);
+        assert!(has_type, "missing test for type {expected_type:?}");
     }
 
     Ok(())
@@ -235,8 +234,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
         assert_eq!(
             process.stack.get(0),
             Felt::new(is_faucet as u64),
-            "Rust and Masm is_faucet diverged. account_id: {}",
-            account_id
+            "Rust and Masm is_faucet diverged. account_id: {account_id}"
         );
     }
 

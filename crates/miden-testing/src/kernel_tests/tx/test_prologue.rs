@@ -512,8 +512,7 @@ pub fn create_multiple_accounts_test(
     for (account, seed) in accounts {
         let account_type = account.account_type();
         create_account_test(mock_chain, account, seed).context(format!(
-            "create_multiple_accounts_test test failed for account type {:?}",
-            account_type
+            "create_multiple_accounts_test test failed for account type {account_type:?}"
         ))?;
     }
 

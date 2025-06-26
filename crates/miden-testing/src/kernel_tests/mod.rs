@@ -860,8 +860,7 @@ fn test_tx_script_inputs() {
 
     assert!(
         executed_transaction.is_ok(),
-        "Transaction execution failed {:?}",
-        executed_transaction,
+        "Transaction execution failed {executed_transaction:?}"
     );
 }
 
