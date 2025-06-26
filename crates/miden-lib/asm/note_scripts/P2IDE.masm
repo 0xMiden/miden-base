@@ -2,6 +2,7 @@ use.miden::account
 use.miden::note
 use.miden::tx
 use.miden::contracts::wallets::basic->wallet
+use.note_scripts::utils
 
 # ERRORS
 # =================================================================================================
@@ -64,7 +65,7 @@ proc.reclaim_note
     # => []
 
     # add note assets to account
-    exec.note::add_note_assets_to_account
+    exec.utils::add_note_assets_to_account
     # => []
 end
 
@@ -130,7 +131,7 @@ begin
 
     if.true
         # we can safely consume the note since the current account is the target of the note
-        dropw exec.note::add_note_assets_to_account
+        dropw exec.utils::add_note_assets_to_account
         # => []
 
     else
