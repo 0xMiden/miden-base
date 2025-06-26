@@ -420,11 +420,11 @@ impl Deserializable for AccountUpdateDetails {
 /// Returns an error if:
 /// - storage or vault were updated, but the nonce_increment was set to 0.
 fn validate_nonce(
-    nonce: Felt,
+    nonce_increment: Felt,
     storage: &AccountStorageDelta,
     vault: &AccountVaultDelta,
 ) -> Result<(), AccountDeltaError> {
-    if (!storage.is_empty() || !vault.is_empty()) && nonce == ZERO {
+    if (!storage.is_empty() || !vault.is_empty()) && nonce_increment == ZERO {
         return Err(AccountDeltaError::InconsistentNonceUpdate(
             "nonce not updated for non-empty account delta".into(),
         ));

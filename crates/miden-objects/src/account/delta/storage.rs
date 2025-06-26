@@ -8,12 +8,7 @@ use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
     LexicographicWord, Serializable, Word,
 };
-use crate::{
-    Digest, EMPTY_WORD, Felt, ZERO,
-    account::StorageMap,
-    transaction::LinkMapKey,
-};
-
+use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap, transaction::LinkMapKey};
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
 
