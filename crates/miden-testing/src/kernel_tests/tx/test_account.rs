@@ -573,7 +573,6 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
             exec.account::get_item
             push.5.6.7.8 eqw assert
 
-            push.1 exec.account::incr_nonce
             dropw dropw
         end
     ";
