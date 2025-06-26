@@ -115,7 +115,7 @@ const NOOP_AUTH_CODE: &str = "
 const CONDITIONAL_AUTH_CODE: &str = "
     use.miden::account
 
-    export.noop
+    export.auth
         push.0
         exec.account::get_item
 
