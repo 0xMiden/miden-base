@@ -178,7 +178,12 @@ pub struct MockChain {
     /// NoteID |-> MockChainNote mapping to simplify note retrieval.
     committed_notes: BTreeMap<NoteId, MockChainNote>,
 
-    /// AccountId |-> MockAccount mapping to simplify transaction creation.
+    /// AccountId |-> MockAccount mapping to simplify transaction creation. Latest known account
+    /// state is maintained for each account here.
+    ///
+    /// The map always holds the most recent *public* state known for every account. For private
+    /// accounts, however, transactions do not emit the post-transaction state, so their entries
+    /// remain at the last observed state.
     committed_accounts: BTreeMap<AccountId, MockAccount>,
 
     // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
@@ -516,7 +521,7 @@ impl MockChain {
     ///
     /// Depending on the provided `input`, the builder is initialized differently:
     /// - [`TxContextInput::AccountId`]: Initialize the builder with [`TransactionInputs`] fetched
-    ///   from the chain for the account identified by the ID.
+    ///   from the chain for the public account identified by the ID.
     /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
     ///   account is passed as-is to the inputs.
     /// - [`TxContextInput::ExecutedTransaction`]: Initialize the builder with [`TransactionInputs`]
@@ -540,6 +545,11 @@ impl MockChain {
     ) -> TransactionContextBuilder {
         let mock_account = match input.into() {
             TxContextInput::AccountId(account_id) => {
+                assert!(
+                    !account_id.is_private(),
+                    "transaction contexts for private accounts should be created with TxContextInput::Account"
+                );
+
                 self.committed_accounts.get(&account_id).unwrap().clone()
             },
             TxContextInput::Account(account) => {
@@ -868,7 +878,7 @@ impl MockChain {
         self.pending_objects.created_nullifiers.push(nullifier);
     }
 
-    /// Adds a new [`BasicWallet`] account to the list of pending accounts.
+    /// Adds a new public [`BasicWallet`] account to the list of pending accounts.
     ///
     /// A block has to be created to add the account to the chain state as part of that block,
     /// e.g. using [`MockChain::prove_next_block`].
@@ -880,7 +890,8 @@ impl MockChain {
         self.add_pending_account_from_builder(auth_method, account_builder, AccountState::New)
     }
 
-    /// Adds an existing [`BasicWallet`] account with nonce `1` to the list of pending accounts.
+    /// Adds an existing public [`BasicWallet`] account with nonce `1` to the list of pending
+    /// accounts.
     ///
     /// A block has to be created to add the account to the chain state as part of that block,
     /// e.g. using [`MockChain::prove_next_block`].
@@ -897,8 +908,8 @@ impl MockChain {
         self.add_pending_account_from_builder(auth_method, account_builder, AccountState::Exists)
     }
 
-    /// Adds a new [`BasicFungibleFaucet`] account with the specified authentication method and the
-    /// given token metadata to the list of pending accounts.
+    /// Adds a new public [`BasicFungibleFaucet`] account with the specified authentication method
+    /// and the given token metadata to the list of pending accounts.
     ///
     /// A block has to be created to add the account to the chain state as part of that block,
     /// e.g. using [`MockChain::prove_next_block`].
@@ -1033,13 +1044,16 @@ impl MockChain {
     ///
     /// A block has to be created to finalize the new entity.
     pub fn add_pending_account(&mut self, account: Account) {
+        let account_id = account.id();
+        let account_commitment = account.commitment();
+        let update_details = match account.is_private() {
+            true => AccountUpdateDetails::Private,
+            false => AccountUpdateDetails::New(account),
+        };
+
         self.pending_objects.updated_accounts.insert(
-            account.id(),
-            BlockAccountUpdate::new(
-                account.id(),
-                account.commitment(),
-                AccountUpdateDetails::New(account),
-            ),
+            account_id,
+            BlockAccountUpdate::new(account_id, account_commitment, update_details),
         );
     }
 
@@ -1098,9 +1112,9 @@ impl MockChain {
                         .apply_delta(account_delta)
                         .context("failed to apply account delta to committed account")?;
                 },
-                AccountUpdateDetails::Private => {
-                    todo!("private accounts are not yet supported")
-                },
+                // No state to keep for private accounts other than the commitment on the account
+                // tree
+                AccountUpdateDetails::Private => {},
             }
         }
 
@@ -1477,7 +1491,11 @@ impl From<ExecutedTransaction> for TxContextInput {
 mod tests {
     use miden_objects::{
         account::{AccountStorage, AccountStorageMode},
-        testing::account_component::AccountMockComponent,
+        asset::FungibleAsset,
+        testing::{
+            account_component::AccountMockComponent,
+            account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
+        },
     };
 
     use super::*;
@@ -1516,6 +1534,49 @@ mod tests {
         let block = chain.prove_until_block(5)?;
         assert_eq!(block.header().block_num(), 5u32.into());
         assert_eq!(chain.proven_blocks().len(), 6);
+
+        Ok(())
+    }
+
+    #[test]
+    fn private_account_state_update() -> anyhow::Result<()> {
+        let faucet_id = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?;
+        let account_builder = AccountBuilder::new([4; 32])
+            .storage_mode(AccountStorageMode::Private)
+            .with_component(BasicWallet);
+
+        let mut mock_chain = MockChain::new();
+        let account = mock_chain.add_pending_account_from_builder(
+            Auth::BasicAuth,
+            account_builder,
+            AccountState::New,
+        );
+        let account_id = account.id();
+        assert_eq!(account.nonce().as_int(), 0);
+
+        let note_1 = mock_chain.add_pending_p2id_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            account.id(),
+            &[Asset::Fungible(FungibleAsset::new(faucet_id, 1000u64).unwrap())],
+            NoteType::Private,
+            None,
+        )?;
+
+        mock_chain.prove_next_block();
+
+        let tx = mock_chain
+            .build_tx_context(TxContextInput::Account(account), &[], &[note_1])
+            .build()
+            .execute()?;
+
+        mock_chain.add_pending_executed_transaction(&tx);
+        mock_chain.prove_next_block();
+
+        assert!(tx.final_account().nonce().as_int() > 0);
+        assert_eq!(
+            tx.final_account().commitment(),
+            mock_chain.account_tree.open(account_id).state_commitment()
+        );
 
         Ok(())
     }

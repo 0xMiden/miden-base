@@ -1,14 +1,14 @@
 [workspace]
 resolver = "3"
 members = [
-    "bin/bench-tx",
     "bin/bench-prover",
+    "bin/bench-tx",
     "crates/miden-block-prover",
-    "crates/miden-tx-batch-prover",
     "crates/miden-lib",
     "crates/miden-objects",
     "crates/miden-testing",
     "crates/miden-tx",
+    "crates/miden-tx-batch-prover",
 ]
 
 [workspace.package]
@@ -38,19 +38,24 @@ codegen-units = 1
 lto = true
 
 [workspace.dependencies]
-assembly = { package = "miden-assembly", version = "0.15", default-features = false }
-assert_matches = { version = "1.5", default-features = false }
+# Workspace crates
 miden-block-prover = { path = "crates/miden-block-prover", version = "0.10", default-features = false }
-miden-crypto = { version = "0.14", default-features = false }
 miden-lib = { path = "crates/miden-lib", version = "0.10", default-features = false }
 miden-objects = { path = "crates/miden-objects", version = "0.10", default-features = false }
-miden-prover = { version = "0.15", default-features = false }
-miden-stdlib = { version = "0.15", default-features = false }
 miden-testing = { path = "crates/miden-testing", version = "0.10", default-features = false }
 miden-tx = { path = "crates/miden-tx", version = "0.10", default-features = false }
 miden-tx-batch-prover = { path = "crates/miden-tx-batch-prover", version = "0.10", default-features = false }
 miden-verifier = { version = "0.15", default-features = false }
-rand = { version = "0.9", default-features = false }
-thiserror = { version = "2.0", default-features = false }
+
+# Miden dependencies
+assembly = { package = "miden-assembly", version = "0.15", default-features = false }
+miden-crypto = { version = "0.14", default-features = false }
+miden-prover = { version = "0.15", default-features = false }
+miden-stdlib = { version = "0.15", default-features = false }
 vm-core = { package = "miden-core", version = "0.15", default-features = false }
 vm-processor = { package = "miden-processor", version = "0.15", default-features = false }
+
+# External dependencies
+assert_matches = { version = "1.5", default-features = false }
+rand = { version = "0.9", default-features = false }
+thiserror = { version = "2.0", default-features = false }

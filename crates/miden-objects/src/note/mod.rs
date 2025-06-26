@@ -157,6 +157,11 @@ impl Note {
     pub fn commitment(&self) -> Digest {
         self.header.commitment()
     }
+
+    /// Returns true if this note is intended to be executed by the network rather than a user.
+    pub fn is_network_note(&self) -> bool {
+        self.metadata().tag().execution_mode() == NoteExecutionMode::Network
+    }
 }
 
 // AS REF

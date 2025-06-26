@@ -3,10 +3,9 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_crypto::{EMPTY_WORD, Felt, FieldElement};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    AccountTreeError, Digest, NullifierTreeError,
+    AccountTreeError, Digest, EMPTY_WORD, Felt, FieldElement, NullifierTreeError,
     account::{Account, AccountBuilder, AccountId, StorageSlot, delta::AccountUpdateDetails},
     batch::ProvenBatch,
     block::{BlockInputs, BlockNumber, ProposedBlock},

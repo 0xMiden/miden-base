@@ -25,13 +25,13 @@ miden-objects = { workspace = true }
 miden-stdlib = { workspace = true }
 thiserror = { workspace = true }
 
-[dev-dependencies]
-assert_matches = { workspace = true }
-miden-objects = { workspace = true, features = ["testing"] }
-vm-processor = { workspace = true, features = ["testing"] }
-
 [build-dependencies]
 assembly = { workspace = true }
 miden-stdlib = { workspace = true }
 regex = { version = "1.11" }
 walkdir = { version = "2.5" }
+
+[dev-dependencies]
+assert_matches = { workspace = true }
+miden-objects = { workspace = true, features = ["testing"] }
+vm-processor = { workspace = true, features = ["testing"] }
