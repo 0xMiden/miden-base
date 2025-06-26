@@ -4,7 +4,7 @@ use miden_crypto::rand::RpoRandomCoin;
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt,
-    account::{Account, AccountId, AccountStorageMode},
+    account::{Account, AccountId, AccountStorage, AccountStorageMode},
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
     block::BlockNumber,
@@ -32,6 +32,19 @@ pub fn generate_account(chain: &mut MockChain) -> Account {
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
     chain.add_pending_account_from_builder(Auth::Mock, account_builder, AccountState::Exists)
+}
+
+pub fn generate_account_with_conditional_auth(chain: &mut MockChain) -> Account {
+    let account_builder = Account::builder(rand::rng().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(
+            AccountMockComponent::new_with_slots(
+                TransactionKernel::assembler(),
+                AccountStorage::mock_storage_slots(),
+            )
+            .unwrap(),
+        );
+    chain.add_pending_account_from_builder(Auth::Conditional, account_builder, AccountState::Exists)
 }
 
 pub fn generate_tracked_note(
@@ -129,9 +142,7 @@ pub fn generate_executed_tx_with_authenticated_notes(
     input: impl Into<TxContextInput>,
     notes: &[NoteId],
 ) -> ExecutedTransaction {
-    let tx_context = chain
-        .build_tx_context(input, notes, &[])
-        .build();
+    let tx_context = chain.build_tx_context(input, notes, &[]).build();
     tx_context.execute().unwrap()
 }
 
@@ -164,6 +175,19 @@ pub fn generate_noop_tx(
     tx_context.execute().unwrap()
 }
 
+/// Generates a transaction that increments the storage item of the account.
+pub fn generate_tx_with_storage_increment(
+    chain: &mut MockChain,
+    input: impl Into<TxContextInput>,
+) -> ProvenTransaction {
+    let tx_context = chain
+        .build_tx_context(input, &[], &[])
+        .tx_script(bump_storage_tx_script())
+        .build();
+    let executed_tx = tx_context.execute().unwrap();
+    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
+}
+
 /// Generates a transaction that expires at the given block number.
 pub fn generate_tx_with_expiration(
     chain: &mut MockChain,
@@ -187,9 +211,7 @@ pub fn generate_tx_with_unauthenticated_notes(
     account_id: AccountId,
     notes: &[Note],
 ) -> ProvenTransaction {
-    let tx_context = chain
-        .build_tx_context(account_id, &[], notes)
-        .build();
+    let tx_context = chain.build_tx_context(account_id, &[], notes).build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
@@ -197,12 +219,29 @@ pub fn generate_tx_with_unauthenticated_notes(
 fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
     let code = format!(
         "
-        use.test::account
         use.miden::tx
 
         begin
             push.{expiration_delta}
             exec.tx::update_expiration_block_delta
+        end
+        "
+    );
+
+    TransactionScript::compile(code, [], TransactionKernel::testing_assembler_with_mock_account())
+        .unwrap()
+}
+
+fn bump_storage_tx_script() -> TransactionScript {
+    let code = format!(
+        "
+        use.test::account
+
+        begin
+            push.99.99.99.99
+            push.0
+            call.account::set_item
+            dropw dropw dropw dropw
         end
         "
     );

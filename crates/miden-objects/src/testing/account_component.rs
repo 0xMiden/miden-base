@@ -112,6 +112,24 @@ const NOOP_AUTH_CODE: &str = "
     end
 ";
 
+const CONDITIONAL_AUTH_CODE: &str = "
+    use.miden::account
+
+    export.noop
+        push.0
+        exec.account::get_item
+
+        push.99.99.99.99
+        eqw
+
+        # If 99.99.99.99 is in storage, increment nonce
+        if.true
+            push.1 exec.account::incr_nonce
+        end
+        dropw dropw dropw dropw
+    end
+";
+
 pub struct NoopAuthComponent {
     library: Library,
 }
@@ -127,6 +145,27 @@ impl NoopAuthComponent {
 
 impl From<NoopAuthComponent> for AccountComponent {
     fn from(mock_component: NoopAuthComponent) -> Self {
+        AccountComponent::new(mock_component.library, vec![])
+            .expect("component should be valid")
+            .with_supports_all_types()
+    }
+}
+
+pub struct ConditionalAuthComponent {
+    library: Library,
+}
+
+impl ConditionalAuthComponent {
+    pub fn from_assembler(assembler: Assembler) -> Result<Self, AccountError> {
+        let library = assembler
+            .assemble_library([CONDITIONAL_AUTH_CODE])
+            .map_err(AccountError::AccountComponentAssemblyError)?;
+        Ok(Self { library })
+    }
+}
+
+impl From<ConditionalAuthComponent> for AccountComponent {
+    fn from(mock_component: ConditionalAuthComponent) -> Self {
         AccountComponent::new(mock_component.library, vec![])
             .expect("component should be valid")
             .with_supports_all_types()

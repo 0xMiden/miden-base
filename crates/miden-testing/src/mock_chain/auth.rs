@@ -1,13 +1,11 @@
 // AUTH
 // ================================================================================================
-extern crate std;
-
-use std::sync::LazyLock;
-
-use assembly::Library;
 use miden_crypto::dsa::rpo_falcon512::SecretKey;
 use miden_lib::{account::auth::RpoFalcon512, transaction::TransactionKernel};
-use miden_objects::account::{AccountComponent, AuthSecretKey};
+use miden_objects::{
+    account::{AccountComponent, AuthSecretKey},
+    testing::account_component::{ConditionalAuthComponent, MockAuthComponent, NoopAuthComponent},
+};
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -19,8 +17,15 @@ pub enum Auth {
     /// for authenticating the account.
     BasicAuth,
 
-    /// Creates a dummy authentication mechanism for the account.
+    /// Creates a mock authentication mechanism for the account that only increments the nonce.
     Mock,
+
+    /// Creates a mock authentication mechanism for the account that does nothing.
+    Noop,
+
+    /// Creates a mock authentication mechanism for the account that does nothing if state hasn't
+    /// changed, and increments the nonce otherwise.
+    Conditional,
 }
 
 impl Auth {
@@ -42,29 +47,22 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::Mock => (MockComponent.into(), None),
+            Auth::Mock => {
+                let assembler = TransactionKernel::testing_assembler();
+                let component = MockAuthComponent::from_assembler(assembler).unwrap();
+                (component.into(), None)
+            },
+
+            Auth::Noop => {
+                let assembler = TransactionKernel::testing_assembler();
+                let component = NoopAuthComponent::from_assembler(assembler).unwrap();
+                (component.into(), None)
+            },
+            Auth::Conditional => {
+                let assembler = TransactionKernel::testing_assembler();
+                let component = ConditionalAuthComponent::from_assembler(assembler).unwrap();
+                (component.into(), None)
+            },
         }
-    }
-}
-
-const AUTH_CODE: &str = "
-    use.miden::account
-
-    export.auth
-        push.1 exec.account::incr_nonce
-    end
-";
-static AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    TransactionKernel::testing_assembler()
-        .assemble_library([AUTH_CODE])
-        .expect("code should be valid")
-});
-
-struct MockComponent;
-impl From<MockComponent> for AccountComponent {
-    fn from(_auth: MockComponent) -> Self {
-        AccountComponent::new(AUTH_LIBRARY.clone(), vec![])
-            .expect("component should be valid")
-            .with_supports_all_types()
     }
 }
