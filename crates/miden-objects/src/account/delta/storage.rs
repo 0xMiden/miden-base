@@ -47,6 +47,8 @@ impl AccountStorageDelta {
     /// Returns an error if:
     /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
     ///   both a value and a map slot.
+    /// - Any updated slot index is out of bounds, i.e. is equal to or exceeds the number of slots
+    ///   in the account.
     pub fn from_parts(
         num_slots: u8,
         values: BTreeMap<u8, Word>,
@@ -107,9 +109,37 @@ impl AccountStorageDelta {
 
     /// Checks whether this storage delta is valid.
     ///
-    /// # Errors:
-    /// - Any of the updated slot is referenced from both maps (e.g., updated twice).
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
+    ///   both a value and a map slot.
+    /// - Any updated slot index is out of bounds, i.e. is equal to or exceeds the number of slots
+    ///   in the account.
     fn validate(&self) -> Result<(), AccountDeltaError> {
+        // Check if the highest slot index that is updated is out of bounds.
+        for highest_slot_idx in [
+            self.maps
+                .last_key_value()
+                .map(|(highest_map_slot_idx, _)| *highest_map_slot_idx),
+            self.values
+                .last_key_value()
+                .map(|(highest_value_slot_idx, _)| *highest_value_slot_idx),
+        ] {
+            if let Some(highest_map_slot_idx) = highest_slot_idx.and_then(|highest_slot_idx| {
+                if highest_slot_idx >= self.num_slots {
+                    Some(highest_slot_idx)
+                } else {
+                    None
+                }
+            }) {
+                return Err(AccountDeltaError::StorageSlotIndexOutOfBounds {
+                    slot_index: highest_map_slot_idx,
+                    num_slots: self.num_slots,
+                });
+            }
+        }
+
         for slot in self.maps.keys() {
             if self.values.contains_key(slot) {
                 return Err(AccountDeltaError::StorageSlotUsedAsDifferentTypes(*slot));
@@ -180,8 +210,6 @@ impl AccountStorageDelta {
 #[cfg(any(feature = "testing", test))]
 impl AccountStorageDelta {
     /// Creates an [AccountStorageDelta] from the given iterators.
-    ///
-    /// TODO: Refactor to call new instead and return result.
     pub fn from_iters(
         num_slots: u8,
         cleared_values: impl IntoIterator<Item = u8>,
@@ -415,6 +443,8 @@ impl Deserializable for StorageMapDelta {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Context;
+
     use super::{AccountStorageDelta, Deserializable, Serializable};
     use crate::{
         ONE, ZERO, account::StorageMapDelta, testing::storage::AccountStorageDeltaBuilder,
@@ -522,26 +552,32 @@ mod tests {
     #[case::none_some(None, Some(2), Some(2))]
     #[case::some_none(Some(1), None, None)]
     #[test]
-    fn merge_items(#[case] x: Option<u64>, #[case] y: Option<u64>, #[case] expected: Option<u64>) {
+    fn merge_items(
+        #[case] x: Option<u64>,
+        #[case] y: Option<u64>,
+        #[case] expected: Option<u64>,
+    ) -> anyhow::Result<()> {
         /// Creates a delta containing the item as an update if Some, else with the item cleared.
-        fn create_delta(item: Option<u64>) -> AccountStorageDelta {
+        fn create_delta(item: Option<u64>) -> anyhow::Result<AccountStorageDelta> {
             const SLOT: u8 = 123;
             let item = item.map(|x| (SLOT, [vm_core::Felt::new(x), ZERO, ZERO, ZERO]));
 
-            AccountStorageDeltaBuilder::new(1)
+            AccountStorageDeltaBuilder::new(SLOT + 1)
                 .add_cleared_items(item.is_none().then_some(SLOT))
                 .add_updated_values(item)
                 .build()
-                .unwrap()
+                .context("failed to build storage delta")
         }
 
-        let mut delta_x = create_delta(x);
-        let delta_y = create_delta(y);
-        let expected = create_delta(expected);
+        let mut delta_x = create_delta(x)?;
+        let delta_y = create_delta(y)?;
+        let expected = create_delta(expected)?;
 
-        delta_x.merge(delta_y).unwrap();
+        delta_x.merge(delta_y).context("failed to merge deltas")?;
 
         assert_eq!(delta_x, expected);
+
+        Ok(())
     }
 
     #[rstest::rstest]
