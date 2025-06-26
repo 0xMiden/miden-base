@@ -175,8 +175,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 /// - Slot 0: key1: EMPTY_WORD -> [1,2,3,4] -> [2,3,4,5] -> Delta: [2,3,4,5]
 /// - Slot 1: key2: [1,2,3,4]  -> [1,2,3,4]              -> Delta: None
 /// - Slot 1: key3: [1,2,3,4]  -> EMPTY_WORD             -> Delta: EMPTY_WORD
-/// - TODO (once account delta tracker is updated):
-///   - Slot 1: key4: [1,2,3,4]  -> [2,3,4,5] -> [1,2,3,4] -> Delta: None
+/// - Slot 1: key4: [1,2,3,4]  -> [2,3,4,5] -> [1,2,3,4] -> Delta: None
 #[test]
 fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     // Test with random keys to make sure the ordering in the MASM and Rust implementations
@@ -185,17 +184,21 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key1 = Digest::from(word(winter_rand_utils::rand_array()));
     let key2 = Digest::from(word(winter_rand_utils::rand_array()));
     let key3 = Digest::from(word(winter_rand_utils::rand_array()));
+    let key4 = Digest::from(word(winter_rand_utils::rand_array()));
 
     let key0_init_value = EMPTY_WORD;
     let key1_init_value = EMPTY_WORD;
     let key2_init_value = word([1, 2, 3, 4u32]);
     let key3_init_value = word([1, 2, 3, 4u32]);
+    let key4_init_value = word([1, 2, 3, 4u32]);
 
     let key0_final_value = word([1, 2, 3, 4u32]);
     let key1_tmp_value = word([1, 2, 3, 4u32]);
     let key1_final_value = word([2, 3, 4, 5u32]);
     let key2_final_value = key2_init_value;
     let key3_final_value = EMPTY_WORD;
+    let key4_tmp_value = word([2, 3, 4, 5u32]);
+    let key4_final_value = word([1, 2, 3, 4u32]);
 
     let mut map0 = StorageMap::new();
     map0.insert(key0, key0_init_value);
@@ -204,6 +207,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let mut map1 = StorageMap::new();
     map1.insert(key2, key2_init_value);
     map1.insert(key3, key3_init_value);
+    map1.insert(key4, key4_init_value);
 
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
         StorageSlot::Map(map0),
@@ -242,6 +246,16 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
+          push.{key4_tmp_value}.{key4}.1
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
+          push.{key4_value}.{key4}.1
+          # => [index, KEY, VALUE]
+          exec.set_map_item
+          # => []
+
           # nonce must increase for state changing transactions
           push.1 exec.incr_nonce
       end
@@ -250,11 +264,14 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         key1 = word_to_masm_push_string(&key1),
         key2 = word_to_masm_push_string(&key2),
         key3 = word_to_masm_push_string(&key3),
+        key4 = word_to_masm_push_string(&key4),
         key0_value = word_to_masm_push_string(&key0_final_value),
         key1_tmp_value = word_to_masm_push_string(&key1_tmp_value),
         key1_value = word_to_masm_push_string(&key1_final_value),
         key2_value = word_to_masm_push_string(&key2_final_value),
         key3_value = word_to_masm_push_string(&key3_final_value),
+        key4_tmp_value = word_to_masm_push_string(&key4_tmp_value),
+        key4_value = word_to_masm_push_string(&key4_final_value),
     ))?;
 
     let executed_tx = mock_chain

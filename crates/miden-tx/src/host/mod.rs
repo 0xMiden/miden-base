@@ -26,7 +26,7 @@ use vm_processor::{
 mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
-mod account_storage_tracker;
+mod account_init_storage;
 
 mod link_map;
 pub use link_map::{Entry, EntryMetadata, LinkMap};
@@ -348,6 +348,12 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
 
         let slot_index = slot_index.as_int() as u8;
         if new_map_value != prev_map_value {
+            // Track the initial value of the map entry.
+            self.account_delta.init_storage().set_init_map_item(
+                slot_index,
+                new_map_key.into(),
+                prev_map_value,
+            );
             self.account_delta.storage_delta().set_map_item(
                 slot_index,
                 new_map_key.into(),

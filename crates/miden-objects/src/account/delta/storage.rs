@@ -8,10 +8,8 @@ use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
     LexicographicWord, Serializable, Word,
 };
-use crate::{
-    Digest, EMPTY_WORD, Felt, ZERO,
-    account::{AccountStorageHeader, StorageMap},
-};
+use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap};
+
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
 
@@ -98,15 +96,6 @@ impl AccountStorageDelta {
         self.validate()
     }
 
-    pub fn normalize(&mut self, storage_header: &AccountStorageHeader) {
-        // Keep only the values whose new value is different from the initial value.
-        self.values.retain(|slot_idx, new_value| {
-            let (_, initial_value) =
-                storage_header.slot(*slot_idx as usize).expect("index should be in bounds");
-            new_value != initial_value
-        });
-    }
-
     /// Checks whether this storage delta is valid.
     ///
     /// # Errors
@@ -184,6 +173,11 @@ impl AccountStorageDelta {
                 },
             }
         }
+    }
+
+    /// Consumes self and returns the underlying parts of the storage delta.
+    pub fn into_parts(self) -> (BTreeMap<u8, Word>, BTreeMap<u8, StorageMapDelta>) {
+        (self.values, self.maps)
     }
 }
 
@@ -314,6 +308,11 @@ impl StorageMapDelta {
     pub fn merge(&mut self, other: Self) {
         // Aggregate the changes into a map such that `other` overwrites self.
         self.0.extend(other.0);
+    }
+
+    /// Returns a mutable refernce to the underlying map.
+    pub fn as_map_mut(&mut self) -> &mut BTreeMap<LexicographicWord <Digest>, Word> {
+        &mut self.0
     }
 
     /// Returns an iterator of all the cleared keys in the storage map.
