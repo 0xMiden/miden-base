@@ -32,7 +32,8 @@ const ASM_DIR: &str = "asm";
 const ASM_MIDEN_DIR: &str = "miden";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
-const SHARED_DIR: &str = "shared";
+const SHARED_UTILS_DIR: &str = "shared_utils";
+const SHARED_MODULES_DIR: &str = "shared_modules";
 const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
 const KERNEL_V0_RS_FILE: &str = "src/transaction/procedures/kernel_v0.rs";
 
@@ -79,7 +80,7 @@ fn main() -> Result<()> {
     let source_dir = dst.join(ASM_DIR);
 
     // copy the shared modules to the kernel and miden library folders
-    copy_shared_folder(&source_dir)?;
+    copy_shared_modules(&source_dir)?;
 
     // set target directory to {OUT_DIR}/assets
     let target_dir = Path::new(&build_dir).join(ASSETS_DIR);
@@ -136,9 +137,12 @@ fn main() -> Result<()> {
 ///   tx_script_main.masm.
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
+    let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
     let kernel_namespace = LibraryNamespace::new("kernel").expect("namespace should be valid");
 
-    let assembler = build_assembler(None)?;
+    let mut assembler = build_assembler(None)?;
+    // add the shared util modules to the kernel lib under the kernel::util namespace
+    assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
     let kernel_lib = KernelLibrary::from_dir(
@@ -157,6 +161,8 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
+    // add the shared util modules to the kernel lib under the kernel::util namespace
+    main_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
     main_assembler.add_modules_from_dir(kernel_namespace, &source_dir.join("lib"))?;
 
     let main_file_path = source_dir.join("main.masm");
@@ -170,12 +176,15 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
 
     #[cfg(any(feature = "testing", test))]
     {
-        let kernel_lib_assembler = assembler.clone();
+        let mut kernel_lib_assembler = assembler.clone();
         // Build kernel as a library and save it to file.
         // This is needed in test assemblers to access individual procedures which would otherwise
         // be hidden when using KernelLibrary (api.masm)
         let kernel_namespace =
             "kernel".parse::<LibraryNamespace>().expect("invalid base namespace");
+
+        // add the shared util modules to the kernel lib under the kernel::util namespace
+        kernel_lib_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
         let test_lib =
             Library::from_dir(source_dir.join("lib"), kernel_namespace, kernel_lib_assembler)
@@ -284,11 +293,14 @@ fn parse_proc_offsets(filename: impl AsRef<Path>) -> Result<BTreeMap<String, usi
 fn compile_miden_lib(
     source_dir: &Path,
     target_dir: &Path,
-    assembler: Assembler,
+    mut assembler: Assembler,
 ) -> Result<Library> {
     let source_dir = source_dir.join(ASM_MIDEN_DIR);
+    let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
     let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
+    // add the shared modules to the kernel lib under the miden::util namespace
+    assembler.add_modules_from_dir(miden_namespace.clone(), &shared_path)?;
 
     let miden_lib = Library::from_dir(source_dir, miden_namespace, assembler)?;
 
@@ -414,78 +426,34 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) {
     }
 }
 
-/// Copies the content of the build `shared/util` folder to the `lib` and `miden` build folders.
+/// Copies the content of the build `shared_modules` folder to the `lib` and `miden` build folders.
 /// This is required to include the shared modules as APIs of the `kernel` and `miden` libraries.
 ///
-/// `account_id.masm` module gets copied to the target folder directly, while `asset.masm` and
-/// `note.masm` get copied to the `utils` subfolder, creating the following hierarchy:
-/// ```text
-/// lib_or_miden/
-/// ├── util/
-/// │  ├── asset.masm
-/// │  └── note.masm
-/// ├── account_id.masm
-/// ├── ...
-/// ```
-///
-/// This is done to make it possible to import the `account_id.masm` module directly, i.e.
-/// "use.kernel::account_id", while requiring for the `asset.masm` and `note.masm` modules to use
-/// the `utils` intermediate name, i.e. `use.kernel::util::asset`.
-fn copy_shared_folder<T: AsRef<Path>>(source: T) -> Result<()> {
+/// This is done to make it possible to import the modules in the `shared_modules` folder directly,
+/// i.e. "use.kernel::account_id".
+fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
     // source is expected to be an `OUT_DIR/asm` folder
-    let util_folder = source.as_ref().join(SHARED_DIR).join("util");
+    let shared_modules_folder = source_dir.as_ref().join(SHARED_MODULES_DIR);
 
-    // copy to kernel lib
-    let kernel_lib_folder = source.as_ref().join(ASM_TX_KERNEL_DIR).join("lib");
-    let kernel_util_folder = kernel_lib_folder.join("util");
+    for shared_module in fs::read_dir(shared_modules_folder).unwrap() {
+        let shared_module_path = shared_module.unwrap().path();
 
-    // copy account_id.masm
-    fs::copy(util_folder.join("account_id.masm"), kernel_lib_folder.join("account_id.masm"))
-        .into_diagnostic()
-        .context(
-            "failed to copy the account_id.masm from shared/util/ to kernels/transaction/lib/",
-        )?;
-    // create a lib/util/ folder if id does not exist
-    if !kernel_util_folder.exists() {
-        fs::create_dir_all(kernel_util_folder.clone())
-            .into_diagnostic()
-            .context("failed to create a kernels/transaction/lib/util/ folder")?;
+        // copy to kernel lib
+        let kernel_lib_folder = source_dir.as_ref().join(ASM_TX_KERNEL_DIR).join("lib");
+        fs::copy(
+            &shared_module_path,
+            kernel_lib_folder.join(shared_module_path.file_name().unwrap()),
+        )
+        .unwrap();
+
+        // copy to miden lib
+        let miden_lib_folder = source_dir.as_ref().join(ASM_MIDEN_DIR);
+        fs::copy(
+            &shared_module_path,
+            miden_lib_folder.join(shared_module_path.file_name().unwrap()),
+        )
+        .unwrap();
     }
-    // copy asset.masm
-    fs::copy(util_folder.join("asset.masm"), kernel_util_folder.join("asset.masm"))
-        .into_diagnostic()
-        .context(
-            "failed to copy the asset.masm from shared/util/ to kernels/transaction/lib/util/",
-        )?;
-    // copy note.masm
-    fs::copy(util_folder.join("note.masm"), kernel_util_folder.join("note.masm"))
-        .into_diagnostic()
-        .context(
-            "failed to copy the note.masm from shared/util/ to kernels/transaction/lib/util/",
-        )?;
-
-    // copy to miden lib
-    let miden_folder = source.as_ref().join(ASM_MIDEN_DIR);
-    let miden_util_folder = miden_folder.join("util");
-
-    // copy account_id.masm
-    fs::copy(util_folder.join("account_id.masm"), miden_folder.join("account_id.masm"))
-        .into_diagnostic()
-        .context("failed to copy the account_id.masm from shared/util/ to miden/")?;
-    // create a miden/util/ folder if id does not exist
-    if !miden_util_folder.exists() {
-        fs::create_dir(miden_util_folder.clone())
-            .into_diagnostic()
-            .context("failed to create a miden/util/ folder")?;
-    }
-    // copy asset.masm
-    fs::copy(util_folder.join("asset.masm"), miden_util_folder.join("asset.masm"))
-        .into_diagnostic()
-        .context("failed to copy the asset.masm from shared/util/ to miden/util/")?;
-    // copy note.masm
-    fs::copy(util_folder.join("note.masm"), miden_util_folder.join("note.masm"))
-        .into_diagnostic()
-        .context("failed to copy the note.masm from shared/util/ to miden/util/")?;
 
     Ok(())
 }
