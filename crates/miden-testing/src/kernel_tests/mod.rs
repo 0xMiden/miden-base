@@ -261,11 +261,6 @@ fn executed_transaction_account_delta_new() {
             ## Send some assets from the account vault
             ## ------------------------------------------------------------------------------------
             {send_asset_script}
-
-            ## Update the account nonce
-            ## ------------------------------------------------------------------------------------
-            push.1 call.account::incr_nonce drop             
-            # => []
         end
     ",
         UPDATED_SLOT_VALUE = word_to_masm_push_string(&Word::from(updated_slot_value)),
@@ -362,12 +357,7 @@ fn test_empty_delta_nonce_update() {
     let tx_script_src = "
         use.test::account
         begin
-            push.1
-
-            call.account::incr_nonce
-            # => [0, 1]
-
-            drop drop
+            push.1 drop
             # => []
         end
     ";
@@ -390,15 +380,18 @@ fn test_empty_delta_nonce_update() {
 
     // nonce delta
     // --------------------------------------------------------------------------------------------
+    // we use a default mock auth component that increments the nonce by 1
     assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(2)));
 
     // storage delta
     // --------------------------------------------------------------------------------------------
-    // We expect one updated item and one updated map
+    // We expect one updated item and one updated map, caused by the nonce increment itself.
     assert_eq!(executed_transaction.account_delta().storage().values().len(), 0);
 
     assert_eq!(executed_transaction.account_delta().storage().maps().len(), 0);
 }
+
+// TODO add a test that updates the storage but does not increment the nonce
 
 #[test]
 fn test_send_note_proc() -> miette::Result<()> {
@@ -479,11 +472,6 @@ fn test_send_note_proc() -> miette::Result<()> {
                 {assets_to_remove}
 
                 dropw dropw dropw dropw
-
-                ## Update the account nonce
-                ## ------------------------------------------------------------------------------------
-                push.1 call.account::incr_nonce drop
-                # => []
             end
         ",
             note_type = note_type as u8,
@@ -694,11 +682,6 @@ fn executed_transaction_output_notes() {
             push.{tag3}                         # tag
             exec.create_note drop
             # => []
-
-            ## Update the account nonce
-            ## ------------------------------------------------------------------------------------
-            push.1 call.account::incr_nonce drop
-            # => []
         end
     ",
         REMOVED_ASSET_1 = word_to_masm_push_string(&Word::from(removed_asset_1)),
@@ -839,9 +822,6 @@ fn test_tx_script_inputs() {
 
             # assert that the value is correct
             push.{value} assert_eqw
-
-            # update the nonce to make the transaction non-empty
-            push.1 call.account::incr_nonce drop
         end
         ",
         key = word_to_masm_push_string(&tx_script_input_key),
@@ -910,8 +890,6 @@ fn test_tx_script_args() -> anyhow::Result<()> {
             push.0.1.2.3
             assert_eqw.err="first three values in the transaction args array are incorrect"
 
-            # update the nonce to make the transaction non-empty
-            push.1 call.account::incr_nonce drop
         end"#;
 
     let tx_script =
@@ -973,16 +951,18 @@ fn transaction_executor_account_code_using_custom_library() {
     const EXTERNAL_LIBRARY_CODE: &str = r#"
       use.miden::account
 
-      export.incr_nonce_by_four
-        dup eq.4 assert.err="nonce increment is not 4"
-        exec.account::incr_nonce
+      export.get_items
+        exec.account::get_vault_root
+        exec.account::get_code_commitment
+
+        dropw dropw
       end"#;
 
     const ACCOUNT_COMPONENT_CODE: &str = "
       use.external_library::external_module
 
-      export.custom_nonce_incr
-        push.4 exec.external_module::incr_nonce_by_four
+      export.custom_getter
+        exec.external_module::get_items
       end";
 
     let external_library_source =
@@ -1003,7 +983,7 @@ fn transaction_executor_account_code_using_custom_library() {
           use.account_component::account_module
 
           begin
-            call.account_module::custom_nonce_incr
+            call.account_module::custom_getter
           end";
 
     let account_component =
@@ -1035,8 +1015,8 @@ fn transaction_executor_account_code_using_custom_library() {
 
     let executed_tx = tx_context.execute().unwrap();
 
-    // Account's initial nonce of 1 should have been incremented by 4.
-    assert_eq!(executed_tx.account_delta().nonce().unwrap(), Felt::new(5));
+    // Account's initial nonce of 1 should have been incremented by 1.
+    assert_eq!(executed_tx.account_delta().nonce().unwrap(), Felt::new(2));
 }
 
 #[allow(clippy::arc_with_non_send_sync)]

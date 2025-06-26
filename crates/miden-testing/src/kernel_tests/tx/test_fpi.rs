@@ -616,9 +616,6 @@ fn test_fpi_execute_foreign_procedure() {
             push.1.2.3.4 assert_eqw
             # => []
 
-            # update the nonce to make the transaction non-empty
-            push.1 call.account::incr_nonce
-
             # truncate the stack
             exec.sys::truncate_stack
         end
@@ -836,9 +833,6 @@ fn test_nested_fpi_cyclic_invocation() {
             # assert that the resulting value equals 18
             push.18 assert_eq.err="sum should be 18"
             # => []        
-
-            # update the nonce to make the transaction non-empty
-            push.1 call.account::incr_nonce
 
             exec.sys::truncate_stack
         end
