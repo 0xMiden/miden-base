@@ -608,8 +608,12 @@ export.get_procedure_info
     # => [index]
 
     # get procedure pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add dup add.4 swap
-    # => [metadata_ptr, proc_ptr]
+    mul.8 exec.memory::get_acct_procedures_section_ptr add
+    # => [proc_ptr]
+
+    # get metadata pointer
+    dup add.4 swap
+    # => [proc_ptr, metadata_ptr]
 
     # load procedure information from memory
     padw movup.4 mem_loadw padw movup.8 mem_loadw
