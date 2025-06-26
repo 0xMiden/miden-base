@@ -48,6 +48,47 @@ value = [
 - **Multi-slot value:** Spans multiple contiguous slots
 - **Storage map:** Key-value pairs, both as words
 
+##### Single-slot value
+
+A single-slot value fits within one slot (i.e., one word).
+
+For a single-slot entry, the following fields are expected:
+
+- `slot`: Specifies the slot index in which the value will be placed
+- `value` (optional): Contains the initial storage value for this slot. Will be interpreted as a `word` unless another `type` is specified
+- `type` (optional): Describes the expected type for the slot
+
+If no `value` is provided, the entry acts as a placeholder, requiring a value to be passed at instantiation. In this case, specifying a `type` is mandatory to ensure the input is correctly parsed. So the rule is that at least one of `value` and `type` has to be specified.
+
+Valid types for a single-slot value are `word` or `auth::rpo_falcon512::pub_key`.
+
+In the example above, the first and second storage entries are single-slot values.
+
+##### Storage map entries
+
+A storage map consists of key-value pairs, where both keys and values are single words.
+
+Storage map entries can specify the following fields:
+
+- `slot`: Specifies the slot index in which the root of the map will be placed
+- `values`: Contains a list of map entries, defined by a `key` and `value`
+
+Where keys and values are word values, which can be defined as placeholders.
+
+Example:
+
+```toml
+[[storage]]
+name = "map_storage_entry"
+slot = 2
+values = [
+    { key = "0x1", value = ["0x0", "249381274", "998123581", "124991023478"] },
+    { key = "0xDE0B1140012A9FD912F18AD9EC85E40F4CB697AE", value = { name = "value_placeholder" } }
+]
+```
+
+In the example, the third storage entry defines a storage map.
+
 #### Value Types
 - `word` (default), `auth::rpo_falcon512::pub_key` (for Falcon public keys)
 - Field elements: `u8`, `u16`, `u32`, `felt`, `token_symbol`
