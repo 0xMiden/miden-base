@@ -82,8 +82,6 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
             &[],
             NoteType::Private,
-            None,
-            None,
         )
         .unwrap();
     mock_chain.prove_next_block();

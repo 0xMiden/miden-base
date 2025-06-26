@@ -1113,7 +1113,7 @@ fn test_check_note_consumability() {
     .unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .input_notes(vec![p2id_note, p2ide_note.clone()])
+        .input_notes(vec![p2id_note, p2ide_note])
         .build();
     let source_manager = tx_context.source_manager();
 

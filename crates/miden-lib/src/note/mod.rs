@@ -66,7 +66,7 @@ pub fn create_p2ide_note<R: FeltRng>(
     sender: AccountId,
     target: AccountId,
     assets: Vec<Asset>,
-    recall_height: Option<BlockNumber>,
+    reclaim_height: Option<BlockNumber>,
     timelock_height: Option<BlockNumber>,
     note_type: NoteType,
     aux: Felt,
@@ -74,7 +74,7 @@ pub fn create_p2ide_note<R: FeltRng>(
 ) -> Result<Note, NoteError> {
     let serial_num = rng.draw_word();
     let recipient =
-        utils::build_p2ide_recipient(target, recall_height, timelock_height, serial_num)?;
+        utils::build_p2ide_recipient(target, reclaim_height, timelock_height, serial_num)?;
     let tag = NoteTag::from_account_id(target);
 
     let execution_hint = match timelock_height {

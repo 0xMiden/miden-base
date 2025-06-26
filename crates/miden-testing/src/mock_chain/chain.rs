@@ -91,8 +91,6 @@ use crate::{
 ///         target.id(),
 ///         &[FungibleAsset::mock(10)],
 ///         NoteType::Public,
-///         None,
-///         None,
 ///     )
 ///   .unwrap();
 /// mock_chain.prove_next_block();
@@ -122,8 +120,6 @@ use crate::{
 ///         receiver.id(),
 ///         &[Asset::Fungible(fungible_asset)],
 ///         NoteType::Public,
-///         None,
-///         None,
 ///     )
 ///     .unwrap();
 /// // Prove the next block to add the pending note to the chain state, making it available for
@@ -807,11 +803,38 @@ impl MockChain {
         self.pending_objects.output_notes.push(note);
     }
 
-    /// Adds a P2ID [`OutputNote`] to the list of pending notes.
+    /// Adds a plain P2ID [`OutputNote`] to the list of pending notes.
     ///
-    /// A block has to be created to add the note to that block and make it available in the chain
-    /// state, e.g. using [`MockChain::prove_next_block`].
+    /// The note is immediately spendable by `target_account_id` and carries no
+    /// additional reclaim or timelock conditions.
     pub fn add_pending_p2id_note(
+        &mut self,
+        sender_account_id: AccountId,
+        target_account_id: AccountId,
+        asset: &[Asset],
+        note_type: NoteType,
+    ) -> Result<Note, NoteError> {
+        let mut rng = RpoRandomCoin::new(Word::default());
+
+        let note = create_p2id_note(
+            sender_account_id,
+            target_account_id,
+            asset.to_vec(),
+            note_type,
+            Default::default(),
+            &mut rng,
+        )?;
+
+        self.add_pending_note(OutputNote::Full(note.clone()));
+        Ok(note)
+    }
+
+    /// Adds a P2IDE [`OutputNote`] (pay‑to‑ID‑escape) to the list of pending notes.
+    ///
+    /// A P2IDE note can include an optional `timelock_height` and/or an optional
+    /// `reclaim_height` after which the `sender_account_id` may reclaim the
+    /// funds.
+    pub fn add_pending_p2ide_note(
         &mut self,
         sender_account_id: AccountId,
         target_account_id: AccountId,
@@ -822,28 +845,16 @@ impl MockChain {
     ) -> Result<Note, NoteError> {
         let mut rng = RpoRandomCoin::new(Word::default());
 
-        // Use P2IDE if either reclaim_height or timelock_height is supplied, otherwise plain P2ID
-        let note = if reclaim_height.is_some() || timelock_height.is_some() {
-            create_p2ide_note(
-                sender_account_id,
-                target_account_id,
-                asset.to_vec(),
-                timelock_height,
-                reclaim_height,
-                note_type,
-                Default::default(),
-                &mut rng,
-            )?
-        } else {
-            create_p2id_note(
-                sender_account_id,
-                target_account_id,
-                asset.to_vec(),
-                note_type,
-                Default::default(),
-                &mut rng,
-            )?
-        };
+        let note = create_p2ide_note(
+            sender_account_id,
+            target_account_id,
+            asset.to_vec(),
+            reclaim_height,
+            timelock_height,
+            note_type,
+            Default::default(),
+            &mut rng,
+        )?;
 
         self.add_pending_note(OutputNote::Full(note.clone()));
         Ok(note)
