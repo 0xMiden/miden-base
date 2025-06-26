@@ -201,15 +201,6 @@ fn authenticate_mock_account_tx_script(expiration_delta: u16) -> TransactionScri
         use.miden::tx
 
         begin
-            padw padw padw
-            push.0.0.0.1
-            # => [1, pad(15)]
-
-            call.account::incr_nonce
-            # => [pad(16)]
-
-            dropw dropw dropw dropw
-
             push.{expiration_delta}
             exec.tx::update_expiration_block_delta
         end
