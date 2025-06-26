@@ -126,7 +126,7 @@ impl AccountStorageDelta {
                 .last_key_value()
                 .map(|(highest_value_slot_idx, _)| *highest_value_slot_idx),
         ] {
-            if let Some(highest_map_slot_idx) = highest_slot_idx.and_then(|highest_slot_idx| {
+            if let Some(highest_slot_idx) = highest_slot_idx.and_then(|highest_slot_idx| {
                 if highest_slot_idx >= self.num_slots {
                     Some(highest_slot_idx)
                 } else {
@@ -134,7 +134,7 @@ impl AccountStorageDelta {
                 }
             }) {
                 return Err(AccountDeltaError::StorageSlotIndexOutOfBounds {
-                    slot_index: highest_map_slot_idx,
+                    slot_index: highest_slot_idx,
                     num_slots: self.num_slots,
                 });
             }
