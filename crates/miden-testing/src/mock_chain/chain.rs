@@ -1559,7 +1559,6 @@ mod tests {
             account.id(),
             &[Asset::Fungible(FungibleAsset::new(faucet_id, 1000u64).unwrap())],
             NoteType::Private,
-            None,
         )?;
 
         mock_chain.prove_next_block();
