@@ -176,7 +176,7 @@ pub fn generate_tx_with_expiration(
 
     let tx_context = chain
         .build_tx_context(input, &[], &[])
-        .tx_script(authenticate_mock_account_tx_script(expiration_delta.as_u32() as u16))
+        .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
         .build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
@@ -194,7 +194,7 @@ pub fn generate_tx_with_unauthenticated_notes(
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
-fn authenticate_mock_account_tx_script(expiration_delta: u16) -> TransactionScript {
+fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
     let code = format!(
         "
         use.test::account
