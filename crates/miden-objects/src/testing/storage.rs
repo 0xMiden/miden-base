@@ -14,13 +14,25 @@ use crate::{
 // ACCOUNT STORAGE DELTA BUILDER
 // ================================================================================================
 
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct AccountStorageDeltaBuilder {
+    num_slots: u8,
     values: BTreeMap<u8, Word>,
     maps: BTreeMap<u8, StorageMapDelta>,
 }
 
 impl AccountStorageDeltaBuilder {
+    // CONSTRUCTORS
+    // -------------------------------------------------------------------------------------------
+
+    pub fn new(num_slots: u8) -> Self {
+        Self {
+            num_slots,
+            values: BTreeMap::new(),
+            maps: BTreeMap::new(),
+        }
+    }
+
     // MODIFIERS
     // -------------------------------------------------------------------------------------------
 
@@ -46,7 +58,7 @@ impl AccountStorageDeltaBuilder {
     // -------------------------------------------------------------------------------------------
 
     pub fn build(self) -> Result<AccountStorageDelta, AccountDeltaError> {
-        AccountStorageDelta::new(self.values, self.maps)
+        AccountStorageDelta::from_parts(self.num_slots, self.values, self.maps)
     }
 }
 

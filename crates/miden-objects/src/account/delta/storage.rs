@@ -20,22 +20,47 @@ use crate::{account::{AccountStorage, StorageMap, StorageSlot}, Digest, Felt, EM
 ///   updated storage slots and the values are the new values for these slots.
 /// - A map containing updates to storage maps. The keys in this map are indexes of the updated
 ///   storage slots and the values are corresponding storage map delta objects.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountStorageDelta {
+    /// The number of storage slots in the account to which this delta applies.
+    num_slots: u8,
+    /// The updates to the value slots of the account.
     values: BTreeMap<u8, Word>,
+    /// The updates to the map slots of the account.
     maps: BTreeMap<u8, StorageMapDelta>,
 }
 
 impl AccountStorageDelta {
+    /// Creates a new, empty storage delta.
+    pub fn new(num_slots: u8) -> Self {
+        Self {
+            num_slots,
+            values: BTreeMap::new(),
+            maps: BTreeMap::new(),
+        }
+    }
+
     /// Creates a new storage delta from the provided fields.
-    pub fn new(
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Any of the updated slot is referenced from both maps, which means a slot is treated as
+    ///   both a value and a map slot.
+    pub fn from_parts(
+        num_slots: u8,
         values: BTreeMap<u8, Word>,
         maps: BTreeMap<u8, StorageMapDelta>,
     ) -> Result<Self, AccountDeltaError> {
-        let result = Self { values, maps };
-        result.validate()?;
+        let delta = Self { num_slots, values, maps };
+        delta.validate()?;
 
-        Ok(result)
+        Ok(delta)
+    }
+
+    /// Returns the number of storage slots in the account.
+    pub fn num_slots(&self) -> u8 {
+        self.num_slots
     }
 
     /// Returns a reference to the updated values in this storage delta.
@@ -109,13 +134,11 @@ impl AccountStorageDelta {
 
     /// Appends the storage slots delta to the given `elements` from which the delta commitment will
     /// be computed.
-    ///
-    /// TODO: Make num_slots part of this struct.
-    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>, num_slots: u8) {
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
         const DOMAIN_VALUE: Felt = Felt::new(2);
         const DOMAIN_MAP: Felt = Felt::new(3);
 
-        for slot_idx in 0..num_slots {
+        for slot_idx in 0..self.num_slots {
             let slot_idx_felt = Felt::from(slot_idx);
 
             // The storage delta ensures that the value slots and map slots do not have overlapping
@@ -157,14 +180,18 @@ impl AccountStorageDelta {
 #[cfg(any(feature = "testing", test))]
 impl AccountStorageDelta {
     /// Creates an [AccountStorageDelta] from the given iterators.
+    ///
+    /// TODO: Refactor to call new instead and return result.
     pub fn from_iters(
-        cleared_items: impl IntoIterator<Item = u8>,
+        num_slots: u8,
+        cleared_values: impl IntoIterator<Item = u8>,
         updated_values: impl IntoIterator<Item = (u8, Word)>,
         updated_maps: impl IntoIterator<Item = (u8, StorageMapDelta)>,
     ) -> Self {
         Self {
+            num_slots,
             values: BTreeMap::from_iter(
-                cleared_items.into_iter().map(|key| (key, EMPTY_WORD)).chain(updated_values),
+                cleared_values.into_iter().map(|key| (key, EMPTY_WORD)).chain(updated_values),
             ),
             maps: BTreeMap::from_iter(updated_maps),
         }
@@ -197,6 +224,8 @@ impl Serializable for AccountStorageDelta {
         let cleared: Vec<u8> = self.cleared_slots().collect();
         let updated: Vec<(&u8, &Word)> = self.updated_slots().collect();
 
+        target.write_u8(self.num_slots);
+
         target.write_u8(cleared.len() as u8);
         target.write_many(cleared.iter());
 
@@ -218,6 +247,8 @@ impl Serializable for AccountStorageDelta {
             storage_map_delta_size += slot.get_size_hint() + storage_map_delta.get_size_hint();
         }
 
+        // num slots
+        u8_size +
         // Length Prefixes
         u8_size * 3 +
         // Cleared Slots
@@ -231,6 +262,8 @@ impl Serializable for AccountStorageDelta {
 
 impl Deserializable for AccountStorageDelta {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let num_slots = source.read_u8()?;
+
         let mut values = BTreeMap::new();
 
         let num_cleared_items = source.read_u8()? as usize;
@@ -248,7 +281,8 @@ impl Deserializable for AccountStorageDelta {
         let num_maps = source.read_u8()? as usize;
         let maps = source.read_many::<(u8, StorageMapDelta)>(num_maps)?.into_iter().collect();
 
-        Self::new(values, maps).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        Self::from_parts(num_slots, values, maps)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -389,6 +423,7 @@ mod tests {
     #[test]
     fn account_storage_delta_validation() {
         let delta = AccountStorageDelta::from_iters(
+            6,
             [1, 2, 3],
             [(4, [ONE, ONE, ONE, ONE]), (5, [ONE, ONE, ONE, ZERO])],
             [],
@@ -400,6 +435,7 @@ mod tests {
 
         // duplicate across cleared items and maps
         let delta = AccountStorageDelta::from_iters(
+            6,
             [1, 2, 3],
             [(2, [ONE, ONE, ONE, ONE]), (5, [ONE, ONE, ONE, ZERO])],
             [(1, StorageMapDelta::default())],
@@ -411,6 +447,7 @@ mod tests {
 
         // duplicate across updated items and maps
         let delta = AccountStorageDelta::from_iters(
+            6,
             [1, 3],
             [(2, [ONE, ONE, ONE, ONE]), (5, [ONE, ONE, ONE, ZERO])],
             [(2, StorageMapDelta::default())],
@@ -423,39 +460,39 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let storage_delta = AccountStorageDelta::default();
+        let storage_delta = AccountStorageDelta::new(0);
         assert!(storage_delta.is_empty());
 
-        let storage_delta = AccountStorageDelta::from_iters([1], [], []);
+        let storage_delta = AccountStorageDelta::from_iters(2, [1], [], []);
         assert!(!storage_delta.is_empty());
 
-        let storage_delta = AccountStorageDelta::from_iters([], [(2, [ONE, ONE, ONE, ONE])], []);
+        let storage_delta = AccountStorageDelta::from_iters(3, [], [(2, [ONE, ONE, ONE, ONE])], []);
         assert!(!storage_delta.is_empty());
 
         let storage_delta =
-            AccountStorageDelta::from_iters([], [], [(3, StorageMapDelta::default())]);
+            AccountStorageDelta::from_iters(4, [], [], [(3, StorageMapDelta::default())]);
         assert!(!storage_delta.is_empty());
     }
 
     #[test]
     fn test_serde_account_storage_delta() {
-        let storage_delta = AccountStorageDelta::default();
+        let storage_delta = AccountStorageDelta::new(0);
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
 
-        let storage_delta = AccountStorageDelta::from_iters([1], [], []);
+        let storage_delta = AccountStorageDelta::from_iters(2, [1], [], []);
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
 
-        let storage_delta = AccountStorageDelta::from_iters([], [(2, [ONE, ONE, ONE, ONE])], []);
+        let storage_delta = AccountStorageDelta::from_iters(3, [], [(2, [ONE, ONE, ONE, ONE])], []);
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
 
         let storage_delta =
-            AccountStorageDelta::from_iters([], [], [(3, StorageMapDelta::default())]);
+            AccountStorageDelta::from_iters(4, [], [], [(3, StorageMapDelta::default())]);
         let serialized = storage_delta.to_bytes();
         let deserialized = AccountStorageDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_delta);
@@ -491,7 +528,7 @@ mod tests {
             const SLOT: u8 = 123;
             let item = item.map(|x| (SLOT, [vm_core::Felt::new(x), ZERO, ZERO, ZERO]));
 
-            AccountStorageDeltaBuilder::default()
+            AccountStorageDeltaBuilder::new(1)
                 .add_cleared_items(item.is_none().then_some(SLOT))
                 .add_updated_values(item)
                 .build()

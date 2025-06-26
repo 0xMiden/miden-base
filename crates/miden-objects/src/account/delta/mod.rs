@@ -30,8 +30,12 @@ pub struct AccountDelta {
     /// The ID of the account to which this delta applies. If the delta is created during
     /// transaction execution, that is the native account of the transaction.
     account_id: AccountId,
+    /// The delta of the account's storage.
     storage: AccountStorageDelta,
+    /// The delta of the account's asset vault.
     vault: AccountVaultDelta,
+    /// The value by which the nonce was incremented. Must be greater than zero if storage or vault
+    /// are non-empty.
     nonce: Option<Felt>,
 }
 
@@ -225,9 +229,7 @@ impl AccountDelta {
     /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
     /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
     /// pair have changed and 2) when two key-value pairs have changed.
-    ///
-    /// TODO: Make num_slots part of delta.
-    pub fn commitment(&self, num_slots: u8) -> Digest {
+    pub fn commitment(&self) -> Digest {
         // Minor optimization: At least 24 elements are always added.
         let mut elements = Vec::with_capacity(24);
 
@@ -244,7 +246,7 @@ impl AccountDelta {
         self.vault.append_delta_elements(&mut elements);
 
         // Storage Delta
-        self.storage.append_delta_elements(&mut elements, num_slots);
+        self.storage.append_delta_elements(&mut elements);
 
         debug_assert!(
             elements.len() % (2 * crate::WORD_SIZE) == 0,
@@ -467,7 +469,7 @@ mod tests {
     fn account_delta_nonce_validation() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         // empty delta
-        let storage_delta = AccountStorageDelta::default();
+        let storage_delta = AccountStorageDelta::new(1);
         let vault_delta = AccountVaultDelta::default();
 
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), None).unwrap();
@@ -475,7 +477,7 @@ mod tests {
             .unwrap();
 
         // non-empty delta
-        let storage_delta = AccountStorageDelta::from_iters([1], [], []);
+        let storage_delta = AccountStorageDelta::from_iters(2, [1], [], []);
 
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), None)
@@ -495,7 +497,7 @@ mod tests {
     fn account_update_details_size_hint() {
         // AccountDelta
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-        let storage_delta = AccountStorageDelta::default();
+        let storage_delta = AccountStorageDelta::new(0);
         let vault_delta = AccountVaultDelta::default();
         assert_eq!(storage_delta.to_bytes().len(), storage_delta.get_size_hint());
         assert_eq!(vault_delta.to_bytes().len(), vault_delta.get_size_hint());
@@ -505,6 +507,7 @@ mod tests {
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
+            5,
             [1],
             [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
             [(

@@ -26,10 +26,10 @@ pub struct AccountDeltaTracker {
 
 impl AccountDeltaTracker {
     /// Returns a new [AccountDeltaTracker] instantiated for the specified account.
-    pub fn new(account_id: AccountId) -> Self {
+    pub fn new(account_id: AccountId, num_slots: u8) -> Self {
         Self {
             account_id,
-            storage: AccountStorageDelta::default(),
+            storage: AccountStorageDelta::new(num_slots),
             vault: AccountVaultDelta::default(),
             init_nonce: account.nonce(),
             nonce_delta: ZERO,

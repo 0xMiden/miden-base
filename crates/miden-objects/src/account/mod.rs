@@ -451,7 +451,7 @@ mod tests {
         let final_nonce = Felt::new(2);
         let asset_0 = FungibleAsset::mock(15);
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
-        let storage_delta = AccountStorageDeltaBuilder::default()
+        let storage_delta = AccountStorageDeltaBuilder::new(2)
             .add_cleared_items([0])
             .add_updated_values([(1_u8, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
             .build()
@@ -513,7 +513,7 @@ mod tests {
 
         // build account delta
         let final_nonce = Felt::new(2);
-        let storage_delta = AccountStorageDeltaBuilder::default()
+        let storage_delta = AccountStorageDeltaBuilder::new(3)
             .add_cleared_items([0])
             .add_updated_values([(1, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
             .add_updated_maps([(2, updated_map)])
@@ -555,7 +555,7 @@ mod tests {
             build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::default())]);
 
         // build account delta
-        let storage_delta = AccountStorageDeltaBuilder::default()
+        let storage_delta = AccountStorageDeltaBuilder::new(2)
             .add_cleared_items([0])
             .add_updated_values([(1_u8, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
             .build()
@@ -579,7 +579,7 @@ mod tests {
 
         // build account delta
         let final_nonce = Felt::new(1);
-        let storage_delta = AccountStorageDeltaBuilder::default()
+        let storage_delta = AccountStorageDeltaBuilder::new(2)
             .add_cleared_items([0])
             .add_updated_values([(1_u8, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
             .build()
@@ -604,7 +604,7 @@ mod tests {
         let final_nonce = Felt::new(2);
         let account_delta = AccountDelta::new(
             account_id,
-            AccountStorageDelta::default(),
+            AccountStorageDelta::new(1),
             AccountVaultDelta::default(),
             Some(final_nonce),
         )

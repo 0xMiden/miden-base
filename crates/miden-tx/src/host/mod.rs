@@ -125,7 +125,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             adv_provider,
             mast_store,
             scripts_mast_store,
-            account_delta: AccountDeltaTracker::new(account.id()),
+            account_delta: AccountDeltaTracker::new(
+                account.id(),
+                account.storage().header().num_slots(),
+            ),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
             authenticator,
