@@ -645,9 +645,8 @@ mod tests {
             [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
             [],
         );
-        let delta =
-            AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), Some(ONE))
-                .unwrap();
+        let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
+            .unwrap();
         let details = AccountUpdateDetails::Delta(delta);
         TxAccountUpdate::new(
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap(),
@@ -674,9 +673,8 @@ mod tests {
 
         // A delta that exceeds the limit returns an error.
         let storage_delta = AccountStorageDelta::from_iters([], [], [(4, storage_delta)]);
-        let delta =
-            AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), Some(ONE))
-                .unwrap();
+        let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
+            .unwrap();
         let details = AccountUpdateDetails::Delta(delta);
         let details_size = details.get_size_hint();
 

@@ -55,7 +55,7 @@ fn delta_nonce() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute transaction")?;
 
-    assert_eq!(executed_tx.account_delta().nonce(), Some(Felt::new(5)));
+    assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(5));
 
     validate_account_delta(&executed_tx).context("failed to validate delta")?;
 

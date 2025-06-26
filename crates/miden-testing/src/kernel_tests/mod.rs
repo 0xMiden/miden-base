@@ -298,7 +298,7 @@ fn executed_transaction_account_delta_new() {
     // --------------------------------------------------------------------------------------------
 
     // nonce was incremented by 1
-    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(1)));
+    assert_eq!(executed_transaction.account_delta().nonce_increment(), ONE);
 
     // storage delta
     // --------------------------------------------------------------------------------------------
@@ -385,7 +385,7 @@ fn test_empty_delta_nonce_update() {
     // --------------------------------------------------------------------------------------------
 
     // nonce was incremented by 1
-    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(1)));
+    assert_eq!(executed_transaction.account_delta().nonce_increment(), ONE);
 
     // storage delta
     // --------------------------------------------------------------------------------------------
@@ -507,7 +507,7 @@ fn test_send_note_proc() -> miette::Result<()> {
         // --------------------------------------------------------------------------------------------
 
         // nonce was incremented by 1
-        assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(1)));
+        assert_eq!(executed_transaction.account_delta().nonce_increment(), ONE);
 
         // vault delta
         // --------------------------------------------------------------------------------------------
@@ -975,7 +975,7 @@ fn transaction_executor_account_code_using_custom_library() {
     let executed_tx = tx_context.execute().unwrap();
 
     // Account's initial nonce of 1 should have been incremented by 4.
-    assert_eq!(executed_tx.account_delta().nonce().unwrap(), Felt::new(4));
+    assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(4));
 }
 
 #[allow(clippy::arc_with_non_send_sync)]

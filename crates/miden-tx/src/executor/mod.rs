@@ -2,7 +2,7 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
@@ -403,18 +403,11 @@ fn build_executed_transaction(
     }
 
     // make sure nonce delta was computed correctly
-    let nonce_delta = final_account.nonce() - initial_account.nonce();
-    if nonce_delta == ZERO {
-        if account_delta.nonce().is_some() {
-            return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-                expected: None,
-                actual: account_delta.nonce(),
-            });
-        }
-    } else if nonce_delta != account_delta.nonce().unwrap_or_default() {
+    let nonce_increment = final_account.nonce() - initial_account.nonce();
+    if nonce_increment != account_delta.nonce_increment() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: Some(nonce_delta),
-            actual: account_delta.nonce(),
+            expected: nonce_increment,
+            actual: account_delta.nonce_increment(),
         });
     }
 
