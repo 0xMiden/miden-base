@@ -105,7 +105,7 @@ begin
     # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height, target_account_id_prefix, target_account_id_suffix, ...]
 
     # determine if the current account is the target account
-    movup.6 movup.6 exec.account_id::is_id_equal
+    movup.6 movup.6 exec.account_id::is_equal
     # => [is_target, account_id_prefix, account_id_suffix, reclaim_block_height]
 
     if.true
@@ -119,7 +119,7 @@ begin
         # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix, reclaim_block_height]
 
         # ensure current account ID = sender account ID
-        exec.account_id::is_id_equal assert.err=ERR_P2IDR_RECLAIM_ACCT_IS_NOT_SENDER
+        exec.account_id::is_equal assert.err=ERR_P2IDR_RECLAIM_ACCT_IS_NOT_SENDER
         # => [reclaim_block_height]
 
         # now check that sender is allowed to reclaim, current block >= reclaim block height

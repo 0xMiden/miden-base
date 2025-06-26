@@ -113,7 +113,7 @@ proc.reclaim_note
     # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix]
 
     # ensure current account ID = sender account ID
-    exec.account_id::is_id_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
+    exec.account_id::is_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
     # => []
 
     # add note assets to account
@@ -178,7 +178,7 @@ begin
     # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # determine if the current account is the target account
-    movup.7 movup.7 exec.account_id::is_id_equal
+    movup.7 movup.7 exec.account_id::is_equal
     # => [is_target, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height]
 
     if.true

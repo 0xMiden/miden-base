@@ -49,7 +49,7 @@ export.validate_fungible_asset
     # => [ASSET]
 
     # assert that the tuple (ASSET[3], ASSET[2]) forms a valid account ID
-    dup.1 dup.1 exec.account_id::validate_id
+    dup.1 dup.1 exec.account_id::validate
     # => [ASSET]
 
     # assert that the prefix (ASSET[3]) of the account ID is of type fungible faucet
@@ -92,7 +92,7 @@ end
 export.validate_non_fungible_asset
     # assert that ASSET[3] is a valid account ID prefix
     # hack: because we only have the prefix we add a 0 as the suffix which is always valid
-    push.0 dup.1 exec.account_id::validate_id
+    push.0 dup.1 exec.account_id::validate
     # => [ASSET]
 
     # assert that the account ID prefix ASSET[3] is of type non fungible faucet
@@ -155,7 +155,7 @@ export.validate_fungible_asset_origin
     dup.3 dup.3
     # => [asset_id_prefix, asset_id_suffix, faucet_id_prefix, faucet_id_suffix, ASSET]
 
-    exec.account_id::is_id_equal assert.err=ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN
+    exec.account_id::is_equal assert.err=ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN
     # => [ASSET]
 
     # assert the fungible asset is valid

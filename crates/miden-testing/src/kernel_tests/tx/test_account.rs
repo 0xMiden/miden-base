@@ -164,7 +164,7 @@ pub fn test_account_validate_id() -> miette::Result<()> {
             use.kernel::account_id
 
             begin
-                exec.account_id::validate_id
+                exec.account_id::validate
             end
             ";
 
