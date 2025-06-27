@@ -13,8 +13,8 @@ use miden_objects::{
     },
     vm::{AdviceMap, StackOutputs},
 };
-pub use vm_processor::MastForestStore;
-use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{AdviceInputs, MemAdviceProvider, Process, RecAdviceProvider};
+pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
@@ -67,6 +67,16 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             )
             .expect("Must not fail while max cycles is more than min trace length"),
         }
+    }
+
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
+    /// [TransactionAuthenticator] and [ExecutionOptions].
+    pub fn new_with_options(
+        data_store: &'store dyn DataStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        exec_options: ExecutionOptions,
+    ) -> Self {
+        Self { data_store, authenticator, exec_options }
     }
 
     /// Puts the [TransactionExecutor] into debug mode.

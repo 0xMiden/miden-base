@@ -28,6 +28,7 @@
 - [BREAKING] Implemented account delta commitment (#1471).
 - [BREAKING] Store account ID and number of slots in account delta (#1493).
 - Added `Note::is_network_note()` accessor (#1485).
+- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
