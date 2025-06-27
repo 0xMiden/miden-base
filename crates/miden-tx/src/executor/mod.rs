@@ -374,13 +374,12 @@ fn build_executed_transaction(
     // Temporarily copy the account update commitment into the advice witness map, if it is present,
     // so it can be accessed in account delta tests.
     {
-        let host_delta_commitment =
-            account_delta.commitment(initial_account.id(), initial_account.storage().num_slots());
+        let host_delta_commitment = account_delta.commitment();
         let account_update_commitment =
             miden_objects::Hasher::merge(&[final_account.commitment(), host_delta_commitment]);
 
         if let Some(value) = advice_map.get(&account_update_commitment) {
-            advice_witness.map.insert(account_update_commitment, value.into());
+            advice_witness.extend_map([(account_update_commitment, value.into())]);
         }
     }
 

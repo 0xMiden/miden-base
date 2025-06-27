@@ -5,8 +5,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
-        Account, AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode,
-        StorageSlot,
+        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, StorageSlot,
     },
     testing::account_component::AccountMockComponent,
     transaction::{ExecutedTransaction, TransactionScript},
@@ -145,12 +144,10 @@ fn validate_account_delta(
     executed_tx: &ExecutedTransaction,
 ) -> Result<(), TransactionExecutorError> {
     let account_delta: &AccountDelta = executed_tx.account_delta();
-    let initial_account: &Account = executed_tx.initial_account();
     let advice_map: &AdviceMap = &executed_tx.advice_witness().map;
     let final_account_header: &AccountHeader = executed_tx.final_account();
 
-    let host_delta_commitment =
-        account_delta.commitment(initial_account.id(), initial_account.storage().num_slots());
+    let host_delta_commitment = account_delta.commitment();
     let account_update_commitment =
         Hasher::merge(&[final_account_header.commitment(), host_delta_commitment]);
 

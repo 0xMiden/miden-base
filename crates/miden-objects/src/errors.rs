@@ -213,6 +213,10 @@ pub enum NetworkIdError {
 
 #[derive(Debug, Error)]
 pub enum AccountDeltaError {
+    #[error(
+        "storage slot index {slot_index} is greater than or equal to the number of slots {num_slots}"
+    )]
+    StorageSlotIndexOutOfBounds { slot_index: u8, num_slots: u8 },
     #[error("storage slot {0} was updated as a value and as a map")]
     StorageSlotUsedAsDifferentTypes(u8),
     #[error("non fungible vault can neither be added nor removed twice")]
