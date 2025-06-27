@@ -515,7 +515,7 @@ pub enum TransactionOutputError {
     #[error("transaction output note with id {0} is a duplicate")]
     DuplicateOutputNote(NoteId),
     #[error("final account commitment is not in the advice map")]
-    FinalAccountHashMissingInAdviceMap,
+    FinalAccountCommitmentMissingInAdviceMap,
     #[error("failed to parse final account header")]
     FinalAccountHeaderParseFailure(#[source] AccountError),
     #[error(
@@ -528,6 +528,8 @@ pub enum TransactionOutputError {
         "total number of output notes is {0} which exceeds the maximum of {MAX_OUTPUT_NOTES_PER_TX}"
     )]
     TooManyOutputNotes(usize),
+    #[error("failed to process account update commitment: {0}")]
+    AccountUpdateCommitment(&'static str),
 }
 
 // PROVEN TRANSACTION ERROR

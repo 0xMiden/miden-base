@@ -15,8 +15,8 @@ use crate::transaction::memory::{ACCT_ID_PREFIX_IDX, ACCT_ID_SUFFIX_IDX};
 /// The index of the word at which the final account nonce is stored on the output stack.
 pub const OUTPUT_NOTES_COMMITMENT_WORD_IDX: usize = 0;
 
-/// The index of the word at which the final account commitment is stored on the output stack.
-pub const FINAL_ACCOUNT_COMMITMENT_WORD_IDX: usize = 1;
+/// The index of the word at which the account update commitment is stored on the output stack.
+pub const ACCOUNT_UPDATE_COMMITMENT_WORD_IDX: usize = 1;
 
 /// The index of the item at which the expiration block height is stored on the output stack.
 pub const EXPIRATION_BLOCK_ELEMENT_IDX: usize = 8;

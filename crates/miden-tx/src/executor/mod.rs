@@ -383,16 +383,12 @@ fn build_executed_transaction(
     let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
 
-    // Temporarily copy the account update commitment into the advice witness map, if it is present,
-    // so it can be accessed in account delta tests.
-    {
-        let host_delta_commitment = account_delta.commitment();
-        let account_update_commitment =
-            miden_objects::Hasher::merge(&[final_account.commitment(), host_delta_commitment]);
-
-        if let Some(value) = advice_map.get(&account_update_commitment) {
-            advice_witness.extend_map([(account_update_commitment, value.into())]);
-        }
+    let host_delta_commitment = account_delta.commitment();
+    if tx_outputs.account_delta_commitment != host_delta_commitment {
+        return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
+            in_kernel_commitment: tx_outputs.account_delta_commitment,
+            host_commitment: host_delta_commitment,
+        });
     }
 
     if initial_account.id() != final_account.id() {

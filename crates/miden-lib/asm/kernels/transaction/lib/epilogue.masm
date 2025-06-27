@@ -232,18 +232,20 @@ end
 # =================================================================================================
 
 #! Finalizes the transaction by performing the following steps:
-#! - computes the final account commitment.
+#! - computes the account delta commitment and the final account commitment, and the merged
+#!   hash of both.
 #! - if the account has changed, assert that the final account nonce is greater than the initial
 #!   account nonce.
 #! - computes the output notes commitment.
 #! - asserts that the input and output vault roots are equal.
 #!
 #! Inputs:  []
-#! Outputs: [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT, tx_expiration_block_num]
+#! Outputs: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
 #!
 #! Where:
 #! - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
-#! - FINAL_ACCOUNT_COMMITMENT is the final account commitment.
+#! - ACCOUNT_UPDATE_COMMITMENT is the hash of the account delta commitment and the final
+#!   account commitment.
 #! - tx_expiration_block_num is the transaction expiration block number.
 export.finalize_transaction
     # make sure that the context was switched back to the native account
@@ -323,26 +325,26 @@ export.finalize_transaction
     adv.insert_hdword
     # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
-    dropw
-    # => [FINAL_ACCOUNT_COMMITMENT]
+    hmerge
+    # => [ACCOUNT_UPDATE_COMMITMENT]
 
     # build the output vault
     exec.build_output_vault
-    # => [FINAL_ACCOUNT_COMMITMENT]
+    # => [ACCOUNT_UPDATE_COMMITMENT]
 
     # compute output notes commitment
     exec.note::compute_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT]
 
     # copy output note data to the advice map
     exec.copy_output_notes_to_advice_map
-    # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT]
 
     # assert no net creation or destruction of assets over the transaction
     exec.memory::get_input_vault_root exec.memory::get_output_vault_root
     assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
-    # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT]
 
     exec.memory::get_expiration_block_num movdn.8
-    # => [OUTPUT_NOTES_COMMITMENT, FINAL_ACCOUNT_COMMITMENT, tx_expiration_block_num]
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
 end

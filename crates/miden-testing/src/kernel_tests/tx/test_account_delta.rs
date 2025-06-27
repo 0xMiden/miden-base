@@ -4,10 +4,9 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, Word,
+    Digest, EMPTY_WORD, Felt, Word,
     account::{
-        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType,
-        StorageMap, StorageSlot, delta::LexicographicWord,
+        AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageMap, StorageSlot,
     },
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
@@ -15,10 +14,9 @@ use miden_objects::{
         account_component::AccountMockComponent, account_id::AccountIdBuilder,
         asset::NonFungibleAssetBuilder,
     },
-    transaction::{ExecutedTransaction, TransactionScript},
-    vm::AdviceMap,
+    transaction::{LinkMapKey, TransactionScript},
 };
-use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
+use miden_tx::utils::word_to_masm_push_string;
 use rand::Rng;
 
 use crate::MockChain;
@@ -57,8 +55,6 @@ fn delta_nonce() -> anyhow::Result<()> {
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(5));
-
-    validate_account_delta(&executed_tx).context("failed to validate delta")?;
 
     Ok(())
 }
@@ -162,8 +158,6 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     // Note that slots 2 and 3 are absent because their values haven't effectively changed.
     assert_eq!(storage_values_delta, &[(0u8, slot_0_final_value), (1u8, slot_1_final_value)]);
-
-    validate_account_delta(&executed_tx).context("failed to validate delta")?;
 
     Ok(())
 }
@@ -322,8 +316,6 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     assert_eq!(map1_delta.len(), 1);
     assert_eq!(map1_delta.remove(&LexicographicWord::new(key3)).unwrap(), key3_final_value);
 
-    validate_account_delta(&executed_tx).context("failed to validate delta")?;
-
     Ok(())
 }
 
@@ -449,8 +441,6 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         removed_asset3.amount()
     );
 
-    validate_account_delta(&executed_tx)?;
-
     Ok(())
 }
 
@@ -548,59 +538,6 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
 
     assert_eq!(added_assets.remove(&Digest::from(asset0.vault_key())).unwrap(), asset0);
     assert_eq!(removed_assets.remove(&Digest::from(asset1.vault_key())).unwrap(), asset1);
-
-    validate_account_delta(&executed_tx).context("failed to validate delta")?;
-
-    Ok(())
-}
-
-/// Validates that the given host-computed account delta has the same commitment as the in-kernel
-/// computed account delta.
-///
-/// TODO: This will eventually be done in `build_executed_transaction`.
-fn validate_account_delta(
-    executed_tx: &ExecutedTransaction,
-) -> Result<(), TransactionExecutorError> {
-    let account_delta: &AccountDelta = executed_tx.account_delta();
-    let advice_map: &AdviceMap = &executed_tx.advice_witness().map;
-    let final_account_header: &AccountHeader = executed_tx.final_account();
-
-    let host_delta_commitment = account_delta.commitment();
-    let account_update_commitment =
-        Hasher::merge(&[final_account_header.commitment(), host_delta_commitment]);
-
-    let account_update_data = advice_map.get(&account_update_commitment).ok_or_else(|| {
-        TransactionExecutorError::AccountUpdateCommitment(
-            "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map",
-        )
-    })?;
-
-    if account_update_data.len() != 8 {
-        return Err(TransactionExecutorError::AccountUpdateCommitment(
-            "expected account update commitment advice map entry to contain exactly 8 elements",
-        ));
-    }
-
-    // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
-    // is fine.
-    // TODO: The final account commitment will eventually be taken from here once the account update
-    // commitment becomes a transaction output, but for now it is unused.
-    let _final_account_commitment = Digest::from(
-        <[Felt; 4]>::try_from(&account_update_data[0..4])
-            .expect("we should have sliced off exactly four elements"),
-    );
-    let account_delta_commitment = Digest::from(
-        <[Felt; 4]>::try_from(&account_update_data[4..8])
-            .expect("we should have sliced off exactly four elements"),
-    );
-
-    if account_delta_commitment != host_delta_commitment {
-        return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
-            // TODO: Update once in kernel commitment is read from tx outputs.
-            in_kernel_commitment: Digest::from(EMPTY_WORD),
-            host_commitment: host_delta_commitment,
-        });
-    }
 
     Ok(())
 }
