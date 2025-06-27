@@ -20,10 +20,10 @@ use crate::{
 // ================================================================================================
 
 /// Authentication arguments containing the procedure arguments and optional key.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AuthArguments {
     procedure_args: BTreeMap<Digest, Vec<Felt>>,
-    procedure_args_key: Option<Word>,
+    procedure_args_key: Word,
 }
 
 impl AuthArguments {
@@ -32,7 +32,7 @@ impl AuthArguments {
         let args_key = Hasher::hash_elements(auth_args);
         let mut procedure_args = BTreeMap::<Digest, Vec<Felt>>::new();
         procedure_args.insert(args_key, auth_args.to_vec());
-        let procedure_args_key = Some(args_key.into());
+        let procedure_args_key = args_key.into();
         Self { procedure_args, procedure_args_key }
     }
 
@@ -42,8 +42,8 @@ impl AuthArguments {
     }
 
     /// Returns a reference to the authentication procedure arguments key.
-    pub fn procedure_args_key(&self) -> Option<&Word> {
-        self.procedure_args_key.as_ref()
+    pub fn procedure_args_key(&self) -> &Word {
+        &self.procedure_args_key
     }
 }
 
@@ -57,7 +57,7 @@ impl Serializable for AuthArguments {
 impl Deserializable for AuthArguments {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let procedure_args = BTreeMap::<Digest, Vec<Felt>>::read_from(source)?;
-        let procedure_args_key = Option::<Word>::read_from(source)?;
+        let procedure_args_key = Word::read_from(source)?;
 
         Ok(Self { procedure_args, procedure_args_key })
     }
@@ -191,7 +191,7 @@ impl TransactionArgs {
 
     /// Returns a reference to the auth procedure arguments key.
     pub fn auth_procedure_args_key(&self) -> Option<&Word> {
-        self.auth_arguments.as_ref().and_then(|args| args.procedure_args_key())
+        self.auth_arguments.as_ref().map(|args| args.procedure_args_key())
     }
 
     // STATE MUTATORS
