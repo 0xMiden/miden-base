@@ -69,7 +69,7 @@ impl AccountDelta {
         let new_nonce_increment = self.nonce_increment + other.nonce_increment;
 
         if new_nonce_increment.as_int() < self.nonce_increment.as_int() {
-            return Err(AccountDeltaError::NonceOverflow {
+            return Err(AccountDeltaError::NonceIncrementOverflow {
                 current: self.nonce_increment,
                 increment: other.nonce_increment,
                 new: new_nonce_increment,
@@ -471,6 +471,35 @@ mod tests {
             AccountDeltaError::ZeroNonceForNonEmptyDelta
         );
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
+    }
+
+    #[test]
+    fn account_delta_nonce_increment_overflow() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let storage_delta = AccountStorageDelta::new();
+        let vault_delta = AccountVaultDelta::default();
+
+        let delta0_nonce_increment = ONE;
+        let delta1_nonce_increment = Felt::try_from(0xffff_ffff_0000_0000u64).unwrap();
+
+        let mut delta0 = AccountDelta::new(
+            account_id,
+            storage_delta.clone(),
+            vault_delta.clone(),
+            delta0_nonce_increment,
+        )
+        .unwrap();
+        let delta1 =
+            AccountDelta::new(account_id, storage_delta, vault_delta, delta1_nonce_increment)
+                .unwrap();
+
+        assert_matches!(delta0.merge(delta1).unwrap_err(), AccountDeltaError::NonceIncrementOverflow {
+          current, increment, new
+        } => {
+            assert_eq!(current, delta0_nonce_increment);
+            assert_eq!(increment, delta1_nonce_increment);
+            assert_eq!(new, delta0_nonce_increment + delta1_nonce_increment);
+        });
     }
 
     #[test]

@@ -248,9 +248,9 @@ pub enum AccountDeltaError {
     #[error("zero nonce is not allowed for non-empty account deltas")]
     ZeroNonceForNonEmptyDelta,
     #[error(
-        "current account nonce increment {current} plus the other nonce increment {increment} overflows a felt to {new}"
+        "account nonce increment {current} plus the other nonce increment {increment} overflows a felt to {new}"
     )]
-    NonceOverflow {
+    NonceIncrementOverflow {
         current: Felt,
         increment: Felt,
         new: Felt,
