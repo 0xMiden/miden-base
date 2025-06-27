@@ -379,7 +379,7 @@ fn build_executed_transaction(
             miden_objects::Hasher::merge(&[final_account.commitment(), host_delta_commitment]);
 
         if let Some(value) = advice_map.get(&account_update_commitment) {
-            advice_witness.map.insert(account_update_commitment, value.into());
+            advice_witness.extend_map([(account_update_commitment, value.into())]);
         }
     }
 
