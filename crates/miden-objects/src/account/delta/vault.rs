@@ -82,6 +82,13 @@ impl AccountVaultDelta {
         self.non_fungible.merge(other.non_fungible)?;
         self.fungible.merge(other.fungible)
     }
+
+    /// Appends the vault delta to the given `elements` from which the delta commitment will be
+    /// computed.
+    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
+        self.fungible().append_delta_elements(elements);
+        self.non_fungible().append_delta_elements(elements);
+    }
 }
 
 #[cfg(any(feature = "testing", test))]
@@ -149,13 +156,6 @@ impl AccountVaultDelta {
             .chain(self.non_fungible.filter_by_action(NonFungibleDeltaAction::Remove).map(|key| {
                 Asset::NonFungible(unsafe { NonFungibleAsset::new_unchecked(key.into()) })
             }))
-    }
-
-    /// Appends the vault delta to the given `elements` from which the delta commitment will be
-    /// computed.
-    pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
-        self.fungible().append_delta_elements(elements);
-        self.non_fungible().append_delta_elements(elements);
     }
 }
 

@@ -3,13 +3,13 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_crypto::merkle::MerkleError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     BatchAccountUpdateError, ProposedBatchError,
     account::{Account, AccountId, AccountStorageMode},
     batch::ProposedBatch,
     block::BlockNumber,
+    crypto::merkle::MerkleError,
     note::{Note, NoteType},
     testing::{
         account_component::AccountMockComponent, account_id::AccountIdBuilder, note::NoteBuilder,

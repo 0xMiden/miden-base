@@ -20,13 +20,16 @@
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
 - [BREAKING] `TransactionHost::new` now expects `&PartialAccount` instead `AccountHeader` (#1452).
 - Load account and input notes advice maps into the advice provider before executing them (#1452).
+- Support private accounts in `MockChain` (#1453).
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
 - [BREAKING] Move transaction script argument from `TransactionScript` to `TransactionArgs`. (#1426).
-- [BREAKING] Remove transaction inputs from `TransactionScript`, rename `TransactionArgs` to `TransactionAdvice`. (#1426).
-- [BREAKING] Implement account delta commitment (#1471).
+- [BREAKING] Remove transaction inputs from `TransactionScript`. (#1426).
+- [BREAKING] Implemented account delta commitment (#1471).
+- [BREAKING] Store account ID and number of slots in account delta (#1493).
+- Added `Note::is_network_note()` accessor (#1485).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 

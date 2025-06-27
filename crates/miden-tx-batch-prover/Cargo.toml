@@ -20,5 +20,5 @@ default = ["std"]
 std = ["miden-objects/std", "miden-tx/std"]
 
 [dependencies]
-miden-tx = { workspace = true }
 miden-objects = { workspace = true }
+miden-tx = { workspace = true }

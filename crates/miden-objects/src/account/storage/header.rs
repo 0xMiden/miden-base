@@ -77,8 +77,9 @@ impl AccountStorageHeader {
     }
 
     /// Returns the number of slots contained in the storage header.
-    pub fn num_slots(&self) -> usize {
-        self.slots.len()
+    pub fn num_slots(&self) -> u8 {
+        // SAFETY: The constructors of this type ensure this value fits in a u8.
+        self.slots.len() as u8
     }
 
     /// Returns a slot contained in the storage header at a given index.

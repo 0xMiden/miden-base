@@ -2,11 +2,11 @@ use std::{collections::BTreeMap, vec::Vec};
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_crypto::merkle::Smt;
 use miden_objects::{
     MIN_PROOF_SECURITY_LEVEL,
     batch::BatchNoteTree,
     block::{AccountTree, BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock},
+    crypto::merkle::Smt,
     transaction::{InputNoteCommitment, OutputNote},
 };
 use rand::Rng;
