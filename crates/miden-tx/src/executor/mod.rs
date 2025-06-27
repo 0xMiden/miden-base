@@ -11,7 +11,7 @@ use miden_objects::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
-    vm::StackOutputs,
+    vm::{AdviceMap, StackOutputs},
 };
 pub use vm_processor::MastForestStore;
 use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
@@ -363,8 +363,9 @@ fn build_executed_transaction(
 
     let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
 
+    let advice_map = AdviceMap::from(map);
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &map.into(), output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
     let final_account = &tx_outputs.account;

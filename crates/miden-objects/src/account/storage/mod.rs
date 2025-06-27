@@ -90,6 +90,12 @@ impl AccountStorage {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns the number of slots contained in the storage.
+    pub fn num_slots(&self) -> u8 {
+        // SAFETY: The constructors of this type ensure this value fits in a u8.
+        self.slots.len() as u8
+    }
+
     /// Returns a commitment to this storage.
     pub fn commitment(&self) -> Digest {
         build_slots_commitment(&self.slots)

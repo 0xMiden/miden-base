@@ -8,7 +8,10 @@ use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
     Word,
 };
-use crate::{account::{AccountStorage, StorageMap, StorageSlot}, Digest, Felt, EMPTY_WORD, ZERO};
+use crate::{
+    Digest, EMPTY_WORD, Felt, ZERO,
+    account::{AccountStorage, StorageMap, StorageSlot},
+};
 
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -229,6 +232,7 @@ impl AccountStorageDelta {
 /// Converts an [AccountStorage] into an [AccountStorageDelta] for initial delta construction.
 impl From<AccountStorage> for AccountStorageDelta {
     fn from(storage: AccountStorage) -> Self {
+        let num_slots = storage.num_slots();
         let mut values = BTreeMap::new();
         let mut maps = BTreeMap::new();
         for (slot_idx, slot) in storage.into_iter().enumerate() {
@@ -243,7 +247,7 @@ impl From<AccountStorage> for AccountStorageDelta {
             }
         }
 
-        Self { values, maps }
+        Self { num_slots, values, maps }
     }
 }
 

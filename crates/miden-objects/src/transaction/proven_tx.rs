@@ -614,7 +614,7 @@ mod tests {
         testing::account_id::{
             ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         },
-        transaction::{LinkMapKey, ProvenTransactionBuilder, TxAccountUpdate},
+        transaction::{ProvenTransactionBuilder, TxAccountUpdate},
         utils::Serializable,
     };
 
