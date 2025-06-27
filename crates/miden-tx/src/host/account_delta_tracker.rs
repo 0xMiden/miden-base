@@ -29,7 +29,7 @@ impl AccountDeltaTracker {
     pub fn new(account: &PartialAccount) -> Self {
         Self {
             account_id: account.id(),
-            storage: AccountStorageDelta::new(account.storage().header().num_slots()),
+            storage: AccountStorageDelta::new(),
             vault: AccountVaultDelta::default(),
             init_nonce: account.nonce(),
             nonce_delta: ZERO,
