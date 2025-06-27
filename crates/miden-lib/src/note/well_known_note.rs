@@ -47,12 +47,12 @@ fn p2id_root() -> Digest {
     P2ID_SCRIPT.root()
 }
 
-/// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script.
+/// Returns the P2IDE (Pay-to-ID with optional reclaim & timelock) note script.
 fn p2ide() -> NoteScript {
     P2IDE_SCRIPT.clone()
 }
 
-/// Returns the P2IDE (Pay-to-ID with optional recall & timelock) note script root.
+/// Returns the P2IDE (Pay-to-ID with optional reclaim & timelock) note script root.
 fn p2ide_root() -> Digest {
     P2IDE_SCRIPT.root()
 }
@@ -188,7 +188,7 @@ impl WellKnownNote {
     ///     account, which sent this note (which means that the note is going to be consumed by the
     ///     sender account).
     ///   - assertion that the timelock height was reached.
-    ///   - assertion that the recall height was reached.
+    ///   - assertion that the reclaim height was reached.
     pub fn check_note_inputs(
         &self,
         note: &Note,
@@ -242,11 +242,11 @@ impl WellKnownNote {
                     // target (possibly also the sender) can spend as soon as the timelock is over
                     NoteAccountCompatibility::Yes
                 } else if is_sender {
-                    // sender can reclaim only after recall height
-                    let Ok(recall_height) = note_inputs[2].try_into() else {
+                    // sender can reclaim only after reclaim height
+                    let Ok(reclaim_height) = note_inputs[2].try_into() else {
                         return NoteAccountCompatibility::No;
                     };
-                    return if block_ref.as_u32() >= recall_height {
+                    return if block_ref.as_u32() >= reclaim_height {
                         NoteAccountCompatibility::Yes
                     } else {
                         NoteAccountCompatibility::No

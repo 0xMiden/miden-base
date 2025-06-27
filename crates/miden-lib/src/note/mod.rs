@@ -49,7 +49,7 @@ pub fn create_p2id_note<R: FeltRng>(
     Ok(Note::new(vault, metadata, recipient))
 }
 
-/// Generates a P2IDE note - Pay-to-ID note with optional recall after a certain block height and
+/// Generates a P2IDE note - Pay-to-ID note with optional reclaim after a certain block height and
 /// optional timelock.
 ///
 /// This script enables the transfer of assets from the `sender` account to the `target`
