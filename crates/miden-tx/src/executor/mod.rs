@@ -11,7 +11,7 @@ use miden_objects::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
-    vm::StackOutputs,
+    vm::{AdviceMap, StackOutputs},
 };
 pub use vm_processor::MastForestStore;
 use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
@@ -363,13 +363,25 @@ fn build_executed_transaction(
 
     let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
 
+    let advice_map = AdviceMap::from(map);
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &map.into(), output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
     let final_account = &tx_outputs.account;
-
     let initial_account = tx_inputs.account();
+
+    // Temporarily copy the account update commitment into the advice witness map, if it is present,
+    // so it can be accessed in account delta tests.
+    {
+        let host_delta_commitment = account_delta.commitment();
+        let account_update_commitment =
+            miden_objects::Hasher::merge(&[final_account.commitment(), host_delta_commitment]);
+
+        if let Some(value) = advice_map.get(&account_update_commitment) {
+            advice_witness.extend_map([(account_update_commitment, value.into())]);
+        }
+    }
 
     if initial_account.id() != final_account.id() {
         return Err(TransactionExecutorError::InconsistentAccountId {

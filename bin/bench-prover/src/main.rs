@@ -35,7 +35,7 @@ fn main() -> Result<()> {
             },
             Err(err) => {
                 return Err(err)
-                    .with_context(|| format!("Failed to process benchmark: {}", benchmark));
+                    .with_context(|| format!("Failed to process benchmark: {benchmark}"));
             },
         }
     }

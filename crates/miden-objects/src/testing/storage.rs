@@ -21,6 +21,16 @@ pub struct AccountStorageDeltaBuilder {
 }
 
 impl AccountStorageDeltaBuilder {
+    // CONSTRUCTORS
+    // -------------------------------------------------------------------------------------------
+
+    pub fn new() -> Self {
+        Self {
+            values: BTreeMap::new(),
+            maps: BTreeMap::new(),
+        }
+    }
+
     // MODIFIERS
     // -------------------------------------------------------------------------------------------
 
@@ -46,7 +56,7 @@ impl AccountStorageDeltaBuilder {
     // -------------------------------------------------------------------------------------------
 
     pub fn build(self) -> Result<AccountStorageDelta, AccountDeltaError> {
-        AccountStorageDelta::new(self.values, self.maps)
+        AccountStorageDelta::from_parts(self.values, self.maps)
     }
 }
 
