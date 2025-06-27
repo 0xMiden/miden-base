@@ -25,10 +25,17 @@ pub use vault::{
 /// - nonce: if the nonce of the account has changed, the new nonce is stored here.
 ///
 /// TODO: add ability to trace account code updates.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountDelta {
+    /// The ID of the account to which this delta applies. If the delta is created during
+    /// transaction execution, that is the native account of the transaction.
+    account_id: AccountId,
+    /// The delta of the account's storage.
     storage: AccountStorageDelta,
+    /// The delta of the account's asset vault.
     vault: AccountVaultDelta,
+    /// The value by which the nonce was incremented. Must be greater than zero if storage or vault
+    /// are non-empty.
     nonce: Option<Felt>,
 }
 
@@ -42,6 +49,7 @@ impl AccountDelta {
     /// - Returns an error if storage or vault were updated, but the nonce was either not updated or
     ///   set to 0.
     pub fn new(
+        account_id: AccountId,
         storage: AccountStorageDelta,
         vault: AccountVaultDelta,
         nonce: Option<Felt>,
@@ -49,7 +57,7 @@ impl AccountDelta {
         // nonce must be updated if either account storage or vault were updated
         validate_nonce(nonce, &storage, &vault)?;
 
-        Ok(Self { storage, vault, nonce })
+        Ok(Self { account_id, storage, vault, nonce })
     }
 
     /// Merge another [AccountDelta] into this one.
@@ -88,6 +96,11 @@ impl AccountDelta {
     /// Returns the new nonce, if the nonce was changed.
     pub fn nonce(&self) -> Option<Felt> {
         self.nonce
+    }
+
+    /// Returns the account ID to which this delta applies.
+    pub fn id(&self) -> AccountId {
+        self.account_id
     }
 
     /// Converts this storage delta into individual delta components.
@@ -221,12 +234,7 @@ impl AccountDelta {
     /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
     /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
     /// pair have changed and 2) when two key-value pairs have changed.
-    ///
-    /// TODO: Make account ID and num_slots part of delta.
-    /// TODO: Currently does not implement the sorting mentioned above. This is easy to add later
-    /// but depends on the link map which is currently not in next and this PR should branch off of
-    /// next so it can be merged sooner than later.
-    pub fn commitment(&self, account_id: AccountId, num_slots: u8) -> Digest {
+    pub fn commitment(&self) -> Digest {
         // Minor optimization: At least 24 elements are always added.
         let mut elements = Vec::with_capacity(24);
 
@@ -234,8 +242,8 @@ impl AccountDelta {
         elements.extend_from_slice(&[
             self.nonce.unwrap_or(ZERO),
             ZERO,
-            account_id.suffix(),
-            account_id.prefix().as_felt(),
+            self.account_id.suffix(),
+            self.account_id.prefix().as_felt(),
         ]);
         elements.extend_from_slice(&EMPTY_WORD);
 
@@ -243,7 +251,7 @@ impl AccountDelta {
         self.vault.append_delta_elements(&mut elements);
 
         // Storage Delta
-        self.storage.append_delta_elements(&mut elements, num_slots);
+        self.storage.append_delta_elements(&mut elements);
 
         debug_assert!(
             elements.len() % (2 * crate::WORD_SIZE) == 0,
@@ -321,8 +329,9 @@ impl AccountUpdateDetails {
 /// Converts an [Account] into an [AccountDelta] for initial delta construction.
 impl From<Account> for AccountDelta {
     fn from(account: Account) -> Self {
-        let (_id, vault, storage, _code, nonce) = account.into_parts();
+        let (account_id, vault, storage, _code, nonce) = account.into_parts();
         AccountDelta {
+            account_id,
             storage: storage.into(),
             vault: (&vault).into(),
             nonce: Some(nonce),
@@ -335,18 +344,23 @@ impl From<Account> for AccountDelta {
 
 impl Serializable for AccountDelta {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.account_id.write_into(target);
         self.storage.write_into(target);
         self.vault.write_into(target);
         self.nonce.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {
-        self.storage.get_size_hint() + self.vault.get_size_hint() + self.nonce.get_size_hint()
+        self.account_id.get_size_hint()
+            + self.storage.get_size_hint()
+            + self.vault.get_size_hint()
+            + self.nonce.get_size_hint()
     }
 }
 
 impl Deserializable for AccountDelta {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let account_id = AccountId::read_from(source)?;
         let storage = AccountStorageDelta::read_from(source)?;
         let vault = AccountVaultDelta::read_from(source)?;
         let nonce = <Option<Felt>>::read_from(source)?;
@@ -354,7 +368,7 @@ impl Deserializable for AccountDelta {
         validate_nonce(nonce, &storage, &vault)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
 
-        Ok(Self { storage, vault, nonce })
+        Ok(Self { account_id, storage, vault, nonce })
     }
 }
 
@@ -439,11 +453,12 @@ fn validate_nonce(
 #[cfg(test)]
 mod tests {
 
+    use assert_matches::assert_matches;
     use vm_core::{Felt, FieldElement, utils::Serializable};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::{
-        ONE, ZERO,
+        AccountDeltaError, ONE, ZERO,
         account::{
             Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
             StorageMapDelta, delta::AccountUpdateDetails,
@@ -457,31 +472,43 @@ mod tests {
 
     #[test]
     fn account_delta_nonce_validation() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         // empty delta
-        let storage_delta = AccountStorageDelta::default();
+        let storage_delta = AccountStorageDelta::new();
         let vault_delta = AccountVaultDelta::default();
 
-        assert!(AccountDelta::new(storage_delta.clone(), vault_delta.clone(), None).is_ok());
-        assert!(AccountDelta::new(storage_delta.clone(), vault_delta.clone(), Some(ONE)).is_ok());
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), None).unwrap();
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), Some(ONE))
+            .unwrap();
 
         // non-empty delta
         let storage_delta = AccountStorageDelta::from_iters([1], [], []);
 
-        assert!(AccountDelta::new(storage_delta.clone(), vault_delta.clone(), None).is_err());
-        assert!(AccountDelta::new(storage_delta.clone(), vault_delta.clone(), Some(ZERO)).is_err());
-        assert!(AccountDelta::new(storage_delta.clone(), vault_delta.clone(), Some(ONE)).is_ok());
+        assert_matches!(
+            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), None)
+                .unwrap_err(),
+            AccountDeltaError::InconsistentNonceUpdate(_)
+        );
+        assert_matches!(
+            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), Some(ZERO))
+                .unwrap_err(),
+            AccountDeltaError::InconsistentNonceUpdate(_)
+        );
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), Some(ONE))
+            .unwrap();
     }
 
     #[test]
     fn account_update_details_size_hint() {
         // AccountDelta
-
-        let storage_delta = AccountStorageDelta::default();
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let storage_delta = AccountStorageDelta::new();
         let vault_delta = AccountVaultDelta::default();
         assert_eq!(storage_delta.to_bytes().len(), storage_delta.get_size_hint());
         assert_eq!(vault_delta.to_bytes().len(), vault_delta.get_size_hint());
 
-        let account_delta = AccountDelta::new(storage_delta, vault_delta, None).unwrap();
+        let account_delta =
+            AccountDelta::new(account_id, storage_delta, vault_delta, None).unwrap();
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
@@ -523,7 +550,8 @@ mod tests {
         assert_eq!(storage_delta.to_bytes().len(), storage_delta.get_size_hint());
         assert_eq!(vault_delta.to_bytes().len(), vault_delta.get_size_hint());
 
-        let account_delta = AccountDelta::new(storage_delta, vault_delta, Some(ONE)).unwrap();
+        let account_delta =
+            AccountDelta::new(account_id, storage_delta, vault_delta, Some(ONE)).unwrap();
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         // Account
@@ -554,52 +582,5 @@ mod tests {
 
         let update_details_new = AccountUpdateDetails::New(account);
         assert_eq!(update_details_new.to_bytes().len(), update_details_new.get_size_hint());
-    }
-
-    /// Tests that the account delta can be computed.
-    #[test]
-    fn account_delta_commitment() {
-        let account_id: AccountId = ACCOUNT_ID_PRIVATE_SENDER.try_into().unwrap();
-        let num_slots: u8 = 5;
-
-        let storage_delta = AccountStorageDelta::from_iters(
-            [1],
-            [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
-            [(
-                4,
-                StorageMapDelta::from_iters(
-                    [[ONE, ONE, ONE, ZERO], [ZERO, ONE, ONE, ONE]],
-                    [([ONE, ONE, ONE, ONE], [ONE, ONE, ONE, ONE])],
-                ),
-            )],
-        );
-
-        let non_fungible: Asset = NonFungibleAsset::new(
-            &NonFungibleAssetDetails::new(
-                AccountIdBuilder::new()
-                    .account_type(AccountType::NonFungibleFaucet)
-                    .storage_mode(AccountStorageMode::Public)
-                    .build_with_rng(&mut rand::rng())
-                    .prefix(),
-                vec![6],
-            )
-            .unwrap(),
-        )
-        .unwrap()
-        .into();
-        let fungible_2: Asset = FungibleAsset::new(
-            AccountIdBuilder::new()
-                .account_type(AccountType::FungibleFaucet)
-                .storage_mode(AccountStorageMode::Public)
-                .build_with_rng(&mut rand::rng()),
-            10,
-        )
-        .unwrap()
-        .into();
-        let vault_delta = AccountVaultDelta::from_iters([non_fungible], [fungible_2]);
-
-        let account_delta = AccountDelta::new(storage_delta, vault_delta, Some(ONE)).unwrap();
-
-        let _ = account_delta.commitment(account_id, num_slots);
     }
 }
