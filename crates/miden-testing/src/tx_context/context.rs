@@ -9,7 +9,7 @@ use miden_objects::{
     block::{BlockHeader, BlockNumber},
     note::Note,
     transaction::{
-        ExecutedTransaction, InputNote, InputNotes, PartialBlockchain, TransactionAdvice,
+        ExecutedTransaction, InputNote, InputNotes, PartialBlockchain, TransactionArgs,
         TransactionInputs,
     },
 };
@@ -34,7 +34,7 @@ use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthentic
 /// [TransactionExecutor](miden_tx::TransactionExecutor)
 pub struct TransactionContext {
     pub(super) expected_output_notes: Vec<Note>,
-    pub(super) tx_advice: TransactionAdvice,
+    pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
@@ -64,7 +64,7 @@ impl TransactionContext {
     ) -> Result<Process, ExecutionError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
-            &self.tx_advice,
+            &self.tx_args,
             Some(self.advice_inputs.clone()),
         )
         .unwrap();
@@ -86,7 +86,7 @@ impl TransactionContext {
         mast_store.insert(program.mast_forest().clone());
         mast_store.insert(test_lib.mast_forest().clone());
         mast_store.load_account_code(self.account().code());
-        for acc_inputs in self.tx_advice.foreign_account_inputs() {
+        for acc_inputs in self.tx_args.foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
         }
 
@@ -94,7 +94,7 @@ impl TransactionContext {
             self.tx_inputs.account().into(),
             advice_inputs,
             mast_store,
-            self.tx_advice.foreign_account_code_commitments(),
+            self.tx_args.foreign_account_code_commitments(),
         ))
         .stack_inputs(stack_inputs)
         .execute_program(program, source_manager)
@@ -115,7 +115,7 @@ impl TransactionContext {
         let account_id = self.account().id();
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
-        let tx_advice = self.tx_advice().clone();
+        let tx_args = self.tx_args().clone();
         let authenticator = self.authenticator().map(|x| x as &dyn TransactionAuthenticator);
 
         let source_manager = Arc::clone(&self.source_manager);
@@ -125,7 +125,7 @@ impl TransactionContext {
             account_id,
             block_num,
             notes,
-            tx_advice,
+            tx_args,
             source_manager
         ))
     }
@@ -138,16 +138,16 @@ impl TransactionContext {
         &self.expected_output_notes
     }
 
-    pub fn tx_advice(&self) -> &TransactionAdvice {
-        &self.tx_advice
+    pub fn tx_args(&self) -> &TransactionArgs {
+        &self.tx_args
     }
 
     pub fn input_notes(&self) -> &InputNotes<InputNote> {
         self.tx_inputs.input_notes()
     }
 
-    pub fn set_tx_advice(&mut self, tx_advice: TransactionAdvice) {
-        self.tx_advice = tx_advice;
+    pub fn set_tx_args(&mut self, tx_args: TransactionArgs) {
+        self.tx_args = tx_args;
     }
 
     pub fn tx_inputs(&self) -> &TransactionInputs {

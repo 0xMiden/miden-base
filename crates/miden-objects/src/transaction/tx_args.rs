@@ -15,10 +15,10 @@ use crate::{
     vm::{AdviceInputs, AdviceMap, Program},
 };
 
-// TRANSACTION ADVICE
+// TRANSACTION ARGUMENTS
 // ================================================================================================
 
-/// Optional transaction advice data.
+/// Optional transaction arguments.
 ///
 /// - Transaction script: a program that is executed in a transaction after all input notes scripts
 ///   have been executed.
@@ -33,7 +33,7 @@ use crate::{
 /// - Foreign account inputs: provides foreign account data that will be used during the foreign
 ///   procedure invocation (FPI).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct TransactionAdvice {
+pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
     tx_script_arg: Word,
     note_args: BTreeMap<NoteId, Word>,
@@ -41,7 +41,7 @@ pub struct TransactionAdvice {
     foreign_account_inputs: Vec<AccountInputs>,
 }
 
-impl TransactionAdvice {
+impl TransactionArgs {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -122,7 +122,7 @@ impl TransactionAdvice {
         &self.advice_inputs
     }
 
-    /// Returns a reference to the foreign account inputs in the transaction advice.
+    /// Returns a reference to the foreign account inputs in the transaction arguments.
     pub fn foreign_account_inputs(&self) -> &[AccountInputs] {
         &self.foreign_account_inputs
     }
@@ -193,7 +193,7 @@ impl TransactionAdvice {
     }
 }
 
-impl Serializable for TransactionAdvice {
+impl Serializable for TransactionArgs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.tx_script.write_into(target);
         self.tx_script_arg.write_into(target);
@@ -203,7 +203,7 @@ impl Serializable for TransactionAdvice {
     }
 }
 
-impl Deserializable for TransactionAdvice {
+impl Deserializable for TransactionArgs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_script = Option::<TransactionScript>::read_from(source)?;
         let tx_script_arg = Word::read_from(source)?;
@@ -311,14 +311,14 @@ mod tests {
         utils::{Deserializable, Serializable},
     };
 
-    use crate::transaction::TransactionAdvice;
+    use crate::transaction::TransactionArgs;
 
     #[test]
-    fn test_tx_advice_serialization() {
-        let tx_advice = TransactionAdvice::new(AdviceMap::default(), std::vec::Vec::default());
-        let bytes: std::vec::Vec<u8> = tx_advice.to_bytes();
-        let decoded = TransactionAdvice::read_from_bytes(&bytes).unwrap();
+    fn test_tx_args_serialization() {
+        let tx_args = TransactionArgs::new(AdviceMap::default(), std::vec::Vec::default());
+        let bytes: std::vec::Vec<u8> = tx_args.to_bytes();
+        let decoded = TransactionArgs::read_from_bytes(&bytes).unwrap();
 
-        assert_eq!(tx_advice, decoded);
+        assert_eq!(tx_args, decoded);
     }
 }

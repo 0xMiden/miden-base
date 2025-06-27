@@ -6,7 +6,7 @@ use miden_objects::{
     assembly::{Assembler, DefaultSourceManager, KernelLibrary},
     block::BlockNumber,
     transaction::{
-        OutputNote, OutputNotes, TransactionAdvice, TransactionInputs, TransactionOutputs,
+        OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
     },
     utils::{serde::Deserializable, sync::LazyLock},
     vm::{AdviceInputs, AdviceMap, Program, ProgramInfo, StackInputs, StackOutputs},
@@ -112,7 +112,7 @@ impl TransactionKernel {
     /// If `init_advice_inputs` is provided, they will be included in the returned advice inputs.
     pub fn prepare_inputs(
         tx_inputs: &TransactionInputs,
-        tx_advice: &TransactionAdvice,
+        tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
     ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionInputError> {
         let account = tx_inputs.account();
@@ -125,12 +125,12 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_advice)?;
+        let mut tx_args_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
         if let Some(init_advice_inputs) = init_advice_inputs {
-            tx_advice_inputs.extend(init_advice_inputs);
+            tx_args_inputs.extend(init_advice_inputs);
         }
 
-        Ok((stack_inputs, tx_advice_inputs))
+        Ok((stack_inputs, tx_args_inputs))
     }
 
     // ASSEMBLER CONSTRUCTOR

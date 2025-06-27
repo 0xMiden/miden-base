@@ -3,7 +3,7 @@ use core::cell::OnceCell;
 
 use super::{
     Account, AccountDelta, AccountHeader, AccountId, AdviceInputs, BlockHeader, InputNote,
-    InputNotes, NoteId, OutputNotes, TransactionAdvice, TransactionId, TransactionInputs,
+    InputNotes, NoteId, OutputNotes, TransactionArgs, TransactionId, TransactionInputs,
     TransactionOutputs, TransactionWitness,
 };
 use crate::{
@@ -30,7 +30,7 @@ pub struct ExecutedTransaction {
     tx_inputs: TransactionInputs,
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
-    tx_advice: TransactionAdvice,
+    tx_args: TransactionArgs,
     advice_witness: AdviceInputs,
     tx_measurements: TransactionMeasurements,
 }
@@ -47,7 +47,7 @@ impl ExecutedTransaction {
         tx_inputs: TransactionInputs,
         tx_outputs: TransactionOutputs,
         account_delta: AccountDelta,
-        tx_advice: TransactionAdvice,
+        tx_args: TransactionArgs,
         advice_witness: AdviceInputs,
         tx_measurements: TransactionMeasurements,
     ) -> Self {
@@ -59,7 +59,7 @@ impl ExecutedTransaction {
             tx_inputs,
             tx_outputs,
             account_delta,
-            tx_advice,
+            tx_args,
             advice_witness,
             tx_measurements,
         }
@@ -103,9 +103,9 @@ impl ExecutedTransaction {
         self.tx_outputs.expiration_block_num
     }
 
-    /// Returns a reference to the transaction advice.
-    pub fn tx_advice(&self) -> &TransactionAdvice {
-        &self.tx_advice
+    /// Returns a reference to the transaction arguments.
+    pub fn tx_args(&self) -> &TransactionArgs {
+        &self.tx_args
     }
 
     /// Returns the block header for the block against which the transaction was executed.
@@ -144,7 +144,7 @@ impl ExecutedTransaction {
     ) -> (AccountDelta, TransactionOutputs, TransactionWitness, TransactionMeasurements) {
         let tx_witness = TransactionWitness {
             tx_inputs: self.tx_inputs,
-            tx_advice: self.tx_advice,
+            tx_args: self.tx_args,
             advice_witness: self.advice_witness,
         };
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
@@ -170,7 +170,7 @@ impl Serializable for ExecutedTransaction {
         self.tx_inputs.write_into(target);
         self.tx_outputs.write_into(target);
         self.account_delta.write_into(target);
-        self.tx_advice.write_into(target);
+        self.tx_args.write_into(target);
         self.advice_witness.write_into(target);
         self.tx_measurements.write_into(target);
     }
@@ -181,7 +181,7 @@ impl Deserializable for ExecutedTransaction {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_outputs = TransactionOutputs::read_from(source)?;
         let account_delta = AccountDelta::read_from(source)?;
-        let tx_advice = TransactionAdvice::read_from(source)?;
+        let tx_args = TransactionArgs::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 
@@ -189,7 +189,7 @@ impl Deserializable for ExecutedTransaction {
             tx_inputs,
             tx_outputs,
             account_delta,
-            tx_advice,
+            tx_args,
             advice_witness,
             tx_measurements,
         ))

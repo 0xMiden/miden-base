@@ -5,7 +5,7 @@ use miden_objects::{
     account::{AccountHeader, AccountId, PartialAccount},
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
-    transaction::{InputNote, PartialBlockchain, TransactionAdvice, TransactionInputs},
+    transaction::{InputNote, PartialBlockchain, TransactionArgs, TransactionInputs},
     vm::AdviceInputs,
 };
 
@@ -29,15 +29,15 @@ impl TransactionAdviceInputs {
     /// blockchain peaks.
     pub fn new(
         tx_inputs: &TransactionInputs,
-        tx_advice: &TransactionAdvice,
+        tx_args: &TransactionArgs,
     ) -> Result<Self, TransactionInputError> {
         let mut inputs = TransactionAdviceInputs::default();
         let kernel_version = 0; // TODO: replace with user input
 
-        inputs.build_stack(tx_inputs, tx_advice, kernel_version);
+        inputs.build_stack(tx_inputs, tx_args, kernel_version);
         inputs.add_kernel_commitments(kernel_version);
         inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs, tx_advice)?;
+        inputs.add_input_notes(tx_inputs, tx_args)?;
 
         // --- native account injection ---------------------------------------
 
@@ -53,7 +53,7 @@ impl TransactionAdviceInputs {
 
         // --- foreign account injection --------------------------------------
 
-        for foreign_acc in tx_advice.foreign_account_inputs() {
+        for foreign_acc in tx_args.foreign_account_inputs() {
             inputs.add_account(foreign_acc.account())?;
             inputs.add_account_witness(foreign_acc.witness());
 
@@ -67,7 +67,7 @@ impl TransactionAdviceInputs {
         }
 
         // any extra user-supplied advice
-        inputs.extend(tx_advice.advice_inputs().clone());
+        inputs.extend(tx_args.advice_inputs().clone());
 
         Ok(inputs)
     }
@@ -111,7 +111,7 @@ impl TransactionAdviceInputs {
     fn build_stack(
         &mut self,
         tx_inputs: &TransactionInputs,
-        tx_advice: &TransactionAdvice,
+        tx_args: &TransactionArgs,
         kernel_version: u8,
     ) {
         let header = tx_inputs.block_header();
@@ -149,8 +149,8 @@ impl TransactionAdviceInputs {
 
         // --- number of notes, script root and args key ----------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
-        self.extend_stack(tx_advice.tx_script().map_or(Word::default(), |script| *script.root()));
-        self.extend_stack(tx_advice.tx_script_arg());
+        self.extend_stack(tx_args.tx_script().map_or(Word::default(), |script| *script.root()));
+        self.extend_stack(tx_args.tx_script_arg());
     }
 
     // BLOCKCHAIN INJECTIONS
@@ -283,7 +283,7 @@ impl TransactionAdviceInputs {
     fn add_input_notes(
         &mut self,
         tx_inputs: &TransactionInputs,
-        tx_advice: &TransactionAdvice,
+        tx_args: &TransactionArgs,
     ) -> Result<(), TransactionInputError> {
         if tx_inputs.input_notes().is_empty() {
             return Ok(());
@@ -294,7 +294,7 @@ impl TransactionAdviceInputs {
             let note = input_note.note();
             let assets = note.assets();
             let recipient = note.recipient();
-            let note_arg = tx_advice.get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
+            let note_arg = tx_args.get_note_args(note.id()).unwrap_or(&EMPTY_WORD);
 
             // recipient inputs / assets commitments
             self.add_map_entry(

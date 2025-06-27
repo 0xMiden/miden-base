@@ -16,7 +16,7 @@ Once a store is available, a `TransactionExecutor` object can be used to execute
 
 ```rust
 let executor = TransactionExecutor::new(store);
-let executed_transaction = executor.execute_transaction(account_id, block_ref, notes, tx_advice);
+let executed_transaction = executor.execute_transaction(account_id, block_ref, notes, tx_args);
 ```
 
 With the transaction execution done, it is then possible to create a proof:

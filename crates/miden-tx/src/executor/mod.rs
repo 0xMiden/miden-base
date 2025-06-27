@@ -8,7 +8,7 @@ use miden_objects::{
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
     transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionAdvice,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
     vm::StackOutputs,
@@ -122,7 +122,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
-        tx_advice: TransactionAdvice,
+        tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -132,19 +132,19 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        validate_account_inputs(&tx_advice, &ref_block)?;
+        validate_account_inputs(&tx_args, &ref_block)?;
 
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_advice, None)
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let script_mast_store = ScriptMastForestStore::new(
-            tx_advice.tx_script(),
+            tx_args.tx_script(),
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
@@ -154,7 +154,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.data_store,
             script_mast_store,
             self.authenticator,
-            tx_advice.foreign_account_code_commitments(),
+            tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
@@ -168,7 +168,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
-        build_executed_transaction(tx_advice, tx_inputs, result.stack_outputs().clone(), host)
+        build_executed_transaction(tx_args, tx_inputs, result.stack_outputs().clone(), host)
     }
 
     // SCRIPT EXECUTION
@@ -203,21 +203,21 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-        let tx_advice = TransactionAdvice::new(Default::default(), foreign_account_inputs)
+        let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
 
-        validate_account_inputs(&tx_advice, &ref_block)?;
+        validate_account_inputs(&tx_args, &ref_block)?;
 
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, Default::default())
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_advice, Some(advice_inputs))
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let scripts_mast_store =
-            ScriptMastForestStore::new(tx_advice.tx_script(), core::iter::empty::<&NoteScript>());
+            ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
             &tx_inputs.account().into(),
@@ -225,7 +225,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.data_store,
             scripts_mast_store,
             self.authenticator,
-            tx_advice.foreign_account_code_commitments(),
+            tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
@@ -267,7 +267,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
-        tx_advice: TransactionAdvice,
+        tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -277,19 +277,19 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        validate_account_inputs(&tx_advice, &ref_block)?;
+        validate_account_inputs(&tx_args, &ref_block)?;
 
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_advice, None)
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
         let scripts_mast_store = ScriptMastForestStore::new(
-            tx_advice.tx_script(),
+            tx_args.tx_script(),
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
@@ -299,7 +299,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.data_store,
             scripts_mast_store,
             self.authenticator,
-            tx_advice.foreign_account_code_commitments(),
+            tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
@@ -349,7 +349,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction(
-    tx_advice: TransactionAdvice,
+    tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
     host: TransactionHost<RecAdviceProvider>,
@@ -397,7 +397,7 @@ fn build_executed_transaction(
         tx_inputs,
         tx_outputs,
         account_delta,
-        tx_advice,
+        tx_args,
         advice_witness,
         tx_progress.into(),
     ))
@@ -405,11 +405,11 @@ fn build_executed_transaction(
 
 /// Validates the account inputs against the reference block header.
 fn validate_account_inputs(
-    tx_advice: &TransactionAdvice,
+    tx_args: &TransactionArgs,
     ref_block: &BlockHeader,
 ) -> Result<(), TransactionExecutorError> {
     // Validate that foreign account inputs are anchored in the reference block
-    for foreign_account in tx_advice.foreign_account_inputs() {
+    for foreign_account in tx_args.foreign_account_inputs() {
         let computed_account_root = foreign_account.compute_account_root().map_err(|err| {
             TransactionExecutorError::InvalidAccountWitness(foreign_account.id(), err)
         })?;

@@ -67,17 +67,17 @@ fn transaction_executor_witness() -> miette::Result<()> {
     let executed_transaction = tx_context.execute().into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
-    let tx_advice = executed_transaction.tx_advice();
+    let tx_args = executed_transaction.tx_args();
 
     let scripts_mast_store = ScriptMastForestStore::new(
-        tx_advice.tx_script(),
+        tx_args.tx_script(),
         tx_inputs.input_notes().iter().map(|n| n.note().script()),
     );
 
     // use the witness to execute the transaction again
     let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
         tx_inputs,
-        tx_advice,
+        tx_args,
         Some(executed_transaction.advice_witness().clone()),
     )
     .unwrap();
@@ -793,10 +793,10 @@ fn prove_witness_and_verify() {
 
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let notes = tx_context.tx_inputs().input_notes().clone();
-    let tx_advice = tx_context.tx_advice().clone();
+    let tx_args = tx_context.tx_args().clone();
     let executor = TransactionExecutor::new(&tx_context, None);
     let executed_transaction = executor
-        .execute_transaction(account_id, block_ref, notes, tx_advice, Arc::clone(&source_manager))
+        .execute_transaction(account_id, block_ref, notes, tx_args, Arc::clone(&source_manager))
         .unwrap();
     let executed_transaction_id = executed_transaction.id();
 
@@ -1015,7 +1015,7 @@ fn test_execute_program() {
         .build();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let advice_inputs = tx_context.tx_advice().advice_inputs().clone();
+    let advice_inputs = tx_context.tx_args().advice_inputs().clone();
 
     let executor = TransactionExecutor::new(&tx_context, None);
 
@@ -1067,7 +1067,7 @@ fn test_check_note_consumability() {
     let input_notes = tx_context.input_notes().clone();
     let target_account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let tx_advice = tx_context.tx_advice().clone();
+    let tx_args = tx_context.tx_args().clone();
 
     let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
@@ -1077,7 +1077,7 @@ fn test_check_note_consumability() {
             target_account_id,
             block_ref,
             input_notes,
-            tx_advice,
+            tx_args,
             source_manager,
         )
         .unwrap();
@@ -1093,13 +1093,13 @@ fn test_check_note_consumability() {
     let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let tx_advice = tx_context.tx_advice().clone();
+    let tx_args = tx_context.tx_args().clone();
 
     let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_advice, source_manager)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
         .unwrap();
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
@@ -1134,13 +1134,13 @@ fn test_check_note_consumability() {
         input_notes.iter().map(|input_note| input_note.id()).collect::<Vec<NoteId>>();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
-    let tx_advice = tx_context.tx_advice().clone();
+    let tx_args = tx_context.tx_args().clone();
 
     let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_advice, source_manager)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
         .unwrap();
 
     assert_matches!(execution_check_result, NoteAccountExecution::Failure {

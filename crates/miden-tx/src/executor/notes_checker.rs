@@ -8,7 +8,7 @@ use miden_objects::{
     assembly::SourceManager,
     block::BlockNumber,
     note::NoteId,
-    transaction::{InputNote, InputNotes, TransactionAdvice},
+    transaction::{InputNote, InputNotes, TransactionArgs},
 };
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -44,7 +44,7 @@ impl<'a> NoteConsumptionChecker<'a> {
         target_account_id: AccountId,
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
-        tx_advice: TransactionAdvice,
+        tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         // Check input notes
@@ -99,7 +99,7 @@ impl<'a> NoteConsumptionChecker<'a> {
             target_account_id,
             block_ref,
             input_notes,
-            tx_advice,
+            tx_args,
             source_manager
         ))
     }
