@@ -98,6 +98,11 @@ impl AccountDelta {
         self.nonce
     }
 
+    /// Returns the account ID to which this delta applies.
+    pub fn id(&self) -> AccountId {
+        self.account_id
+    }
+
     /// Converts this storage delta into individual delta components.
     pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Option<Felt>) {
         (self.storage, self.vault, self.nonce)
