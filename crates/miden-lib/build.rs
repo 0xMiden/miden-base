@@ -329,10 +329,7 @@ fn compile_note_scripts(
             "note_scripts::utils".parse::<LibraryNamespace>().expect("invalid namespace");
         let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
 
-        let utils_lib = assembler
-            .clone()
-            .assemble_library([NamedSource::new(utils_namespace, utils_source.clone())])?;
-        assembler.add_library(utils_lib)?;
+        assembler.add_module(NamedSource::new(utils_namespace, utils_source.clone()))?;
     }
 
     for masm_file_path in get_masm_files(source_dir).unwrap() {
