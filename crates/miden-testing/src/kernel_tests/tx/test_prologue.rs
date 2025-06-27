@@ -30,7 +30,7 @@ use miden_lib::{
     },
 };
 use miden_objects::{
-    WORD_SIZE,
+    EMPTY_WORD, WORD_SIZE,
     account::{
         Account, AccountBuilder, AccountId, AccountIdVersion, AccountProcedureInfo,
         AccountStorageMode, AccountType, StorageSlot,
@@ -453,6 +453,44 @@ fn input_notes_memory_assertions(
 
 // ACCOUNT CREATION TESTS
 // ================================================================================================
+
+#[test]
+fn create_simple_account() -> anyhow::Result<()> {
+    let (account, seed) = AccountBuilder::new([6; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?)
+        .build()?;
+
+    let code = "
+        use.test::account
+
+        begin
+          padw padw padw push.0.0.0.2
+          call.account::incr_nonce
+          dropw dropw dropw dropw
+        end
+      ";
+
+    let tx = TransactionContextBuilder::new(account)
+        .account_seed(Some(seed))
+        .tx_script(TransactionScript::compile(
+            code,
+            [],
+            TransactionKernel::testing_assembler_with_mock_account(),
+        )?)
+        .build()
+        .execute()
+        .context("failed to execute account-creating transaction")?;
+
+    assert_eq!(tx.account_delta().nonce_increment().as_int(), 2);
+    // except for the nonce, the delta should be empty
+    assert!(tx.account_delta().is_empty());
+    assert_eq!(tx.final_account().nonce().as_int(), 2);
+    // account commitment should not be the empty word
+    assert_ne!(*tx.account_delta().commitment(), EMPTY_WORD);
+
+    Ok(())
+}
 
 /// Test helper which executes the prologue to check if the creation of the given `account` with its
 /// `seed` is valid in the context of the given `mock_chain`.
