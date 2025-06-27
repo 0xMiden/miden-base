@@ -45,7 +45,7 @@ impl TransactionArgs {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns new [TransactionAdvice] instantiated with the provided transaction script, advice
+    /// Returns new [TransactionArgs] instantiated with the provided transaction script, advice
     /// map and foreign account inputs.
     pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
         Self {
@@ -57,7 +57,7 @@ impl TransactionArgs {
         }
     }
 
-    /// Returns new [TransactionAdvice] instantiated with the provided transaction script.
+    /// Returns new [TransactionArgs] instantiated with the provided transaction script.
     ///
     /// If the transaction script is already set, it will be overwritten with the newly provided
     /// one.
@@ -67,7 +67,7 @@ impl TransactionArgs {
         self
     }
 
-    /// Returns new [TransactionAdvice] instantiated with the provided transaction script and its
+    /// Returns new [TransactionArgs] instantiated with the provided transaction script and its
     /// argument.
     ///
     /// If the transaction script and argument are already set, they will be overwritten with the
@@ -83,7 +83,7 @@ impl TransactionArgs {
         self
     }
 
-    /// Returns new [TransactionAdvice] instantiated with the provided note arguments.
+    /// Returns new [TransactionArgs] instantiated with the provided note arguments.
     ///
     /// If the note arguments were already set, they will be overwritten with the newly provided
     /// ones.
@@ -106,8 +106,8 @@ impl TransactionArgs {
     ///
     /// This argument could be potentially used as a key to access the advice map during the
     /// transaction script execution. Notice that the corresponding map entry should be provided
-    /// separately during the creation with the [`TransactionAdvice::new`] or using the
-    /// [`TransactionAdvice::extend_advice_map`] method.
+    /// separately during the creation with the [`TransactionArgs::new`] or using the
+    /// [`TransactionArgs::extend_advice_map`] method.
     pub fn tx_script_arg(&self) -> Word {
         self.tx_script_arg
     }

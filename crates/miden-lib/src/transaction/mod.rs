@@ -106,7 +106,7 @@ impl TransactionKernel {
         ProgramInfo::new(program_hash, kernel)
     }
 
-    /// Transforms the provided [TransactionInputs] and [TransactionAdvice] into stack and advice
+    /// Transforms the provided [TransactionInputs] and [TransactionArgs] into stack and advice
     /// inputs needed to execute a transaction kernel for a specific transaction.
     ///
     /// If `init_advice_inputs` is provided, they will be included in the returned advice inputs.
@@ -125,12 +125,12 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let mut tx_args_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
+        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
         if let Some(init_advice_inputs) = init_advice_inputs {
-            tx_args_inputs.extend(init_advice_inputs);
+            tx_advice_inputs.extend(init_advice_inputs);
         }
 
-        Ok((stack_inputs, tx_args_inputs))
+        Ok((stack_inputs, tx_advice_inputs))
     }
 
     // ASSEMBLER CONSTRUCTOR
