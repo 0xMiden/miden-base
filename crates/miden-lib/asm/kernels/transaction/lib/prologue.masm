@@ -1083,7 +1083,7 @@ end
 # TRANSACTION SCRIPT
 # =================================================================================================
 
-#! Saves the transaction script root to memory.
+#! Saves the transaction script root and args key to memory.
 #!
 #! Inputs:
 #!   Operand stack: []
