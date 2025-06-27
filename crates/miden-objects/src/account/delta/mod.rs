@@ -69,13 +69,11 @@ impl AccountDelta {
         let new_nonce_increment = self.nonce_increment + other.nonce_increment;
 
         if new_nonce_increment.as_int() < self.nonce_increment.as_int() {
-            return Err(AccountDeltaError::InconsistentNonceUpdate(
-                format!(
-                    "merged nonce increments {} and {} overflowed to {}",
-                    self.nonce_increment, other.nonce_increment, new_nonce_increment
-                )
-                .into(),
-            ));
+            return Err(AccountDeltaError::NonceOverflow {
+                current: self.nonce_increment,
+                increment: other.nonce_increment,
+                new: new_nonce_increment,
+            });
         }
 
         self.nonce_increment = new_nonce_increment;
@@ -425,9 +423,7 @@ fn validate_nonce(
     vault: &AccountVaultDelta,
 ) -> Result<(), AccountDeltaError> {
     if (!storage.is_empty() || !vault.is_empty()) && nonce_increment == ZERO {
-        return Err(AccountDeltaError::InconsistentNonceUpdate(
-            "nonce not updated for non-empty account delta".into(),
-        ));
+        return Err(AccountDeltaError::ZeroNonceForNonEmptyDelta);
     }
 
     Ok(())
@@ -470,8 +466,9 @@ mod tests {
         let storage_delta = AccountStorageDelta::from_iters([1], [], []);
 
         assert_matches!(
-            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO).unwrap_err(),
-            AccountDeltaError::InconsistentNonceUpdate(_)
+            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
+                .unwrap_err(),
+            AccountDeltaError::ZeroNonceForNonEmptyDelta
         );
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
     }

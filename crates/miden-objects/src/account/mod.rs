@@ -290,7 +290,7 @@ impl Account {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - The new nonce is smaller than the current account nonce.
+    /// - Incrementing the nonce overflows a [`Felt`].
     fn increment_nonce(&mut self, nonce_increment: Felt) -> Result<(), AccountError> {
         let new_nonce = self.nonce + nonce_increment;
 

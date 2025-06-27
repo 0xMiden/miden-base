@@ -245,8 +245,16 @@ pub enum AccountDeltaError {
         account_id: AccountId,
         source: AccountError,
     },
-    #[error("inconsistent nonce update: {0}")]
-    InconsistentNonceUpdate(Box<str>),
+    #[error("zero nonce is not allowed for non-empty account deltas")]
+    ZeroNonceForNonEmptyDelta,
+    #[error(
+        "current account nonce increment {current} plus the other nonce increment {increment} overflows a felt to {new}"
+    )]
+    NonceOverflow {
+        current: Felt,
+        increment: Felt,
+        new: Felt,
+    },
     #[error("account ID {0} in fungible asset delta is not of type fungible faucet")]
     NotAFungibleFaucetId(AccountId),
 }
