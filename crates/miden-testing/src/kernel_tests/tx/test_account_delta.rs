@@ -7,7 +7,7 @@ use miden_objects::{
     Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
         AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType,
-        StorageMap, StorageSlot, delta::LexicographicWord,
+        StorageMap, StorageSlot,
     },
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
@@ -15,7 +15,7 @@ use miden_objects::{
         account_component::AccountMockComponent, account_id::AccountIdBuilder,
         asset::NonFungibleAssetBuilder,
     },
-    transaction::{ExecutedTransaction, TransactionScript},
+    transaction::{ExecutedTransaction, LinkMapKey, TransactionScript},
     vm::AdviceMap,
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
