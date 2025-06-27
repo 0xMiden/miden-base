@@ -26,6 +26,7 @@
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
 - [BREAKING] Implemented account delta commitment (#1471).
+- [BREAKING] Store account ID and number of slots in account delta (#1493).
 - Added `Note::is_network_note()` accessor (#1485).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
