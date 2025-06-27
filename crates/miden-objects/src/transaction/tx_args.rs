@@ -16,6 +16,59 @@ use crate::{
     vm::{AdviceInputs, AdviceMap, Program},
 };
 
+// AUTH ARGUMENTS
+// ================================================================================================
+
+/// Authentication arguments containing the procedure arguments and optional key.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct AuthArguments {
+    procedure_args: BTreeMap<Digest, Vec<Felt>>,
+    procedure_args_key: Option<Word>,
+}
+
+impl AuthArguments {
+    /// Creates new [AuthArguments] with the provided procedure arguments and key.
+    pub fn new(auth_args: &[Felt]) -> Self {
+        let args_key = Hasher::hash_elements(auth_args);
+        let mut procedure_args = BTreeMap::<Digest, Vec<Felt>>::new();
+        procedure_args.insert(args_key, auth_args.to_vec());
+        let procedure_args_key = Some(args_key.into());
+        Self { procedure_args, procedure_args_key }
+    }
+
+    /// Returns a reference to the authentication procedure arguments.
+    pub fn procedure_args(&self) -> &BTreeMap<Digest, Vec<Felt>> {
+        &self.procedure_args
+    }
+
+    /// Returns a reference to the authentication procedure arguments key.
+    pub fn procedure_args_key(&self) -> Option<&Word> {
+        self.procedure_args_key.as_ref()
+    }
+}
+
+impl Serializable for AuthArguments {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.procedure_args.write_into(target);
+        self.procedure_args_key.write_into(target);
+    }
+}
+
+impl Deserializable for AuthArguments {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let procedure_args = BTreeMap::<Digest, Vec<Felt>>::read_from(source)?;
+        let procedure_args_key = Option::<Word>::read_from(source)?;
+
+        Ok(Self { procedure_args, procedure_args_key })
+    }
+}
+
+impl From<&[Felt]> for AuthArguments {
+    fn from(args: &[Felt]) -> Self {
+        Self::new(args)
+    }
+}
+
 // TRANSACTION ARGS
 // ================================================================================================
 
@@ -34,6 +87,7 @@ pub struct TransactionArgs {
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
     foreign_account_inputs: Vec<AccountInputs>,
+    auth_arguments: Option<AuthArguments>,
 }
 
 impl TransactionArgs {
@@ -50,6 +104,7 @@ impl TransactionArgs {
         note_args: Option<BTreeMap<NoteId, Word>>,
         advice_map: AdviceMap,
         foreign_account_inputs: Vec<AccountInputs>,
+        auth_arguments: Option<AuthArguments>,
     ) -> Self {
         let mut advice_inputs = AdviceInputs::default().with_map(advice_map);
         // add transaction script inputs to the advice inputs' map
@@ -58,11 +113,22 @@ impl TransactionArgs {
                 .extend_map(tx_script.inputs().iter().map(|(hash, input)| (*hash, input.clone())))
         }
 
+        // add auth procedure arguments to the advice inputs' map
+        if let Some(ref auth_arguments) = auth_arguments {
+            advice_inputs.extend_map(
+                auth_arguments
+                    .procedure_args()
+                    .iter()
+                    .map(|(hash, input)| (*hash, input.clone())),
+            )
+        }
+
         Self {
             tx_script,
             note_args: note_args.unwrap_or_default(),
             advice_inputs,
             foreign_account_inputs,
+            auth_arguments,
         }
     }
 
@@ -77,6 +143,13 @@ impl TransactionArgs {
     #[must_use]
     pub fn with_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
         self.note_args = note_args;
+        self
+    }
+
+    /// Returns new [TransactionArgs] instantiated with the provided auth arguments.
+    #[must_use]
+    pub fn with_auth_arguments(mut self, auth_arguments: AuthArguments) -> Self {
+        self.auth_arguments = Some(auth_arguments);
         self
     }
 
@@ -109,6 +182,16 @@ impl TransactionArgs {
             .iter()
             .map(|acc| acc.code().commitment())
             .collect()
+    }
+
+    /// Returns a reference to the authentication arguments.
+    pub fn auth_arguments(&self) -> Option<&AuthArguments> {
+        self.auth_arguments.as_ref()
+    }
+
+    /// Returns a reference to the auth procedure arguments key.
+    pub fn auth_procedure_args_key(&self) -> Option<&Word> {
+        self.auth_arguments.as_ref().and_then(|args| args.procedure_args_key())
     }
 
     // STATE MUTATORS
@@ -175,6 +258,7 @@ impl Serializable for TransactionArgs {
         self.note_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_inputs.write_into(target);
+        self.auth_arguments.write_into(target);
     }
 }
 
@@ -184,12 +268,14 @@ impl Deserializable for TransactionArgs {
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
+        let auth_arguments = Option::<AuthArguments>::read_from(source)?;
 
         Ok(Self {
             tx_script,
             note_args,
             advice_inputs,
             foreign_account_inputs,
+            auth_arguments,
         })
     }
 }
@@ -358,16 +444,19 @@ impl Deserializable for TransactionScript {
 
 #[cfg(test)]
 mod tests {
+    use alloc::collections::BTreeMap;
+
     use vm_core::{
         AdviceMap,
         utils::{Deserializable, Serializable},
     };
 
-    use crate::transaction::TransactionArgs;
+    use crate::transaction::{AuthArguments, TransactionArgs};
 
     #[test]
     fn test_tx_args_serialization() {
-        let args = TransactionArgs::new(None, None, AdviceMap::default(), std::vec::Vec::default());
+        let args =
+            TransactionArgs::new(None, None, AdviceMap::default(), std::vec::Vec::default(), None);
         let bytes: std::vec::Vec<u8> = args.to_bytes();
         let decoded = TransactionArgs::read_from_bytes(&bytes).unwrap();
 

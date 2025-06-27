@@ -1,4 +1,8 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{
+    collections::BTreeSet,
+    sync::Arc,
+    vec::Vec,
+};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
@@ -208,6 +212,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             None,
             Default::default(),
             foreign_account_inputs,
+            None,
         );
 
         validate_account_inputs(&tx_args, &ref_block)?;

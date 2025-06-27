@@ -6,7 +6,7 @@ use miden_objects::{
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
     transaction::{
-        InputNote, PartialBlockchain, TransactionArgs, TransactionInputs, TransactionScript,
+        InputNote, PartialBlockchain, TransactionArgs, TransactionInputs,
     },
     vm::AdviceInputs,
 };
@@ -36,7 +36,7 @@ impl TransactionAdviceInputs {
         let mut inputs = TransactionAdviceInputs::default();
         let kernel_version = 0; // TODO: replace with user input
 
-        inputs.build_stack(tx_inputs, tx_args.tx_script(), kernel_version);
+        inputs.build_stack(tx_inputs, tx_args, kernel_version);
         inputs.add_kernel_commitments(kernel_version);
         inputs.add_partial_blockchain(tx_inputs.blockchain());
         inputs.add_input_notes(tx_inputs, tx_args)?;
@@ -109,13 +109,15 @@ impl TransactionAdviceInputs {
     ///     number_of_input_notes,
     ///     TX_SCRIPT_ROOT,
     ///     TX_SCRIPT_ARGS_KEY,
+    ///     AUTH_PROCEDURE_ARGS_KEY,
     /// ]
     fn build_stack(
         &mut self,
         tx_inputs: &TransactionInputs,
-        tx_script: Option<&TransactionScript>,
+        tx_args: &TransactionArgs,
         kernel_version: u8,
     ) {
+        let tx_script = tx_args.tx_script();
         let header = tx_inputs.block_header();
 
         // --- block header data (keep in sync with kernel's process_block_data) --
@@ -155,6 +157,8 @@ impl TransactionAdviceInputs {
         self.extend_stack(
             tx_script.map_or(Word::default(), |script| *script.args_key().unwrap_or_default()),
         );
+        // --- auth procedure args key -------------------------------------------
+        self.extend_stack(tx_args.auth_procedure_args_key().map_or(Word::default(), |key| *key));
     }
 
     // BLOCKCHAIN INJECTIONS

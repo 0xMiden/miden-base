@@ -5,7 +5,7 @@ use alloc::{collections::BTreeMap, vec::Vec};
 
 use miden_lib::{transaction::TransactionKernel, utils::word_to_masm_push_string};
 use miden_objects::{
-    FieldElement,
+    Digest, FieldElement,
     account::{Account, AccountId},
     assembly::Assembler,
     asset::{Asset, FungibleAsset, NonFungibleAsset},
@@ -25,7 +25,8 @@ use miden_objects::{
         storage::prepare_assets,
     },
     transaction::{
-        AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
+        AccountInputs, AuthArguments, OutputNote, TransactionArgs, TransactionInputs,
+        TransactionScript,
     },
     vm::AdviceMap,
 };
@@ -81,6 +82,7 @@ pub struct TransactionContextBuilder {
     tx_script: Option<TransactionScript>,
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
+    auth_arguments: Option<AuthArguments>,
     rng: ChaCha20Rng,
 }
 
@@ -99,6 +101,7 @@ impl TransactionContextBuilder {
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
+            auth_arguments: None,
         }
     }
 
@@ -130,6 +133,7 @@ impl TransactionContextBuilder {
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
+            auth_arguments: None,
         }
     }
 
@@ -210,6 +214,12 @@ impl TransactionContextBuilder {
     /// Set the desired transaction script
     pub fn tx_script(mut self, tx_script: TransactionScript) -> Self {
         self.tx_script = Some(tx_script);
+        self
+    }
+
+    /// Set the desired auth arguments
+    pub fn auth_arguments(mut self, auth_arguments: impl Into<AuthArguments>) -> Self {
+        self.auth_arguments = Some(auth_arguments.into());
         self
     }
 
@@ -686,6 +696,7 @@ impl TransactionContextBuilder {
             Some(self.note_args),
             AdviceMap::default(),
             self.foreign_account_inputs,
+            self.auth_arguments,
         );
 
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
