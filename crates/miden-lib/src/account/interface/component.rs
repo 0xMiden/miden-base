@@ -62,7 +62,7 @@ impl AccountComponentInterface {
                     .map(|proc_info| proc_info.mast_root().to_hex()[..9].to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("Custom([{}])", result)
+                format!("Custom([{result}])", )
             },
         }
     }

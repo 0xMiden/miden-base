@@ -820,7 +820,7 @@ fn prove_witness_and_verify() {
 // ================================================================================================
 
 #[test]
-fn test_tx_script_inputs() {
+fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_key = [Felt::new(9999), Felt::new(8888), Felt::new(9999), Felt::new(8888)];
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
@@ -856,13 +856,9 @@ fn test_tx_script_inputs() {
         .tx_script(tx_script)
         .build();
 
-    let executed_transaction = tx_context.execute();
+    tx_context.execute().context("failed to execute transaction")?;
 
-    assert!(
-        executed_transaction.is_ok(),
-        "Transaction execution failed {:?}",
-        executed_transaction,
-    );
+    Ok(())
 }
 
 #[test]

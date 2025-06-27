@@ -1,5 +1,3 @@
-#![allow(clippy::uninlined_format_args)]
-
 use std::{
     collections::{BTreeMap, BTreeSet},
     env,
@@ -316,9 +314,9 @@ fn compile_miden_lib(
 ///
 /// The source files are expected to contain executable programs.
 fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
-    if let Err(e) = fs::create_dir_all(target_dir) {
-        println!("Failed to create note_scripts directory: {}", e);
-    }
+    fs::create_dir_all(target_dir)
+        .into_diagnostic()
+        .wrap_err("failed to create note_scripts directory")?;
 
     for masm_file_path in get_masm_files(source_dir).unwrap() {
         // read the MASM file, parse it, and serialize the parsed AST to bytes
@@ -427,26 +425,20 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) {
 /// Returns a vector with paths to all MASM files in the specified directory.
 ///
 /// All non-MASM files are skipped.
-fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> io::Result<Vec<PathBuf>> {
+fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> Result<Vec<PathBuf>> {
     let mut files = Vec::new();
 
     let path = dir_path.as_ref();
     if path.is_dir() {
-        match fs::read_dir(path) {
-            Ok(entries) => {
-                for entry in entries {
-                    match entry {
-                        Ok(file) => {
-                            let file_path = file.path();
-                            if is_masm_file(&file_path)? {
-                                files.push(file_path);
-                            }
-                        },
-                        Err(e) => println!("Error reading directory entry: {}", e),
-                    }
-                }
-            },
-            Err(e) => println!("Error reading directory: {}", e),
+        let entries = fs::read_dir(path)
+            .into_diagnostic()
+            .wrap_err_with(|| format!("failed to read directory {}", path.display()))?;
+        for entry in entries {
+            let file = entry.into_diagnostic().wrap_err("failed to read directory entry")?;
+            let file_path = file.path();
+            if is_masm_file(&file_path).into_diagnostic()? {
+                files.push(file_path);
+            }
         }
     } else {
         println!("cargo:rerun-The specified path is not a directory.");

@@ -1,5 +1,5 @@
 #![no_std]
-#![allow(clippy::uninlined_format_args)]
+
 use alloc::sync::Arc;
 
 #[macro_use]
