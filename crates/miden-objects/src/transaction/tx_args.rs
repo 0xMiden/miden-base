@@ -39,6 +39,7 @@ pub struct TransactionArgs {
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
     foreign_account_inputs: Vec<AccountInputs>,
+    auth_argument: Word,
 }
 
 impl TransactionArgs {
@@ -54,6 +55,7 @@ impl TransactionArgs {
             note_args: Default::default(),
             advice_inputs: AdviceInputs::default().with_map(advice_map),
             foreign_account_inputs,
+            auth_argument: EMPTY_WORD,
         }
     }
 
@@ -90,6 +92,13 @@ impl TransactionArgs {
     #[must_use]
     pub fn with_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
         self.note_args = note_args;
+        self
+    }
+
+    /// Returns new [TransactionArgs] instantiated with the provided auth arguments.
+    #[must_use]
+    pub fn with_auth_argument(mut self, auth_argument: Word) -> Self {
+        self.auth_argument = auth_argument;
         self
     }
 
@@ -133,6 +142,11 @@ impl TransactionArgs {
             .iter()
             .map(|acc| acc.code().commitment())
             .collect()
+    }
+
+    /// Returns a reference to the authentication arguments.
+    pub fn auth_argument(&self) -> Word {
+        self.auth_argument
     }
 
     // STATE MUTATORS
@@ -201,6 +215,7 @@ impl Serializable for TransactionArgs {
         self.note_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_inputs.write_into(target);
+        self.auth_argument.write_into(target);
     }
 }
 
@@ -211,6 +226,7 @@ impl Deserializable for TransactionArgs {
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
+        let auth_argument = Word::read_from(source)?;
 
         Ok(Self {
             tx_script,
@@ -218,6 +234,7 @@ impl Deserializable for TransactionArgs {
             note_args,
             advice_inputs,
             foreign_account_inputs,
+            auth_argument,
         })
     }
 }

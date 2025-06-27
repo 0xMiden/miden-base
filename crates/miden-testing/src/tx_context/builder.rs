@@ -71,6 +71,7 @@ pub struct TransactionContextBuilder {
     tx_script_arg: Word,
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
+    auth_argument: Word,
 }
 
 impl TransactionContextBuilder {
@@ -88,6 +89,7 @@ impl TransactionContextBuilder {
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
+            auth_argument: EMPTY_WORD,
         }
     }
 
@@ -128,6 +130,7 @@ impl TransactionContextBuilder {
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
+            auth_argument: EMPTY_WORD,
         }
     }
 
@@ -228,6 +231,12 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Set the desired auth arguments
+    pub fn auth_argument(mut self, auth_argument: Word) -> Self {
+        self.auth_argument = auth_argument;
+        self
+    }
+
     /// Set the desired transaction inputs
     pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
         self.transaction_inputs = Some(tx_inputs);
@@ -295,6 +304,8 @@ impl TransactionContextBuilder {
         } else {
             tx_args
         };
+
+        tx_args = tx_args.with_auth_argument(self.auth_argument);
 
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());

@@ -167,10 +167,14 @@ end
 #! Inputs:  []
 #! Outputs: []
 proc.execute_auth_procedure
-    padw padw padw push.0.0.0
+    padw padw padw
+    # get the auth procedure arguments key
+    exec.memory::get_auth_procedure_args_key
+    # => [AUTH_PROCEDURE_ARGS_KEY, pad(12)]
+
     # auth procedure is at index 0 within the account procedures section.
     push.0 exec.memory::get_acct_procedure_ptr
-    # => [auth_procedure_ptr, pad(15)]
+    # => [auth_procedure_ptr, AUTH_PROCEDURE_ARGS_KEY, pad(12)]
 
     # execute the auth procedure
     dyncall

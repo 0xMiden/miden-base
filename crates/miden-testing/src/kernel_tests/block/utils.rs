@@ -2,14 +2,16 @@ use std::{collections::BTreeMap, vec, vec::Vec};
 
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, Word,
+    Felt, ONE, Word, ZERO,
     account::{Account, AccountId, AccountStorageMode},
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
     block::BlockNumber,
     crypto::rand::RpoRandomCoin,
     note::{Note, NoteId, NoteTag, NoteType},
-    testing::{account_component::AccountMockComponent, note::NoteBuilder},
+    testing::{
+        account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
+    },
     transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
 };
 use rand::{Rng, SeedableRng, rngs::SmallRng};
@@ -30,6 +32,17 @@ pub fn generate_account(chain: &mut MockChain) -> Account {
         );
     chain
         .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
+        .expect("failed to add pending account from builder")
+}
+
+pub fn generate_account_with_conditional_auth(chain: &mut MockChain) -> Account {
+    let account_builder = Account::builder(rand::rng().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        );
+    chain
+        .add_pending_account_from_builder(Auth::Conditional, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")
 }
 
@@ -107,6 +120,64 @@ pub fn generate_tx_with_authenticated_notes(
     notes: &[NoteId],
 ) -> ProvenTransaction {
     let executed_tx = generate_executed_tx_with_authenticated_notes(chain, account_id, notes);
+    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
+}
+
+/// Generates a NOOP transaction, i.e. one that doesn't change the state of the account.
+///
+/// To make this transaction non-empty, it consumes one "noop note", which does nothing.
+pub fn generate_noop_tx(
+    chain: &mut MockChain,
+    input: impl Into<TxContextInput>,
+) -> ExecutedTransaction {
+    let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
+        .build(&TransactionKernel::assembler())
+        .expect("failed to create the noop note");
+    chain.add_pending_note(OutputNote::Full(noop_note.clone()));
+    chain.prove_next_block().unwrap();
+
+    let auth_argument = [
+        Felt::new(99),
+        Felt::new(98),
+        Felt::new(97),
+        Felt::new(96),
+        ZERO, // don't increment nonce
+    ];
+    let auth_argument_key = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+
+    let tx_context = chain
+        .build_tx_context(input.into(), &[noop_note.id()], &[])
+        .unwrap()
+        .extend_input_notes(vec![noop_note])
+        .auth_argument(auth_argument_key)
+        .extend_advice_map([(auth_argument_key, auth_argument.to_vec())])
+        .build()
+        .unwrap();
+    tx_context.execute().unwrap()
+}
+
+/// Generates a transaction that increments the storage item of the account.
+pub fn generate_tx_with_storage_increment(
+    chain: &mut MockChain,
+    input: impl Into<TxContextInput>,
+) -> ProvenTransaction {
+    let auth_argument = [
+        Felt::new(99),
+        Felt::new(98),
+        Felt::new(97),
+        Felt::new(96),
+        ONE, // increment nonce
+    ];
+
+    let auth_argument_key = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+    let tx_context = chain
+        .build_tx_context(input, &[], &[])
+        .unwrap()
+        .auth_argument(auth_argument_key)
+        .extend_advice_map([(auth_argument_key, auth_argument.to_vec())])
+        .build()
+        .unwrap();
+    let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 

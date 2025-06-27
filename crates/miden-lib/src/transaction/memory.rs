@@ -17,7 +17,7 @@ pub type StorageSlot = u8;
 // | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
 // | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                             |
-// | Global inputs      | 400 (100)                             | 427 (106)                           |                                             |
+// | Global inputs      | 400 (100)                             | 431 (107)                           |                                             |
 // | Block header       | 800 (200)                             | 835 (208)                           |                                             |
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
@@ -135,6 +135,9 @@ pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
 
 /// The memory address at which the key of the transaction script arguments is stored.
 pub const TX_SCRIPT_ARGS_KEY: MemoryAddress = 424;
+
+/// The memory address at which the key of the auth procedure arguments is stored.
+pub const AUTH_PROCEDURE_ARGS_KEY_PTR: MemoryAddress = 428;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------

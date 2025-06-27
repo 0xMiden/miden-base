@@ -1,10 +1,11 @@
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 use crate::{
     AccountError,
     account::{AccountComponent, StorageSlot},
     assembly::{Assembler, Library, diagnostics::NamedSource},
     testing::account_code::MOCK_ACCOUNT_CODE,
+    utils::sync::LazyLock,
 };
 
 // ACCOUNT COMPONENT ASSEMBLY CODE
@@ -113,23 +114,59 @@ const NOOP_AUTH_CODE: &str = "
     end
 ";
 
-const CONDITIONAL_AUTH_CODE: &str = "
-    use.miden::account
+pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 
-    export.auth__conditional
-        push.0
-        exec.account::get_item
+static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r#"
+        use.miden::account
 
-        push.99.99.99.99
-        eqw
+        const.WRONG_ARGS="{}"
 
-        # If 99.99.99.99 is in storage, increment nonce
-        if.true
-            push.1 exec.account::incr_nonce
+        export.auth__conditional
+            # OS => [AUTH_ARGS_KEY]
+            # AS => []
+
+            # `AUTH_ARGS_KEY` value, which is located on the stack at the beginning of
+            # the execution, is the advice map key which allows to obtain auth procedure args
+            # which were specified during the `AuthArguments` creation.
+
+            # move the auth args from advice map to the advice stack
+            adv.push_mapval
+            # OS => [AUTH_ARGS_KEY]
+            # AS => [99, 98, 97, 96, incr_nonce_flag]
+
+            debug.stack
+            # drop the args commitment
+            dropw
+            # OS => []
+            # AS => [99, 98, 97, 96, incr_nonce_flag]
+
+            # Move the auth arguments array from advice stack to the operand stack.
+            adv_push.4
+            # OS => [99, 98, 97, 96]
+            # AS => []
+
+            debug.stack
+
+            # If [99, 98, 97, 96] is passed as an argument, all good.
+            # Otherwise we error out.
+            push.99.98.97.96 debug.stack eqw assert.err=WRONG_ARGS
+
+            debug.stack
+            # Load the `incr_nonce_flag` from the advice stack.
+            adv_push.1
+
+            if.true
+                push.1 exec.account::incr_nonce
+            end
+
+            dropw dropw dropw dropw
         end
-        dropw dropw dropw dropw
-    end
-";
+"#,
+        ERR_WRONG_ARGS_MSG
+    )
+});
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
@@ -163,7 +200,7 @@ pub struct ConditionalAuthComponent {
 impl ConditionalAuthComponent {
     pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
         let library = assembler
-            .assemble_library([CONDITIONAL_AUTH_CODE])
+            .assemble_library([CONDITIONAL_AUTH_CODE.as_str()])
             .map_err(AccountError::AccountComponentAssemblyError)?;
         Ok(Self { library })
     }

@@ -1084,7 +1084,7 @@ end
 # TRANSACTION SCRIPT
 # =================================================================================================
 
-#! Saves the transaction script root to memory.
+#! Saves the transaction script root and args key to memory.
 #!
 #! Inputs:
 #!   Operand stack: []
@@ -1095,11 +1095,11 @@ end
 #!
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction's script root.
-#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script args used to obtain them from 
+#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script args used to obtain them from
 #!   the advice map.
 proc.process_tx_script_data
     # read the transaction script root from the advice stack
-    adv_loadw
+    padw adv_loadw
     # => [TX_SCRIPT_ROOT]
 
     # store the transaction script root in memory
@@ -1107,11 +1107,34 @@ proc.process_tx_script_data
     # => []
 
     # read the transaction script args key from the advice stack
-    adv_loadw
+    padw adv_loadw
     # => [TX_SCRIPT_ARGS_KEY]
 
     # store the transaction script args key in memory
     exec.memory::set_tx_script_args_key dropw
+    # => []
+end
+
+#! Saves the auth procedure args key to memory.
+#! The auth procedure root has already been saved to memory via `process_account_data`.
+#!
+#! Inputs:
+#!   Operand stack: []
+#!   Advice stack: [AUTH_PROCEDURE_ARGS_KEY]
+#! Outputs:
+#!   Operand stack: []
+#!   Advice stack: []
+#!
+#! Where:
+#! - AUTH_PROCEDURE_ARGS_KEY is the commitment of the auth procedure args used to obtain them from
+#!   the advice map.
+proc.process_auth_procedure_data
+    # read the auth procedure args key from the advice stack
+    padw adv_loadw
+    # => [AUTH_PROCEDURE_ARGS_KEY]
+
+    # store the auth procedure args key in memory
+    exec.memory::set_auth_procedure_args_key dropw
     # => []
 end
 
@@ -1149,6 +1172,7 @@ end
 #!     number_of_input_notes,
 #!     TX_SCRIPT_ROOT,
 #!     TX_SCRIPT_ARGS_KEY,
+#!     AUTH_PROCEDURE_ARGS_KEY,
 #!   ]
 #!   Advice map: {
 #!      PARTIAL_BLOCKCHAIN_COMMITMENT: [MMR_PEAKS],
@@ -1208,6 +1232,7 @@ export.prepare_transaction
     exec.process_account_data
     exec.process_input_notes_data
     exec.process_tx_script_data
+    exec.process_auth_procedure_data
     # => []
 
     push.MAX_BLOCK_NUM exec.memory::set_expiration_block_num
