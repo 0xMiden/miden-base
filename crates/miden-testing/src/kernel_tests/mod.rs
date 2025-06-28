@@ -13,7 +13,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
+    Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
@@ -42,7 +42,7 @@ use miden_tx::{
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{
-    Digest, ExecutionError, MemAdviceProvider, ONE,
+    AdviceInputs, Digest, ExecutionError, MemAdviceProvider, ONE,
     crypto::RpoRandomCoin,
     utils::{Deserializable, Serializable},
 };
@@ -271,7 +271,6 @@ fn executed_transaction_account_delta_new() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         TransactionKernel::testing_assembler_with_mock_account(),
     )
     .unwrap();
@@ -370,7 +369,6 @@ fn test_empty_delta_nonce_update() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         TransactionKernel::testing_assembler_with_mock_account(),
     )
     .unwrap();
@@ -487,7 +485,6 @@ fn test_send_note_proc() -> miette::Result<()> {
 
         let tx_script = TransactionScript::compile(
             tx_script_src,
-            [],
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
@@ -715,7 +712,6 @@ fn executed_transaction_output_notes() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )
     .unwrap();
@@ -727,7 +723,7 @@ fn executed_transaction_output_notes() {
     let tx_context = TransactionContextBuilder::new(executor_account)
         .with_mock_notes_preserved_with_account_vault_delta()
         .tx_script(tx_script)
-        .expected_notes(vec![
+        .extend_expected_output_notes(vec![
             OutputNote::Full(expected_output_note_2.clone()),
             OutputNote::Full(expected_output_note_3.clone()),
         ])
@@ -819,7 +815,7 @@ fn prove_witness_and_verify() {
 // ================================================================================================
 
 #[test]
-fn test_tx_script_inputs() {
+fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script_input_key = [Felt::new(9999), Felt::new(8888), Felt::new(9999), Felt::new(8888)];
     let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
     let tx_script_src = format!(
@@ -844,87 +840,12 @@ fn test_tx_script_inputs() {
         value = word_to_masm_push_string(&tx_script_input_value)
     );
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        [(tx_script_input_key, tx_script_input_value.into())],
-        TransactionKernel::testing_assembler(),
-    )
-    .unwrap();
-
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .tx_script(tx_script)
-        .build();
-
-    let executed_transaction = tx_context.execute();
-
-    assert!(
-        executed_transaction.is_ok(),
-        "Transaction execution failed {:?}",
-        executed_transaction,
-    );
-}
-
-#[test]
-fn test_tx_script_args() -> anyhow::Result<()> {
-    let tx_script_src = r#"
-        use.miden::account
-
-        begin
-            # => [TX_SCRIPT_ARGS_KEY]
-            # `TX_SCRIPT_ARGS_KEY` value, which is located on the stack at the beginning of 
-            # the execution, is the advice map key which allows to obtain transaction script args 
-            # which were specified during the `TransactionScript` creation (see below). In this
-            # example transaction args is an array of Felts from 1 to 7.
-
-            # move the transaction args from advice map to the advice stack
-            adv.push_mapval
-            # OS => [TX_SCRIPT_ARGS_KEY]
-            # AS => [7, 6, 5, 4, 3, 2, 1]
-
-            # drop the args commitment
-            dropw
-            # OS => []
-            # AS => [7, 6, 5, 4, 3, 2, 1]
-
-            # Move the transaction arguments array from advice stack to the operand stack. It 
-            # consists of 7 Felts, so we could use `adv_push.7` instruction to load them all at once
-            adv_push.7
-            # OS => [7, 6, 5, 4, 3, 2, 1]
-            # AS => []
-
-            # assert that the transaction arguments array consists of correct values
-            push.4.5.6.7
-            assert_eqw.err="last four values in the transaction args array are incorrect"
-            # OS => [3, 2, 1]
-            # AS => []
-            
-            # To use more convenient `assert_eqw` instruction we should push `0` first, but notice 
-            # that there are only three values from the original array left on the stack. We could 
-            # do so because there are no other elements on the stack left except for the argument 
-            # values (hidden values deeper on the stack are zeros). In case there are some values 
-            # deeper on the stack, we should assert values one by one using `push.n assert_eq`.
-            push.0.1.2.3
-            assert_eqw.err="first three values in the transaction args array are incorrect"
-
-            # update the nonce to make the transaction non-empty
-            push.1 call.account::incr_nonce drop
-        end"#;
-
     let tx_script =
-        TransactionScript::compile(tx_script_src, [], TransactionKernel::testing_assembler())
-            .context("failed to compile transaction script")?
-            .with_args(&[
-                ONE,
-                Felt::new(2),
-                Felt::new(3),
-                Felt::new(4),
-                Felt::new(5),
-                Felt::new(6),
-                Felt::new(7),
-            ])?;
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script)
+        .extend_advice_map([(tx_script_input_key, tx_script_input_value.into())])
         .build();
 
     tx_context.execute().context("failed to execute transaction")?;
@@ -933,28 +854,51 @@ fn test_tx_script_args() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_tx_script_args_collision() -> anyhow::Result<()> {
-    let collision_elements = vec![ONE, Felt::new(2), Felt::new(3), Felt::new(4)];
-    let collision_key = Hasher::hash_elements(&collision_elements);
+fn test_tx_script_args() -> anyhow::Result<()> {
+    let tx_script_arg = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
 
-    let script_args_collision_err = TransactionScript::compile(
-        "begin nop end",
-        [(*collision_key, vec![ONE, Felt::new(2)])],
-        TransactionKernel::testing_assembler(),
-    )
-    .context("failed to compile transaction script")?
-    .with_args(&collision_elements)
-    .unwrap_err();
+    let tx_script_src = r#"
+        use.miden::account
 
-    assert_matches!(script_args_collision_err, TransactionScriptError::ScriptArgsCollision {
-        key,
-        new_value,
-        old_value,
-    } => {
-        assert_eq!(key, collision_key);
-        assert_eq!(new_value, collision_elements);
-        assert_eq!(old_value, [ONE, Felt::new(2)]);
-    });
+        begin
+            # => [TX_SCRIPT_ARG]
+            # `TX_SCRIPT_ARG` value is a user provided word, which could be used during the
+            # transaction execution. In this example it is a `[1, 2, 3, 4]` word.
+
+            # assert the correctness of the argument
+            dupw push.1.2.3.4 assert_eqw.err="provided transaction argument doesn't match the expected one"
+            # => [TX_SCRIPT_ARG]
+
+            # since we provided an advice map entry with the transaction script argument as a key, 
+            # we can obtain the value of this entry
+            adv.push_mapval adv_push.4
+            # => [[map_entry_values], TX_SCRIPT_ARG]
+
+            # assert the correctness of the map entry values
+            push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
+
+            # update the nonce to make the transaction non-empty
+            push.1 call.account::incr_nonce drop
+        end"#;
+
+    let tx_script =
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())
+            .context("failed to compile transaction script")?;
+
+    // create an advice inputs containing the entry which could be accessed using the provided
+    // transaction script argument
+    let advice_inputs = AdviceInputs::default().with_map([(
+        Digest::new(tx_script_arg),
+        vec![Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)],
+    )]);
+
+    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+        .tx_script(tx_script)
+        .extend_advice_inputs(advice_inputs)
+        .tx_script_arg(tx_script_arg)
+        .build();
+
+    tx_context.execute().context("failed to execute transaction")?;
 
     Ok(())
 }
@@ -1015,7 +959,6 @@ fn transaction_executor_account_code_using_custom_library() {
 
     let tx_script = TransactionScript::compile(
         tx_script_src,
-        [],
         // Add the account component library since the transaction script is calling the account's
         // procedure.
         assembler.with_library(&account_component_lib).unwrap(),
@@ -1059,8 +1002,8 @@ fn test_execute_program() {
     end
     ";
 
-    let tx_script = TransactionScript::compile(source, [], assembler)
-        .expect("failed to compile the source script");
+    let tx_script =
+        TransactionScript::compile(source, assembler).expect("failed to compile the source script");
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .tx_script(tx_script.clone())
@@ -1113,7 +1056,7 @@ fn test_check_note_consumability() {
     .unwrap();
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .input_notes(vec![p2id_note, p2ide_note])
+        .extend_input_notes(vec![p2id_note, p2ide_note])
         .build();
     let source_manager = tx_context.source_manager();
 
@@ -1178,7 +1121,7 @@ fn test_check_note_consumability() {
 
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
         .with_mock_notes_preserved()
-        .input_notes(vec![failing_note_1, failing_note_2.clone()])
+        .extend_input_notes(vec![failing_note_1, failing_note_2.clone()])
         .build();
     let source_manager = tx_context.source_manager();
 

@@ -457,18 +457,6 @@ impl PartialBlockchainError {
 pub enum TransactionScriptError {
     #[error("failed to assemble transaction script:\n{}", PrintDiagnostic::new(.0))]
     AssemblyError(Report),
-    #[error("provided inputs map is missing an entry for transaction script arguments key `{0}`")]
-    MissingScriptArgsKeyEntry(Digest),
-    #[error(
-        "script arguments with key `{key}` and values `{:?}` were added to the inputs map, but there is already an entry in the map with the same key but different values: `{:?}`",
-        new_value,
-        old_value
-    )]
-    ScriptArgsCollision {
-        key: Digest,
-        new_value: Vec<Felt>,
-        old_value: Vec<Felt>,
-    },
 }
 
 // TRANSACTION INPUT ERROR

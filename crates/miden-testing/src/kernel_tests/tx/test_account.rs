@@ -94,10 +94,9 @@ pub fn test_account_type() -> miette::Result<()> {
                 use.kernel::account
 
                 begin
-                    exec.account::{}
+                    exec.account::{procedure}
                 end
                 ",
-                procedure
             );
 
             let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
@@ -119,7 +118,7 @@ pub fn test_account_type() -> miette::Result<()> {
             );
         }
 
-        assert!(has_type, "missing test for type {:?}", expected_type);
+        assert!(has_type, "missing test for type {expected_type:?}",);
     }
 
     Ok(())
@@ -235,8 +234,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
         assert_eq!(
             process.stack.get(0),
             Felt::new(is_faucet as u64),
-            "Rust and Masm is_faucet diverged. account_id: {}",
-            account_id
+            "Rust and Masm is_faucet diverged for account_id {account_id}",
         );
     }
 
@@ -647,7 +645,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     "
     );
     let tx_script_program = assembler.assemble_program(tx_script_source_code).unwrap();
-    let tx_script = TransactionScript::new(tx_script_program, vec![]);
+    let tx_script = TransactionScript::new(tx_script_program);
 
     // setup transaction context
     let tx_context = TransactionContextBuilder::new(account.clone()).tx_script(tx_script).build();

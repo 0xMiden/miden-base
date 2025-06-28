@@ -297,7 +297,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
             push.1 call.account::incr_nonce drop
         end";
     let default_tx_script =
-        TransactionScript::compile(default_tx_code, [], TransactionKernel::testing_assembler())
+        TransactionScript::compile(default_tx_code, TransactionKernel::testing_assembler())
             .context("failed to compile the transaction script")?;
 
     let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);

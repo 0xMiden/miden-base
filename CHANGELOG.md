@@ -25,6 +25,8 @@
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
+- [BREAKING] Move transaction script argument from `TransactionScript` to `TransactionArgs`. (#1426).
+- [BREAKING] Remove transaction inputs from `TransactionScript`. (#1426).
 - [BREAKING] Implemented account delta commitment (#1471).
 - Added `Note::is_network_note()` accessor (#1485).
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
