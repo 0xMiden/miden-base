@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, vec, vec::Vec};
 
-use miden_crypto::rand::RpoRandomCoin;
+use miden_crypto::{ONE, ZERO, rand::RpoRandomCoin};
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt,
@@ -12,7 +12,9 @@ use miden_objects::{
     testing::{
         account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
     },
-    transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
+    transaction::{
+        AuthArguments, ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript,
+    },
     utils::word_to_masm_push_string,
 };
 use rand::{Rng, SeedableRng, rngs::SmallRng};
@@ -171,6 +173,13 @@ pub fn generate_noop_tx(
     let tx_context = chain
         .build_tx_context(input.into(), &[noop_note.id()], &[])
         .input_notes(vec![noop_note])
+        .auth_arguments(AuthArguments::new(&[
+            Felt::new(99),
+            Felt::new(98),
+            Felt::new(97),
+            Felt::new(96),
+            ZERO, // don't increment nonce
+        ]))
         .build();
     tx_context.execute().unwrap()
 }
@@ -183,6 +192,13 @@ pub fn generate_tx_with_storage_increment(
     let tx_context = chain
         .build_tx_context(input, &[], &[])
         .tx_script(bump_storage_tx_script())
+        .auth_arguments(AuthArguments::new(&[
+            Felt::new(99),
+            Felt::new(98),
+            Felt::new(97),
+            Felt::new(96),
+            ONE, // increment nonce
+        ]))
         .build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)

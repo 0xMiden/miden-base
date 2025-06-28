@@ -94,6 +94,7 @@ fn test_transaction_prologue() {
         Some(note_args_map),
         tx_context.tx_args().advice_inputs().clone().map,
         Vec::<AccountInputs>::new(),
+        None,
     );
 
     tx_context.set_tx_args(tx_args);

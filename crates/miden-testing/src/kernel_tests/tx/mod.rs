@@ -16,6 +16,7 @@ use vm_processor::{ContextId, Process, ProcessState};
 mod test_account;
 mod test_asset;
 mod test_asset_vault;
+mod test_auth;
 mod test_epilogue;
 mod test_faucet;
 mod test_fpi;

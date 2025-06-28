@@ -239,6 +239,10 @@ proc.execute_auth_procedure
     exec.memory::get_acct_procedures_section_ptr
     # => [auth_procedure_ptr]
 
+    # get the auth procedure arguments key
+    exec.memory::get_auth_procedure_args_key movup.4
+    # => [auth_procedure_args_key, auth_procedure_ptr]
+
     # execute the auth procedure
     dyncall
     # => [OUTPUT_3, OUTPUT_2, OUTPUT_1, OUTPUT_0]
