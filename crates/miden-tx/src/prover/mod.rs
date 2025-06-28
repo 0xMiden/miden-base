@@ -92,11 +92,7 @@ impl TransactionProver for LocalTransactionProver {
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());
 
-        let account_code_commitments: BTreeSet<Digest> = tx_args
-            .foreign_account_inputs()
-            .iter()
-            .map(|acc| acc.code().commitment())
-            .collect();
+        let account_code_commitments: BTreeSet<Digest> = tx_args.foreign_account_code_commitments();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),

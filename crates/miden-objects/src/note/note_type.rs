@@ -113,15 +113,15 @@ impl Serializable for NoteType {
 
 impl Deserializable for NoteType {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let discriminat = u8::read_from(source)?;
+        let discriminant = u8::read_from(source)?;
 
-        let note_type = match discriminat {
+        let note_type = match discriminant {
             PRIVATE => NoteType::Private,
             ENCRYPTED => NoteType::Encrypted,
             PUBLIC => NoteType::Public,
-            v => {
+            discriminant => {
                 return Err(DeserializationError::InvalidValue(format!(
-                    "value {v} is not a valid NoteType"
+                    "discriminant {discriminant} is not a valid NoteType"
                 )));
             },
         };

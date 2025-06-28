@@ -30,7 +30,7 @@ impl<'a> NoteConsumptionChecker<'a> {
     /// Checks whether the provided input notes could be consumed by the provided account.
     ///
     /// This check consists of two main steps:
-    /// - Statically check the notes: if all notes are either `P2ID` or `P2IDR` notes with correct
+    /// - Statically check the notes: if all notes are either `P2ID` or `P2IDE` notes with correct
     ///   inputs, return `NoteAccountExecution::Success`.
     /// - Execute the transaction:
     ///   - Returns `NoteAccountExecution::Success` if the execution was successful.
@@ -56,38 +56,39 @@ impl<'a> NoteConsumptionChecker<'a> {
                 if let WellKnownNote::SWAP = well_known_note {
                     // if we encountered a SWAP note, then we have to execute the transaction
                     // anyway, but we should continue iterating to make sure that there are no
-                    // P2ID(R) notes which return a `No`
+                    // P2IDE notes which return a `No`
                     continue;
                 }
 
                 match well_known_note.check_note_inputs(note.note(), target_account_id, block_ref) {
                     NoteAccountCompatibility::No => {
                         // if the check failed, return a `Failure` with the vector of successfully
-                        // checked `P2ID` and `P2IDR` notes
+                        // checked `P2ID` and `P2IDE` notes
                         return Ok(NoteAccountExecution::Failure {
                             failed_note_id: note.id(),
                             successful_notes,
                             error: None,
                         });
                     },
+
                     // this branch is unreachable, since we are handling the SWAP note separately,
                     // but as an extra precaution continue iterating over the notes and run the
                     // transaction to make sure the note which returned "Maybe" could be consumed
                     NoteAccountCompatibility::Maybe => continue,
                     NoteAccountCompatibility::Yes => {
-                        // put the successfully checked `P2ID` or `P2IDR` note to the vector
+                        // put the successfully checked `P2ID` or `P2IDE` note to the vector
                         successful_notes.push(note.id());
                     },
                 }
             } else {
                 // if we encountered not a well known note, then we have to execute the transaction
                 // anyway, but we should continue iterating to make sure that there are no
-                // P2ID(R) notes which return a `No`
+                // P2IDE notes which return a `No`
                 continue;
             }
         }
 
-        // if all checked notes turned out to be either `P2ID` or `P2IDR` notes and all of them
+        // if all checked notes turned out to be either `P2ID` or `P2IDE` notes and all of them
         // passed, then we could safely return the `Success`
         if successful_notes.len() == (input_notes.num_notes() as usize) {
             return Ok(NoteAccountExecution::Success);
