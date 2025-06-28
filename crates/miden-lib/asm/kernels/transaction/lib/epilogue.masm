@@ -16,8 +16,6 @@ const.ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME="total number of as
 
 const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither changed the account state, nor consumed any notes"
 
-const.ERR_EPILOGUE_AUTH_PROCEDURE_FAILED="account authentication procedure failed"
-
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
 
