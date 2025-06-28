@@ -359,16 +359,14 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     Ok(())
 }
 
-/// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
+    /// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
 #[test]
 fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
-    let (auth_component, _) = Auth::Mock.build_component();
-
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
-        .with_auth_component(auth_component)
+        .with_auth_component(Auth::Mock)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),

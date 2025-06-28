@@ -13,10 +13,16 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot}, assembly::diagnostics::{miette, IntoDiagnostic, NamedSource, WrapErr}, asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset}, block::BlockNumber, note::{
+    Felt, FieldElement, Hasher, MIN_PROOF_SECURITY_LEVEL, TransactionScriptError, Word,
+    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
+    assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
+    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
+    block::BlockNumber,
+    note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
         NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
-    }, testing::{
+    },
+    testing::{
         account_component::{AccountMockComponent, MockAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -24,9 +30,10 @@ use miden_objects::{
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
         },
         constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA},
-        note::{NoteBuilder, DEFAULT_NOTE_CODE},
+        note::{DEFAULT_NOTE_CODE, NoteBuilder},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
-    }, transaction::{OutputNote, ProvenTransaction, TransactionScript}, Felt, FieldElement, Hasher, TransactionScriptError, Word, MIN_PROOF_SECURITY_LEVEL
+    },
+    transaction::{OutputNote, ProvenTransaction, TransactionScript},
 };
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,
@@ -120,9 +127,8 @@ fn transaction_executor_witness() -> miette::Result<()> {
 fn executed_transaction_account_delta_new() {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
-    let (auth_component, _) = Auth::Mock.build_component();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(auth_component)
+        .with_auth_component(Auth::Mock)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -988,11 +994,9 @@ fn transaction_executor_account_code_using_custom_library() {
             .unwrap()
             .with_supports_all_types();
 
-    let (auth_component, _) = Auth::Mock.build_component();
-
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(auth_component)
+        .with_auth_component(Auth::Mock)
         .with_component(account_component)
         .build_existing()
         .unwrap();

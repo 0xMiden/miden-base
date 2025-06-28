@@ -1443,11 +1443,9 @@ mod tests {
 
     #[test]
     fn with_accounts() {
-        let (auth_component, _) = Auth::Mock.build_component();
-
         let account = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(auth_component)
+            .with_auth_component(Auth::Mock)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),

@@ -66,3 +66,10 @@ impl Auth {
         }
     }
 }
+
+impl From<Auth> for AccountComponent {
+    fn from(auth: Auth) -> Self {
+        let (component, _) = auth.build_component();
+        component
+    }
+}

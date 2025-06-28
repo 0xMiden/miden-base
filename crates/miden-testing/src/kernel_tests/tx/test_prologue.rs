@@ -493,11 +493,10 @@ pub fn create_multiple_accounts_test(
         AccountType::FungibleFaucet,
         AccountType::NonFungibleFaucet,
     ] {
-        let (auth_component, _) = Auth::Mock.build_component();
         let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
             .account_type(account_type)
             .storage_mode(storage_mode)
-            .with_auth_component(auth_component)
+            .with_auth_component(Auth::Mock)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),
@@ -616,11 +615,9 @@ pub fn create_account_invalid_seed() {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block();
 
-    let (auth_component, _) = Auth::Mock.build_component();
-
     let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
-        .with_auth_component(auth_component)
+        .with_auth_component(Auth::Mock)
         .with_component(BasicWallet)
         .build()
         .unwrap();
