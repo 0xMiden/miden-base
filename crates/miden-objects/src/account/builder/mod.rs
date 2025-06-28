@@ -104,7 +104,7 @@ impl AccountBuilder {
             .module_infos()
             .map(|module| module.procedures().count())
             .sum::<usize>();
-        assert_eq!(procedure_count, 1, "Auth component must have exactly one procedure");
+        assert_eq!(procedure_count, 1, "auth component must have exactly one procedure");
 
         self.auth_component = Some(component);
         self
