@@ -359,7 +359,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     Ok(())
 }
 
-    /// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
+/// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
 #[test]
 fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
     // Construct a new account.

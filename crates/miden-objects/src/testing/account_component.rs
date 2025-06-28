@@ -72,7 +72,8 @@ impl From<AccountMockComponent> for AccountComponent {
 // MOCK AUTH COMPONENT
 // ================================================================================================
 
-/// Creates a mock authentication [`AccountComponent`] for testing purposes. It only increments the nonce.
+/// Creates a mock authentication [`AccountComponent`] for testing purposes. It only increments the
+/// nonce.
 pub struct MockAuthComponent {
     library: Library,
 }

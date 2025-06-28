@@ -248,8 +248,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 }
 
 // /// Tests that a NOOP transaction with state commitments X -> X against account A can appear
-// /// in one batch while another batch contains a state-updating transaction with state commitments X
-// /// -> Y against the same account A. Both batches are in the same block.
+// /// in one batch while another batch contains a state-updating transaction with state commitments
+// X /// -> Y against the same account A. Both batches are in the same block.
 // #[test]
 // fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
 //     let TestSetup { mut chain, .. } = setup_chain(0);
@@ -257,8 +257,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 //     let account0 = generate_account_with_conditional_auth(&mut chain);
 
 //     let tx0 = generate_noop_tx(&mut chain, account0.id());
-//     // This is a transaction that updates the state of the account - the expiration is unimportant
-//     // here which is why we set it to u32::MAX.
+//     // This is a transaction that updates the state of the account - the expiration is
+// unimportant     // here which is why we set it to u32::MAX.
 //     let tx1 = generate_tx_with_storage_increment(&mut chain, tx0.clone());
 
 //     // sanity check: NOOP transaction's init and final commitment should be the same.

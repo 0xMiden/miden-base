@@ -14,8 +14,10 @@ use miden_objects::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
-    assembly::Library,
-    assembly::diagnostics::{IntoDiagnostic, Report, WrapErr, miette},
+    assembly::{
+        Library,
+        diagnostics::{IntoDiagnostic, Report, WrapErr, miette},
+    },
     asset::AssetVault,
     testing::{
         account_component::AccountMockComponent,
