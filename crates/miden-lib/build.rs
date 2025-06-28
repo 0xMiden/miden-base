@@ -447,26 +447,18 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) {
 /// i.e. "use.kernel::account_id".
 fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
     // source is expected to be an `OUT_DIR/asm` folder
-    let shared_modules_folder = source_dir.as_ref().join(SHARED_MODULES_DIR);
+    let shared_modules_dir = source_dir.as_ref().join(SHARED_MODULES_DIR);
 
-    for shared_module in fs::read_dir(shared_modules_folder).unwrap() {
-        let shared_module_path = shared_module.unwrap().path();
+    for module_path in get_masm_files(shared_modules_dir).unwrap() {
+        let module_name = module_path.file_name().unwrap();
 
         // copy to kernel lib
         let kernel_lib_folder = source_dir.as_ref().join(ASM_TX_KERNEL_DIR).join("lib");
-        fs::copy(
-            &shared_module_path,
-            kernel_lib_folder.join(shared_module_path.file_name().unwrap()),
-        )
-        .unwrap();
+        fs::copy(&module_path, kernel_lib_folder.join(module_name)).into_diagnostic()?;
 
         // copy to miden lib
         let miden_lib_folder = source_dir.as_ref().join(ASM_MIDEN_DIR);
-        fs::copy(
-            &shared_module_path,
-            miden_lib_folder.join(shared_module_path.file_name().unwrap()),
-        )
-        .unwrap();
+        fs::copy(&module_path, miden_lib_folder.join(module_name)).into_diagnostic()?;
     }
 
     Ok(())
