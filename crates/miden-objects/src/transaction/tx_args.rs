@@ -444,14 +444,12 @@ impl Deserializable for TransactionScript {
 
 #[cfg(test)]
 mod tests {
-    use alloc::collections::BTreeMap;
-
     use vm_core::{
         AdviceMap,
         utils::{Deserializable, Serializable},
     };
 
-    use crate::transaction::{AuthArguments, TransactionArgs};
+    use crate::transaction::TransactionArgs;
 
     #[test]
     fn test_tx_args_serialization() {
