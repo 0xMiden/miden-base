@@ -302,7 +302,7 @@ impl Deserializable for StorageEntry {
                 })
             },
             _ => Err(DeserializationError::InvalidValue(format!(
-                "unknown variant tag `{variant_tag}` for StorageEntry"
+                "unknown variant tag '{variant_tag}' for StorageEntry"
             ))),
         }
     }

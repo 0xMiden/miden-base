@@ -166,6 +166,7 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     // Make the block inputs invalid by using a single stale account witness.
     let mut stale_account_witness_block_inputs = valid_block_inputs.clone();
     let batch_account_id0 = batches[0].updated_accounts().next().unwrap();
+
     *stale_account_witness_block_inputs
         .account_witnesses_mut()
         .get_mut(&batch_account_id0)
@@ -212,6 +213,7 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     // Make the block inputs invalid by using a single stale nullifier witnesses.
     let mut invalid_nullifier_witness_block_inputs = valid_block_inputs.clone();
     let batch_nullifier0 = batches[0].created_nullifiers().next().unwrap();
+
     *invalid_nullifier_witness_block_inputs
         .nullifier_witnesses_mut()
         .get_mut(&batch_nullifier0)

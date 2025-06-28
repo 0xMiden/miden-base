@@ -234,7 +234,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
         assert_eq!(
             process.stack.get(0),
             Felt::new(is_faucet as u64),
-            "Rust and Masm is_faucet diverged. account_id: {account_id}"
+            "Rust and MASM is_faucet diverged for account_id {account_id}"
         );
     }
 
