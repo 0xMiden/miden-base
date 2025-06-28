@@ -324,17 +324,12 @@ fn compile_note_scripts(
 
     // Add utils.masm as a library to the assembler
     let utils_file_path = source_dir.join("utils.masm");
-    if utils_file_path.exists() {
-        let utils_namespace =
-            "note_scripts::utils".parse::<LibraryNamespace>().expect("invalid namespace");
-        let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
-
-        assembler.add_module(NamedSource::new(utils_namespace, utils_source.clone()))?;
-    }
+    let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
+    assembler.add_module(NamedSource::new("note_scripts::utils", utils_source))?;
 
     for masm_file_path in get_masm_files(source_dir).unwrap() {
         // Skip utils.masm since it was added as a library
-        if masm_file_path.file_name().unwrap().to_str().unwrap() == "utils.masm" {
+        if masm_file_path == utils_file_path {
             continue;
         }
 
