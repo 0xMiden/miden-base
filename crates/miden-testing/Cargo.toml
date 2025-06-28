@@ -22,7 +22,6 @@ masm-debug = ["miden-lib/with-debug-info"]
 
 [dependencies]
 anyhow = { version = "1.0", default-features = false }
-assembly = { workspace = true }
 async-trait = "0.1"
 miden-block-prover = { workspace = true, features = ["testing"] }
 miden-crypto = { workspace = true }

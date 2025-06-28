@@ -1,5 +1,4 @@
 use anyhow::Context;
-use assembly::diagnostics::{IntoDiagnostic, WrapErr, miette};
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
@@ -15,7 +14,8 @@ use miden_objects::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
-    assembly::{Library, diagnostics::Report},
+    assembly::Library,
+    assembly::diagnostics::{IntoDiagnostic, Report, WrapErr, miette},
     asset::AssetVault,
     testing::{
         account_component::AccountMockComponent,
