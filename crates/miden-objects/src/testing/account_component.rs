@@ -1,11 +1,11 @@
 use alloc::{string::String, vec::Vec};
-use std::sync::LazyLock;
 
 use crate::{
     AccountError,
     account::{AccountComponent, StorageSlot},
     assembly::{Assembler, Library, diagnostics::NamedSource},
     testing::account_code::MOCK_ACCOUNT_CODE,
+    utils::sync::LazyLock,
 };
 
 // ACCOUNT COMPONENT ASSEMBLY CODE
