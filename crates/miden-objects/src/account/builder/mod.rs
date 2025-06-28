@@ -28,6 +28,7 @@ use crate::{
 ///
 /// The methods that are required to be called are:
 ///
+/// - [`AccountBuilder::with_auth_component`],
 /// - [`AccountBuilder::with_component`], which must be called at least once.
 ///
 /// Under the `testing` feature, it is possible to:
@@ -93,6 +94,7 @@ impl AccountBuilder {
     }
 
     /// Adds a designated authentication [`AccountComponent`] to the builder.
+    /// This component must have exactly one procedure.
     ///
     /// This component will be placed at index 0 of the account procedures list.
     pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
