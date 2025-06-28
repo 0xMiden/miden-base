@@ -113,7 +113,7 @@ impl AccountBuilder {
     }
 
     /// Builds the common parts of testing and non-testing code.
-    fn build_inner(&self) -> Result<(AssetVault, AccountCode, AccountStorage), AccountError> {
+    fn build_inner(&mut self) -> Result<(AssetVault, AccountCode, AccountStorage), AccountError> {
         #[cfg(any(feature = "testing", test))]
         let vault = AssetVault::new(&self.assets).map_err(|err| {
             AccountError::BuildError(format!("asset vault failed to build: {err}"), None)
@@ -124,12 +124,11 @@ impl AccountBuilder {
 
         let auth_component = self
             .auth_component
-            .clone()
+            .take()
             .ok_or(AccountError::BuildError("auth component must be set".into(), None))?;
 
-        // Make sure the auth component is first.
         let mut components = vec![auth_component];
-        components.extend_from_slice(&self.components);
+        components.extend(core::mem::take(&mut self.components));
 
         let (code, storage) = Account::initialize_from_components(self.account_type, &components)
             .map_err(|err| {
@@ -179,7 +178,7 @@ impl AccountBuilder {
     /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on the given components.
     /// - If duplicate assets were added to the builder (only under the `testing` feature).
     /// - If the vault is not empty on new accounts (only under the `testing` feature).
-    pub fn build(self) -> Result<(Account, Word), AccountError> {
+    pub fn build(mut self) -> Result<(Account, Word), AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         #[cfg(any(feature = "testing", test))]
@@ -230,7 +229,7 @@ impl AccountBuilder {
     /// The [`AccountId`] is constructed by slightly modifying `init_seed[0..8]` to be a valid ID.
     ///
     /// For possible errors, see the documentation of [`Self::build`].
-    pub fn build_existing(self) -> Result<Account, AccountError> {
+    pub fn build_existing(mut self) -> Result<Account, AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         let account_id = {
