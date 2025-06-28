@@ -260,7 +260,7 @@ mod tests {
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::account::StorageSlot;
+    use crate::{account::StorageSlot, testing::account_component::NoopAuthComponent};
 
     const CUSTOM_CODE1: &str = "
           export.foo
@@ -272,11 +272,6 @@ mod tests {
               push.4.4 add eq.8
             end
           ";
-    const AUTH_CODE: &str = "
-            export.auth
-              push.1 assert
-            end
-          ";
 
     static CUSTOM_LIBRARY1: LazyLock<Library> = LazyLock::new(|| {
         Assembler::default()
@@ -286,11 +281,6 @@ mod tests {
     static CUSTOM_LIBRARY2: LazyLock<Library> = LazyLock::new(|| {
         Assembler::default()
             .assemble_library([CUSTOM_CODE2])
-            .expect("code should be valid")
-    });
-    static AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-        Assembler::default()
-            .assemble_library([AUTH_CODE])
             .expect("code should be valid")
     });
 
@@ -328,15 +318,6 @@ mod tests {
         }
     }
 
-    struct AuthComponent;
-    impl From<AuthComponent> for AccountComponent {
-        fn from(_auth: AuthComponent) -> Self {
-            AccountComponent::new(AUTH_LIBRARY.clone(), vec![])
-                .expect("component should be valid")
-                .with_supports_all_types()
-        }
-    }
-
     #[test]
     fn account_builder() {
         let storage_slot0 = 25;
@@ -344,7 +325,7 @@ mod tests {
         let storage_slot2 = 42;
 
         let (account, seed) = Account::builder([5; 32])
-            .with_auth_component(AuthComponent)
+            .with_auth_component(NoopAuthComponent::from_assembler(Assembler::default()).unwrap())
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
                 slot0: storage_slot1,
@@ -412,7 +393,7 @@ mod tests {
         let storage_slot0 = 25;
 
         let build_error = Account::builder([0xff; 32])
-            .with_auth_component(AuthComponent)
+            .with_auth_component(NoopAuthComponent::from_assembler(Assembler::default()).unwrap())
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_assets(AssetVault::mock().assets())
             .build()
