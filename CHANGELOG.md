@@ -31,6 +31,7 @@
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
 - Added `Note::is_network_note()` accessor (#1485).
 - [BREAKING] Update handling of the shared modules (#1490).
+- Added `ScriptBuilder` to streamline building note & transaction scripts (#TBD).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
