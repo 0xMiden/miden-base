@@ -728,7 +728,8 @@ export.authenticate_procedure
     # => [storage_offset, storage_size]
 end
 
-#! Asserts that the procedure root is the authentication procedure.
+#! Asserts that the specified procedure root is the root of the authentication procedure for the
+#! native account.
 #!
 #! Inputs:  [PROC_ROOT]
 #! Outputs: []
