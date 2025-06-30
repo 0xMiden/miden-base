@@ -4,12 +4,19 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
+    Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
-        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType, StorageMap, StorageSlot
-    }, asset::{Asset, FungibleAsset}, note::{Note, NoteType}, testing::{
+        AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType,
+        StorageMap, StorageSlot,
+    },
+    asset::{Asset, FungibleAsset},
+    note::{Note, NoteType},
+    testing::{
         account_component::AccountMockComponent, account_id::AccountIdBuilder,
         asset::NonFungibleAssetBuilder,
-    }, transaction::{ExecutedTransaction, LinkMapKey, TransactionScript}, vm::AdviceMap, Digest, Felt, Hasher, Word, EMPTY_WORD
+    },
+    transaction::{ExecutedTransaction, LinkMapKey, TransactionScript},
+    vm::AdviceMap,
 };
 use miden_tx::{TransactionExecutorError, utils::word_to_masm_push_string};
 use rand::Rng;
