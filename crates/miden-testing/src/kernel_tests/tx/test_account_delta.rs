@@ -310,7 +310,6 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
                 account_id,
                 &[Asset::from(added_asset)],
                 NoteType::Public,
-                None,
             )
             .context("failed to add note with asset")?;
         added_notes.push(added_note);
