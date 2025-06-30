@@ -71,6 +71,9 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
     /// [TransactionAuthenticator] and [ExecutionOptions].
+    ///
+    /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
+    /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
     pub fn new_with_options(
         data_store: &'store dyn DataStore,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
