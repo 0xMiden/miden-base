@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeSet, vec::Vec};
 
 use assembly::{Assembler, Compile, Library};
-use vm_processor::MastForest;
+use vm_processor::{Digest, MastForest};
 
 mod template;
 pub use template::*;
@@ -110,6 +110,24 @@ impl AccountComponent {
 
         Ok(AccountComponent::new(template.library().clone(), storage_slots)?
             .with_supported_types(template.metadata().supported_types().clone()))
+    }
+
+    pub(super) fn get_auth_procedure_root(&self) -> Result<Option<Digest>, AccountError> {
+        let mut auth_procedure_root = None;
+
+        for module in self.library.module_infos() {
+            for (_, procedure_info) in module.procedures() {
+                if procedure_info.name.contains("auth_") {
+                    if auth_procedure_root.is_some() {
+                        return Err(AccountError::AccountComponentMultipleAuthProcedures);
+                    }
+
+                    auth_procedure_root = Some(procedure_info.digest);
+                }
+            }
+        }
+
+        Ok(auth_procedure_root)
     }
 
     // ACCESSORS

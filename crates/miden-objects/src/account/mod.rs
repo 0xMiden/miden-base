@@ -425,6 +425,7 @@ mod tests {
         },
         asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
         testing::{
+            account_component::NoopAuthComponent,
             account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
             storage::AccountStorageDeltaBuilder,
         },
@@ -654,12 +655,14 @@ mod tests {
         let library1 = Assembler::default().assemble_library([code1]).unwrap();
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
+        let auth_component: AccountComponent =
+            NoopAuthComponent::from_assembler(Assembler::default()).unwrap().into();
         let component1 = AccountComponent::new(library1, vec![]).unwrap().with_supports_all_types();
         let component2 = AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[component1, component2],
+            &[auth_component, component1, component2],
         )
         .unwrap_err();
 

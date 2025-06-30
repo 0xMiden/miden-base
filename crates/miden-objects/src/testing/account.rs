@@ -9,7 +9,7 @@ use crate::{
     },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     testing::{
-        account_component::AccountMockComponent,
+        account_component::{AccountMockComponent, NoopAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -56,11 +56,14 @@ impl Account {
     ) -> Self {
         let account_id = AccountId::try_from(account_id).unwrap();
 
-        let mock_component = AccountMockComponent::new_with_empty_slots(assembler).unwrap();
+        let mock_component = AccountMockComponent::new_with_empty_slots(assembler.clone()).unwrap();
+
+        let auth_component: AccountComponent =
+            NoopAuthComponent::from_assembler(assembler).unwrap().into();
 
         let (account_code, mut account_storage) = Account::initialize_from_components(
             account_id.account_type(),
-            &[mock_component.into()],
+            &[auth_component, mock_component.into()],
         )
         .unwrap();
 
@@ -90,11 +93,16 @@ impl Account {
 
         let account_id = AccountId::try_from(account_id).unwrap();
 
+        let auth_component: AccountComponent =
+            NoopAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+
         let mock_component = AccountMockComponent::new_with_empty_slots(assembler).unwrap();
 
-        let account_code =
-            AccountCode::from_components(&[mock_component.into()], account_id.account_type())
-                .unwrap();
+        let account_code = AccountCode::from_components(
+            &[auth_component, mock_component.into()],
+            account_id.account_type(),
+        )
+        .unwrap();
 
         // The component does not have any storage slots so we don't need to instantiate storage
         // from the component. We also need to set the custom value for the storage map so we

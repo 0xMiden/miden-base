@@ -94,21 +94,13 @@ impl AccountBuilder {
     }
 
     /// Adds a designated authentication [`AccountComponent`] to the builder.
-    /// This component must have exactly one procedure.
+    /// This component may contain multiple procedures, but is expected to contain exactly one
+    /// authentication procedure (named `auth__*`).
+    /// Calling this method multiple times will override the previous auth component.
     ///
     /// This component will be placed at index 0 of the account procedures list.
     pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
-        let component = account_component.into();
-
-        // Validate that the component has exactly one procedure
-        let procedure_count = component
-            .library()
-            .module_infos()
-            .map(|module| module.procedures().count())
-            .sum::<usize>();
-        assert_eq!(procedure_count, 1, "auth component must have exactly one procedure");
-
-        self.auth_component = Some(component);
+        self.auth_component = Some(account_component.into());
         self
     }
 
@@ -174,6 +166,8 @@ impl AccountBuilder {
     /// - The number of procedures in all merged components is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`](crate::account::AccountCode::MAX_NUM_PROCEDURES).
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - Authentication component is missing.
+    /// - Multiple authentication procedures are found.
     /// - The number of [`StorageSlot`](crate::account::StorageSlot)s of all components exceeds 255.
     /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on the given components.
     /// - If duplicate assets were added to the builder (only under the `testing` feature).

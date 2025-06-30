@@ -73,6 +73,10 @@ pub enum AccountComponentTemplateError {
 pub enum AccountError {
     #[error("failed to deserialize account code")]
     AccountCodeDeserializationError(#[source] DeserializationError),
+    #[error("account code does not contain an auth component")]
+    AccountCodeNoAuthComponent,
+    #[error("account code contains multiple auth components")]
+    AccountCodeMultipleAuthComponents,
     #[error("account code does not contain procedures but must contain at least one procedure")]
     AccountCodeNoProcedures,
     #[error("account code contains {0} procedures but it may contain at most {max} procedures", max = AccountCode::MAX_NUM_PROCEDURES)]
@@ -91,6 +95,8 @@ pub enum AccountError {
     AccountComponentDuplicateProcedureRoot(Digest),
     #[error("failed to create account component")]
     AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
+    #[error("account component contains multiple authentication procedures")]
+    AccountComponentMultipleAuthProcedures,
     #[error("failed to update asset vault")]
     AssetVaultUpdateError(#[source] AssetVaultError),
     #[error("account build error: {0}")]

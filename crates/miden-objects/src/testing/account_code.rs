@@ -2,7 +2,7 @@ use assembly::{Assembler, Library};
 
 use crate::{
     account::{AccountCode, AccountComponent, AccountType},
-    testing::account_component::AccountMockComponent,
+    testing::account_component::{AccountMockComponent, NoopAuthComponent},
 };
 
 pub const CODE: &str = "
@@ -136,6 +136,12 @@ impl AccountCode {
         let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
             .unwrap()
             .with_supports_all_types();
-        Self::from_components(&[component], AccountType::RegularAccountUpdatableCode).unwrap()
+        let auth_component =
+            NoopAuthComponent::from_assembler(Assembler::default()).unwrap().into();
+        Self::from_components(
+            &[auth_component, component],
+            AccountType::RegularAccountUpdatableCode,
+        )
+        .unwrap()
     }
 }
