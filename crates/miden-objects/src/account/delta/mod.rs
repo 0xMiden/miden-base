@@ -6,6 +6,9 @@ use super::{
 };
 use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
 
+mod link_map_key;
+pub use link_map_key::LinkMapKey;
+
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
 

@@ -8,7 +8,6 @@ use super::{
 
 mod executed_tx;
 mod inputs;
-mod link_map_key;
 mod ordered_transactions;
 mod outputs;
 mod partial_blockchain;
@@ -20,7 +19,6 @@ mod tx_witness;
 
 pub use executed_tx::{ExecutedTransaction, TransactionMeasurements};
 pub use inputs::{AccountInputs, InputNote, InputNotes, ToInputNoteCommitments, TransactionInputs};
-pub use link_map_key::LinkMapKey;
 pub use ordered_transactions::OrderedTransactionHeaders;
 pub use outputs::{OutputNote, OutputNotes, TransactionOutputs};
 pub use partial_blockchain::PartialBlockchain;

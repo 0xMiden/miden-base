@@ -60,14 +60,18 @@ impl<T: Into<Word> + Copy> Ord for LinkMapKey<T> {
         let self_word: Word = self.0.into();
         let other_word: Word = other.0.into();
 
-        self_word
+        for (felt0, felt1) in self_word
             .iter()
             .rev()
             .map(Felt::as_int)
             .zip(other_word.iter().rev().map(Felt::as_int))
-            .fold(Ordering::Equal, |ord, (felt0, felt1)| match ord {
-                Ordering::Equal => felt0.cmp(&felt1),
-                _ => ord,
-            })
+        {
+            let ordering = felt0.cmp(&felt1);
+            if let Ordering::Less | Ordering::Greater = ordering {
+                return ordering;
+            }
+        }
+
+        Ordering::Equal
     }
 }

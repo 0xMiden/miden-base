@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 
-use miden_objects::{Felt, Word, ZERO, assembly::mast::MastNodeExt, transaction::LinkMapKey};
+use miden_objects::{Felt, Word, ZERO, account::delta::LinkMapKey, assembly::mast::MastNodeExt};
 use vm_processor::{
     AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, ProcessState,
 };
