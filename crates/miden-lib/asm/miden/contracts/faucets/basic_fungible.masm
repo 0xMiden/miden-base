@@ -111,10 +111,6 @@ export.burn
     exec.faucet::burn
     # => [ASSET, pad(12)]
 
-    # increments the nonce (anyone should be able to call that function)
-    push.1 exec.account::incr_nonce
-    # => [ASSET, pad(12)]
-
     # clear the stack
     dropw
     # => [pad(16)]

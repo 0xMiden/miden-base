@@ -208,6 +208,6 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() {
     prove_and_verify_transaction(executed_transaction.clone()).unwrap();
 
     // check that the account burned the asset
-    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(3)));
+    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(2)));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
 }
