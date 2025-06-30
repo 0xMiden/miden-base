@@ -74,30 +74,13 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     ///
     /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
     /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
-    pub fn new_with_options(
+    pub fn with_options(
         data_store: &'store dyn DataStore,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
         exec_options: ExecutionOptions,
     ) -> Result<Self, TransactionExecutorError> {
-        if exec_options.max_cycles() > MAX_TX_EXECUTION_CYCLES
-            || exec_options.max_cycles() < MIN_TX_EXECUTION_CYCLES
-        {
-            return Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
-                min_cycles: MIN_TX_EXECUTION_CYCLES,
-                max_cycles: MAX_TX_EXECUTION_CYCLES,
-                actual: exec_options.max_cycles(),
-            });
-        }
-
-        if exec_options.expected_cycles() > MAX_TX_EXECUTION_CYCLES
-            || exec_options.expected_cycles() < MIN_TX_EXECUTION_CYCLES
-        {
-            return Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
-                min_cycles: MIN_TX_EXECUTION_CYCLES,
-                max_cycles: MAX_TX_EXECUTION_CYCLES,
-                actual: exec_options.expected_cycles(),
-            });
-        }
+        validate_num_cycles(exec_options.max_cycles())?;
+        validate_num_cycles(exec_options.expected_cycles())?;
 
         Ok(Self { data_store, authenticator, exec_options })
     }
@@ -490,6 +473,19 @@ fn validate_input_notes(
     }
 
     Ok(ref_blocks)
+}
+
+/// Validates that the number of cycles specified is within the allowed range.
+fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> {
+    if !(MIN_TX_EXECUTION_CYCLES..=MAX_TX_EXECUTION_CYCLES).contains(&num_cycles) {
+        Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
+            min_cycles: MIN_TX_EXECUTION_CYCLES,
+            max_cycles: MAX_TX_EXECUTION_CYCLES,
+            actual: num_cycles,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 // HELPER ENUM
