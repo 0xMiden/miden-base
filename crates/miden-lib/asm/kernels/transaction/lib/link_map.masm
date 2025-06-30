@@ -775,18 +775,25 @@ export.assert_entry_ptr_is_valid
     # Check entry pointer is in valid memory range.
     # -------------------------------------------------------------------------------------------------
 
-    exec.memory::get_link_map_region_start_ptr dup.1
-    # => [entry_ptr, LINK_MAP_MEMORY_START_PTR, entry_ptr, map_ptr]
+    # memory pointers must fit into a u32
+    # this enables us to use the more efficient u32lt(e) instructions.
+    u32assert.err=ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION
+    # => [entry_ptr, map_ptr]
 
-    # compute LINK_MAP_MEMORY_START_PTR <= entry_ptr
-    lte
+    exec.memory::get_link_map_region_start_ptr dup.1
+    # => [entry_ptr, region_start_ptr, entry_ptr, map_ptr]
+
+    # compute region_start_ptr <= entry_ptr
+    # region_start_ptr is guaranteed to be a u32
+    u32lte
     # => [is_entry_ptr_gt_start, entry_ptr, map_ptr]
 
     dup.1 exec.memory::get_link_map_region_end_ptr
-    # => [LINK_MAP_MEMORY_END_PTR, entry_ptr, is_entry_ptr_gt_start, entry_ptr, map_ptr]
+    # => [region_end_ptr, entry_ptr, is_entry_ptr_gt_start, entry_ptr, map_ptr]
 
-    # assert entry_ptr < LINK_MAP_MEMORY_END_PTR
-    lt and
+    # compute entry_ptr < region_end_ptr
+    # region_end_ptr is guaranteed to be a u32
+    u32lt and
     # => [is_entry_ptr_in_valid_range, entry_ptr, map_ptr]
 
     # we have to skip the assertion if the map is empty
@@ -806,8 +813,7 @@ export.assert_entry_ptr_is_valid
     # Because LINK_MAP_MEMORY_START_PTR is chosen as a multiple of LINK_MAP_ENTRY_SIZE
     # any valid entry pointer is a multiple of LINK_MAP_ENTRY_SIZE. So to check validity,
     # we assert that entry_ptr % LINK_MAP_ENTRY_SIZE == 0.
-    # note that the previous range check ensures that entry_ptr fits in a u32,
-    # so we don't have to assert u32 validity
+    # note: we previously asserted that entry_ptr fits in a u32
     dup exec.memory::get_link_map_entry_size u32mod eq.0
     # => [is_entry_ptr_aligned, entry_ptr, map_ptr, is_empty_map]
 
