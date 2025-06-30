@@ -222,18 +222,18 @@ const.OUTPUT_NOTE_ASSETS_OFFSET=20
 # The inclusive start of the link map dynamic memory range.
 # Chosen as a number greater than 2^25 such that all entry pointers are multiples of
 # LINK_MAP_ENTRY_SIZE. That enables a simpler check in assert_entry_ptr_is_valid.
-const.LINK_MAP_MEMORY_START_PTR=33554448
+const.LINK_MAP_REGION_START_PTR=33554448
 
 # The non-inclusive end of the link map dynamic memory range.
 # This happens to be 2^26, but if it is changed, it should be chosen as a number such that
-# LINK_MAP_MEMORY_END_PTR - LINK_MAP_MEMORY_START_PTR is a multiple of LINK_MAP_ENTRY_SIZE,
+# LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR is a multiple of LINK_MAP_ENTRY_SIZE,
 # because that enables checking whether a newly allocated entry pointer is at the end of the range
 # using equality rather than lt/gt in link_map_malloc.
-const.LINK_MAP_MEMORY_END_PTR=67108864
+const.LINK_MAP_REGION_END_PTR=67108864
 
-# LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer that
-# will be allocated.
-const.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET=33554432
+# LINK_MAP_REGION_START_PTR + the currently used size stored at this pointer defines the next
+# entry pointer that will be allocated.
+const.LINK_MAP_USED_MEMORY_SIZE=33554432
 
 # The size of each map entry, i.e. four words.
 const.LINK_MAP_ENTRY_SIZE=16
@@ -1693,16 +1693,16 @@ end
 #!
 #! Inputs:  []
 #! Outputs: [start_ptr]
-export.get_link_map_memory_start_ptr
-    push.LINK_MAP_MEMORY_START_PTR
+export.get_link_map_region_start_ptr
+    push.LINK_MAP_REGION_START_PTR
 end
 
 #! Returns the link map memory end ptr constant.
 #!
 #! Inputs:  []
 #! Outputs: [end_ptr]
-export.get_link_map_memory_end_ptr
-    push.LINK_MAP_MEMORY_END_PTR
+export.get_link_map_region_end_ptr
+    push.LINK_MAP_REGION_END_PTR
 end
 
 #! Returns the link map entry size constant.
@@ -1721,23 +1721,23 @@ end
 #! Panics if:
 #! - the allocation exceeds the maximum possible number of link map entries.
 export.link_map_malloc
-    # retrieve the current offset
-    mem_load.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET dup
-    # => [current_offset, current_offset]
+    # retrieve the current memory size
+    mem_load.LINK_MAP_USED_MEMORY_SIZE dup
+    # => [current_mem_size, current_mem_size]
 
     # store next offset
     add.LINK_MAP_ENTRY_SIZE
-    # => [next_offset, current_offset]
+    # => [next_mem_size, current_mem_size]
 
-    mem_store.LINK_MAP_MEMORY_NEXT_MALLOC_OFFSET
-    # => [current_offset]
+    mem_store.LINK_MAP_USED_MEMORY_SIZE
+    # => [current_mem_size]
 
-    add.LINK_MAP_MEMORY_START_PTR
+    add.LINK_MAP_REGION_START_PTR
     # => [entry_ptr]
 
     # If entry_ptr is the end_ptr the entry would be allocated in the next memory region so
     # we must abort.
     # We can use neq because of how the end ptr is chosen. See its docs for details.
-    dup neq.LINK_MAP_MEMORY_END_PTR assert.err=ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED
+    dup neq.LINK_MAP_REGION_END_PTR assert.err=ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED
     # => [entry_ptr]
 end

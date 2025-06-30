@@ -775,14 +775,14 @@ export.assert_entry_ptr_is_valid
     # Check entry pointer is in valid memory range.
     # -------------------------------------------------------------------------------------------------
 
-    exec.memory::get_link_map_memory_start_ptr dup.1
+    exec.memory::get_link_map_region_start_ptr dup.1
     # => [entry_ptr, LINK_MAP_MEMORY_START_PTR, entry_ptr, map_ptr]
 
     # compute LINK_MAP_MEMORY_START_PTR <= entry_ptr
     lte
     # => [is_entry_ptr_gt_start, entry_ptr, map_ptr]
 
-    dup.1 exec.memory::get_link_map_memory_end_ptr
+    dup.1 exec.memory::get_link_map_region_end_ptr
     # => [LINK_MAP_MEMORY_END_PTR, entry_ptr, is_entry_ptr_gt_start, entry_ptr, map_ptr]
 
     # assert entry_ptr < LINK_MAP_MEMORY_END_PTR
