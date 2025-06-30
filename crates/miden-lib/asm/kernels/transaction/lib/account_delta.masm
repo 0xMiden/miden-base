@@ -118,9 +118,9 @@ proc.update_slot_delta
     if.true
         exec.update_value_slot_delta
     else
-      # TODO: Update delta hasher with map.
-      # drop slot idx
-      drop
+        # TODO: Update delta hasher with map.
+        # drop slot idx
+        drop
     end
 end
 
@@ -140,31 +140,31 @@ proc.update_value_slot_delta
 
     # only include in delta if the slot's value has changed
     if.true
-      # drop init value
-      dropw
-      # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+        # drop init value
+        dropw
+        # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-      # build value slot metadata
-      push.DOMAIN_VALUE
-      # => [domain, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+        # build value slot metadata
+        push.DOMAIN_VALUE
+        # => [domain, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-      movup.5 push.0.0
-      # => [0, 0, slot_idx, domain, CURRENT_VALUE, RATE, RATE, PERM]
+        movup.5 push.0.0
+        # => [0, 0, slot_idx, domain, CURRENT_VALUE, RATE, RATE, PERM]
 
-      # clear rate elements
-      swapdw dropw dropw
-      # => [0, 0, slot_idx, domain, CURRENT_VALUE, PERM]
+        # clear rate elements
+        swapdw dropw dropw
+        # => [0, 0, slot_idx, domain, CURRENT_VALUE, PERM]
 
-      # arrange rate words in correct order
-      swapw
-      # => [CURRENT_VALUE, 0, 0, slot_idx, domain, PERM]
+        # arrange rate words in correct order
+        swapw
+        # => [CURRENT_VALUE, 0, 0, slot_idx, domain, PERM]
 
-      hperm
-      # => [RATE, RATE, PERM]
+        hperm
+        # => [RATE, RATE, PERM]
     else
-      # drop init value, current value and slot idx
-      dropw dropw drop
-      # => [RATE, RATE, PERM]
+        # drop init value, current value and slot idx
+        dropw dropw drop
+        # => [RATE, RATE, PERM]
     end
     # => [RATE, RATE, PERM]
 end
@@ -235,9 +235,9 @@ proc.update_fungible_asset_delta.2
             hperm
             # => [RATE, RATE, PERM]
         else
-          # discard values loaded from map: KEY, VALUE0
-          dropw dropw
-          # => [RATE, RATE, PERM]
+            # discard values loaded from map: KEY, VALUE0
+            dropw dropw
+            # => [RATE, RATE, PERM]
         end
         # => [RATE, RATE, PERM]
 
@@ -428,9 +428,9 @@ end
 #! - x_{hi, lo} are the u32 limbs of an i64.
 #! - is_x_signed indicates whether x is signed.
 proc.i64_is_signed
-  # 0x80000000 is a u32 bitmask with highest bit set to 1 and all others to 0.
-  dup u32and.0x80000000 u32shr.31
-  # => [is_signed, x_hi, x_lo]
+    # 0x80000000 is a u32 bitmask with highest bit set to 1 and all others to 0.
+    dup u32and.0x80000000 u32shr.31
+    # => [is_signed, x_hi, x_lo]
 end
 
 #! Negates an i64 represented by two u32 limbs by computing its bitwise NOT and adding 1
@@ -442,17 +442,17 @@ end
 #! Where:
 #! - x_{hi, lo} are the u32 limbs of an i64.
 proc.i64_neg
-  u32not swap u32not swap
-  # => [x_inverted_hi, x_inverted_lo]
+    u32not swap u32not swap
+    # => [x_inverted_hi, x_inverted_lo]
 
-  # Add 1 to get negative x.
-  push.1.0
-  # => [0, 1, x_inverted_hi, x_inverted_lo]
+    # Add 1 to get negative x.
+    push.1.0
+    # => [0, 1, x_inverted_hi, x_inverted_lo]
 
-  # This should never overflow except when negating zero.
-  # (Consider this 8-bit example: 0b0000_0000 would become 0b1111_1111
-  # and adding 1 would overflow the byte resulting in 0b0000_0000 again).
-  # This is why we ignore the overflow flag.
-  exec.u64::wrapping_add
-  # => [-x_hi, -x_lo]
+    # This should never overflow except when negating zero.
+    # (Consider this 8-bit example: 0b0000_0000 would become 0b1111_1111
+    # and adding 1 would overflow the byte resulting in 0b0000_0000 again).
+    # This is why we ignore the overflow flag.
+    exec.u64::wrapping_add
+    # => [-x_hi, -x_lo]
 end
