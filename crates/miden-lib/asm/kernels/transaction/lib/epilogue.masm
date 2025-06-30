@@ -235,9 +235,10 @@ end
 #! Inputs:  []
 #! Outputs: []
 proc.execute_auth_procedure
+    padw padw padw push.0.0.0
     # auth procedure is at index 0 within the account procedures section so no offseting is needed.
     exec.memory::get_acct_procedures_section_ptr
-    # => [auth_procedure_ptr]
+    # => [auth_procedure_ptr, pad(15)]
 
     # execute the auth procedure
     dyncall
