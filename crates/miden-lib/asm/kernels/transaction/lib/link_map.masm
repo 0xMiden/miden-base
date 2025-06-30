@@ -262,7 +262,7 @@ end
 #!
 #! Panics if:
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
-#!   get_existent_value, assert_absent_at_head, assert_absent_after_entry.
+#!   get_existing_value, assert_absent_at_head, assert_absent_after_entry.
 export.get
     emit.LINK_MAP_GET_EVENT adv_push.2
     # => [get_operation, entry_ptr, map_ptr, KEY]
@@ -281,7 +281,7 @@ export.get
         drop swap drop
         # => [entry_ptr, KEY]
 
-        exec.get_existent_value
+        exec.get_existing_value
         # => [VALUE0, VALUE1]
 
         push.1
@@ -345,6 +345,8 @@ proc.insert_at_head
     dup exec.is_empty not
     # => [is_non_empty, map_ptr, entry_ptr]
 
+    # if the link map was not previously empty, then the previous head must be updated to point back
+    # to the newly inserted entry
     if.true
         dup.1
         # => [entry_ptr, map_ptr, entry_ptr]
@@ -587,7 +589,7 @@ end
 #!
 #! Panics if:
 #! - the key in the entry does not match KEY.
-proc.get_existent_value
+proc.get_existing_value
     movdn.4 dup.4
     # => [entry_ptr, KEY, entry_ptr]
 
