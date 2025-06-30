@@ -153,7 +153,7 @@ impl Deserializable for TransactionInputs {
         let block_chain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
         Self::new(account, account_seed, block_header, block_chain, input_notes)
-            .map_err(|err| DeserializationError::InvalidValue(format!("{}", err)))
+            .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }
 

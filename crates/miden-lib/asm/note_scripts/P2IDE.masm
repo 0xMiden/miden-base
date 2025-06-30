@@ -1,7 +1,8 @@
 use.miden::account
+use.miden::account_id
 use.miden::note
 use.miden::tx
-use.miden::contracts::wallets::basic->wallet
+use.note_scripts::utils
 
 # ERRORS
 # =================================================================================================
@@ -18,58 +19,6 @@ const.ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED="failed to consume P2IDE note becaus
 
 # HELPER PROCEDURES
 # =================================================================================================
-
-#! Helper procedure to add all assets of a note to an account.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.add_note_assets_to_account
-    push.0 exec.note::get_assets
-    # => [num_of_assets, 0 = ptr, ...]
-
-    # compute the pointer at which we should stop iterating
-    mul.4 dup.1 add
-    # => [end_ptr, ptr, ...]
-
-    # pad the stack and move the pointer to the top
-    padw movup.5
-    # => [ptr, 0, 0, 0, 0, end_ptr, ...]
-
-    # compute the loop latch
-    dup dup.6 neq
-    # => [latch, ptr, 0, 0, 0, 0, end_ptr, ...]
-
-    while.true
-        # => [ptr, 0, 0, 0, 0, end_ptr, ...]
-
-        # save the pointer so that we can use it later
-        dup movdn.5
-        # => [ptr, 0, 0, 0, 0, ptr, end_ptr, ...]
-
-        # load the asset
-        mem_loadw
-        # => [ASSET, ptr, end_ptr, ...]
-
-        # pad the stack before call
-        padw swapw padw padw swapdw
-        # => [ASSET, pad(12), ptr, end_ptr, ...]
-
-        # add asset to the account
-        call.wallet::receive_asset
-        # => [pad(16), ptr, end_ptr, ...]
-
-        # clean the stack after call
-        dropw dropw dropw
-        # => [0, 0, 0, 0, ptr, end_ptr, ...]
-
-        # increment the pointer and compare it to the end_ptr
-        movup.4 add.4 dup dup.6 neq
-        # => [latch, ptr+4, ASSET, end_ptr, ...]
-    end
-
-    # clear the stack
-    drop dropw drop
-end
 
 #! Helper procedure to check if the P2IDE note is unlocked.
 #!
@@ -112,11 +61,11 @@ proc.reclaim_note
     # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix]
 
     # ensure current account ID = sender account ID
-    exec.account::is_id_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
+    exec.account_id::is_equal assert.err=ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER
     # => []
 
     # add note assets to account
-    exec.add_note_assets_to_account
+    exec.utils::add_note_assets_to_account
     # => []
 end
 
@@ -177,12 +126,12 @@ begin
     # => [account_id_prefix, account_id_suffix, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height, target_account_id_prefix, target_account_id_suffix]
 
     # determine if the current account is the target account
-    movup.7 movup.7 exec.account::is_id_equal
+    movup.7 movup.7 exec.account_id::is_equal
     # => [is_target, account_id_prefix, account_id_suffix, current_block_height, reclaim_block_height]
 
     if.true
         # we can safely consume the note since the current account is the target of the note
-        dropw exec.add_note_assets_to_account
+        dropw exec.utils::add_note_assets_to_account
         # => []
 
     else

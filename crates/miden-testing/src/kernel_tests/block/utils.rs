@@ -160,7 +160,7 @@ pub fn generate_noop_tx(
 
     let tx_context = chain
         .build_tx_context(input.into(), &[noop_note.id()], &[])
-        .input_notes(vec![noop_note])
+        .extend_input_notes(vec![noop_note])
         .build();
     tx_context.execute().unwrap()
 }
@@ -218,7 +218,7 @@ fn authenticate_mock_account_tx_script(expiration_delta: u16) -> TransactionScri
         "
     );
 
-    TransactionScript::compile(code, [], TransactionKernel::testing_assembler_with_mock_account())
+    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()
 }
 

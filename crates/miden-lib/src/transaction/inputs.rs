@@ -5,9 +5,7 @@ use miden_objects::{
     account::{AccountHeader, AccountId, PartialAccount},
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
-    transaction::{
-        InputNote, PartialBlockchain, TransactionArgs, TransactionInputs, TransactionScript,
-    },
+    transaction::{InputNote, PartialBlockchain, TransactionArgs, TransactionInputs},
     vm::AdviceInputs,
 };
 
@@ -36,7 +34,7 @@ impl TransactionAdviceInputs {
         let mut inputs = TransactionAdviceInputs::default();
         let kernel_version = 0; // TODO: replace with user input
 
-        inputs.build_stack(tx_inputs, tx_args.tx_script(), kernel_version);
+        inputs.build_stack(tx_inputs, tx_args, kernel_version);
         inputs.add_kernel_commitments(kernel_version);
         inputs.add_partial_blockchain(tx_inputs.blockchain());
         inputs.add_input_notes(tx_inputs, tx_args)?;
@@ -113,7 +111,7 @@ impl TransactionAdviceInputs {
     fn build_stack(
         &mut self,
         tx_inputs: &TransactionInputs,
-        tx_script: Option<&TransactionScript>,
+        tx_args: &TransactionArgs,
         kernel_version: u8,
     ) {
         let header = tx_inputs.block_header();
@@ -151,10 +149,8 @@ impl TransactionAdviceInputs {
 
         // --- number of notes, script root and args key ----------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
-        self.extend_stack(tx_script.map_or(Word::default(), |s| *s.root()));
-        self.extend_stack(
-            tx_script.map_or(Word::default(), |script| *script.args_key().unwrap_or_default()),
-        );
+        self.extend_stack(tx_args.tx_script().map_or(Word::default(), |script| *script.root()));
+        self.extend_stack(tx_args.tx_script_arg());
     }
 
     // BLOCKCHAIN INJECTIONS

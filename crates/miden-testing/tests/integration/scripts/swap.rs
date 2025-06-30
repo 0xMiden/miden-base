@@ -51,13 +51,12 @@ pub fn prove_send_swap_note() {
     );
 
     let tx_script =
-        TransactionScript::compile(tx_script_src, vec![], TransactionKernel::testing_assembler())
-            .unwrap();
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
     let create_swap_note_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[])
         .tx_script(tx_script)
-        .expected_notes(vec![OutputNote::Full(note.clone())])
+        .extend_expected_output_notes(vec![OutputNote::Full(note.clone())])
         .build()
         .execute()
         .unwrap();

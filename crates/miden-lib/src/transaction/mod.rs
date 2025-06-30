@@ -2,7 +2,7 @@ use alloc::{string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, TransactionInputError, TransactionOutputError,
-    account::{AccountCode, AccountId},
+    account::AccountId,
     assembly::{Assembler, DefaultSourceManager, KernelLibrary},
     block::BlockNumber,
     transaction::{
@@ -244,12 +244,12 @@ impl TransactionKernel {
     ) -> Result<(Digest, Digest, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
-            .expect("first word missing")
+            .expect("output_notes_commitment (first word) missing")
             .into();
 
         let final_account_commitment = stack
             .get_stack_word(FINAL_ACCOUNT_COMMITMENT_WORD_IDX * 4)
-            .expect("second word missing")
+            .expect("final_account_commitment (second word) missing")
             .into();
 
         let expiration_block_num = stack
@@ -357,10 +357,11 @@ impl TransactionKernel {
     }
 
     /// Returns the testing assembler, and additionally contains the library for
-    /// [AccountCode::mock_library()], which is a mock wallet used in tests.
+    /// [AccountCode::mock_library](miden_objects::account::AccountCode::mock_library), which is a
+    /// mock wallet used in tests.
     pub fn testing_assembler_with_mock_account() -> Assembler {
         let assembler = Self::testing_assembler().with_debug_mode(true);
-        let library = AccountCode::mock_library(assembler.clone());
+        let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
 
         assembler.with_library(library).expect("failed to add mock account code")
     }

@@ -169,7 +169,7 @@ impl TryFrom<Word> for NonFungibleAsset {
 
 impl fmt::Display for NonFungibleAsset {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:?}", self)
+        write!(f, "{self:?}")
     }
 }
 

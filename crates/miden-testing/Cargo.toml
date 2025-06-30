@@ -17,8 +17,7 @@ name = "miden-integration-tests"
 path = "tests/integration/main.rs"
 
 [features]
-async = ["winter-maybe-async/async"]
-masm-debug = ["miden-lib/with-debug-info"]
+async = ["winter-maybe-async/async", "miden-tx/async"]
 
 [dependencies]
 # Workspace dependencies

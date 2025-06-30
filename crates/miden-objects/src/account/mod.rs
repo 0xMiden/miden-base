@@ -280,8 +280,8 @@ impl Account {
         self.storage.apply_delta(delta.storage())?;
 
         // update nonce
-        if let Some(nonce) = delta.nonce() {
-            self.set_nonce(nonce)?;
+        if let Some(nonce_delta) = delta.nonce() {
+            self.set_nonce(self.nonce() + nonce_delta)?;
         }
 
         Ok(())
@@ -523,7 +523,7 @@ mod tests {
             account_id,
             vec![asset_1],
             vec![asset_0],
-            final_nonce,
+            final_nonce - init_nonce,
             storage_delta,
         );
 

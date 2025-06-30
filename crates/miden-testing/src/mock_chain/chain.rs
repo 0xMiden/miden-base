@@ -8,7 +8,7 @@ use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::{
     account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
-    note::{create_p2id_note, create_p2idr_note},
+    note::{create_p2id_note, create_p2ide_note},
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
@@ -91,7 +91,6 @@ use crate::{
 ///         target.id(),
 ///         &[FungibleAsset::mock(10)],
 ///         NoteType::Public,
-///       None,
 ///     )
 ///   .unwrap();
 /// mock_chain.prove_next_block();
@@ -121,7 +120,6 @@ use crate::{
 ///         receiver.id(),
 ///         &[Asset::Fungible(fungible_asset)],
 ///         NoteType::Public,
-///         None,
 ///     )
 ///     .unwrap();
 /// // Prove the next block to add the pending note to the chain state, making it available for
@@ -587,7 +585,6 @@ impl MockChain {
         if mock_account.authenticator().is_some() {
             let tx_script = TransactionScript::compile(
                 DEFAULT_AUTH_SCRIPT,
-                vec![],
                 TransactionKernel::testing_assembler_with_mock_account(),
             )
             .unwrap();
@@ -815,43 +812,60 @@ impl MockChain {
         self.pending_objects.output_notes.push(note);
     }
 
-    /// Adds a P2ID [`OutputNote`] to the list of pending notes.
+    /// Adds a plain P2ID [`OutputNote`] to the list of pending notes.
     ///
-    /// A block has to be created to add the note to that block and make it available in the chain
-    /// state, e.g. using [`MockChain::prove_next_block`].
+    /// The note is immediately spendable by `target_account_id` and carries no
+    /// additional reclaim or timelock conditions.
     pub fn add_pending_p2id_note(
         &mut self,
         sender_account_id: AccountId,
         target_account_id: AccountId,
         asset: &[Asset],
         note_type: NoteType,
-        reclaim_height: Option<BlockNumber>,
     ) -> Result<Note, NoteError> {
         let mut rng = RpoRandomCoin::new(Word::default());
 
-        let note = if let Some(height) = reclaim_height {
-            create_p2idr_note(
-                sender_account_id,
-                target_account_id,
-                asset.to_vec(),
-                note_type,
-                Default::default(),
-                height,
-                &mut rng,
-            )?
-        } else {
-            create_p2id_note(
-                sender_account_id,
-                target_account_id,
-                asset.to_vec(),
-                note_type,
-                Default::default(),
-                &mut rng,
-            )?
-        };
+        let note = create_p2id_note(
+            sender_account_id,
+            target_account_id,
+            asset.to_vec(),
+            note_type,
+            Default::default(),
+            &mut rng,
+        )?;
 
         self.add_pending_note(OutputNote::Full(note.clone()));
+        Ok(note)
+    }
 
+    /// Adds a P2IDE [`OutputNote`] (pay‑to‑ID‑escape) to the list of pending notes.
+    ///
+    /// A P2IDE note can include an optional `timelock_height` and/or an optional
+    /// `reclaim_height` after which the `sender_account_id` may reclaim the
+    /// funds.
+    pub fn add_pending_p2ide_note(
+        &mut self,
+        sender_account_id: AccountId,
+        target_account_id: AccountId,
+        asset: &[Asset],
+        note_type: NoteType,
+        reclaim_height: Option<BlockNumber>,
+        timelock_height: Option<BlockNumber>,
+    ) -> Result<Note, NoteError> {
+        let mut rng = RpoRandomCoin::new(Word::default());
+
+        let note = create_p2ide_note(
+            sender_account_id,
+            target_account_id,
+            asset.to_vec(),
+            reclaim_height,
+            timelock_height,
+            note_type,
+            Default::default(),
+            &mut rng,
+        )?;
+
+        self.add_pending_note(OutputNote::Full(note.clone()));
         Ok(note)
     }
 
@@ -1544,7 +1558,6 @@ mod tests {
             account.id(),
             &[Asset::Fungible(FungibleAsset::new(faucet_id, 1000u64).unwrap())],
             NoteType::Private,
-            None,
         )?;
 
         mock_chain.prove_next_block();

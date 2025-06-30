@@ -44,7 +44,6 @@ fn p2id_script_multiple_assets() {
             target_account.id(),
             &[fungible_asset_1, fungible_asset_2],
             NoteType::Public,
-            None,
         )
         .unwrap();
 
@@ -109,7 +108,6 @@ fn prove_consume_note_with_new_account() {
             target_account.id(),
             &[fungible_asset],
             NoteType::Public,
-            None,
         )
         .unwrap();
 
@@ -157,7 +155,6 @@ fn prove_consume_multiple_notes() {
             account.id(),
             &[fungible_asset_1],
             NoteType::Private,
-            None,
         )
         .unwrap();
     let note_2 = mock_chain
@@ -166,7 +163,6 @@ fn prove_consume_multiple_notes() {
             account.id(),
             &[fungible_asset_2],
             NoteType::Private,
-            None,
         )
         .unwrap();
 
@@ -207,7 +203,6 @@ fn test_create_consume_multiple_notes() {
             account.id(),
             &[input_note_asset_1],
             NoteType::Private,
-            None,
         )
         .unwrap();
 
@@ -217,7 +212,6 @@ fn test_create_consume_multiple_notes() {
             account.id(),
             &[input_note_asset_2],
             NoteType::Private,
-            None,
         )
         .unwrap();
 
@@ -283,12 +277,14 @@ fn test_create_consume_multiple_notes() {
     );
 
     let tx_script =
-        TransactionScript::compile(tx_script_src, vec![], TransactionKernel::testing_assembler())
-            .unwrap();
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[input_note_1.id(), input_note_2.id()], &[])
-        .expected_notes(vec![OutputNote::Full(output_note_1), OutputNote::Full(output_note_2)])
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(output_note_1),
+            OutputNote::Full(output_note_2),
+        ])
         .tx_script(tx_script)
         .build();
 
