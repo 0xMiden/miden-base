@@ -554,15 +554,41 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 {
                     iter_code.push_str(&format!(
                         r#"
-                      exec.link_map::next
-                      # => [KEY, VALUE0, VALUE1, has_next, next_iter]
-                      push.{control_key} assert_eqw.err="returned key did not match {control_key}"
-                      # => [VALUE0, VALUE1, has_next, next_iter]
-                      push.{control_value0} assert_eqw.err="returned value0 did not match {control_value0}"
-                      # => [VALUE1, has_next, next_iter]
-                      push.{control_value1} assert_eqw.err="returned value0 did not match {control_value1}"
-                      # => [has_next, next_iter]
-                      push.{control_has_next} assert_eq.err="returned has_next did not match {control_has_next}"
+                      # ======== TEST next_key_double_value ========
+                      dup exec.link_map::next_key_double_value
+                      # => [KEY, VALUE0, VALUE1, has_next, next_iter0, prev_iter]
+                      push.{control_key} assert_eqw.err="next_key_double_value: returned key did not match {control_key}"
+                      # => [VALUE0, VALUE1, has_next, next_iter0, prev_iter]
+                      push.{control_value0} assert_eqw.err="next_key_double_value: returned value0 did not match {control_value0}"
+                      # => [VALUE1, has_next, next_iter0, prev_iter]
+                      push.{control_value1} assert_eqw.err="next_key_double_value: returned value0 did not match {control_value1}"
+                      # => [has_next, next_iter0, prev_iter]
+                      push.{control_has_next} assert_eq.err="next_key_double_value: returned has_next did not match {control_has_next}"
+                      # => [next_iter0, prev_iter]
+
+                      # ======== TEST next_key_value ========
+                      dup.1 exec.link_map::next_key_value
+                      # => [KEY, VALUE0, has_next, next_iter1, next_iter0, prev_iter]
+                      push.{control_key} assert_eqw.err="next_key_value: returned key did not match {control_key}"
+                      # => [VALUE0, has_next, next_iter1, next_iter0, prev_iter]
+                      push.{control_value0} assert_eqw.err="next_key_value: returned value0 did not match {control_value0}"
+                      # => [has_next, next_iter1, next_iter0, prev_iter]
+                      push.{control_has_next} assert_eq.err="next_key_value: returned has_next did not match {control_has_next}"
+                      # => [next_iter1, next_iter0, prev_iter]
+
+                      # ======== TEST next_key ========
+                      movup.2 exec.link_map::next_key
+                      # => [KEY, has_next, next_iter2, next_iter1, next_iter0]
+                      push.{control_key} assert_eqw.err="next_key: returned key did not match {control_key}"
+                      push.{control_has_next} assert_eq.err="next_key: returned has_next did not match {control_has_next}"
+
+                      # All next procedures should return the same next iterator.
+                      # => [next_iter2, next_iter1, next_iter0]
+                      # assert that next_iter2 == next_iter1
+                      dup.1 assert_eq.err="next_iter2 and next_iter1 did not match"
+                      # => [next_iter1, next_iter0]
+                      dup.1 assert_eq.err="next_iter1 and next_iter0 did not match"
+
                       # => [next_iter]
                   "#,
                         control_key = word_to_masm_push_string(&Word::from(*control_key)),
