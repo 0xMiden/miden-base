@@ -225,7 +225,6 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 
     TransactionScript::compile(
         &code,
-        [],
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )
     .context("failed to compile tx script")
