@@ -18,8 +18,7 @@ const.DOMAIN_MAP=3
 
 #! Computes the commitment to the native account's delta.
 #!
-#! See the Rust function `AccountDelta::commitment` for a detailed description
-#! of how it is computed.
+#! See the Rust function `AccountDelta::commitment` for a detailed description of how it is computed.
 #!
 #! Inputs:  []
 #! Outputs: [DELTA_COMMITMENT]
