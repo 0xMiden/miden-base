@@ -10,8 +10,7 @@ use super::{
 };
 use crate::{
     Digest, EMPTY_WORD, Felt, ZERO,
-    account::{AccountStorage, StorageMap, StorageSlot},
-    transaction::LinkMapKey,
+    account::{AccountStorage, StorageMap, StorageSlot, delta::LinkMapKey},
 };
 
 // ACCOUNT STORAGE DELTA

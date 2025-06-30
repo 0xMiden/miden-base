@@ -608,13 +608,14 @@ mod tests {
         ACCOUNT_UPDATE_MAX_SIZE, Digest, EMPTY_WORD, ONE, ProvenTransactionError, ZERO,
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
+            AccountType, AccountVaultDelta, StorageMapDelta,
+            delta::{AccountUpdateDetails, LinkMapKey},
         },
         block::BlockNumber,
         testing::account_id::{
             ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         },
-        transaction::{LinkMapKey, ProvenTransactionBuilder, TxAccountUpdate},
+        transaction::{ProvenTransactionBuilder, TxAccountUpdate},
         utils::Serializable,
     };
 

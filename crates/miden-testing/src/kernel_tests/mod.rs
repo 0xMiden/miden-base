@@ -9,7 +9,10 @@ use miden_lib::{
 };
 use miden_objects::{
     Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
+    account::{
+        Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot,
+        delta::LinkMapKey,
+    },
     assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     note::{
@@ -27,7 +30,7 @@ use miden_objects::{
         note::{DEFAULT_NOTE_CODE, NoteBuilder},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
-    transaction::{LinkMapKey, OutputNote, ProvenTransaction, TransactionScript},
+    transaction::{OutputNote, ProvenTransaction, TransactionScript},
 };
 use miden_tx::{
     LocalTransactionProver, NoteAccountExecution, NoteConsumptionChecker, ProvingOptions,

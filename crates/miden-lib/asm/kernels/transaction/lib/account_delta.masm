@@ -201,7 +201,7 @@ proc.update_map_slot_delta.4
 
     # enter loop if the link map is not empty
     while.true
-        exec.link_map::next
+        exec.link_map::next_key_double_value
         # => [KEY, INIT_VALUE, NEW_VALUE, has_next, iter, ...]
 
         # store has_next
