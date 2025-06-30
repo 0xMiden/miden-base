@@ -32,15 +32,9 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_get_vault_root
     digest!("0x279b4a9e5adca07f01cadf8ecc1303fa3c670003a7a4e69f09506b070c4023df"),
     // account_add_asset
-<<<<<<< HEAD
-    digest!("0x8f5322ba63b506cb4d624258f6c9ffab1729a661c34fd54dcd0f3120ccc05860"),
+    digest!("0x2e11ed064d99ed21fd7a91fa11bddb322ac5891df114b79b82606bed1f245ede"),
     // account_remove_asset
-    digest!("0x4598c4925aa7399dc57d2c1a125231fcbc98100a5030c9b647cb33a8791e1f20"),
-=======
-    digest!("0x27cfd8576932632b9da64bb6b6813a4b396a198a38e08e78e9139406eefa190e"),
-    // account_remove_asset
-    digest!("0x4503f44c4d1039bb8da71d1cf4f93af46e2f6e5b094189686e347fc8c8674d69"),
->>>>>>> 5cfe4bd7 (feat: Implement non-fungible asset vault delta)
+    digest!("0xa07864cba75f80e7d392c30b87d792d66d3fbc31837bddae3fbd5f43aa6f3752"),
     // account_get_balance
     digest!("0xc3385953bc66def5211f53a3c44de8facfb4060abbb1c9708859c314268989e8"),
     // account_has_non_fungible_asset

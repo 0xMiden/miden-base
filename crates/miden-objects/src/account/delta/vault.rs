@@ -9,9 +9,8 @@ use super::{
 };
 use crate::{
     Felt, ONE, Word, ZERO,
-    account::{AccountId, AccountType},
+    account::{AccountId, AccountType, delta::LinkMapKey},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    transaction::LinkMapKey,
 };
 
 // ACCOUNT VAULT DELTA

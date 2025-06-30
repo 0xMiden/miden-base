@@ -269,21 +269,17 @@ proc.update_non_fungible_asset_delta.2
 
     # enter loop if the link map is not empty
     while.true
-        exec.link_map::next
-        # => [KEY, VALUE0, VALUE1, has_next, iter, ...]
+        exec.link_map::next_key_value
+        # => [KEY, VALUE0, has_next, iter, ...]
 
         # store has_next
-        movup.12 loc_store.0
-        # => [KEY, VALUE0, VALUE1, iter, ...]
+        movup.8 loc_store.0
+        # => [KEY, VALUE0, iter, ...]
 
         # store iter
-        movup.12 loc_store.1
-        # => [KEY, VALUE0, VALUE1, ...]
+        movup.8 loc_store.1
+        # => [KEY, VALUE0, ...]
         # this stack state is equivalent to:
-        # => [ASSET, [was_added, 0, 0, 0], EMPTY_WORD, ...]
-
-        # drop unused VALUE1 word
-        movupw.2 dropw
         # => [ASSET, [was_added, 0, 0, 0], ...]
 
         dup.4 neq.0
