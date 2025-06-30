@@ -75,8 +75,28 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         data_store: &'store dyn DataStore,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
         exec_options: ExecutionOptions,
-    ) -> Self {
-        Self { data_store, authenticator, exec_options }
+    ) -> Result<Self, TransactionExecutorError> {
+        if exec_options.max_cycles() > MAX_TX_EXECUTION_CYCLES
+            || exec_options.max_cycles() < MIN_TX_EXECUTION_CYCLES
+        {
+            return Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
+                min_cycles: MIN_TX_EXECUTION_CYCLES,
+                max_cycles: MAX_TX_EXECUTION_CYCLES,
+                actual: exec_options.max_cycles(),
+            });
+        }
+
+        if exec_options.expected_cycles() > MAX_TX_EXECUTION_CYCLES
+            || exec_options.expected_cycles() < MIN_TX_EXECUTION_CYCLES
+        {
+            return Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
+                min_cycles: MIN_TX_EXECUTION_CYCLES,
+                max_cycles: MAX_TX_EXECUTION_CYCLES,
+                actual: exec_options.expected_cycles(),
+            });
+        }
+
+        Ok(Self { data_store, authenticator, exec_options })
     }
 
     /// Puts the [TransactionExecutor] into debug mode.

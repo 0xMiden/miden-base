@@ -19,6 +19,14 @@ pub enum TransactionExecutorError {
     FetchTransactionInputsFailed(#[source] DataStoreError),
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
     ForeignAccountNotAnchoredInReference(AccountId),
+    #[error(
+        "execution options' cycles must be between {min_cycles} and {max_cycles}, but found {actual}"
+    )]
+    InvalidExecutionOptionsCycles {
+        min_cycles: u32,
+        max_cycles: u32,
+        actual: u32,
+    },
     #[error("failed to create transaction inputs")]
     InvalidTransactionInputs(#[source] TransactionInputError),
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
