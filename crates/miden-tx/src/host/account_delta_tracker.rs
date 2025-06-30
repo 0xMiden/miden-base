@@ -20,7 +20,6 @@ pub struct AccountDeltaTracker {
     account_id: AccountId,
     storage: AccountStorageDelta,
     vault: AccountVaultDelta,
-    init_nonce: Felt,
     nonce_delta: Felt,
 }
 
@@ -31,14 +30,13 @@ impl AccountDeltaTracker {
             account_id: account.id(),
             storage: AccountStorageDelta::new(),
             vault: AccountVaultDelta::default(),
-            init_nonce: account.nonce(),
             nonce_delta: ZERO,
         }
     }
 
     /// Consumes `self` and returns the resulting [AccountDelta].
     pub fn into_delta(self) -> AccountDelta {
-        let nonce_delta = (self.nonce_delta != ZERO).then_some(self.init_nonce + self.nonce_delta);
+        let nonce_delta = (self.nonce_delta != ZERO).then_some(self.nonce_delta);
 
         AccountDelta::new(self.account_id, self.storage, self.vault, nonce_delta)
             .expect("account delta created in delta tracker should be valid")

@@ -227,7 +227,7 @@ impl TemplateType {
             if !segment.chars().all(|c| c.is_ascii_alphanumeric() || c == '_') {
                 return Err(TemplateTypeError::InvalidTypeName(
                     s.clone(),
-                    format!("segment `{segment}` contains invalid characters"),
+                    format!("segment '{segment}' contains invalid characters"),
                 ));
             }
         }

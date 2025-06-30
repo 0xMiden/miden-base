@@ -624,7 +624,7 @@ fn test_fpi_execute_foreign_procedure() {
     );
 
     let tx_script =
-        TransactionScript::compile(code, vec![], TransactionKernel::testing_assembler()).unwrap();
+        TransactionScript::compile(code, TransactionKernel::testing_assembler()).unwrap();
 
     let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id());
     let tx_context = mock_chain
@@ -840,7 +840,6 @@ fn test_nested_fpi_cyclic_invocation() {
 
     let tx_script = TransactionScript::compile(
         code,
-        vec![],
         TransactionKernel::testing_assembler().with_debug_mode(true),
     )
     .unwrap();
@@ -848,7 +847,7 @@ fn test_nested_fpi_cyclic_invocation() {
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
         .foreign_accounts(foreign_account_inputs)
-        .advice_inputs(advice_inputs)
+        .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build();
 
@@ -1007,7 +1006,6 @@ fn test_nested_fpi_stack_overflow() {
 
             let tx_script = TransactionScript::compile(
                 code,
-                vec![],
                 TransactionKernel::testing_assembler().with_debug_mode(true),
             )
             .unwrap();
@@ -1126,7 +1124,6 @@ fn test_nested_fpi_native_account_invocation() {
 
     let tx_script = TransactionScript::compile(
         code,
-        vec![],
         TransactionKernel::testing_assembler().with_debug_mode(true),
     )
     .unwrap();
@@ -1134,7 +1131,7 @@ fn test_nested_fpi_native_account_invocation() {
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
         .foreign_accounts(vec![foreign_account_inputs])
-        .advice_inputs(advice_inputs)
+        .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build();
 

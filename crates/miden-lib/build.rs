@@ -10,7 +10,7 @@ use std::{
 
 use assembly::{
     Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report,
-    diagnostics::{IntoDiagnostic, Result, WrapErr},
+    diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr},
     utils::Serializable,
 };
 use regex::Regex;
@@ -32,7 +32,8 @@ const ASM_DIR: &str = "asm";
 const ASM_MIDEN_DIR: &str = "miden";
 const ASM_NOTE_SCRIPTS_DIR: &str = "note_scripts";
 const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
-const SHARED_DIR: &str = "shared";
+const SHARED_UTILS_DIR: &str = "shared_utils";
+const SHARED_MODULES_DIR: &str = "shared_modules";
 const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
 const KERNEL_V0_RS_FILE: &str = "src/transaction/procedures/kernel_v0.rs";
 
@@ -42,7 +43,7 @@ const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
 const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
 
-const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 11] = [
+const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
     TxKernelErrorCategory::Kernel,
     TxKernelErrorCategory::Prologue,
     TxKernelErrorCategory::Epilogue,
@@ -54,6 +55,7 @@ const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 11] = [
     TxKernelErrorCategory::FungibleAsset,
     TxKernelErrorCategory::NonFungibleAsset,
     TxKernelErrorCategory::Vault,
+    TxKernelErrorCategory::LinkMap,
 ];
 
 // PRE-PROCESSING
@@ -77,6 +79,9 @@ fn main() -> Result<()> {
 
     // set source directory to {OUT_DIR}/asm
     let source_dir = dst.join(ASM_DIR);
+
+    // copy the shared modules to the kernel and miden library folders
+    copy_shared_modules(&source_dir)?;
 
     // set target directory to {OUT_DIR}/assets
     let target_dir = Path::new(&build_dir).join(ASSETS_DIR);
@@ -133,12 +138,12 @@ fn main() -> Result<()> {
 ///   tx_script_main.masm.
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
-    let shared_path = Path::new(ASM_DIR).join(SHARED_DIR);
+    let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
     let kernel_namespace = LibraryNamespace::new("kernel").expect("namespace should be valid");
 
     let mut assembler = build_assembler(None)?;
-    // add the shared modules to the kernel lib under the kernel::util namespace
-    assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_path)?;
+    // add the shared util modules to the kernel lib under the kernel::util namespace
+    assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
     let kernel_lib = KernelLibrary::from_dir(
@@ -157,8 +162,8 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
-    // add the shared modules to the kernel lib under the kernel::util namespace
-    main_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_path)?;
+    // add the shared util modules to the kernel lib under the kernel::util namespace
+    main_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
     main_assembler.add_modules_from_dir(kernel_namespace, &source_dir.join("lib"))?;
 
     let main_file_path = source_dir.join("main.masm");
@@ -179,8 +184,8 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
         let kernel_namespace =
             "kernel".parse::<LibraryNamespace>().expect("invalid base namespace");
 
-        // add the shared modules to the kernel lib under the kernel::util namespace
-        kernel_lib_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_path)?;
+        // add the shared util modules to the kernel lib under the kernel::util namespace
+        kernel_lib_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
         let test_lib =
             Library::from_dir(source_dir.join("lib"), kernel_namespace, kernel_lib_assembler)
@@ -292,7 +297,7 @@ fn compile_miden_lib(
     mut assembler: Assembler,
 ) -> Result<Library> {
     let source_dir = source_dir.join(ASM_MIDEN_DIR);
-    let shared_path = Path::new(ASM_DIR).join(SHARED_DIR);
+    let shared_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
 
     let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
     // add the shared modules to the kernel lib under the miden::util namespace
@@ -313,12 +318,26 @@ fn compile_miden_lib(
 /// file, and stores the compiled files into the "{target_dir}".
 ///
 /// The source files are expected to contain executable programs.
-fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
+fn compile_note_scripts(
+    source_dir: &Path,
+    target_dir: &Path,
+    mut assembler: Assembler,
+) -> Result<()> {
     fs::create_dir_all(target_dir)
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
+    // Add utils.masm as a library to the assembler
+    let utils_file_path = source_dir.join("utils.masm");
+    let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
+    assembler.add_module(NamedSource::new("note_scripts::utils", utils_source))?;
+
     for masm_file_path in get_masm_files(source_dir).unwrap() {
+        // Skip utils.masm since it was added as a library
+        if masm_file_path == utils_file_path {
+            continue;
+        }
+
         // read the MASM file, parse it, and serialize the parsed AST to bytes
         let code = assembler.clone().assemble_program(masm_file_path.clone())?;
 
@@ -420,6 +439,30 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) {
             }
         }
     }
+}
+
+/// Copies the content of the build `shared_modules` folder to the `lib` and `miden` build folders.
+/// This is required to include the shared modules as APIs of the `kernel` and `miden` libraries.
+///
+/// This is done to make it possible to import the modules in the `shared_modules` folder directly,
+/// i.e. "use.kernel::account_id".
+fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
+    // source is expected to be an `OUT_DIR/asm` folder
+    let shared_modules_dir = source_dir.as_ref().join(SHARED_MODULES_DIR);
+
+    for module_path in get_masm_files(shared_modules_dir).unwrap() {
+        let module_name = module_path.file_name().unwrap();
+
+        // copy to kernel lib
+        let kernel_lib_folder = source_dir.as_ref().join(ASM_TX_KERNEL_DIR).join("lib");
+        fs::copy(&module_path, kernel_lib_folder.join(module_name)).into_diagnostic()?;
+
+        // copy to miden lib
+        let miden_lib_folder = source_dir.as_ref().join(ASM_MIDEN_DIR);
+        fs::copy(&module_path, miden_lib_folder.join(module_name)).into_diagnostic()?;
+    }
+
+    Ok(())
 }
 
 /// Returns a vector with paths to all MASM files in the specified directory.
@@ -705,6 +748,7 @@ enum TxKernelErrorCategory {
     FungibleAsset,
     NonFungibleAsset,
     Vault,
+    LinkMap,
 }
 
 impl TxKernelErrorCategory {
@@ -721,6 +765,7 @@ impl TxKernelErrorCategory {
             TxKernelErrorCategory::FungibleAsset => "FUNGIBLE_ASSET",
             TxKernelErrorCategory::NonFungibleAsset => "NON_FUNGIBLE_ASSET",
             TxKernelErrorCategory::Vault => "VAULT",
+            TxKernelErrorCategory::LinkMap => "LINK_MAP",
         }
     }
 }

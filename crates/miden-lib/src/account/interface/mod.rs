@@ -173,7 +173,7 @@ impl AccountInterface {
         let auth_script_source = format!("begin\n{}\nend", self.build_tx_authentication_section());
         let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
 
-        TransactionScript::compile(auth_script_source, [], assembler)
+        TransactionScript::compile(auth_script_source, assembler)
             .map_err(AccountInterfaceError::InvalidTransactionScript)
     }
 
@@ -236,7 +236,7 @@ impl AccountInterface {
         );
 
         let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-        let tx_script = TransactionScript::compile(script, [], assembler)
+        let tx_script = TransactionScript::compile(script, assembler)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)

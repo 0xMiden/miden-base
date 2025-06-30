@@ -2,9 +2,9 @@ use alloc::{boxed::Box, string::String};
 use core::error::Error;
 
 use miden_objects::{
-    AccountError, Felt, ProvenTransactionError, TransactionInputError, TransactionOutputError,
-    account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic, block::BlockNumber,
-    crypto::merkle::SmtProofError, note::NoteId,
+    AccountError, Digest, Felt, ProvenTransactionError, TransactionInputError,
+    TransactionOutputError, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
+    block::BlockNumber, crypto::merkle::SmtProofError, note::NoteId,
 };
 use miden_verifier::VerificationError;
 use thiserror::Error;
@@ -29,12 +29,24 @@ pub enum TransactionExecutorError {
     },
     #[error("failed to create transaction inputs")]
     InvalidTransactionInputs(#[source] TransactionInputError),
+    #[error("failed to process account update commitment: {0}")]
+    AccountUpdateCommitment(&'static str),
+    #[error(
+        "account delta commitment computed in transaction kernel ({in_kernel_commitment}) does not match account delta computed via the host ({host_commitment})"
+    )]
+    InconsistentAccountDeltaCommitment {
+        in_kernel_commitment: Digest,
+        host_commitment: Digest,
+    },
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
     InconsistentAccountId {
         input_id: AccountId,
         output_id: AccountId,
     },
-    #[error("expected account nonce {expected:?}, found {actual:?}")]
+    #[error("expected account nonce delta to be {}, found {}",
+        expected.as_ref().map(Felt::as_int).unwrap_or(0),
+        actual.as_ref().map(Felt::as_int).unwrap_or(0)
+    )]
     InconsistentAccountNonceDelta {
         expected: Option<Felt>,
         actual: Option<Felt>,

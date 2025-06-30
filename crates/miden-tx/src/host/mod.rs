@@ -26,6 +26,9 @@ use vm_processor::{
 mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
+mod link_map;
+pub use link_map::{Entry, EntryMetadata, LinkMap};
+
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
@@ -612,6 +615,14 @@ impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
             }
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
+                Ok(())
+            }
+            TransactionEvent::LinkMapSetEvent => {
+                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())?;
+                Ok(())
+            },
+            TransactionEvent::LinkMapGetEvent => {
+                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())?;
                 Ok(())
             }
         }

@@ -16,7 +16,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_get_nonce
     digest!("0xf1dfe3621b9147803b6668352915be7fb7f85df476c9d18052272270a854fa75"),
     // account_incr_nonce
-    digest!("0x726357558767a56aae315c4c8aa406cdf57ad400832222622eec58dc42cce406"),
+    digest!("0x013b4bbf4ae07edf4f07ff2dca69c8638c26a8646d887b29118a6382172fc78f"),
     // account_get_code_commitment
     digest!("0xbab83830e881bdbee08fa1506d651388c20ebb0cadfb6794189542dd257841aa"),
     // account_get_storage_commitment
@@ -72,7 +72,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // tx_get_block_timestamp
     digest!("0x786863e6dbcd5026619afd3831b7dcbf824cda54950b0e0724ebf9d9370ec723"),
     // tx_start_foreign_context
-    digest!("0xf7075576799b6c2b88bca3f36ed7c3b2560ed4bc0e630f1e30db0be84e746c6e"),
+    digest!("0x50e31990bc918903f0babea20d4eb840828fdd41b539adb98f70cde6fffa8bfc"),
     // tx_end_foreign_context
     digest!("0x90a107168d81c1c0c23890e61fb7910a64b4711afd0bf8c3098d74737e4853ba"),
     // tx_get_expiration_delta

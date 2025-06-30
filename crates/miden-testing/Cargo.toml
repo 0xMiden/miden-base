@@ -17,8 +17,7 @@ name = "miden-integration-tests"
 path = "tests/integration/main.rs"
 
 [features]
-async = ["winter-maybe-async/async"]
-masm-debug = ["miden-lib/with-debug-info"]
+async = ["winter-maybe-async/async", "miden-tx/async"]
 
 [dependencies]
 # Workspace dependencies
@@ -44,6 +43,7 @@ assembly = { workspace = true }
 assert_matches = { workspace = true }
 miden-objects = { workspace = true, features = ["std"] }
 rand = { workspace = true, features = ["os_rng", "small_rng"] }
+winter-rand-utils = { version = "0.12" }
 
 [package.metadata.cargo-machete]
 # cargo machete flags async-trait as unused but it is used by winter-maybe-async with the async feature

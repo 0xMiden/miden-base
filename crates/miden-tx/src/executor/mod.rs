@@ -189,7 +189,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         // Execute the transaction kernel
-        let result = vm_processor::execute(
+        let trace = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
             &mut host,
@@ -198,7 +198,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
-        build_executed_transaction(tx_args, tx_inputs, result.stack_outputs().clone(), host)
+        build_executed_transaction(tx_args, tx_inputs, trace.stack_outputs().clone(), host)
     }
 
     // SCRIPT EXECUTION
@@ -233,12 +233,8 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-        let tx_args = TransactionArgs::new(
-            Some(tx_script.clone()),
-            None,
-            Default::default(),
-            foreign_account_inputs,
-        );
+        let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
+            .with_tx_script(tx_script);
 
         validate_account_inputs(&tx_args, &ref_block)?;
 
@@ -251,7 +247,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let scripts_mast_store =
-            ScriptMastForestStore::new(Some(&tx_script), core::iter::empty::<&NoteScript>());
+            ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
             &tx_inputs.account().into(),
@@ -398,8 +394,8 @@ fn build_executed_transaction(
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
-    let final_account = &tx_outputs.account;
     let initial_account = tx_inputs.account();
+    let final_account = &tx_outputs.account;
 
     // Temporarily copy the account update commitment into the advice witness map, if it is present,
     // so it can be accessed in account delta tests.
@@ -429,9 +425,9 @@ fn build_executed_transaction(
                 actual: account_delta.nonce(),
             });
         }
-    } else if final_account.nonce() != account_delta.nonce().unwrap_or_default() {
+    } else if nonce_delta != account_delta.nonce().unwrap_or_default() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: Some(final_account.nonce()),
+            expected: Some(nonce_delta),
             actual: account_delta.nonce(),
         });
     }
