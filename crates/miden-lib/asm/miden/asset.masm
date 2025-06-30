@@ -1,4 +1,5 @@
 use.miden::account
+use.miden::account_id
 
 # ERRORS
 # =================================================================================================
@@ -26,7 +27,7 @@ const.ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID="failed to build the 
 #! Annotation hint: is not used anywhere except this file
 export.build_fungible_asset
     # assert the faucet is a fungible faucet
-    dup exec.account::is_fungible_faucet assert.err=ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID
+    dup exec.account_id::is_fungible_faucet assert.err=ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID
     # => [faucet_id_prefix, faucet_id_suffix, amount]
 
     # assert the amount is valid
@@ -73,7 +74,7 @@ end
 #! Annotation hint: is not used anywhere except this file
 export.build_non_fungible_asset
     # assert the faucet is a non-fungible faucet
-    dup exec.account::is_non_fungible_faucet
+    dup exec.account_id::is_non_fungible_faucet
     assert.err=ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID
     # => [faucet_id_prefix, hash3, hash2, hash1, hash0]
 

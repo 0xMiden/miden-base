@@ -14,6 +14,8 @@
 - Implement Display for `NoteType` (#1420).
 - [BREAKING] Remove `NoteExecutionMode` from `from_account_id` (#1422).
 - [BREAKING] Refactor transaction kernel advice inputs (#1425).
+- [BREAKING] Move transaction script argument from `TransactionScript` to `TransactionArgs`. (#1426).
+- [BREAKING] Remove transaction inputs from `TransactionScript`. (#1426).
 - Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
 - Remove doc update checks on CI (#1435).
 - [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
@@ -27,7 +29,9 @@
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
 - [BREAKING] Implemented in-kernel account delta tracking (#1471, #1404).
 - [BREAKING] Store account ID in account delta (#1493).
+- [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
 - Added `Note::is_network_note()` accessor (#1485).
+- [BREAKING] Update handling of the shared modules (#1490).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 

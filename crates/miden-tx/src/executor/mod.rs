@@ -203,12 +203,8 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-        let tx_args = TransactionArgs::new(
-            Some(tx_script.clone()),
-            None,
-            Default::default(),
-            foreign_account_inputs,
-        );
+        let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
+            .with_tx_script(tx_script);
 
         validate_account_inputs(&tx_args, &ref_block)?;
 
@@ -221,7 +217,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let scripts_mast_store =
-            ScriptMastForestStore::new(Some(&tx_script), core::iter::empty::<&NoteScript>());
+            ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
             &tx_inputs.account().into(),

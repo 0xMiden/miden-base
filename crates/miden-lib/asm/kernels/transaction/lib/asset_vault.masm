@@ -1,6 +1,6 @@
 use.std::collections::smt
 
-use.kernel::account
+use.kernel::account_id
 use.kernel::asset
 use.kernel::memory
 
@@ -46,7 +46,7 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #! - the asset is not a fungible asset.
 export.get_balance
     # assert that the faucet id is a fungible faucet
-    dup exec.account::is_fungible_faucet
+    dup exec.account_id::is_fungible_faucet
     assert.err=ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET
     # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
 
