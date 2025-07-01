@@ -32,7 +32,7 @@
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
 - Added `Note::is_network_note()` accessor (#1485).
 - [BREAKING] Update handling of the shared modules (#1490).
-- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).	
+- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
 - [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
