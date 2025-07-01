@@ -200,18 +200,14 @@ proc.update_fungible_asset_delta.2
         swapw
         # => [[delta_amount_hi, delta_amount_lo, 0, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
 
-        exec.i64_unsigned_abs not
-        # => [is_amount_unsigned, [delta_amount_abs_hi, delta_amount_abs_lo, 0, 0], ...]
+        # this reassembles the delta amount into a felt, which is safe to do because the delta
+        # amount is in range [-2^63 + 1, 2^63 - 1], so its absolute value will fit into a felt.
+        exec.i64_unsigned_abs
+        # => [[is_amount_unsigned, delta_amount_abs, 0, 0], ...]
 
         # rename is_amount_unsigned to was_added
-        movdn.3
-        # => [[delta_amount_abs_hi, delta_amount_abs_lo, 0, was_added,  0], ...]
-
-        # reassemble the delta amount to a felt by multiplying the high part with 2^32 and adding the lo part
-        # this is safe to do because the delta amount is in range [-2^63 + 1, 2^63 - 1], so its
-        # absolute value will fit into a felt.
-        mul.0x0100000000 add
-        # => [[delta_amount_abs, 0, was_added, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
+        movdn.2
+        # => [[delta_amount_abs, 0, was_added, 0], ...]
 
         dup neq.0
         # => [is_delta_amount_non_zero, [delta_amount_abs, 0, was_added, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
@@ -449,13 +445,15 @@ end
 #! Computes the absolute value of the given i64 represented by two u32 limbs and returns a
 #! boolean flag indicating whether the value is signed.
 #!
+#! Assumes that x_hi and x_lo can be safely combined into a felt.
+#!
 #! Inputs: [x_hi, x_lo]
-#! Outputs: [is_x_signed, x_abs_hi, x_abs_lo]
+#! Outputs: [is_x_unsigned, x_abs]
 #!
 #! Where:
 #! - x_{hi, lo} are the u32 limbs of an i64.
-#! - is_x_signed indicates whether x is signed.
-#! - x_abs_{hi, lo} are the absolute u32 limbs of a u64.
+#! - is_x_unsigned indicates whether the inputs were positive.
+#! - x_abs is the absolute value of the inputs as a felt.
 proc.i64_unsigned_abs
     exec.i64_is_signed
     # => [is_x_signed, x_hi, x_lo]
@@ -477,8 +475,12 @@ proc.i64_unsigned_abs
     cdropw drop drop
     # => [x_abs_hi, x_abs_lo, is_x_signed]
 
-    movup.2
-    # => [is_x_signed, x_abs_hi, x_abs_lo]
+    # reassemble the amount to a felt by multiplying the high part with 2^32 and adding the lo part
+    mul.0x0100000000 add
+    # => [x_abs, is_x_signed]
+
+    swap not
+    # => [is_x_unsigned, x_abs]
 end
 
 #! Returns 1 if the given number is signed (its most significant bit is set)
