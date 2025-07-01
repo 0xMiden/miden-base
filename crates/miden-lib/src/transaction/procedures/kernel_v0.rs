@@ -32,15 +32,15 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // account_get_vault_root
     digest!("0x279b4a9e5adca07f01cadf8ecc1303fa3c670003a7a4e69f09506b070c4023df"),
     // account_add_asset
-    digest!("0xc44dc6a11b2866fc5d56938c37eae69d23b6be937b8e290c25dc6da60c552f0e"),
+    digest!("0x2650348398c493f7104c6c6ce682081a3a62b2bbced5c98179116a082c9fc630"),
     // account_remove_asset
-    digest!("0x92e1362df41dcfc560d92acd7187bf843dcdd05e3769c1d27c180de22efe7444"),
+    digest!("0x667d5fe83620247eb5a5ff6bef85045183a8066b44ada9971ece90dfde4a46c0"),
     // account_get_balance
     digest!("0xc3385953bc66def5211f53a3c44de8facfb4060abbb1c9708859c314268989e8"),
     // account_has_non_fungible_asset
     digest!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
     // faucet_mint_asset
-    digest!("0x816b3c87726fc809c15005211d5365d66485e11ae5813e70ca1cc9d49de1cbf6"),
+    digest!("0x14aa1b6602681a4863cbb95d573259f18e38856b448fbdc5d77f8abf389761cb"),
     // faucet_burn_asset
     digest!("0x7022cca81527fbb7da6849d1c256c65fef3519f849ca57b50ead8e5db05eda97"),
     // faucet_get_total_fungible_asset_issuance

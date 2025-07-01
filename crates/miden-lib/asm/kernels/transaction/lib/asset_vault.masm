@@ -126,7 +126,7 @@ export.add_fungible_asset
     # Create the asset key from the asset.
     # ---------------------------------------------------------------------------------------------
 
-    dupw exec.build_fungible_asset_vault_key
+    exec.build_fungible_asset_vault_key
     # => [ASSET_KEY, faucet_id_prefix, faucet_id_suffix, 0, amount, vault_root_ptr]
 
     movup.6 drop
@@ -447,7 +447,7 @@ end
 #! be a valid fungible asset.
 #!
 #! Inputs:  [ASSET]
-#! Outputs: [ASSET_KEY]
+#! Outputs: [ASSET_KEY, ASSET]
 #!
 #! Where:
 #! - ASSET is the fungible asset for which the vault key is built.
@@ -455,6 +455,9 @@ end
 export.build_fungible_asset_vault_key
   # => [faucet_id_prefix, faucet_id_suffix, 0, amount]
 
-  push.0 swap.4 drop
-  # => [faucet_id_prefix, faucet_id_suffix, 0, 0]
+  push.0.0
+  # => [0, 0, faucet_id_prefix, faucet_id_suffix, 0, amount]
+
+  dup.3 dup.3
+  # => [faucet_id_prefix, faucet_id_suffix, 0, 0, faucet_id_prefix, faucet_id_suffix, 0, amount]
 end
