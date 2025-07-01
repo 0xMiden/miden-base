@@ -954,18 +954,18 @@ fn transaction_executor_account_code_using_custom_library() {
     const EXTERNAL_LIBRARY_CODE: &str = r#"
       use.miden::account
 
-      export.get_items
-        exec.account::get_vault_root
-        exec.account::get_code_commitment
-
+      export.external_setter
+        push.2.3.4.5
+        push.0
+        exec.account::set_item
         dropw dropw
       end"#;
 
     const ACCOUNT_COMPONENT_CODE: &str = "
       use.external_library::external_module
 
-      export.custom_getter
-        exec.external_module::get_items
+      export.custom_setter
+        exec.external_module::external_setter
       end";
 
     let external_library_source =
@@ -974,7 +974,7 @@ fn transaction_executor_account_code_using_custom_library() {
         .assemble_library([external_library_source])
         .unwrap();
 
-    let mut assembler = TransactionKernel::assembler();
+    let mut assembler = TransactionKernel::testing_assembler_with_mock_account();
     assembler.add_vendored_library(&external_library).unwrap();
 
     let account_component_source =
@@ -986,11 +986,11 @@ fn transaction_executor_account_code_using_custom_library() {
           use.account_component::account_module
 
           begin
-            call.account_module::custom_getter
+            call.account_module::custom_setter
           end";
 
     let account_component =
-        AccountComponent::new(account_component_lib.clone(), vec![StorageSlot::empty_value()])
+        AccountComponent::new(account_component_lib.clone(), AccountStorage::mock_storage_slots())
             .unwrap()
             .with_supports_all_types();
 
@@ -1018,6 +1018,12 @@ fn transaction_executor_account_code_using_custom_library() {
 
     // Account's initial nonce of 1 should have been incremented by 1.
     assert_eq!(executed_tx.account_delta().nonce().unwrap(), Felt::new(2));
+
+    // Make sure that account storage has been updated as per the tx script call.
+    assert_eq!(
+        *executed_tx.account_delta().storage().values(),
+        BTreeMap::from([(0, [Felt::new(2), Felt::new(3), Felt::new(4), Felt::new(5)])]),
+    );
 }
 
 #[allow(clippy::arc_with_non_send_sync)]
