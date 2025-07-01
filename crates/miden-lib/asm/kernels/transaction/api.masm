@@ -171,7 +171,7 @@ export.account_incr_nonce
     exec.memory::assert_native_account
     # => [increment, pad(15)]
 
-    # authenticate that the procedure invocation originates from the account context
+    # assert that nonce increment originates from the authentication procedure of the account
     exec.assert_auth_procedure_origin
     # => [increment, pad(15)]
 
