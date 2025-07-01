@@ -39,6 +39,8 @@ pub struct AccountCode {
 impl AccountCode {
     /// The maximum number of account interface procedures.
     pub const MAX_NUM_PROCEDURES: usize = 256;
+    /// The minimum number of account interface procedures (one auth and at least one non-auth).
+    pub const MIN_NUM_PROCEDURES: usize = 2;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -84,7 +86,7 @@ impl AccountCode {
         let mut components_iter = components.iter();
 
         let first_component =
-            components_iter.next().ok_or(AccountError::AccountCodeNoProcedures)?;
+            components_iter.next().ok_or(AccountError::AccountCodeNoAuthComponent)?;
         builder.add_auth_component(first_component)?;
 
         for component in components_iter {
@@ -406,7 +408,7 @@ impl ProcedureInfoBuilder {
     }
 
     fn build(self) -> Result<Vec<AccountProcedureInfo>, AccountError> {
-        if self.procedures.is_empty() {
+        if self.procedures.len() < AccountCode::MIN_NUM_PROCEDURES {
             Err(AccountError::AccountCodeNoProcedures)
         } else if self.procedures.len() > AccountCode::MAX_NUM_PROCEDURES {
             Err(AccountError::AccountCodeTooManyProcedures(self.procedures.len()))

@@ -77,7 +77,7 @@ pub enum AccountError {
     AccountCodeNoAuthComponent,
     #[error("account code contains multiple auth components")]
     AccountCodeMultipleAuthComponents,
-    #[error("account code does not contain procedures but must contain at least one procedure")]
+    #[error("account code must contain at least one non-auth procedure")]
     AccountCodeNoProcedures,
     #[error("account code contains {0} procedures but it may contain at most {max} procedures", max = AccountCode::MAX_NUM_PROCEDURES)]
     AccountCodeTooManyProcedures(usize),
