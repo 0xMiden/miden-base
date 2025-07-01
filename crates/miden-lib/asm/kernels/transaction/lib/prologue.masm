@@ -1098,7 +1098,7 @@ end
 #!   the advice map.
 proc.process_tx_script_data
     # read the transaction script root from the advice stack
-    adv_loadw
+    padw adv_loadw
     # => [TX_SCRIPT_ROOT]
 
     # store the transaction script root in memory
@@ -1129,7 +1129,7 @@ end
 #!   the advice map.
 proc.process_auth_procedure_data
     # read the auth procedure args key from the advice stack
-    adv_loadw
+    padw adv_loadw
     # => [AUTH_PROCEDURE_ARGS_KEY]
 
     # store the auth procedure args key in memory
