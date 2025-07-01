@@ -51,7 +51,8 @@ proc.authenticate_account_origin
     # => [storage_offset, storage_size]
 end
 
-#! Asserts that the invocation of a kernel procedure originates from the authentication procedure of the account.
+#! Asserts that the invocation of a kernel procedure originates from the authentication procedure of
+#! the account.
 #!
 #! Inputs:  []
 #! Outputs: []
