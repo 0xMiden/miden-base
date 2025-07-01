@@ -1,4 +1,4 @@
-use std::{collections::BTreeMap, vec, vec::Vec};
+use std::{collections::BTreeMap, string::ToString, vec, vec::Vec};
 
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
@@ -233,8 +233,7 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
 }
 
 fn bump_storage_tx_script() -> TransactionScript {
-    let code = format!(
-        "
+    let code = "
         use.test::account
 
         begin
@@ -244,7 +243,7 @@ fn bump_storage_tx_script() -> TransactionScript {
             dropw dropw dropw dropw
         end
         "
-    );
+    .to_string();
 
     TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()

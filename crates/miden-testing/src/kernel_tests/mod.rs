@@ -14,7 +14,7 @@ use miden_lib::{
 };
 use miden_objects::{
     Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
+    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     note::{
