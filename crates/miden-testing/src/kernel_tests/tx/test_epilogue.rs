@@ -12,27 +12,60 @@ use miden_lib::{
     },
 };
 use miden_objects::{
-    account::Account,
+    FieldElement,
+    account::{Account, AccountBuilder, AccountStorageMode},
+    asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
-    testing::account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    testing::{
+        account_component::AccountMockComponent,
+        account_id::{
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
+        },
+        constants::{CONSUMED_ASSET_1_AMOUNT, CONSUMED_ASSET_2_AMOUNT, CONSUMED_ASSET_3_AMOUNT},
+        note::NoteBuilder,
+    },
     transaction::{OutputNote, OutputNotes},
 };
 use miden_tx::TransactionExecutorError;
+use rand::rng;
 use vm_processor::{Felt, ONE, ProcessState};
 
-use super::{ZERO, output_notes_data_procedure};
+use super::{ZERO, create_mock_notes_procedure};
 use crate::{
-    TransactionContextBuilder, assert_execution_error, kernel_tests::tx::read_root_mem_word,
+    MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
+    kernel_tests::tx::{create_spawner_note, read_root_mem_word},
+    utils::create_transfer_mock_note,
 };
 
 #[test]
 fn test_epilogue() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
+        let output_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+
+        // input_note_1 is needed for maintaining cohesion of involved assets
+        let input_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        let input_note_2 = create_spawner_note(vec![&output_note_1]).unwrap();
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note_1, input_note_2])
+            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .build()
+    };
 
     let output_notes_data_procedure =
-        output_notes_data_procedure(tx_context.expected_output_notes());
+        create_mock_notes_procedure(tx_context.expected_output_notes());
 
     let code = format!(
         "
@@ -102,12 +135,31 @@ fn test_epilogue() {
 
 #[test]
 fn test_compute_output_note_id() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
+        let output_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+
+        // input_note_1 is needed for maintaining cohesion of involved assets
+        let input_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        let input_note_2 = create_spawner_note(vec![&output_note_1]).unwrap();
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note_1, input_note_2])
+            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .build()
+    };
 
     let output_notes_data_procedure =
-        output_notes_data_procedure(tx_context.expected_output_notes());
+        create_mock_notes_procedure(tx_context.expected_output_notes());
 
     for (note, i) in tx_context.expected_output_notes().iter().zip(0u32..) {
         let code = format!(
@@ -155,13 +207,48 @@ fn test_compute_output_note_id() {
 }
 
 #[test]
-fn test_epilogue_asset_preservation_violation_too_few_input() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_too_few_input()
+fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<()> {
+    let mock_component =
+        AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())?;
+
+    let account = AccountBuilder::new(Default::default())
+        .with_assets(AssetVault::mock().assets())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(mock_component)
+        .build_existing()?;
+
+    let mock_chain = MockChain::with_accounts(&[account.clone()]);
+
+    let fungible_asset_1: Asset = FungibleAsset::new(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
+        CONSUMED_ASSET_1_AMOUNT,
+    )?
+    .into();
+    let fungible_asset_2: Asset = FungibleAsset::new(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?,
+        CONSUMED_ASSET_2_AMOUNT,
+    )?
+    .into();
+
+    let output_note_1 = NoteBuilder::new(account.id(), rng())
+        .add_assets([fungible_asset_1])
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+    let output_note_2 = NoteBuilder::new(account.id(), rng())
+        .add_assets([fungible_asset_2])
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+
+    let input_note = create_spawner_note(vec![&output_note_1, &output_note_2])?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(output_note_1),
+            OutputNote::Full(output_note_2),
+        ])
         .build();
 
     let output_notes_data_procedure =
-        output_notes_data_procedure(tx_context.expected_output_notes());
+        create_mock_notes_procedure(tx_context.expected_output_notes());
 
     let code = format!(
         "
@@ -189,16 +276,60 @@ fn test_epilogue_asset_preservation_violation_too_few_input() {
         TransactionKernel::testing_assembler_with_mock_account(),
     );
     assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
+    Ok(())
 }
 
 #[test]
-fn test_epilogue_asset_preservation_violation_too_many_fungible_input() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_too_many_fungible_input()
+fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyhow::Result<()> {
+    let mock_component =
+        AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())?;
+
+    let account = AccountBuilder::new(Default::default())
+        .with_assets(AssetVault::mock().assets())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(mock_component)
+        .build_existing()?;
+
+    let mock_chain = MockChain::with_accounts(&[account.clone()]);
+
+    let fungible_asset_1: Asset = FungibleAsset::new(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
+        CONSUMED_ASSET_1_AMOUNT,
+    )?
+    .into();
+    let fungible_asset_2: Asset = FungibleAsset::new(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?,
+        CONSUMED_ASSET_2_AMOUNT,
+    )?
+    .into();
+    let fungible_asset_3: Asset = FungibleAsset::new(
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3.try_into()?,
+        CONSUMED_ASSET_3_AMOUNT,
+    )?
+    .into();
+
+    let output_note_1 = NoteBuilder::new(account.id(), rng())
+        .add_assets([fungible_asset_1])
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+    let output_note_2 = NoteBuilder::new(account.id(), rng())
+        .add_assets([fungible_asset_2])
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+    let output_note_3 = NoteBuilder::new(account.id(), rng())
+        .add_assets([fungible_asset_3])
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+
+    let input_note = create_spawner_note(vec![&output_note_1, &output_note_2, &output_note_3])?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(output_note_1),
+            OutputNote::Full(output_note_2),
+        ])
         .build();
 
     let output_notes_data_procedure =
-        output_notes_data_procedure(tx_context.expected_output_notes());
+        create_mock_notes_procedure(tx_context.expected_output_notes());
 
     let code = format!(
         "
@@ -227,11 +358,12 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() {
     );
 
     assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
+    Ok(())
 }
 
 #[test]
 fn test_block_expiration_height_monotonically_decreases() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let test_pairs: [(u64, u64); 3] = [(9, 12), (18, 3), (20, 20)];
     let code_template = "
@@ -283,7 +415,7 @@ fn test_block_expiration_height_monotonically_decreases() {
 
 #[test]
 fn test_invalid_expiration_deltas() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let test_values = [0u64, u16::MAX as u64 + 1, u32::MAX as u64];
     let code_template = "
@@ -308,7 +440,7 @@ fn test_invalid_expiration_deltas() {
 
 #[test]
 fn test_no_expiration_delta_set() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let code_template = "
     use.kernel::prologue
@@ -345,12 +477,7 @@ fn test_no_expiration_delta_set() {
 
 #[test]
 fn test_epilogue_increment_nonce_success() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
-
-    let output_notes_data_procedure =
-        output_notes_data_procedure(tx_context.expected_output_notes());
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let code = format!(
         "
@@ -358,12 +485,8 @@ fn test_epilogue_increment_nonce_success() {
         use.test::account
         use.kernel::epilogue
 
-        {output_notes_data_procedure}
-
         begin
             exec.prologue::prepare_transaction
-
-            exec.create_mock_notes
 
             push.1.2.3.4
             push.0
@@ -391,12 +514,25 @@ fn test_epilogue_increment_nonce_success() {
 
 #[test]
 fn test_epilogue_increment_nonce_violation() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
+        let output_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        let input_note_1 = create_spawner_note(vec![&output_note_1]).unwrap();
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note_1])
+            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .build()
+    };
 
     let output_notes_data_procedure =
-        output_notes_data_procedure(tx_context.expected_output_notes());
+        create_mock_notes_procedure(tx_context.expected_output_notes());
 
     let code = format!(
         "
@@ -433,7 +569,7 @@ fn test_epilogue_increment_nonce_violation() {
 
 #[test]
 fn test_epilogue_execute_empty_transaction() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let err = tx_context.execute().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -492,7 +628,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
         note_type = note_type as u8,
     );
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let result = tx_context.execute_code(&tx_script_source).map(|_| ());
 

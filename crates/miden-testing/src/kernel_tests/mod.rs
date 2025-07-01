@@ -24,11 +24,15 @@ use miden_objects::{
     testing::{
         account_component::AccountMockComponent,
         account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
         },
-        constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA},
+        constants::{
+            CONSUMED_ASSET_1_AMOUNT, CONSUMED_ASSET_3_AMOUNT, FUNGIBLE_ASSET_AMOUNT,
+            NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2,
+        },
         note::{DEFAULT_NOTE_CODE, NoteBuilder},
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
@@ -47,7 +51,9 @@ use vm_processor::{
     utils::{Deserializable, Serializable},
 };
 
-use crate::TransactionContextBuilder;
+use crate::{
+    MockChain, TransactionContextBuilder, TxContextInput, utils::create_transfer_mock_note,
+};
 
 mod batch;
 mod block;
@@ -58,9 +64,24 @@ mod tx;
 
 #[test]
 fn transaction_executor_witness() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    // Creates a mockchain with an account and a note that it can consume
+    let tx_context = {
+        let mut mock_chain = MockChain::new();
+        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
+        let p2id_note = mock_chain
+            .add_pending_p2id_note(
+                ACCOUNT_ID_SENDER.try_into().unwrap(),
+                account.id(),
+                &[FungibleAsset::mock(100)],
+                NoteType::Public,
+            )
+            .unwrap();
+        mock_chain.prove_next_block();
+
+        mock_chain
+            .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note])
+            .build()
+    };
 
     let source_manager = tx_context.source_manager();
     let executed_transaction = tx_context.execute().into_diagnostic()?;
@@ -123,7 +144,7 @@ fn transaction_executor_witness() -> miette::Result<()> {
 }
 
 #[test]
-fn executed_transaction_account_delta_new() {
+fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_component(
@@ -134,8 +155,7 @@ fn executed_transaction_account_delta_new() {
             .unwrap(),
         )
         .with_assets(account_assets)
-        .build_existing()
-        .unwrap();
+        .build_existing()?;
 
     // updated storage
     let updated_slot_value = [Felt::new(7), Felt::new(9), Felt::new(11), Felt::new(13)];
@@ -272,24 +292,32 @@ fn executed_transaction_account_delta_new() {
     let tx_script = TransactionScript::compile(
         tx_script_src,
         TransactionKernel::testing_assembler_with_mock_account(),
-    )
-    .unwrap();
+    )?;
+
+    // Create the input note that carries the assets that we will assert later
+    let input_note = {
+        let faucet_id_1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
+        let faucet_id_3 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3)?;
+
+        let fungible_asset_1: Asset =
+            FungibleAsset::new(faucet_id_1, CONSUMED_ASSET_1_AMOUNT)?.into();
+        let fungible_asset_3: Asset =
+            FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
+        let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
+
+        create_transfer_mock_note(
+            account.id(),
+            &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1],
+        )
+    };
 
     let tx_context = TransactionContextBuilder::new(account)
-        .with_mock_notes_preserved_with_account_vault_delta()
+        .extend_input_notes(vec![input_note.clone()])
         .tx_script(tx_script)
         .build();
 
     // Storing assets that will be added to assert correctness later
-    let added_assets = tx_context
-        .tx_inputs()
-        .input_notes()
-        .iter()
-        .find_map(|n| {
-            let assets = n.note().assets();
-            (assets.num_assets() == 3).then(|| assets.iter().cloned().collect::<Vec<_>>())
-        })
-        .unwrap();
+    let added_assets = input_note.assets().iter().cloned().collect::<Vec<_>>();
 
     // expected delta
     // --------------------------------------------------------------------------------------------
@@ -299,8 +327,8 @@ fn executed_transaction_account_delta_new() {
     // nonce delta
     // --------------------------------------------------------------------------------------------
 
-    // nonce was incremented by 1
-    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(1)));
+    // nonce was incremented by 1 and the account's nonce was already 1
+    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(2)));
 
     // storage delta
     // --------------------------------------------------------------------------------------------
@@ -352,6 +380,7 @@ fn executed_transaction_account_delta_new() {
         removed_assets.len(),
         executed_transaction.account_delta().vault().removed_assets().count()
     );
+    Ok(())
 }
 
 #[test]
@@ -375,7 +404,7 @@ fn test_empty_delta_nonce_update() {
     )
     .unwrap();
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+    let tx_context = TransactionContextBuilder::with_existing_standard_account()
         .tx_script(tx_script)
         .build();
 
@@ -493,9 +522,8 @@ fn test_send_note_proc() -> miette::Result<()> {
         )
         .unwrap();
 
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+        let tx_context = TransactionContextBuilder::with_existing_standard_account()
             .tx_script(tx_script)
-            .with_mock_notes_preserved_with_account_vault_delta()
             .build();
 
         // expected delta
@@ -727,7 +755,6 @@ fn executed_transaction_output_notes() {
     // execute the transaction and get the witness
 
     let tx_context = TransactionContextBuilder::new(executor_account)
-        .with_mock_notes_preserved_with_account_vault_delta()
         .tx_script(tx_script)
         .extend_expected_output_notes(vec![
             OutputNote::Full(expected_output_note_2.clone()),
@@ -742,11 +769,10 @@ fn executed_transaction_output_notes() {
     let output_notes = executed_transaction.output_notes();
 
     // check the total number of notes
-    // NOTE: the mock state already contains 3 output notes
-    assert_eq!(output_notes.num_notes(), 6);
+    assert_eq!(output_notes.num_notes(), 3);
 
     // assert that the expected output note 1 is present
-    let resulting_output_note_1 = executed_transaction.output_notes().get_note(3);
+    let resulting_output_note_1 = executed_transaction.output_notes().get_note(0);
 
     let expected_recipient_1 =
         Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
@@ -755,7 +781,7 @@ fn executed_transaction_output_notes() {
     assert_eq!(resulting_output_note_1.id(), expected_note_id_1);
 
     // assert that the expected output note 2 is present
-    let resulting_output_note_2 = executed_transaction.output_notes().get_note(4);
+    let resulting_output_note_2 = executed_transaction.output_notes().get_note(1);
 
     let expected_note_id_2 = expected_output_note_2.id();
     let expected_note_metadata_2 = expected_output_note_2.metadata();
@@ -765,7 +791,7 @@ fn executed_transaction_output_notes() {
     );
 
     // assert that the expected output note 3 is present and has no assets
-    let resulting_output_note_3 = executed_transaction.output_notes().get_note(5);
+    let resulting_output_note_3 = executed_transaction.output_notes().get_note(2);
 
     assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
     assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
@@ -789,11 +815,22 @@ fn executed_transaction_output_notes() {
 #[allow(clippy::arc_with_non_send_sync)]
 #[test]
 fn prove_witness_and_verify() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
-    let source_manager = tx_context.source_manager();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
+        let input_note = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note])
+            .build()
+    };
 
+    let source_manager = tx_context.source_manager();
     let account_id = tx_context.tx_inputs().account().id();
 
     let block_ref = tx_context.tx_inputs().block_header().block_num();
@@ -849,7 +886,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script =
         TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+    let tx_context = TransactionContextBuilder::with_existing_standard_account()
         .tx_script(tx_script)
         .extend_advice_map([(tx_script_input_key, tx_script_input_value.into())])
         .build();
@@ -898,7 +935,7 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         vec![Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)],
     )]);
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+    let tx_context = TransactionContextBuilder::with_existing_standard_account()
         .tx_script(tx_script)
         .extend_advice_inputs(advice_inputs)
         .tx_script_arg(tx_script_arg)
@@ -1011,7 +1048,7 @@ fn test_execute_program() {
     let tx_script =
         TransactionScript::compile(source, assembler).expect("failed to compile the source script");
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+    let tx_context = TransactionContextBuilder::with_existing_standard_account()
         .tx_script(tx_script.clone())
         .build();
     let account_id = tx_context.account().id();
@@ -1061,7 +1098,7 @@ fn test_check_note_consumability() {
     )
     .unwrap();
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
+    let tx_context = TransactionContextBuilder::with_existing_standard_account()
         .extend_input_notes(vec![p2id_note, p2ide_note])
         .build();
     let source_manager = tx_context.source_manager();
@@ -1087,9 +1124,20 @@ fn test_check_note_consumability() {
 
     // Success (custom notes)
     // --------------------------------------------------------------------------------------------
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
+        let input_note = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note])
+            .build()
+    };
     let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
@@ -1107,6 +1155,9 @@ fn test_check_note_consumability() {
 
     // Failure
     // --------------------------------------------------------------------------------------------
+    let mut mock_chain = MockChain::new();
+    let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
+
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
     let failing_note_1 = NoteBuilder::new(
@@ -1125,15 +1176,41 @@ fn test_check_note_consumability() {
     .build(&TransactionKernel::testing_assembler())
     .unwrap();
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .extend_input_notes(vec![failing_note_1, failing_note_2.clone()])
+    let succesful_note_1 = create_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        vec![FungibleAsset::mock(10)],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+    )
+    .unwrap();
+
+    let succesful_note_2 = create_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        vec![FungibleAsset::mock(145)],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+    )
+    .unwrap();
+
+    let tx_context = mock_chain
+        .build_tx_context(
+            TxContextInput::Account(account),
+            &[],
+            &[
+                succesful_note_2.clone(),
+                succesful_note_1.clone(),
+                failing_note_2.clone(),
+                failing_note_1,
+            ],
+        )
         .build();
     let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
-    let input_note_ids =
-        input_notes.iter().map(|input_note| input_note.id()).collect::<Vec<NoteId>>();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
@@ -1150,7 +1227,7 @@ fn test_check_note_consumability() {
         successful_notes,
         error: Some(e)} => {
             assert_eq!(failed_note_id, failing_note_2.id());
-            assert_eq!(successful_notes, input_note_ids[..2].to_vec());
+            assert_eq!(successful_notes, [succesful_note_2.id(),succesful_note_1.id()].to_vec());
             assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(
               ExecutionError::DivideByZero { .. }
             ));

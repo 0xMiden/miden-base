@@ -15,8 +15,8 @@ use miden_lib::{
 };
 use miden_objects::{
     FieldElement,
-    account::AccountId,
-    asset::NonFungibleAsset,
+    account::{Account, AccountId},
+    asset::{FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
@@ -25,8 +25,9 @@ use miden_objects::{
     testing::{
         account_id::{
             ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
         },
         constants::NON_FUNGIBLE_ASSET_DATA_2,
     },
@@ -37,7 +38,8 @@ use miden_tx::{TransactionExecutor, TransactionExecutorError};
 use super::{Felt, ONE, ProcessState, Word, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::read_root_mem_word,
+    kernel_tests::tx::{create_spawner_note_with_assets, read_root_mem_word},
+    utils::create_transfer_mock_note,
 };
 
 #[test]
@@ -117,7 +119,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
 
 #[test]
 fn test_create_note() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
     let account_id = tx_context.account().id();
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
@@ -206,7 +208,7 @@ fn test_create_note() {
 
 #[test]
 fn test_create_note_with_invalid_tag() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
@@ -261,7 +263,7 @@ fn test_create_note_with_invalid_tag() {
 
 #[test]
 fn test_create_note_too_many_notes() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let code = format!(
         "
@@ -301,9 +303,28 @@ fn test_create_note_too_many_notes() {
 
 #[test]
 fn test_get_output_notes_commitment() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
+        let output_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        let input_note_1 =
+            create_spawner_note_with_assets(vec![&output_note_1], vec![FungibleAsset::mock(123)])
+                .unwrap();
+        let input_note_2 = create_transfer_mock_note(
+            ACCOUNT_ID_PRIVATE_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(123)],
+        );
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note_1, input_note_2])
+            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
+            .build()
+    };
 
     // extract input note data
     let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
@@ -465,7 +486,7 @@ fn test_get_output_notes_commitment() {
 
 #[test]
 fn test_create_note_and_add_asset() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
@@ -533,7 +554,7 @@ fn test_create_note_and_add_asset() {
 
 #[test]
 fn test_create_note_and_add_multiple_assets() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2).unwrap();
@@ -638,7 +659,7 @@ fn test_create_note_and_add_multiple_assets() {
 
 #[test]
 fn test_create_note_and_add_same_nft_twice() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
@@ -695,10 +716,21 @@ fn test_create_note_and_add_same_nft_twice() {
 
 #[test]
 fn test_build_recipient_hash() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            TransactionKernel::testing_assembler(),
+        );
 
+        let input_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(100)],
+        );
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note_1])
+            .build()
+    };
     let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
 
     // create output note
@@ -788,7 +820,7 @@ fn test_build_recipient_hash() {
 
 #[test]
 fn test_block_procedures() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
     let code = "
         use.miden::tx
