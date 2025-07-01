@@ -15,7 +15,7 @@ const.PUBLIC_KEY_SLOT=0
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-export.auth_tx_rpo_falcon512
+export.auth__tx_rpo_falcon512
     # Get commitments to output notes
     exec.tx::get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, pad(16)]

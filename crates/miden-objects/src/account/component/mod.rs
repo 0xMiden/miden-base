@@ -151,7 +151,7 @@ impl AccountComponent {
         let mut procedures = Vec::new();
         for module in self.library.module_infos() {
             for (_, procedure_info) in module.procedures() {
-                let is_auth = procedure_info.name.contains("auth_");
+                let is_auth = procedure_info.name.contains("auth__");
                 procedures.push((procedure_info.digest, is_auth));
             }
         }

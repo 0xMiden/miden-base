@@ -74,7 +74,7 @@ impl From<AccountMockComponent> for AccountComponent {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth_basic` procedure that always increments the nonce by 1.
+/// The component defines an `auth__basic` procedure that always increments the nonce by 1.
 pub struct MockAuthComponent {
     library: Library,
 }
@@ -101,7 +101,7 @@ impl From<MockAuthComponent> for AccountComponent {
 const AUTH_CODE: &str = "
     use.miden::account
 
-    export.auth_basic
+    export.auth__basic
         push.1 exec.account::incr_nonce
     end
 ";
@@ -109,7 +109,7 @@ const AUTH_CODE: &str = "
 const NOOP_AUTH_CODE: &str = "
     use.miden::account
 
-    export.auth_noop
+    export.auth__noop
         push.0 drop
     end
 ";
@@ -117,7 +117,7 @@ const NOOP_AUTH_CODE: &str = "
 const CONDITIONAL_AUTH_CODE: &str = "
     use.miden::account
 
-    export.auth_conditional
+    export.auth__conditional
         push.0
         exec.account::get_item
 
@@ -134,7 +134,7 @@ const CONDITIONAL_AUTH_CODE: &str = "
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth_noop` procedure that does nothing (always succeeds).
+/// The component defines an `auth__noop` procedure that does nothing (always succeeds).
 pub struct NoopAuthComponent {
     library: Library,
 }
