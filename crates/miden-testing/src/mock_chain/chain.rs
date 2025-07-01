@@ -403,7 +403,7 @@ impl MockChain {
         self.committed_accounts
             .get(&account_id)
             .map(|mock_account| mock_account.account())
-            .with_context(|| format!("account {} not found in committed accounts", account_id))
+            .with_context(|| format!("account {account_id} not found in committed accounts"))
     }
 
     /// Returns a reference to the [`AccountTree`] of the chain.
@@ -573,7 +573,7 @@ impl MockChain {
                 self.committed_accounts
                     .get(&account_id)
                     .with_context(|| {
-                        format!("account {} not found in committed accounts", account_id)
+                        format!("account {account_id} not found in committed accounts")
                     })?
                     .clone()
             },
@@ -642,21 +642,21 @@ impl MockChain {
             let input_note: InputNote = self
                 .committed_notes
                 .get(note)
-                .with_context(|| format!("note with id {} not found", note))?
+                .with_context(|| format!("note with id {note} not found"))?
                 .clone()
                 .try_into()
                 .context("note error")?;
 
             let note_block_num = input_note
                 .location()
-                .with_context(|| format!("note location not available: {}", note))?
+                .with_context(|| format!("note location not available: {note}"))?
                 .block_num();
 
             if note_block_num != block.header().block_num() {
                 let block_header = self
                     .blocks
                     .get(note_block_num.as_usize())
-                    .with_context(|| format!("block {} not found in chain", note_block_num))?
+                    .with_context(|| format!("block {note_block_num} not found in chain"))?
                     .header()
                     .clone();
                 block_headers_map.insert(note_block_num, block_header);
@@ -964,7 +964,7 @@ impl MockChain {
         max_supply: u64,
     ) -> anyhow::Result<MockFungibleFaucet> {
         let token_symbol = TokenSymbol::new(token_symbol)
-            .with_context(|| format!("invalid token symbol: {}", token_symbol))?;
+            .with_context(|| format!("invalid token symbol: {token_symbol}"))?;
         let max_supply_felt = max_supply.try_into().map_err(|_| {
             anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
         })?;
