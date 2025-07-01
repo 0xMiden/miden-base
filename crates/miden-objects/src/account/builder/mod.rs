@@ -99,7 +99,7 @@ impl AccountBuilder {
     /// authentication procedure (named `auth__*`).
     /// Calling this method multiple times will override the previous auth component.
     ///
-    /// This component will be placed at index 0 of the account procedures list.
+    /// Procedures from this component will be placed at the beginning of the account procedure list.
     pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
         self.auth_component = Some(account_component.into());
         self
