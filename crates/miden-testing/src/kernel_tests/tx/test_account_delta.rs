@@ -42,6 +42,7 @@ fn delta_nonce() -> anyhow::Result<()> {
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
+        .expect("failed to build tx context")
         .tx_script(tx_script)
         .build()
         .execute()
@@ -115,6 +116,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
+        .expect("failed to build tx context")
         .tx_script(tx_script)
         .build()
         .execute()
@@ -209,7 +211,7 @@ fn setup_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
         .unwrap();
 
     let account_id = account.id();
-    let mock_chain = MockChain::with_accounts(&[account]);
+    let mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
 
     TestSetup { mock_chain, account_id }
 }

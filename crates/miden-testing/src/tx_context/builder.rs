@@ -666,18 +666,20 @@ impl TransactionContextBuilder {
                     mock_chain.add_pending_note(OutputNote::Full(i));
                 }
 
-                mock_chain.prove_next_block();
-                mock_chain.prove_next_block();
+                mock_chain.prove_next_block().unwrap();
+                mock_chain.prove_next_block().unwrap();
 
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
-                mock_chain.get_transaction_inputs(
-                    self.account.clone(),
-                    self.account_seed,
-                    &input_note_ids,
-                    &[],
-                )
+                mock_chain
+                    .get_transaction_inputs(
+                        self.account.clone(),
+                        self.account_seed,
+                        &input_note_ids,
+                        &[],
+                    )
+                    .expect("failed to get transaction inputs from mock chain")
             },
         };
 

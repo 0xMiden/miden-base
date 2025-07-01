@@ -47,7 +47,7 @@ fn proven_block_success() -> anyhow::Result<()> {
     chain.add_pending_note(OutputNote::Full(input_note1.clone()));
     chain.add_pending_note(OutputNote::Full(input_note2.clone()));
     chain.add_pending_note(OutputNote::Full(input_note3.clone()));
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[input_note0.id()]);
     let tx1 = generate_tx_with_authenticated_notes(&mut chain, account1.id(), &[input_note1.id()]);
@@ -216,7 +216,7 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note2.clone()));
     chain.add_pending_note(OutputNote::Full(note3.clone()));
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[note0.id()]);
     let tx1 =
@@ -255,7 +255,7 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
 
     let batches = [batch0.clone(), batch1];
     // This block will use block2 as the reference block.
-    let mut block_inputs = chain.get_block_inputs(&batches);
+    let mut block_inputs = chain.get_block_inputs(&batches)?;
 
     // Remove the nullifier witness for output_note0 which will be erased, to check that the
     // proposed block does not _require_ nullifier witnesses for erased notes.
@@ -343,14 +343,14 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // Add notes to the chain we can consume.
     let note0 = generate_tracked_note(&mut chain, account1.id(), account0.id());
     let note1 = generate_tracked_note(&mut chain, account0.id(), account1.id());
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note0.id()]);
     let tx1 = generate_executed_tx_with_authenticated_notes(&chain, account1.id(), &[note1.id()]);
 
-    chain.add_pending_executed_transaction(&tx0);
-    chain.add_pending_executed_transaction(&tx1);
-    let blockx = chain.prove_next_block();
+    chain.add_pending_executed_transaction(&tx0)?;
+    chain.add_pending_executed_transaction(&tx1)?;
+    let blockx = chain.prove_next_block()?;
 
     // Build a block with empty inputs whose account tree and nullifier tree root are not the empty
     // roots.
@@ -364,7 +364,7 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     assert_ne!(latest_block_header.account_root(), AccountTree::new().root());
     assert_ne!(latest_block_header.nullifier_root(), Smt::new().root());
 
-    let (_, empty_partial_blockchain) = chain.latest_selective_partial_blockchain([]);
+    let (_, empty_partial_blockchain) = chain.latest_selective_partial_blockchain([])?;
     assert_eq!(empty_partial_blockchain.block_headers().count(), 0);
 
     let block_inputs = BlockInputs::new(

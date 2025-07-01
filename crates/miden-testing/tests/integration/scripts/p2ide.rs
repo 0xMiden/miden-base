@@ -46,11 +46,11 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])
+        .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])?
         .build()
         .execute();
 
@@ -58,7 +58,7 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Success - Target Account)
     let executed_transaction_2 = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute()
         .unwrap();
@@ -108,7 +108,7 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
 
     // CONSTRUCT AND EXECUTE TX (Success - Target Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute()
         .unwrap();
@@ -155,11 +155,11 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -167,7 +167,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -178,7 +178,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -186,7 +186,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute()
         .unwrap();
@@ -232,7 +232,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
             Some(timelock_height),
         )
         .unwrap();
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // fast forward to reclaim block height + 2
     mock_chain
@@ -241,7 +241,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Failure - sender_account tries to reclaim)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -254,7 +254,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Success - sender_account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute()
         .unwrap();
@@ -301,12 +301,12 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
             Some(timelock_height),
         )
         .unwrap();
-    mock_chain.prove_next_block();
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
+    mock_chain.prove_next_block()?;
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -314,7 +314,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -325,7 +325,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute();
 
@@ -336,7 +336,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])
+        .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])?
         .build()
         .execute();
 
@@ -347,7 +347,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])
+        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()
         .execute()
         .unwrap();
@@ -394,11 +394,11 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
 
     // push note on-chain
     mock_chain.add_pending_note(OutputNote::Full(p2id_extended.clone()));
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])?
         .build()
         .execute();
 
@@ -409,7 +409,7 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
 
     // ───────────────────── sender reclaims successfully ───────────────────────
     let final_tx = mock_chain
-        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])
+        .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])?
         .build()
         .execute()
         .unwrap();

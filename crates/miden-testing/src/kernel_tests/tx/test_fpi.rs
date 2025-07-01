@@ -42,7 +42,7 @@ use crate::{
 // ================================================================================================
 
 #[test]
-fn test_fpi_memory() {
+fn test_fpi_memory() -> anyhow::Result<()> {
     // Prepare the test data
     let storage_slots =
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
@@ -71,14 +71,12 @@ fn test_fpi_memory() {
         foreign_account_code_source,
         TransactionKernel::testing_assembler(),
         storage_slots.clone(),
-    )
-    .unwrap()
+    )?
     .with_supports_all_types();
 
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_component(foreign_account_component)
-        .build_existing()
-        .unwrap();
+        .build_existing()?;
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_component(
@@ -89,16 +87,18 @@ fn test_fpi_memory() {
             .unwrap(),
         )
         .storage_mode(AccountStorageMode::Public)
-        .build_existing()
-        .unwrap();
+        .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]);
-    mock_chain.prove_next_block();
-    let fpi_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id());
+        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+    mock_chain.prove_next_block()?;
+    let fpi_inputs = mock_chain
+        .get_foreign_account_inputs(foreign_account.id())
+        .expect("failed to get foreign account inputs");
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .foreign_accounts(vec![fpi_inputs])
         .build();
 
@@ -267,7 +267,7 @@ fn test_fpi_memory() {
         get_item_foreign_hash = foreign_account.code().procedures()[0].mast_root(),
     );
 
-    let process = &tx_context.execute_code(&code).unwrap();
+    let process = &tx_context.execute_code(&code)?;
 
     // Check that the second invocation of the foreign procedure from the same account does not load
     // the account data again: already loaded data should be reused.
@@ -283,6 +283,7 @@ fn test_fpi_memory() {
         None,
         "Memory starting from 24576 should stay uninitialized"
     );
+    Ok(())
 }
 
 #[test]
@@ -357,14 +358,20 @@ fn test_fpi_memory_two_accounts() {
         native_account.clone(),
         foreign_account_1.clone(),
         foreign_account_2.clone(),
-    ]);
-    mock_chain.prove_next_block();
-    let foreign_account_inputs_1 = mock_chain.get_foreign_account_inputs(foreign_account_1.id());
+    ])
+    .unwrap();
+    mock_chain.prove_next_block().unwrap();
+    let foreign_account_inputs_1 = mock_chain
+        .get_foreign_account_inputs(foreign_account_1.id())
+        .expect("failed to get foreign account inputs");
 
-    let foreign_account_inputs_2 = mock_chain.get_foreign_account_inputs(foreign_account_2.id());
+    let foreign_account_inputs_2 = mock_chain
+        .get_foreign_account_inputs(foreign_account_2.id())
+        .expect("failed to get foreign account inputs");
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs_1, foreign_account_inputs_2])
         .build();
 
@@ -551,8 +558,8 @@ fn test_fpi_execute_foreign_procedure() {
         .unwrap();
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]);
-    mock_chain.prove_next_block();
+        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]).unwrap();
+    mock_chain.prove_next_block().unwrap();
 
     let code = format!(
         "
@@ -626,9 +633,12 @@ fn test_fpi_execute_foreign_procedure() {
     let tx_script =
         TransactionScript::compile(code, TransactionKernel::testing_assembler()).unwrap();
 
-    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id());
+    let foreign_account_inputs = mock_chain
+        .get_foreign_account_inputs(foreign_account.id())
+        .expect("failed to get foreign account inputs");
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
         .tx_script(tx_script)
         .build();
@@ -776,11 +786,16 @@ fn test_nested_fpi_cyclic_invocation() {
         native_account.clone(),
         first_foreign_account.clone(),
         second_foreign_account.clone(),
-    ]);
-    mock_chain.prove_next_block();
+    ])
+    .unwrap();
+    mock_chain.prove_next_block().unwrap();
     let foreign_account_inputs = vec![
-        mock_chain.get_foreign_account_inputs(first_foreign_account.id()),
-        mock_chain.get_foreign_account_inputs(second_foreign_account.id()),
+        mock_chain
+            .get_foreign_account_inputs(first_foreign_account.id())
+            .expect("failed to get foreign account inputs"),
+        mock_chain
+            .get_foreign_account_inputs(second_foreign_account.id())
+            .expect("failed to get foreign account inputs"),
     ];
 
     // push the hashes of the foreign procedures and account IDs to the advice stack to be able to
@@ -846,6 +861,7 @@ fn test_nested_fpi_cyclic_invocation() {
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
@@ -965,13 +981,14 @@ fn test_nested_fpi_stack_overflow() {
 
             let mut mock_chain = MockChain::with_accounts(
                 &[vec![native_account.clone()], foreign_accounts.clone()].concat(),
-            );
+            ).unwrap();
 
-            mock_chain.prove_next_block();
+            mock_chain.prove_next_block().unwrap();
 
             let foreign_accounts: Vec<AccountInputs> = foreign_accounts
                 .iter()
-                .map(|acc| mock_chain.get_foreign_account_inputs(acc.id()))
+                .map(|acc| mock_chain.get_foreign_account_inputs(acc.id())
+                    .expect("failed to get foreign account inputs"))
                 .collect();
 
             let code = format!(
@@ -1012,6 +1029,7 @@ fn test_nested_fpi_stack_overflow() {
 
             let tx_context = mock_chain
                 .build_tx_context(native_account.id(), &[], &[])
+                .expect("failed to build tx context")
                 .foreign_accounts(foreign_accounts)
                 .tx_script(tx_script)
                 .build();
@@ -1082,9 +1100,11 @@ fn test_nested_fpi_native_account_invocation() {
         .unwrap();
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]);
-    mock_chain.prove_next_block();
-    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id());
+        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]).unwrap();
+    mock_chain.prove_next_block().unwrap();
+    let foreign_account_inputs = mock_chain
+        .get_foreign_account_inputs(foreign_account.id())
+        .expect("failed to get foreign account inputs");
 
     // push the hash of the native procedure and native account IDs to the advice stack to be able
     // to call them dynamically.
@@ -1130,6 +1150,7 @@ fn test_nested_fpi_native_account_invocation() {
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
@@ -1147,7 +1168,7 @@ fn test_nested_fpi_native_account_invocation() {
 /// Test that providing an account whose commitment does not match the one in the account tree
 /// results in an error.
 #[test]
-fn test_fpi_stale_account() {
+fn test_fpi_stale_account() -> anyhow::Result<()> {
     // Prepare the test data
     let foreign_account_code_source = "
         use.miden::account
@@ -1184,8 +1205,8 @@ fn test_fpi_stale_account() {
         .unwrap();
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]);
-    mock_chain.prove_next_block();
+        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+    mock_chain.prove_next_block()?;
 
     // Make the foreign account invalid.
     // --------------------------------------------------------------------------------------------
@@ -1198,7 +1219,9 @@ fn test_fpi_stale_account() {
         .unwrap();
 
     // Place the modified account in the advice provider, which will cause the commitment mismatch.
-    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id());
+    let foreign_account_inputs = mock_chain
+        .get_foreign_account_inputs(foreign_account.id())
+        .expect("failed to get foreign account inputs");
 
     // We want to create a mixed ForeignAccountInputs because we want to have a valid account
     // witness against the ref block, but have newer account data (ie, a new state). Otherwise,
@@ -1219,7 +1242,7 @@ fn test_fpi_stale_account() {
     // original unmodified foreign account. This should result in the foreign account's proof to be
     // invalid for this account tree root.
     let tx_context = mock_chain
-        .build_tx_context(native_account, &[], &[])
+        .build_tx_context(native_account, &[], &[])?
         .foreign_accounts(vec![overridden_foreign_account_inputs])
         .build();
 
@@ -1257,6 +1280,7 @@ fn test_fpi_stale_account() {
 
     let result = tx_context.execute_code(&code).map(|_| ());
     assert_execution_error!(result, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT);
+    Ok(())
 }
 
 // HELPER FUNCTIONS

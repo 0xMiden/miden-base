@@ -49,6 +49,7 @@ fn test_send_note_script_basic_wallet() {
 
     let _executed_transaction = mock_chain
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()
@@ -63,8 +64,9 @@ fn test_send_note_script_basic_wallet() {
 #[test]
 fn test_send_note_script_basic_fungible_faucet() {
     let mut mock_chain = MockChain::new();
-    let sender_basic_fungible_faucet_account =
-        mock_chain.add_pending_existing_faucet(Auth::BasicAuth, "POL", 200, None);
+    let sender_basic_fungible_faucet_account = mock_chain
+        .add_pending_existing_faucet(Auth::BasicAuth, "POL", 200, None)
+        .expect("failed to add pending existing faucet");
 
     let sender_account_interface =
         AccountInterface::from(sender_basic_fungible_faucet_account.account());
@@ -98,6 +100,7 @@ fn test_send_note_script_basic_fungible_faucet() {
 
     let _executed_transaction = mock_chain
         .build_tx_context(sender_basic_fungible_faucet_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()
