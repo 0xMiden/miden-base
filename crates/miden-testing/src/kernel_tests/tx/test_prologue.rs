@@ -73,8 +73,12 @@ fn test_transaction_prologue() {
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             &[FungibleAsset::mock(100)],
         );
+        let input_note_3 = create_transfer_mock_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            &[FungibleAsset::mock(111)],
+        );
         TransactionContextBuilder::new(account)
-            .extend_input_notes(vec![input_note_1, input_note_2])
+            .extend_input_notes(vec![input_note_1, input_note_2, input_note_3])
             .build()
     };
     let code = "

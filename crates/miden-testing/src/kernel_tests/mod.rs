@@ -282,6 +282,8 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
             ## ------------------------------------------------------------------------------------
             push.1 call.account::incr_nonce drop             
             # => []
+
+            dropw dropw dropw dropw
         end
     ",
         UPDATED_SLOT_VALUE = word_to_masm_push_string(&Word::from(updated_slot_value)),

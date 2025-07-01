@@ -61,6 +61,7 @@ pub fn create_transfer_mock_note(sender: AccountId, assets: &[Asset]) -> Note {
             push.{num_assets} assert_eq             # [dest_ptr]
 
             {code_body}
+            dropw dropw dropw dropw
             push.1 call.::miden::account::incr_nonce drop
         end
         ",
