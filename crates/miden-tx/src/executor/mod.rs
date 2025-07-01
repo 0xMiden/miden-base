@@ -13,8 +13,8 @@ use miden_objects::{
     },
     vm::{AdviceMap, StackOutputs},
 };
-pub use vm_processor::MastForestStore;
-use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{AdviceInputs, MemAdviceProvider, Process, RecAdviceProvider};
+pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
@@ -67,6 +67,22 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             )
             .expect("Must not fail while max cycles is more than min trace length"),
         }
+    }
+
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
+    /// [TransactionAuthenticator] and [ExecutionOptions].
+    ///
+    /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
+    /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
+    pub fn with_options(
+        data_store: &'store dyn DataStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        exec_options: ExecutionOptions,
+    ) -> Result<Self, TransactionExecutorError> {
+        validate_num_cycles(exec_options.max_cycles())?;
+        validate_num_cycles(exec_options.expected_cycles())?;
+
+        Ok(Self { data_store, authenticator, exec_options })
     }
 
     /// Puts the [TransactionExecutor] into debug mode.
@@ -457,6 +473,19 @@ fn validate_input_notes(
     }
 
     Ok(ref_blocks)
+}
+
+/// Validates that the number of cycles specified is within the allowed range.
+fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> {
+    if !(MIN_TX_EXECUTION_CYCLES..=MAX_TX_EXECUTION_CYCLES).contains(&num_cycles) {
+        Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
+            min_cycles: MIN_TX_EXECUTION_CYCLES,
+            max_cycles: MAX_TX_EXECUTION_CYCLES,
+            actual: num_cycles,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 // HELPER ENUM
