@@ -479,8 +479,7 @@ fn test_no_expiration_delta_set() {
 fn test_epilogue_increment_nonce_success() {
     let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 
-    let code = format!(
-        "
+    let code = "
         use.kernel::prologue
         use.test::account
         use.kernel::epilogue
@@ -500,15 +499,10 @@ fn test_epilogue_increment_nonce_success() {
 
             # clean the stack
             dropw dropw dropw dropw
-        end
-        "
-    );
+        end";
 
     tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
+        .execute_code_with_assembler(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap();
 }
 

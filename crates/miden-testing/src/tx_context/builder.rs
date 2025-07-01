@@ -38,7 +38,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
 /// # use miden_lib::transaction::TransactionKernel;
-/// let tx_context = TransactionContextBuilder::with_standard_account(Felt::ONE).build();
+/// let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
 ///
 /// let code = "
 /// use.kernel::prologue

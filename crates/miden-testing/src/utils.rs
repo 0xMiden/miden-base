@@ -2,7 +2,7 @@ use alloc::string::String;
 
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::{account::AccountId, asset::Asset, note::Note, testing::note::NoteBuilder};
-use rand::rng;
+use rand::{SeedableRng, rngs::SmallRng};
 
 // TEST HELPERS
 // ================================================================================================
@@ -67,7 +67,7 @@ pub fn create_transfer_mock_note(sender: AccountId, assets: &[Asset]) -> Note {
         num_assets = assets.len(),
     );
 
-    NoteBuilder::new(sender, rng())
+    NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
         .code(code)
         .build(&TransactionKernel::testing_assembler_with_mock_account())
