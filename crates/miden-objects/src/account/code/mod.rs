@@ -32,24 +32,14 @@ impl ProcedureInfoBuilder {
         }
     }
 
-    fn add_auth_component(
-        &mut self,
-        component: &AccountComponent,
-    ) -> Result<(), AccountError> {
-        if let Some(auth_procedure_root) = component.get_auth_procedure_root()? {
-            let mut component_procedures: Vec<RpoDigest> = component
-                .library()
-                .module_infos()
-                .flat_map(|module| module.procedure_digests().collect::<Vec<_>>())
-                .collect();
-            // safe to unwrap, we know the auth procedure root is present - and unique
-            let auth_procedure_index = component_procedures
-                .iter()
-                .position(|r| *r == auth_procedure_root)
-                .unwrap();
-            component_procedures.swap(0, auth_procedure_index);
+    fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
+        if let Some(auth_index) = component.get_auth_procedure_index()? {
+            let mut component_procedures: Vec<(RpoDigest, bool)> = component.procedures();
 
-            for proc_mast_root in component_procedures {
+            // Move the auth procedure to the front
+            component_procedures.swap(0, auth_index);
+
+            for (proc_mast_root, _) in component_procedures {
                 self.add_procedure(proc_mast_root, component.storage_size())?;
             }
 
@@ -65,21 +55,18 @@ impl ProcedureInfoBuilder {
     }
 
     fn add_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
-        match component.get_auth_procedure_root() {
+        match component.get_auth_procedure_index() {
             Ok(None) => {},
             _ => return Err(AccountError::AccountCodeMultipleAuthComponents),
         }
 
-        for module in component.library().module_infos() {
-            for proc_mast_root in module.procedure_digests() {
-                self.add_procedure(proc_mast_root, component.storage_size())?;
-            }
+        for (proc_mast_root, _) in component.procedures() {
+            self.add_procedure(proc_mast_root, component.storage_size())?;
         }
 
-        self.storage_offset = self
-            .storage_offset
-            .checked_add(component.storage_size())
-            .expect("account procedure info constructor should return an error if the addition overflows");
+        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
+            "account procedure info constructor should return an error if the addition overflows",
+        );
 
         Ok(())
     }
