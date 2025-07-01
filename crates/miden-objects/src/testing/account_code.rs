@@ -136,8 +136,7 @@ impl AccountCode {
         let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
             .unwrap()
             .with_supports_all_types();
-        let auth_component =
-            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+        let auth_component = NoopAuthComponent::new(Assembler::default()).unwrap().into();
         Self::from_components(
             &[auth_component, component],
             AccountType::RegularAccountUpdatableCode,

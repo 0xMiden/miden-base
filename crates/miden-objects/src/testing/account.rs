@@ -58,8 +58,7 @@ impl Account {
 
         let mock_component = AccountMockComponent::new_with_empty_slots(assembler.clone()).unwrap();
 
-        let auth_component: AccountComponent =
-            NoopAuthComponent::new(assembler).unwrap().into();
+        let auth_component: AccountComponent = NoopAuthComponent::new(assembler).unwrap().into();
 
         let (account_code, mut account_storage) = Account::initialize_from_components(
             account_id.account_type(),
