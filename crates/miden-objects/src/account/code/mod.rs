@@ -12,106 +12,6 @@ use crate::account::{AccountComponent, AccountType};
 pub mod procedure;
 use procedure::{AccountProcedureInfo, PrintableProcedure};
 
-// ACCOUNT PROCEDURE BUILDER
-// ================================================================================================
-
-struct ProcedureInfoBuilder {
-    procedures: Vec<AccountProcedureInfo>,
-    proc_root_set: BTreeSet<RpoDigest>,
-    storage_offset: u8,
-}
-
-impl ProcedureInfoBuilder {
-    fn new(account_type: AccountType) -> Self {
-        let storage_offset = if account_type.is_faucet() { 1 } else { 0 };
-
-        Self {
-            procedures: Vec::new(),
-            proc_root_set: BTreeSet::new(),
-            storage_offset,
-        }
-    }
-
-    fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
-        if let Some(auth_index) = component.get_auth_procedure_index()? {
-            let mut component_procedures: Vec<(RpoDigest, bool)> = component.procedures();
-
-            // Move the auth procedure to the front
-            component_procedures.swap(0, auth_index);
-
-            for (proc_mast_root, _) in component_procedures {
-                self.add_procedure(proc_mast_root, component.storage_size())?;
-            }
-
-            self.storage_offset = self
-                .storage_offset
-                .checked_add(component.storage_size())
-                .expect("account procedure info constructor should return an error if the addition overflows");
-
-            Ok(())
-        } else {
-            Err(AccountError::AccountCodeNoAuthComponent)
-        }
-    }
-
-    fn add_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
-        match component.get_auth_procedure_index() {
-            Ok(None) => {},
-            _ => return Err(AccountError::AccountCodeMultipleAuthComponents),
-        }
-
-        for (proc_mast_root, _) in component.procedures() {
-            self.add_procedure(proc_mast_root, component.storage_size())?;
-        }
-
-        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
-            "account procedure info constructor should return an error if the addition overflows",
-        );
-
-        Ok(())
-    }
-
-    fn add_procedure(
-        &mut self,
-        proc_mast_root: RpoDigest,
-        component_storage_size: u8,
-    ) -> Result<(), AccountError> {
-        // We cannot support procedures from multiple components with the same MAST root
-        // since storage offsets/sizes are set per MAST root. Setting them again for
-        // procedures where the offset has already been inserted would cause that
-        // procedure of the earlier component to write to the wrong slot.
-        if !self.proc_root_set.insert(proc_mast_root) {
-            return Err(AccountError::AccountComponentDuplicateProcedureRoot(proc_mast_root));
-        }
-
-        // Components that do not access storage need to have offset and size set to 0.
-        let (storage_offset, storage_size) = if component_storage_size == 0 {
-            (0, 0)
-        } else {
-            (self.storage_offset, component_storage_size)
-        };
-
-        // Note: Offset and size are validated in `AccountProcedureInfo::new`.
-        self.procedures.push(AccountProcedureInfo::new(
-            proc_mast_root,
-            storage_offset,
-            storage_size,
-        )?);
-
-        Ok(())
-    }
-
-    fn build(self) -> Result<Vec<AccountProcedureInfo>, AccountError> {
-        if self.procedures.is_empty() {
-            Err(AccountError::AccountCodeNoProcedures)
-        } else if self.procedures.len() > AccountCode::MAX_NUM_PROCEDURES {
-            Err(AccountError::AccountCodeTooManyProcedures(self.procedures.len()))
-        } else {
-            Ok(self.procedures)
-        }
-    }
-}
-
 // ACCOUNT CODE
 // ================================================================================================
 
@@ -413,6 +313,106 @@ impl PrettyPrint for AccountCode {
             }
         }
         partial
+    }
+}
+
+// ACCOUNT PROCEDURE BUILDER
+// ================================================================================================
+
+struct ProcedureInfoBuilder {
+    procedures: Vec<AccountProcedureInfo>,
+    proc_root_set: BTreeSet<RpoDigest>,
+    storage_offset: u8,
+}
+
+impl ProcedureInfoBuilder {
+    fn new(account_type: AccountType) -> Self {
+        let storage_offset = if account_type.is_faucet() { 1 } else { 0 };
+
+        Self {
+            procedures: Vec::new(),
+            proc_root_set: BTreeSet::new(),
+            storage_offset,
+        }
+    }
+
+    fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
+        if let Some(auth_index) = component.get_auth_procedure_index()? {
+            let mut component_procedures: Vec<(RpoDigest, bool)> = component.procedures();
+
+            // Move the auth procedure to the front
+            component_procedures.swap(0, auth_index);
+
+            for (proc_mast_root, _) in component_procedures {
+                self.add_procedure(proc_mast_root, component.storage_size())?;
+            }
+
+            self.storage_offset = self
+                .storage_offset
+                .checked_add(component.storage_size())
+                .expect("account procedure info constructor should return an error if the addition overflows");
+
+            Ok(())
+        } else {
+            Err(AccountError::AccountCodeNoAuthComponent)
+        }
+    }
+
+    fn add_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
+        match component.get_auth_procedure_index() {
+            Ok(None) => {},
+            _ => return Err(AccountError::AccountCodeMultipleAuthComponents),
+        }
+
+        for (proc_mast_root, _) in component.procedures() {
+            self.add_procedure(proc_mast_root, component.storage_size())?;
+        }
+
+        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
+            "account procedure info constructor should return an error if the addition overflows",
+        );
+
+        Ok(())
+    }
+
+    fn add_procedure(
+        &mut self,
+        proc_mast_root: RpoDigest,
+        component_storage_size: u8,
+    ) -> Result<(), AccountError> {
+        // We cannot support procedures from multiple components with the same MAST root
+        // since storage offsets/sizes are set per MAST root. Setting them again for
+        // procedures where the offset has already been inserted would cause that
+        // procedure of the earlier component to write to the wrong slot.
+        if !self.proc_root_set.insert(proc_mast_root) {
+            return Err(AccountError::AccountComponentDuplicateProcedureRoot(proc_mast_root));
+        }
+
+        // Components that do not access storage need to have offset and size set to 0.
+        let (storage_offset, storage_size) = if component_storage_size == 0 {
+            (0, 0)
+        } else {
+            (self.storage_offset, component_storage_size)
+        };
+
+        // Note: Offset and size are validated in `AccountProcedureInfo::new`.
+        self.procedures.push(AccountProcedureInfo::new(
+            proc_mast_root,
+            storage_offset,
+            storage_size,
+        )?);
+
+        Ok(())
+    }
+
+    fn build(self) -> Result<Vec<AccountProcedureInfo>, AccountError> {
+        if self.procedures.is_empty() {
+            Err(AccountError::AccountCodeNoProcedures)
+        } else if self.procedures.len() > AccountCode::MAX_NUM_PROCEDURES {
+            Err(AccountError::AccountCodeTooManyProcedures(self.procedures.len()))
+        } else {
+            Ok(self.procedures)
+        }
     }
 }
 
