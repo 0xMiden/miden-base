@@ -522,7 +522,7 @@ fn test_send_note_proc() -> miette::Result<()> {
 #[test]
 fn executed_transaction_output_notes() {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+    let auth_component = MockAuthComponent::new(assembler.clone()).unwrap().into();
 
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,

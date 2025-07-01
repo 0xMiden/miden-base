@@ -80,7 +80,7 @@ pub struct MockAuthComponent {
 
 impl MockAuthComponent {
     /// Creates a new MockAuthComponent using the provided assembler.
-    pub fn from_assembler(assembler: Assembler) -> Result<Self, AccountError> {
+    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
         let library = assembler
             .assemble_library([AUTH_CODE])
             .map_err(AccountError::AccountComponentAssemblyError)?;
@@ -136,7 +136,7 @@ pub struct NoopAuthComponent {
 }
 
 impl NoopAuthComponent {
-    pub fn from_assembler(assembler: Assembler) -> Result<Self, AccountError> {
+    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
         let library = assembler
             .assemble_library([NOOP_AUTH_CODE])
             .map_err(AccountError::AccountComponentAssemblyError)?;
@@ -157,7 +157,7 @@ pub struct ConditionalAuthComponent {
 }
 
 impl ConditionalAuthComponent {
-    pub fn from_assembler(assembler: Assembler) -> Result<Self, AccountError> {
+    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
         let library = assembler
             .assemble_library([CONDITIONAL_AUTH_CODE])
             .map_err(AccountError::AccountComponentAssemblyError)?;

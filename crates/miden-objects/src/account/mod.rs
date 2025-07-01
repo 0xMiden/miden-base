@@ -658,7 +658,7 @@ mod tests {
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
         let auth_component: AccountComponent =
-            NoopAuthComponent::from_assembler(Assembler::default()).unwrap().into();
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
         let component1 = AccountComponent::new(library1, vec![]).unwrap().with_supports_all_types();
         let component2 = AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
 

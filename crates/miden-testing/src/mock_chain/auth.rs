@@ -48,19 +48,19 @@ impl Auth {
                 (component, Some(authenticator))
             },
             Auth::Mock => {
-                let assembler = TransactionKernel::testing_assembler();
-                let component = MockAuthComponent::from_assembler(assembler).unwrap();
+                let assembler = TransactionKernel::assembler();
+                let component = MockAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
             },
 
             Auth::Noop => {
-                let assembler = TransactionKernel::testing_assembler();
-                let component = NoopAuthComponent::from_assembler(assembler).unwrap();
+                let assembler = TransactionKernel::assembler();
+                let component = NoopAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
             },
             Auth::Conditional => {
-                let assembler = TransactionKernel::testing_assembler();
-                let component = ConditionalAuthComponent::from_assembler(assembler).unwrap();
+                let assembler = TransactionKernel::assembler();
+                let component = ConditionalAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
             },
         }

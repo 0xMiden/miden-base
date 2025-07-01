@@ -106,7 +106,7 @@ impl TransactionContextBuilder {
     pub fn with_standard_account(nonce: Felt) -> Self {
         // Build standard account with normal assembler because the testing one already contains it
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+        let auth_component = MockAuthComponent::new(assembler.clone()).unwrap().into();
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -135,7 +135,7 @@ impl TransactionContextBuilder {
 
     pub fn with_noop_auth_account(nonce: Felt) -> Self {
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component = NoopAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+        let auth_component = NoopAuthComponent::new(assembler.clone()).unwrap().into();
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,

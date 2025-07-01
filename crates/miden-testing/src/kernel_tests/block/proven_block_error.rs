@@ -261,7 +261,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let assembler = TransactionKernel::testing_assembler();
     let auth_component: AccountComponent =
-        MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+        MockAuthComponent::new(assembler.clone()).unwrap().into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())

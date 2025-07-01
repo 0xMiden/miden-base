@@ -59,7 +59,7 @@ impl Account {
         let mock_component = AccountMockComponent::new_with_empty_slots(assembler.clone()).unwrap();
 
         let auth_component: AccountComponent =
-            NoopAuthComponent::from_assembler(assembler).unwrap().into();
+            NoopAuthComponent::new(assembler).unwrap().into();
 
         let (account_code, mut account_storage) = Account::initialize_from_components(
             account_id.account_type(),
@@ -94,7 +94,7 @@ impl Account {
         let account_id = AccountId::try_from(account_id).unwrap();
 
         let auth_component: AccountComponent =
-            NoopAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+            NoopAuthComponent::new(assembler.clone()).unwrap().into();
 
         let mock_component = AccountMockComponent::new_with_empty_slots(assembler).unwrap();
 

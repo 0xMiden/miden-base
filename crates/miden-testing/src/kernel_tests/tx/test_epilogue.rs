@@ -66,7 +66,7 @@ fn test_epilogue() {
         .unwrap();
 
     let assembler = TransactionKernel::assembler();
-    let auth_component = MockAuthComponent::from_assembler(assembler.clone()).unwrap().into();
+    let auth_component = MockAuthComponent::new(assembler.clone()).unwrap().into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,

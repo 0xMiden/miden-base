@@ -458,7 +458,7 @@ mod tests {
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
         let auth_component: AccountComponent =
-            NoopAuthComponent::from_assembler(Assembler::default()).unwrap().into();
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
 
         let component1 =
             AccountComponent::new(library1, vec![StorageSlot::Value(Word::default()); 250])
