@@ -29,8 +29,8 @@ pub enum Auth {
 
 impl Auth {
     /// Converts `self` into its corresponding authentication [`AccountComponent`] and an optional
-    /// [`BasicAuthenticator`]. The component is always returned, but the authenticator is `None`
-    /// when [`Auth::Mock`] is passed.
+    /// [`BasicAuthenticator`]. The component is always returned, but the authenticator is only
+    /// `Some` when [`Auth::BasicAuth`] is passed."
     pub fn build_component(&self) -> (AccountComponent, Option<BasicAuthenticator<ChaCha20Rng>>) {
         match self {
             Auth::BasicAuth => {
