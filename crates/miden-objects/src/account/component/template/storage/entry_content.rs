@@ -247,8 +247,7 @@ impl Deserializable for WordRepresentation {
                 Ok(WordRepresentation::Value { identifier, value })
             },
             other => Err(DeserializationError::InvalidValue(format!(
-                "unknown tag for WordRepresentation: {}",
-                other
+                "unknown tag '{other}' for WordRepresentation"
             ))),
         }
     }
@@ -456,8 +455,7 @@ impl Deserializable for FeltRepresentation {
                 Ok(FeltRepresentation::Template { r#type, identifier })
             },
             other => Err(DeserializationError::InvalidValue(format!(
-                "Unknown tag for FeltRepresentation: {}",
-                other
+                "unknown tag '{other}' for FeltRepresentation"
             ))),
         }
     }
@@ -667,8 +665,7 @@ impl Deserializable for MultiWordRepresentation {
                 Ok(MultiWordRepresentation::Value { identifier, values })
             },
             _ => Err(DeserializationError::InvalidValue(format!(
-                "unknown variant tag `{}` for MultiWordRepresentation",
-                variant_tag
+                "unknown variant tag '{variant_tag}' for MultiWordRepresentation"
             ))),
         }
     }

@@ -1,5 +1,6 @@
 use.kernel::account
 use.kernel::constants
+use.std::mem
 
 # ERRORS
 # =================================================================================================
@@ -13,6 +14,8 @@ const.ERR_ACCOUNT_STACK_OVERFLOW="depth of the nested FPI calls exceeded 64"
 const.ERR_ACCOUNT_STACK_UNDERFLOW="failed to end foreign context because the current account is the native account"
 
 const.ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT="creation of a foreign context against the native account is forbidden"
+
+const.ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED="number of link map entries exceeds maximum"
 
 # MEMORY ADDRESS CONSTANTS
 # =================================================================================================
@@ -41,7 +44,7 @@ const.NEW_CODE_ROOT_PTR=20
 # The memory address at which the absolute expiration block number is stored.
 const.TX_EXPIRATION_BLOCK_NUM_PTR=24
 
-# The memory address at which the pointer to the account stack element containing the pointer to the 
+# The memory address at which the pointer to the account stack element containing the pointer to the
 # currently accessing account data is stored.
 const.ACCOUNT_STACK_TOP_PTR=28
 
@@ -158,6 +161,19 @@ const.ACCT_PROCEDURES_SECTION_OFFSET=32
 const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2084
 const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
 
+# Offset at which an exact copy of the account's storage slot section starting at
+# ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
+# slots accessible to enable computing a diff between the initial and current account storage slots
+# for use in the account delta. This section is only present for the native account.
+const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4128
+
+# NATIVE ACCOUNT DELTA
+# -------------------------------------------------------------------------------------------------
+
+# The pointer at which the delta of the nonce is stored.
+# Layout: [nonce_delta, 0, 0, 0]
+const.ACCOUNT_DELTA_NONCE_PTR=532480
+
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -199,6 +215,28 @@ const.OUTPUT_NOTE_RECIPIENT_OFFSET=8
 const.OUTPUT_NOTE_ASSETS_HASH_OFFSET=12
 const.OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
 const.OUTPUT_NOTE_ASSETS_OFFSET=20
+
+# LINK MAP MEMORY
+# -------------------------------------------------------------------------------------------------
+
+# The inclusive start of the link map dynamic memory range.
+# Chosen as a number greater than 2^25 such that all entry pointers are multiples of
+# LINK_MAP_ENTRY_SIZE. That enables a simpler check in assert_entry_ptr_is_valid.
+const.LINK_MAP_REGION_START_PTR=33554448
+
+# The non-inclusive end of the link map dynamic memory range.
+# This happens to be 2^26, but if it is changed, it should be chosen as a number such that
+# LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR is a multiple of LINK_MAP_ENTRY_SIZE,
+# because that enables checking whether a newly allocated entry pointer is at the end of the range
+# using equality rather than lt/gt in link_map_malloc.
+const.LINK_MAP_REGION_END_PTR=67108864
+
+# LINK_MAP_REGION_START_PTR + the currently used size stored at this pointer defines the next
+# entry pointer that will be allocated.
+const.LINK_MAP_USED_MEMORY_SIZE=33554432
+
+# The size of each map entry, i.e. four words.
+const.LINK_MAP_ENTRY_SIZE=16
 
 # MEMORY PROCEDURES
 # =================================================================================================
@@ -709,7 +747,7 @@ end
 #! Inputs:  []
 #! Outputs: []
 export.set_current_account_data_ptr_to_native_account
-    # get the pointer to the first stack element where pointer to the native account data should be 
+    # get the pointer to the first stack element where pointer to the native account data should be
     # stored
     push.ACCOUNT_STACK_TOP_PTR
     push.MIN_ACCOUNT_STACK_PTR
@@ -719,7 +757,7 @@ export.set_current_account_data_ptr_to_native_account
     push.NATIVE_ACCOUNT_DATA_PTR dup.1 mem_store
     # => [native_acct_stack_ptr, account_stack_top_ptr]
 
-    # store the pointer to the first account stack element at the account stack top 
+    # store the pointer to the first account stack element at the account stack top
     # pointer.
     swap mem_store
     # => []
@@ -761,7 +799,7 @@ export.push_ptr_to_account_stack
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
     # check that the current account data pointer is not equal to the native account data pointer
-    dup.1 push.NATIVE_ACCOUNT_DATA_PTR eq 
+    dup.1 push.NATIVE_ACCOUNT_DATA_PTR eq
     assertz.err=ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
@@ -1089,6 +1127,20 @@ export.set_num_storage_slots
     mem_store
 end
 
+#! Returns the type of the requested storage slot.
+#!
+#! Inputs:  [acct_storage_slots_section_ptr, index]
+#! Outputs: [slot_type]
+#!
+#! Where:
+#! - index is the location in memory of the storage slot.
+#! - slot_type is the type of the storage slot.
+export.get_storage_slot_type
+    # get storage slot type
+    swap mul.8 add add.4 mem_load
+    # => [slot_type]
+end
+
 #! Returns the memory pointer to the account storage slots section.
 #!
 #! Inputs:  []
@@ -1098,6 +1150,72 @@ end
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
 export.get_acct_storage_slots_section_ptr
     exec.get_current_account_data_ptr push.ACCT_STORAGE_SLOTS_SECTION_OFFSET add
+end
+
+#! Returns the memory pointer to the native account's storage slots section.
+#!
+#! Inputs:  []
+#! Outputs: [storage_slots_section_ptr]
+#!
+#! Where:
+#! - storage_slots_section_ptr is the memory pointer to the native account's storage slots section.
+export.get_native_account_storage_slots_ptr
+    exec.get_native_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
+end
+
+#! Returns the memory pointer to the initial storage slots of the native account.
+#!
+#! Inputs:  []
+#! Outputs: [account_initial_storage_slots_ptr]
+#!
+#! Where:
+#! - account_initial_storage_slots_ptr is the memory pointer to the initial storage slot values.
+export.get_native_account_initial_storage_slots_ptr
+  exec.get_native_account_data_ptr add.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET
+end
+
+### ACCOUNT DELTA #################################################
+
+#! Increments the delta of the account's nonce.
+#!
+#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2, then the
+#! stored nonce_delta will be 5.
+#!
+#! Inputs:  [nonce_delta]
+#! Outputs: []
+#!
+#! Where:
+#! - nonce_delta is the value by which the nonce changed.
+export.incr_account_nonce_delta
+    exec.get_account_nonce_delta add mem_store.ACCOUNT_DELTA_NONCE_PTR
+end
+
+#! Returns the delta of the account's nonce.
+#!
+#! Inputs:  []
+#! Outputs: [nonce_delta]
+#!
+#! Where:
+#! - nonce_delta is the value by which the nonce changed.
+export.get_account_nonce_delta
+    mem_load.ACCOUNT_DELTA_NONCE_PTR
+end
+
+#! Initializes the storage slots holding the initial values of each slot.
+#!
+#! Inputs:  []
+#! Outputs: []
+export.mem_copy_initial_storage_slots
+  exec.get_native_account_initial_storage_slots_ptr
+  exec.get_native_account_storage_slots_ptr
+  # => [storage_slots_section_ptr, initial_storage_slots_ptr]
+
+  # each slot takes up two words
+  exec.get_num_storage_slots mul.2
+  # => [num_storage_slot_words, storage_slots_section_ptr, initial_storage_slots_ptr]
+
+  exec.mem::memcopy_words
+  # => []
 end
 
 # INPUT NOTES
@@ -1566,4 +1684,60 @@ end
 #!   stored.
 export.get_kernel_procedures_ptr
     push.KERNEL_PROCEDURES_PTR
+end
+
+# LINK MAP
+# -------------------------------------------------------------------------------------------------
+
+#! Returns the link map memory start ptr constant.
+#!
+#! Inputs:  []
+#! Outputs: [start_ptr]
+export.get_link_map_region_start_ptr
+    push.LINK_MAP_REGION_START_PTR
+end
+
+#! Returns the link map memory end ptr constant.
+#!
+#! Inputs:  []
+#! Outputs: [end_ptr]
+export.get_link_map_region_end_ptr
+    push.LINK_MAP_REGION_END_PTR
+end
+
+#! Returns the link map entry size constant.
+#!
+#! Inputs:  []
+#! Outputs: [entry_size]
+export.get_link_map_entry_size
+    push.LINK_MAP_ENTRY_SIZE
+end
+
+#! Returns the next pointer to an empty link map entry.
+#!
+#! Inputs:  []
+#! Outputs: [entry_ptr]
+#!
+#! Panics if:
+#! - the allocation exceeds the maximum possible number of link map entries.
+export.link_map_malloc
+    # retrieve the current memory size
+    mem_load.LINK_MAP_USED_MEMORY_SIZE dup
+    # => [current_mem_size, current_mem_size]
+
+    # store next offset
+    add.LINK_MAP_ENTRY_SIZE
+    # => [next_mem_size, current_mem_size]
+
+    mem_store.LINK_MAP_USED_MEMORY_SIZE
+    # => [current_mem_size]
+
+    add.LINK_MAP_REGION_START_PTR
+    # => [entry_ptr]
+
+    # If entry_ptr is the end_ptr the entry would be allocated in the next memory region so
+    # we must abort.
+    # We can use neq because of how the end ptr is chosen. See its docs for details.
+    dup neq.LINK_MAP_REGION_END_PTR assert.err=ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED
+    # => [entry_ptr]
 end

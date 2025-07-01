@@ -1,0 +1,185 @@
+use.kernel::memory
+use.kernel::constants
+use.kernel::account
+use.std::crypto::hashes::rpo
+
+# CONSTANTS
+# =================================================================================================
+
+# The domain of an asset in the delta commitment.
+const.DOMAIN_ASSET=1
+# The domain of a value storage slot in the delta commitment.
+const.DOMAIN_VALUE=2
+# The domain of a map storage slot in the delta commitment.
+const.DOMAIN_MAP=3
+
+# PROCEDURES
+# =================================================================================================
+
+#! Computes the commitment to the native account's delta.
+#!
+#! See the Rust function `AccountDelta::commitment` for a detailed description of how it is computed.
+#!
+#! Inputs:  []
+#! Outputs: [DELTA_COMMITMENT]
+#!
+#! Where:
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+export.compute_commitment
+    # pad capacity element of the hasher
+    padw
+    # => [CAPACITY]
+
+    exec.memory::get_account_nonce_delta push.0
+    # => [0, nonce_delta, CAPACITY]
+
+    exec.memory::get_native_account_id
+    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_delta, CAPACITY]
+    # => [ID_AND_NONCE, CAPACITY]
+
+    padw
+    # => [EMPTY_WORD, ID_AND_NONCE, CAPACITY]
+
+    hperm
+    # => [RATE, RATE, PERM]
+
+    # TODO: Compute vault commitment
+
+    exec.update_storage_delta
+    # => [RATE, RATE, PERM]
+
+    exec.rpo::squeeze_digest
+    # => [DELTA_COMMITMENT]
+end
+
+#! Updates the given delta hasher with the storage slots.
+#!
+#! Inputs:  [RATE, RATE, PERM]
+#! Outputs: [RATE, RATE, PERM]
+proc.update_storage_delta
+    exec.memory::get_num_storage_slots movdn.12
+    # => [RATE, RATE, PERM, num_storage_slots]
+
+    push.0 movdn.12
+    # => [RATE, RATE, PERM, slot_idx = 0, num_storage_slots]
+
+    # loop if num_storage_slots != 0
+    dup.13 neq.0
+    # => [should_loop, RATE, RATE, PERM, slot_idx, num_storage_slots]
+
+    while.true
+        dup.12
+        # => [slot_idx, RATE, RATE, PERM, slot_idx, num_storage_slots]
+
+        exec.update_slot_delta
+        # => [RATE, RATE, PERM, slot_idx, num_storage_slots]
+
+        # increment slot index
+        movup.12 add.1
+        # => [next_slot_idx, RATE, RATE, PERM, num_storage_slots]
+
+        dup movdn.13
+        # => [next_slot_idx, RATE, RATE, PERM, next_slot_idx, num_storage_slots]
+
+        # compute next_slot_idx < num_storage_slots
+        dup.14 lt
+        # => [should_loop, RATE, RATE, PERM, next_slot_idx, num_storage_slots]
+    end
+    # => [RATE, RATE, PERM, next_slot_idx, num_storage_slots]
+
+    # clean the stack
+    movup.12 drop movup.12 drop
+    # => [RATE, RATE, PERM]
+end
+
+#! Updates the given delta hasher with the storage slot at the provided index.
+#!
+#! Inputs:  [slot_idx, RATE, RATE, PERM]
+#! Outputs: [RATE, RATE, PERM]
+proc.update_slot_delta
+    # we use memory::get_storage_slot_type instead of the procedure in account to
+    # avoid the assertion overhead
+    dup exec.memory::get_native_account_storage_slots_ptr
+    # => [native_account_storage_slots_section_ptr, slot_idx, slot_idx, RATE, RATE, PERM]
+
+    exec.memory::get_storage_slot_type
+    # => [storage_slot_type, slot_idx, RATE, RATE, PERM]
+
+    # check if type == slot
+    exec.constants::get_storage_slot_type_value eq
+    # => [is_value_slot_type, slot_idx, RATE, RATE, PERM]
+
+    if.true
+        exec.update_value_slot_delta
+    else
+      # TODO: Update delta hasher with map.
+      # drop slot idx
+      drop
+    end
+end
+
+#! Updates the given delta hasher with the value storage slot at the provided index.
+#!
+#! Inputs:  [slot_idx, RATE, RATE, PERM]
+#! Outputs: [RATE, RATE, PERM]
+proc.update_value_slot_delta
+    dup exec.account::get_item
+    # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+    dup.4 exec.get_item_initial
+    # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+    eqw not
+    # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+    # only include in delta if the slot's value has changed
+    if.true
+      # drop init value
+      dropw
+      # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+      # build value slot metadata
+      push.DOMAIN_VALUE
+      # => [domain, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
+
+      movup.5 push.0.0
+      # => [0, 0, slot_idx, domain, CURRENT_VALUE, RATE, RATE, PERM]
+
+      # clear rate elements
+      swapdw dropw dropw
+      # => [0, 0, slot_idx, domain, CURRENT_VALUE, PERM]
+
+      # arrange rate words in correct order
+      swapw
+      # => [CURRENT_VALUE, 0, 0, slot_idx, domain, PERM]
+
+      hperm
+      # => [RATE, RATE, PERM]
+    else
+      # drop init value, current value and slot idx
+      dropw dropw drop
+      # => [RATE, RATE, PERM]
+    end
+    # => [RATE, RATE, PERM]
+end
+
+#! Returns the initial value of a storage slot from the account storage.
+#!
+#! This is the value of the slot at the beginning of the transaction.
+#!
+#! If this this procedure is moved to the account, additional assertions are necessary to make it
+#! safe to use.
+#!
+#! Note: Assumes the index is within bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [INIT_VALUE]
+proc.get_item_initial
+    # get account storage slots section offset
+    exec.memory::get_native_account_initial_storage_slots_ptr
+    # => [account_delta_initial_storage_slots_ptr, index]
+
+    # get the item from storage
+    swap mul.8 add padw movup.4 mem_loadw
+    # => [INIT_VALUE]
+end

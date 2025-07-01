@@ -3,10 +3,9 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_crypto::{EMPTY_WORD, Felt, FieldElement};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    AccountTreeError, Digest, NullifierTreeError,
+    AccountTreeError, Digest, EMPTY_WORD, Felt, FieldElement, NullifierTreeError,
     account::{
         Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
         delta::AccountUpdateDetails,
@@ -91,10 +90,8 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
 
     // Make the block inputs invalid by using the stale account witnesses.
     let mut invalid_account_tree_block_inputs = valid_block_inputs.clone();
-    core::mem::swap(
-        invalid_account_tree_block_inputs.account_witnesses_mut(),
-        &mut stale_block_inputs.account_witnesses().clone(),
-    );
+    *invalid_account_tree_block_inputs.account_witnesses_mut() =
+        stale_block_inputs.account_witnesses().clone();
 
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
@@ -132,10 +129,8 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
 
     // Make the block inputs invalid by using the stale nullifier witnesses.
     let mut invalid_nullifier_tree_block_inputs = valid_block_inputs.clone();
-    core::mem::swap(
-        invalid_nullifier_tree_block_inputs.nullifier_witnesses_mut(),
-        &mut stale_block_inputs.nullifier_witnesses().clone(),
-    );
+    *invalid_nullifier_tree_block_inputs.nullifier_witnesses_mut() =
+        stale_block_inputs.nullifier_witnesses().clone();
 
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
@@ -174,17 +169,15 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     // Make the block inputs invalid by using a single stale account witness.
     let mut stale_account_witness_block_inputs = valid_block_inputs.clone();
     let batch_account_id0 = batches[0].updated_accounts().next().unwrap();
-    core::mem::swap(
-        stale_account_witness_block_inputs
-            .account_witnesses_mut()
-            .get_mut(&batch_account_id0)
-            .unwrap(),
-        &mut stale_block_inputs
-            .account_witnesses_mut()
-            .get_mut(&batch_account_id0)
-            .unwrap()
-            .clone(),
-    );
+
+    *stale_account_witness_block_inputs
+        .account_witnesses_mut()
+        .get_mut(&batch_account_id0)
+        .unwrap() = stale_block_inputs
+        .account_witnesses_mut()
+        .get_mut(&batch_account_id0)
+        .unwrap()
+        .clone();
 
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
@@ -223,17 +216,15 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     // Make the block inputs invalid by using a single stale nullifier witnesses.
     let mut invalid_nullifier_witness_block_inputs = valid_block_inputs.clone();
     let batch_nullifier0 = batches[0].created_nullifiers().next().unwrap();
-    core::mem::swap(
-        invalid_nullifier_witness_block_inputs
-            .nullifier_witnesses_mut()
-            .get_mut(&batch_nullifier0)
-            .unwrap(),
-        &mut stale_block_inputs
-            .nullifier_witnesses_mut()
-            .get_mut(&batch_nullifier0)
-            .unwrap()
-            .clone(),
-    );
+
+    *invalid_nullifier_witness_block_inputs
+        .nullifier_witnesses_mut()
+        .get_mut(&batch_nullifier0)
+        .unwrap() = stale_block_inputs
+        .nullifier_witnesses_mut()
+        .get_mut(&batch_nullifier0)
+        .unwrap()
+        .clone();
 
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;

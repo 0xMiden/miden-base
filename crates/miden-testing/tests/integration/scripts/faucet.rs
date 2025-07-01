@@ -66,8 +66,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() {
     );
 
     let tx_script =
-        TransactionScript::compile(tx_script_code, vec![], TransactionKernel::testing_assembler())
-            .unwrap();
+        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
     let tx_context = mock_chain
         .build_tx_context(faucet.account().id(), &[], &[])
         .tx_script(tx_script)
@@ -132,8 +131,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() {
     );
 
     let tx_script =
-        TransactionScript::compile(tx_script_code, vec![], TransactionKernel::testing_assembler())
-            .unwrap();
+        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
     let tx = mock_chain
         .build_tx_context(faucet.account().id(), &[], &[])
         .tx_script(tx_script)
@@ -208,6 +206,6 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() {
     prove_and_verify_transaction(executed_transaction.clone()).unwrap();
 
     // check that the account burned the asset
-    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(2)));
+    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(1)));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
 }

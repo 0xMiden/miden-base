@@ -1,6 +1,5 @@
 use std::{collections::BTreeMap, vec, vec::Vec};
 
-use miden_crypto::rand::RpoRandomCoin;
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt,
@@ -8,6 +7,7 @@ use miden_objects::{
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
     block::BlockNumber,
+    crypto::rand::RpoRandomCoin,
     note::{Note, NoteId, NoteTag, NoteType},
     testing::{
         account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
@@ -170,7 +170,7 @@ pub fn generate_noop_tx(
 
     let tx_context = chain
         .build_tx_context(input.into(), &[noop_note.id()], &[])
-        .input_notes(vec![noop_note])
+        .extend_input_notes(vec![noop_note])
         .build();
     tx_context.execute().unwrap()
 }
@@ -228,7 +228,7 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         "
     );
 
-    TransactionScript::compile(code, [], TransactionKernel::testing_assembler_with_mock_account())
+    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()
 }
 
@@ -246,7 +246,7 @@ fn bump_storage_tx_script() -> TransactionScript {
         "
     );
 
-    TransactionScript::compile(code, [], TransactionKernel::testing_assembler_with_mock_account())
+    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()
 }
 

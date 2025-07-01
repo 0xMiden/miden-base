@@ -1,10 +1,6 @@
 use alloc::{collections::BTreeMap, string::String, vec::Vec};
 
 use anyhow::Context;
-use miden_crypto::{
-    dsa::rpo_falcon512::SecretKey,
-    rand::{FeltRng, RpoRandomCoin},
-};
 use miden_lib::{
     account::{auth::RpoFalcon512, wallets::BasicWallet},
     errors::{
@@ -16,6 +12,10 @@ use miden_objects::{
     Digest, EMPTY_WORD, ONE, WORD_SIZE,
     account::{AccountBuilder, AccountComponent, AccountId, AuthSecretKey},
     assembly::diagnostics::miette,
+    crypto::{
+        dsa::rpo_falcon512::SecretKey,
+        rand::{FeltRng, RpoRandomCoin},
+    },
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
         NoteRecipient, NoteScript, NoteTag, NoteType,
@@ -375,7 +375,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
 
     // provide this input note to the transaction context
     let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .input_notes(vec![input_note])
+        .extend_input_notes(vec![input_note])
         .build();
 
     let tx_code = "
@@ -462,11 +462,10 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     ]);
 
     let tx_args = TransactionArgs::new(
-        None,
-        Some(note_args_map),
         tx_context.tx_args().advice_inputs().clone().map,
         Vec::<AccountInputs>::new(),
-    );
+    )
+    .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
     let process = tx_context.execute_code(code)?;
@@ -842,7 +841,7 @@ fn test_public_key_as_note_input() {
     );
 
     let tx_context = TransactionContextBuilder::new(target_account)
-        .input_notes(vec![note_with_pub_key])
+        .extend_input_notes(vec![note_with_pub_key])
         .authenticator(Some(authenticator))
         .build();
     tx_context.execute().unwrap();

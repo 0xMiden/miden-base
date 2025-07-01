@@ -208,7 +208,7 @@ impl AccountInterface {
         );
 
         let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-        let tx_script = TransactionScript::compile(script, [], assembler)
+        let tx_script = TransactionScript::compile(script, assembler)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)

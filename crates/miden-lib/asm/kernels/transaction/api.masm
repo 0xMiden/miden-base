@@ -1,6 +1,7 @@
 use.std::sys
 
 use.kernel::account
+use.kernel::account_id
 use.kernel::asset_vault
 use.kernel::constants
 use.kernel::faucet
@@ -278,7 +279,7 @@ export.account_set_item
     # if the transaction is being executed against a faucet account then assert
     # index != FAUCET_STORAGE_DATA_SLOT (reserved slot)
     dup exec.account::get_faucet_storage_data_slot eq
-    exec.account::get_id swap drop exec.account::is_faucet
+    exec.account::get_id swap drop exec.account_id::is_faucet
     and assertz.err=ERR_FAUCET_STORAGE_DATA_SLOT_IS_RESERVED
     # => [index, VALUE, pad(11)]
 
@@ -576,7 +577,7 @@ end
 #! Invocation: dynexec
 export.faucet_get_total_fungible_asset_issuance
     # assert that we are executing a transaction against a fungible faucet (access checks)
-    exec.account::get_id swap drop exec.account::is_fungible_faucet
+    exec.account::get_id swap drop exec.account_id::is_fungible_faucet
     assert.err=ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET
     # => [pad(16)]
 
@@ -606,7 +607,7 @@ end
 #! Invocation: dynexec
 export.faucet_is_non_fungible_asset_issued
     # assert that we are executing a transaction against a non-fungible faucet (access checks)
-    exec.account::get_id swap drop exec.account::is_non_fungible_faucet
+    exec.account::get_id swap drop exec.account_id::is_non_fungible_faucet
     assert.err=ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET
     # => [ASSET, pad(12)]
 

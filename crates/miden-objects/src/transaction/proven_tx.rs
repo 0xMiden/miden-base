@@ -611,7 +611,9 @@ mod tests {
             AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
         },
         block::BlockNumber,
-        testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        testing::account_id::{
+            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        },
         transaction::{ProvenTransactionBuilder, TxAccountUpdate},
         utils::Serializable,
     };
@@ -636,13 +638,15 @@ mod tests {
     #[test]
     fn account_update_size_limit_not_exceeded() {
         // A small delta does not exceed the limit.
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let storage_delta = AccountStorageDelta::from_iters(
             [1, 2, 3, 4],
             [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
             [],
         );
         let delta =
-            AccountDelta::new(storage_delta, AccountVaultDelta::default(), Some(ONE)).unwrap();
+            AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), Some(ONE))
+                .unwrap();
         let details = AccountUpdateDetails::Delta(delta);
         TxAccountUpdate::new(
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap(),
@@ -656,6 +660,7 @@ mod tests {
 
     #[test]
     fn account_update_size_limit_exceeded() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let mut map = BTreeMap::new();
         // The number of entries in the map required to exceed the limit.
         // We divide by each entry's size which consists of a key (digest) and a value (word), both
@@ -669,7 +674,8 @@ mod tests {
         // A delta that exceeds the limit returns an error.
         let storage_delta = AccountStorageDelta::from_iters([], [], [(4, storage_delta)]);
         let delta =
-            AccountDelta::new(storage_delta, AccountVaultDelta::default(), Some(ONE)).unwrap();
+            AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), Some(ONE))
+                .unwrap();
         let details = AccountUpdateDetails::Delta(delta);
         let details_size = details.get_size_hint();
 

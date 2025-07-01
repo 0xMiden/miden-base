@@ -6,7 +6,7 @@
 - Add `bench-prover` crate to benchmark proving times (#1378).
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
-- Implement map in transaction kernel library (#1396).
+- Implement map based on a sorted linked list in transaction kernel library (#1396, #1428).
 - Add P2IDE standard note (#1421).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
@@ -14,16 +14,25 @@
 - Implement Display for `NoteType` (#1420).
 - [BREAKING] Remove `NoteExecutionMode` from `from_account_id` (#1422).
 - [BREAKING] Refactor transaction kernel advice inputs (#1425).
+- [BREAKING] Move transaction script argument from `TransactionScript` to `TransactionArgs`. (#1426).
+- [BREAKING] Remove transaction inputs from `TransactionScript`. (#1426).
 - Remove miden-proving-service binary crate and miden-proving-service-client crate (#1427).
 - Remove doc update checks on CI (#1435).
 - [BREAKING] Introduce `ScriptMastForestStore` and refactor MAST forest provisioning in the `TransactionExecutor` (#1438).
 - [BREAKING] Allow list of keys in `AccountFile` (#1451).
 - [BREAKING] `TransactionHost::new` now expects `&PartialAccount` instead `AccountHeader` (#1452).
 - Load account and input notes advice maps into the advice provider before executing them (#1452).
+- Support private accounts in `MockChain` (#1453).
 - Improve error message quality in `CodeExecutor::run` and `TransactionContext::execute_code` (#1458).
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
+- [BREAKING] Implemented in-kernel account delta tracking (#1471, #1404).
+- [BREAKING] Store account ID in account delta (#1493).
+- [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
+- Added `Note::is_network_note()` accessor (#1485).
+- [BREAKING] Update handling of the shared modules (#1490).
+- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 

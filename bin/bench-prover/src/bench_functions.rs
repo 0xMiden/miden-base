@@ -26,7 +26,6 @@ pub fn setup_consume_note_with_new_account() -> Result<ExecutedTransaction> {
             target_account.id(),
             &[fungible_asset],
             NoteType::Public,
-            None,
         )
         .unwrap();
 
@@ -72,7 +71,6 @@ pub fn setup_consume_multiple_notes() -> Result<ExecutedTransaction> {
             account.id(),
             &[fungible_asset_1],
             NoteType::Private,
-            None,
         )
         .unwrap();
     let note_2 = mock_chain
@@ -81,7 +79,6 @@ pub fn setup_consume_multiple_notes() -> Result<ExecutedTransaction> {
             account.id(),
             &[fungible_asset_2],
             NoteType::Private,
-            None,
         )
         .unwrap();
 

@@ -1,9 +1,9 @@
 // AUTH
 // ================================================================================================
-use miden_crypto::dsa::rpo_falcon512::SecretKey;
 use miden_lib::{account::auth::RpoFalcon512, transaction::TransactionKernel};
 use miden_objects::{
     account::{AccountComponent, AuthSecretKey},
+    crypto::dsa::rpo_falcon512::SecretKey,
     testing::account_component::{ConditionalAuthComponent, MockAuthComponent, NoopAuthComponent},
 };
 use miden_tx::auth::BasicAuthenticator;

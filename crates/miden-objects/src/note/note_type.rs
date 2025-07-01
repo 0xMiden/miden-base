@@ -49,7 +49,7 @@ impl TryFrom<u8> for NoteType {
             PRIVATE => Ok(NoteType::Private),
             ENCRYPTED => Ok(NoteType::Encrypted),
             PUBLIC => Ok(NoteType::Public),
-            _ => Err(NoteError::UnknownNoteType(format!("0b{:b}", value).into())),
+            _ => Err(NoteError::UnknownNoteType(format!("0b{value:b}").into())),
         }
     }
 }
@@ -76,7 +76,7 @@ impl TryFrom<u64> for NoteType {
     fn try_from(value: u64) -> Result<Self, Self::Error> {
         let value: u8 = value
             .try_into()
-            .map_err(|_| NoteError::UnknownNoteType(format!("0b{:b}", value).into()))?;
+            .map_err(|_| NoteError::UnknownNoteType(format!("0b{value:b}").into()))?;
         value.try_into()
     }
 }
@@ -113,16 +113,15 @@ impl Serializable for NoteType {
 
 impl Deserializable for NoteType {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let discriminat = u8::read_from(source)?;
+        let discriminant = u8::read_from(source)?;
 
-        let note_type = match discriminat {
+        let note_type = match discriminant {
             PRIVATE => NoteType::Private,
             ENCRYPTED => NoteType::Encrypted,
             PUBLIC => NoteType::Public,
-            v => {
+            discriminant => {
                 return Err(DeserializationError::InvalidValue(format!(
-                    "value {} is not a valid NoteType",
-                    v
+                    "discriminant {discriminant} is not a valid NoteType"
                 )));
             },
         };

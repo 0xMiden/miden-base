@@ -5,7 +5,6 @@ use miden_objects::{
     account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
     assembly::{Assembler, diagnostics::NamedSource},
     asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
-    block::BlockNumber,
     crypto::{
         dsa::rpo_falcon512::PublicKey,
         rand::{FeltRng, RpoRandomCoin},
@@ -27,7 +26,7 @@ use crate::{
         interface::{AccountInterface, NoteAccountCompatibility},
         wallets::BasicWallet,
     },
-    note::{create_p2id_note, create_p2idr_note, create_swap_note},
+    note::{create_p2id_note, create_p2ide_note, create_swap_note},
     transaction::TransactionKernel,
 };
 
@@ -73,13 +72,14 @@ fn test_basic_wallet_default_notes() {
     )
     .unwrap();
 
-    let p2idr_note = create_p2idr_note(
+    let p2ide_note = create_p2ide_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap(),
         vec![FungibleAsset::mock(10)],
+        None,
+        None,
         NoteType::Public,
         Default::default(),
-        BlockNumber::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
     )
     .unwrap();
@@ -104,7 +104,7 @@ fn test_basic_wallet_default_notes() {
     );
     assert_eq!(
         NoteAccountCompatibility::Maybe,
-        wallet_account_interface.is_compatible_with(&p2idr_note)
+        wallet_account_interface.is_compatible_with(&p2ide_note)
     );
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -118,7 +118,7 @@ fn test_basic_wallet_default_notes() {
     );
     assert_eq!(
         NoteAccountCompatibility::No,
-        faucet_account_interface.is_compatible_with(&p2idr_note)
+        faucet_account_interface.is_compatible_with(&p2ide_note)
     );
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -126,10 +126,10 @@ fn test_basic_wallet_default_notes() {
     );
 }
 
-/// Checks the compatibility of the basic notes (P2ID, P2IDR and SWAP) against an account with a
+/// Checks the compatibility of the basic notes (P2ID, P2IDE and SWAP) against an account with a
 /// custom interface containing a procedure from the basic wallet.
 ///
-/// In that setup check against P2ID and P2IDR notes should result in `Maybe`, and the check against
+/// In that setup check against P2ID and P2IDE notes should result in `Maybe`, and the check against
 /// SWAP should result in `No`.
 #[test]
 fn test_custom_account_default_note() {
@@ -165,13 +165,14 @@ fn test_custom_account_default_note() {
     )
     .unwrap();
 
-    let p2idr_note = create_p2idr_note(
+    let p2ide_note = create_p2ide_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap(),
         vec![FungibleAsset::mock(10)],
+        None,
+        None,
         NoteType::Public,
         Default::default(),
-        BlockNumber::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
     )
     .unwrap();
@@ -195,7 +196,7 @@ fn test_custom_account_default_note() {
     );
     assert_eq!(
         NoteAccountCompatibility::Maybe,
-        target_account_interface.is_compatible_with(&p2idr_note)
+        target_account_interface.is_compatible_with(&p2ide_note)
     );
     assert_eq!(
         NoteAccountCompatibility::No,

@@ -243,7 +243,7 @@ impl<'de> Deserialize<'de> for FeltRepresentation {
         match intermediate {
             Intermediate::Scalar(s) => {
                 let felt = Felt::parse_felt(&s)
-                    .map_err(|e| D::Error::custom(format!("failed to parse Felt: {}", e)))?;
+                    .map_err(|e| D::Error::custom(format!("failed to parse Felt: {e}")))?;
                 Ok(FeltRepresentation::Value { identifier: None, value: felt })
             },
             Intermediate::Map { name, description, value, r#type } => {
@@ -253,7 +253,7 @@ impl<'de> Deserialize<'de> for FeltRepresentation {
                     // Parse into felt from the input string
                     let felt =
                         TEMPLATE_REGISTRY.try_parse_felt(&felt_type, &val_str).map_err(|e| {
-                            D::Error::custom(format!("failed to parse {felt_type} as Felt: {}", e))
+                            D::Error::custom(format!("failed to parse {felt_type} as Felt: {e}"))
                         })?;
                     let identifier = name
                         .map(|n| parse_field_identifier::<D::Error>(n, description.clone()))
@@ -550,7 +550,7 @@ impl<'de> Deserialize<'de> for FieldIdentifier {
 // ================================================================================================
 
 fn missing_field_for<E: serde::de::Error>(field: &str, context: &str) -> E {
-    E::custom(format!("missing '{}' field for {}", field, context))
+    E::custom(format!("missing '{field}' field for {context}"))
 }
 
 /// Checks than an optional (but expected) name field has been defined and is correct.
