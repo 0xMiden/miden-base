@@ -2,6 +2,8 @@ use.kernel::memory
 use.kernel::link_map
 use.kernel::constants
 use.kernel::account
+use.kernel::asset
+use.kernel::asset_vault
 use.std::crypto::hashes::rpo
 use.std::math::u64
 
@@ -277,6 +279,67 @@ end
 
 # DELTA BOOKKEEPING
 # -------------------------------------------------------------------------------------------------
+
+#! Adds the given asset to the delta.
+#!
+#! Assumes the asset is valid, so it should be called after asset_vault::add_asset.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: []
+#!
+#! Where:
+#! - ASSET is the asset.
+export.add_asset
+    # check if the asset is a fungible asset
+    exec.asset::is_fungible_asset
+    # => [is_fungible_asset, ASSET]
+
+    if.true
+        exec.asset_vault::build_fungible_asset_vault_key swapw
+        # => [ASSET, ASSET_KEY]
+
+        drop drop drop movdn.4
+        # => [ASSET_KEY, amount]
+
+        exec.add_fungible_asset
+        # => []
+    else
+        # TODO: Handle non-fungible assets
+        dropw
+        # => []
+    end
+end
+
+#! Removes the given asset from the delta.
+#!
+#! Assumes the asset is valid, so it should be called after asset_vault::remove_asset
+#! (which would abort if the asset is invalid).
+#!
+#! Inputs:  [ASSET]
+#! Outputs: []
+#!
+#! Where:
+#! - ASSET is the asset.
+export.remove_asset
+    # check if the asset is a fungible asset
+    exec.asset::is_fungible_asset
+    # => [is_fungible_asset, ASSET, vault_root_ptr]
+
+    if.true
+        exec.asset_vault::build_fungible_asset_vault_key swapw
+        # => [ASSET, ASSET_KEY]
+
+        drop drop drop movdn.4
+        # => [ASSET_KEY, amount]
+
+        exec.remove_fungible_asset
+        # => []
+    else
+        # TODO: Handle non-fungible assets
+        dropw
+        # => []
+    end
+end
 
 #! Adds the given amount to the fungible asset delta for the asset identified by the asset key.
 #!
