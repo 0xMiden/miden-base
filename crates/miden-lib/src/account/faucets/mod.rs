@@ -251,7 +251,7 @@ mod tests {
         AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
         FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
     };
-    use crate::account::auth::RpoFalcon512;
+    use crate::account::{auth::RpoFalcon512, wallets::BasicWallet};
 
     #[test]
     fn faucet_contract_creation() {
@@ -325,6 +325,8 @@ mod tests {
         let invalid_faucet_account = AccountBuilder::new(mock_seed)
             .account_type(AccountType::FungibleFaucet)
             .with_auth_component(RpoFalcon512::new(mock_public_key))
+            // we need to add some other component so the builder doesn't fail
+            .with_component(BasicWallet)
             .build_existing()
             .expect("failed to create wallet account");
 
