@@ -3,7 +3,7 @@ use core::cmp::Ordering;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, EMPTY_WORD, ONE, Word, ZERO, account::delta::LinkMapKey};
+use miden_objects::{Digest, EMPTY_WORD, ONE, Word, ZERO, account::delta::LexicographicWord};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
 use vm_processor::{MemAdviceProvider, ProcessState};
@@ -393,7 +393,7 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
         let key0 = Word::from(rand_array());
         let key1 = Word::from(rand_array());
 
-        let cmp = LinkMapKey::from(key0).cmp(&LinkMapKey::from(key1));
+        let cmp = LexicographicWord::from(key0).cmp(&LexicographicWord::from(key1));
         let expected = cmp == operation;
 
         let code = format!(
@@ -437,20 +437,20 @@ fn digest(elements: [u32; 4]) -> Digest {
     Digest::from(elements)
 }
 
-fn link_map_key(elements: [u32; 4]) -> LinkMapKey {
-    LinkMapKey::from(Word::from(Digest::from(elements)))
+fn link_map_key(elements: [u32; 4]) -> LexicographicWord {
+    LexicographicWord::from(Word::from(Digest::from(elements)))
 }
 
 enum TestOperation {
     Set {
         map_ptr: u32,
-        key: LinkMapKey,
+        key: LexicographicWord,
         value0: Digest,
         value1: Digest,
     },
     Get {
         map_ptr: u32,
-        key: LinkMapKey,
+        key: LexicographicWord,
     },
     Iter {
         map_ptr: u32,
@@ -458,7 +458,7 @@ enum TestOperation {
 }
 
 impl TestOperation {
-    pub fn set(map_ptr: u32, key: LinkMapKey, values: (Digest, Digest)) -> Self {
+    pub fn set(map_ptr: u32, key: LexicographicWord, values: (Digest, Digest)) -> Self {
         Self::Set {
             map_ptr,
             key,
@@ -466,7 +466,7 @@ impl TestOperation {
             value1: values.1,
         }
     }
-    pub fn get(map_ptr: u32, key: LinkMapKey) -> Self {
+    pub fn get(map_ptr: u32, key: LexicographicWord) -> Self {
         Self::Get { map_ptr, key }
     }
     pub fn iter(map_ptr: u32) -> Self {
@@ -476,7 +476,8 @@ impl TestOperation {
 
 fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let mut test_code = String::new();
-    let mut control_maps: BTreeMap<u32, BTreeMap<LinkMapKey, (Digest, Digest)>> = BTreeMap::new();
+    let mut control_maps: BTreeMap<u32, BTreeMap<LexicographicWord, (Digest, Digest)>> =
+        BTreeMap::new();
 
     for operation in operations {
         match operation {
@@ -662,7 +663,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
 fn generate_set_ops(
     map_ptr: u32,
-    entries: &[(LinkMapKey, (Digest, Digest))],
+    entries: &[(LexicographicWord, (Digest, Digest))],
 ) -> Vec<TestOperation> {
     entries
         .iter()
@@ -672,12 +673,12 @@ fn generate_set_ops(
 
 fn generate_get_ops(
     map_ptr: u32,
-    entries: &[(LinkMapKey, (Digest, Digest))],
+    entries: &[(LexicographicWord, (Digest, Digest))],
 ) -> Vec<TestOperation> {
     entries.iter().map(|(key, _)| TestOperation::get(map_ptr, *key)).collect()
 }
 
-fn generate_entries(count: u64) -> Vec<(LinkMapKey, (Digest, Digest))> {
+fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Digest, Digest))> {
     (0..count)
         .map(|_| {
             let key = rand_link_map_key();
@@ -689,9 +690,9 @@ fn generate_entries(count: u64) -> Vec<(LinkMapKey, (Digest, Digest))> {
 }
 
 fn generate_updates(
-    entries: &[(LinkMapKey, (Digest, Digest))],
+    entries: &[(LexicographicWord, (Digest, Digest))],
     num_updates: usize,
-) -> Vec<(LinkMapKey, (Digest, Digest))> {
+) -> Vec<(LexicographicWord, (Digest, Digest))> {
     let mut rng = rand::rng();
 
     entries
@@ -706,6 +707,6 @@ fn rand_digest() -> Digest {
     Digest::new(rand_array())
 }
 
-fn rand_link_map_key() -> LinkMapKey {
-    LinkMapKey::from(rand_array())
+fn rand_link_map_key() -> LexicographicWord {
+    LexicographicWord::from(rand_array())
 }

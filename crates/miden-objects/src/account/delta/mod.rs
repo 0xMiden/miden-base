@@ -6,8 +6,8 @@ use super::{
 };
 use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
 
-mod link_map_key;
-pub use link_map_key::LinkMapKey;
+mod lexicographic_word;
+pub use lexicographic_word::LexicographicWord;
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};

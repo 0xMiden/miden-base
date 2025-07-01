@@ -2,15 +2,14 @@ use core::cmp::Ordering;
 
 use crate::{Felt, Word};
 
-/// The key in a `LinkMap`.
+/// A [`Word`] wrapper with lexicographic ordering.
 ///
-/// This is a wrapper around a type that can be converted to [`Word`] and overrides the equality
-/// and ordering implementations by implementing the link map ordering on the wrapped type's
-/// [`Word`] representation.
+/// This is a wrapper around any [`Word`] convertible type that overrides the equality and ordering
+/// implementations with a lexigographic one based on the wrapped type's [`Word`] representation.
 #[derive(Debug, Clone, Copy)]
-pub struct LinkMapKey<T: Into<Word> = Word>(T);
+pub struct LexicographicWord<T: Into<Word> = Word>(T);
 
-impl<T: Into<Word>> LinkMapKey<T> {
+impl<T: Into<Word>> LexicographicWord<T> {
     /// Wraps the provided value into a new [`LinkMapKey`].
     pub fn new(inner: T) -> Self {
         Self(inner)
@@ -27,19 +26,19 @@ impl<T: Into<Word>> LinkMapKey<T> {
     }
 }
 
-impl From<Word> for LinkMapKey {
+impl From<Word> for LexicographicWord {
     fn from(word: Word) -> Self {
         Self(word)
     }
 }
 
-impl<T: Into<Word>> From<LinkMapKey<T>> for Word {
-    fn from(key: LinkMapKey<T>) -> Self {
+impl<T: Into<Word>> From<LexicographicWord<T>> for Word {
+    fn from(key: LexicographicWord<T>) -> Self {
         key.0.into()
     }
 }
 
-impl<T: Into<Word> + Copy> PartialEq for LinkMapKey<T> {
+impl<T: Into<Word> + Copy> PartialEq for LexicographicWord<T> {
     fn eq(&self, other: &Self) -> bool {
         let self_word: Word = self.0.into();
         let other_word: Word = other.0.into();
@@ -47,15 +46,15 @@ impl<T: Into<Word> + Copy> PartialEq for LinkMapKey<T> {
     }
 }
 
-impl<T: Into<Word> + Copy> Eq for LinkMapKey<T> {}
+impl<T: Into<Word> + Copy> Eq for LexicographicWord<T> {}
 
-impl<T: Into<Word> + Copy> PartialOrd for LinkMapKey<T> {
+impl<T: Into<Word> + Copy> PartialOrd for LexicographicWord<T> {
     fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
         Some(self.cmp(other))
     }
 }
 
-impl<T: Into<Word> + Copy> Ord for LinkMapKey<T> {
+impl<T: Into<Word> + Copy> Ord for LexicographicWord<T> {
     fn cmp(&self, other: &Self) -> Ordering {
         let self_word: Word = self.0.into();
         let other_word: Word = other.0.into();
