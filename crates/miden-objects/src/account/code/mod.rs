@@ -67,6 +67,8 @@ impl AccountCode {
     /// - The number of procedures in all merged libraries is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`].
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - The first component doesn't contain exactly one authentication procedure.
+    /// - Other components contain authentication procedures.
     /// - The number of [`StorageSlot`](crate::account::StorageSlot)s of a component or of all
     ///   components exceeds 255.
     /// - [`MastForest::merge`] fails on all libraries.

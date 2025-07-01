@@ -129,6 +129,8 @@ impl Account {
     /// - The number of procedures in all merged libraries is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`].
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - The first component doesn't contain exactly one authentication procedure.
+    /// - Other components contain authentication procedures.
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
     /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on all libraries.
     pub(super) fn initialize_from_components(
