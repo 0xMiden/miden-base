@@ -78,9 +78,12 @@ impl ScriptBuilder {
     /// Adds multiple libraries to the script builder.
     ///
     /// # Arguments
-    /// * `libraries` - Vector of compiled libraries to add to the builder
-    pub fn add_library(&mut self, libraries: Vec<Library>) -> Result<(), ScriptBuilderError> {
-        for library in libraries {
+    /// * `libraries` - Iterator of compiled libraries to add to the builder
+    pub fn add_library(
+        &mut self,
+        libraries: impl IntoIterator<Item = Library>,
+    ) -> Result<(), ScriptBuilderError> {
+        for library in libraries.into_iter() {
             self.libraries.push(library);
         }
         Ok(())
@@ -102,7 +105,7 @@ impl ScriptBuilder {
     /// - The transaction script compilation fails
     pub fn compile_tx_script(
         &self,
-        tx_script: &str,
+        tx_script: impl AsRef<str>,
     ) -> Result<TransactionScript, ScriptBuilderError> {
         let mut assembler = self.assembler.clone();
 
@@ -115,7 +118,7 @@ impl ScriptBuilder {
             })?;
         }
 
-        TransactionScript::compile(tx_script, assembler)
+        TransactionScript::compile(tx_script.as_ref(), assembler)
             .map_err(ScriptBuilderError::TransactionScriptError)
     }
 
@@ -130,7 +133,10 @@ impl ScriptBuilder {
     /// Returns an error if:
     /// - Any of the libraries cannot be loaded into the assembler
     /// - The note script compilation fails
-    pub fn compile_note_script(&self, program: &str) -> Result<NoteScript, ScriptBuilderError> {
+    pub fn compile_note_script(
+        &self,
+        program: impl AsRef<str>,
+    ) -> Result<NoteScript, ScriptBuilderError> {
         let mut assembler = self.assembler.clone();
 
         // Add all libraries from the builder to the assembler
@@ -142,7 +148,7 @@ impl ScriptBuilder {
             })?;
         }
 
-        NoteScript::compile(program, assembler).map_err(|err| {
+        NoteScript::compile(program.as_ref(), assembler).map_err(|err| {
             ScriptBuilderError::LibraryBuildError(alloc::format!(
                 "Failed to compile note script: {err}"
             ))
@@ -172,19 +178,21 @@ impl ScriptBuilder {
     /// - The library cannot be assembled
     pub fn compile_library(
         &self,
-        library_code: &str,
-        library_path: &str,
+        library_code: impl AsRef<str>,
+        library_path: impl AsRef<str>,
     ) -> Result<Library, ScriptBuilderError> {
-        let assembler = self.assembler.clone().with_debug_mode(true);
+        let assembler = self.assembler.clone();
 
         // Parse the library path
-        let lib_path = LibraryPath::new(library_path).map_err(|_| {
+        let lib_path = LibraryPath::new(library_path.as_ref()).map_err(|_| {
             ScriptBuilderError::LibraryBuildError(alloc::format!(
-                "Invalid library path: {library_path}"
+                "Invalid library path: {}",
+                library_path.as_ref()
             ))
         })?;
 
-        let source = NamedSource::new(alloc::format!("{lib_path}"), String::from(library_code));
+        let source =
+            NamedSource::new(alloc::format!("{lib_path}"), String::from(library_code.as_ref()));
 
         let library = assembler.assemble_library([source]).map_err(|err| {
             ScriptBuilderError::LibraryBuildError(alloc::format!(
@@ -195,6 +203,15 @@ impl ScriptBuilder {
         Ok(library)
     }
 }
+
+impl Default for ScriptBuilder {
+    fn default() -> Self {
+        Self::new(false)
+    }
+}
+
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
