@@ -1125,7 +1125,6 @@ end
 #!   Advice stack: []
 #!
 #! Where:
-#! - AUTH_PROCEDURE_ROOT is the auth procedure's root.
 #! - AUTH_PROCEDURE_ARGS_KEY is the commitment of the auth procedure args used to obtain them from 
 #!   the advice map.
 proc.process_auth_procedure_data
