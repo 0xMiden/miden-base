@@ -446,7 +446,7 @@ mod tests {
     use crate::{
         AccountError,
         account::{AccountComponent, AccountType, StorageSlot, code::build_procedure_commitment},
-        testing::account_component::NoopAuthComponent,
+        testing::{account_code::CODE, account_component::NoopAuthComponent},
     };
 
     #[test]
@@ -500,5 +500,32 @@ mod tests {
         .unwrap_err();
 
         assert_matches!(err, AccountError::StorageOffsetPlusSizeOutOfBounds(256))
+    }
+
+    #[test]
+    fn test_account_code_only_auth_component() {
+        let auth_component: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+
+        let err = AccountCode::from_components(
+            &[auth_component],
+            AccountType::RegularAccountUpdatableCode,
+        )
+        .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountCodeNoProcedures);
+    }
+
+    #[test]
+    fn test_account_code_no_auth_component() {
+        let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
+            .unwrap()
+            .with_supports_all_types();
+
+        let err =
+            AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
+                .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountCodeNoAuthComponent);
     }
 }
