@@ -10,7 +10,7 @@ use crate::{Felt, Word};
 pub struct LexicographicWord<T: Into<Word> = Word>(T);
 
 impl<T: Into<Word>> LexicographicWord<T> {
-    /// Wraps the provided value into a new [`LinkMapKey`].
+    /// Wraps the provided value into a new [`LexicographicWord`].
     pub fn new(inner: T) -> Self {
         Self(inner)
     }
