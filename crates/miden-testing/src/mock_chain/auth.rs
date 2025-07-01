@@ -23,8 +23,7 @@ pub enum Auth {
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
 
-    /// Creates a mock authentication mechanism for the account that does nothing if state hasn't
-    /// changed, and increments the nonce otherwise.
+    /// TODO update once #1501 is ready.
     Conditional,
 }
 

@@ -72,8 +72,9 @@ impl From<AccountMockComponent> for AccountComponent {
 // MOCK AUTH COMPONENT
 // ================================================================================================
 
-/// Creates a mock authentication [`AccountComponent`] for testing purposes. It only increments the
-/// nonce.
+/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+///
+/// The component defines an `auth_basic` procedure that always increments the nonce by 1.
 pub struct MockAuthComponent {
     library: Library,
 }
@@ -131,6 +132,9 @@ const CONDITIONAL_AUTH_CODE: &str = "
     end
 ";
 
+/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+///
+/// The component defines an `auth_noop` procedure that does nothing (always succeeds).
 pub struct NoopAuthComponent {
     library: Library,
 }
@@ -152,6 +156,7 @@ impl From<NoopAuthComponent> for AccountComponent {
     }
 }
 
+/// TODO: Add documentation once #1501 is ready.
 pub struct ConditionalAuthComponent {
     library: Library,
 }
