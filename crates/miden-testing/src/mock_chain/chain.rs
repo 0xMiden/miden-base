@@ -1,7 +1,7 @@
 use alloc::{
     boxed::Box,
     collections::{BTreeMap, BTreeSet},
-    string::{String, ToString},
+    string::ToString,
     vec::Vec,
 };
 
@@ -13,9 +13,7 @@ use miden_lib::{
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
-    AccountError, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
-    PartialBlockchainError, ProposedBatchError, ProposedBlockError, ProvenBatchError,
-    TransactionInputError,
+    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, ProposedBlockError,
     account::{
         Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
         delta::AccountUpdateDetails,
@@ -37,7 +35,6 @@ use miden_objects::{
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use thiserror::Error;
 use vm_processor::{Digest, Felt, Word, ZERO, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
@@ -215,9 +212,9 @@ impl MockChain {
     }
 
     /// Creates a new `MockChain` with a genesis block containing the provided accounts.
-    pub fn with_accounts(accounts: &[Account]) -> Result<Self, MockChainError> {
+    pub fn with_accounts(accounts: &[Account]) -> anyhow::Result<Self> {
         let (genesis_block, account_tree) = create_genesis_state(accounts.iter().cloned())
-            .map_err(|e| MockChainError::Other(e.to_string()))?;
+            .context("failed to build account from builder")?;
 
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -236,7 +233,7 @@ impl MockChain {
         // and the nullifier tree is empty at genesis.
         chain
             .apply_block(genesis_block)
-            .map_err(|e| MockChainError::Other(e.to_string()))?;
+            .context("failed to build account from builder")?;
 
         debug_assert_eq!(chain.blocks.len(), 1);
         debug_assert_eq!(chain.account_tree.num_accounts(), accounts.len());
@@ -283,7 +280,7 @@ impl MockChain {
     pub fn latest_selective_partial_blockchain(
         &self,
         reference_blocks: impl IntoIterator<Item = BlockNumber>,
-    ) -> Result<(BlockHeader, PartialBlockchain), MockChainError> {
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
         let latest_block_header = self.latest_block_header();
         // Deduplicate block numbers so each header will be included just once. This is required so
         // PartialBlockchain::from_blockchain does not panic.
@@ -297,7 +294,7 @@ impl MockChain {
             let block = self
                 .blocks
                 .get(block_index)
-                .ok_or(MockChainError::BlockNotFound(*block_ref_num))?;
+                .ok_or_else(|| anyhow::anyhow!("block {} not found in chain", block_ref_num))?;
             let block_header = block.header().clone();
             // Exclude the latest block header
             if block_header.commitment() != latest_block_header.commitment() {
@@ -402,11 +399,11 @@ impl MockChain {
     /// Returns a reference to the account identified by the given account ID.
     ///
     /// The account is retrieved with the latest state known to the [`MockChain`].
-    pub fn committed_account(&self, account_id: AccountId) -> Result<&Account, MockChainError> {
+    pub fn committed_account(&self, account_id: AccountId) -> anyhow::Result<&Account> {
         self.committed_accounts
             .get(&account_id)
             .map(|mock_account| mock_account.account())
-            .ok_or(MockChainError::AccountNotFound(account_id))
+            .with_context(|| format!("account {} not found in committed accounts", account_id))
     }
 
     /// Returns a reference to the [`AccountTree`] of the chain.
@@ -423,7 +420,7 @@ impl MockChain {
     pub fn propose_transaction_batch<I>(
         &self,
         txs: impl IntoIterator<Item = ProvenTransaction, IntoIter = I>,
-    ) -> Result<ProposedBatch, MockChainError>
+    ) -> anyhow::Result<ProposedBatch>
     where
         I: Iterator<Item = ProvenTransaction> + Clone,
     {
@@ -451,7 +448,7 @@ impl MockChain {
     pub fn prove_transaction_batch(
         &self,
         proposed_batch: ProposedBatch,
-    ) -> Result<ProvenBatch, MockChainError> {
+    ) -> anyhow::Result<ProvenBatch> {
         let (
             transactions,
             block_header,
@@ -564,41 +561,49 @@ impl MockChain {
         input: impl Into<TxContextInput>,
         note_ids: &[NoteId],
         unauthenticated_notes: &[Note],
-    ) -> Result<TransactionContextBuilder, MockChainError> {
+    ) -> anyhow::Result<TransactionContextBuilder> {
         let mock_account = match input.into() {
             TxContextInput::AccountId(account_id) => {
-                assert!(
-                    !account_id.is_private(),
-                    "transaction contexts for private accounts should be created with TxContextInput::Account"
-                );
+                if account_id.is_private() {
+                    return Err(anyhow::anyhow!(
+                        "transaction contexts for private accounts should be created with TxContextInput::Account"
+                    ));
+                }
 
                 self.committed_accounts
                     .get(&account_id)
-                    .ok_or(MockChainError::AccountNotFound(account_id))?
+                    .with_context(|| {
+                        format!("account {} not found in committed accounts", account_id)
+                    })?
                     .clone()
             },
             TxContextInput::Account(account) => {
                 let committed_account = self.committed_accounts.get(&account.id());
-                let authenticator = committed_account.and_then(|account| account.authenticator());
-                let seed = committed_account.and_then(|account| account.seed());
+                let authenticator = committed_account.and_then(|a| a.authenticator());
+                let seed = committed_account.and_then(|a| a.seed());
                 MockAccount::new(account, seed.cloned(), authenticator.cloned())
             },
             TxContextInput::ExecutedTransaction(executed_transaction) => {
                 let mut initial_account = executed_transaction.initial_account().clone();
-                initial_account.apply_delta(executed_transaction.account_delta())?;
+                initial_account
+                    .apply_delta(executed_transaction.account_delta())
+                    .context("could not apply delta from previous transaction")?;
+
                 let committed_account = self.committed_accounts.get(&initial_account.id());
-                let authenticator = committed_account.and_then(|account| account.authenticator());
-                let seed = committed_account.and_then(|account| account.seed());
+                let authenticator = committed_account.and_then(|a| a.authenticator());
+                let seed = committed_account.and_then(|a| a.seed());
                 MockAccount::new(initial_account, seed.cloned(), authenticator.cloned())
             },
         };
 
-        let tx_inputs = self.get_transaction_inputs(
-            mock_account.account().clone(),
-            mock_account.seed().cloned(),
-            note_ids,
-            unauthenticated_notes,
-        )?;
+        let tx_inputs = self
+            .get_transaction_inputs(
+                mock_account.account().clone(),
+                mock_account.seed().cloned(),
+                note_ids,
+                unauthenticated_notes,
+            )
+            .context("failed to gather transaction inputs")?;
 
         let mut tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
             .authenticator(mock_account.authenticator().cloned())
@@ -628,7 +633,7 @@ impl MockChain {
         account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
-    ) -> Result<TransactionInputs, MockChainError> {
+    ) -> anyhow::Result<TransactionInputs> {
         let block = self.blocks.last().expect("at least one block should have been created");
 
         let mut input_notes = vec![];
@@ -637,23 +642,21 @@ impl MockChain {
             let input_note: InputNote = self
                 .committed_notes
                 .get(note)
-                .ok_or_else(|| MockChainError::NoteNotFound(*note))?
+                .with_context(|| format!("note with id {} not found", note))?
                 .clone()
                 .try_into()
-                .map_err(MockChainError::NoteError)?;
+                .context("note error")?;
 
             let note_block_num = input_note
                 .location()
-                .ok_or_else(|| {
-                    MockChainError::Other(format!("note location not available: {note}"))
-                })?
+                .with_context(|| format!("note location not available: {}", note))?
                 .block_num();
 
             if note_block_num != block.header().block_num() {
                 let block_header = self
                     .blocks
                     .get(note_block_num.as_usize())
-                    .ok_or_else(|| MockChainError::BlockNotFound(note_block_num))?
+                    .with_context(|| format!("block {} not found in chain", note_block_num))?
                     .header()
                     .clone();
                 block_headers_map.insert(note_block_num, block_header);
@@ -686,10 +689,8 @@ impl MockChain {
         &self,
         tx_reference_blocks: impl IntoIterator<Item = BlockNumber>,
         unauthenticated_notes: impl Iterator<Item = NoteId>,
-    ) -> Result<
-        (BlockHeader, PartialBlockchain, BTreeMap<NoteId, NoteInclusionProof>),
-        MockChainError,
-    > {
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain, BTreeMap<NoteId, NoteInclusionProof>)>
+    {
         // Fetch note proofs for notes that exist in the chain.
         let unauthenticated_note_proofs = self.unauthenticated_note_proofs(unauthenticated_notes);
 
@@ -711,7 +712,7 @@ impl MockChain {
     pub fn get_foreign_account_inputs(
         &self,
         account_id: AccountId,
-    ) -> Result<AccountInputs, MockChainError> {
+    ) -> anyhow::Result<AccountInputs> {
         let account = self.committed_account(account_id)?;
 
         let account_witness = self.account_tree().open(account_id);
@@ -733,7 +734,7 @@ impl MockChain {
     pub fn get_block_inputs<'batch, I>(
         &self,
         batch_iter: impl IntoIterator<Item = &'batch ProvenBatch, IntoIter = I>,
-    ) -> Result<BlockInputs, MockChainError>
+    ) -> anyhow::Result<BlockInputs>
     where
         I: Iterator<Item = &'batch ProvenBatch> + Clone,
     {
@@ -772,12 +773,12 @@ impl MockChain {
     /// Creates the next block in the mock chain.
     ///
     /// This will make all the objects currently pending available for use.
-    pub fn prove_next_block(&mut self) -> Result<ProvenBlock, MockChainError> {
+    pub fn prove_next_block(&mut self) -> anyhow::Result<ProvenBlock> {
         self.prove_block_inner(None)
     }
 
     /// Proves the next block in the mock chain at the given timestamp.
-    pub fn prove_next_block_at(&mut self, timestamp: u32) -> Result<ProvenBlock, MockChainError> {
+    pub fn prove_next_block_at(&mut self, timestamp: u32) -> anyhow::Result<ProvenBlock> {
         self.prove_block_inner(Some(timestamp))
     }
 
@@ -793,7 +794,7 @@ impl MockChain {
     pub fn prove_until_block(
         &mut self,
         target_block_num: impl Into<BlockNumber>,
-    ) -> Result<ProvenBlock, MockChainError> {
+    ) -> anyhow::Result<ProvenBlock> {
         let target_block_num = target_block_num.into();
         let latest_block_num = self.latest_block_header().block_num();
         assert!(
@@ -826,7 +827,7 @@ impl MockChain {
     pub fn add_pending_executed_transaction(
         &mut self,
         transaction: &ExecutedTransaction,
-    ) -> Result<Account, MockChainError> {
+    ) -> anyhow::Result<Account> {
         let mut account = transaction.initial_account().clone();
         account.apply_delta(transaction.account_delta())?;
 
@@ -961,21 +962,14 @@ impl MockChain {
         auth_method: Auth,
         token_symbol: &str,
         max_supply: u64,
-    ) -> Result<MockFungibleFaucet, MockChainError> {
-        let token_symbol = TokenSymbol::new(token_symbol).map_err(|_| {
-            MockChainError::InvalidArgument(format!("invalid token symbol: {token_symbol}",))
-        })?;
+    ) -> anyhow::Result<MockFungibleFaucet> {
+        let token_symbol = TokenSymbol::new(token_symbol)
+            .with_context(|| format!("invalid token symbol: {}", token_symbol))?;
         let max_supply_felt = max_supply.try_into().map_err(|_| {
-            MockChainError::InvalidArgument(format!(
-                "max supply value cannot be converted to Felt: {max_supply}",
-            ))
+            anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
         })?;
-        let basic_faucet =
-            BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt).map_err(|err| {
-                MockChainError::InvalidArgument(format!(
-                    "failed to create BasicFungibleFaucet: {err}",
-                ))
-            })?;
+        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt)
+            .context("failed to create BasicFungibleFaucet")?;
 
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -999,11 +993,10 @@ impl MockChain {
         token_symbol: &str,
         max_supply: u64,
         total_issuance: Option<u64>,
-    ) -> Result<MockFungibleFaucet, MockChainError> {
-        let token_symbol = TokenSymbol::new(token_symbol)
-            .map_err(|e| MockChainError::InvalidArgument(e.to_string()))?;
+    ) -> anyhow::Result<MockFungibleFaucet> {
+        let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
         let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply))
-            .map_err(|e| MockChainError::InvalidArgument(e.to_string()))?;
+            .context("invalid argument")?;
 
         let mut account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -1019,7 +1012,7 @@ impl MockChain {
         };
         let mut account = account_builder
             .build_existing()
-            .map_err(|e| MockChainError::AccountBuilderError(e.to_string()))?;
+            .context("failed to build account from builder")?;
 
         // The faucet's reserved slot is initialized to an empty word by default.
         // If total_issuance is set, overwrite it.
@@ -1027,9 +1020,7 @@ impl MockChain {
             account
                 .storage_mut()
                 .set_item(memory::FAUCET_STORAGE_DATA_SLOT, [ZERO, ZERO, ZERO, Felt::new(issuance)])
-                .map_err(|err| {
-                    MockChainError::Other(format!("failed to set faucet storage: {err}"))
-                })?;
+                .context("failed to set faucet storage")?;
         }
 
         // We have to insert these into the committed accounts so the authenticator is available.
@@ -1055,7 +1046,7 @@ impl MockChain {
         auth_method: Auth,
         mut account_builder: AccountBuilder,
         account_state: AccountState,
-    ) -> Result<Account, MockChainError> {
+    ) -> anyhow::Result<Account> {
         let authenticator = match auth_method.build_component() {
             Some((auth_component, authenticator)) => {
                 account_builder = account_builder.with_component(auth_component);
@@ -1065,14 +1056,13 @@ impl MockChain {
         };
 
         let (account, seed) = if let AccountState::New = account_state {
-            let (account, seed) = account_builder
-                .build()
-                .map_err(|e| MockChainError::AccountBuilderError(e.to_string()))?;
+            let (account, seed) =
+                account_builder.build().context("failed to build account from builder")?;
             (account, Some(seed))
         } else {
             let account = account_builder
                 .build_existing()
-                .map_err(|e| MockChainError::AccountBuilderError(e.to_string()))?;
+                .context("failed to build account from builder")?;
             (account, None)
         };
 
@@ -1168,7 +1158,7 @@ impl MockChain {
                         )?;
                     committed_account
                         .apply_delta(account_delta)
-                        .map_err(|e| anyhow::anyhow!(MockChainError::ApplyDeltaFailed(e)))?;
+                        .context("failed to apply account delta")?;
                 },
                 // No state to keep for private accounts other than the commitment on the account
                 // tree
@@ -1218,7 +1208,7 @@ impl MockChain {
         Ok(())
     }
 
-    fn pending_transactions_to_batches(&mut self) -> Result<Vec<ProvenBatch>, MockChainError> {
+    fn pending_transactions_to_batches(&mut self) -> anyhow::Result<Vec<ProvenBatch>> {
         // Batches must contain at least one transaction, so if there are no pending transactions,
         // return early.
         if self.pending_transactions.is_empty() {
@@ -1238,7 +1228,7 @@ impl MockChain {
     fn apply_pending_objects_to_block(
         &mut self,
         proven_block: &mut ProvenBlock,
-    ) -> Result<(), MockChainError> {
+    ) -> anyhow::Result<()> {
         // Add pending accounts to block.
         let pending_account_updates = core::mem::take(&mut self.pending_objects.updated_accounts);
 
@@ -1250,18 +1240,14 @@ impl MockChain {
 
         for (id, account_update) in pending_account_updates {
             if updated_accounts_block.contains(&id) {
-                return Err(MockChainError::ApplyPendingObjectsFailed(format!(
+                return Err(anyhow::anyhow!(
                     "account {id} is already modified in block through transactions",
-                )));
+                ));
             }
 
-            self.account_tree.insert(id, account_update.final_state_commitment()).map_err(
-                |err| {
-                    MockChainError::ApplyPendingObjectsFailed(format!(
-                        "failed to insert pending account into tree: {err}",
-                    ))
-                },
-            )?;
+            self.account_tree
+                .insert(id, account_update.final_state_commitment())
+                .context("failed to insert pending account into tree")?;
 
             proven_block.updated_accounts_mut().push(account_update);
         }
@@ -1275,18 +1261,14 @@ impl MockChain {
 
         for nullifier in pending_created_nullifiers {
             if created_nullifiers_block.contains(&nullifier) {
-                return Err(MockChainError::ApplyPendingObjectsFailed(format!(
+                return Err(anyhow::anyhow!(
                     "nullifier {nullifier} is already created in block through transactions",
-                )));
+                ));
             }
 
             self.nullifier_tree
                 .mark_spent(nullifier, proven_block.header().block_num())
-                .map_err(|err| {
-                    MockChainError::ApplyPendingObjectsFailed(format!(
-                        "failed to insert pending nullifier into tree: {err}",
-                    ))
-                })?;
+                .context("failed to insert pending nullifier into tree")?;
 
             proven_block.created_nullifiers_mut().push(nullifier);
         }
@@ -1298,27 +1280,27 @@ impl MockChain {
         // We could distribute notes over multiple batches (if space is available), but most likely
         // one is sufficient.
         if self.pending_objects.output_notes.len() > MAX_OUTPUT_NOTES_PER_BATCH {
-            return Err(MockChainError::ApplyPendingObjectsFailed(format!(
+            return Err(anyhow::anyhow!(
                 "too many pending output notes: {}, max allowed: {MAX_OUTPUT_NOTES_PER_BATCH}",
                 self.pending_objects.output_notes.len(),
-            )));
+            ));
         }
 
         let mut pending_note_batch = Vec::with_capacity(self.pending_objects.output_notes.len());
         let pending_output_notes = core::mem::take(&mut self.pending_objects.output_notes);
         for (note_idx, output_note) in pending_output_notes.into_iter().enumerate() {
             if output_notes_block.contains(&output_note.id()) {
-                return Err(MockChainError::ApplyPendingObjectsFailed(format!(
+                return Err(anyhow::anyhow!(
                     "output note {} is already created in block through transactions",
                     output_note.id()
-                )));
+                ));
             }
 
             pending_note_batch.push((note_idx, output_note));
         }
 
         if (proven_block.output_note_batches().len() + 1) > MAX_BATCHES_PER_BLOCK {
-            return Err(MockChainError::ApplyPendingObjectsFailed(
+            return Err(anyhow::anyhow!(
                 "too many batches in block: cannot add more pending notes".to_string(),
             ));
         }
@@ -1367,7 +1349,7 @@ impl MockChain {
     ///    multiple times (which would be slow).
     /// 4. Finally, now the block contains both the updates from the regular transactions/batches as
     ///    well as the pending objects. Now insert all the remaining updates into the chain state.
-    fn prove_block_inner(&mut self, timestamp: Option<u32>) -> Result<ProvenBlock, MockChainError> {
+    fn prove_block_inner(&mut self, timestamp: Option<u32>) -> anyhow::Result<ProvenBlock> {
         // Create batches from pending transactions.
         // ----------------------------------------------------------------------------------------
 
@@ -1381,21 +1363,19 @@ impl MockChain {
 
         let proposed_block = self
             .propose_block_at(batches, block_timestamp)
-            .map_err(MockChainError::ProposedBlockCreationFailed)?;
-        let mut proven_block =
-            self.prove_block(proposed_block).map_err(MockChainError::BlockProvingFailed)?;
+            .context("failed to create proposed block")?;
+        let mut proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
 
         // We apply the block tree updates here, so that apply_pending_objects_to_block can easily
         // update the block header of this block with the pending accounts and nullifiers.
         self.apply_block_tree_updates(&proven_block)
-            .map_err(MockChainError::BlockTreeUpdatesFailed)?;
+            .context("failed to apply block tree updates")?;
 
         if !self.pending_objects.is_empty() {
             self.apply_pending_objects_to_block(&mut proven_block)?;
         }
 
-        self.apply_block(proven_block.clone())
-            .map_err(MockChainError::BlockApplicationFailed)?;
+        self.apply_block(proven_block.clone()).context("failed to apply block")?;
 
         Ok(proven_block)
     }
@@ -1641,62 +1621,4 @@ mod tests {
 
         Ok(())
     }
-}
-
-// MOCK CHAIN ERROR
-// ================================================================================================
-
-/// Errors that can occur when working with MockChain.
-#[derive(Debug, Error)]
-pub enum MockChainError {
-    #[error("account {0} not found in committed accounts")]
-    AccountNotFound(AccountId),
-
-    #[error("block {0} not found in chain")]
-    BlockNotFound(BlockNumber),
-
-    #[error("partial blockchain error: {0}")]
-    PartialBlockchainError(#[from] PartialBlockchainError),
-
-    #[error("failed to create transaction inputs: {0}")]
-    TransactionInputsCreationFailed(#[from] TransactionInputError),
-
-    #[error("note with id {0} not found")]
-    NoteNotFound(NoteId),
-
-    #[error("note error: {0}")]
-    NoteError(#[from] NoteError),
-
-    #[error("failed to build account from builder: {0}")]
-    AccountBuilderError(String),
-
-    #[error("failed to create proposed batch: {0}")]
-    InvalidProposedBatch(#[from] ProposedBatchError),
-
-    #[error("failed to create proven batch: {0}")]
-    InvalidProvenBatch(#[from] ProvenBatchError),
-
-    #[error("failed to apply pending objects to block: {0}")]
-    ApplyPendingObjectsFailed(String),
-
-    #[error("failed to apply account delta")]
-    ApplyDeltaFailed(#[from] AccountError),
-
-    #[error("failed to create proposed block: {0}")]
-    ProposedBlockCreationFailed(#[source] ProposedBlockError),
-
-    #[error("failed to prove block: {0}")]
-    BlockProvingFailed(#[source] ProvenBlockError),
-
-    #[error("failed to apply block tree updates")]
-    BlockTreeUpdatesFailed(#[source] anyhow::Error),
-
-    #[error("failed to apply block")]
-    BlockApplicationFailed(#[source] anyhow::Error),
-
-    #[error("invalid argument: {0}")]
-    InvalidArgument(String),
-
-    #[error("error: {0}")]
-    Other(String),
 }
