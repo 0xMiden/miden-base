@@ -177,11 +177,6 @@ impl TransactionArgs {
         }
     }
 
-    /// Extends the advice inputs in self with the provided ones.
-    pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
-        self.advice_inputs.extend(advice_inputs);
-    }
-
     /// Extends the internal advice inputs' map with the provided key-value pairs.
     pub fn extend_advice_map<T: IntoIterator<Item = (Digest, Vec<Felt>)>>(&mut self, iter: T) {
         self.advice_inputs.extend_map(iter)
@@ -190,6 +185,12 @@ impl TransactionArgs {
     /// Extends the internal advice inputs' merkle store with the provided nodes.
     pub fn extend_merkle_store<I: Iterator<Item = InnerNodeInfo>>(&mut self, iter: I) {
         self.advice_inputs.extend_merkle_store(iter)
+    }
+
+    /// Extends the advice inputs in self with the provided ones.
+    #[cfg(feature = "testing")]
+    pub fn extend_advice_inputs(&mut self, advice_inputs: AdviceInputs) {
+        self.advice_inputs.extend(advice_inputs);
     }
 }
 

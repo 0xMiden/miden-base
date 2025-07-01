@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, FieldElement, TransactionInputError, WORD_SIZE, Word, ZERO,
+    Digest, EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO,
     account::{AccountHeader, AccountId, PartialAccount},
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
@@ -27,22 +27,19 @@ impl TransactionAdviceInputs {
     /// optional account seed (required for new accounts), and the input note data, including
     /// core note data + authentication paths all the way to the root of one of partial
     /// blockchain peaks.
-    pub fn new(
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-    ) -> Result<Self, TransactionInputError> {
+    pub fn new(tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) -> Self {
         let mut inputs = TransactionAdviceInputs::default();
         let kernel_version = 0; // TODO: replace with user input
 
         inputs.build_stack(tx_inputs, tx_args, kernel_version);
         inputs.add_kernel_commitments(kernel_version);
         inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs, tx_args)?;
+        inputs.add_input_notes(tx_inputs, tx_args);
 
         // --- native account injection ---------------------------------------
 
         let native_acc = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native_acc)?;
+        inputs.add_account(&native_acc);
 
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
@@ -54,7 +51,7 @@ impl TransactionAdviceInputs {
         // --- foreign account injection --------------------------------------
 
         for foreign_acc in tx_args.foreign_account_inputs() {
-            inputs.add_account(foreign_acc.account())?;
+            inputs.add_account(foreign_acc.account());
             inputs.add_account_witness(foreign_acc.witness());
 
             // for foreign accounts, we need to insert the id to state mapping
@@ -69,7 +66,7 @@ impl TransactionAdviceInputs {
         // any extra user-supplied advice
         inputs.extend(tx_args.advice_inputs().clone());
 
-        Ok(inputs)
+        inputs
     }
 
     /// Converts these transaction advice inputs into the underlying advice inputs.
@@ -221,7 +218,7 @@ impl TransactionAdviceInputs {
     /// - The account code commitment |-> procedures vector.
     /// - The leaf hash |-> (key, value), for all leaves of the partial vault.
     /// - If present, the Merkle leaves associated with the account storage maps.
-    fn add_account(&mut self, account: &PartialAccount) -> Result<(), TransactionInputError> {
+    fn add_account(&mut self, account: &PartialAccount) {
         // --- account code -------------------------------------------------------
 
         // CODE_COMMITMENT -> [[ACCOUNT_PROCEDURE_DATA]]
@@ -243,8 +240,6 @@ impl TransactionAdviceInputs {
         // populate Merkle store and advice map with nodes info needed to access vault assets
         self.extend_merkle_store(account.vault().inner_nodes());
         self.extend_map(account.vault().leaves().map(|leaf| (leaf.hash(), leaf.to_elements())));
-
-        Ok(())
     }
 
     /// Adds an account witness to the advice inputs.
@@ -280,13 +275,9 @@ impl TransactionAdviceInputs {
     ///         - The note's position in the note tree
     ///
     /// The data above is processed by `prologue::process_input_notes_data`.
-    fn add_input_notes(
-        &mut self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-    ) -> Result<(), TransactionInputError> {
+    fn add_input_notes(&mut self, tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) {
         if tx_inputs.input_notes().is_empty() {
-            return Ok(());
+            return;
         }
 
         let mut note_data = Vec::new();
@@ -346,7 +337,6 @@ impl TransactionAdviceInputs {
         }
 
         self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
-        Ok(())
     }
 
     // HELPER METHODS
