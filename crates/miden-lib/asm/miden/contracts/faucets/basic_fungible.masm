@@ -28,9 +28,6 @@ const.ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED="distr
 # The slot in this component's storage layout where the metadata is stored.
 const.METADATA_SLOT=0
 
-# Basic authentication for the faucet owner.
-export.basic::auth__tx_rpo_falcon512
-
 #! Distributes freshly minted fungible assets to the provided recipient.
 #!
 #! Inputs:  [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
