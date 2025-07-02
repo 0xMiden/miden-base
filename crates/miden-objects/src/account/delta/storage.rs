@@ -9,6 +9,7 @@ use super::{
     LexicographicWord, Serializable, Word,
 };
 use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap};
+
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
 
@@ -309,7 +310,7 @@ impl StorageMapDelta {
         self.0.extend(other.0);
     }
 
-    /// Returns a mutable refernce to the underlying map.
+    /// Returns a mutable reference to the underlying map.
     pub fn as_map_mut(&mut self) -> &mut BTreeMap<LexicographicWord<Digest>, Word> {
         &mut self.0
     }

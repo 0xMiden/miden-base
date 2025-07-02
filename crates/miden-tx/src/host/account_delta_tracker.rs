@@ -81,7 +81,7 @@ impl AccountDeltaTracker {
 
         // Keep only the values whose new value is different from the initial value.
         value_slots.retain(|slot_idx, new_value| {
-            // SAFETY: The header in the intial storage is the one from the account against which
+            // SAFETY: The header in the initial storage is the one from the account against which
             // the transaction is executed, so accessing that slot index should be fine.
             let (_, initial_value) = self
                 .init_storage
