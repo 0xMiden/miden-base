@@ -339,34 +339,35 @@ impl ProcedureInfoBuilder {
     }
 
     fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
-        if let Some(auth_index) = component.get_auth_procedure_index()? {
-            let mut component_procedures: Vec<(RpoDigest, bool)> = component.get_procedures();
+        let mut auth_proc_count = 0;
 
-            // Move the auth procedure to the front
-            component_procedures.swap(0, auth_index);
-
-            for (proc_mast_root, _) in component_procedures {
-                self.add_procedure(proc_mast_root, component.storage_size())?;
+        for (proc_root, is_auth) in component.get_procedures() {
+            self.add_procedure(proc_root, component.storage_size())?;
+            if is_auth {
+                let auth_proc_idx = self.procedures.len() - 1;
+                self.procedures.swap(0, auth_proc_idx);
+                auth_proc_count += 1;
             }
-
-            self.storage_offset = self
-                .storage_offset
-                .checked_add(component.storage_size())
-                .expect("account procedure info constructor should return an error if the addition overflows");
-
-            Ok(())
-        } else {
-            Err(AccountError::AccountCodeNoAuthComponent)
         }
+
+        if auth_proc_count == 0 {
+            return Err(AccountError::AccountCodeNoAuthComponent);
+        } else if auth_proc_count > 1 {
+            return Err(AccountError::AccountComponentMultipleAuthProcedures);
+        }
+
+        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
+            "account procedure info constructor should return an error if the addition overflows",
+        );
+
+        Ok(())
     }
 
     fn add_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
-        match component.get_auth_procedure_index() {
-            Ok(None) => {},
-            _ => return Err(AccountError::AccountCodeMultipleAuthComponents),
-        }
-
-        for (proc_mast_root, _) in component.get_procedures() {
+        for (proc_mast_root, is_auth) in component.get_procedures() {
+            if is_auth {
+                return Err(AccountError::AccountCodeMultipleAuthComponents);
+            }
             self.add_procedure(proc_mast_root, component.storage_size())?;
         }
 
