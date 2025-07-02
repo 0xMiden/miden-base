@@ -396,25 +396,25 @@ pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
 // LINK MAP
 // ------------------------------------------------------------------------------------------------
 
-/// The inclusive start of the link map dynamic memory range.
-pub const LINK_MAP_MEMORY_START_PTR: MemoryAddress = 33_554_448;
+/// The inclusive start of the link map dynamic memory region.
+pub const LINK_MAP_REGION_START_PTR: MemoryAddress = 33_554_448;
 
-/// The non-inclusive end of the link map dynamic memory range.
-pub const LINK_MAP_MEMORY_END_PTR: MemoryAddress = 67_108_864;
+/// The non-inclusive end of the link map dynamic memory region.
+pub const LINK_MAP_REGION_END_PTR: MemoryAddress = 67_108_864;
 
-/// LINK_MAP_MEMORY_START_PTR + the offset stored at this pointer defines the next entry pointer
-/// that will be allocated.
-pub const LINK_MAP_MEMORY_CURRENT_OFFSET: MemoryAddress = 33_554_432;
+/// [`LINK_MAP_REGION_START_PTR`] + the currently used size stored at this pointer defines the next
+/// entry pointer that will be allocated.
+pub const LINK_MAP_USED_MEMORY_SIZE: MemoryAddress = 33_554_432;
 
 /// The size of each map entry, i.e. four words.
 pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 16;
 
 const _: () = assert!(
-    LINK_MAP_MEMORY_START_PTR % LINK_MAP_ENTRY_SIZE == 0,
-    "link map start ptr should be aligned to entry size"
+    LINK_MAP_REGION_START_PTR % LINK_MAP_ENTRY_SIZE == 0,
+    "link map region start ptr should be aligned to entry size"
 );
 
 const _: () = assert!(
-    (LINK_MAP_MEMORY_END_PTR - LINK_MAP_MEMORY_START_PTR) % LINK_MAP_ENTRY_SIZE == 0,
+    (LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR) % LINK_MAP_ENTRY_SIZE == 0,
     "the link map memory range should cleanly contain a multiple of the entry size"
 );

@@ -230,12 +230,12 @@ const.OUTPUT_NOTE_ASSETS_OFFSET=20
 # LINK MAP MEMORY
 # -------------------------------------------------------------------------------------------------
 
-# The inclusive start of the link map dynamic memory range.
+# The inclusive start of the link map dynamic memory region.
 # Chosen as a number greater than 2^25 such that all entry pointers are multiples of
 # LINK_MAP_ENTRY_SIZE. That enables a simpler check in assert_entry_ptr_is_valid.
 const.LINK_MAP_REGION_START_PTR=33554448
 
-# The non-inclusive end of the link map dynamic memory range.
+# The non-inclusive end of the link map dynamic memory region.
 # This happens to be 2^26, but if it is changed, it should be chosen as a number such that
 # LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR is a multiple of LINK_MAP_ENTRY_SIZE,
 # because that enables checking whether a newly allocated entry pointer is at the end of the range
