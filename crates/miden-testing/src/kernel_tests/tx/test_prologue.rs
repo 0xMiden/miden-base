@@ -454,6 +454,11 @@ fn input_notes_memory_assertions(
 // ACCOUNT CREATION TESTS
 // ================================================================================================
 
+/// Tests that a simple account can be created in a complete transaction execution (not using
+/// [`TransactionContext::execute_code`]).
+///
+/// A nonce increment is necessary because the account's state commitment "changes" from the
+/// EMPTY_WORD sentinel to its actual state commitment.
 #[test]
 fn create_simple_account() -> anyhow::Result<()> {
     let (account, seed) = AccountBuilder::new([6; 32])

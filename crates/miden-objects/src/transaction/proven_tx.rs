@@ -725,7 +725,7 @@ mod tests {
         let final_account_commitment =
             [3; 32].try_into().expect("failed to create final account commitment");
         let account_delta_commitment =
-            [4; 32].try_into().expect("failed to create final account commitment");
+            [4; 32].try_into().expect("failed to create account delta commitment");
         let ref_block_num = BlockNumber::from(1);
         let ref_block_commitment = Digest::default();
         let expiration_block_num = BlockNumber::from(2);
