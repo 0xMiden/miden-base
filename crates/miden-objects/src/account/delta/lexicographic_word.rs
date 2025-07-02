@@ -74,3 +74,33 @@ impl<T: Into<Word> + Copy> Ord for LexicographicWord<T> {
         Ordering::Equal
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn lexicographic_word_ordering() {
+        for (expected, key0, key1) in [
+            (Ordering::Equal, [0, 0, 0, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [1, 0, 0, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [0, 1, 0, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [0, 0, 1, 0u32], [0, 0, 0, 0u32]),
+            (Ordering::Greater, [0, 0, 0, 1u32], [0, 0, 0, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [1, 0, 0, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [0, 1, 0, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 1, 0u32]),
+            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 0, 1u32]),
+            (Ordering::Greater, [0, 0, 0, 1u32], [1, 1, 1, 0u32]),
+            (Ordering::Greater, [0, 0, 1, 0u32], [1, 1, 0, 0u32]),
+            (Ordering::Less, [1, 1, 1, 0u32], [0, 0, 0, 1u32]),
+            (Ordering::Less, [1, 1, 0, 0u32], [0, 0, 1, 0u32]),
+        ] {
+            assert_eq!(
+                LexicographicWord::from(key0.map(Felt::from))
+                    .cmp(&LexicographicWord::from(key1.map(Felt::from))),
+                expected
+            );
+        }
+    }
+}

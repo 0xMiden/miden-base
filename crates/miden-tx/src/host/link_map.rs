@@ -320,36 +320,3 @@ enum SetOperation {
     InsertAtHead = 1,
     InsertAfterEntry = 2,
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn to_word(ints: [u32; 4]) -> Word {
-        ints.map(Felt::from)
-    }
-
-    #[test]
-    fn compare_keys() {
-        for (expected, key0, key1) in [
-            (Ordering::Equal, [0, 0, 0, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [1, 0, 0, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [0, 1, 0, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [0, 0, 1, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [0, 0, 0, 1u32], [0, 0, 0, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [1, 0, 0, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [0, 1, 0, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 1, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 0, 1u32]),
-            (Ordering::Greater, [0, 0, 0, 1u32], [1, 1, 1, 0u32]),
-            (Ordering::Greater, [0, 0, 1, 0u32], [1, 1, 0, 0u32]),
-            (Ordering::Less, [1, 1, 1, 0u32], [0, 0, 0, 1u32]),
-            (Ordering::Less, [1, 1, 0, 0u32], [0, 0, 1, 0u32]),
-        ] {
-            assert_eq!(
-                LexicographicWord::from(to_word(key0)).cmp(&LexicographicWord::from(to_word(key1))),
-                expected
-            );
-        }
-    }
-}
