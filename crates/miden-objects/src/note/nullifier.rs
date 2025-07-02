@@ -26,7 +26,7 @@ const NULLIFIER_PREFIX_SHIFT: u8 = 48;
 /// - We cannot derive a note's commitment from its nullifier, or a note's nullifier from its hash.
 /// - To compute the nullifier we must know all components of the note: serial_num, script_root,
 ///   input_commitment and asset_commitment.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Nullifier(Digest);
 
 impl Nullifier {

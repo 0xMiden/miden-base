@@ -79,7 +79,7 @@ pub enum NoteExecutionMode {
 /// should take precedence in case of such a mismatch and the inner value **should not be accessed
 /// directly**. Instead, only rely on [`NoteTag::as_u32`] to access the encoded value, which will
 /// always return the correct value.
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Ord, PartialOrd, Hash)]
 pub enum NoteTag {
     /// Represents a tag for a note intended for network execution, targeted at a network account.
     /// The note must be public.

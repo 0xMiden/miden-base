@@ -16,8 +16,10 @@ use crate::prove_and_verify_transaction;
 #[test]
 pub fn prove_send_swap_note() {
     let mut mock_chain = MockChain::new();
-    let offered_asset =
-        mock_chain.add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64).mint(2000);
+    let offered_asset = mock_chain
+        .add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64)
+        .expect("failed to add pending new faucet")
+        .mint(2000);
     let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let sender_account =
         mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![offered_asset]);
@@ -55,13 +57,16 @@ pub fn prove_send_swap_note() {
 
     let create_swap_note_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[])
+        .expect("failed to build tx context")
         .tx_script(tx_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note.clone())])
         .build()
         .execute()
         .unwrap();
 
-    let sender_account = mock_chain.add_pending_executed_transaction(&create_swap_note_tx);
+    let sender_account = mock_chain
+        .add_pending_executed_transaction(&create_swap_note_tx)
+        .expect("failed to add pending executed transaction");
 
     assert!(
         create_swap_note_tx
@@ -80,8 +85,10 @@ pub fn prove_send_swap_note() {
 #[test]
 fn prove_consume_swap_note() {
     let mut mock_chain = MockChain::new();
-    let offered_asset =
-        mock_chain.add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64).mint(2000);
+    let offered_asset = mock_chain
+        .add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64)
+        .expect("failed to add pending new faucet")
+        .mint(2000);
     let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let sender_account =
         mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![offered_asset]);
@@ -94,15 +101,18 @@ fn prove_consume_swap_note() {
     let target_account =
         mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![requested_asset]);
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     let consume_swap_note_tx = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])
+        .expect("failed to build tx context")
         .build()
         .execute()
         .unwrap();
 
-    let target_account = mock_chain.add_pending_executed_transaction(&consume_swap_note_tx);
+    let target_account = mock_chain
+        .add_pending_executed_transaction(&consume_swap_note_tx)
+        .expect("failed to add pending executed transaction");
 
     let output_payback_note = consume_swap_note_tx.output_notes().iter().next().unwrap().clone();
     assert!(output_payback_note.id() == payback_note.id());
@@ -123,11 +133,14 @@ fn prove_consume_swap_note() {
 
     let consume_payback_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
+        .expect("failed to build tx context")
         .build()
         .execute()
         .unwrap();
 
-    let sender_account = mock_chain.add_pending_executed_transaction(&consume_payback_tx);
+    let sender_account = mock_chain
+        .add_pending_executed_transaction(&consume_payback_tx)
+        .expect("failed to add pending executed transaction");
     assert!(sender_account.vault().assets().any(|asset| asset == requested_asset));
     assert!(prove_and_verify_transaction(consume_payback_tx).is_ok());
 }

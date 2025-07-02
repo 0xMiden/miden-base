@@ -1,9 +1,4 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use assert_matches::assert_matches;
@@ -14,7 +9,10 @@ use miden_lib::{
 };
 use miden_objects::{
     Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot},
+    account::{
+        Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot,
+        delta::LexicographicWord,
+    },
     assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     note::{
@@ -342,17 +340,16 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     );
 
     assert_eq!(executed_transaction.account_delta().storage().maps().len(), 1);
+    let map_delta = executed_transaction
+        .account_delta()
+        .storage()
+        .maps()
+        .get(&STORAGE_INDEX_2)
+        .unwrap()
+        .entries();
     assert_eq!(
-        executed_transaction
-            .account_delta()
-            .storage()
-            .maps()
-            .get(&STORAGE_INDEX_2)
-            .unwrap()
-            .entries(),
-        &Some((updated_map_key.into(), updated_map_value))
-            .into_iter()
-            .collect::<BTreeMap<Digest, _>>()
+        *map_delta.get(&LexicographicWord::new(Digest::from(updated_map_key))).unwrap(),
+        updated_map_value
     );
 
     // vault delta

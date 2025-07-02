@@ -6,6 +6,9 @@ use super::{
 };
 use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
 
+mod lexicographic_word;
+pub use lexicographic_word::LexicographicWord;
+
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
 
@@ -119,10 +122,10 @@ impl AccountDelta {
     /// - Fungible Asset Delta
     ///   - For each **updated** fungible asset, sorted by its vault key, whose amount delta is
     ///     **non-zero**:
-    ///     - Append `[domain = 1, 0, 0, 0]`.
-    ///     - Append `[amount_hi, amount_lo, faucet_id_suffix, faucet_id_prefix]` where amount_hi
-    ///       and amount_lo are the u32 limbs of the amount delta by which the fungible asset's
-    ///       amount has changed.
+    ///     - Append `[domain = 1, was_added, 0, 0]`.
+    ///     - Append `[amount, 0, faucet_id_suffix, faucet_id_prefix]` where amount is the delta by
+    ///       which the fungible asset's amount has changed and was_added is a boolean flag
+    ///       indicating whether the amount was added (1) or subtracted (0).
     /// - Non-Fungible Asset Delta
     ///   - For each **updated** non-fungible asset, sorted by its vault key:
     ///     - Append `[domain = 1, was_added, 0, 0]` where was_added is a boolean flag indicating
@@ -138,9 +141,9 @@ impl AccountDelta {
     ///     - For each key-value pair, sorted by key, whose new value is different from the previous
     ///       value in the map:
     ///       - Append `[KEY, NEW_VALUE]`.
-    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]` where slot_idx
-    ///       is the index of the slot and `num_changed_entries` is the number of changed key-value
-    ///       pairs in the map.
+    ///     - Append `[[domain = 3, slot_idx, num_changed_entries, 0], 0, 0, 0, 0]`, except if
+    ///       `num_changed_entries` is 0, where slot_idx is the index of the slot and
+    ///       `num_changed_entries` is the number of changed key-value pairs in the map.
     ///
     /// # Rationale
     ///

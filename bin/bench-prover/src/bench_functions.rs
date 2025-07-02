@@ -29,14 +29,14 @@ pub fn setup_consume_note_with_new_account() -> Result<ExecutedTransaction> {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
 
     // Execute the transaction and get the witness
     let executed_transaction = mock_chain
-        .build_tx_context(target_account.id(), &[note.id()], &[])
+        .build_tx_context(target_account.id(), &[note.id()], &[])?
         .build()
         .execute()
         .unwrap();
@@ -82,10 +82,10 @@ pub fn setup_consume_multiple_notes() -> Result<ExecutedTransaction> {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     let tx_context = mock_chain
-        .build_tx_context(account.id(), &[note_1.id(), note_2.id()], &[])
+        .build_tx_context(account.id(), &[note_1.id(), note_2.id()], &[])?
         .build();
 
     let executed_transaction = tx_context.execute().unwrap();

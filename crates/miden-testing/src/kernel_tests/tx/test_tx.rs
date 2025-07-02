@@ -43,22 +43,24 @@ use crate::{
 };
 
 #[test]
-fn test_fpi_anchoring_validations() {
+fn test_fpi_anchoring_validations() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut mock_chain = MockChain::new();
     let account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // Retrieve inputs which will become stale
-    let inputs = mock_chain.get_foreign_account_inputs(account.id());
+    let inputs = mock_chain
+        .get_foreign_account_inputs(account.id())
+        .expect("failed to get foreign account inputs");
 
     // Add account to modify account tree
     let new_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // Attempt to execute with older foreign account inputs
     let transaction = mock_chain
-        .build_tx_context(new_account.id(), &[], &[])
+        .build_tx_context(new_account.id(), &[], &[])?
         .foreign_accounts(vec![inputs])
         .build()
         .execute();
@@ -67,6 +69,7 @@ fn test_fpi_anchoring_validations() {
         transaction,
         Err(TransactionExecutorError::ForeignAccountNotAnchoredInReference(_))
     );
+    Ok(())
 }
 
 #[allow(clippy::arc_with_non_send_sync)]
@@ -86,17 +89,17 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
             NoteType::Private,
         )
         .unwrap();
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // Get as input note, and assert that the note was created after block 1 (which we'll
     // use as reference)
     let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
     assert!(input_note.location().unwrap().block_num() > 1.into());
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // Attempt to execute with a note created in the future
-    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[]).build();
+    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build();
     let source_manager = tx_context.source_manager();
 
     let tx_executor = TransactionExecutor::new(&tx_context, None);
