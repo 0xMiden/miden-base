@@ -340,7 +340,7 @@ impl ProcedureInfoBuilder {
 
     fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
         if let Some(auth_index) = component.get_auth_procedure_index()? {
-            let mut component_procedures: Vec<(RpoDigest, bool)> = component.procedures();
+            let mut component_procedures: Vec<(RpoDigest, bool)> = component.get_procedures();
 
             // Move the auth procedure to the front
             component_procedures.swap(0, auth_index);
@@ -366,7 +366,7 @@ impl ProcedureInfoBuilder {
             _ => return Err(AccountError::AccountCodeMultipleAuthComponents),
         }
 
-        for (proc_mast_root, _) in component.procedures() {
+        for (proc_mast_root, _) in component.get_procedures() {
             self.add_procedure(proc_mast_root, component.storage_size())?;
         }
 

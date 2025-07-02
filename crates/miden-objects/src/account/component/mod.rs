@@ -147,7 +147,7 @@ impl AccountComponent {
     }
 
     /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
-    pub fn procedures(&self) -> Vec<(Digest, bool)> {
+    pub fn get_procedures(&self) -> Vec<(Digest, bool)> {
         let mut procedures = Vec::new();
         for module in self.library.module_infos() {
             for (_, procedure_info) in module.procedures() {
@@ -167,7 +167,7 @@ impl AccountComponent {
     pub(super) fn get_auth_procedure_index(&self) -> Result<Option<usize>, AccountError> {
         let mut auth_procedure_index = None;
 
-        for (index, (_, is_auth)) in self.procedures().iter().enumerate() {
+        for (index, (_, is_auth)) in self.get_procedures().iter().enumerate() {
             if *is_auth {
                 if auth_procedure_index.is_some() {
                     return Err(AccountError::AccountComponentMultipleAuthProcedures);
