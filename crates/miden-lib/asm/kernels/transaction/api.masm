@@ -494,6 +494,7 @@ export.account_has_non_fungible_asset
     # => [has_asset, pad(15)]
 end
 
+
 ### FAUCET #####################################
 
 #! Mint an asset from the faucet the transaction is being executed against.
@@ -1044,6 +1045,25 @@ export.tx_get_expiration_delta
     # truncate the stack
     swap drop
     # => [block_height_delta, pad(15)]
+end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT, pad(12)]
+#! Outputs: [was_called, pad(15)]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called, 0 otherwise.
+#!
+#! Panics if:
+#! - the procedure root is not part of the account code.
+#!
+#! Invocation: dynexec
+export.account_was_procedure_called
+    # check if the procedure was called
+    exec.account::was_procedure_called
+    # => [was_called, pad(15)]
 end
 
 #! Executes a kernel procedure specified by its offset.

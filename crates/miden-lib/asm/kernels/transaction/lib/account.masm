@@ -618,12 +618,13 @@ end
 #! Returns the procedure information.
 #!
 #! Inputs:  [index]
-#! Outputs: [PROC_ROOT, storage_offset, storage_size]
+#! Outputs: [PROC_ROOT, storage_offset, storage_size, was_called]
 #!
 #! Where:
 #! - PROC_ROOT is the hash of the procedure.
 #! - storage_offset is the procedure storage offset.
 #! - storage_size is the number of storage slots the procedure is allowed to access.
+#! - was_called is a flag indicating whether the procedure was called during transaction execution.
 #!
 #! Panics if:
 #! - the procedure index is out of bounds.
@@ -645,8 +646,8 @@ export.get_procedure_info
     # => [METADATA, PROC_ROOT]
 
     # keep relevant data
-    drop drop swap movdn.5 movdn.5
-    # => [PROC_ROOT, storage_offset, storage_size]
+    drop movdn.6 swap movdn.5 movdn.5
+    # => [PROC_ROOT, storage_offset, storage_size, was_called]
 end
 
 #! Verifies that the procedure root is part of the account code.
@@ -661,17 +662,37 @@ end
 #!
 #! Panics if:
 #! - the procedure root is not part of the account code.
-export.authenticate_procedure
+export.authenticate_procedure.1
     # load procedure index
     emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
     # => [index, PROC_ROOT]
 
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
+    dup loc_store.0
+    # get procedure info (PROC_ROOT, storage_offset, storage_size, was_called) from memory stored at index
     exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, was_called, PROC_ROOT]
 
     # verify that PROC_ROOT exists in memory at index
-    movup.4 movdn.9 movup.4 movdn.9 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    movup.4 movdn.10 movup.4 movdn.10 movup.4 movdn.10 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [storage_offset, storage_size, was_called]
+
+    # check if procedure was already called
+    movup.2 eq.0
+    # => [is_first_call, storage_offset, storage_size]
+
+    if.true
+        # if this is the first call, set was_called flag to 1
+        push.1
+        # => [1, storage_offset, storage_size]
+
+        loc_load.0
+        mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
+        # => [proc_metadata_ptr]
+        # was_called is the 2nd element of the metadata
+        add.2
+
+        mem_store
+    end
     # => [storage_offset, storage_size]
 end
 
@@ -693,10 +714,10 @@ export.assert_auth_procedure
 
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
     exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, was_called, PROC_ROOT]
 
     # verify that PROC_ROOT exists in memory at index
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
+    movup.4 drop movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
     # => []
 end
 
@@ -1036,11 +1057,12 @@ end
 #! - We assume that index has been validated and is within bounds.
 #!
 #! Inputs:  [index]
-#! Outputs: [storage_offset, storage_size]
+#! Outputs: [storage_offset, storage_size, was_called]
 #!
 #! Where:
 #! - storage_offset is the procedure storage offset.
 #! - storage_size is the number of storage slots the procedure is allowed to access.
+#! - was_called is a flag indicating whether the procedure was called during transaction execution.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
     mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
@@ -1048,6 +1070,7 @@ proc.get_procedure_metadata
 
     # load procedure metadata from memory and keep relevant data
     padw movup.4 mem_loadw drop drop swap
+    # TODO add was_called
     # => [storage_offset, storage_size]
 end
 
@@ -1163,4 +1186,33 @@ end
 proc.hash_map_key
     hash
     # => [HASHED_KEY]
+end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [was_called]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called, 0 otherwise.
+#!
+#! Panics if:
+#! - the procedure root is not part of the account code.
+export.was_procedure_called
+    # load procedure index
+    emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
+    # => [index, PROC_ROOT]
+
+    # get procedure info (PROC_ROOT, storage_offset, storage_size, was_called) from memory stored at index
+    exec.get_procedure_info
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, was_called, PROC_ROOT]
+
+    # verify that PROC_ROOT exists in memory at index
+    movup.4 movdn.10 movup.4 movdn.10 movup.4 movdn.10 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [storage_offset, storage_size, was_called]
+
+    # drop storage_offset and storage_size, keep was_called
+    drop drop
+    # => [was_called]
 end

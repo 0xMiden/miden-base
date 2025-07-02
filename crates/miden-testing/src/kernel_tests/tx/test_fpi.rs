@@ -1372,12 +1372,16 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         .chunks(AccountProcedureInfo::NUM_ELEMENTS_PER_PROC / 2)
         .enumerate()
     {
-        assert_eq!(
-            read_root_mem_word(
-                &process.into(),
-                foreign_account_data_ptr + ACCT_PROCEDURES_SECTION_OFFSET + (i as u32) * 4
-            ),
-            Word::try_from(elements).unwrap(),
+        let memory_word = read_root_mem_word(
+            &process.into(),
+            foreign_account_data_ptr + ACCT_PROCEDURES_SECTION_OFFSET + (i as u32) * 4,
         );
+        let expected_word = Word::try_from(elements).unwrap();
+
+        // Out of the procedure metadata containing [storage_offset, storage_size, was_called, 0],
+        // we don't care about the `was_called` field.
+        assert_eq!(memory_word[0], expected_word[0]);
+        assert_eq!(memory_word[1], expected_word[1]);
+        assert_eq!(memory_word[3], expected_word[3]);
     }
 }
