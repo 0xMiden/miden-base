@@ -76,7 +76,7 @@ impl AccountDeltaTracker {
     /// - removing entries for map slot updates where for a given key, the new value is equal to the
     ///   initial value at the beginning of transaction execution.
     fn normalize(self) -> (AccountVaultDelta, AccountStorageDelta) {
-        let (num_slots, mut value_slots, mut map_slots) = self.storage.into_parts();
+        let (mut value_slots, mut map_slots) = self.storage.into_parts();
         let vault_delta = self.vault;
 
         // Keep only the values whose new value is different from the initial value.
@@ -101,7 +101,7 @@ impl AccountDeltaTracker {
             }
         });
 
-        let storage_delta = AccountStorageDelta::from_parts(num_slots, value_slots, map_slots)
+        let storage_delta = AccountStorageDelta::from_parts(value_slots, map_slots)
             .expect("storage delta should still be valid since no new values were added");
 
         (vault_delta, storage_delta)

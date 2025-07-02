@@ -5,10 +5,10 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    Word,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
+    LexicographicWord, Serializable, Word,
 };
-use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap, transaction::LinkMapKey};
+use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap};
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
 
@@ -310,7 +310,7 @@ impl StorageMapDelta {
     }
 
     /// Returns a mutable refernce to the underlying map.
-    pub fn as_map_mut(&mut self) -> &mut BTreeMap<LexicographicWord <Digest>, Word> {
+    pub fn as_map_mut(&mut self) -> &mut BTreeMap<LexicographicWord<Digest>, Word> {
         &mut self.0
     }
 
