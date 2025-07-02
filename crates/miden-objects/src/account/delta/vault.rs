@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     Felt, ONE, Word, ZERO,
-    account::{AccountId, AccountType, delta::LinkMapKey},
+    account::{AccountId, AccountType, delta::LexicographicWord},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
 };
 
@@ -176,7 +176,7 @@ impl From<&AssetVault> for AccountVaultDelta {
                     );
                 },
                 Asset::NonFungible(asset) => {
-                    non_fungible.insert(LinkMapKey::new(asset), NonFungibleDeltaAction::Add);
+                    non_fungible.insert(LexicographicWord::new(asset), NonFungibleDeltaAction::Add);
                 },
             }
         }
@@ -396,14 +396,18 @@ impl Deserializable for FungibleAssetDelta {
 
 /// A binary tree map of non-fungible asset changes (addition and removal) in the account vault.
 ///
-/// The [`LinkMapKey`] wrapper is necessary to order the assets in the same way as the in-kernel
-/// account delta which uses a link map.
+/// The [`LexicographicWord`] wrapper is necessary to order the assets in the same way as the
+/// in-kernel account delta which uses a link map.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NonFungibleAssetDelta(BTreeMap<LinkMapKey<NonFungibleAsset>, NonFungibleDeltaAction>);
+pub struct NonFungibleAssetDelta(
+    BTreeMap<LexicographicWord<NonFungibleAsset>, NonFungibleDeltaAction>,
+);
 
 impl NonFungibleAssetDelta {
     /// Creates a new non-fungible asset delta.
-    pub const fn new(map: BTreeMap<LinkMapKey<NonFungibleAsset>, NonFungibleDeltaAction>) -> Self {
+    pub const fn new(
+        map: BTreeMap<LexicographicWord<NonFungibleAsset>, NonFungibleDeltaAction>,
+    ) -> Self {
         Self(map)
     }
 
@@ -466,7 +470,7 @@ impl NonFungibleAssetDelta {
         asset: NonFungibleAsset,
         action: NonFungibleDeltaAction,
     ) -> Result<(), AccountDeltaError> {
-        match self.0.entry(LinkMapKey::new(asset)) {
+        match self.0.entry(LexicographicWord::new(asset)) {
             Entry::Vacant(entry) => {
                 entry.insert(action);
             },
@@ -540,13 +544,13 @@ impl Deserializable for NonFungibleAssetDelta {
         let num_added = source.read_usize()?;
         for _ in 0..num_added {
             let added_asset = source.read()?;
-            map.insert(LinkMapKey::new(added_asset), NonFungibleDeltaAction::Add);
+            map.insert(LexicographicWord::new(added_asset), NonFungibleDeltaAction::Add);
         }
 
         let num_removed = source.read_usize()?;
         for _ in 0..num_removed {
             let removed_asset = source.read()?;
-            map.insert(LinkMapKey::new(removed_asset), NonFungibleDeltaAction::Remove);
+            map.insert(LexicographicWord::new(removed_asset), NonFungibleDeltaAction::Remove);
         }
 
         Ok(Self::new(map))
