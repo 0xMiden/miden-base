@@ -122,7 +122,7 @@ impl AccountBuilder {
             .ok_or(AccountError::BuildError("auth component must be set".into(), None))?;
 
         let mut components = vec![auth_component];
-        components.extend(core::mem::take(&mut self.components));
+        components.append(&mut self.components);
 
         let (code, storage) = Account::initialize_from_components(self.account_type, &components)
             .map_err(|err| {
