@@ -7,7 +7,7 @@ use miden_objects::{
     Digest, EMPTY_WORD, Felt, Hasher, Word,
     account::{
         AccountBuilder, AccountDelta, AccountHeader, AccountId, AccountStorageMode, AccountType,
-        StorageMap, StorageSlot, delta::LinkMapKey,
+        StorageMap, StorageSlot, delta::LexicographicWord,
     },
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
@@ -245,11 +245,11 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         maps_delta.get(&1).expect("delta for map 1 should exist").clone().into_map();
 
     assert_eq!(map0_delta.len(), 2);
-    assert_eq!(map0_delta.remove(&LinkMapKey::new(key0)).unwrap(), key0_final_value);
-    assert_eq!(map0_delta.remove(&LinkMapKey::new(key1)).unwrap(), key1_final_value);
+    assert_eq!(map0_delta.remove(&LexicographicWord::new(key0)).unwrap(), key0_final_value);
+    assert_eq!(map0_delta.remove(&LexicographicWord::new(key1)).unwrap(), key1_final_value);
 
     assert_eq!(map1_delta.len(), 1);
-    assert_eq!(map1_delta.remove(&LinkMapKey::new(key3)).unwrap(), key3_final_value);
+    assert_eq!(map1_delta.remove(&LexicographicWord::new(key3)).unwrap(), key3_final_value);
 
     validate_account_delta(&executed_tx).context("failed to validate delta")?;
 

@@ -609,7 +609,7 @@ mod tests {
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
             AccountType, AccountVaultDelta, StorageMapDelta,
-            delta::{AccountUpdateDetails, LinkMapKey},
+            delta::{AccountUpdateDetails, LexicographicWord},
         },
         block::BlockNumber,
         testing::account_id::{
@@ -668,7 +668,7 @@ mod tests {
         // 32 bytes in size.
         let required_entries = ACCOUNT_UPDATE_MAX_SIZE / (2 * 32);
         for _ in 0..required_entries {
-            map.insert(LinkMapKey::new(Digest::new(rand_array())), rand_array());
+            map.insert(LexicographicWord::new(Digest::new(rand_array())), rand_array());
         }
         let storage_delta = StorageMapDelta::new(map);
 

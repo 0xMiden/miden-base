@@ -5,12 +5,12 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    Word,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
+    LexicographicWord, Serializable, Word,
 };
 use crate::{
     Digest, EMPTY_WORD, Felt, ZERO,
-    account::{AccountStorage, StorageMap, StorageSlot, delta::LinkMapKey},
+    account::{AccountStorage, StorageMap, StorageSlot},
 };
 
 // ACCOUNT STORAGE DELTA
@@ -292,14 +292,14 @@ impl Deserializable for AccountStorageDelta {
 /// The differences are represented as leaf updates: a map of updated item key ([Digest]) to
 /// value ([Word]). For cleared items the value is [EMPTY_WORD].
 ///
-/// The [`LinkMapKey`] wrapper is necessary to order the keys in the same way as the in-kernel
-/// account delta which uses a link map.
+/// The [`LexicographicWord`] wrapper is necessary to order the keys in the same way as the
+/// in-kernel account delta which uses a link map.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct StorageMapDelta(BTreeMap<LinkMapKey<Digest>, Word>);
+pub struct StorageMapDelta(BTreeMap<LexicographicWord<Digest>, Word>);
 
 impl StorageMapDelta {
     /// Creates a new storage map delta from the provided leaves.
-    pub fn new(map: BTreeMap<LinkMapKey<Digest>, Word>) -> Self {
+    pub fn new(map: BTreeMap<LexicographicWord<Digest>, Word>) -> Self {
         Self(map)
     }
 
@@ -309,13 +309,13 @@ impl StorageMapDelta {
     }
 
     /// Returns a reference to the updated entries in this storage map delta.
-    pub fn entries(&self) -> &BTreeMap<LinkMapKey<Digest>, Word> {
+    pub fn entries(&self) -> &BTreeMap<LexicographicWord<Digest>, Word> {
         &self.0
     }
 
     /// Inserts an item into the storage map delta.
     pub fn insert(&mut self, key: Digest, value: Word) {
-        self.0.insert(LinkMapKey::new(key), value);
+        self.0.insert(LexicographicWord::new(key), value);
     }
 
     /// Returns true if storage map delta contains no updates.
@@ -359,17 +359,17 @@ impl StorageMapDelta {
         Self(BTreeMap::from_iter(
             cleared_leaves
                 .into_iter()
-                .map(|key| (LinkMapKey::new(Digest::from(key)), EMPTY_WORD))
+                .map(|key| (LexicographicWord::new(Digest::from(key)), EMPTY_WORD))
                 .chain(
                     updated_leaves
                         .into_iter()
-                        .map(|(key, value)| (LinkMapKey::new(Digest::from(key)), value)),
+                        .map(|(key, value)| (LexicographicWord::new(Digest::from(key)), value)),
                 ),
         ))
     }
 
     /// Consumes self and returns the underlying map.
-    pub fn into_map(self) -> BTreeMap<LinkMapKey<Digest>, Word> {
+    pub fn into_map(self) -> BTreeMap<LexicographicWord<Digest>, Word> {
         self.0
     }
 }
@@ -380,7 +380,7 @@ impl From<StorageMap> for StorageMapDelta {
         StorageMapDelta::new(
             map.into_entries()
                 .into_iter()
-                .map(|(key, value)| (LinkMapKey::new(key), value))
+                .map(|(key, value)| (LexicographicWord::new(key), value))
                 .collect(),
         )
     }
@@ -421,13 +421,13 @@ impl Deserializable for StorageMapDelta {
         let cleared_count = source.read_usize()?;
         for _ in 0..cleared_count {
             let cleared_key = source.read()?;
-            map.insert(LinkMapKey::new(cleared_key), EMPTY_WORD);
+            map.insert(LexicographicWord::new(cleared_key), EMPTY_WORD);
         }
 
         let updated_count = source.read_usize()?;
         for _ in 0..updated_count {
             let (updated_key, updated_value) = source.read()?;
-            map.insert(LinkMapKey::new(updated_key), updated_value);
+            map.insert(LexicographicWord::new(updated_key), updated_value);
         }
 
         Ok(Self::new(map))

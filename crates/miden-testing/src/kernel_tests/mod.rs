@@ -11,7 +11,7 @@ use miden_objects::{
     Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountId, AccountStorage, StorageSlot,
-        delta::LinkMapKey,
+        delta::LexicographicWord,
     },
     assembly::diagnostics::{IntoDiagnostic, NamedSource, WrapErr, miette},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
@@ -318,7 +318,7 @@ fn executed_transaction_account_delta_new() {
         .unwrap()
         .entries();
     assert_eq!(
-        *map_delta.get(&LinkMapKey::new(Digest::from(updated_map_key))).unwrap(),
+        *map_delta.get(&LexicographicWord::new(Digest::from(updated_map_key))).unwrap(),
         updated_map_value
     );
 
