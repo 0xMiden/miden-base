@@ -234,7 +234,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &[], &[])
+        .build_tx_context(account_id, &[], &[])?
         .tx_script(tx_script)
         .build()
         .execute()
@@ -315,7 +315,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
             .context("failed to add note with asset")?;
         added_notes.push(added_note);
     }
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -340,7 +340,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])
+        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()
         .execute()
@@ -428,7 +428,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
             .context("failed to add note with asset")?;
         added_notes.push(added_note);
     }
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -455,7 +455,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])
+        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()
         .execute()
@@ -575,7 +575,7 @@ fn setup_asset_test(assets: impl IntoIterator<Item = Asset>) -> TestSetup {
         .unwrap();
 
     let account_id = account.id();
-    let mock_chain = MockChain::with_accounts(&[account]);
+    let mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
 
     TestSetup { mock_chain, account_id }
 }
