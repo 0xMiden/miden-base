@@ -50,7 +50,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // note_get_assets_info
     digest!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
     // note_add_asset
-    digest!("0xb325acb9f8c21ba7253dd374fc23edc399c3aab15be77c6dbea76dcc71c822c2"),
+    digest!("0x215b89969345d374a003f782c5176227ace19605cbd4c020dc67ac5b50e5d1ba"),
     // note_get_serial_number
     digest!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len

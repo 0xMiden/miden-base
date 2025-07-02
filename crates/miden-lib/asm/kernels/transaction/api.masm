@@ -659,20 +659,8 @@ end
 #! - note_idx is the index of the note to which the asset is added.
 #! - ASSET can be a fungible or non-fungible asset.
 #!
-#! Panics if:
-#! - the procedure is called from a non-account context.
-#! - the invocation of this procedure does not originate from the native account.
-#!
 #! Invocation: dynexec
 export.note_add_asset
-    # check that this procedure was executed against the native account
-    exec.memory::assert_native_account
-    # => [note_idx, ASSET, pad(11)]
-
-    # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
-    # => [note_idx, ASSET, pad(11)]
-
     # duplicate the asset word to be able to return it
     movdn.4 dupw movup.8
     # => [note_idx, ASSET, ASSET, pad(11)]

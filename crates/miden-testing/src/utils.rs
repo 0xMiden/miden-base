@@ -130,7 +130,7 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.account::add_asset_to_note\n",
+                  call.tx::add_asset_to_note\n",
             ));
         }
     }
