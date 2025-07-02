@@ -58,7 +58,8 @@ end
 #! Outputs: []
 #!
 #! Panics if:
-#! - the invocation of the kernel procedure does not originate from the authentication procedure of the account.
+#! - the invocation of the kernel procedure does not originate from the authentication procedure
+#!   of the account.
 #!
 #! Invocation: exec
 proc.assert_auth_procedure_origin
@@ -162,7 +163,8 @@ end
 #!
 #! Panics if:
 #! - the invocation of this procedure does not originate from the native account.
-#! - the invocation of this procedure does not originate from the authentication procedure of the account.
+#! - the invocation of this procedure does not originate from the authentication procedure
+#!   of the account.
 #! - the increment is greater than 2^32 - 1.
 #!
 #! Invocation: dynexec
