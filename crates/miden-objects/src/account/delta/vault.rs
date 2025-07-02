@@ -5,13 +5,13 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
+    LexicographicWord, Serializable,
 };
 use crate::{
     Felt, ONE, Word, ZERO,
     account::{AccountId, AccountType},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
-    transaction::LinkMapKey,
 };
 
 // ACCOUNT VAULT DELTA

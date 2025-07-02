@@ -61,7 +61,12 @@ impl AccountDelta {
         // nonce must be updated if either account storage or vault were updated
         validate_nonce(nonce_increment, &storage, &vault)?;
 
-        Ok(Self {account_id, storage, vault, nonce_increment })
+        Ok(Self {
+            account_id,
+            storage,
+            vault,
+            nonce_increment,
+        })
     }
 
     /// Merge another [AccountDelta] into this one.
@@ -362,7 +367,12 @@ impl Deserializable for AccountDelta {
         validate_nonce(nonce_increment, &storage, &vault)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
 
-        Ok(Self { account_id, storage, vault, nonce_increment })
+        Ok(Self {
+            account_id,
+            storage,
+            vault,
+            nonce_increment,
+        })
     }
 }
 
@@ -459,8 +469,8 @@ mod tests {
         let storage_delta = AccountStorageDelta::new();
         let vault_delta = AccountVaultDelta::default();
 
-        AccountDelta::new(account_id,storage_delta.clone(), vault_delta.clone(), ZERO).unwrap();
-        AccountDelta::new(account_id,storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO).unwrap();
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
 
         // non-empty delta
         let storage_delta = AccountStorageDelta::from_iters([1], [], []);
@@ -511,7 +521,8 @@ mod tests {
         assert_eq!(storage_delta.to_bytes().len(), storage_delta.get_size_hint());
         assert_eq!(vault_delta.to_bytes().len(), vault_delta.get_size_hint());
 
-        let account_delta = AccountDelta::new(account_id, storage_delta, vault_delta, ZERO).unwrap();
+        let account_delta =
+            AccountDelta::new(account_id, storage_delta, vault_delta, ZERO).unwrap();
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
