@@ -1,4 +1,5 @@
 use.miden::note
+use.miden::tx
 use.miden::contracts::wallets::basic->wallet
 
 # CONSTANTS
@@ -18,7 +19,6 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #!
 #! Requires that the account exposes:
 #! - miden::contracts::wallets::basic::receive_asset procedure.
-#! - miden::contracts::wallets::basic::create_note procedure.
 #! - miden::contracts::wallets::basic::move_asset_to_note procedure.
 #!
 #! Inputs:  []
@@ -31,7 +31,6 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #!
 #! Panics if:
 #! - account does not expose miden::contracts::wallets::basic::receive_asset procedure.
-#! - account does not expose miden::contracts::wallets::basic::create_note procedure.
 #! - account does not expose miden::contracts::wallets::basic::move_asset_to_note procedure.
 #! - account vault does not contain the requested asset.
 #! - adding a fungible asset would result in amount overflow, i.e., the total amount would be
@@ -97,7 +96,7 @@ begin
     # create a note using inputs
     padw swapdw padw movdnw.2
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8), ASSET]
-    call.wallet::create_note
+    call.tx::create_note
     # => [note_idx, pad(15), ASSET]
 
     swapw dropw movupw.3

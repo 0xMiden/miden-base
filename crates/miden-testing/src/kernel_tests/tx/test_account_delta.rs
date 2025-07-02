@@ -584,6 +584,7 @@ fn word(data: [u32; 4]) -> Word {
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.test::account
+      use.miden::tx
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []
@@ -636,7 +637,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-          call.account::create_note
+          call.tx::create_note
           # => [note_idx, pad(15)]
 
           repeat.15 swap drop end

@@ -21,7 +21,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
     use.miden::tx
 
     export.::miden::contracts::wallets::basic::receive_asset
-    export.::miden::contracts::wallets::basic::create_note
     export.::miden::contracts::wallets::basic::move_asset_to_note
     export.::miden::contracts::faucets::basic_fungible::distribute
 

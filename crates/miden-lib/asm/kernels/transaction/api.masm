@@ -788,14 +788,6 @@ end
 #!
 #! Invocation: dynexec
 export.tx_create_note
-    # check that this procedure was executed against the native account
-    exec.memory::assert_native_account
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
     exec.tx::create_note
     # => [note_idx, pad(15)]
 end
