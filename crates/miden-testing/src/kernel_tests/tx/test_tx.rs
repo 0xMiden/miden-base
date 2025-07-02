@@ -39,8 +39,7 @@ use miden_tx::{TransactionExecutor, TransactionExecutorError};
 use super::{Felt, ONE, ProcessState, Word, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::read_root_mem_word,
-    utils::create_transfer_mock_note,
+    kernel_tests::tx::read_root_mem_word, utils::create_transfer_mock_note,
 };
 
 #[test]
