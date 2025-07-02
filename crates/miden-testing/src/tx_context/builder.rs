@@ -38,7 +38,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
 /// # use miden_lib::transaction::TransactionKernel;
-/// let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 ///
 /// let code = "
 /// use.kernel::prologue
@@ -87,7 +87,7 @@ impl TransactionContextBuilder {
         }
     }
 
-    /// Initializes a [TransactionContextBuilder] with a mocked standard wallet.
+    /// Initializes a [TransactionContextBuilder] with a mock account.
     ///
     /// The wallet:
     ///
