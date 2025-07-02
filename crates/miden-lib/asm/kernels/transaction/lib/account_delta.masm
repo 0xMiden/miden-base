@@ -212,19 +212,16 @@ proc.update_map_slot_delta.4
         movup.12 loc_store.2
         # => [KEY, INIT_VALUE, NEW_VALUE, ...]
 
-        movupw.2
-        # => [NEW_VALUE, KEY, INIT_VALUE, ...]
-
-        movupw.2
-        # => [INIT_VALUE, NEW_VALUE, KEY, ...]
+        swapw.2
+        # => [NEW_VALUE, INIT_VALUE, KEY, ...]
 
         eqw not
-        # => [was_changed, INIT_VALUE, NEW_VALUE, KEY, ...]
+        # => [was_changed, NEW_VALUE, INIT_VALUE, KEY, ...]
 
         # if the key-value pair has actually changed, update the hasher
         if.true
             # drop the initial value
-            dropw
+            swapw dropw
             # => [NEW_VALUE, KEY, RATE, RATE, PERM]
 
             # increment number of changed entries in local 3
@@ -662,7 +659,8 @@ export.remove_non_fungible_asset
     # => []
 end
 
-#! Updates the storage map delta of the given slot index with the given key-value pair and its previous value.
+#! Updates the storage map delta of the given slot index with the given key-value pair and its
+#! previous value.
 #!
 #! The layout of a link map entry for a given KEY is: [KEY, INIT_VALUE, NEW_VALUE] where INIT_VALUE
 #! represents the initial value for the given KEY at the beginning of transaction execution and
