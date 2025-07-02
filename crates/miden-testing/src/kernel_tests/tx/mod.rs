@@ -13,7 +13,6 @@ use miden_lib::{
 };
 use miden_objects::{
     Felt, Hasher, ONE, Word, ZERO,
-    asset::Asset,
     note::{Note, NoteExecutionHint, NoteType},
     testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder, storage::prepare_assets},
     vm::StackInputs,
@@ -129,24 +128,11 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
 ///
 /// `note_asset` is the asset that the note itself will contain
 fn create_spawner_note(output_notes: Vec<&Note>) -> anyhow::Result<Note> {
-    create_spawner_note_with_assets(output_notes, vec![])
-}
-
-/// Creates a note with a note script that creates all `notes` that get passed as a parameter,
-/// and that carries the passed `asset`.
-///
-/// `assets` are the assets that the note itself will contain
-fn create_spawner_note_with_assets(
-    output_notes: Vec<&Note>,
-    assets: Vec<Asset>,
-) -> anyhow::Result<Note> {
     let note_code = note_script_that_creates_notes(output_notes);
 
     let note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into()?, rng())
         .code(note_code)
-        .add_assets(assets)
-        .build(&TransactionKernel::testing_assembler_with_mock_account())
-        .unwrap();
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
 
     Ok(note)
 }

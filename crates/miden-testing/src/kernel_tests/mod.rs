@@ -98,7 +98,8 @@ fn transaction_executor_witness() -> miette::Result<()> {
         tx_inputs,
         tx_args,
         Some(executed_transaction.advice_witness().clone()),
-    ).unwrap();
+    )
+    .unwrap();
     let mem_advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
     // load account/note/tx_script MAST to the mast_store
@@ -112,7 +113,8 @@ fn transaction_executor_witness() -> miette::Result<()> {
         scripts_mast_store,
         None,
         BTreeSet::new(),
-    ).unwrap();
+    )
+    .unwrap();
     let result = vm_processor::execute(
         &TransactionKernel::main(),
         stack_inputs,
@@ -127,7 +129,8 @@ fn transaction_executor_witness() -> miette::Result<()> {
         result.stack_outputs(),
         &map.into(),
         output_notes,
-    ).unwrap();
+    )
+    .unwrap();
 
     assert_eq!(
         executed_transaction.final_account().commitment(),

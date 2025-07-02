@@ -1,5 +1,6 @@
 use alloc::{string::String, vec::Vec};
 
+use anyhow::Context;
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
@@ -38,7 +39,7 @@ use miden_tx::{TransactionExecutor, TransactionExecutorError};
 use super::{Felt, ONE, ProcessState, Word, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::{create_spawner_note_with_assets, read_root_mem_word},
+    kernel_tests::tx::read_root_mem_word,
     utils::create_transfer_mock_note,
 };
 
@@ -121,7 +122,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_create_note() {
+fn test_create_note() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let account_id = tx_context.account().id();
 
@@ -182,10 +183,9 @@ fn test_create_note() {
         account_id,
         NoteType::Public,
         tag,
-        NoteExecutionHint::after_block(23.into()).unwrap(),
+        NoteExecutionHint::after_block(23.into())?,
         Felt::new(27),
-    )
-    .unwrap()
+    )?
     .into();
 
     assert_eq!(
@@ -207,6 +207,7 @@ fn test_create_note() {
         ZERO,
         "top item on the stack is the index of the output note"
     );
+    Ok(())
 }
 
 #[test]
@@ -305,24 +306,27 @@ fn test_create_note_too_many_notes() {
 }
 
 #[test]
-fn test_get_output_notes_commitment() {
+fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let output_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
+
+        let output_note_1 =
+            create_transfer_mock_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+
+        let input_note_1 = create_transfer_mock_note(
+            ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
             &[FungibleAsset::mock(100)],
         );
-        let input_note_1 =
-            create_spawner_note_with_assets(vec![&output_note_1], vec![FungibleAsset::mock(123)])
-                .unwrap();
+
         let input_note_2 = create_transfer_mock_note(
-            ACCOUNT_ID_PRIVATE_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(123)],
+            ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
+            &[FungibleAsset::mock(200)],
         );
+
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
@@ -331,43 +335,53 @@ fn test_get_output_notes_commitment() {
 
     // extract input note data
     let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
-    let input_asset_1 = **input_note_1.assets().iter().take(1).collect::<Vec<_>>().first().unwrap();
+    let input_asset_1 = **input_note_1
+        .assets()
+        .iter()
+        .take(1)
+        .collect::<Vec<_>>()
+        .first()
+        .context("getting first expected input asset")?;
     let input_note_2 = tx_context.tx_inputs().input_notes().get_note(1).note();
-    let input_asset_2 = **input_note_2.assets().iter().take(1).collect::<Vec<_>>().first().unwrap();
+    let input_asset_2 = **input_note_2
+        .assets()
+        .iter()
+        .take(1)
+        .collect::<Vec<_>>()
+        .first()
+        .context("getting second expected input asset")?;
 
     // Choose random accounts as the target for the note tag.
-    let network_account = AccountId::try_from(ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET).unwrap();
-    let local_account = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET).unwrap();
+    let network_account = AccountId::try_from(ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET)?;
+    let local_account = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET)?;
 
     // create output note 1
     let output_serial_no_1 = [Felt::new(8); 4];
     let output_tag_1 = NoteTag::from_account_id(network_account);
-    let assets = NoteAssets::new(vec![input_asset_1]).unwrap();
+    let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata = NoteMetadata::new(
         tx_context.tx_inputs().account().id(),
         NoteType::Public,
         output_tag_1,
         NoteExecutionHint::Always,
         ZERO,
-    )
-    .unwrap();
-    let inputs = NoteInputs::new(vec![]).unwrap();
+    )?;
+    let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
 
     // create output note 2
     let output_serial_no_2 = [Felt::new(11); 4];
     let output_tag_2 = NoteTag::from_account_id(local_account);
-    let assets = NoteAssets::new(vec![input_asset_2]).unwrap();
+    let assets = NoteAssets::new(vec![input_asset_2])?;
     let metadata = NoteMetadata::new(
         tx_context.tx_inputs().account().id(),
         NoteType::Public,
         output_tag_2,
-        NoteExecutionHint::after_block(123.into()).unwrap(),
+        NoteExecutionHint::after_block(123.into())?,
         ZERO,
-    )
-    .unwrap();
-    let inputs = NoteInputs::new(vec![]).unwrap();
+    )?;
+    let inputs = NoteInputs::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
 
@@ -375,8 +389,7 @@ fn test_get_output_notes_commitment() {
     let expected_output_notes_commitment = OutputNotes::new(vec![
         OutputNote::Full(output_note_1.clone()),
         OutputNote::Full(output_note_2.clone()),
-    ])
-    .unwrap()
+    ])?
     .commitment();
 
     let code = format!(
@@ -485,6 +498,7 @@ fn test_get_output_notes_commitment() {
     );
 
     assert_eq!(process_state.get_stack_word(0), *expected_output_notes_commitment);
+    Ok(())
 }
 
 #[test]
