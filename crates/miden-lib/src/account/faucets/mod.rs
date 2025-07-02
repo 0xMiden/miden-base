@@ -12,7 +12,7 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{auth::RpoFalcon512, components::basic_fungible_faucet_library};
+use crate::account::{auth::RpoFalcon512Conditional, components::basic_fungible_faucet_library};
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
@@ -197,10 +197,26 @@ pub fn create_basic_fungible_faucet(
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
 ) -> Result<(Account, Word), FungibleFaucetError> {
-    // Atm we only have RpoFalcon512 as authentication scheme and this is also the default in the
-    // faucet contract.
-    let auth_component: RpoFalcon512 = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key),
+    // TODO in actual implementation, we should probably get the root of the distribute procedure
+    // in a more reliable way.
+    let mut distribute_proc_root = None;
+    for module in basic_fungible_faucet_library().module_infos() {
+        for (_, procedure_info) in module.procedures() {
+            if procedure_info.name.contains("distribute") {
+                distribute_proc_root = Some(procedure_info.digest);
+                break;
+            }
+        }
+        if distribute_proc_root.is_some() {
+            break;
+        }
+    }
+    let distribute_proc_root = distribute_proc_root.expect("distribute procedure should exist");
+
+    let auth_component: RpoFalcon512Conditional = match auth_scheme {
+        AuthScheme::RpoFalcon512 { pub_key } => {
+            RpoFalcon512Conditional::new(pub_key, vec![distribute_proc_root])
+        },
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -287,10 +303,19 @@ mod tests {
         // will be 1.
         assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key).into());
 
+        // The number of tracked procedures is stored in slot 2.
+        assert_eq!(
+            faucet_account.storage().get_item(2).unwrap(),
+            [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
+        );
+
+        // The procedure root is stored in slot 3.
+        // TODO assert it equals the root of the distribute procedure.
+
         // Check that faucet metadata was initialized to the given values. The faucet component is
         // added second, so its assigned storage slot for the metadata will be 2.
         assert_eq!(
-            faucet_account.storage().get_item(2).unwrap(),
+            faucet_account.storage().get_item(4).unwrap(),
             [Felt::new(123), Felt::new(2), token_symbol.into(), Felt::ZERO].into()
         );
 
