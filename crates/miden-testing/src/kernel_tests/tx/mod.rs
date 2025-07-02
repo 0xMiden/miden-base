@@ -135,7 +135,7 @@ fn create_spawner_note(output_notes: Vec<&Note>) -> anyhow::Result<Note> {
 /// Creates a note with a note script that creates all `notes` that get passed as a parameter,
 /// and that carries the passed `asset`.
 ///
-/// `note_asset` is the asset that the note itself will contain
+/// `assets` are the assets that the note itself will contain
 fn create_spawner_note_with_assets(
     output_notes: Vec<&Note>,
     assets: Vec<Asset>,
