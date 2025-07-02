@@ -608,7 +608,8 @@ mod tests {
         ACCOUNT_UPDATE_MAX_SIZE, Digest, EMPTY_WORD, ONE, ProvenTransactionError, ZERO,
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
+            AccountType, AccountVaultDelta, StorageMapDelta,
+            delta::{AccountUpdateDetails, LexicographicWord},
         },
         block::BlockNumber,
         testing::account_id::{
@@ -667,7 +668,7 @@ mod tests {
         // 32 bytes in size.
         let required_entries = ACCOUNT_UPDATE_MAX_SIZE / (2 * 32);
         for _ in 0..required_entries {
-            map.insert(Digest::new(rand_array()), rand_array());
+            map.insert(LexicographicWord::new(Digest::new(rand_array())), rand_array());
         }
         let storage_delta = StorageMapDelta::new(map);
 

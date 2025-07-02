@@ -319,6 +319,80 @@ export.is_empty
     mem_load eq.0
 end
 
+#! Initializes an iterator over the provided link map.
+#!
+#! The returned iter can be passed to the link_map::next_key_* procedures to advance the iterator.
+#!
+#! Inputs:  [map_ptr]
+#! Outputs: [has_next, iter]
+export.iter
+    exec.get_head
+    # => [entry_ptr]
+
+    # a next item exists if the entry_ptr does not point to 0
+    dup neq.0
+    # => [has_next, entry_ptr]
+end
+
+#! Returns the item at the current iterator entry and advances the iterator to the next entry.
+#!
+#! The iter can be obtained by link_map::iter.
+#!
+#! The returned next_iter can be passed to the next call to a link_map::next_key_* procedure if
+#! has_next = true.
+#!
+#! Once has_next = false has been returned, the next_key_* procedures should not be called again.
+#! The behavior of calling it again with the returned next_iter is undefined.
+#!
+#! Inputs:  [iter]
+#! Outputs: [KEY, VALUE0, VALUE1, has_next, next_iter]
+export.next_key_double_value
+    dup exec.next_key
+    # => [KEY, has_next, next_entry_ptr, entry_ptr = iter]
+
+    movup.6 exec.get_values
+    # => [VALUE0, VALUE1, KEY, has_next, next_entry_ptr]
+
+    movupw.2
+    # => [KEY, VALUE0, VALUE1, has_next, next_iter = next_entry_ptr]
+end
+
+#! Returns the key at the current iterator entry and advances the iterator to the next entry.
+#!
+#! This is the same as link_map::next_key_double_value but does not return VALUE1. See its docs
+#! for important details.
+#!
+#! Inputs:  [iter]
+#! Outputs: [KEY, VALUE0, has_next, next_iter]
+export.next_key_value
+    dup exec.next_key
+    # => [KEY, has_next, next_entry_ptr, entry_ptr = iter]
+
+    movup.6 exec.get_value0
+    # => [VALUE0, KEY, has_next, next_entry_ptr]
+
+    swapw
+    # => [KEY, VALUE0, has_next, next_entry_ptr]
+end
+
+#! Returns the key at the current iterator entry and advances the iterator to the next entry.
+#!
+#! This is the same as link_map::next_key_double_value but does not return the values. See its docs
+#! for important details.
+#!
+#! Inputs:  [iter]
+#! Outputs: [KEY, has_next, next_iter]
+export.next_key
+    dup exec.get_next_entry_ptr
+    # => [next_entry_ptr, entry_ptr = iter]
+
+    dup neq.0
+    # => [has_next, next_entry_ptr, entry_ptr]
+
+    movup.2 exec.get_key
+    # => [KEY, has_next, next_iter = next_entry_ptr]
+end
+
 # SET HELPERS
 # -------------------------------------------------------------------------------------------------
 
@@ -596,7 +670,7 @@ proc.get_existing_value
     exec.assert_key_is_equal
     # => [entry_ptr]
 
-    exec.get_value
+    exec.get_values
     # => [VALUE0, VALUE1]
 end
 
@@ -657,18 +731,36 @@ end
 #!
 #! Inputs:  [entry_ptr]
 #! Outputs: [VALUE0, VALUE1]
-proc.get_value
-    padw dup.4
-    # => [entry_ptr, pad(4), entry_ptr]
-
-    add.VALUE1_OFFSET mem_loadw
+proc.get_values
+    dup exec.get_value1
     # => [VALUE1, entry_ptr]
 
-    padw movup.8
-    # => [entry_ptr, pad(4), VALUE1]
+    movup.4 exec.get_value0
+    # => [VALUE0, VALUE1]
+end
+
+#! Returns VALUE0 of the entry pointer.
+#!
+#! Inputs:  [entry_ptr]
+#! Outputs: [VALUE0]
+proc.get_value0
+    padw movup.4
+    # => [entry_ptr, pad(4)]
 
     add.VALUE0_OFFSET mem_loadw
-    # => [VALUE0, VALUE1]
+    # => [VALUE0]
+end
+
+#! Returns VALUE1 of the entry pointer.
+#!
+#! Inputs:  [entry_ptr]
+#! Outputs: [VALUE1]
+proc.get_value1
+    padw movup.4
+    # => [entry_ptr, pad(4)]
+
+    add.VALUE1_OFFSET mem_loadw
+    # => [VALUE1]
 end
 
 #! Sets the key of the entry pointer.

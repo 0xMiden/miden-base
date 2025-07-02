@@ -9,7 +9,7 @@ use super::{
 };
 use crate::{
     Felt, ONE, Word, ZERO,
-    account::{AccountId, AccountType},
+    account::{AccountId, AccountType, delta::LexicographicWord},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
 };
 
@@ -176,7 +176,7 @@ impl From<&AssetVault> for AccountVaultDelta {
                     );
                 },
                 Asset::NonFungible(asset) => {
-                    non_fungible.insert(asset, NonFungibleDeltaAction::Add);
+                    non_fungible.insert(LexicographicWord::new(asset), NonFungibleDeltaAction::Add);
                 },
             }
         }
@@ -334,19 +334,29 @@ impl FungibleAssetDelta {
 
     /// Appends the fungible asset vault delta to the given `elements` from which the delta
     /// commitment will be computed.
+    ///
+    /// Note that the order in which elements are appended should be the link map key ordering. This
+    /// is fulfilled here because the link map key's most significant element takes precedence over
+    /// less significant ones. The most significant element in the fungible asset delta is the
+    /// account ID prefix and the delta happens to be sorted by account IDs. Since the account ID
+    /// prefix is unique, it will always decide on the ordering of a link map key, so less
+    /// significant elements are unimportant. This implicit sort should therefore always match the
+    /// link map key ordering, however this is subtle and fragile.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
         for (faucet_id, amount_delta) in self.iter() {
-            let amount_delta = *amount_delta as u64;
-            let amount_hi = (amount_delta / (1 << 32)) as u32;
-            let amount_lo = (amount_delta % (1 << 32)) as u32;
+            // Note that this iterator is guaranteed to never yield zero amounts, so we don't have
+            // to exclude those explicitly.
+            debug_assert_ne!(
+                *amount_delta, 0,
+                "fungible asset iterator should never yield amount deltas of 0"
+            );
 
-            elements.extend_from_slice(&[DOMAIN_ASSET, ZERO, ZERO, ZERO]);
-            elements.extend_from_slice(&[
-                Felt::from(amount_hi),
-                Felt::from(amount_lo),
-                faucet_id.suffix(),
-                faucet_id.prefix().as_felt(),
-            ]);
+            let asset = FungibleAsset::new(*faucet_id, amount_delta.unsigned_abs())
+                .expect("absolute amount delta should be less than i64::MAX");
+            let was_added = if *amount_delta > 0 { ONE } else { ZERO };
+
+            elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
+            elements.extend_from_slice(&Word::from(asset));
         }
     }
 }
@@ -385,12 +395,19 @@ impl Deserializable for FungibleAssetDelta {
 // ================================================================================================
 
 /// A binary tree map of non-fungible asset changes (addition and removal) in the account vault.
+///
+/// The [`LexicographicWord`] wrapper is necessary to order the assets in the same way as the
+/// in-kernel account delta which uses a link map.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NonFungibleAssetDelta(BTreeMap<NonFungibleAsset, NonFungibleDeltaAction>);
+pub struct NonFungibleAssetDelta(
+    BTreeMap<LexicographicWord<NonFungibleAsset>, NonFungibleDeltaAction>,
+);
 
 impl NonFungibleAssetDelta {
     /// Creates a new non-fungible asset delta.
-    pub const fn new(map: BTreeMap<NonFungibleAsset, NonFungibleDeltaAction>) -> Self {
+    pub const fn new(
+        map: BTreeMap<LexicographicWord<NonFungibleAsset>, NonFungibleDeltaAction>,
+    ) -> Self {
         Self(map)
     }
 
@@ -422,7 +439,7 @@ impl NonFungibleAssetDelta {
 
     /// Returns an iterator over the (key, value) pairs of the map.
     pub fn iter(&self) -> impl Iterator<Item = (&NonFungibleAsset, &NonFungibleDeltaAction)> {
-        self.0.iter()
+        self.0.iter().map(|(key, value)| (key.inner(), value))
     }
 
     /// Merges another delta into this one, overwriting any existing values.
@@ -434,7 +451,7 @@ impl NonFungibleAssetDelta {
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
         // Merge non-fungible assets. Each non-fungible asset can cancel others out.
         for (&key, &action) in other.0.iter() {
-            self.apply_action(key, action)?;
+            self.apply_action(key.into_inner(), action)?;
         }
 
         Ok(())
@@ -453,7 +470,7 @@ impl NonFungibleAssetDelta {
         asset: NonFungibleAsset,
         action: NonFungibleDeltaAction,
     ) -> Result<(), AccountDeltaError> {
-        match self.0.entry(asset) {
+        match self.0.entry(LexicographicWord::new(asset)) {
             Entry::Vacant(entry) => {
                 entry.insert(action);
             },
@@ -479,19 +496,19 @@ impl NonFungibleAssetDelta {
         self.0
             .iter()
             .filter(move |&(_, cur_action)| cur_action == &action)
-            .map(|(key, _)| *key)
+            .map(|(key, _)| key.into_inner())
     }
 
     /// Appends the non-fungible asset vault delta to the given `elements` from which the delta
     /// commitment will be computed.
     pub(super) fn append_delta_elements(&self, elements: &mut Vec<Felt>) {
         for (asset, action) in self.iter() {
-            let action_felt = match action {
+            let was_added = match action {
                 NonFungibleDeltaAction::Remove => ZERO,
                 NonFungibleDeltaAction::Add => ONE,
             };
 
-            elements.extend_from_slice(&[DOMAIN_ASSET, action_felt, ZERO, ZERO]);
+            elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
             elements.extend_from_slice(&Word::from(*asset));
         }
     }
@@ -527,13 +544,13 @@ impl Deserializable for NonFungibleAssetDelta {
         let num_added = source.read_usize()?;
         for _ in 0..num_added {
             let added_asset = source.read()?;
-            map.insert(added_asset, NonFungibleDeltaAction::Add);
+            map.insert(LexicographicWord::new(added_asset), NonFungibleDeltaAction::Add);
         }
 
         let num_removed = source.read_usize()?;
         for _ in 0..num_removed {
             let removed_asset = source.read()?;
-            map.insert(removed_asset, NonFungibleDeltaAction::Remove);
+            map.insert(LexicographicWord::new(removed_asset), NonFungibleDeltaAction::Remove);
         }
 
         Ok(Self::new(map))
