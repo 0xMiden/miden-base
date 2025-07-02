@@ -50,15 +50,14 @@ pub type StorageSlot = u8;
 //
 // Here the "end pointer" is the last memory pointer occupied by the current data
 //
-// For now each Storage Map pointer (a link map ptr) occupies a word in anticipation of the current
-// single element map ptr storing map metadata in the future.
+// For now each Storage Map pointer (a link map ptr) occupies a single element.
 //
 // | Section                      | Start address (word pointer) | End address (word pointer) | Comment                             |
 // | ---------------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
 // | Nonce                        | 0 (0)                        | 3 (0)                      |                                     |
 // | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
 // | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
-// | Storage Map Delta Ptrs       | 12 (3)                       | 1031 (257)                 | Max 255 storage map deltas          |
+// | Storage Map Delta Ptrs       | 12 (3)                       | 267 (66)                   | Max 255 storage map deltas          |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------

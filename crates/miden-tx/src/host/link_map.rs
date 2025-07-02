@@ -32,9 +32,7 @@ impl<'process> LinkMap<'process> {
 
     /// Creates a new link map from the provided map_ptr in the provided process.
     pub fn new(map_ptr: Felt, process: ProcessState<'process>) -> Self {
-        let map_ptr = map_ptr.try_into().expect("map_ptr must be a valid u32");
-        // This assumes map_ptr comes from a trusted source and is not user-supplied.
-        assert!(map_ptr % miden_objects::WORD_SIZE as u32 == 0, "map_ptr must be word-aligned");
+        let map_ptr: u32 = map_ptr.try_into().expect("map_ptr must be a valid u32");
 
         Self { map_ptr, process }
     }
