@@ -782,10 +782,6 @@ end
 #! - RECIPIENT is the recipient of the note.
 #! - note_idx is the index of the created note.
 #!
-#! Panics if:
-#! - the procedure is called from a non-account context.
-#! - the invocation of this procedure does not originate from the native account.
-#!
 #! Invocation: dynexec
 export.tx_create_note
     exec.tx::create_note
