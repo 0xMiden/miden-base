@@ -39,7 +39,7 @@ use miden_tx::{TransactionExecutor, TransactionExecutorError};
 use super::{Felt, ONE, ProcessState, Word, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::read_root_mem_word, utils::create_transfer_mock_note,
+    kernel_tests::tx::read_root_mem_word, utils::create_p2any_note,
 };
 
 #[test]
@@ -314,17 +314,13 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         );
 
         let output_note_1 =
-            create_transfer_mock_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
 
-        let input_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
-            &[FungibleAsset::mock(100)],
-        );
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
 
-        let input_note_2 = create_transfer_mock_note(
-            ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
-            &[FungibleAsset::mock(200)],
-        );
+        let input_note_2 =
+            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(200)]);
 
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
@@ -739,10 +735,8 @@ fn test_build_recipient_hash() {
             TransactionKernel::testing_assembler(),
         );
 
-        let input_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1])
             .build()

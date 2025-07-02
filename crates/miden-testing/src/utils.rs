@@ -1,8 +1,15 @@
-use alloc::string::String;
+use alloc::{string::String, vec::Vec};
 
 use miden_lib::transaction::{TransactionKernel, memory};
-use miden_objects::{account::AccountId, asset::Asset, note::Note, testing::note::NoteBuilder};
+use miden_objects::{
+    account::AccountId,
+    asset::Asset,
+    note::Note,
+    testing::{note::NoteBuilder, storage::prepare_assets},
+};
+use miden_tx::utils::word_to_masm_push_string;
 use rand::{SeedableRng, rngs::SmallRng};
+use vm_processor::Felt;
 
 // TEST HELPERS
 // ================================================================================================
@@ -11,11 +18,16 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
     memory::INPUT_NOTE_DATA_SECTION_OFFSET + note_idx * memory::NOTE_MEM_SIZE
 }
 
-/// Creates a note that carries `assets` and a script that moves the assets into the account's
+// HELPER NOTES
+// ================================================================================================
+
+/// Creates a `P2ANY` note.
+///
+/// A `P2ANY` note carries `assets` and a script that moves the assets into the executing account's
 /// vault.
 ///
-/// The created note does not require account authentication and can be consumed by any account.
-pub fn create_transfer_mock_note(sender: AccountId, assets: &[Asset]) -> Note {
+/// The created note does not require authentication and can be consumed by any account.
+pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
     assert!(!assets.is_empty(), "note must carry at least one asset");
 
     let mut code_body = String::new();
@@ -74,4 +86,56 @@ pub fn create_transfer_mock_note(sender: AccountId, assets: &[Asset]) -> Note {
         .code(code)
         .build(&TransactionKernel::testing_assembler_with_mock_account())
         .expect("generated note script should compile")
+}
+
+/// Creates a `SPAWN` note.
+///
+///  A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
+///  parameter.
+pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyhow::Result<Note> {
+    let note_code = note_script_that_creates_notes(output_notes);
+
+    let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
+        .code(note_code)
+        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+
+    Ok(note)
+}
+
+/// Returns the code for a note that creates all notes in `output_notes`
+fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
+    let mut out =
+        String::from("use.miden::contracts::wallets::basic->wallet\nuse.test::account\n\nbegin\n");
+
+    for (idx, note) in output_notes.iter().enumerate() {
+        if idx == 0 {
+            out.push_str("padw padw\n");
+        } else {
+            out.push_str("dropw dropw dropw\n");
+        }
+        let assets_str = prepare_assets(note.assets());
+        out.push_str(&format!(
+            " push.{recipient}
+              push.{hint}
+              push.{note_type}
+              push.{aux}
+              push.{tag}
+              call.wallet::create_note\n",
+            recipient = word_to_masm_push_string(&note.recipient().digest()),
+            hint = Felt::from(note.metadata().execution_hint()),
+            note_type = note.metadata().note_type() as u8,
+            aux = note.metadata().aux(),
+            tag = note.metadata().tag(),
+        ));
+
+        for asset in assets_str {
+            out.push_str(&format!(
+                " push.{asset}
+                  call.account::add_asset_to_note\n",
+            ));
+        }
+    }
+
+    out.push_str("repeat.5 dropw end\nend");
+    out
 }

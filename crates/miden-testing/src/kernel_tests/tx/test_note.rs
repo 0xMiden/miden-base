@@ -40,7 +40,7 @@ use crate::{
     Auth, MockChain, TransactionContext, TransactionContextBuilder, TxContextInput,
     assert_execution_error,
     kernel_tests::tx::read_root_mem_word,
-    utils::{create_transfer_mock_note, input_note_data_ptr},
+    utils::{create_p2any_note, input_note_data_ptr},
 };
 
 #[test]
@@ -76,10 +76,8 @@ fn test_get_sender() {
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let input_note = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let input_note =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()

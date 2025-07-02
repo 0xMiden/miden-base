@@ -14,8 +14,9 @@ use rand::Rng;
 use super::utils::{
     TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes, generate_output_note,
     generate_tracked_note, generate_tx_with_authenticated_notes,
-    generate_tx_with_unauthenticated_notes, generate_untracked_note_with_output_note, setup_chain,
+    generate_tx_with_unauthenticated_notes, setup_chain,
 };
+use crate::utils::create_spawn_note;
 
 /// Tests the outputs of a proven block with transactions that consume notes, create output notes
 /// and modify the account's state.
@@ -37,10 +38,10 @@ fn proven_block_success() -> anyhow::Result<()> {
     let output_note2 = generate_output_note(account2.id(), [2; 32]);
     let output_note3 = generate_output_note(account3.id(), [3; 32]);
 
-    let input_note0 = generate_untracked_note_with_output_note(account0.id(), output_note0);
-    let input_note1 = generate_untracked_note_with_output_note(account1.id(), output_note1);
-    let input_note2 = generate_untracked_note_with_output_note(account2.id(), output_note2);
-    let input_note3 = generate_untracked_note_with_output_note(account3.id(), output_note3);
+    let input_note0 = create_spawn_note(account0.id(), vec![&output_note0])?;
+    let input_note1 = create_spawn_note(account1.id(), vec![&output_note1])?;
+    let input_note2 = create_spawn_note(account2.id(), vec![&output_note2])?;
+    let input_note3 = create_spawn_note(account3.id(), vec![&output_note3])?;
 
     // Add input notes to chain so we can consume them.
     chain.add_pending_note(OutputNote::Full(input_note0.clone()));
@@ -208,9 +209,9 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let output_note3 = generate_output_note(account3.id(), rng.random());
 
     // Create notes that, when consumed, will create the above corresponding output notes.
-    let note0 = generate_untracked_note_with_output_note(account0.id(), output_note0.clone());
-    let note2 = generate_untracked_note_with_output_note(account2.id(), output_note2.clone());
-    let note3 = generate_untracked_note_with_output_note(account3.id(), output_note3.clone());
+    let note0 = create_spawn_note(account0.id(), vec![&output_note0])?;
+    let note2 = create_spawn_note(account2.id(), vec![&output_note2])?;
+    let note3 = create_spawn_note(account3.id(), vec![&output_note3])?;
 
     // Add note{0,2,3} to the chain so we can consume them.
     chain.add_pending_note(OutputNote::Full(note0.clone()));

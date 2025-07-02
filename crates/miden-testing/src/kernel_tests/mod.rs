@@ -49,9 +49,7 @@ use vm_processor::{
     utils::{Deserializable, Serializable},
 };
 
-use crate::{
-    MockChain, TransactionContextBuilder, TxContextInput, utils::create_transfer_mock_note,
-};
+use crate::{MockChain, TransactionContextBuilder, TxContextInput, utils::create_p2any_note};
 
 mod batch;
 mod block;
@@ -304,10 +302,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
             FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
         let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
-        create_transfer_mock_note(
-            account.id(),
-            &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1],
-        )
+        create_p2any_note(account.id(), &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
     };
 
     let tx_context = TransactionContextBuilder::new(account)
@@ -819,10 +814,8 @@ fn prove_witness_and_verify() {
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let input_note = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let input_note =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()
@@ -1126,10 +1119,8 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let input_note = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let input_note =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()

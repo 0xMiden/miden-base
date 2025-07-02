@@ -15,9 +15,9 @@ use super::utils::{
     generate_fungible_asset, generate_output_note, generate_tracked_note,
     generate_tracked_note_with_asset, generate_tx_with_authenticated_notes,
     generate_tx_with_expiration, generate_tx_with_unauthenticated_notes, generate_untracked_note,
-    generate_untracked_note_with_output_note, setup_chain,
+    setup_chain,
 };
-use crate::ProvenTransactionExt;
+use crate::{ProvenTransactionExt, utils::create_spawn_note};
 
 /// Tests that too many batches produce an error.
 #[test]
@@ -280,8 +280,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 
     // Create two different notes that will create the same output note. Their IDs will be different
     // due to having a different serial number generated from contained RNG.
-    let note0 = generate_untracked_note_with_output_note(account.id(), output_note.clone());
-    let note1 = generate_untracked_note_with_output_note(account.id(), output_note);
+    let note0 = create_spawn_note(account.id(), vec![&output_note])?;
+    let note1 = create_spawn_note(account.id(), vec![&output_note])?;
 
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));

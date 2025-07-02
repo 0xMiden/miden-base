@@ -12,7 +12,7 @@ use miden_objects::{
     testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     transaction::{TransactionMeasurements, TransactionScript},
 };
-use miden_testing::{TransactionContextBuilder, utils::create_transfer_mock_note};
+use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
 
 mod utils;
 use utils::{
@@ -65,15 +65,11 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             TransactionKernel::testing_assembler(),
         );
 
-        let input_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
 
-        let input_note_2 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(150)],
-        );
+        let input_note_2 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(150)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .build()

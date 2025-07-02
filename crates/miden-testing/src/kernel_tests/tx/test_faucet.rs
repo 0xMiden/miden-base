@@ -28,7 +28,7 @@ use miden_objects::{
 };
 use vm_processor::{Felt, ONE, ProcessState};
 
-use crate::{TransactionContextBuilder, assert_execution_error, utils::create_transfer_mock_note};
+use crate::{TransactionContextBuilder, assert_execution_error, utils::create_p2any_note};
 
 // FUNGIBLE FAUCET MINT TESTS
 // ================================================================================================
@@ -348,7 +348,7 @@ fn test_burn_fungible_asset_succeeds() {
             Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
             TransactionKernel::testing_assembler(),
         );
-        let note = create_transfer_mock_note(
+        let note = create_p2any_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             &[FungibleAsset::new(account.id(), 100u64).unwrap().into()],
         );

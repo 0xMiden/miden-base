@@ -54,7 +54,7 @@ use super::{Felt, Word, ZERO};
 use crate::{
     MockChain, TransactionContext, TransactionContextBuilder, assert_execution_error,
     kernel_tests::tx::read_root_mem_word,
-    utils::{create_transfer_mock_note, input_note_data_ptr},
+    utils::{create_p2any_note, input_note_data_ptr},
 };
 
 #[test]
@@ -65,18 +65,12 @@ fn test_transaction_prologue() {
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let input_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
-        let input_note_2 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
-        let input_note_3 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(111)],
-        );
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+        let input_note_2 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+        let input_note_3 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(111)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2, input_note_3])
             .build()

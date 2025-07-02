@@ -35,29 +35,25 @@ use vm_processor::{Felt, ONE, ProcessState};
 use super::{ZERO, create_mock_notes_procedure};
 use crate::{
     MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
-    kernel_tests::tx::{create_spawner_note, read_root_mem_word},
-    utils::create_transfer_mock_note,
+    kernel_tests::tx::read_root_mem_word,
+    utils::{create_p2any_note, create_spawn_note},
 };
 
 #[test]
-fn test_epilogue() {
+fn test_epilogue() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let output_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let output_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
 
         // input_note_1 is needed for maintaining cohesion of involved assets
-        let input_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
-        let input_note_2 = create_spawner_note(vec![&output_note_1]).unwrap();
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+        let input_note_2 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
@@ -131,27 +127,24 @@ fn test_epilogue() {
         16,
         "The stack must be truncated to 16 elements after finalize_transaction"
     );
+    Ok(())
 }
 
 #[test]
-fn test_compute_output_note_id() {
+fn test_compute_output_note_id() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let output_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
+        let output_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
 
         // input_note_1 is needed for maintaining cohesion of involved assets
-        let input_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
-        let input_note_2 = create_spawner_note(vec![&output_note_1]).unwrap();
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+        let input_note_2 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
@@ -180,12 +173,10 @@ fn test_compute_output_note_id() {
             "
         );
 
-        let process = &tx_context
-            .execute_code_with_assembler(
-                &code,
-                TransactionKernel::testing_assembler_with_mock_account(),
-            )
-            .unwrap();
+        let process = &tx_context.execute_code_with_assembler(
+            &code,
+            TransactionKernel::testing_assembler_with_mock_account(),
+        )?;
 
         assert_eq!(
             note.assets().commitment().as_elements(),
@@ -204,6 +195,7 @@ fn test_compute_output_note_id() {
             "NOTE_ID didn't match expected value",
         );
     }
+    Ok(())
 }
 
 #[test]
@@ -237,7 +229,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         .add_assets([fungible_asset_2])
         .build(&TransactionKernel::testing_assembler_with_mock_account())?;
 
-    let input_note = create_spawner_note(vec![&output_note_1, &output_note_2])?;
+    let input_note = create_spawn_note(account.id(), vec![&output_note_1, &output_note_2])?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
@@ -318,7 +310,10 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         .add_assets([fungible_asset_3])
         .build(&TransactionKernel::testing_assembler_with_mock_account())?;
 
-    let input_note = create_spawner_note(vec![&output_note_1, &output_note_2, &output_note_3])?;
+    let input_note = create_spawn_note(
+        ACCOUNT_ID_SENDER.try_into()?,
+        vec![&output_note_1, &output_note_2, &output_note_3],
+    )?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
@@ -514,11 +509,9 @@ fn test_epilogue_increment_nonce_violation() {
             Felt::ONE,
             TransactionKernel::testing_assembler(),
         );
-        let output_note_1 = create_transfer_mock_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::mock(100)],
-        );
-        let input_note_1 = create_spawner_note(vec![&output_note_1]).unwrap();
+        let output_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+        let input_note_1 = create_spawn_note(account.id(), vec![&output_note_1]).unwrap();
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])

@@ -1,23 +1,16 @@
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
 
 use miden_lib::{
-    transaction::{
-        TransactionKernel,
-        memory::{
-            NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
-            OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_NUM_ASSETS_OFFSET,
-            OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
-        },
+    transaction::memory::{
+        NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
+        OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_NUM_ASSETS_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET,
+        OUTPUT_NOTE_SECTION_OFFSET,
     },
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, Hasher, ONE, Word, ZERO,
-    note::{Note, NoteExecutionHint, NoteType},
-    testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder, storage::prepare_assets},
-    vm::StackInputs,
+    Felt, Hasher, ONE, Word, ZERO, note::Note, testing::storage::prepare_assets, vm::StackInputs,
 };
-use rand::rng;
 use vm_processor::{ContextId, Process, ProcessState};
 
 mod test_account;
@@ -122,51 +115,4 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
     ));
 
     script
-}
-
-/// Creates a note with a note script that creates all `notes` that get passed as a parameter.
-///
-/// `note_asset` is the asset that the note itself will contain
-fn create_spawner_note(output_notes: Vec<&Note>) -> anyhow::Result<Note> {
-    let note_code = note_script_that_creates_notes(output_notes);
-
-    let note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into()?, rng())
-        .code(note_code)
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
-
-    Ok(note)
-}
-
-/// Returns the code for a note that creates all notes in `output_notes`
-fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
-    let mut out =
-        String::from("use.miden::contracts::wallets::basic->wallet\nuse.test::account\n\nbegin\n");
-
-    for (idx, note) in output_notes.iter().enumerate() {
-        if idx == 0 {
-            out.push_str("padw padw\n");
-        } else {
-            out.push_str("dropw dropw dropw\n");
-        }
-        assert!(note.assets().iter().count() == 1, "output note is expected to have 1 asset");
-        out.push_str(&format!(
-            " push.{recipient}
-              push.{hint}
-              push.{note_type}
-              push.{aux}
-              push.{tag}
-              call.wallet::create_note
-              push.{asset}
-              call.account::add_asset_to_note\n",
-            recipient = word_to_masm_push_string(&note.recipient().digest()),
-            hint = Felt::from(NoteExecutionHint::always()),
-            note_type = NoteType::Public as u8,
-            aux = note.metadata().aux(),
-            tag = note.metadata().tag(),
-            asset = prepare_assets(note.assets())[0],
-        ));
-    }
-
-    out.push_str("repeat.5 dropw end\nend");
-    out
 }
