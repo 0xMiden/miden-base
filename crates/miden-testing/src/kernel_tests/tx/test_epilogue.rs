@@ -217,7 +217,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         .with_component(mock_component)
         .build_existing()?;
 
-    let mock_chain = MockChain::with_accounts(&[account.clone()]);
+    let mock_chain = MockChain::with_accounts(&[account.clone()])?;
 
     let fungible_asset_1: Asset = FungibleAsset::new(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
@@ -240,7 +240,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     let input_note = create_spawner_note(vec![&output_note_1, &output_note_2])?;
 
     let tx_context = mock_chain
-        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
         .extend_expected_output_notes(vec![
             OutputNote::Full(output_note_1),
             OutputNote::Full(output_note_2),
@@ -290,7 +290,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         .with_component(mock_component)
         .build_existing()?;
 
-    let mock_chain = MockChain::with_accounts(&[account.clone()]);
+    let mock_chain = MockChain::with_accounts(&[account.clone()])?;
 
     let fungible_asset_1: Asset = FungibleAsset::new(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
@@ -321,7 +321,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     let input_note = create_spawner_note(vec![&output_note_1, &output_note_2, &output_note_3])?;
 
     let tx_context = mock_chain
-        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
         .extend_expected_output_notes(vec![
             OutputNote::Full(output_note_1),
             OutputNote::Full(output_note_2),
@@ -363,7 +363,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
 
 #[test]
 fn test_block_expiration_height_monotonically_decreases() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let test_pairs: [(u64, u64); 3] = [(9, 12), (18, 3), (20, 20)];
     let code_template = "
@@ -415,7 +415,7 @@ fn test_block_expiration_height_monotonically_decreases() {
 
 #[test]
 fn test_invalid_expiration_deltas() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let test_values = [0u64, u16::MAX as u64 + 1, u32::MAX as u64];
     let code_template = "
@@ -440,7 +440,7 @@ fn test_invalid_expiration_deltas() {
 
 #[test]
 fn test_no_expiration_delta_set() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let code_template = "
     use.kernel::prologue
@@ -477,7 +477,7 @@ fn test_no_expiration_delta_set() {
 
 #[test]
 fn test_epilogue_increment_nonce_success() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let code = "
         use.kernel::prologue
@@ -563,7 +563,7 @@ fn test_epilogue_increment_nonce_violation() {
 
 #[test]
 fn test_epilogue_execute_empty_transaction() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let err = tx_context.execute().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -622,7 +622,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
         note_type = note_type as u8,
     );
 
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let result = tx_context.execute_code(&tx_script_source).map(|_| ());
 

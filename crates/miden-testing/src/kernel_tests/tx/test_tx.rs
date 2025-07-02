@@ -122,7 +122,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
 
 #[test]
 fn test_create_note() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let account_id = tx_context.account().id();
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
@@ -211,7 +211,7 @@ fn test_create_note() {
 
 #[test]
 fn test_create_note_with_invalid_tag() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
@@ -266,7 +266,7 @@ fn test_create_note_with_invalid_tag() {
 
 #[test]
 fn test_create_note_too_many_notes() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let code = format!(
         "
@@ -489,7 +489,7 @@ fn test_get_output_notes_commitment() {
 
 #[test]
 fn test_create_note_and_add_asset() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
@@ -557,7 +557,7 @@ fn test_create_note_and_add_asset() {
 
 #[test]
 fn test_create_note_and_add_multiple_assets() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2).unwrap();
@@ -662,7 +662,7 @@ fn test_create_note_and_add_multiple_assets() {
 
 #[test]
 fn test_create_note_and_add_same_nft_twice() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
@@ -823,7 +823,7 @@ fn test_build_recipient_hash() {
 
 #[test]
 fn test_block_procedures() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let code = "
         use.miden::tx

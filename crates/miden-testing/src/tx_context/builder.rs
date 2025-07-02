@@ -96,7 +96,7 @@ impl TransactionContextBuilder {
     /// - Has an ID of [`ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE`].
     /// - Has an account code based on an
     ///   [miden_objects::testing::account_component::AccountMockComponent].
-    pub fn with_existing_standard_account() -> Self {
+    pub fn with_existing_mock_account() -> Self {
         // Build standard account with normal assembler because the testing one already contains it
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -294,6 +294,6 @@ impl TransactionContextBuilder {
 
 impl Default for TransactionContextBuilder {
     fn default() -> Self {
-        Self::with_existing_standard_account()
+        Self::with_existing_mock_account()
     }
 }

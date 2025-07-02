@@ -674,7 +674,7 @@ pub fn create_account_invalid_seed() {
 
 #[test]
 fn test_get_blk_version() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let code = "
     use.kernel::memory
     use.kernel::prologue
@@ -695,7 +695,7 @@ fn test_get_blk_version() {
 
 #[test]
 fn test_get_blk_timestamp() {
-    let tx_context = TransactionContextBuilder::with_existing_standard_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let code = "
     use.kernel::memory
     use.kernel::prologue

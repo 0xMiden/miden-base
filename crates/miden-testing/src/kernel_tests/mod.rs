@@ -74,10 +74,11 @@ fn transaction_executor_witness() -> miette::Result<()> {
                 NoteType::Public,
             )
             .unwrap();
-        mock_chain.prove_next_block();
+        mock_chain.prove_next_block().unwrap();
 
         mock_chain
             .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note])
+            .unwrap()
             .build()
     };
 
@@ -97,8 +98,7 @@ fn transaction_executor_witness() -> miette::Result<()> {
         tx_inputs,
         tx_args,
         Some(executed_transaction.advice_witness().clone()),
-    )
-    .unwrap();
+    ).unwrap();
     let mem_advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
     // load account/note/tx_script MAST to the mast_store
@@ -112,16 +112,14 @@ fn transaction_executor_witness() -> miette::Result<()> {
         scripts_mast_store,
         None,
         BTreeSet::new(),
-    )
-    .unwrap();
+    ).unwrap();
     let result = vm_processor::execute(
         &TransactionKernel::main(),
         stack_inputs,
         &mut host,
         Default::default(),
         source_manager,
-    )
-    .unwrap();
+    )?;
 
     let (advice_provider, _, output_notes, _signatures, _tx_progress) = host.into_parts();
     let (_, map, _) = advice_provider.into_parts();
@@ -129,8 +127,7 @@ fn transaction_executor_witness() -> miette::Result<()> {
         result.stack_outputs(),
         &map.into(),
         output_notes,
-    )
-    .unwrap();
+    ).unwrap();
 
     assert_eq!(
         executed_transaction.final_account().commitment(),
@@ -174,11 +171,10 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     let removed_asset_3 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
     let removed_assets = [removed_asset_1, removed_asset_2, removed_asset_3];
 
-    let tag1 = NoteTag::from_account_id(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-    );
-    let tag2 = NoteTag::for_local_use_case(0, 0).unwrap();
-    let tag3 = NoteTag::for_local_use_case(0, 0).unwrap();
+    let tag1 =
+        NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
+    let tag2 = NoteTag::for_local_use_case(0, 0)?;
+    let tag3 = NoteTag::for_local_use_case(0, 0)?;
     let tags = [tag1, tag2, tag3];
 
     let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];
@@ -322,7 +318,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     // expected delta
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
-    let executed_transaction = tx_context.execute().unwrap();
+    let executed_transaction = tx_context.execute()?;
 
     // nonce delta
     // --------------------------------------------------------------------------------------------
@@ -345,7 +341,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
         .storage()
         .maps()
         .get(&STORAGE_INDEX_2)
-        .unwrap()
+        .context("failed to get expected value from storage map")?
         .entries();
     assert_eq!(
         *map_delta.get(&LexicographicWord::new(Digest::from(updated_map_key))).unwrap(),
@@ -403,7 +399,7 @@ fn test_empty_delta_nonce_update() {
     )
     .unwrap();
 
-    let tx_context = TransactionContextBuilder::with_existing_standard_account()
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .build();
 
@@ -521,7 +517,7 @@ fn test_send_note_proc() -> miette::Result<()> {
         )
         .unwrap();
 
-        let tx_context = TransactionContextBuilder::with_existing_standard_account()
+        let tx_context = TransactionContextBuilder::with_existing_mock_account()
             .tx_script(tx_script)
             .build();
 
@@ -885,7 +881,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
     let tx_script =
         TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
 
-    let tx_context = TransactionContextBuilder::with_existing_standard_account()
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_advice_map([(tx_script_input_key, tx_script_input_value.into())])
         .build();
@@ -934,7 +930,7 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         vec![Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)],
     )]);
 
-    let tx_context = TransactionContextBuilder::with_existing_standard_account()
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_advice_inputs(advice_inputs)
         .tx_script_arg(tx_script_arg)
@@ -1047,7 +1043,7 @@ fn test_execute_program() {
     let tx_script =
         TransactionScript::compile(source, assembler).expect("failed to compile the source script");
 
-    let tx_context = TransactionContextBuilder::with_existing_standard_account()
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script.clone())
         .build();
     let account_id = tx_context.account().id();
@@ -1072,7 +1068,7 @@ fn test_execute_program() {
 
 #[allow(clippy::arc_with_non_send_sync)]
 #[test]
-fn test_check_note_consumability() {
+fn test_check_note_consumability() -> anyhow::Result<()> {
     // Success (well known notes)
     // --------------------------------------------------------------------------------------------
     let p2id_note = create_p2id_note(
@@ -1082,8 +1078,7 @@ fn test_check_note_consumability() {
         NoteType::Public,
         Default::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
-    )
-    .unwrap();
+    )?;
 
     let p2ide_note = create_p2ide_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
@@ -1094,10 +1089,9 @@ fn test_check_note_consumability() {
         NoteType::Public,
         Default::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
-    )
-    .unwrap();
+    )?;
 
-    let tx_context = TransactionContextBuilder::with_existing_standard_account()
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(vec![p2id_note, p2ide_note])
         .build();
     let source_manager = tx_context.source_manager();
@@ -1164,16 +1158,14 @@ fn test_check_note_consumability() {
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.1 drop push.0 div end")
-    .build(&TransactionKernel::testing_assembler())
-    .unwrap();
+    .build(&TransactionKernel::testing_assembler())?;
 
     let failing_note_2 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.2 drop push.0 div end")
-    .build(&TransactionKernel::testing_assembler())
-    .unwrap();
+    .build(&TransactionKernel::testing_assembler())?;
 
     let succesful_note_1 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
@@ -1182,8 +1174,7 @@ fn test_check_note_consumability() {
         NoteType::Public,
         Default::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
-    )
-    .unwrap();
+    )?;
 
     let succesful_note_2 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
@@ -1192,8 +1183,7 @@ fn test_check_note_consumability() {
         NoteType::Public,
         Default::default(),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
-    )
-    .unwrap();
+    )?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -1205,7 +1195,7 @@ fn test_check_note_consumability() {
                 failing_note_2.clone(),
                 failing_note_1,
             ],
-        )
+        )?
         .build();
     let source_manager = tx_context.source_manager();
 
@@ -1217,9 +1207,13 @@ fn test_check_note_consumability() {
     let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
-        .unwrap();
+    let execution_check_result = notes_checker.check_notes_consumability(
+        account_id,
+        block_ref,
+        input_notes,
+        tx_args,
+        source_manager,
+    )?;
 
     assert_matches!(execution_check_result, NoteAccountExecution::Failure {
         failed_note_id,
@@ -1232,4 +1226,5 @@ fn test_check_note_consumability() {
             ));
         }
     );
+    Ok(())
 }
