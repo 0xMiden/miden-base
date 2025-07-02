@@ -13,7 +13,7 @@ use miden_lib::{
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, ProposedBlockError,
+    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
     account::{
         Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
         delta::AccountUpdateDetails,
@@ -492,16 +492,18 @@ impl MockChain {
         &self,
         batches: impl IntoIterator<Item = ProvenBatch, IntoIter = I>,
         timestamp: u32,
-    ) -> Result<ProposedBlock, ProposedBlockError>
+    ) -> anyhow::Result<ProposedBlock>
     where
         I: Iterator<Item = ProvenBatch> + Clone,
     {
         let batches: Vec<_> = batches.into_iter().collect();
 
-        let block_inputs =
-            self.get_block_inputs(batches.iter()).expect("failed to get block inputs");
+        let block_inputs = self
+            .get_block_inputs(batches.iter())
+            .context("could not retrieve block inputs")?;
 
-        let proposed_block = ProposedBlock::new_at(block_inputs, batches, timestamp)?;
+        let proposed_block = ProposedBlock::new_at(block_inputs, batches, timestamp)
+            .context("failed to create proposed block")?;
 
         Ok(proposed_block)
     }
@@ -512,7 +514,7 @@ impl MockChain {
     pub fn propose_block<I>(
         &self,
         batches: impl IntoIterator<Item = ProvenBatch, IntoIter = I>,
-    ) -> Result<ProposedBlock, ProposedBlockError>
+    ) -> anyhow::Result<ProposedBlock>
     where
         I: Iterator<Item = ProvenBatch> + Clone,
     {
