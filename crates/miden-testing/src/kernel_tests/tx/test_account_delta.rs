@@ -7,6 +7,7 @@ use miden_objects::{
     Digest, EMPTY_WORD, Felt, Word,
     account::{
         AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageMap, StorageSlot,
+        delta::LexicographicWord,
     },
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
@@ -14,7 +15,7 @@ use miden_objects::{
         account_component::AccountMockComponent, account_id::AccountIdBuilder,
         asset::NonFungibleAssetBuilder,
     },
-    transaction::{LinkMapKey, TransactionScript},
+    transaction::TransactionScript,
 };
 use miden_tx::utils::word_to_masm_push_string;
 use rand::Rng;

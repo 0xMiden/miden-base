@@ -475,7 +475,6 @@ fn create_simple_account() -> anyhow::Result<()> {
         .account_seed(Some(seed))
         .tx_script(TransactionScript::compile(
             code,
-            [],
             TransactionKernel::testing_assembler_with_mock_account(),
         )?)
         .build()
