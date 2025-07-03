@@ -108,7 +108,7 @@ use crate::{
 /// // Add a recipient wallet.
 /// let receiver = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
 /// // Add a wallet with assets.
-/// let sender = mock_chain.add_pending_existing_wallet(Auth::Mock, vec![]);
+/// let sender = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
 /// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
 ///
 /// // Add a pending P2ID note to the chain.
