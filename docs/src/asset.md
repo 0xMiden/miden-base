@@ -23,12 +23,12 @@ In Miden, assets serve as the primary means of expressing and transferring value
 > [!Note]
 > All data structures following the Miden asset model that can be exchanged.
 
-Native assets adhere to the Miden `Asset` model (encoding, issuance, storage). Every native `Asset` is encoded using 32 bytes, including both the [ID](account/overview.md#id) of the issuing account and the `Asset` details.
+Native assets adhere to the Miden `Asset` model (encoding, issuance, storage). Every native `Asset` is encoded using 32 bytes, including both the [ID](account/id.md) of the issuing account and the `Asset` details.
 
 ### Issuance
 
 > [!Note]
-> Only [faucet](account/overview.md#account-type) accounts can issue assets.
+> Only [faucet](account/id.md#account-type) accounts can issue assets.
 
 Faucets can issue either fungible or non-fungible assets as defined at account creation. The faucet's code specifies the `Asset` minting conditions: i.e., how, when, and by whom these assets can be minted. Once minted, they can be transferred to other accounts using notes.
 
