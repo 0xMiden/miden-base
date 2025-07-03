@@ -41,7 +41,7 @@ fn witness_test_setup() -> WitnessTestSetup {
 
     let note = generate_tracked_note(&mut chain, account1.id(), account0.id());
     // Add note to chain.
-    chain.prove_next_block();
+    chain.prove_next_block().unwrap();
 
     let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note.id()]);
     let tx1 = txs.remove(&1).unwrap();
@@ -49,16 +49,16 @@ fn witness_test_setup() -> WitnessTestSetup {
 
     let batch1 = generate_batch(&mut chain, vec![tx1, tx2]);
     let batches = vec![batch1];
-    let stale_block_inputs = chain.get_block_inputs(&batches);
+    let stale_block_inputs = chain.get_block_inputs(&batches).unwrap();
 
     let account_root0 = chain.account_tree().root();
     let nullifier_root0 = chain.nullifier_tree().root();
 
     // Apply the executed tx and seal a block. This invalidates the block inputs we've just fetched.
-    chain.add_pending_executed_transaction(&tx0);
-    chain.prove_next_block();
+    chain.add_pending_executed_transaction(&tx0).unwrap();
+    chain.prove_next_block().unwrap();
 
-    let valid_block_inputs = chain.get_block_inputs(&batches);
+    let valid_block_inputs = chain.get_block_inputs(&batches).unwrap();
 
     // Sanity check: This test requires that the tree roots change with the last sealed block so the
     // previously fetched block inputs become invalid.
@@ -297,12 +297,12 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         TransactionKernel::testing_assembler(),
     );
     mock_chain.add_pending_account(existing_account.clone());
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block()?;
 
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
@@ -313,7 +313,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     let batch = generate_batch(&mut mock_chain, vec![tx]);
     let batches = [batch];
 
-    let block_inputs = mock_chain.get_block_inputs(batches.iter());
+    let block_inputs = mock_chain.get_block_inputs(batches.iter())?;
     // Sanity check: The mock chain account tree root should match the previous block header's
     // account tree root.
     assert_eq!(
@@ -415,7 +415,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
 
     // Sanity check: The block inputs should contain two account witnesses that point to the same
     // empty entry.
-    let block_inputs = mock_chain.get_block_inputs(batches.iter());
+    let block_inputs = mock_chain.get_block_inputs(batches.iter())?;
     assert_eq!(block_inputs.account_witnesses().len(), 2);
     let witness0 = block_inputs
         .account_witnesses()

@@ -92,7 +92,7 @@ use crate::{AccountError, errors::AccountIdError};
 ///   suffix may be overwritten when the ID is embedded in other layouts such as the
 ///   [`NoteMetadata`](crate::note::NoteMetadata). In that case, it can happen that all lower bits
 ///   of the encoded suffix are one, so having the zero bit constraint is important for validity.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum AccountId {
     V0(AccountIdV0),
 }

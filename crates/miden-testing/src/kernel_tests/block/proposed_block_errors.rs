@@ -30,7 +30,7 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
     let account0 = accounts.get(&0).unwrap();
     let accountx = generate_account(&mut chain);
     let notex = generate_tracked_note(&mut chain, account0.id(), accountx.id());
-    chain.prove_next_block();
+    chain.prove_next_block()?;
     let tx = generate_tx_with_authenticated_notes(&mut chain, accountx.id(), &[notex.id()]);
     txs.insert(count, tx);
 
@@ -92,13 +92,13 @@ fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
     let batch0 = generate_batch(&mut chain, vec![tx0]);
     let batch1 = generate_batch(&mut chain, vec![tx1]);
 
-    let _block2 = chain.prove_next_block();
+    let _block2 = chain.prove_next_block()?;
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
     // This block's number is 3 (the previous block is block 2), which means batch 1, which expires
     // at block 2 (due to tx1), will be flagged as expired.
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches).expect("failed to get block inputs");
     let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
 
     assert_matches!(
@@ -156,7 +156,7 @@ fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> 
     // Select the partial blockchain which is valid for the current block but pass the next block in
     // the chain, which is an inconsistent combination.
     let mut partial_blockchain = chain.latest_partial_blockchain();
-    let block2 = chain.clone().prove_next_block();
+    let block2 = chain.clone().prove_next_block()?;
 
     let block_inputs = BlockInputs::new(
         block2.header().clone(),
@@ -208,9 +208,10 @@ fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()>
     let batch0 = generate_batch(&mut chain, vec![proven_tx0.clone()]);
     let batches = vec![batch0.clone()];
 
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
-    let (_, partial_blockchain) = chain.latest_selective_partial_blockchain([BlockNumber::from(0)]);
+    let (_, partial_blockchain) =
+        chain.latest_selective_partial_blockchain([BlockNumber::from(0)]).unwrap();
 
     // The proposed block references block 2 but the partial blockchain only contains block 0 but
     // not block 1 which is referenced by the batch.
@@ -249,7 +250,7 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
     assert_ne!(note0.id(), note1.id());
 
     // Add notes to the chain.
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     // Create two different transactions against the same account consuming the same note.
     let tx0 =
@@ -261,7 +262,7 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches).expect("failed to get block inputs");
 
     let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
     assert_matches!(error, ProposedBlockError::DuplicateInputNote { .. });
@@ -285,7 +286,7 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));
 
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     // Create two different transactions against the same account creating the same note.
     // We use the same account because the sender of the created output note is set to the account
@@ -299,7 +300,7 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
 
     let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
     assert_matches!(error, ProposedBlockError::DuplicateOutputNote { .. });
@@ -328,16 +329,16 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
 
     // Add the note to the chain so we can retrieve an inclusion proof for it.
     chain.add_pending_note(OutputNote::Full(note0.clone()));
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     // Seal another block so that the next block will use this one as the reference block and block2
     // is only needed for the note inclusion proof so we can safely remove it to only trigger the
     // error condition we want to trigger.
-    let _block3 = chain.prove_next_block();
+    let _block3 = chain.prove_next_block()?;
 
     let batches = vec![batch0.clone()];
 
-    let original_block_inputs = chain.get_block_inputs(&batches);
+    let original_block_inputs = chain.get_block_inputs(&batches)?;
 
     // Error: Block referenced by note inclusion proof is not in partial blockchain.
     // --------------------------------------------------------------------------------------------
@@ -402,7 +403,7 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
 
     // This will not include the note inclusion proof for note0, because the note has not been added
     // to the chain.
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
 
     let error = ProposedBlock::new(block_inputs, batches.clone()).unwrap_err();
     assert_matches!(error, ProposedBlockError::UnauthenticatedNoteConsumed { nullifier } if nullifier == note0.nullifier());
@@ -428,11 +429,11 @@ fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
 
     // Add the note to the chain so we can retrieve an inclusion proof for it.
     chain.add_pending_note(OutputNote::Full(note0.clone()));
-    let _block2 = chain.prove_next_block();
+    let _block2 = chain.prove_next_block()?;
 
     let batches = vec![batch0.clone()];
 
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
 
     // Error: Missing nullifier witness.
     // --------------------------------------------------------------------------------------------
@@ -466,7 +467,7 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
 
     // Add the note to the chain so we can consume it in the next step.
     chain.add_pending_note(OutputNote::Full(note0.clone()));
-    let _block2 = chain.prove_next_block();
+    let _block2 = chain.prove_next_block()?;
 
     // Create an alternative chain where we consume the note so it is marked as spent in the
     // nullifier tree.
@@ -476,12 +477,12 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
         account1.id(),
         &[note0.id()],
     );
-    alternative_chain.add_pending_executed_transaction(&transaction);
-    alternative_chain.prove_next_block();
+    alternative_chain.add_pending_executed_transaction(&transaction)?;
+    alternative_chain.prove_next_block()?;
     let spent_proof = alternative_chain.nullifier_tree().open(&note0.nullifier());
 
     let batches = vec![batch0.clone()];
-    let mut block_inputs = chain.get_block_inputs(&batches);
+    let mut block_inputs = chain.get_block_inputs(&batches)?;
 
     // Insert the spent nullifier proof from the alternative chain into the block inputs from the
     // actual chain.
@@ -511,7 +512,7 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
     assert_ne!(note0.id(), note1.id());
 
     // Add notes to the chain.
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     // Create two different transactions against the same account consuming the same note.
     let tx0 = generate_tx_with_authenticated_notes(&mut chain, account1.id(), &[]);
@@ -522,7 +523,7 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches).expect("failed to get block inputs");
 
     let error = ProposedBlock::new(block_inputs.clone(), batches.clone()).unwrap_err();
     assert_matches!(error, ProposedBlockError::ConflictingBatchesUpdateSameAccount {
@@ -552,7 +553,7 @@ fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
 
     // This will not include the note inclusion proof for note0, because the note has not been added
     // to the chain.
-    let mut block_inputs = chain.get_block_inputs(&batches);
+    let mut block_inputs = chain.get_block_inputs(&batches)?;
     block_inputs
         .account_witnesses_mut()
         .remove(&account0.id())
@@ -582,7 +583,7 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     let note2 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
 
     // Add notes to the chain.
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
     let executed_tx0 =
@@ -605,7 +606,7 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     let batch1 = generate_batch(&mut chain, vec![tx2]);
 
     let batches = vec![batch0.clone(), batch1.clone()];
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
 
     let error = ProposedBlock::new(block_inputs, batches).unwrap_err();
     assert_matches!(error, ProposedBlockError::InconsistentAccountStateTransition {

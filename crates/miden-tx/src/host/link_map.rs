@@ -1,6 +1,8 @@
 use core::cmp::Ordering;
 
-use miden_objects::{Felt, Word, ZERO, assembly::mast::MastNodeExt};
+use miden_objects::{
+    Felt, Word, ZERO, account::delta::LexicographicWord, assembly::mast::MastNodeExt,
+};
 use vm_processor::{
     AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, ProcessState,
 };
@@ -30,9 +32,7 @@ impl<'process> LinkMap<'process> {
 
     /// Creates a new link map from the provided map_ptr in the provided process.
     pub fn new(map_ptr: Felt, process: ProcessState<'process>) -> Self {
-        let map_ptr = map_ptr.try_into().expect("map_ptr must be a valid u32");
-        // This assumes map_ptr comes from a trusted source and is not user-supplied.
-        assert!(map_ptr % miden_objects::WORD_SIZE as u32 == 0, "map_ptr must be word-aligned");
+        let map_ptr: u32 = map_ptr.try_into().expect("map_ptr must be a valid u32");
 
         Self { map_ptr, process }
     }
@@ -59,7 +59,7 @@ impl<'process> LinkMap<'process> {
 
         let link_map = LinkMap::new(map_ptr, process);
 
-        let (set_op, entry_ptr) = link_map.compute_set_operation(map_key);
+        let (set_op, entry_ptr) = link_map.compute_set_operation(LexicographicWord::from(map_key));
 
         advice_provider.push_stack(AdviceSource::Value(Felt::from(set_op as u8)), err_ctx)?;
         advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
@@ -85,7 +85,7 @@ impl<'process> LinkMap<'process> {
         ];
 
         let link_map = LinkMap::new(map_ptr, process);
-        let (get_op, entry_ptr) = link_map.compute_get_operation(map_key);
+        let (get_op, entry_ptr) = link_map.compute_get_operation(LexicographicWord::from(map_key));
 
         advice_provider.push_stack(AdviceSource::Value(Felt::from(get_op as u8)), err_ctx)?;
         advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
@@ -139,8 +139,10 @@ impl<'process> LinkMap<'process> {
     }
 
     /// Returns the key of the entry at the given pointer.
-    fn key(&self, entry_ptr: u32) -> Word {
-        self.get_kernel_mem_word(entry_ptr + 4).expect("entry pointer should be valid")
+    fn key(&self, entry_ptr: u32) -> LexicographicWord {
+        LexicographicWord::from(
+            self.get_kernel_mem_word(entry_ptr + 4).expect("entry pointer should be valid"),
+        )
     }
 
     /// Returns the values of the entry at the given pointer.
@@ -184,7 +186,7 @@ impl<'process> LinkMap<'process> {
     /// ([`SetOperation::InsertAfterEntry`]) in which case the key must be greater than the entry's
     /// key after which it is inserted and smaller than the entry before which it is inserted
     /// (unless it is the end of the map).
-    fn compute_set_operation(&self, key: Word) -> (SetOperation, u32) {
+    fn compute_set_operation(&self, key: LexicographicWord) -> (SetOperation, u32) {
         let Some(current_head) = self.head() else {
             return (SetOperation::InsertAtHead, 0);
         };
@@ -192,7 +194,7 @@ impl<'process> LinkMap<'process> {
         let mut last_entry_ptr: u32 = current_head;
 
         for entry in self.iter() {
-            match Self::compare_keys(key, entry.key) {
+            match key.cmp(&entry.key) {
                 Ordering::Equal => {
                     return (SetOperation::Update, entry.ptr);
                 },
@@ -222,7 +224,7 @@ impl<'process> LinkMap<'process> {
     ///
     /// The way to compute this is the same as a set operation, so this function simply remaps its
     /// output.
-    fn compute_get_operation(&self, key: Word) -> (GetOperation, u32) {
+    fn compute_get_operation(&self, key: LexicographicWord) -> (GetOperation, u32) {
         let (set_op, entry_ptr) = self.compute_set_operation(key);
         let get_op = match set_op {
             SetOperation::Update => GetOperation::Found,
@@ -230,19 +232,6 @@ impl<'process> LinkMap<'process> {
             SetOperation::InsertAfterEntry => GetOperation::AbsentAfterEntry,
         };
         (get_op, entry_ptr)
-    }
-
-    /// Compares key0 with key1 by comparing the individual felts from most significant (index 3) to
-    /// least significant (index 0).
-    pub fn compare_keys(key0: Word, key1: Word) -> Ordering {
-        key0.iter()
-            .rev()
-            .map(Felt::as_int)
-            .zip(key1.iter().rev().map(Felt::as_int))
-            .fold(Ordering::Equal, |ord, (felt0, felt1)| match ord {
-                Ordering::Equal => felt0.cmp(&felt1),
-                _ => ord,
-            })
     }
 
     // HELPER METHODS
@@ -284,6 +273,9 @@ impl<'process> Iterator for LinkMapIter<'process> {
     }
 }
 
+// LINK MAP TYPES
+// ================================================================================================
+
 /// An entry in a [`LinkMap`].
 ///
 /// Exposed for testing purposes only.
@@ -291,7 +283,7 @@ impl<'process> Iterator for LinkMapIter<'process> {
 pub struct Entry {
     pub ptr: u32,
     pub metadata: EntryMetadata,
-    pub key: Word,
+    pub key: LexicographicWord,
     pub value0: Word,
     pub value1: Word,
 }
@@ -305,6 +297,9 @@ pub struct EntryMetadata {
     pub prev_entry_ptr: u32,
     pub next_entry_ptr: u32,
 }
+
+// HELPER TYPES
+// ================================================================================================
 
 /// The operation needed to get a key or prove its absence.
 #[derive(Debug, Clone, Copy)]
@@ -322,34 +317,4 @@ enum SetOperation {
     Update = 0,
     InsertAtHead = 1,
     InsertAfterEntry = 2,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn to_word(ints: [u32; 4]) -> Word {
-        ints.map(Felt::from)
-    }
-
-    #[test]
-    fn compare_keys() {
-        for (expected, key0, key1) in [
-            (Ordering::Equal, [0, 0, 0, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [1, 0, 0, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [0, 1, 0, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [0, 0, 1, 0u32], [0, 0, 0, 0u32]),
-            (Ordering::Greater, [0, 0, 0, 1u32], [0, 0, 0, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [1, 0, 0, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [0, 1, 0, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 1, 0u32]),
-            (Ordering::Less, [0, 0, 0, 0u32], [0, 0, 0, 1u32]),
-            (Ordering::Greater, [0, 0, 0, 1u32], [1, 1, 1, 0u32]),
-            (Ordering::Greater, [0, 0, 1, 0u32], [1, 1, 0, 0u32]),
-            (Ordering::Less, [1, 1, 1, 0u32], [0, 0, 0, 1u32]),
-            (Ordering::Less, [1, 1, 0, 0u32], [0, 0, 1, 0u32]),
-        ] {
-            assert_eq!(LinkMap::compare_keys(to_word(key0), to_word(key1)), expected);
-        }
-    }
 }

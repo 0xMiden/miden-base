@@ -52,7 +52,7 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
     let batch1 = generate_batch(&mut chain, vec![proven_tx1.clone()]);
 
     let batches = [batch0, batch1];
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
 
     let proposed_block = ProposedBlock::new(block_inputs.clone(), batches.to_vec()).unwrap();
 
@@ -116,7 +116,7 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     let note2 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
 
     // Add notes to the chain.
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
     let executed_tx0 =
@@ -139,7 +139,7 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     let batch1 = generate_batch(&mut chain, vec![tx0.clone(), tx1.clone()]);
 
     let batches = vec![batch0.clone(), batch1.clone()];
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches).unwrap();
 
     let block =
         ProposedBlock::new(block_inputs, batches).context("failed to build proposed block")?;
@@ -190,11 +190,11 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
 
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));
-    chain.prove_next_block();
+    chain.prove_next_block()?;
 
     let batches = [batch0, batch1];
     // This block will use block2 as the reference block.
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
 
     // Sanity check: Block inputs should contain nullifiers for the unauthenticated notes since they
     // are part of the chain.
@@ -235,13 +235,13 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     // sanity check: batch 1 should expire at block 3.
     assert_eq!(batch1.batch_expiration_block_num().as_u32(), 3);
 
-    let _block2 = chain.prove_next_block();
+    let _block2 = chain.prove_next_block()?;
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
     // This block's number is 3 (the previous block is block 2), which means batch 1, which expires
     // at block 3 (due to tx1) should still be accepted into the block.
-    let block_inputs = chain.get_block_inputs(&batches);
+    let block_inputs = chain.get_block_inputs(&batches)?;
     ProposedBlock::new(block_inputs.clone(), batches.clone())?;
 
     Ok(())

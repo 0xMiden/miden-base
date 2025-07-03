@@ -47,7 +47,7 @@ fn setup_chain() -> TestSetup {
     let mut chain = MockChain::new();
     let account1 = generate_account(&mut chain);
     let account2 = generate_account(&mut chain);
-    chain.prove_next_block();
+    chain.prove_next_block().expect("valid setup");
 
     TestSetup { chain, account1, account2 }
 }
@@ -58,7 +58,9 @@ fn generate_account(chain: &mut MockChain) -> Account {
         .with_component(
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
-    chain.add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
+    chain
+        .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
+        .expect("failed to add pending account from builder")
 }
 
 /// Tests that a note created and consumed in the same batch are erased from the input and
@@ -83,7 +85,7 @@ fn empty_transaction_batch() -> anyhow::Result<()> {
 fn note_created_and_consumed_in_same_batch() -> anyhow::Result<()> {
     let TestSetup { mut chain, account1, account2 } = setup_chain();
     let block1 = chain.block_header(1);
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     let note = mock_note(40);
     let tx1 =
@@ -156,7 +158,7 @@ fn duplicate_authenticated_input_notes() -> anyhow::Result<()> {
     let TestSetup { mut chain, account1, account2 } = setup_chain();
     let note = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Private)?;
     let block1 = chain.block_header(1);
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Digest::default(), account1.commitment())
@@ -196,7 +198,7 @@ fn duplicate_mixed_input_notes() -> anyhow::Result<()> {
     let TestSetup { mut chain, account1, account2 } = setup_chain();
     let note = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Private)?;
     let block1 = chain.block_header(1);
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Digest::default(), account1.commitment())
@@ -277,9 +279,9 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
     let note1 =
         chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Private)?;
     // The just created note will be provable against block2.
-    let block2 = chain.prove_next_block();
-    let block3 = chain.prove_next_block();
-    let block4 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
+    let block3 = chain.prove_next_block()?;
+    let block4 = chain.prove_next_block()?;
 
     // Consume the authenticated note as an unauthenticated one in the transaction.
     let tx1 =
@@ -385,7 +387,7 @@ fn authenticated_note_created_in_same_batch() -> anyhow::Result<()> {
     let TestSetup { mut chain, account1, account2 } = setup_chain();
     let note = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Private)?;
     let block1 = chain.block_header(1);
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     let note0 = mock_note(50);
     let tx1 =
@@ -678,7 +680,7 @@ fn expired_transaction() -> anyhow::Result<()> {
 fn noop_tx_before_state_updating_tx_against_same_account() -> anyhow::Result<()> {
     let TestSetup { mut chain, account1, .. } = setup_chain();
     let block1 = chain.block_header(1);
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     let random_final_state_commitment = Digest::from([1, 2, 3, 4u32]);
 
@@ -727,7 +729,7 @@ fn noop_tx_before_state_updating_tx_against_same_account() -> anyhow::Result<()>
 fn noop_tx_after_state_updating_tx_against_same_account() -> anyhow::Result<()> {
     let TestSetup { mut chain, account1, .. } = setup_chain();
     let block1 = chain.block_header(1);
-    let block2 = chain.prove_next_block();
+    let block2 = chain.prove_next_block()?;
 
     let random_final_state_commitment = Digest::from([1, 2, 3, 4u32]);
 

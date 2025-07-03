@@ -16,7 +16,7 @@ use crate::{
 /// This is a sequential hash of the tuple `(TRANSACTION_ID || [account_id_prefix,
 /// account_id_suffix, 0, 0])` of all transactions and the accounts their executed against in the
 /// batch.
-#[derive(Debug, Copy, Clone, Eq, Ord, PartialEq, PartialOrd)]
+#[derive(Debug, Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Hash)]
 pub struct BatchId(Digest);
 
 impl BatchId {

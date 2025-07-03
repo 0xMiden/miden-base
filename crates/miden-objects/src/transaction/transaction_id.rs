@@ -19,7 +19,7 @@ use crate::utils::serde::{
 /// This achieves the following properties:
 /// - Transactions are identical if and only if they have the same ID.
 /// - Computing transaction ID can be done solely from public transaction data.
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct TransactionId(Digest);
 
 impl TransactionId {

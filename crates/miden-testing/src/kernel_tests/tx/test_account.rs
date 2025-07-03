@@ -697,7 +697,7 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
             .build()
             .context("failed to build account")?;
 
-        let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+        let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
         let tx_context = TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
             .tx_inputs(tx_inputs)
@@ -748,7 +748,7 @@ fn create_procedure_metadata_test_account(
 
     let account = Account::from_parts(id, AssetVault::default(), storage, code, Felt::from(0u32));
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)

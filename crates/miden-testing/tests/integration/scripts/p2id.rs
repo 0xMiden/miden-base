@@ -47,13 +47,14 @@ fn p2id_script_multiple_assets() {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
     // Execute the transaction and get the witness
     let executed_transaction = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])
+        .unwrap()
         .build()
         .execute()
         .unwrap();
@@ -77,11 +78,12 @@ fn p2id_script_multiple_assets() {
     // A "malicious" account tries to consume the note, we expect an error (not the correct target)
 
     let malicious_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     // Execute the transaction and get the result
     let executed_transaction_2 = mock_chain
         .build_tx_context(malicious_account.id(), &[], &[note])
+        .unwrap()
         .build()
         .execute();
 
@@ -111,7 +113,7 @@ fn prove_consume_note_with_new_account() {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
@@ -119,6 +121,7 @@ fn prove_consume_note_with_new_account() {
     // Execute the transaction and get the witness
     let executed_transaction = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])
+        .unwrap()
         .build()
         .execute()
         .unwrap();
@@ -166,10 +169,11 @@ fn prove_consume_multiple_notes() {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[note_1.id(), note_2.id()], &[])
+        .unwrap()
         .build();
 
     let executed_transaction = tx_context.execute().unwrap();
@@ -215,7 +219,7 @@ fn test_create_consume_multiple_notes() {
         )
         .unwrap();
 
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     let output_note_1 = create_p2id_note(
         account.id(),
@@ -280,6 +284,7 @@ fn test_create_consume_multiple_notes() {
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[input_note_1.id(), input_note_2.id()], &[])
+        .unwrap()
         .extend_expected_output_notes(vec![
             OutputNote::Full(output_note_1),
             OutputNote::Full(output_note_2),

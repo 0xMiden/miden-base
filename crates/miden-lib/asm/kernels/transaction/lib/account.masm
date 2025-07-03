@@ -5,6 +5,8 @@ use.std::mem
 
 use.kernel::account_id
 use.kernel::asset_vault
+use.kernel::asset
+use.kernel::account_delta
 use.kernel::constants
 use.kernel::memory
 
@@ -533,39 +535,53 @@ export.set_map_item.12
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
     # check if storage type is map
-    dup exec.get_storage_slot_type
-    # => [slot_type, index, KEY, NEW_VALUE, OLD_ROOT]
+    exec.get_storage_slot_type
+    # => [slot_type, KEY, NEW_VALUE, OLD_ROOT]
 
     # check if slot_type == map
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
-    # => [index, KEY, NEW_VALUE, OLD_ROOT]
+    # => [KEY, NEW_VALUE, OLD_ROOT]
 
     emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
-    # => [index, KEY, NEW_VALUE, OLD_ROOT]
+    # => [KEY, NEW_VALUE, OLD_ROOT]
 
     # duplicate the original KEY and the NEW_VALUE to be able to emit an event after the
     # account storage item was updated
-    movdn.12 movupw.2 dupw.2 dupw.2
-    # => [KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE, index, ...]
+    movupw.2 dupw.2 dupw.2
+    # => [KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
 
     # see hash_map_key's docs for why this is done
     exec.hash_map_key
-    # => [HASHED_KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE, index, ...]
+    # => [HASHED_KEY, NEW_VALUE, OLD_ROOT, KEY, NEW_VALUE]
 
     # set the NEW_VALUE under HASHED_KEY in the tree
-    # note smt::set expects the stack to be [NEW_VALUE, HASHED_KEY, OLD_ROOT, ...]
+    # note smt::set expects the stack to be [NEW_VALUE, HASHED_KEY, OLD_ROOT]
     swapw exec.smt::set
-    # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE, index, ...]
+    # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
     # store OLD_MAP_VALUE and NEW_ROOT until the end of the procedure
     loc_storew.4 dropw loc_storew.8 dropw
-    # => [KEY, NEW_VALUE, index, ...]
+    # => [KEY, NEW_VALUE]
+
+    dupw.1
+    # => [NEW_VALUE, KEY, NEW_VALUE]
+
+    padw loc_loadw.4
+    # => [OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+
+    dupw.2
+    # => [KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
 
     # emit event to signal that an account storage item is being updated
-    movup.8
-    emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT drop
-    # => [KEY, NEW_VALUE, ...]
+    loc_load.0
+    # => [index, KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+
+    emit.ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM_EVENT
+    # => [index, KEY, OLD_MAP_VALUE, NEW_VALUE, KEY, NEW_VALUE]
+
+    exec.account_delta::set_map_item
+    # => [KEY, NEW_VALUE]
 
     # load OLD_MAP_VALUE and NEW_ROOT on the top of the stack
     loc_loadw.8 swapw loc_loadw.4 swapw
@@ -790,8 +806,13 @@ export.add_asset_to_vault
     exec.asset_vault::add_asset
     # => [ASSET', ASSET]
 
-    # emit event to signal that an asset is being added to the account vault
     swapw
+    # => [ASSET, ASSET']
+
+    dupw exec.account_delta::add_asset
+    # => [ASSET, ASSET']
+
+    # emit event to signal that an asset is being added to the account vault
     emit.ACCOUNT_VAULT_AFTER_ADD_ASSET_EVENT dropw
     # => [ASSET']
 end
@@ -819,6 +840,9 @@ export.remove_asset_from_vault
 
     # remove the asset from the account vault
     exec.asset_vault::remove_asset
+    # => [ASSET]
+
+    dupw exec.account_delta::remove_asset
     # => [ASSET]
 
     # emit event to signal that an asset is being removed from the account vault

@@ -31,7 +31,9 @@ pub fn generate_account(chain: &mut MockChain) -> Account {
         .with_component(
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
-    chain.add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
+    chain
+        .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
+        .expect("failed to add pending account from builder")
 }
 
 pub fn generate_account_with_conditional_auth(chain: &mut MockChain) -> Account {
@@ -44,7 +46,9 @@ pub fn generate_account_with_conditional_auth(chain: &mut MockChain) -> Account 
             )
             .unwrap(),
         );
-    chain.add_pending_account_from_builder(Auth::Conditional, account_builder, AccountState::Exists)
+    chain
+        .add_pending_account_from_builder(Auth::Conditional, account_builder, AccountState::Exists)
+        .expect("failed to add pending account from builder")
 }
 
 pub fn generate_tracked_note(
@@ -142,7 +146,10 @@ pub fn generate_executed_tx_with_authenticated_notes(
     input: impl Into<TxContextInput>,
     notes: &[NoteId],
 ) -> ExecutedTransaction {
-    let tx_context = chain.build_tx_context(input, notes, &[]).build();
+    let tx_context = chain
+        .build_tx_context(input, notes, &[])
+        .expect("failed to build tx context")
+        .build();
     tx_context.execute().unwrap()
 }
 
@@ -166,10 +173,11 @@ pub fn generate_noop_tx(
         .build(&TransactionKernel::assembler())
         .expect("failed to create the noop note");
     chain.add_pending_note(OutputNote::Full(noop_note.clone()));
-    chain.prove_next_block();
+    chain.prove_next_block().expect("failed to prove block");
 
     let tx_context = chain
         .build_tx_context(input.into(), &[noop_note.id()], &[])
+        .expect("failed to build tx context")
         .extend_input_notes(vec![noop_note])
         .build();
     tx_context.execute().unwrap()
@@ -182,6 +190,7 @@ pub fn generate_tx_with_storage_increment(
 ) -> ProvenTransaction {
     let tx_context = chain
         .build_tx_context(input, &[], &[])
+        .expect("failed to build tx context")
         .tx_script(bump_storage_tx_script())
         .build();
     let executed_tx = tx_context.execute().unwrap();
@@ -200,6 +209,7 @@ pub fn generate_tx_with_expiration(
 
     let tx_context = chain
         .build_tx_context(input, &[], &[])
+        .expect("failed to build tx context")
         .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
         .build();
     let executed_tx = tx_context.execute().unwrap();
@@ -211,7 +221,10 @@ pub fn generate_tx_with_unauthenticated_notes(
     account_id: AccountId,
     notes: &[Note],
 ) -> ProvenTransaction {
-    let tx_context = chain.build_tx_context(account_id, &[], notes).build();
+    let tx_context = chain
+        .build_tx_context(account_id, &[], notes)
+        .expect("failed to build tx context")
+        .build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
@@ -252,7 +265,7 @@ fn bump_storage_tx_script() -> TransactionScript {
 pub fn generate_batch(chain: &mut MockChain, txs: Vec<ProvenTransaction>) -> ProvenBatch {
     chain
         .propose_transaction_batch(txs)
-        .map(|batch| chain.prove_transaction_batch(batch))
+        .map(|batch| chain.prove_transaction_batch(batch).unwrap())
         .unwrap()
 }
 
@@ -273,7 +286,7 @@ pub fn setup_chain(num_accounts: usize) -> TestSetup {
         notes.insert(i, note);
     }
 
-    chain.prove_next_block();
+    chain.prove_next_block().expect("failed to prove block");
 
     for i in 0..num_accounts {
         let tx =

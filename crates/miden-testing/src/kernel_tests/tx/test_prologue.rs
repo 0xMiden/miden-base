@@ -461,7 +461,9 @@ pub fn create_account_test(
     account: Account,
     seed: Word,
 ) -> Result<(), ExecutionError> {
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+    let tx_inputs = mock_chain
+        .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
+        .expect("failed to get transaction inputs from mock chain");
 
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
@@ -566,7 +568,7 @@ fn compute_valid_account_id(account: Account) -> (Account, Word) {
 #[test]
 pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     let account = Account::mock_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -588,7 +590,7 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
 #[test]
 pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     let account = Account::mock_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
@@ -612,7 +614,7 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
 #[test]
 pub fn create_account_invalid_seed() {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block();
+    mock_chain.prove_next_block().unwrap();
 
     let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
@@ -621,7 +623,9 @@ pub fn create_account_invalid_seed() {
         .build()
         .unwrap();
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+    let tx_inputs = mock_chain
+        .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
+        .expect("failed to get transaction inputs from mock chain");
 
     // override the seed with an invalid seed to ensure the kernel fails
     let account_seed_key = [account.id().suffix(), account.id().prefix().as_felt(), ZERO, ZERO];

@@ -3,7 +3,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use core::fmt;
+use core::{fmt, hash::Hash};
 
 use bech32::{Bech32m, primitives::decode::CheckedHrpstring};
 use miden_crypto::utils::hex_to_bytes;
@@ -41,6 +41,13 @@ use crate::{
 pub struct AccountIdV0 {
     prefix: Felt,
     suffix: Felt,
+}
+
+impl Hash for AccountIdV0 {
+    fn hash<H: core::hash::Hasher>(&self, state: &mut H) {
+        self.prefix.inner().hash(state);
+        self.suffix.inner().hash(state);
+    }
 }
 
 impl AccountIdV0 {
