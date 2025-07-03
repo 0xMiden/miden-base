@@ -1,17 +1,15 @@
-use std::{collections::BTreeMap, string::ToString, vec, vec::Vec};
+use std::{collections::BTreeMap, vec, vec::Vec};
 
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt,
-    account::{Account, AccountId, AccountStorage, AccountStorageMode},
+    account::{Account, AccountId, AccountStorageMode},
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
     block::BlockNumber,
     crypto::rand::RpoRandomCoin,
     note::{Note, NoteId, NoteTag, NoteType},
-    testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
-    },
+    testing::{account_component::AccountMockComponent, note::NoteBuilder},
     transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
 };
 use rand::{Rng, SeedableRng, rngs::SmallRng};
@@ -32,21 +30,6 @@ pub fn generate_account(chain: &mut MockChain) -> Account {
         );
     chain
         .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
-        .expect("failed to add pending account from builder")
-}
-
-pub fn generate_account_with_conditional_auth(chain: &mut MockChain) -> Account {
-    let account_builder = Account::builder(rand::rng().random())
-        .storage_mode(AccountStorageMode::Public)
-        .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::assembler(),
-                AccountStorage::mock_storage_slots(),
-            )
-            .unwrap(),
-        );
-    chain
-        .add_pending_account_from_builder(Auth::Conditional, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")
 }
 
@@ -126,41 +109,6 @@ pub fn generate_tx_with_authenticated_notes(
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
-/// Generates a NOOP transaction, i.e. one that doesn't change the state of the account.
-///
-/// To make this transaction non-empty, it consumes one "noop note", which does nothing.
-pub fn generate_noop_tx(
-    chain: &mut MockChain,
-    input: impl Into<TxContextInput>,
-) -> ExecutedTransaction {
-    let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
-        .build(&TransactionKernel::assembler())
-        .expect("failed to create the noop note");
-    chain.add_pending_note(OutputNote::Full(noop_note.clone()));
-    chain.prove_next_block().expect("failed to prove block");
-
-    let tx_context = chain
-        .build_tx_context(input.into(), &[noop_note.id()], &[])
-        .expect("failed to build tx context")
-        .extend_input_notes(vec![noop_note])
-        .build();
-    tx_context.execute().unwrap()
-}
-
-/// Generates a transaction that increments the storage item of the account.
-pub fn generate_tx_with_storage_increment(
-    chain: &mut MockChain,
-    input: impl Into<TxContextInput>,
-) -> ProvenTransaction {
-    let tx_context = chain
-        .build_tx_context(input, &[], &[])
-        .expect("failed to build tx context")
-        .tx_script(bump_storage_tx_script())
-        .build();
-    let executed_tx = tx_context.execute().unwrap();
-    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
-}
-
 /// Generates a transaction that expires at the given block number.
 pub fn generate_tx_with_expiration(
     chain: &mut MockChain,
@@ -204,23 +152,6 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         end
         "
     );
-
-    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
-        .unwrap()
-}
-
-fn bump_storage_tx_script() -> TransactionScript {
-    let code = "
-        use.test::account
-
-        begin
-            push.99.99.99.99
-            push.0
-            call.account::set_item
-            dropw dropw dropw dropw
-        end
-        "
-    .to_string();
 
     TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()
