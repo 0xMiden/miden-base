@@ -7,8 +7,8 @@ use miden_lib::{
         ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
         ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
     },
+    objects_utils::word_to_masm_push_string,
     transaction::{TransactionKernel, memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR},
-    utils::word_to_masm_push_string,
 };
 use miden_objects::{
     FieldElement,

@@ -7,8 +7,8 @@ use miden_lib::{
         ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
+    objects_utils::word_to_masm_push_string,
     transaction::TransactionKernel,
-    utils::word_to_masm_push_string,
 };
 use miden_objects::{
     account::{

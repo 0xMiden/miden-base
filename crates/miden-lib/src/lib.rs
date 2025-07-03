@@ -21,12 +21,13 @@ pub mod account;
 pub mod errors;
 pub mod note;
 pub mod transaction;
+pub mod utils;
 
 // RE-EXPORTS
 // ================================================================================================
-
-pub use miden_objects::utils;
+pub use miden_objects::utils as objects_utils;
 pub use miden_stdlib::StdLibrary;
+pub use utils as lib_utils;
 
 // CONSTANTS
 // ================================================================================================

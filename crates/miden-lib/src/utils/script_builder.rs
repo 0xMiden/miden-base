@@ -1,8 +1,13 @@
 use alloc::{string::String, vec::Vec};
 
-use assembly::{Assembler, Library, LibraryPath, diagnostics::NamedSource};
+use miden_objects::{
+    TransactionScriptError,
+    assembly::{Assembler, Library, LibraryPath, diagnostics::NamedSource},
+    note::NoteScript,
+    transaction::TransactionScript,
+};
 
-use crate::{TransactionScriptError, note::NoteScript, transaction::TransactionScript};
+use crate::transaction::TransactionKernel;
 
 // SCRIPT BUILDER ERROR
 // ================================================================================================
@@ -55,20 +60,7 @@ impl ScriptBuilder {
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
-        let assembler = Assembler::default().with_debug_mode(in_debug_mode);
-        Self { assembler, libraries: Vec::new() }
-    }
-
-    /// Creates a new ScriptBuilder with a provided assembler.
-    ///
-    /// This is the recommended constructor when you need access to transaction kernel
-    /// procedures. Pass `TransactionKernel::assembler()` as the assembler parameter.
-    ///
-    /// # Arguments
-    /// * `assembler` - A pre-configured assembler (e.g., from TransactionKernel::assembler())
-    /// * `in_debug_mode` - Whether to enable debug mode
-    pub fn with_assembler(assembler: Assembler, in_debug_mode: bool) -> Self {
-        let assembler = assembler.with_debug_mode(in_debug_mode);
+        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
         Self { assembler, libraries: Vec::new() }
     }
 
@@ -228,13 +220,6 @@ mod tests {
         let builder = ScriptBuilder::new(true);
         let result = builder.compile_tx_script("begin nop end");
         assert!(result.is_ok() || result.is_err());
-    }
-
-    #[test]
-    fn test_script_builder_with_assembler() {
-        let assembler = Assembler::default();
-        let builder = ScriptBuilder::with_assembler(assembler, false);
-        assert_eq!(builder.libraries.len(), 0);
     }
 
     #[test]

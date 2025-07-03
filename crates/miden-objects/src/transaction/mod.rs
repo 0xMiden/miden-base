@@ -12,7 +12,6 @@ mod ordered_transactions;
 mod outputs;
 mod partial_blockchain;
 mod proven_tx;
-mod script_builder;
 mod transaction_id;
 mod tx_args;
 mod tx_header;
@@ -26,7 +25,6 @@ pub use partial_blockchain::PartialBlockchain;
 pub use proven_tx::{
     InputNoteCommitment, ProvenTransaction, ProvenTransactionBuilder, TxAccountUpdate,
 };
-pub use script_builder::{ScriptBuilder, ScriptBuilderError};
 pub use transaction_id::TransactionId;
 pub use tx_args::{TransactionArgs, TransactionScript};
 pub use tx_header::TransactionHeader;

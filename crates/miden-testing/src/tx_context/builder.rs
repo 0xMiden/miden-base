@@ -3,7 +3,7 @@
 
 use alloc::{collections::BTreeMap, vec::Vec};
 
-use miden_lib::{transaction::TransactionKernel, utils::word_to_masm_push_string};
+use miden_lib::{objects_utils::word_to_masm_push_string, transaction::TransactionKernel};
 use miden_objects::{
     EMPTY_WORD, FieldElement,
     account::{Account, AccountId},
