@@ -416,7 +416,7 @@ pub struct TxAccountUpdate {
     /// The commitment of the account state after the transaction was executed.
     final_state_commitment: Digest,
 
-    /// The commitment of the account delta after the transaction was executed.
+    /// The commitment to the account delta resulting from the execution of the transaction.
     account_delta_commitment: Digest,
 
     /// A set of changes which can be applied the account's state prior to the transaction to
@@ -458,7 +458,7 @@ impl TxAccountUpdate {
         self.final_state_commitment
     }
 
-    /// Returns the commitment of the account delta after the transaction was executed.
+    /// Returns the commitment to the account delta resulting from the execution of the transaction.
     pub fn account_delta_commitment(&self) -> Digest {
         self.account_delta_commitment
     }

@@ -244,8 +244,8 @@ end
 #!
 #! Where:
 #! - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
-#! - ACCOUNT_UPDATE_COMMITMENT is the hash of the account delta commitment and the final
-#!   account commitment.
+#! - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
+#!   delta commitment.
 #! - tx_expiration_block_num is the transaction expiration block number.
 export.finalize_transaction
     # make sure that the context was switched back to the native account

@@ -63,8 +63,8 @@ const.EPILOGUE_END=131097
 #! - INITIAL_ACCOUNT_COMMITMENT is the account state prior to the transaction, EMPTY_WORD for new accounts.
 #! - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
 #! - OUTPUT_NOTES_COMMITMENT is the commitment to the notes created by the transaction.
-#! - ACCOUNT_UPDATE_COMMITMENT is the hash of the account delta commitment and the final
-#!   account commitment.
+#! - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
+#!   delta commitment.
 proc.main.1
     # Prologue
     # ---------------------------------------------------------------------------------------------

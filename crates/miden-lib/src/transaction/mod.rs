@@ -197,16 +197,16 @@ impl TransactionKernel {
     ///
     /// ```text
     /// [
-    ///     expiration_block_num,
-    ///     ACCOUNT_UPDATE_COMMITMENT,
     ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     expiration_block_num,
     /// ]
     /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is a commitment to the output notes.
-    /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the account delta commitment and the final
-    ///   account commitment.
+    /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
+    ///   delta commitment.
     /// - expiration_block_num is the block number at which the transaction will expire.
     pub fn build_output_stack(
         final_account_commitment: Digest,
@@ -234,8 +234,8 @@ impl TransactionKernel {
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
-    /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the account delta commitment and the final
-    ///   account commitment.
+    /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
+    ///   delta commitment.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -253,9 +253,9 @@ impl TransactionKernel {
             .expect("output_notes_commitment (first word) missing")
             .into();
 
-        let account_delta_commitment = stack
+        let account_update_commitment = stack
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
-            .expect("final_account_commitment (second word) missing")
+            .expect("account_update_commitment (second word) missing")
             .into();
 
         let expiration_block_num = stack
@@ -265,7 +265,7 @@ impl TransactionKernel {
         let expiration_block_num = u32::try_from(expiration_block_num.as_int())
             .map_err(|_| {
                 TransactionOutputError::OutputStackInvalid(
-                    "Expiration block number should be smaller than u32::MAX".into(),
+                    "expiration block number should be smaller than u32::MAX".into(),
                 )
             })?
             .into();
@@ -280,11 +280,11 @@ impl TransactionKernel {
 
         if stack.get_stack_word(12).expect("fourth word missing") != EMPTY_WORD {
             return Err(TransactionOutputError::OutputStackInvalid(
-                "Fourth word on output stack should consist only of ZEROs".into(),
+                "fourth word on output stack should consist only of ZEROs".into(),
             ));
         }
 
-        Ok((account_delta_commitment, output_notes_commitment, expiration_block_num))
+        Ok((output_notes_commitment, account_update_commitment, expiration_block_num))
     }
 
     // TRANSACTION OUTPUT PARSER
@@ -313,31 +313,11 @@ impl TransactionKernel {
         adv_map: &AdviceMap,
         output_notes: Vec<OutputNote>,
     ) -> Result<TransactionOutputs, TransactionOutputError> {
-        let (account_update_commitment, output_notes_commitment, expiration_block_num) =
+        let (output_notes_commitment, account_update_commitment, expiration_block_num) =
             Self::parse_output_stack(stack)?;
 
-        let account_update_data = adv_map.get(&account_update_commitment).ok_or_else(|| {
-            TransactionOutputError::AccountUpdateCommitment(
-                "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map",
-            )
-        })?;
-
-        if account_update_data.len() != 8 {
-            return Err(TransactionOutputError::AccountUpdateCommitment(
-                "expected account update commitment advice map entry to contain exactly 8 elements",
-            ));
-        }
-
-        // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
-        // is fine.
-        let final_account_commitment = Digest::from(
-            <[Felt; 4]>::try_from(&account_update_data[0..4])
-                .expect("we should have sliced off exactly four elements"),
-        );
-        let account_delta_commitment = Digest::from(
-            <[Felt; 4]>::try_from(&account_update_data[4..8])
-                .expect("we should have sliced off exactly four elements"),
-        );
+        let (final_account_commitment, account_delta_commitment) =
+            Self::parse_account_update_commitment(account_update_commitment, adv_map)?;
 
         // parse final account state
         let final_account_data = adv_map
@@ -362,6 +342,49 @@ impl TransactionKernel {
             output_notes,
             expiration_block_num,
         })
+    }
+
+    /// Returns the final account commitment and account delta commitment extracted from the account
+    /// udpate commitment.
+    fn parse_account_update_commitment(
+        account_update_commitment: Digest,
+        adv_map: &AdviceMap,
+    ) -> Result<(Digest, Digest), TransactionOutputError> {
+        let account_update_data = adv_map.get(&account_update_commitment).ok_or_else(|| {
+            TransactionOutputError::AccountUpdateCommitment(
+                "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
+            )
+        })?;
+
+        if account_update_data.len() != 8 {
+            return Err(TransactionOutputError::AccountUpdateCommitment(
+                "expected account update commitment advice map entry to contain exactly 8 elements"
+                    .into(),
+            ));
+        }
+
+        // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
+        // is fine.
+        let final_account_commitment = Digest::from(
+            <[Felt; 4]>::try_from(&account_update_data[0..4])
+                .expect("we should have sliced off exactly four elements"),
+        );
+        let account_delta_commitment = Digest::from(
+            <[Felt; 4]>::try_from(&account_update_data[4..8])
+                .expect("we should have sliced off exactly four elements"),
+        );
+
+        let computed_account_update_commitment =
+            Hasher::merge(&[final_account_commitment, account_delta_commitment]);
+
+        if computed_account_update_commitment != account_update_commitment {
+            let err_message = format!(
+                "transaction outputs account update commitment {account_update_commitment} but commitment computed from its advice map entries was {computed_account_update_commitment}"
+            );
+            return Err(TransactionOutputError::AccountUpdateCommitment(err_message.into()));
+        }
+
+        Ok((final_account_commitment, account_delta_commitment))
     }
 }
 

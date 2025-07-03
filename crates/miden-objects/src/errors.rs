@@ -529,7 +529,7 @@ pub enum TransactionOutputError {
     )]
     TooManyOutputNotes(usize),
     #[error("failed to process account update commitment: {0}")]
-    AccountUpdateCommitment(&'static str),
+    AccountUpdateCommitment(Box<str>),
 }
 
 // PROVEN TRANSACTION ERROR
