@@ -43,6 +43,7 @@ impl StorageDeltaTracker {
     // PUBLIC MUTATORS
     // --------------------------------------------------------------------------------------------
 
+    /// Updates a value slot.
     pub fn set_item(&mut self, slot_index: u8, prev_value: Word, new_value: Word) {
         // Don't update the delta if the new value matches the old one.
         if prev_value != new_value {
@@ -50,6 +51,7 @@ impl StorageDeltaTracker {
         }
     }
 
+    /// Updates a map slot.
     pub fn set_map_item(&mut self, slot_index: u8, key: Digest, prev_value: Word, new_value: Word) {
         // Don't update the delta if the new value matches the old one.
         if prev_value != new_value {
@@ -58,7 +60,7 @@ impl StorageDeltaTracker {
         }
     }
 
-    /// Consumes `self` and returns the resulting [`AccountStorageDelta`].
+    /// Consumes `self` and returns the resulting, normalized [`AccountStorageDelta`].
     pub fn into_delta(self) -> AccountStorageDelta {
         self.normalize()
     }
@@ -96,7 +98,7 @@ impl StorageDeltaTracker {
         // the initial value.
         // On the map level: Keep only the maps that are non-empty after its key-value pairs have
         // been normalized.
-        map_slots.iter_mut().for_each(|(slot_idx, map_delta)| {
+        map_slots.retain(|slot_idx, map_delta| {
             let init_map = init_maps.get(slot_idx);
 
             if let Some(init_map) = init_map {
@@ -104,10 +106,12 @@ impl StorageDeltaTracker {
                     let initial_value = init_map.get(key.inner()).expect(
                         "the initial value should be present for every value that was updated",
                     );
-
                     new_value != initial_value
                 });
             }
+
+            // Only retain the map delta if it still contains values after normalization.
+            !map_delta.is_empty()
         });
 
         AccountStorageDelta::from_parts(value_slots, map_slots)
