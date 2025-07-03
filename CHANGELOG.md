@@ -38,6 +38,8 @@
 - Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
 - [BREAKING] Introduce errors in `MockChain` API (#1508).
 - [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
+- Add `with_auth_component` to `AccountBuilder` (#1480).
+- [BREAKING] Refactor account authentication to require the `auth__*` procedure (#1480).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
