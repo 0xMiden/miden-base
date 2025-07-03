@@ -304,7 +304,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Extracts information from the process state about the storage map being updated and
     /// records the latest values of this storage map.
     ///
-    /// Expected stack state: [slot_index, NEW_MAP_KEY, NEW_MAP_VALUE, ...]
+    /// Expected stack state: [slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]
     pub fn on_account_storage_after_set_map_item(
         &mut self,
         process: ProcessState,
