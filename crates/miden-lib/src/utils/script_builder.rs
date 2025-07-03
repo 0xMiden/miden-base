@@ -1,26 +1,12 @@
 use alloc::{string::String, vec::Vec};
 
 use miden_objects::{
-    TransactionScriptError,
     assembly::{Assembler, Library, LibraryPath, diagnostics::NamedSource},
     note::NoteScript,
     transaction::TransactionScript,
 };
 
-use crate::transaction::TransactionKernel;
-
-// SCRIPT BUILDER ERROR
-// ================================================================================================
-
-#[derive(Debug, thiserror::Error)]
-pub enum ScriptBuilderError {
-    #[error("library build error: {0}")]
-    LibraryBuildError(String),
-    #[error("transaction script library error: {0}")]
-    TransactionScriptLibraryError(String),
-    #[error("transaction script error")]
-    TransactionScriptError(#[from] TransactionScriptError),
-}
+use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 
 // SCRIPT BUILDER
 // ================================================================================================
@@ -34,14 +20,17 @@ pub enum ScriptBuilderError {
 ///
 /// The typical workflow is:
 /// 1. Create a new ScriptBuilder with debug mode preference
-/// 2. Add any required libraries using `add_library()`
-/// 3. Compile your note script with `compile_note_script()`
-/// 4. Compile your transaction script with `compile_tx_script()`
+/// 2. Add any required modules using `link_module()`
+/// 3. Compile your script with `compile_note_script()` or `compile_tx_script()`
+///
+/// Note that the compilation methods consume the ScriptBuilder, so if you need to compile
+/// multiple scripts with the same configuration, you should clone the builder first.
 ///
 /// # Note
 /// For scripts that need access to transaction kernel procedures,
 /// use `ScriptBuilder::with_assembler()` and provide an assembler created with
 /// `TransactionKernel::assembler()` from the miden-lib crate.
+#[derive(Clone)]
 pub struct ScriptBuilder {
     assembler: Assembler,
     libraries: Vec<Library>,
@@ -67,17 +56,41 @@ impl ScriptBuilder {
     // LIBRARY MANAGEMENT
     // --------------------------------------------------------------------------------------------
 
-    /// Adds multiple libraries to the script builder.
+    /// Compiles and links a module to the script builder.
+    ///
+    /// This method compiles the provided module code and adds the resulting library
+    /// to the builder's internal library collection for use in script compilation.
     ///
     /// # Arguments
-    /// * `libraries` - Iterator of compiled libraries to add to the builder
-    pub fn add_library(
+    /// * `module_path` - The path identifier for the module (e.g., "my_lib::my_module")
+    /// * `module_code` - The source code of the module to compile and link
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The module path is invalid
+    /// - The module code cannot be parsed
+    /// - The module cannot be assembled
+    pub fn link_module(
         &mut self,
-        libraries: impl IntoIterator<Item = Library>,
+        module_path: impl AsRef<str>,
+        module_code: impl AsRef<str>,
     ) -> Result<(), ScriptBuilderError> {
-        for library in libraries.into_iter() {
-            self.libraries.push(library);
-        }
+        // Parse the library path
+        let lib_path = LibraryPath::new(module_path.as_ref()).map_err(|err| {
+            ScriptBuilderError::build_error_with_source(
+                format!("invalid module path: {}", module_path.as_ref()),
+                err,
+            )
+        })?;
+
+        let source = NamedSource::new(format!("{lib_path}"), String::from(module_code.as_ref()));
+
+        let library = self.assembler.clone().assemble_library([source]).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to assemble module", err)
+        })?;
+
+        // Add the compiled library to our collection
+        self.libraries.push(library);
         Ok(())
     }
 
@@ -96,22 +109,21 @@ impl ScriptBuilder {
     /// - Any of the libraries cannot be loaded into the assembler
     /// - The transaction script compilation fails
     pub fn compile_tx_script(
-        &self,
+        self,
         tx_script: impl AsRef<str>,
     ) -> Result<TransactionScript, ScriptBuilderError> {
-        let mut assembler = self.assembler.clone();
+        let mut assembler = self.assembler;
 
         // Add all libraries from the builder to the assembler
         for lib in &self.libraries {
             assembler = assembler.with_library(lib.clone()).map_err(|err| {
-                ScriptBuilderError::TransactionScriptLibraryError(alloc::format!(
-                    "Failed to add library: {err}"
-                ))
+                ScriptBuilderError::build_error_with_report("failed to add library", err)
             })?;
         }
 
-        TransactionScript::compile(tx_script.as_ref(), assembler)
-            .map_err(ScriptBuilderError::TransactionScriptError)
+        TransactionScript::compile(tx_script.as_ref(), assembler).map_err(|err| {
+            ScriptBuilderError::build_error_with_source("failed to compile transaction script", err)
+        })
     }
 
     /// Compiles a note script with the provided program code.
@@ -126,24 +138,20 @@ impl ScriptBuilder {
     /// - Any of the libraries cannot be loaded into the assembler
     /// - The note script compilation fails
     pub fn compile_note_script(
-        &self,
+        self,
         program: impl AsRef<str>,
     ) -> Result<NoteScript, ScriptBuilderError> {
-        let mut assembler = self.assembler.clone();
+        let mut assembler = self.assembler;
 
         // Add all libraries from the builder to the assembler
         for lib in &self.libraries {
             assembler = assembler.with_library(lib.clone()).map_err(|err| {
-                ScriptBuilderError::TransactionScriptLibraryError(alloc::format!(
-                    "Failed to add library: {err}"
-                ))
+                ScriptBuilderError::build_error_with_report("failed to add library", err)
             })?;
         }
 
         NoteScript::compile(program.as_ref(), assembler).map_err(|err| {
-            ScriptBuilderError::LibraryBuildError(alloc::format!(
-                "Failed to compile note script: {err}"
-            ))
+            ScriptBuilderError::build_error_with_source("failed to compile note script", err)
         })
     }
 
@@ -169,27 +177,24 @@ impl ScriptBuilder {
     /// - The library code cannot be parsed
     /// - The library cannot be assembled
     pub fn compile_library(
-        &self,
+        self,
         library_code: impl AsRef<str>,
         library_path: impl AsRef<str>,
     ) -> Result<Library, ScriptBuilderError> {
-        let assembler = self.assembler.clone();
+        let assembler = self.assembler;
 
         // Parse the library path
-        let lib_path = LibraryPath::new(library_path.as_ref()).map_err(|_| {
-            ScriptBuilderError::LibraryBuildError(alloc::format!(
-                "Invalid library path: {}",
-                library_path.as_ref()
-            ))
+        let lib_path = LibraryPath::new(library_path.as_ref()).map_err(|err| {
+            ScriptBuilderError::build_error_with_source(
+                format!("invalid library path: {}", library_path.as_ref()),
+                err,
+            )
         })?;
 
-        let source =
-            NamedSource::new(alloc::format!("{lib_path}"), String::from(library_code.as_ref()));
+        let source = NamedSource::new(format!("{lib_path}"), String::from(library_code.as_ref()));
 
         let library = assembler.assemble_library([source]).map_err(|err| {
-            ScriptBuilderError::LibraryBuildError(alloc::format!(
-                "Failed to assemble library: {err}"
-            ))
+            ScriptBuilderError::build_error_with_report("failed to assemble library", err)
         })?;
 
         Ok(library)
@@ -246,17 +251,12 @@ mod tests {
 
         let library_path = "external_contract::counter_contract";
 
-        let builder = ScriptBuilder::new(true);
-        let library_result = builder.compile_library(account_code, library_path);
+        let mut builder_with_lib = ScriptBuilder::new(true);
+        let add_result = builder_with_lib.link_module(library_path, account_code);
 
-        if let Ok(library) = library_result {
-            let mut builder_with_lib = ScriptBuilder::new(true);
-            let add_result = builder_with_lib.add_library(vec![library]);
-
-            if add_result.is_ok() {
-                let _tx_script_result = builder_with_lib.compile_tx_script(script_code);
-                assert_eq!(builder_with_lib.libraries.len(), 1);
-            }
+        if add_result.is_ok() {
+            assert_eq!(builder_with_lib.libraries.len(), 1);
+            let _tx_script_result = builder_with_lib.compile_tx_script(script_code);
         }
     }
 
@@ -285,32 +285,22 @@ mod tests {
         let library_path = "external_contract::counter_contract";
 
         // Test single library
-        let builder = ScriptBuilder::new(true);
-        let library_result = builder.compile_library(account_code, library_path);
+        let mut builder_with_lib = ScriptBuilder::new(true);
+        let add_result = builder_with_lib.link_module(library_path, account_code);
 
-        if let Ok(library) = library_result {
-            let mut builder_with_lib = ScriptBuilder::new(true);
-            let add_result = builder_with_lib.add_library(vec![library]);
-
-            if add_result.is_ok() {
-                let _tx_script_result = builder_with_lib.compile_tx_script(script_code);
-                assert_eq!(builder_with_lib.libraries.len(), 1);
-            }
+        if add_result.is_ok() {
+            assert_eq!(builder_with_lib.libraries.len(), 1);
+            let _tx_script_result = builder_with_lib.compile_tx_script(script_code);
         }
 
         // Test multiple libraries
-        let builder2 = ScriptBuilder::new(true);
-        let library1_result = builder2.compile_library(account_code, library_path);
-        let library2_result = builder2.compile_library("export.test begin nop end", "test::lib");
+        let mut builder_with_libs = ScriptBuilder::new(true);
+        let add_result1 = builder_with_libs.link_module(library_path, account_code);
+        let add_result2 = builder_with_libs.link_module("test::lib", "export.test begin nop end");
 
-        if let (Ok(lib1), Ok(lib2)) = (library1_result, library2_result) {
-            let mut builder_with_libs = ScriptBuilder::new(true);
-            let add_result = builder_with_libs.add_library(vec![lib1, lib2]);
-
-            if add_result.is_ok() {
-                let _tx_script_result = builder_with_libs.compile_tx_script(script_code);
-                assert_eq!(builder_with_libs.libraries.len(), 2);
-            }
+        if add_result1.is_ok() && add_result2.is_ok() {
+            assert_eq!(builder_with_libs.libraries.len(), 2);
+            let _tx_script_result = builder_with_libs.compile_tx_script(script_code);
         }
     }
 }
