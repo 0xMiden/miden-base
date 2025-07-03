@@ -1,5 +1,8 @@
 use core::cmp::Ordering;
 
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_processor::DeserializationError;
+
 use crate::{Felt, Word};
 
 /// A [`Word`] wrapper with lexicographic ordering.
@@ -72,6 +75,27 @@ impl<T: Into<Word> + Copy> Ord for LexicographicWord<T> {
         }
 
         Ordering::Equal
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for LexicographicWord {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.get_size_hint()
+    }
+}
+
+impl Deserializable for LexicographicWord {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let word = Word::read_from(source)?;
+
+        Ok(Self::new(word))
     }
 }
 
