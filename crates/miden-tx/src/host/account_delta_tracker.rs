@@ -13,7 +13,6 @@ use miden_objects::{
 /// - Changes to the account nonce.
 ///
 /// TODO: implement tracking of:
-/// - all account storage changes.
 /// - account code changes.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountDeltaTracker {

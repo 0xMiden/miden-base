@@ -285,7 +285,7 @@ impl Account {
         Ok(())
     }
 
-    /// Sets the nonce of this account to the specified nonce value.
+    /// Increments the nonce of this account by the provided increment.
     ///
     /// # Errors
     ///
