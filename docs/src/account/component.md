@@ -1,14 +1,22 @@
-# Account component templates
+# Account Components
 
-An account component template provides a general description of an account component. It encapsulates all the information needed to initialize and manage the component.
+Account components are reusable units of functionality that define a part of an account's code and storage. Multiple account components can be merged together to form an account's final [code](./code.md) and [storage](./storage.md).
+
+As an example, consider a typical wallet account, capabale of holding a user's assets and requiring authentication whenever assets are added or removed. Such an account can be created by merging a `BasicWallet` component with an `RpoFalcon512` authentication component. The basic wallet does not need any storage, but exposes functionality to receive assets and create notes with assets. The authentication component needs a user's public key in storage and additionally defines the code to verify a signature against that public key. Together, these components form a fully functional wallet account.
+
+## Account Component templates
+
+An account component template is a description of an account component and contains all the
+information needed to initialize it.
 
 Specifically, a template specifies a component's **metadata** and its **code**.
 
-Once defined, a component template can be instantiated as account components, which can then be merged to form the account's `Code`.
+Once defined, a component template can be instantiated to an account component, which can then be
+merged to form the account's `Code` and `Storage`.
 
 ## Component code
 
-The component template’s code defines a library of functions that operate on the specified storage layout.
+The template's code defines a library of functions that can read and write to the storage slots of the component.
 
 ## Component metadata
 
@@ -119,7 +127,7 @@ In the above example, the first and second storage entries are single-slot value
 
 ##### Storage map entries
 
-[Storage maps](./account/overview.md#storage) consist of key-value pairs, where both keys and values are single words.
+[Storage maps](./overview.md#storage) consist of key-value pairs, where both keys and values are single words.
 
 Storage map entries can specify the following fields:
 

@@ -7,6 +7,7 @@
   - [ID](./account/id.md)
   - [Code](./account/code.md)
   - [Storage](./account/storage.md)
+  - [Component](./account/component.md)
 - [Notes](./note.md)
 - [Assets](./asset.md)
 - [Transactions](./transaction.md)

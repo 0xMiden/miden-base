@@ -3,12 +3,14 @@
 > [!Note]
 > A collection of functions defining the `Account`'s programmable interface.
 
-Every Miden `Account` is essentially a smart contract. The `Code` component defines the account's functions, which can be invoked through both [Note scripts](../note.md#script) and [transaction scripts](../transaction.md#inputs). Key characteristics include:
+Every Miden `Account` is essentially a smart contract. The `Code` defines the account's functions, which can be invoked through both [Note scripts](../note.md#script) and [transaction scripts](../transaction.md#inputs). Key characteristics include:
 
 - **Mutable access:** Only the `Account`'s own functions can modify its storage and vault. All state changes — such as updating storage slots or transferring assets — must occur through these functions.
 - **Function commitment:** Each function can be called by its [MAST](https://0xMiden.github.io/miden-vm/user_docs/assembly/main.html) root. The root represents the underlying code tree as a 32-byte commitment. This ensures integrity which means a function's behavior cannot change without changing the MAST root.
 - **Note creation:** `Account` functions can create new notes.
 - **Asset creation:** Faucet `Accounts` can create assets.
+
+An account's code is typically the result of merging multiple [account components](./component.md).
 
 ## Authentication
 
