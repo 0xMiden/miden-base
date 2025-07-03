@@ -39,7 +39,7 @@
 - [BREAKING] Introduce errors in `MockChain` API (#1508).
 - [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
 - Add `with_auth_component` to `AccountBuilder` (#1480).
-- [BREAKING] Refactor account authentication to require the `auth__*` procedure (#1480).
+- [BREAKING] Refactor account authentication to require a procedure containing `auth__` in its name (#1480).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 

@@ -28,7 +28,7 @@ use crate::{Auth, MockChain};
 // - Add test for calling account_delta::compute_commitment from foreign account and make sure it
 //   returns the correct value (i.e. no part of the computation is using foreign account data).
 
-/// Tests that a noop transaction with `Auth::Mock` results in a nonce delta of 1.
+/// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![]);

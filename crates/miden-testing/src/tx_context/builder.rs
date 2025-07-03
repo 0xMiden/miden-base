@@ -140,7 +140,7 @@ impl TransactionContextBuilder {
             assembler,
         );
 
-        Self { account, ..Self::default() }
+        Self::new(account)
     }
 
     /// Initializes a [TransactionContextBuilder] with a mocked fungible faucet.
