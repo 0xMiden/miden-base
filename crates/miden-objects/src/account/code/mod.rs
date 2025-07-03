@@ -529,4 +529,48 @@ mod tests {
 
         assert_matches!(err, AccountError::AccountCodeNoAuthComponent);
     }
+
+    #[test]
+    fn test_account_code_multiple_auth_components() {
+        let auth_component1: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+        let auth_component2: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+
+        let err = AccountCode::from_components(
+            &[auth_component1, auth_component2],
+            AccountType::RegularAccountUpdatableCode,
+        )
+        .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountCodeMultipleAuthComponents);
+    }
+
+    #[test]
+    fn test_account_component_multiple_auth_procedures() {
+        use assembly::Assembler;
+
+        let code_with_multiple_auth = "
+            use.miden::account
+
+            export.auth__basic
+                push.1 drop
+            end
+
+            export.auth__secondary
+                push.0 drop
+            end
+        ";
+
+        let component =
+            AccountComponent::compile(code_with_multiple_auth, Assembler::default(), vec![])
+                .unwrap()
+                .with_supports_all_types();
+
+        let err =
+            AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
+                .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountComponentMultipleAuthProcedures);
+    }
 }
