@@ -1,10 +1,10 @@
 # Assets
 
-An `Asset` is a unit of value that can be transferred from one [account](account.md) to another using [notes](note.md).
+An `Asset` is a unit of value that can be transferred from one [account](account/overview.md) to another using [notes](note.md).
 
 ## What is the purpose of an asset?
 
-In Miden, assets serve as the primary means of expressing and transferring value between [accounts](account.md) through [notes](note.md). They are designed with four key principles in mind:
+In Miden, assets serve as the primary means of expressing and transferring value between [accounts](account/overview.md) through [notes](note.md). They are designed with four key principles in mind:
 
 1. **Parallelizable exchange:**  
     By managing ownership and transfers directly at the account level instead of relying on global structures like ERC20 contracts, accounts can exchange assets concurrently, boosting scalability and efficiency.
@@ -23,12 +23,12 @@ In Miden, assets serve as the primary means of expressing and transferring value
 > [!Note]
 > All data structures following the Miden asset model that can be exchanged.
 
-Native assets adhere to the Miden `Asset` model (encoding, issuance, storage). Every native `Asset` is encoded using 32 bytes, including both the [ID](account.md#id) of the issuing account and the `Asset` details.
+Native assets adhere to the Miden `Asset` model (encoding, issuance, storage). Every native `Asset` is encoded using 32 bytes, including both the [ID](account/overview.md#id) of the issuing account and the `Asset` details.
 
 ### Issuance
 
 > [!Note]
-> Only [faucet](account.md#account-type) accounts can issue assets.
+> Only [faucet](account/overview.md#account-type) accounts can issue assets.
 
 Faucets can issue either fungible or non-fungible assets as defined at account creation. The faucet's code specifies the `Asset` minting conditions: i.e., how, when, and by whom these assets can be minted. Once minted, they can be transferred to other accounts using notes.
 
@@ -48,7 +48,7 @@ Non-fungible assets are encoded by hashing the `Asset` data into 32 bytes and pl
 
 ### Storage
 
-[Accounts](account.md) and [notes](note.md) have vaults used to store assets. Accounts use a sparse Merkle tree as a vault while notes use a simple list. This enables an account to store a practically unlimited number of assets while a note can only store 255 assets.
+[Accounts](account/overview.md) and [notes](note.md) have vaults used to store assets. Accounts use a sparse Merkle tree as a vault while notes use a simple list. This enables an account to store a practically unlimited number of assets while a note can only store 255 assets.
 
 <p style="text-align: center;">
     <img src="img/asset/asset-storage.png" style="width:70%;" alt="Asset storage"/>

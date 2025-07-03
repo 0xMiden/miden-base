@@ -119,7 +119,7 @@ In the above example, the first and second storage entries are single-slot value
 
 ##### Storage map entries
 
-[Storage maps](./account.md#storage) consist of key-value pairs, where both keys and values are single words.
+[Storage maps](./account/overview.md#storage) consist of key-value pairs, where both keys and values are single words.
 
 Storage map entries can specify the following fields:
 

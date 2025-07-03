@@ -42,7 +42,7 @@ This is done using an authenticated data structure, a sparse Merkle tree.
     <img src="img/state/account-db.png" style="width:70%;" alt="Account DB"/>
 </p>
 
-As described in the [accounts section](account.md), there are two types of accounts:
+As described in the [accounts section](account/overview.md), there are two types of accounts:
 
 - **Public accounts:** where all account data is stored on-chain.
 - **Private accounts:** where only the commitments to the account is stored on-chain.
