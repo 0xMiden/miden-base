@@ -4,7 +4,9 @@ use miden_lib::{account::auth::RpoFalcon512, transaction::TransactionKernel};
 use miden_objects::{
     account::{AccountComponent, AuthSecretKey},
     crypto::dsa::rpo_falcon512::SecretKey,
-    testing::account_component::{ConditionalAuthComponent, MockAuthComponent, NoopAuthComponent},
+    testing::account_component::{
+        ConditionalAuthComponent, IncrNonceAuthComponent, NoopAuthComponent,
+    },
 };
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
@@ -18,7 +20,7 @@ pub enum Auth {
     BasicAuth,
 
     /// Creates a mock authentication mechanism for the account that only increments the nonce.
-    Mock,
+    IncrNonce,
 
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
@@ -46,9 +48,9 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::Mock => {
+            Auth::IncrNonce => {
                 let assembler = TransactionKernel::assembler();
-                let component = MockAuthComponent::new(assembler).unwrap();
+                let component = IncrNonceAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
             },
 

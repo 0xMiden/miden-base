@@ -712,7 +712,7 @@ fn test_build_note_metadata() -> miette::Result<()> {
 #[test]
 pub fn test_timelock() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::Mock, vec![]);
+    let account = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(

@@ -22,7 +22,7 @@ use miden_objects::{
         NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
     },
     testing::{
-        account_component::{AccountMockComponent, MockAuthComponent},
+        account_component::{AccountMockComponent, IncrNonceAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -127,7 +127,7 @@ fn executed_transaction_account_delta_new() {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::Mock)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -484,7 +484,7 @@ fn test_send_note_proc() -> miette::Result<()> {
 #[test]
 fn executed_transaction_output_notes() {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = MockAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
 
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -904,7 +904,7 @@ fn transaction_executor_account_code_using_custom_library() {
 
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::Mock)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(account_component)
         .build_existing()
         .unwrap();

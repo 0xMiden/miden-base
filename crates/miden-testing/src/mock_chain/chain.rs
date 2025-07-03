@@ -1478,7 +1478,7 @@ mod tests {
     fn with_accounts() {
         let account = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(Auth::Mock)
+            .with_auth_component(Auth::IncrNonce)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),

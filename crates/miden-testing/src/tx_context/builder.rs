@@ -11,7 +11,7 @@ use miden_objects::{
     asset::{Asset, FungibleAsset, NonFungibleAsset},
     note::{Note, NoteExecutionHint, NoteId, NoteType},
     testing::{
-        account_component::{MockAuthComponent, NoopAuthComponent},
+        account_component::{IncrNonceAuthComponent, NoopAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -108,7 +108,7 @@ impl TransactionContextBuilder {
     pub fn with_standard_account(nonce: Felt) -> Self {
         // Build standard account with normal assembler because the testing one already contains it
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component = MockAuthComponent::new(assembler.clone()).unwrap().into();
+        let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,

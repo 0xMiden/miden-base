@@ -189,7 +189,7 @@ struct TestSetup {
 fn setup_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
     let account = AccountBuilder::new([8; 32])
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::Mock)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),

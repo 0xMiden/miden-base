@@ -15,7 +15,7 @@ use miden_objects::{
     account::Account,
     note::{NoteTag, NoteType},
     testing::{
-        account_component::MockAuthComponent,
+        account_component::IncrNonceAuthComponent,
         account_id::ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     },
     transaction::{OutputNote, OutputNotes},
@@ -66,7 +66,7 @@ fn test_epilogue() {
         .unwrap();
 
     let assembler = TransactionKernel::assembler();
-    let auth_component = MockAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,

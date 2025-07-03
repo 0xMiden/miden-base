@@ -12,7 +12,7 @@ use miden_objects::{
     },
     batch::ProvenBatch,
     block::{BlockInputs, BlockNumber, ProposedBlock},
-    testing::account_component::{AccountMockComponent, MockAuthComponent},
+    testing::account_component::{AccountMockComponent, IncrNonceAuthComponent},
     transaction::{ProvenTransaction, ProvenTransactionBuilder},
     vm::ExecutionProof,
 };
@@ -252,7 +252,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let assembler = TransactionKernel::testing_assembler();
     let auth_component: AccountComponent =
-        MockAuthComponent::new(assembler.clone()).unwrap().into();
+        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
@@ -357,7 +357,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // --------------------------------------------------------------------------------------------
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
-        .with_auth_component(Auth::Mock)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
