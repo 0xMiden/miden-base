@@ -321,7 +321,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     // nonce delta
     // --------------------------------------------------------------------------------------------
 
-    // nonce was incremented by 1 and the account's nonce was already 1
+    // nonce was incremented once in P2ANY and once by the tx script.
     assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(2)));
 
     // storage delta
