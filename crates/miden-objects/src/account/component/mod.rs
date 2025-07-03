@@ -147,7 +147,7 @@ impl AccountComponent {
     }
 
     /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
-    pub fn get_procedures(&self) -> Vec<(Digest, bool)> {
+    pub(crate) fn get_procedures(&self) -> Vec<(Digest, bool)> {
         let mut procedures = Vec::new();
         for module in self.library.module_infos() {
             for (_, procedure_info) in module.procedures() {
