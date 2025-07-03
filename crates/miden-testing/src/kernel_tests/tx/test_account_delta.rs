@@ -33,18 +33,9 @@ use crate::{Auth, MockChain};
 fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![]);
 
-    let tx_script = compile_tx_script(
-        "
-      begin
-          push.1 drop
-      end
-      ",
-    )?;
-
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
-        .tx_script(tx_script)
         .build()
         .execute()
         .context("failed to execute transaction")?;
