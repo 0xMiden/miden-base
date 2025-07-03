@@ -351,8 +351,6 @@ fn executed_transaction_account_delta_new() {
     );
 }
 
-// TODO add a test that updates the storage but does not increment the nonce
-
 #[test]
 fn test_send_note_proc() -> miette::Result<()> {
     // removed assets
