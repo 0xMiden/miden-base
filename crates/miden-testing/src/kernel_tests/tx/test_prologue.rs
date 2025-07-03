@@ -63,7 +63,7 @@ fn test_transaction_prologue() {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce.into(),
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let input_note_1 =

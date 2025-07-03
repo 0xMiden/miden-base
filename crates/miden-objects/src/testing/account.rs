@@ -26,7 +26,7 @@ impl Account {
     pub fn mock(
         account_id: u128,
         nonce: Felt,
-        auth: AccountComponent,
+        auth: impl Into<AccountComponent>,
         assembler: Assembler,
     ) -> Self {
         let account_vault = if nonce == Felt::ZERO {
@@ -41,7 +41,7 @@ impl Account {
                 .unwrap();
         let (account_code, account_storage) = Account::initialize_from_components(
             account_id.account_type(),
-            &[auth, mock_component.into()],
+            &[auth.into(), mock_component.into()],
         )
         .unwrap();
 

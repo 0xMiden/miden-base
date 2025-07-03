@@ -508,7 +508,7 @@ fn test_send_note_proc() -> miette::Result<()> {
 #[test]
 fn executed_transaction_output_notes() {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
 
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -764,7 +764,7 @@ fn prove_witness_and_verify() {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce.into(),
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let input_note =
@@ -1073,7 +1073,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce.into(),
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let input_note =

@@ -14,8 +14,8 @@ use miden_lib::{
 use miden_objects::{
     FieldElement,
     account::{
-        Account, AccountBuilder, AccountDelta, AccountStorageDelta, AccountStorageMode,
-        AccountVaultDelta,
+        Account, AccountBuilder, AccountComponent, AccountDelta, AccountStorageDelta,
+        AccountStorageMode, AccountVaultDelta,
     },
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
@@ -48,7 +48,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce.into(),
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -96,7 +96,8 @@ fn test_epilogue() -> anyhow::Result<()> {
         .unwrap();
 
     let assembler = TransactionKernel::assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component: AccountComponent =
+        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,
@@ -152,7 +153,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce.into(),
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =

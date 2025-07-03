@@ -62,7 +62,7 @@ fn main() -> anyhow::Result<()> {
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
 
     let tx_context = {
         let account = Account::mock(
