@@ -412,7 +412,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{asset_1}
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [ASSET, note_idx]
             
             dropw drop
@@ -428,7 +428,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{asset_2} 
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [ASSET, note_idx]
 
             dropw drop
@@ -526,7 +526,7 @@ fn test_create_note_and_add_asset() {
             # => [note_idx]
 
             push.{asset}
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [ASSET, note_idx]
 
             dropw
@@ -602,19 +602,19 @@ fn test_create_note_and_add_multiple_assets() {
             # => [note_idx]
 
             push.{asset}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             push.{asset_2}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             push.{asset_3}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             push.{nft}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             # truncate the stack
@@ -699,12 +699,12 @@ fn test_create_note_and_add_same_nft_twice() {
             # => [note_idx, pad(15)]
 
             push.{nft} 
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
             dropw
 
             push.{nft} 
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
 
             repeat.5 dropw end

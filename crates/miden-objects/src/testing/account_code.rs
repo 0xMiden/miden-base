@@ -66,13 +66,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
         # => [CODE_COMMITMENT, pad(12)]
     end
 
-    # Inputs:  [ASSET, note_idx, pad(11)]
-    # Outputs: [ASSET, note_idx, pad(11)]
-    export.add_asset_to_note
-        exec.tx::add_asset_to_note
-        # => [ASSET, note_idx, pad(11)]
-    end
-
     # Stack:  [ASSET, pad(12)]
     # Output: [ASSET', pad(12)]
     export.add_asset

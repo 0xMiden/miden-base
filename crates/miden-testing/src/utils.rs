@@ -103,8 +103,7 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
 /// Returns the code for a note that creates all notes in `output_notes`
 fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
-    let mut out =
-        String::from("use.miden::tx\nuse.test::account\n\nbegin\n");
+    let mut out = String::from("use.miden::tx\nuse.test::account\n\nbegin\n");
 
     for (idx, note) in output_notes.iter().enumerate() {
         if idx == 0 {
