@@ -17,8 +17,9 @@ use miden_objects::{
 /// that slot.
 #[derive(Debug, Clone)]
 pub struct StorageDeltaTracker {
-    /// The storage header of the native account against which the transaction is executed. This is
-    /// only used to look up the storage value slots.
+    /// The _initial_ storage header of the native account against which the transaction is
+    /// executed. This is only used to look up the initial values of storage _value_ slots, while
+    /// the map slots are unused.
     storage_header: AccountStorageHeader,
     /// A map from slot index to a map of key-value pairs where the key is a storage map key and
     /// the value represents the value of that key at the beginning of transaction execution.

@@ -292,7 +292,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             process.get_stack_item(5),
         ];
 
-        self.account_delta.storage_delta_tracker().set_item(
+        self.account_delta.storage().set_item(
             slot_index.as_int() as u8,
             current_slot_value,
             new_slot_value,
@@ -346,7 +346,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             process.get_stack_item(9),
         ];
 
-        self.account_delta.storage_delta_tracker().set_map_item(
+        self.account_delta.storage().set_map_item(
             slot_index.as_int() as u8,
             key.into(),
             prev_map_value,

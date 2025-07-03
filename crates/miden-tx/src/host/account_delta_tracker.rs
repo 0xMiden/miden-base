@@ -1,8 +1,6 @@
 use miden_objects::{
     Felt, ZERO,
-    account::{
-        AccountDelta, AccountId, AccountStorageDelta, AccountStorageHeader, AccountVaultDelta,
-    },
+    account::{AccountDelta, AccountId, AccountStorageHeader, AccountVaultDelta},
 };
 
 use crate::host::storage_delta_tracker::StorageDeltaTracker;
@@ -22,7 +20,7 @@ use crate::host::storage_delta_tracker::StorageDeltaTracker;
 #[derive(Debug, Clone)]
 pub struct AccountDeltaTracker {
     account_id: AccountId,
-    storage_delta_tracker: StorageDeltaTracker,
+    storage: StorageDeltaTracker,
     vault: AccountVaultDelta,
     nonce_increment: Felt,
 }
@@ -32,7 +30,7 @@ impl AccountDeltaTracker {
     pub fn new(account_id: AccountId, storage_header: AccountStorageHeader) -> Self {
         Self {
             account_id,
-            storage_delta_tracker: StorageDeltaTracker::new(storage_header),
+            storage: StorageDeltaTracker::new(storage_header),
             vault: AccountVaultDelta::default(),
             nonce_increment: ZERO,
         }
@@ -49,27 +47,22 @@ impl AccountDeltaTracker {
     }
 
     /// Returns a mutable reference to the current storage delta tracker.
-    pub fn storage_delta_tracker(&mut self) -> &mut StorageDeltaTracker {
-        &mut self.storage_delta_tracker
+    pub fn storage(&mut self) -> &mut StorageDeltaTracker {
+        &mut self.storage
     }
 
     /// Consumes `self` and returns the resulting [AccountDelta].
+    ///
+    /// Normalizes the delta by removing entries for storage slots where the initial and new
+    /// value are equal.
     pub fn into_delta(self) -> AccountDelta {
         let account_id = self.account_id;
         let nonce_increment = self.nonce_increment;
 
-        let (vault_delta, storage_delta) = self.normalize();
+        let storage_delta = self.storage.into_delta();
+        let vault_delta = self.vault;
 
         AccountDelta::new(account_id, storage_delta, vault_delta, nonce_increment)
             .expect("account delta created in delta tracker should be valid")
-    }
-
-    /// Normalizes the delta by removing entries for storage slots where the initial and new value
-    /// are equal.
-    fn normalize(self) -> (AccountVaultDelta, AccountStorageDelta) {
-        let storage_delta = self.storage_delta_tracker.into_delta();
-        let vault_delta = self.vault;
-
-        (vault_delta, storage_delta)
     }
 }
