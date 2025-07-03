@@ -13,7 +13,6 @@ use miden_objects::{
         account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
     },
     transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
-    utils::word_to_masm_push_string,
 };
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
@@ -83,41 +82,6 @@ pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
         .note_type(NoteType::Private)
         .tag(NoteTag::for_local_use_case(0, 0).unwrap().into())
         .build(&TransactionKernel::assembler().with_debug_mode(true))
-        .unwrap()
-}
-
-pub fn generate_untracked_note_with_output_note(sender: AccountId, output_note: Note) -> Note {
-    // A note script that creates the note that was passed in.
-    let code = format!(
-        "
-    use.test::account
-
-    begin
-        padw padw
-        push.{recipient}
-        push.{execution_hint_always}
-        push.{PUBLIC_NOTE}
-        push.{aux}
-        push.{tag}
-        # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-        call.account::create_note drop
-        # => [pad(16)]
-
-        dropw dropw dropw dropw dropw
-    end
-    ",
-        recipient = word_to_masm_push_string(&output_note.recipient().digest()),
-        PUBLIC_NOTE = output_note.header().metadata().note_type() as u8,
-        aux = output_note.metadata().aux(),
-        tag = output_note.metadata().tag(),
-        execution_hint_always = Felt::from(output_note.metadata().execution_hint())
-    );
-
-    // Create a note that will create the above output note when consumed.
-    NoteBuilder::new(sender, &mut SmallRng::from_os_rng())
-        .code(code.clone())
-        .build(&TransactionKernel::testing_assembler_with_mock_account())
         .unwrap()
 }
 

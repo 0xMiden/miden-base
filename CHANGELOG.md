@@ -30,6 +30,9 @@
 - [BREAKING] Implemented in-kernel account delta tracking (#1471, #1404, #1460, #1481, #1491).
 - [BREAKING] Store account ID in account delta (#1493).
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
+- [BREAKING] Refactor nonce in delta from `Option<Felt>` to `Felt` (#1492).
+- Normalize account deltas to avoid including no-op updates (#1496).
+- [BREAKING] Refactor transaction to output `ACCOUNT_UPDATE_COMMITMENT` (#1500).
 - Added `Note::is_network_note()` accessor (#1485).
 - [BREAKING] Update handling of the shared modules (#1490).
 - Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).

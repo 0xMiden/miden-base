@@ -20,6 +20,8 @@ use crate::{
 pub struct TransactionOutputs {
     /// Information related to the account's final state.
     pub account: AccountHeader,
+    /// The commitment to the delta computed by the transaction kernel.
+    pub account_delta_commitment: Digest,
     /// Set of output notes created by the transaction.
     pub output_notes: OutputNotes,
     /// Defines up to which block the transaction is considered valid.
@@ -29,6 +31,7 @@ pub struct TransactionOutputs {
 impl Serializable for TransactionOutputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.account.write_into(target);
+        self.account_delta_commitment.write_into(target);
         self.output_notes.write_into(target);
         self.expiration_block_num.write_into(target);
     }
@@ -37,11 +40,13 @@ impl Serializable for TransactionOutputs {
 impl Deserializable for TransactionOutputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let account = AccountHeader::read_from(source)?;
+        let account_delta_commitment = Digest::read_from(source)?;
         let output_notes = OutputNotes::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
 
         Ok(Self {
             account,
+            account_delta_commitment,
             output_notes,
             expiration_block_num,
         })

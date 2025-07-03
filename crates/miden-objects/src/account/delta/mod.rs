@@ -40,7 +40,7 @@ pub struct AccountDelta {
     vault: AccountVaultDelta,
     /// The value by which the nonce was incremented. Must be greater than zero if storage or vault
     /// are non-empty.
-    nonce: Option<Felt>,
+    nonce_increment: Felt,
 }
 
 impl AccountDelta {
@@ -56,22 +56,32 @@ impl AccountDelta {
         account_id: AccountId,
         storage: AccountStorageDelta,
         vault: AccountVaultDelta,
-        nonce: Option<Felt>,
+        nonce_increment: Felt,
     ) -> Result<Self, AccountDeltaError> {
         // nonce must be updated if either account storage or vault were updated
-        validate_nonce(nonce, &storage, &vault)?;
+        validate_nonce(nonce_increment, &storage, &vault)?;
 
-        Ok(Self { account_id, storage, vault, nonce })
+        Ok(Self {
+            account_id,
+            storage,
+            vault,
+            nonce_increment,
+        })
     }
 
     /// Merge another [AccountDelta] into this one.
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
-        self.nonce = match (self.nonce, other.nonce) {
-            (Some(self_nonce_delta), Some(other_nonce_delta)) => {
-                Some(self_nonce_delta + other_nonce_delta)
-            },
-            (self_nonce_delta, other_nonce_delta) => other_nonce_delta.or(self_nonce_delta),
-        };
+        let new_nonce_increment = self.nonce_increment + other.nonce_increment;
+
+        if new_nonce_increment.as_int() < self.nonce_increment.as_int() {
+            return Err(AccountDeltaError::NonceIncrementOverflow {
+                current: self.nonce_increment,
+                increment: other.nonce_increment,
+                new: new_nonce_increment,
+            });
+        }
+
+        self.nonce_increment = new_nonce_increment;
 
         self.storage.merge(other.storage)?;
         self.vault.merge(other.vault)
@@ -95,9 +105,9 @@ impl AccountDelta {
         &self.vault
     }
 
-    /// Returns the amount by which the nonce changed.
-    pub fn nonce(&self) -> Option<Felt> {
-        self.nonce
+    /// Returns the amount by which the nonce was incremented.
+    pub fn nonce_increment(&self) -> Felt {
+        self.nonce_increment
     }
 
     /// Returns the account ID to which this delta applies.
@@ -106,8 +116,8 @@ impl AccountDelta {
     }
 
     /// Converts this storage delta into individual delta components.
-    pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Option<Felt>) {
-        (self.storage, self.vault, self.nonce)
+    pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Felt) {
+        (self.storage, self.vault, self.nonce_increment)
     }
 
     /// Computes the commitment to the account delta.
@@ -242,7 +252,7 @@ impl AccountDelta {
 
         // ID and Nonce
         elements.extend_from_slice(&[
-            self.nonce.unwrap_or(ZERO),
+            self.nonce_increment,
             ZERO,
             self.account_id.suffix(),
             self.account_id.prefix().as_felt(),
@@ -328,19 +338,6 @@ impl AccountUpdateDetails {
     }
 }
 
-/// Converts an [Account] into an [AccountDelta] for initial delta construction.
-impl From<Account> for AccountDelta {
-    fn from(account: Account) -> Self {
-        let (account_id, vault, storage, _code, nonce) = account.into_parts();
-        AccountDelta {
-            account_id,
-            storage: storage.into(),
-            vault: (&vault).into(),
-            nonce: Some(nonce),
-        }
-    }
-}
-
 // SERIALIZATION
 // ================================================================================================
 
@@ -349,14 +346,14 @@ impl Serializable for AccountDelta {
         self.account_id.write_into(target);
         self.storage.write_into(target);
         self.vault.write_into(target);
-        self.nonce.write_into(target);
+        self.nonce_increment.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {
         self.account_id.get_size_hint()
             + self.storage.get_size_hint()
             + self.vault.get_size_hint()
-            + self.nonce.get_size_hint()
+            + self.nonce_increment.get_size_hint()
     }
 }
 
@@ -365,12 +362,17 @@ impl Deserializable for AccountDelta {
         let account_id = AccountId::read_from(source)?;
         let storage = AccountStorageDelta::read_from(source)?;
         let vault = AccountVaultDelta::read_from(source)?;
-        let nonce = <Option<Felt>>::read_from(source)?;
+        let nonce_increment = Felt::read_from(source)?;
 
-        validate_nonce(nonce, &storage, &vault)
+        validate_nonce(nonce_increment, &storage, &vault)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
 
-        Ok(Self { account_id, storage, vault, nonce })
+        Ok(Self {
+            account_id,
+            storage,
+            vault,
+            nonce_increment,
+        })
     }
 }
 
@@ -422,28 +424,16 @@ impl Deserializable for AccountUpdateDetails {
 /// Checks if the nonce was updated correctly given the provided storage and vault deltas.
 ///
 /// # Errors
-/// Returns an error if storage or vault were updated, but the nonce was either not updated
-/// or set to 0.
+///
+/// Returns an error if:
+/// - storage or vault were updated, but the nonce_increment was set to 0.
 fn validate_nonce(
-    nonce: Option<Felt>,
+    nonce_increment: Felt,
     storage: &AccountStorageDelta,
     vault: &AccountVaultDelta,
 ) -> Result<(), AccountDeltaError> {
-    if !storage.is_empty() || !vault.is_empty() {
-        match nonce {
-            Some(nonce) => {
-                if nonce == ZERO {
-                    return Err(AccountDeltaError::InconsistentNonceUpdate(
-                        "zero nonce for a non-empty account delta".to_string(),
-                    ));
-                }
-            },
-            None => {
-                return Err(AccountDeltaError::InconsistentNonceUpdate(
-                    "nonce not updated for non-empty account delta".to_string(),
-                ));
-            },
-        }
+    if (!storage.is_empty() || !vault.is_empty()) && nonce_increment == ZERO {
+        return Err(AccountDeltaError::ZeroNonceForNonEmptyDelta);
     }
 
     Ok(())
@@ -479,25 +469,47 @@ mod tests {
         let storage_delta = AccountStorageDelta::new();
         let vault_delta = AccountVaultDelta::default();
 
-        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), None).unwrap();
-        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), Some(ONE))
-            .unwrap();
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO).unwrap();
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
 
         // non-empty delta
         let storage_delta = AccountStorageDelta::from_iters([1], [], []);
 
         assert_matches!(
-            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), None)
+            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
                 .unwrap_err(),
-            AccountDeltaError::InconsistentNonceUpdate(_)
+            AccountDeltaError::ZeroNonceForNonEmptyDelta
         );
-        assert_matches!(
-            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), Some(ZERO))
-                .unwrap_err(),
-            AccountDeltaError::InconsistentNonceUpdate(_)
-        );
-        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), Some(ONE))
-            .unwrap();
+        AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
+    }
+
+    #[test]
+    fn account_delta_nonce_increment_overflow() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let storage_delta = AccountStorageDelta::new();
+        let vault_delta = AccountVaultDelta::default();
+
+        let delta0_nonce_increment = ONE;
+        let delta1_nonce_increment = Felt::try_from(0xffff_ffff_0000_0000u64).unwrap();
+
+        let mut delta0 = AccountDelta::new(
+            account_id,
+            storage_delta.clone(),
+            vault_delta.clone(),
+            delta0_nonce_increment,
+        )
+        .unwrap();
+        let delta1 =
+            AccountDelta::new(account_id, storage_delta, vault_delta, delta1_nonce_increment)
+                .unwrap();
+
+        assert_matches!(delta0.merge(delta1).unwrap_err(), AccountDeltaError::NonceIncrementOverflow {
+          current, increment, new
+        } => {
+            assert_eq!(current, delta0_nonce_increment);
+            assert_eq!(increment, delta1_nonce_increment);
+            assert_eq!(new, delta0_nonce_increment + delta1_nonce_increment);
+        });
     }
 
     #[test]
@@ -510,7 +522,7 @@ mod tests {
         assert_eq!(vault_delta.to_bytes().len(), vault_delta.get_size_hint());
 
         let account_delta =
-            AccountDelta::new(account_id, storage_delta, vault_delta, None).unwrap();
+            AccountDelta::new(account_id, storage_delta, vault_delta, ZERO).unwrap();
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         let storage_delta = AccountStorageDelta::from_iters(
@@ -552,8 +564,7 @@ mod tests {
         assert_eq!(storage_delta.to_bytes().len(), storage_delta.get_size_hint());
         assert_eq!(vault_delta.to_bytes().len(), vault_delta.get_size_hint());
 
-        let account_delta =
-            AccountDelta::new(account_id, storage_delta, vault_delta, Some(ONE)).unwrap();
+        let account_delta = AccountDelta::new(account_id, storage_delta, vault_delta, ONE).unwrap();
         assert_eq!(account_delta.to_bytes().len(), account_delta.get_size_hint());
 
         // Account

@@ -8,10 +8,7 @@ use super::{
     AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
     LexicographicWord, Serializable, Word,
 };
-use crate::{
-    Digest, EMPTY_WORD, Felt, ZERO,
-    account::{AccountStorage, StorageMap, StorageSlot},
-};
+use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap};
 
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -177,6 +174,11 @@ impl AccountStorageDelta {
             }
         }
     }
+
+    /// Consumes self and returns the underlying parts of the storage delta.
+    pub fn into_parts(self) -> (BTreeMap<u8, Word>, BTreeMap<u8, StorageMapDelta>) {
+        (self.values, self.maps)
+    }
 }
 
 impl Default for AccountStorageDelta {
@@ -199,27 +201,6 @@ impl AccountStorageDelta {
             ),
             maps: BTreeMap::from_iter(updated_maps),
         }
-    }
-}
-
-/// Converts an [AccountStorage] into an [AccountStorageDelta] for initial delta construction.
-impl From<AccountStorage> for AccountStorageDelta {
-    fn from(storage: AccountStorage) -> Self {
-        let mut values = BTreeMap::new();
-        let mut maps = BTreeMap::new();
-        for (slot_idx, slot) in storage.into_iter().enumerate() {
-            let slot_idx: u8 = slot_idx.try_into().expect("slot index must fit into `u8`");
-            match slot {
-                StorageSlot::Value(value) => {
-                    values.insert(slot_idx, value);
-                },
-                StorageSlot::Map(map) => {
-                    maps.insert(slot_idx, map.into());
-                },
-            }
-        }
-
-        Self { values, maps }
     }
 }
 
@@ -327,6 +308,11 @@ impl StorageMapDelta {
     pub fn merge(&mut self, other: Self) {
         // Aggregate the changes into a map such that `other` overwrites self.
         self.0.extend(other.0);
+    }
+
+    /// Returns a mutable reference to the underlying map.
+    pub fn as_map_mut(&mut self) -> &mut BTreeMap<LexicographicWord<Digest>, Word> {
+        &mut self.0
     }
 
     /// Returns an iterator of all the cleared keys in the storage map.

@@ -45,7 +45,7 @@ use crate::{
 
 #[test]
 pub fn test_get_code() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let code = "
         use.kernel::prologue
         use.kernel::account
@@ -251,7 +251,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 #[test]
 fn test_get_item() -> miette::Result<()> {
     for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
         let code = format!(
             "
@@ -357,7 +357,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
         AccountStorage::mock_item_1(),
         AccountStorage::mock_item_2(),
     ] {
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
         let code = format!(
             "
@@ -411,7 +411,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
 #[test]
 fn test_set_item() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let new_storage_item: Word = [Felt::new(91), Felt::new(92), Felt::new(93), Felt::new(94)];
 
@@ -821,7 +821,7 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 
 #[test]
 fn test_get_vault_root() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let account = tx_context.account();
     let code = format!(
@@ -869,7 +869,7 @@ fn test_authenticate_procedure() -> miette::Result<()> {
         vec![(tc_0, true), (tc_1, true), (tc_2, true), ([ONE, ZERO, ONE, ZERO], false)];
 
     for (root, valid) in test_cases.into_iter() {
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
         let code = format!(
             "

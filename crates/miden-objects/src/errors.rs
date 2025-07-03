@@ -105,8 +105,12 @@ pub enum AccountError {
     FinalAccountHeaderIdParsingFailed(#[source] AccountIdError),
     #[error("account header data has length {actual} but it must be of length {expected}")]
     HeaderDataIncorrectLength { actual: usize, expected: usize },
-    #[error("new account nonce {new} is less than the current nonce {current}")]
-    NonceNotMonotonicallyIncreasing { current: u64, new: u64 },
+    #[error("current account nonce {current} plus increment {increment} overflows a felt to {new}")]
+    NonceOverflow {
+        current: Felt,
+        increment: Felt,
+        new: Felt,
+    },
     #[error(
         "digest of the seed has {actual} trailing zeroes but must have at least {expected} trailing zeroes"
     )]
@@ -247,8 +251,16 @@ pub enum AccountDeltaError {
         account_id: AccountId,
         source: AccountError,
     },
-    #[error("inconsistent nonce update: {0}")]
-    InconsistentNonceUpdate(String),
+    #[error("zero nonce is not allowed for non-empty account deltas")]
+    ZeroNonceForNonEmptyDelta,
+    #[error(
+        "account nonce increment {current} plus the other nonce increment {increment} overflows a felt to {new}"
+    )]
+    NonceIncrementOverflow {
+        current: Felt,
+        increment: Felt,
+        new: Felt,
+    },
     #[error("account ID {0} in fungible asset delta is not of type fungible faucet")]
     NotAFungibleFaucetId(AccountId),
 }
@@ -509,7 +521,7 @@ pub enum TransactionOutputError {
     #[error("transaction output note with id {0} is a duplicate")]
     DuplicateOutputNote(NoteId),
     #[error("final account commitment is not in the advice map")]
-    FinalAccountHashMissingInAdviceMap,
+    FinalAccountCommitmentMissingInAdviceMap,
     #[error("failed to parse final account header")]
     FinalAccountHeaderParseFailure(#[source] AccountError),
     #[error(
@@ -522,6 +534,8 @@ pub enum TransactionOutputError {
         "total number of output notes is {0} which exceeds the maximum of {MAX_OUTPUT_NOTES_PER_TX}"
     )]
     TooManyOutputNotes(usize),
+    #[error("failed to process account update commitment: {0}")]
+    AccountUpdateCommitment(Box<str>),
 }
 
 // PROVEN TRANSACTION ERROR

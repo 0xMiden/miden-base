@@ -3,10 +3,10 @@ use core::cmp::Ordering;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, EMPTY_WORD, ONE, Word, ZERO, account::delta::LexicographicWord};
+use miden_objects::{Digest, EMPTY_WORD, Word, account::delta::LexicographicWord};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
-use vm_processor::{MemAdviceProvider, ProcessState};
+use vm_processor::{MemAdviceProvider, ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
@@ -180,7 +180,7 @@ fn insertion() -> anyhow::Result<()> {
         entry3_value = word_to_masm_push_string(&entry3_value),
     );
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
@@ -616,7 +616,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     "#
     );
 
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 

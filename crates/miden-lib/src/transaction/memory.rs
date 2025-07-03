@@ -22,7 +22,7 @@ pub type StorageSlot = u8;
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
-// | Account delta      | 532_480 (133_120)                     | TODO (TODO)                         |                                             |
+// | Account delta      | 532_480 (133_120)                     | 532_746 (133_186)                   |                                             |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
 // | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)               | Enough for 2_097_151 key-value pairs        |

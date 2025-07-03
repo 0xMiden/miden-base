@@ -397,6 +397,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
                 id,
                 Digest::default(),
                 Digest::from(final_state_comm),
+                Digest::default(),
                 genesis_block.block_num(),
                 genesis_block.commitment(),
                 BlockNumber::from(u32::MAX),
