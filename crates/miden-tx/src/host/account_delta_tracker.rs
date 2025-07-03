@@ -5,7 +5,8 @@ use miden_objects::{
     },
 };
 
-use crate::host::account_init_storage::AccountInitialStorage;
+use crate::host::storage_delta_tracker::StorageDeltaTracker;
+
 // ACCOUNT DELTA TRACKER
 // ================================================================================================
 
@@ -21,8 +22,7 @@ use crate::host::account_init_storage::AccountInitialStorage;
 #[derive(Debug, Clone)]
 pub struct AccountDeltaTracker {
     account_id: AccountId,
-    storage: AccountStorageDelta,
-    init_storage: AccountInitialStorage,
+    storage_delta_tracker: StorageDeltaTracker,
     vault: AccountVaultDelta,
     nonce_increment: Felt,
 }
@@ -32,8 +32,7 @@ impl AccountDeltaTracker {
     pub fn new(account_id: AccountId, storage_header: AccountStorageHeader) -> Self {
         Self {
             account_id,
-            storage: AccountStorageDelta::new(),
-            init_storage: AccountInitialStorage::new(storage_header),
+            storage_delta_tracker: StorageDeltaTracker::new(storage_header),
             vault: AccountVaultDelta::default(),
             nonce_increment: ZERO,
         }
@@ -49,14 +48,9 @@ impl AccountDeltaTracker {
         &mut self.vault
     }
 
-    /// Get a mutable reference to the initial storage.
-    pub fn init_storage(&mut self) -> &mut AccountInitialStorage {
-        &mut self.init_storage
-    }
-
-    /// Get a mutable reference to the current storage delta
-    pub fn storage_delta(&mut self) -> &mut AccountStorageDelta {
-        &mut self.storage
+    /// Returns a mutable reference to the current storage delta tracker.
+    pub fn storage_delta_tracker(&mut self) -> &mut StorageDeltaTracker {
+        &mut self.storage_delta_tracker
     }
 
     /// Consumes `self` and returns the resulting [AccountDelta].
@@ -70,39 +64,11 @@ impl AccountDeltaTracker {
             .expect("account delta created in delta tracker should be valid")
     }
 
-    /// Normalizes the storage delta by:
-    /// - removing entries for value slot updates whose new value is equal to the initial value at
-    ///   the beginning of transaction execution.
-    /// - removing entries for map slot updates where for a given key, the new value is equal to the
-    ///   initial value at the beginning of transaction execution.
+    /// Normalizes the delta by removing entries for storage slots where the initial and new value
+    /// are equal.
     fn normalize(self) -> (AccountVaultDelta, AccountStorageDelta) {
-        let (mut value_slots, mut map_slots) = self.storage.into_parts();
+        let storage_delta = self.storage_delta_tracker.into_delta();
         let vault_delta = self.vault;
-
-        // Keep only the values whose new value is different from the initial value.
-        value_slots.retain(|slot_idx, new_value| {
-            // SAFETY: The header in the initial storage is the one from the account against which
-            // the transaction is executed, so accessing that slot index should be fine.
-            let (_, initial_value) = self
-                .init_storage
-                .storage_header()
-                .slot(*slot_idx as usize)
-                .expect("index should be in bounds");
-            new_value != initial_value
-        });
-
-        // Keep only the map values whose new value is different from the initial value.
-        map_slots.iter_mut().for_each(|(slot_idx, map_delta)| {
-            if let Some(init_map) = self.init_storage.init_map(*slot_idx) {
-                map_delta.as_map_mut().retain(|key, value| match init_map.get(key.inner()) {
-                    Some(init_value) => value != init_value,
-                    None => true,
-                });
-            }
-        });
-
-        let storage_delta = AccountStorageDelta::from_parts(value_slots, map_slots)
-            .expect("storage delta should still be valid since no new values were added");
 
         (vault_delta, storage_delta)
     }

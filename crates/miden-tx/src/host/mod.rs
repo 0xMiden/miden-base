@@ -26,7 +26,7 @@ use vm_processor::{
 mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
-mod account_init_storage;
+mod storage_delta_tracker;
 
 mod link_map;
 pub use link_map::{Entry, EntryMetadata, LinkMap};
@@ -292,11 +292,11 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             process.get_stack_item(5),
         ];
 
-        // update the delta tracker only if the current and new values are different
-        if current_slot_value != new_slot_value {
-            let slot_index = slot_index.as_int() as u8;
-            self.account_delta.storage_delta().set_item(slot_index, new_slot_value);
-        }
+        self.account_delta.storage_delta_tracker().set_item(
+            slot_index.as_int() as u8,
+            current_slot_value,
+            new_slot_value,
+        );
 
         Ok(())
     }
@@ -323,7 +323,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         }
 
         // get the KEY to which the slot is being updated
-        let new_map_key = [
+        let key = [
             process.get_stack_item(4),
             process.get_stack_item(3),
             process.get_stack_item(2),
@@ -346,20 +346,12 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             process.get_stack_item(9),
         ];
 
-        let slot_index = slot_index.as_int() as u8;
-        if new_map_value != prev_map_value {
-            // Track the initial value of the map entry.
-            self.account_delta.init_storage().set_init_map_item(
-                slot_index,
-                new_map_key.into(),
-                prev_map_value,
-            );
-            self.account_delta.storage_delta().set_map_item(
-                slot_index,
-                new_map_key.into(),
-                new_map_value,
-            );
-        }
+        self.account_delta.storage_delta_tracker().set_map_item(
+            slot_index.as_int() as u8,
+            key.into(),
+            prev_map_value,
+            new_map_value,
+        );
 
         Ok(())
     }
