@@ -13,7 +13,10 @@ use miden_lib::{
 };
 use miden_objects::{
     FieldElement,
-    account::{Account, AccountBuilder, AccountStorageMode},
+    account::{
+        Account, AccountBuilder, AccountDelta, AccountStorageDelta, AccountStorageMode,
+        AccountVaultDelta,
+    },
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
     testing::{
@@ -110,9 +113,21 @@ fn test_epilogue() -> anyhow::Result<()> {
     )
     .unwrap();
 
-    let mut expected_stack = Vec::with_capacity(16);
+    let account_delta_commitment = AccountDelta::new(
+        tx_context.account().id(),
+        AccountStorageDelta::default(),
+        AccountVaultDelta::default(),
+        ONE,
+    )
+    .unwrap()
+    .commitment();
+
+    let account_update_commitment =
+        miden_objects::Hasher::merge(&[final_account.commitment(), account_delta_commitment]);
+
+    let mut expected_stack = Vec::with_capacity(17);
     expected_stack.extend(output_notes.commitment().as_elements().iter().rev());
-    expected_stack.extend(final_account.commitment().as_elements().iter().rev());
+    expected_stack.extend(account_update_commitment.as_elements().iter().rev());
     expected_stack.push(Felt::from(u32::MAX)); // Value for tx expiration block number
     expected_stack.extend((9..16).map(|_| ZERO));
 

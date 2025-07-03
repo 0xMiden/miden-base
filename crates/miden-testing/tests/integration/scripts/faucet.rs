@@ -217,6 +217,6 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() {
     prove_and_verify_transaction(executed_transaction.clone()).unwrap();
 
     // nonce was incremented by 2 (once by the call to burn, once by the auth script)
-    assert_eq!(executed_transaction.account_delta().nonce(), Some(Felt::new(2)));
+    assert_eq!(executed_transaction.account_delta().nonce_increment(), Felt::new(2));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
 }

@@ -2,7 +2,7 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
@@ -383,16 +383,12 @@ fn build_executed_transaction(
     let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
 
-    // Temporarily copy the account update commitment into the advice witness map, if it is present,
-    // so it can be accessed in account delta tests.
-    {
-        let host_delta_commitment = account_delta.commitment();
-        let account_update_commitment =
-            miden_objects::Hasher::merge(&[final_account.commitment(), host_delta_commitment]);
-
-        if let Some(value) = advice_map.get(&account_update_commitment) {
-            advice_witness.extend_map([(account_update_commitment, value.into())]);
-        }
+    let host_delta_commitment = account_delta.commitment();
+    if tx_outputs.account_delta_commitment != host_delta_commitment {
+        return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
+            in_kernel_commitment: tx_outputs.account_delta_commitment,
+            host_commitment: host_delta_commitment,
+        });
     }
 
     if initial_account.id() != final_account.id() {
@@ -403,18 +399,11 @@ fn build_executed_transaction(
     }
 
     // make sure nonce delta was computed correctly
-    let nonce_delta = final_account.nonce() - initial_account.nonce();
-    if nonce_delta == ZERO {
-        if account_delta.nonce().is_some() {
-            return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-                expected: None,
-                actual: account_delta.nonce(),
-            });
-        }
-    } else if nonce_delta != account_delta.nonce().unwrap_or_default() {
+    let nonce_increment = final_account.nonce() - initial_account.nonce();
+    if nonce_increment != account_delta.nonce_increment() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: Some(nonce_delta),
-            actual: account_delta.nonce(),
+            expected: nonce_increment,
+            actual: account_delta.nonce_increment(),
         });
     }
 
