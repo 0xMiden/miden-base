@@ -2,7 +2,7 @@ use alloc::{collections::BTreeMap, string::String, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::{
-    account::{auth::RpoFalcon512, wallets::BasicWallet},
+    account::wallets::BasicWallet,
     errors::{
         MasmError, tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT,
     },
@@ -10,7 +10,7 @@ use miden_lib::{
 };
 use miden_objects::{
     Digest, EMPTY_WORD, FieldElement, ONE, WORD_SIZE,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AuthSecretKey},
+    account::{Account, AccountBuilder, AccountId},
     assembly::diagnostics::miette,
     asset::FungibleAsset,
     crypto::{
@@ -30,7 +30,7 @@ use miden_objects::{
     },
     transaction::{AccountInputs, OutputNote, TransactionArgs},
 };
-use miden_tx::{TransactionExecutorError, auth::BasicAuthenticator};
+use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{ProcessState, Word};
@@ -952,7 +952,7 @@ fn test_public_key_as_note_input() {
     let public_key = sec_key.public_key();
     let public_key_value: Word = public_key.into();
 
-    let rpo_component: AccountComponent = RpoFalcon512::new(public_key).into();
+    let (rpo_component, authenticator) = Auth::BasicAuth.build_component();
 
     let mock_seed_1 = Digest::from([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed_1)
@@ -990,14 +990,9 @@ fn test_public_key_as_note_input() {
     );
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
 
-    let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(public_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
-        rng,
-    );
-
     let tx_context = TransactionContextBuilder::new(target_account)
         .extend_input_notes(vec![note_with_pub_key])
-        .authenticator(Some(authenticator))
+        .authenticator(authenticator)
         .build();
     tx_context.execute().unwrap();
 }
