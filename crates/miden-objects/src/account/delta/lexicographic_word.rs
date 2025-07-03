@@ -1,5 +1,8 @@
 use core::cmp::Ordering;
 
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_processor::DeserializationError;
+
 use crate::{Felt, Word};
 
 /// A [`Word`] wrapper with lexicographic ordering.
@@ -75,9 +78,31 @@ impl<T: Into<Word> + Copy> Ord for LexicographicWord<T> {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
+impl<T: Into<Word> + Copy> Serializable for LexicographicWord<T> {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.0.into().write_into(target);
+    }
+
+    fn get_size_hint(&self) -> usize {
+        self.0.into().get_size_hint()
+    }
+}
+
+impl<T: Into<Word> + From<Word>> Deserializable for LexicographicWord<T> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let word = Word::read_from(source)?;
+
+        Ok(Self::new(T::from(word)))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::note::NoteId;
 
     #[test]
     fn lexicographic_word_ordering() {
@@ -102,5 +127,20 @@ mod tests {
                 expected
             );
         }
+    }
+
+    #[test]
+    fn lexicographic_serialization() {
+        let word = Word::from([1u64, 2, 3, 4].map(Felt::new));
+        let key = LexicographicWord::new(word);
+        let bytes = key.to_bytes();
+        let deserialized_key = LexicographicWord::<Word>::read_from_bytes(&bytes).unwrap();
+        assert_eq!(key, deserialized_key);
+
+        let note_id = NoteId::from(word);
+        let key = LexicographicWord::new(note_id);
+        let bytes = key.to_bytes();
+        let deserialized_key = LexicographicWord::<NoteId>::read_from_bytes(&bytes).unwrap();
+        assert_eq!(key, deserialized_key);
     }
 }
