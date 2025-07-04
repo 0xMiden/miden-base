@@ -1,5 +1,3 @@
-use alloc::string::ToString;
-
 use anyhow::Context;
 use miden_lib::{
     errors::tx_kernel_errors::{
@@ -928,7 +926,7 @@ fn test_was_procedure_called() -> miette::Result<()> {
     // 3. Checks that get_item has been called
     // 4. Calls get_item **again**
     // 5. Checks that `was_procedure_called` returns `true`
-    let tx_script_code = "
+    let tx_script_code = r#"
         use.test::account->test_account
         use.miden::account
 
@@ -936,7 +934,7 @@ fn test_was_procedure_called() -> miette::Result<()> {
             # First check that get_item procedure hasn't been called yet
             procref.test_account::get_item
             exec.account::was_procedure_called
-            assertz
+            assertz.err="procedure should not have been called"
 
             # Call the procedure first time
             push.0
@@ -945,7 +943,7 @@ fn test_was_procedure_called() -> miette::Result<()> {
 
             procref.test_account::get_item
             exec.account::was_procedure_called
-            assert
+            assert.err="procedure should have been called"
 
             # Call the procedure second time
             push.0
@@ -953,10 +951,9 @@ fn test_was_procedure_called() -> miette::Result<()> {
 
             procref.test_account::get_item
             exec.account::was_procedure_called
-            assert
+            assert.err="2nd call should not change the was_called flag"
         end
-        "
-    .to_string();
+        "#;
 
     // Compile the transaction script using the testing assembler with mock account
     let assembler = TransactionKernel::testing_assembler_with_mock_account();
