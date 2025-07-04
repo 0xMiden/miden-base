@@ -1057,12 +1057,11 @@ end
 #! - We assume that index has been validated and is within bounds.
 #!
 #! Inputs:  [index]
-#! Outputs: [storage_offset, storage_size, was_called]
+#! Outputs: [storage_offset, storage_size]
 #!
 #! Where:
 #! - storage_offset is the procedure storage offset.
 #! - storage_size is the number of storage slots the procedure is allowed to access.
-#! - was_called is a flag indicating whether the procedure was called during transaction execution.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
     mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
@@ -1070,7 +1069,6 @@ proc.get_procedure_metadata
 
     # load procedure metadata from memory and keep relevant data
     padw movup.4 mem_loadw drop drop swap
-    # TODO add was_called
     # => [storage_offset, storage_size]
 end
 
