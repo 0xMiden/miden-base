@@ -6,7 +6,7 @@
 - Add `bench-prover` crate to benchmark proving times (#1378).
 - [BREAKING] Remove `AccountIdAnchor` from account ID generation process (#1391).
 - Allow NOOP transactions and state-updating transactions against the same account in the same block (#1393).
-- Implement map in transaction kernel library (#1396).
+- Implement map based on a sorted linked list in transaction kernel library (#1396, #1428, #1478).
 - Add P2IDE standard note (#1421).
 - Added shutdown configuration options to the `miden-proving-service` proxy (#1405).
 - [BREAKING] Implement transaction script arguments for the `TransactionScript` (#1406).
@@ -27,10 +27,20 @@
 - [BREAKING] Forbid the execution of the empty transactions (#1459).
 - Temporarily bump ACCOUNT_UPDATE_MAX_SIZE to 256 KiB for compiler testing (#1464).
 - [BREAKING] `TransactionExecutor` now holds plain references instead of `Arc` for its trait objects (#1469).
-- [BREAKING] Implemented account delta commitment (#1471).
+- [BREAKING] Implemented in-kernel account delta tracking (#1471, #1404, #1460, #1481, #1491).
+- [BREAKING] Store account ID in account delta (#1493).
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
+- [BREAKING] Refactor nonce in delta from `Option<Felt>` to `Felt` (#1492).
+- Normalize account deltas to avoid including no-op updates (#1496).
+- [BREAKING] Refactor transaction to output `ACCOUNT_UPDATE_COMMITMENT` (#1500).
 - Added `Note::is_network_note()` accessor (#1485).
 - [BREAKING] Update handling of the shared modules (#1490).
+- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
+- [BREAKING] Introduce errors in `MockChain` API (#1508).
+- [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
+- Implement serialization for `LexicographicWord` (#1524).
+- Add `with_auth_component` to `AccountBuilder` (#1480).
+- [BREAKING] Refactor account authentication to require a procedure containing `auth__` in its name (#1480).
 - Added `ScriptBuilder` to streamline building note & transaction scripts (#TBD).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only

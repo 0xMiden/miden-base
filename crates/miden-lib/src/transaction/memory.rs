@@ -22,8 +22,10 @@ pub type StorageSlot = u8;
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
+// | Account delta      | 532_480 (133_120)                     | 532_746 (133_186)                   |                                             |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)               | Enough for 2_097_151 key-value pairs        |
 
 // Relative layout of one account
 //
@@ -31,7 +33,7 @@ pub type StorageSlot = u8;
 //
 // | Section           | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                             |
 // | ----------------- | :-----------------------------------: | :---------------------------------: | ----------------------------------- |
-// | Id and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
+// | ID and nonce      | 0 (0)                                 | 3 (0)                               |                                     |
 // | Vault root        | 4 (1)                                 | 7 (1)                               |                                     |
 // | Storage root      | 8 (2)                                 | 11 (2)                              |                                     |
 // | Code root         | 12 (3)                                | 15 (3)                              |                                     |
@@ -41,7 +43,21 @@ pub type StorageSlot = u8;
 // | Padding           | 2_080 (520)                           | 2_083 (520)                         |                                     |
 // | Num storage slots | 2_084 (521)                           | 2_087 (521)                         |                                     |
 // | Storage slot info | 2_088 (522)                           | 4_127 (1031)                        | 255 slots max, 8 elements each      |
-// | Padding           | 4_128 (1032)                          | 8_191 (2047)                        |                                     |
+// | Initial slot info | 4_128 (1032)                          | 6_167 (1541)                        | Only present on the native account  |
+// | Padding           | 6_168 (1541)                          | 8_191 (2047)                        |                                     |
+
+// Relative layout of the native account's delta.
+//
+// Here the "end pointer" is the last memory pointer occupied by the current data
+//
+// For now each Storage Map pointer (a link map ptr) occupies a single element.
+//
+// | Section                      | Start address (word pointer) | End address (word pointer) | Comment                             |
+// | ---------------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
+// | Nonce                        | 0 (0)                        | 3 (0)                      |                                     |
+// | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
+// | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
+// | Storage Map Delta Ptrs       | 12 (3)                       | 267 (66)                   | Max 255 storage map deltas          |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------
@@ -264,9 +280,18 @@ pub const NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR: MemoryAddress =
 /// account data segment.
 pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2088;
 
+/// The number of elements that each storage slot takes up in memory.
+pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
+
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
+
+// ACCOUNT DELTA
+// ------------------------------------------------------------------------------------------------
+
+/// The memory address at which the nonce delta is stored.
+pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
 
 // NOTES DATA
 // ================================================================================================
@@ -367,3 +392,29 @@ pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
 pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
 pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
+
+// LINK MAP
+// ------------------------------------------------------------------------------------------------
+
+/// The inclusive start of the link map dynamic memory region.
+pub const LINK_MAP_REGION_START_PTR: MemoryAddress = 33_554_448;
+
+/// The non-inclusive end of the link map dynamic memory region.
+pub const LINK_MAP_REGION_END_PTR: MemoryAddress = 67_108_864;
+
+/// [`LINK_MAP_REGION_START_PTR`] + the currently used size stored at this pointer defines the next
+/// entry pointer that will be allocated.
+pub const LINK_MAP_USED_MEMORY_SIZE: MemoryAddress = 33_554_432;
+
+/// The size of each map entry, i.e. four words.
+pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 16;
+
+const _: () = assert!(
+    LINK_MAP_REGION_START_PTR % LINK_MAP_ENTRY_SIZE == 0,
+    "link map region start ptr should be aligned to entry size"
+);
+
+const _: () = assert!(
+    (LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR) % LINK_MAP_ENTRY_SIZE == 0,
+    "the link map memory range should cleanly contain a multiple of the entry size"
+);

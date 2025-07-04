@@ -2,7 +2,7 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, ZERO,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
@@ -13,8 +13,8 @@ use miden_objects::{
     },
     vm::{AdviceMap, StackOutputs},
 };
-pub use vm_processor::MastForestStore;
-use vm_processor::{AdviceInputs, ExecutionOptions, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{AdviceInputs, MemAdviceProvider, Process, RecAdviceProvider};
+pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{TransactionExecutorError, TransactionHost};
@@ -67,6 +67,22 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             )
             .expect("Must not fail while max cycles is more than min trace length"),
         }
+    }
+
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
+    /// [TransactionAuthenticator] and [ExecutionOptions].
+    ///
+    /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
+    /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
+    pub fn with_options(
+        data_store: &'store dyn DataStore,
+        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        exec_options: ExecutionOptions,
+    ) -> Result<Self, TransactionExecutorError> {
+        validate_num_cycles(exec_options.max_cycles())?;
+        validate_num_cycles(exec_options.expected_cycles())?;
+
+        Ok(Self { data_store, authenticator, exec_options })
     }
 
     /// Puts the [TransactionExecutor] into debug mode.
@@ -159,7 +175,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         // Execute the transaction kernel
-        let result = vm_processor::execute(
+        let trace = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
             &mut host,
@@ -168,7 +184,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
-        build_executed_transaction(tx_args, tx_inputs, result.stack_outputs().clone(), host)
+        build_executed_transaction(tx_args, tx_inputs, trace.stack_outputs().clone(), host)
     }
 
     // SCRIPT EXECUTION
@@ -364,19 +380,15 @@ fn build_executed_transaction(
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
-    let final_account = &tx_outputs.account;
     let initial_account = tx_inputs.account();
+    let final_account = &tx_outputs.account;
 
-    // Temporarily copy the account update commitment into the advice witness map, if it is present,
-    // so it can be accessed in account delta tests.
-    {
-        let host_delta_commitment = account_delta.commitment();
-        let account_update_commitment =
-            miden_objects::Hasher::merge(&[final_account.commitment(), host_delta_commitment]);
-
-        if let Some(value) = advice_map.get(&account_update_commitment) {
-            advice_witness.extend_map([(account_update_commitment, value.into())]);
-        }
+    let host_delta_commitment = account_delta.commitment();
+    if tx_outputs.account_delta_commitment != host_delta_commitment {
+        return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
+            in_kernel_commitment: tx_outputs.account_delta_commitment,
+            host_commitment: host_delta_commitment,
+        });
     }
 
     if initial_account.id() != final_account.id() {
@@ -387,18 +399,11 @@ fn build_executed_transaction(
     }
 
     // make sure nonce delta was computed correctly
-    let nonce_delta = final_account.nonce() - initial_account.nonce();
-    if nonce_delta == ZERO {
-        if account_delta.nonce().is_some() {
-            return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-                expected: None,
-                actual: account_delta.nonce(),
-            });
-        }
-    } else if final_account.nonce() != account_delta.nonce().unwrap_or_default() {
+    let nonce_increment = final_account.nonce() - initial_account.nonce();
+    if nonce_increment != account_delta.nonce_increment() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: Some(final_account.nonce()),
-            actual: account_delta.nonce(),
+            expected: nonce_increment,
+            actual: account_delta.nonce_increment(),
         });
     }
 
@@ -457,6 +462,19 @@ fn validate_input_notes(
     }
 
     Ok(ref_blocks)
+}
+
+/// Validates that the number of cycles specified is within the allowed range.
+fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> {
+    if !(MIN_TX_EXECUTION_CYCLES..=MAX_TX_EXECUTION_CYCLES).contains(&num_cycles) {
+        Err(TransactionExecutorError::InvalidExecutionOptionsCycles {
+            min_cycles: MIN_TX_EXECUTION_CYCLES,
+            max_cycles: MAX_TX_EXECUTION_CYCLES,
+            actual: num_cycles,
+        })
+    } else {
+        Ok(())
+    }
 }
 
 // HELPER ENUM

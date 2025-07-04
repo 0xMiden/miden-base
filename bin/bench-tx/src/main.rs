@@ -4,15 +4,18 @@ use std::{fs::File, io::Write, path::Path};
 use anyhow::Context;
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
-    Felt,
-    account::{AccountId, AccountStorageMode, AccountType},
+    Felt, FieldElement,
+    account::{Account, AccountId, AccountStorageMode, AccountType},
     asset::{Asset, FungibleAsset},
     crypto::rand::RpoRandomCoin,
     note::NoteType,
+    testing::{
+        account_component::IncrNonceAuthComponent,
+        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    },
     transaction::{TransactionMeasurements, TransactionScript},
 };
-use miden_testing::TransactionContextBuilder;
-use vm_processor::ONE;
+use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
 
 mod utils;
 use utils::{
@@ -58,9 +61,26 @@ fn main() -> anyhow::Result<()> {
 /// Runs the default transaction with empty transaction script and two default notes.
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE)
-        .with_mock_notes_preserved()
-        .build();
+    let assembler = TransactionKernel::testing_assembler();
+    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
+
+    let tx_context = {
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            Felt::ONE,
+            auth_component,
+            assembler,
+        );
+
+        let input_note_1 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+
+        let input_note_2 =
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(150)]);
+        TransactionContextBuilder::new(account)
+            .extend_input_notes(vec![input_note_1, input_note_2])
+            .build()
+    };
     let executed_transaction = tx_context.execute().context("failed to execute transaction")?;
 
     Ok(executed_transaction.into())

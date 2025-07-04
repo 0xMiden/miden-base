@@ -129,6 +129,8 @@ impl Account {
     /// - The number of procedures in all merged libraries is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`].
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - The first component doesn't contain exactly one authentication procedure.
+    /// - Other components contain authentication procedures.
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
     /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on all libraries.
     pub(super) fn initialize_from_components(
@@ -280,28 +282,29 @@ impl Account {
         self.storage.apply_delta(delta.storage())?;
 
         // update nonce
-        if let Some(nonce) = delta.nonce() {
-            self.set_nonce(nonce)?;
-        }
+        self.increment_nonce(delta.nonce_increment())?;
 
         Ok(())
     }
 
-    /// Sets the nonce of this account to the specified nonce value.
+    /// Increments the nonce of this account by the provided increment.
     ///
     /// # Errors
+    ///
     /// Returns an error if:
-    /// - The new nonce is smaller than the actual account nonce
-    /// - The new nonce is equal to the actual account nonce
-    pub fn set_nonce(&mut self, nonce: Felt) -> Result<(), AccountError> {
-        if self.nonce.as_int() >= nonce.as_int() {
-            return Err(AccountError::NonceNotMonotonicallyIncreasing {
-                current: self.nonce.as_int(),
-                new: nonce.as_int(),
+    /// - Incrementing the nonce overflows a [`Felt`].
+    fn increment_nonce(&mut self, nonce_increment: Felt) -> Result<(), AccountError> {
+        let new_nonce = self.nonce + nonce_increment;
+
+        if new_nonce.as_int() < self.nonce.as_int() {
+            return Err(AccountError::NonceOverflow {
+                current: self.nonce,
+                increment: nonce_increment,
+                new: new_nonce,
             });
         }
 
-        self.nonce = nonce;
+        self.nonce = new_nonce;
 
         Ok(())
     }
@@ -425,6 +428,7 @@ mod tests {
         },
         asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
         testing::{
+            account_component::NoopAuthComponent,
             account_id::{
                 ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
             },
@@ -448,7 +452,7 @@ mod tests {
     #[test]
     fn test_serde_account_delta() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-        let final_nonce = Felt::new(2);
+        let nonce_increment = Felt::new(2);
         let asset_0 = FungibleAsset::mock(15);
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
         let storage_delta = AccountStorageDeltaBuilder::new()
@@ -460,7 +464,7 @@ mod tests {
             account_id,
             vec![asset_1],
             vec![asset_0],
-            final_nonce,
+            nonce_increment,
             storage_delta,
         );
 
@@ -523,7 +527,7 @@ mod tests {
             account_id,
             vec![asset_1],
             vec![asset_0],
-            final_nonce,
+            final_nonce - init_nonce,
             storage_delta,
         );
 
@@ -601,12 +605,12 @@ mod tests {
         let mut account = build_account(vec![], init_nonce, vec![storage_slot]);
 
         // build account delta
-        let final_nonce = Felt::new(2);
+        let nonce_increment = Felt::new(1);
         let account_delta = AccountDelta::new(
             account_id,
             AccountStorageDelta::new(),
             AccountVaultDelta::default(),
-            Some(final_nonce),
+            nonce_increment,
         )
         .unwrap();
 
@@ -618,11 +622,11 @@ mod tests {
         account_id: AccountId,
         added_assets: Vec<Asset>,
         removed_assets: Vec<Asset>,
-        nonce: Felt,
+        nonce_increment: Felt,
         storage_delta: AccountStorageDelta,
     ) -> AccountDelta {
         let vault_delta = AccountVaultDelta::from_iters(added_assets, removed_assets);
-        AccountDelta::new(account_id, storage_delta, vault_delta, Some(nonce)).unwrap()
+        AccountDelta::new(account_id, storage_delta, vault_delta, nonce_increment).unwrap()
     }
 
     pub fn build_account(assets: Vec<Asset>, nonce: Felt, slots: Vec<StorageSlot>) -> Account {
@@ -675,12 +679,14 @@ mod tests {
         let library1 = Assembler::default().assemble_library([code1]).unwrap();
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
+        let auth_component: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
         let component1 = AccountComponent::new(library1, vec![]).unwrap().with_supports_all_types();
         let component2 = AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[component1, component2],
+            &[auth_component, component1, component2],
         )
         .unwrap_err();
 

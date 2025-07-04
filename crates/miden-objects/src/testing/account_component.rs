@@ -68,3 +68,112 @@ impl From<AccountMockComponent> for AccountComponent {
             .with_supports_all_types()
     }
 }
+
+// MOCK AUTH COMPONENTS
+// ================================================================================================
+
+/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+///
+/// The component defines an `auth__basic` procedure that always increments the nonce by 1.
+pub struct IncrNonceAuthComponent {
+    library: Library,
+}
+
+impl IncrNonceAuthComponent {
+    /// Creates a new IncrNonceAuthComponent using the provided assembler.
+    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
+        let library = assembler
+            .assemble_library([INCR_NONCE_AUTH_CODE])
+            .map_err(AccountError::AccountComponentAssemblyError)?;
+
+        Ok(Self { library })
+    }
+}
+
+impl From<IncrNonceAuthComponent> for AccountComponent {
+    fn from(mock_component: IncrNonceAuthComponent) -> Self {
+        AccountComponent::new(mock_component.library, vec![])
+            .expect("component should be valid")
+            .with_supports_all_types()
+    }
+}
+
+const INCR_NONCE_AUTH_CODE: &str = "
+    use.miden::account
+
+    export.auth__basic
+        push.1 exec.account::incr_nonce
+    end
+";
+
+const NOOP_AUTH_CODE: &str = "
+    use.miden::account
+
+    export.auth__noop
+        push.0 drop
+    end
+";
+
+const CONDITIONAL_AUTH_CODE: &str = "
+    use.miden::account
+
+    export.auth__conditional
+        push.0
+        exec.account::get_item
+
+        push.99.99.99.99
+        eqw
+
+        # If 99.99.99.99 is in storage, increment nonce
+        if.true
+            push.1 exec.account::incr_nonce
+        end
+        dropw dropw dropw dropw
+    end
+";
+
+/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+///
+/// The component defines an `auth__noop` procedure that does nothing (always succeeds).
+pub struct NoopAuthComponent {
+    library: Library,
+}
+
+impl NoopAuthComponent {
+    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
+        let library = assembler
+            .assemble_library([NOOP_AUTH_CODE])
+            .map_err(AccountError::AccountComponentAssemblyError)?;
+        Ok(Self { library })
+    }
+}
+
+impl From<NoopAuthComponent> for AccountComponent {
+    fn from(mock_component: NoopAuthComponent) -> Self {
+        AccountComponent::new(mock_component.library, vec![])
+            .expect("component should be valid")
+            .with_supports_all_types()
+    }
+}
+
+/// TODO: Add documentation once #1501 is ready.
+pub struct ConditionalAuthComponent {
+    library: Library,
+}
+
+impl ConditionalAuthComponent {
+    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
+        let library = assembler
+            .assemble_library([CONDITIONAL_AUTH_CODE])
+            .map_err(AccountError::AccountComponentAssemblyError)?;
+        Ok(Self { library })
+    }
+}
+
+impl From<ConditionalAuthComponent> for AccountComponent {
+    fn from(mock_component: ConditionalAuthComponent) -> Self {
+        AccountComponent::new(mock_component.library, vec![])
+            .expect("component should be valid")
+            .with_supports_all_types()
+    }
+}

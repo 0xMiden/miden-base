@@ -1,5 +1,4 @@
 use anyhow::Context;
-use assembly::diagnostics::{IntoDiagnostic, WrapErr, miette};
 use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
@@ -15,7 +14,10 @@ use miden_objects::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
     },
-    assembly::{Library, diagnostics::Report},
+    assembly::{
+        Library,
+        diagnostics::{IntoDiagnostic, Report, WrapErr, miette},
+    },
     asset::AssetVault,
     testing::{
         account_component::AccountMockComponent,
@@ -34,14 +36,16 @@ use rand_chacha::ChaCha20Rng;
 use vm_processor::{Digest, EMPTY_WORD, ExecutionError, MemAdviceProvider, ProcessState};
 
 use super::{Felt, ONE, StackInputs, Word, ZERO};
-use crate::{MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor};
+use crate::{
+    Auth, MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor,
+};
 
 // ACCOUNT CODE TESTS
 // ================================================================================================
 
 #[test]
 pub fn test_get_code() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
     let code = "
         use.kernel::prologue
         use.kernel::account
@@ -247,7 +251,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 #[test]
 fn test_get_item() -> miette::Result<()> {
     for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
         let code = format!(
             "
@@ -279,6 +283,7 @@ fn test_get_item() -> miette::Result<()> {
 #[test]
 fn test_get_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::assembler(),
@@ -352,7 +357,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
         AccountStorage::mock_item_1(),
         AccountStorage::mock_item_2(),
     ] {
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
         let code = format!(
             "
@@ -406,7 +411,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
 #[test]
 fn test_set_item() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let new_storage_item: Word = [Felt::new(91), Felt::new(92), Felt::new(93), Felt::new(94)];
 
@@ -450,6 +455,7 @@ fn test_set_map_item() -> miette::Result<()> {
     );
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::assembler(),
@@ -565,7 +571,6 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
             exec.account::get_item
             push.5.6.7.8 eqw assert
 
-            push.1 exec.account::incr_nonce
             dropw dropw
         end
     ";
@@ -606,6 +611,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     .with_supported_type(AccountType::RegularAccountUpdatableCode);
 
     let mut account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
         .with_component(component1)
         .with_component(component2)
         .build_existing()
@@ -683,6 +689,7 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
         let mock_chain = MockChain::new();
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
+            .with_auth_component(Auth::IncrNonce)
             .with_component(
                 AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                     .unwrap(),
@@ -690,7 +697,7 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
             .build()
             .context("failed to build account")?;
 
-        let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+        let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
         let tx_context = TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
             .tx_inputs(tx_inputs)
@@ -741,7 +748,7 @@ fn create_procedure_metadata_test_account(
 
     let account = Account::from_parts(id, AssetVault::default(), storage, code, Felt::from(0u32));
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[]);
+    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
@@ -814,7 +821,7 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 
 #[test]
 fn test_get_vault_root() {
-    let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
     let account = tx_context.account();
     let code = format!(
@@ -844,24 +851,25 @@ fn test_get_vault_root() {
 fn test_authenticate_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
+
     let account_code = AccountCode::from_components(
-        &[mock_component.into()],
+        &[Auth::IncrNonce.into(), mock_component.into()],
         AccountType::RegularAccountUpdatableCode,
     )
     .unwrap();
 
     let tc_0: [Felt; 4] =
-        account_code.procedures()[0].mast_root().as_elements().try_into().unwrap();
-    let tc_1: [Felt; 4] =
         account_code.procedures()[1].mast_root().as_elements().try_into().unwrap();
-    let tc_2: [Felt; 4] =
+    let tc_1: [Felt; 4] =
         account_code.procedures()[2].mast_root().as_elements().try_into().unwrap();
+    let tc_2: [Felt; 4] =
+        account_code.procedures()[3].mast_root().as_elements().try_into().unwrap();
 
     let test_cases =
         vec![(tc_0, true), (tc_1, true), (tc_2, true), ([ONE, ZERO, ONE, ZERO], false)];
 
     for (root, valid) in test_cases.into_iter() {
-        let tx_context = TransactionContextBuilder::with_standard_account(ONE).build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
         let code = format!(
             "

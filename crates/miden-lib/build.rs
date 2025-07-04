@@ -43,7 +43,7 @@ const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
 const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
 
-const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 11] = [
+const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
     TxKernelErrorCategory::Kernel,
     TxKernelErrorCategory::Prologue,
     TxKernelErrorCategory::Epilogue,
@@ -55,6 +55,7 @@ const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 11] = [
     TxKernelErrorCategory::FungibleAsset,
     TxKernelErrorCategory::NonFungibleAsset,
     TxKernelErrorCategory::Vault,
+    TxKernelErrorCategory::LinkMap,
 ];
 
 // PRE-PROCESSING
@@ -66,7 +67,7 @@ const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 11] = [
 /// - Compiles contents of asm/scripts directory into individual .masb files.
 fn main() -> Result<()> {
     // re-build when the MASM code changes
-    println!("cargo:rerun-if-changed={ASM_DIR}");
+    println!("cargo::rerun-if-changed={ASM_DIR}/");
     println!("cargo::rerun-if-env-changed=BUILD_GENERATED_FILES_IN_SRC");
 
     // Copies the MASM code to the build directory
@@ -74,7 +75,7 @@ fn main() -> Result<()> {
     let build_dir = env::var("OUT_DIR").unwrap();
     let src = Path::new(&crate_dir).join(ASM_DIR);
     let dst = Path::new(&build_dir).to_path_buf();
-    copy_directory(src, &dst);
+    copy_directory(src, &dst)?;
 
     // set source directory to {OUT_DIR}/asm
     let source_dir = dst.join(ASM_DIR);
@@ -409,15 +410,23 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
 /// Recursively copies `src` into `dst`.
 ///
 /// This function will overwrite the existing files if re-executed.
-fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) {
+fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) -> Result<()> {
     let mut prefix = src.as_ref().canonicalize().unwrap();
     // keep all the files inside the `asm` folder
     prefix.pop();
 
     let target_dir = dst.as_ref().join(ASM_DIR);
-    if !target_dir.exists() {
-        fs::create_dir_all(target_dir).unwrap();
+    if target_dir.exists() {
+        // Clear existing asm files that were copied earlier which may no longer exist.
+        fs::remove_dir_all(&target_dir)
+            .into_diagnostic()
+            .wrap_err("failed to remove ASM directory")?;
     }
+
+    // Recreate the directory structure.
+    fs::create_dir_all(&target_dir)
+        .into_diagnostic()
+        .wrap_err("failed to create ASM directory")?;
 
     let dst = dst.as_ref();
     let mut todo = vec![src.as_ref().to_path_buf()];
@@ -438,6 +447,8 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) {
             }
         }
     }
+
+    Ok(())
 }
 
 /// Copies the content of the build `shared_modules` folder to the `lib` and `miden` build folders.
@@ -747,6 +758,7 @@ enum TxKernelErrorCategory {
     FungibleAsset,
     NonFungibleAsset,
     Vault,
+    LinkMap,
 }
 
 impl TxKernelErrorCategory {
@@ -763,6 +775,7 @@ impl TxKernelErrorCategory {
             TxKernelErrorCategory::FungibleAsset => "FUNGIBLE_ASSET",
             TxKernelErrorCategory::NonFungibleAsset => "NON_FUNGIBLE_ASSET",
             TxKernelErrorCategory::Vault => "VAULT",
+            TxKernelErrorCategory::LinkMap => "LINK_MAP",
         }
     }
 }

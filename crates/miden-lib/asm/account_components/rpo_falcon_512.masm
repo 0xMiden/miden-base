@@ -2,4 +2,4 @@
 #
 # See the `RpoFalcon512` Rust type's documentation for more details.
 
-export.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
+export.::miden::contracts::auth::basic::auth__tx_rpo_falcon512

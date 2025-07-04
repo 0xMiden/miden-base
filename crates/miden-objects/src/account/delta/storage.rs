@@ -5,13 +5,10 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    Word,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
+    LexicographicWord, Serializable, Word,
 };
-use crate::{
-    Digest, EMPTY_WORD, Felt, ZERO,
-    account::{AccountStorage, StorageMap, StorageSlot},
-};
+use crate::{Digest, EMPTY_WORD, Felt, ZERO, account::StorageMap};
 
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -157,7 +154,7 @@ impl AccountStorageDelta {
                         }
 
                         for (key, value) in map_delta.entries() {
-                            elements.extend_from_slice(key.as_elements());
+                            elements.extend_from_slice(key.inner().as_elements());
                             elements.extend_from_slice(value);
                         }
 
@@ -176,6 +173,11 @@ impl AccountStorageDelta {
                 },
             }
         }
+    }
+
+    /// Consumes self and returns the underlying parts of the storage delta.
+    pub fn into_parts(self) -> (BTreeMap<u8, Word>, BTreeMap<u8, StorageMapDelta>) {
+        (self.values, self.maps)
     }
 }
 
@@ -199,27 +201,6 @@ impl AccountStorageDelta {
             ),
             maps: BTreeMap::from_iter(updated_maps),
         }
-    }
-}
-
-/// Converts an [AccountStorage] into an [AccountStorageDelta] for initial delta construction.
-impl From<AccountStorage> for AccountStorageDelta {
-    fn from(storage: AccountStorage) -> Self {
-        let mut values = BTreeMap::new();
-        let mut maps = BTreeMap::new();
-        for (slot_idx, slot) in storage.into_iter().enumerate() {
-            let slot_idx: u8 = slot_idx.try_into().expect("slot index must fit into `u8`");
-            match slot {
-                StorageSlot::Value(value) => {
-                    values.insert(slot_idx, value);
-                },
-                StorageSlot::Map(map) => {
-                    maps.insert(slot_idx, map.into());
-                },
-            }
-        }
-
-        Self { values, maps }
     }
 }
 
@@ -291,12 +272,15 @@ impl Deserializable for AccountStorageDelta {
 ///
 /// The differences are represented as leaf updates: a map of updated item key ([Digest]) to
 /// value ([Word]). For cleared items the value is [EMPTY_WORD].
+///
+/// The [`LexicographicWord`] wrapper is necessary to order the keys in the same way as the
+/// in-kernel account delta which uses a link map.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct StorageMapDelta(BTreeMap<Digest, Word>);
+pub struct StorageMapDelta(BTreeMap<LexicographicWord<Digest>, Word>);
 
 impl StorageMapDelta {
     /// Creates a new storage map delta from the provided leaves.
-    pub fn new(map: BTreeMap<Digest, Word>) -> Self {
+    pub fn new(map: BTreeMap<LexicographicWord<Digest>, Word>) -> Self {
         Self(map)
     }
 
@@ -306,13 +290,13 @@ impl StorageMapDelta {
     }
 
     /// Returns a reference to the updated entries in this storage map delta.
-    pub fn entries(&self) -> &BTreeMap<Digest, Word> {
+    pub fn entries(&self) -> &BTreeMap<LexicographicWord<Digest>, Word> {
         &self.0
     }
 
     /// Inserts an item into the storage map delta.
     pub fn insert(&mut self, key: Digest, value: Word) {
-        self.0.insert(key, value);
+        self.0.insert(LexicographicWord::new(key), value);
     }
 
     /// Returns true if storage map delta contains no updates.
@@ -326,14 +310,28 @@ impl StorageMapDelta {
         self.0.extend(other.0);
     }
 
+    /// Returns a mutable reference to the underlying map.
+    pub fn as_map_mut(&mut self) -> &mut BTreeMap<LexicographicWord<Digest>, Word> {
+        &mut self.0
+    }
+
     /// Returns an iterator of all the cleared keys in the storage map.
     fn cleared_keys(&self) -> impl Iterator<Item = &Digest> + '_ {
-        self.0.iter().filter(|&(_, value)| value == &EMPTY_WORD).map(|(key, _)| key)
+        self.0
+            .iter()
+            .filter(|&(_, value)| value == &EMPTY_WORD)
+            .map(|(key, _)| key.inner())
     }
 
     /// Returns an iterator of all the updated entries in the storage map.
     fn updated_entries(&self) -> impl Iterator<Item = (&Digest, &Word)> + '_ {
-        self.0.iter().filter(|&(_, value)| value != &EMPTY_WORD)
+        self.0.iter().filter_map(|(key, value)| {
+            if value != &EMPTY_WORD {
+                Some((key.inner(), value))
+            } else {
+                None
+            }
+        })
     }
 }
 
@@ -347,16 +345,30 @@ impl StorageMapDelta {
         Self(BTreeMap::from_iter(
             cleared_leaves
                 .into_iter()
-                .map(|key| (key.into(), EMPTY_WORD))
-                .chain(updated_leaves.into_iter().map(|(key, value)| (key.into(), value))),
+                .map(|key| (LexicographicWord::new(Digest::from(key)), EMPTY_WORD))
+                .chain(
+                    updated_leaves
+                        .into_iter()
+                        .map(|(key, value)| (LexicographicWord::new(Digest::from(key)), value)),
+                ),
         ))
+    }
+
+    /// Consumes self and returns the underlying map.
+    pub fn into_map(self) -> BTreeMap<LexicographicWord<Digest>, Word> {
+        self.0
     }
 }
 
 /// Converts a [StorageMap] into a [StorageMapDelta] for initial delta construction.
 impl From<StorageMap> for StorageMapDelta {
     fn from(map: StorageMap) -> Self {
-        StorageMapDelta::new(map.into_entries())
+        StorageMapDelta::new(
+            map.into_entries()
+                .into_iter()
+                .map(|(key, value)| (LexicographicWord::new(key), value))
+                .collect(),
+        )
     }
 }
 
@@ -395,13 +407,13 @@ impl Deserializable for StorageMapDelta {
         let cleared_count = source.read_usize()?;
         for _ in 0..cleared_count {
             let cleared_key = source.read()?;
-            map.insert(cleared_key, EMPTY_WORD);
+            map.insert(LexicographicWord::new(cleared_key), EMPTY_WORD);
         }
 
         let updated_count = source.read_usize()?;
         for _ in 0..updated_count {
             let (updated_key, updated_value) = source.read()?;
-            map.insert(updated_key, updated_value);
+            map.insert(LexicographicWord::new(updated_key), updated_value);
         }
 
         Ok(Self::new(map))

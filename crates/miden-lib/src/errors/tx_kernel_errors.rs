@@ -34,6 +34,8 @@ pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = Mas
 pub const ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32: MasmError = MasmError::from_static_str("account nonce cannot be increased by a greater than u32 value");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
+/// Error Message: "account procedure is not the authentication procedure"
+pub const ERR_ACCOUNT_PROC_NOT_AUTH_PROC: MasmError = MasmError::from_static_str("account procedure is not the authentication procedure");
 /// Error Message: "account procedure is not part of the account code"
 pub const ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE: MasmError = MasmError::from_static_str("account procedure is not part of the account code");
 /// Error Message: "failed to read an account map item from a non-map storage slot"
@@ -107,6 +109,23 @@ pub const ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = MasmErro
 
 /// Error Message: "provided kernel procedure offset is out of bounds"
 pub const ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided kernel procedure offset is out of bounds");
+
+/// Error Message: "map cannot be empty when proving absence after an entry"
+pub const ERR_LINK_MAP_CANNOT_BE_EMPTY_ON_ABSENCE_AFTER_ENTRY: MasmError = MasmError::from_static_str("map cannot be empty when proving absence after an entry");
+/// Error Message: "host-provided entry ptr is not 'link map entry'-aligned"
+pub const ERR_LINK_MAP_ENTRY_PTR_IS_NOT_ENTRY_ALIGNED: MasmError = MasmError::from_static_str("host-provided entry ptr is not 'link map entry'-aligned");
+/// Error Message: "host-provided entry ptr is outside the valid memory region"
+pub const ERR_LINK_MAP_ENTRY_PTR_IS_OUTSIDE_VALID_MEMORY_REGION: MasmError = MasmError::from_static_str("host-provided entry ptr is outside the valid memory region");
+/// Error Message: "map ptr stored in host-provided entry does not match actual pointer of the map"
+pub const ERR_LINK_MAP_MAP_PTR_IN_ENTRY_DOES_NOT_MATCH_EXPECTED_MAP_PTR: MasmError = MasmError::from_static_str("map ptr stored in host-provided entry does not match actual pointer of the map");
+/// Error Message: "number of link map entries exceeds maximum"
+pub const ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED: MasmError = MasmError::from_static_str("number of link map entries exceeds maximum");
+/// Error Message: "provided key does not match key in map entry"
+pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_EQUAL_TO_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key does not match key in map entry");
+/// Error Message: "provided key is not greater than the entry key"
+pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_GREATER_THAN_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key is not greater than the entry key");
+/// Error Message: "provided key is not less than the entry key"
+pub const ERR_LINK_MAP_PROVIDED_KEY_NOT_LESS_THAN_ENTRY_KEY: MasmError = MasmError::from_static_str("provided key is not less than the entry key");
 
 /// Error Message: "non-fungible asset that already exists in the note cannot be added again"
 pub const ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS: MasmError = MasmError::from_static_str("non-fungible asset that already exists in the note cannot be added again");

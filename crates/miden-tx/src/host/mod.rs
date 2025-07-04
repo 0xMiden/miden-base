@@ -26,6 +26,11 @@ use vm_processor::{
 mod account_delta_tracker;
 use account_delta_tracker::AccountDeltaTracker;
 
+mod storage_delta_tracker;
+
+mod link_map;
+pub use link_map::{Entry, EntryMetadata, LinkMap};
+
 mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
@@ -125,7 +130,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             adv_provider,
             mast_store,
             scripts_mast_store,
-            account_delta: AccountDeltaTracker::new(account),
+            account_delta: AccountDeltaTracker::new(
+                account.id(),
+                account.storage().header().clone(),
+            ),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
             authenticator,
@@ -284,11 +292,11 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
             process.get_stack_item(5),
         ];
 
-        // update the delta tracker only if the current and new values are different
-        if current_slot_value != new_slot_value {
-            let slot_index = slot_index.as_int() as u8;
-            self.account_delta.storage_delta().set_item(slot_index, new_slot_value);
-        }
+        self.account_delta.storage().set_item(
+            slot_index.as_int() as u8,
+            current_slot_value,
+            new_slot_value,
+        );
 
         Ok(())
     }
@@ -296,7 +304,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Extracts information from the process state about the storage map being updated and
     /// records the latest values of this storage map.
     ///
-    /// Expected stack state: [slot_index, NEW_MAP_KEY, NEW_MAP_VALUE, ...]
+    /// Expected stack state: [slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]
     pub fn on_account_storage_after_set_map_item(
         &mut self,
         process: ProcessState,
@@ -315,25 +323,33 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         }
 
         // get the KEY to which the slot is being updated
-        let new_map_key = [
+        let key = [
             process.get_stack_item(4),
             process.get_stack_item(3),
             process.get_stack_item(2),
             process.get_stack_item(1),
         ];
 
-        // get the VALUE to which the slot is being updated
-        let new_map_value = [
+        // get the previous VALUE of the slot
+        let prev_map_value = [
             process.get_stack_item(8),
             process.get_stack_item(7),
             process.get_stack_item(6),
             process.get_stack_item(5),
         ];
 
-        let slot_index = slot_index.as_int() as u8;
-        self.account_delta.storage_delta().set_map_item(
-            slot_index,
-            new_map_key.into(),
+        // get the VALUE to which the slot is being updated
+        let new_map_value = [
+            process.get_stack_item(12),
+            process.get_stack_item(11),
+            process.get_stack_item(10),
+            process.get_stack_item(9),
+        ];
+
+        self.account_delta.storage().set_map_item(
+            slot_index.as_int() as u8,
+            key.into(),
+            prev_map_value,
             new_map_value,
         );
 
@@ -612,6 +628,14 @@ impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
             }
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
+                Ok(())
+            }
+            TransactionEvent::LinkMapSetEvent => {
+                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())?;
+                Ok(())
+            },
+            TransactionEvent::LinkMapGetEvent => {
+                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())?;
                 Ok(())
             }
         }

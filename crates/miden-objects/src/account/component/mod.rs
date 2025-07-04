@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeSet, vec::Vec};
 
 use assembly::{Assembler, Compile, Library};
-use vm_processor::MastForest;
+use vm_processor::{Digest, MastForest};
 
 mod template;
 pub use template::*;
@@ -144,6 +144,18 @@ impl AccountComponent {
     /// Returns `true` if this component supports the given `account_type`, `false` otherwise.
     pub fn supports_type(&self, account_type: AccountType) -> bool {
         self.supported_types.contains(&account_type)
+    }
+
+    /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
+    pub(crate) fn get_procedures(&self) -> Vec<(Digest, bool)> {
+        let mut procedures = Vec::new();
+        for module in self.library.module_infos() {
+            for (_, procedure_info) in module.procedures() {
+                let is_auth = procedure_info.name.contains("auth__");
+                procedures.push((procedure_info.digest, is_auth));
+            }
+        }
+        procedures
     }
 
     // MUTATORS

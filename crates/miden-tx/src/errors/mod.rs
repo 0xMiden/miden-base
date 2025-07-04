@@ -2,9 +2,9 @@ use alloc::{boxed::Box, string::String};
 use core::error::Error;
 
 use miden_objects::{
-    AccountError, Felt, ProvenTransactionError, TransactionInputError, TransactionOutputError,
-    account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic, block::BlockNumber,
-    crypto::merkle::SmtProofError, note::NoteId,
+    AccountError, Digest, Felt, ProvenTransactionError, TransactionInputError,
+    TransactionOutputError, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
+    block::BlockNumber, crypto::merkle::SmtProofError, note::NoteId,
 };
 use miden_verifier::VerificationError;
 use thiserror::Error;
@@ -19,18 +19,32 @@ pub enum TransactionExecutorError {
     FetchTransactionInputsFailed(#[source] DataStoreError),
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
     ForeignAccountNotAnchoredInReference(AccountId),
+    #[error(
+        "execution options' cycles must be between {min_cycles} and {max_cycles}, but found {actual}"
+    )]
+    InvalidExecutionOptionsCycles {
+        min_cycles: u32,
+        max_cycles: u32,
+        actual: u32,
+    },
     #[error("failed to create transaction inputs")]
     InvalidTransactionInputs(#[source] TransactionInputError),
+    #[error("failed to process account update commitment: {0}")]
+    AccountUpdateCommitment(&'static str),
+    #[error(
+        "account delta commitment computed in transaction kernel ({in_kernel_commitment}) does not match account delta computed via the host ({host_commitment})"
+    )]
+    InconsistentAccountDeltaCommitment {
+        in_kernel_commitment: Digest,
+        host_commitment: Digest,
+    },
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
     InconsistentAccountId {
         input_id: AccountId,
         output_id: AccountId,
     },
-    #[error("expected account nonce {expected:?}, found {actual:?}")]
-    InconsistentAccountNonceDelta {
-        expected: Option<Felt>,
-        actual: Option<Felt>,
-    },
+    #[error("expected account nonce delta to be {expected}, found {actual}")]
+    InconsistentAccountNonceDelta { expected: Felt, actual: Felt },
     #[error("account witness provided for account ID {0} is invalid")]
     InvalidAccountWitness(AccountId, #[source] SmtProofError),
     #[error(

@@ -28,6 +28,7 @@ use crate::{
 ///
 /// The methods that are required to be called are:
 ///
+/// - [`AccountBuilder::with_auth_component`],
 /// - [`AccountBuilder::with_component`], which must be called at least once.
 ///
 /// Under the `testing` feature, it is possible to:
@@ -40,6 +41,7 @@ pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]
     assets: Vec<crate::asset::Asset>,
     components: Vec<AccountComponent>,
+    auth_component: Option<AccountComponent>,
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     init_seed: [u8; 32],
@@ -56,6 +58,7 @@ impl AccountBuilder {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
             components: vec![],
+            auth_component: None,
             init_seed,
             account_type: AccountType::RegularAccountUpdatableCode,
             storage_mode: AccountStorageMode::Private,
@@ -90,8 +93,21 @@ impl AccountBuilder {
         self
     }
 
+    /// Adds a designated authentication [`AccountComponent`] to the builder.
+    ///
+    /// This component may contain multiple procedures, but is expected to contain exactly one
+    /// authentication procedure (named `auth__*`).
+    /// Calling this method multiple times will override the previous auth component.
+    ///
+    /// Procedures from this component will be placed at the beginning of the account procedure
+    /// list.
+    pub fn with_auth_component(mut self, account_component: impl Into<AccountComponent>) -> Self {
+        self.auth_component = Some(account_component.into());
+        self
+    }
+
     /// Builds the common parts of testing and non-testing code.
-    fn build_inner(&self) -> Result<(AssetVault, AccountCode, AccountStorage), AccountError> {
+    fn build_inner(&mut self) -> Result<(AssetVault, AccountCode, AccountStorage), AccountError> {
         #[cfg(any(feature = "testing", test))]
         let vault = AssetVault::new(&self.assets).map_err(|err| {
             AccountError::BuildError(format!("asset vault failed to build: {err}"), None)
@@ -100,15 +116,21 @@ impl AccountBuilder {
         #[cfg(all(not(feature = "testing"), not(test)))]
         let vault = AssetVault::default();
 
-        let (code, storage) =
-            Account::initialize_from_components(self.account_type, &self.components).map_err(
-                |err| {
-                    AccountError::BuildError(
-                        "account components failed to build".into(),
-                        Some(Box::new(err)),
-                    )
-                },
-            )?;
+        let auth_component = self
+            .auth_component
+            .take()
+            .ok_or(AccountError::BuildError("auth component must be set".into(), None))?;
+
+        let mut components = vec![auth_component];
+        components.append(&mut self.components);
+
+        let (code, storage) = Account::initialize_from_components(self.account_type, &components)
+            .map_err(|err| {
+            AccountError::BuildError(
+                "account components failed to build".into(),
+                Some(Box::new(err)),
+            )
+        })?;
 
         Ok((vault, code, storage))
     }
@@ -146,11 +168,13 @@ impl AccountBuilder {
     /// - The number of procedures in all merged components is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`](crate::account::AccountCode::MAX_NUM_PROCEDURES).
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - Authentication component is missing.
+    /// - Multiple authentication procedures are found.
     /// - The number of [`StorageSlot`](crate::account::StorageSlot)s of all components exceeds 255.
     /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on the given components.
     /// - If duplicate assets were added to the builder (only under the `testing` feature).
     /// - If the vault is not empty on new accounts (only under the `testing` feature).
-    pub fn build(self) -> Result<(Account, Word), AccountError> {
+    pub fn build(mut self) -> Result<(Account, Word), AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         #[cfg(any(feature = "testing", test))]
@@ -201,7 +225,7 @@ impl AccountBuilder {
     /// The [`AccountId`] is constructed by slightly modifying `init_seed[0..8]` to be a valid ID.
     ///
     /// For possible errors, see the documentation of [`Self::build`].
-    pub fn build_existing(self) -> Result<Account, AccountError> {
+    pub fn build_existing(mut self) -> Result<Account, AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         let account_id = {
@@ -231,7 +255,7 @@ mod tests {
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::account::StorageSlot;
+    use crate::{account::StorageSlot, testing::account_component::NoopAuthComponent};
 
     const CUSTOM_CODE1: &str = "
           export.foo
@@ -296,6 +320,7 @@ mod tests {
         let storage_slot2 = 42;
 
         let (account, seed) = Account::builder([5; 32])
+            .with_auth_component(NoopAuthComponent::new(Assembler::default()).unwrap())
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
                 slot0: storage_slot1,
@@ -317,7 +342,7 @@ mod tests {
         assert_eq!(account.id(), computed_id);
 
         // The merged code should have one procedure from each library.
-        assert_eq!(account.code.procedure_roots().count(), 2);
+        assert_eq!(account.code.procedure_roots().count(), 3);
 
         let foo_root = CUSTOM_LIBRARY1.mast_forest()
             [CUSTOM_LIBRARY1.get_export_node_id(CUSTOM_LIBRARY1.exports().next().unwrap())]
@@ -363,6 +388,7 @@ mod tests {
         let storage_slot0 = 25;
 
         let build_error = Account::builder([0xff; 32])
+            .with_auth_component(NoopAuthComponent::new(Assembler::default()).unwrap())
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_assets(AssetVault::mock().assets())
             .build()

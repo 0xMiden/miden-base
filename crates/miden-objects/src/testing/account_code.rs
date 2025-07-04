@@ -2,7 +2,7 @@ use assembly::{Assembler, Library};
 
 use crate::{
     account::{AccountCode, AccountComponent, AccountType},
-    testing::account_component::AccountMockComponent,
+    testing::account_component::{AccountMockComponent, NoopAuthComponent},
 };
 
 pub const CODE: &str = "
@@ -23,19 +23,11 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
     export.::miden::contracts::wallets::basic::receive_asset
     export.::miden::contracts::wallets::basic::create_note
     export.::miden::contracts::wallets::basic::move_asset_to_note
-    export.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
     export.::miden::contracts::faucets::basic_fungible::distribute
 
     ### Note: all account's export procedures below should be only called or dyncall'ed, so it 
     ### is assumed that the operand stack at the beginning of their execution is pad'ed and 
     ### doesn't have any other valuable information.
-
-    # Stack:  [value, pad(15)]
-    # Output: [pad(16)]
-    export.incr_nonce
-        exec.account::incr_nonce
-        # => [pad(16)]
-    end
 
     # Stack:  [index, VALUE_TO_SET, pad(11)]
     # Output: [PREVIOUS_STORAGE_VALUE, pad(12)]
@@ -131,15 +123,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
 
 // ACCOUNT ASSEMBLY CODE
 // ================================================================================================
-
-pub const DEFAULT_AUTH_SCRIPT: &str = "
-    begin
-        padw padw padw padw
-        call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
-        dropw dropw dropw dropw
-    end
-";
-
 impl AccountCode {
     /// Creates a mock [Library] which can be used to assemble programs and as a library to create a
     /// mock [AccountCode] interface. Transaction and note scripts that make use of this interface
@@ -153,6 +136,11 @@ impl AccountCode {
         let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
             .unwrap()
             .with_supports_all_types();
-        Self::from_components(&[component], AccountType::RegularAccountUpdatableCode).unwrap()
+        let auth_component = NoopAuthComponent::new(Assembler::default()).unwrap().into();
+        Self::from_components(
+            &[auth_component, component],
+            AccountType::RegularAccountUpdatableCode,
+        )
+        .unwrap()
     }
 }
