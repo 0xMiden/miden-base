@@ -41,7 +41,7 @@ pub fn prove_send_swap_note() {
 
             push.{asset}
             call.::miden::contracts::wallets::basic::move_asset_to_note
-            call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
+            call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
             dropw dropw dropw dropw
         end
         ",

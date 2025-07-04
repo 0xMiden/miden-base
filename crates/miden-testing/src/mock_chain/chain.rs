@@ -26,11 +26,9 @@ use miden_objects::{
     },
     crypto::merkle::SmtProof,
     note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
-    testing::account_code::DEFAULT_AUTH_SCRIPT,
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, OrderedTransactionHeaders,
         OutputNote, PartialBlockchain, ProvenTransaction, TransactionHeader, TransactionInputs,
-        TransactionScript,
     },
 };
 use rand::{Rng, SeedableRng};
@@ -110,7 +108,7 @@ use crate::{
 /// // Add a recipient wallet.
 /// let receiver = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
 /// // Add a wallet with assets.
-/// let sender = mock_chain.add_pending_existing_wallet(Auth::NoAuth, vec![]);
+/// let sender = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
 /// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
 ///
 /// // Add a pending P2ID note to the chain.
@@ -550,9 +548,7 @@ impl MockChain {
     ///   This is the initial account of the transaction with the account delta applied.
     ///
     /// In all cases, if the chain contains a seed or authenticator for the account, they are added
-    /// to the builder. Additionally, if the account is set to authenticate with
-    /// [`Auth::BasicAuth`], the executed transaction script is defaulted to
-    /// [`DEFAULT_AUTH_SCRIPT`].
+    /// to the builder.
     ///
     /// [`TxContextInput::Account`] and [`TxContextInput::ExecutedTransaction`] can be used to build
     /// a chain of transactions against the same account that build on top of each other. For
@@ -607,20 +603,10 @@ impl MockChain {
             )
             .context("failed to gather transaction inputs")?;
 
-        let mut tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
+        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
             .authenticator(mock_account.authenticator().cloned())
             .account_seed(mock_account.seed().cloned())
             .tx_inputs(tx_inputs);
-
-        if mock_account.authenticator().is_some() {
-            let tx_script = TransactionScript::compile(
-                DEFAULT_AUTH_SCRIPT,
-                TransactionKernel::testing_assembler_with_mock_account(),
-            )
-            .expect("auth script is valid");
-
-            tx_context_builder = tx_context_builder.tx_script(tx_script);
-        }
 
         Ok(tx_context_builder)
     }
@@ -1005,13 +991,8 @@ impl MockChain {
             .with_component(basic_faucet)
             .account_type(AccountType::FungibleFaucet);
 
-        let authenticator = match auth_method.build_component() {
-            Some((auth_component, authenticator)) => {
-                account_builder = account_builder.with_component(auth_component);
-                Some(authenticator)
-            },
-            None => None,
-        };
+        let (auth_component, authenticator) = auth_method.build_component();
+        account_builder = account_builder.with_auth_component(auth_component);
         let mut account = account_builder
             .build_existing()
             .context("failed to build account from builder")?;
@@ -1049,13 +1030,8 @@ impl MockChain {
         mut account_builder: AccountBuilder,
         account_state: AccountState,
     ) -> anyhow::Result<Account> {
-        let authenticator = match auth_method.build_component() {
-            Some((auth_component, authenticator)) => {
-                account_builder = account_builder.with_component(auth_component);
-                Some(authenticator)
-            },
-            None => None,
-        };
+        let (auth_component, authenticator) = auth_method.build_component();
+        account_builder = account_builder.with_auth_component(auth_component);
 
         let (account, seed) = if let AccountState::New = account_state {
             let (account, seed) =
@@ -1547,6 +1523,7 @@ mod tests {
     fn with_accounts() {
         let account = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Public)
+            .with_auth_component(Auth::IncrNonce)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),

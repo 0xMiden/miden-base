@@ -9,9 +9,7 @@ use miden_objects::{
     block::BlockNumber,
     crypto::rand::RpoRandomCoin,
     note::{Note, NoteId, NoteTag, NoteType},
-    testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
-    },
+    testing::{account_component::AccountMockComponent, note::NoteBuilder},
     transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
 };
 use rand::{Rng, SeedableRng, rngs::SmallRng};
@@ -31,7 +29,7 @@ pub fn generate_account(chain: &mut MockChain) -> Account {
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
     chain
-        .add_pending_account_from_builder(Auth::NoAuth, account_builder, AccountState::Exists)
+        .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")
 }
 
@@ -98,7 +96,6 @@ pub fn generate_executed_tx_with_authenticated_notes(
     let tx_context = chain
         .build_tx_context(input, notes, &[])
         .expect("failed to build tx context")
-        .tx_script(authenticate_mock_account_tx_script(u16::MAX))
         .build();
     tx_context.execute().unwrap()
 }
@@ -110,27 +107,6 @@ pub fn generate_tx_with_authenticated_notes(
 ) -> ProvenTransaction {
     let executed_tx = generate_executed_tx_with_authenticated_notes(chain, account_id, notes);
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
-}
-
-/// Generates a NOOP transaction, i.e. one that doesn't change the state of the account.
-///
-/// To make this transaction non-empty, it consumes one "noop note", which does nothing.
-pub fn generate_noop_tx(
-    chain: &mut MockChain,
-    input: impl Into<TxContextInput>,
-) -> ExecutedTransaction {
-    let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
-        .build(&TransactionKernel::assembler())
-        .expect("failed to create the noop note");
-    chain.add_pending_note(OutputNote::Full(noop_note.clone()));
-    chain.prove_next_block().expect("failed to prove block");
-
-    let tx_context = chain
-        .build_tx_context(input.into(), &[noop_note.id()], &[])
-        .expect("failed to build tx context")
-        .extend_input_notes(vec![noop_note])
-        .build();
-    tx_context.execute().unwrap()
 }
 
 /// Generates a transaction that expires at the given block number.
@@ -146,7 +122,7 @@ pub fn generate_tx_with_expiration(
     let tx_context = chain
         .build_tx_context(input, &[], &[])
         .expect("failed to build tx context")
-        .tx_script(authenticate_mock_account_tx_script(expiration_delta.as_u32() as u16))
+        .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
         .build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
@@ -160,28 +136,17 @@ pub fn generate_tx_with_unauthenticated_notes(
     let tx_context = chain
         .build_tx_context(account_id, &[], notes)
         .expect("failed to build tx context")
-        .tx_script(authenticate_mock_account_tx_script(u16::MAX))
         .build();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
-fn authenticate_mock_account_tx_script(expiration_delta: u16) -> TransactionScript {
+fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
     let code = format!(
         "
-        use.test::account
         use.miden::tx
 
         begin
-            padw padw padw
-            push.0.0.0.1
-            # => [1, pad(15)]
-
-            call.account::incr_nonce
-            # => [pad(16)]
-
-            dropw dropw dropw dropw
-
             push.{expiration_delta}
             exec.tx::update_expiration_block_delta
         end

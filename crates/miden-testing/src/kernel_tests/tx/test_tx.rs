@@ -310,6 +310,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
 
@@ -732,6 +733,7 @@ fn test_build_recipient_hash() {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
 
