@@ -14,17 +14,44 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 /// A builder for compiling note scripts and transaction scripts with optional library dependencies.
 ///
 /// The ScriptBuilder simplifies the process of creating transaction scripts by providing:
-/// - A clean API for adding multiple libraries
+/// - A clean API for adding multiple libraries with static or dynamic linking
 /// - Automatic assembler configuration with all added libraries
 /// - Debug mode support
+/// - Builder pattern support for method chaining
 ///
-/// The typical workflow is:
+/// ## Static vs Dynamic Linking
+///
+/// **Static Linking** (`link_static_library()` / `with_statically_linked_library()`):
+/// - Use when you control and know the library code
+/// - The library code is copied into the script code
+/// - Best for most user-written libraries and dependencies
+/// - Results in larger script size but ensures the code is always available
+///
+/// **Dynamic Linking** (`link_dynamic_library()` / `with_dynamically_linked_library()`):
+/// - Use when making Foreign Procedure Invocation (FPI) calls
+/// - The library code is available on-chain and referenced, not copied
+/// - Best for calling procedures in foreign accounts via FPI
+/// - Results in smaller script size but requires the code to be available on-chain
+///
+/// ## Typical Workflow
+///
 /// 1. Create a new ScriptBuilder with debug mode preference
-/// 2. Add any required modules using `link_module()`
-/// 3. Compile your script with `compile_note_script()` or `compile_tx_script()`
+/// 2. Add any required modules using `link_module()` or `with_linked_module()`
+/// 3. Add libraries using `link_static_library()` / `link_dynamic_library()` as appropriate
+/// 4. Compile your script with `compile_note_script()` or `compile_tx_script()`
 ///
 /// Note that the compilation methods consume the ScriptBuilder, so if you need to compile
 /// multiple scripts with the same configuration, you should clone the builder first.
+///
+/// ## Builder Pattern Example
+///
+/// ```ignore
+/// let script = ScriptBuilder::new(true)
+///     .with_linked_module("my::module", module_code)?
+///     .with_statically_linked_library(&my_lib)?
+///     .with_dynamically_linked_library(&fpi_lib)?  // For FPI calls
+///     .compile_tx_script(script_code)?;
+/// ```
 ///
 /// # Note
 /// For scripts that need access to transaction kernel procedures,
@@ -89,6 +116,107 @@ impl ScriptBuilder {
         })?;
 
         Ok(())
+    }
+
+    /// Statically links the given library.
+    ///
+    /// Static linking means the library code is copied into the script code.
+    /// Use this for most libraries that are not available on-chain.
+    ///
+    /// # Arguments
+    /// * `library` - The compiled library to statically link
+    ///
+    /// # Errors
+    /// Returns an error if the library cannot be added to the assembler
+    pub fn link_static_library(&mut self, library: &Library) -> Result<(), ScriptBuilderError> {
+        self.assembler.add_vendored_library(library).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to add static library", err)
+        })
+    }
+
+    /// Dynamically links a library.
+    ///
+    /// This is useful to dynamically link the [`Library`] of a foreign account
+    /// that is invoked using foreign procedure invocation (FPI). Its code is available
+    /// on-chain and so it does not have to be copied into the script code.
+    ///
+    /// For all other use cases not involving FPI, link the library statically.
+    ///
+    /// # Arguments
+    /// * `library` - The compiled library to dynamically link
+    ///
+    /// # Errors
+    /// Returns an error if the library cannot be added to the assembler
+    pub fn link_dynamic_library(&mut self, library: &Library) -> Result<(), ScriptBuilderError> {
+        self.assembler.add_library(library).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to add dynamic library", err)
+        })
+    }
+
+    /// Builder-style method to statically link a library and return the modified builder.
+    ///
+    /// This enables method chaining for convenient builder patterns.
+    ///
+    /// # Arguments
+    /// * `library` - The compiled library to statically link
+    ///
+    /// # Errors
+    /// Returns an error if the library cannot be added to the assembler
+    pub fn with_statically_linked_library(
+        mut self,
+        library: &Library,
+    ) -> Result<Self, ScriptBuilderError> {
+        self.link_static_library(library)?;
+        Ok(self)
+    }
+
+    /// Builder-style method to dynamically link a library and return the modified builder.
+    ///
+    /// This enables method chaining for convenient builder patterns.
+    ///
+    /// # Arguments
+    /// * `library` - The compiled library to dynamically link
+    ///
+    /// # Errors
+    /// Returns an error if the library cannot be added to the assembler
+    pub fn with_dynamically_linked_library(
+        mut self,
+        library: &Library,
+    ) -> Result<Self, ScriptBuilderError> {
+        self.link_dynamic_library(library)?;
+        Ok(self)
+    }
+
+    /// Builder-style method to link a module and return the modified builder.
+    ///
+    /// This enables method chaining for convenient builder patterns.
+    ///
+    /// # Arguments
+    /// * `module_path` - The path identifier for the module (e.g., "my_lib::my_module")
+    /// * `module_code` - The source code of the module to compile and link
+    ///
+    /// # Errors
+    /// Returns an error if the module cannot be compiled or added to the assembler
+    pub fn with_linked_module(
+        mut self,
+        module_path: impl AsRef<str>,
+        module_code: impl AsRef<str>,
+    ) -> Result<Self, ScriptBuilderError> {
+        self.link_module(module_path, module_code)?;
+        Ok(self)
+    }
+
+    // UTILITIES
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the assembler's source manager.
+    ///
+    /// After script building, the source manager can be fetched and passed on to the VM
+    /// processor to make the source files available to create better error messages.
+    pub fn source_manager(
+        &self,
+    ) -> std::sync::Arc<dyn miden_objects::assembly::diagnostics::SourceManager + Send + Sync> {
+        self.assembler.source_manager()
     }
 
     // SCRIPT COMPILATION
@@ -279,6 +407,51 @@ mod tests {
 
         if add_result1.is_ok() && add_result2.is_ok() {
             let _tx_script_result = builder_with_libs.compile_tx_script(script_code);
+        }
+    }
+
+    #[test]
+    fn test_builder_style_chaining() {
+        let script_code = "
+            use.external_contract::counter_contract
+            begin
+                call.counter_contract::increment
+            end
+        ";
+
+        let account_code = "
+            use.miden::account
+            use.std::sys
+            export.increment
+                push.0
+                exec.account::get_item
+                push.1 add
+                push.0
+                exec.account::set_item
+                exec.sys::truncate_stack
+            end
+        ";
+
+        // Test builder-style chaining with modules
+        let builder_result = ScriptBuilder::new(true)
+            .with_linked_module("external_contract::counter_contract", account_code);
+
+        if let Ok(builder) = builder_result {
+            let _tx_script_result = builder.compile_tx_script(script_code);
+        }
+    }
+
+    #[test]
+    fn test_multiple_chained_modules() {
+        let script_code = "begin nop end";
+
+        // Test chaining multiple modules
+        let builder_result = ScriptBuilder::new(true)
+            .with_linked_module("test::lib1", "export.test1 begin nop end")
+            .and_then(|b| b.with_linked_module("test::lib2", "export.test2 begin nop end"));
+
+        if let Ok(builder) = builder_result {
+            let _tx_script_result = builder.compile_tx_script(script_code);
         }
     }
 }
