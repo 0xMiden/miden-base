@@ -677,22 +677,20 @@ export.authenticate_and_track_procedure.1
     # => [storage_offset, storage_size, was_called]
 
     # check if procedure was already called
-    movup.2 eq.0
-    # => [is_first_call, storage_offset, storage_size]
+    movup.2
+    # => [was_called, storage_offset, storage_size]
 
-    if.true
-        # if this is the first call, set was_called flag to 1
-        push.1
-        # => [1, storage_offset, storage_size]
+    # if this is the first call, set was_called flag to 1
+    push.1 or
+    # => [was_called', storage_offset, storage_size]
 
-        loc_load.0
-        mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
-        # => [proc_metadata_ptr]
-        # was_called is the 2nd element of the metadata
-        add.2
+    loc_load.0
+    mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
+    # => [proc_metadata_ptr]
+    # was_called is the 2nd element of the metadata
+    add.2
 
-        mem_store
-    end
+    mem_store
     # => [storage_offset, storage_size]
 end
 
