@@ -644,9 +644,14 @@ export.get_procedure_info
     # load procedure information from memory
     padw movup.4 mem_loadw padw movup.8 mem_loadw
     # => [METADATA, PROC_ROOT]
+    # more explicitly:
+    # => [0, was_called, storage_size, storage_offset, PROC_ROOT]
 
     # keep relevant data
-    drop movdn.6 swap movdn.5 movdn.5
+    drop movdn.6
+    # => [storage_size, storage_offset, PROC_ROOT, was_called]
+
+    movdn.5 movdn.4
     # => [PROC_ROOT, storage_offset, storage_size, was_called]
 end
 
