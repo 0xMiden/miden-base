@@ -667,29 +667,29 @@ end
 #!
 #! Panics if:
 #! - the procedure root is not part of the account code.
-export.authenticate_and_track_procedure.1
+export.authenticate_and_track_procedure
     # load procedure index
     emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
     # => [index, PROC_ROOT]
 
-    dup loc_store.0
+    dup movdn.5
     # get procedure info (PROC_ROOT, storage_offset, storage_size, was_called) from memory stored at index
     exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, was_called, PROC_ROOT]
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, was_called, PROC_ROOT, index]
 
     # verify that PROC_ROOT exists in memory at index
     movup.4 movdn.10 movup.4 movdn.10 movup.4 movdn.10 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
-    # => [storage_offset, storage_size, was_called]
+    # => [storage_offset, storage_size, was_called, index]
 
     # check if procedure was already called
     movup.2
-    # => [was_called, storage_offset, storage_size]
+    # => [was_called, storage_offset, storage_size, index]
 
     # if this is the first call, set was_called flag to 1
     push.1 or
-    # => [was_called', storage_offset, storage_size]
+    # => [was_called', storage_offset, storage_size, index]
 
-    loc_load.0
+    movup.3
     mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
     # => [proc_metadata_ptr]
     # was_called is the 2nd element of the metadata
