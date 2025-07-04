@@ -633,7 +633,7 @@ export.get_procedure_info
     # => [index]
 
     # get procedure pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add
+    exec.memory::get_acct_procedure_ptr
     # => [proc_ptr]
 
     # get metadata pointer
@@ -969,7 +969,8 @@ export.save_account_procedure_data
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
     # setup acct_proc_offset and end_ptr for reading from advice stack
-    mul.8 exec.memory::get_acct_procedures_section_ptr dup movdn.2 add swap
+    exec.memory::get_acct_procedure_ptr
+    push.0 exec.memory::get_acct_procedure_ptr
     # OS => [acct_proc_offset, end_ptr, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
@@ -1043,7 +1044,7 @@ end
 #! - storage_size is the number of storage slots the procedure is allowed to access.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
+    exec.memory::get_acct_procedure_ptr add.4
     # => [storage_offset_ptr]
 
     # load procedure metadata from memory and keep relevant data
