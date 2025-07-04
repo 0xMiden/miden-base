@@ -247,6 +247,12 @@ impl AccountDelta {
     /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
     /// pair have changed and 2) when two key-value pairs have changed.
     pub fn commitment(&self) -> Digest {
+        // The commitment to an empty delta is defined as the empty word.
+        // Note that is_empty does not take the nonce into account.
+        if self.is_empty() && self.nonce_increment() == ZERO {
+            return Digest::default();
+        }
+
         // Minor optimization: At least 24 elements are always added.
         let mut elements = Vec::with_capacity(24);
 
@@ -450,7 +456,7 @@ mod tests {
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::{
-        AccountDeltaError, ONE, ZERO,
+        AccountDeltaError, Digest, ONE, ZERO,
         account::{
             Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
             StorageMapDelta, delta::AccountUpdateDetails,
@@ -595,5 +601,20 @@ mod tests {
 
         let update_details_new = AccountUpdateDetails::New(account);
         assert_eq!(update_details_new.to_bytes().len(), update_details_new.get_size_hint());
+    }
+
+    #[test]
+    fn empty_account_update_commitment_is_empty_word() -> anyhow::Result<()> {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
+        let delta = AccountDelta::new(
+            account_id,
+            AccountStorageDelta::default(),
+            AccountVaultDelta::default(),
+            ZERO,
+        )?;
+
+        assert_eq!(delta.commitment(), Digest::default());
+
+        Ok(())
     }
 }
