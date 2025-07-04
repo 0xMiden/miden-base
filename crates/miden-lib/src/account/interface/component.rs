@@ -11,10 +11,7 @@ use miden_objects::{
     utils::word_to_masm_push_string,
 };
 
-use crate::account::{
-    components::{basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library},
-    interface::AccountInterfaceError,
-};
+use crate::account::{components::WellKnownComponents, interface::AccountInterfaceError};
 
 // ACCOUNT COMPONENT INTERFACE
 // ================================================================================================
@@ -77,60 +74,18 @@ impl AccountComponentInterface {
             .map(|procedure_info| (*procedure_info.mast_root(), procedure_info))
             .collect();
 
-        // Basic Wallet
-        // ------------------------------------------------------------------------------------------------
+        // Well known component interfaces
+        // ----------------------------------------------------------------------------------------
 
-        if basic_wallet_library()
-            .mast_forest()
-            .procedure_digests()
-            .all(|proc_digest| procedures.contains_key(&proc_digest))
-        {
-            basic_wallet_library().mast_forest().procedure_digests().for_each(
-                |component_procedure| {
-                    procedures.remove(&component_procedure);
-                },
-            );
+        // Get all available well known components which could be constructed from the `procedures`
+        // map and push them to the `component_interface_vec`
+        WellKnownComponents::extract_well_known_components(
+            &mut procedures,
+            &mut component_interface_vec,
+        );
 
-            component_interface_vec.push(AccountComponentInterface::BasicWallet);
-        }
-
-        // Basic Fungible Faucet
-        // ------------------------------------------------------------------------------------------------
-
-        if basic_fungible_faucet_library()
-            .mast_forest()
-            .procedure_digests()
-            .all(|proc_digest| procedures.contains_key(&proc_digest))
-        {
-            let mut storage_offset = Default::default();
-            basic_fungible_faucet_library().mast_forest().procedure_digests().for_each(
-                |component_procedure| {
-                    if let Some(proc_info) = procedures.remove(&component_procedure) {
-                        storage_offset = proc_info.storage_offset();
-                    }
-                },
-            );
-
-            component_interface_vec
-                .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset));
-        }
-
-        // RPO Falcon 512
-        // ------------------------------------------------------------------------------------------------
-
-        let rpo_falcon_proc = rpo_falcon_512_library()
-            .mast_forest()
-            .procedure_digests()
-            .next()
-            .expect("rpo falcon 512 component should export exactly one procedure");
-
-        if let Some(proc_info) = procedures.remove(&rpo_falcon_proc) {
-            component_interface_vec
-                .push(AccountComponentInterface::RpoFalcon512(proc_info.storage_offset()));
-        }
-
-        // Custom interfaces
-        // ------------------------------------------------------------------------------------------------
+        // Custom component interfaces
+        // ----------------------------------------------------------------------------------------
 
         let mut custom_interface_procs_map = BTreeMap::<u8, Vec<AccountProcedureInfo>>::new();
         procedures.into_iter().for_each(|(_, proc_info)| {

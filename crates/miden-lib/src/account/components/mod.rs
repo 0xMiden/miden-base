@@ -1,7 +1,13 @@
+use alloc::{collections::BTreeMap, vec::Vec};
+
 use miden_objects::{
+    Digest,
+    account::AccountProcedureInfo,
     assembly::Library,
     utils::{Deserializable, sync::LazyLock},
 };
+
+use crate::account::interface::AccountComponentInterface;
 
 // Initialize the Basic Wallet library only once.
 static BASIC_WALLET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
@@ -39,4 +45,73 @@ pub fn rpo_falcon_512_library() -> Library {
 /// Returns the Basic Fungible Faucet Library.
 pub fn basic_fungible_faucet_library() -> Library {
     BASIC_FUNGIBLE_FAUCET_LIBRARY.clone()
+}
+
+// WELL KNOWN COMPONENTS
+// ================================================================================================
+
+/// The enum holding the types of basic well-known account components provided by the `miden-lib`.
+pub enum WellKnownComponents {
+    BasicWallet,
+    BasicFungibleFaucet,
+    RpoFalcon512,
+}
+
+impl WellKnownComponents {
+    /// Returns the procedure digests vector, containing digests of all procedures provided by the
+    /// current component.
+    fn procedure_digests(&self) -> Vec<Digest> {
+        match self {
+            Self::BasicWallet => basic_wallet_library().mast_forest().procedure_digests().collect(),
+            Self::BasicFungibleFaucet => {
+                basic_fungible_faucet_library().mast_forest().procedure_digests().collect()
+            },
+            Self::RpoFalcon512 => {
+                rpo_falcon_512_library().mast_forest().procedure_digests().collect()
+            },
+        }
+    }
+
+    /// Checks whether all procedures from the current component are presented in the procedures map
+    /// and if so it removes these procedures from this map and pushes the corresponding component
+    /// interface to the component interface vector.
+    fn extract_component(
+        &self,
+        procedures_map: &mut BTreeMap<Digest, &AccountProcedureInfo>,
+        component_interface_vec: &mut Vec<AccountComponentInterface>,
+    ) {
+        if self
+            .procedure_digests()
+            .iter()
+            .all(|proc_digest| procedures_map.contains_key(proc_digest))
+        {
+            let mut storage_offset = Default::default();
+            self.procedure_digests().iter().for_each(|component_procedure| {
+                if let Some(proc_info) = procedures_map.remove(component_procedure) {
+                    storage_offset = proc_info.storage_offset();
+                }
+            });
+
+            match self {
+                Self::BasicWallet => {
+                    component_interface_vec.push(AccountComponentInterface::BasicWallet)
+                },
+                Self::BasicFungibleFaucet => component_interface_vec
+                    .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
+                Self::RpoFalcon512 => component_interface_vec
+                    .push(AccountComponentInterface::RpoFalcon512(storage_offset)),
+            }
+        }
+    }
+
+    /// Gets all well known components which could be constructed from the provided procedures map
+    /// and pushes them to the `component_interface_vec`.
+    pub fn extract_well_known_components(
+        procedures_map: &mut BTreeMap<Digest, &AccountProcedureInfo>,
+        component_interface_vec: &mut Vec<AccountComponentInterface>,
+    ) {
+        Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
+        Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
+        Self::RpoFalcon512.extract_component(procedures_map, component_interface_vec);
+    }
 }
