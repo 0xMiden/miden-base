@@ -498,15 +498,14 @@ mod source_manager_ext {
                         },
                         Err(e) => {
                             return Err(io::Error::other(format!(
-                                "error reading directory entry: {}",
-                                e
+                                "error reading directory entry: {e}",
                             )));
                         },
                     }
                 }
             },
             Err(e) => {
-                return Err(io::Error::other(format!("error reading directory: {}", e)));
+                return Err(io::Error::other(format!("error reading directory: {e}")));
             },
         }
 
