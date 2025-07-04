@@ -61,6 +61,27 @@ export.compute_commitment
 
     exec.rpo::squeeze_digest
     # => [DELTA_COMMITMENT]
+
+    # if the account delta is empty (no storage and vault changes and a nonce increment of zero)
+    # then the commitment to it is defined as the empty word
+    padw
+    # => [EMPTY_WORD, DELTA_COMMITMENT]
+
+    # the epilogue will ensure that if the state has changed, then the
+    # nonce must be incremented.
+    # so if the nonce increment is zero, then the delta must be empty
+    # important caveat: this is only true if the delta sees no further changes after computing
+    # the commitment
+    exec.memory::get_account_nonce_delta
+    # => [nonce_increment, EMPTY_WORD, DELTA_COMMITMENT]
+
+    eq.0
+    # => [is_delta_empty, EMPTY_WORD, DELTA_COMMITMENT]
+
+    # If is_delta_empty EMPTY_WORD remains.
+    # If !is_delta_empty DELTA_COMMITMENT remains.
+    cdropw
+    # => [EMPTY_WORD, DELTA_COMMITMENT]
 end
 
 #! Updates the given delta hasher with the storage slots.

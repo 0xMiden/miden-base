@@ -12,22 +12,61 @@ use miden_objects::{
     asset::{Asset, FungibleAsset},
     note::{Note, NoteType},
     testing::{
-        account_component::AccountMockComponent, account_id::AccountIdBuilder,
+        account_component::AccountMockComponent,
+        account_id::{ACCOUNT_ID_SENDER, AccountIdBuilder},
         asset::NonFungibleAssetBuilder,
     },
-    transaction::TransactionScript,
+    transaction::{OutputNote, TransactionScript},
 };
 use miden_tx::utils::word_to_masm_push_string;
 use rand::Rng;
 
-use crate::{Auth, MockChain};
+use crate::{Auth, MockChain, utils::create_p2any_note};
 
 // ACCOUNT DELTA TESTS
+//
+// Note that in all of these tests, the transaction executor will ensure that the account delta
+// commitment computed in-kernel and in the host match.
 // ================================================================================================
-// TODO:
-// - Add test for calling account_delta::compute_commitment from foreign account and make sure it
-//   returns the correct value (i.e. no part of the computation is using foreign account data).
 
+/// Tests that a noop transaction with [`Auth::Noop`] results in an empty nonce delta with an empty
+/// word as its commitment.
+///
+/// In order to make the account delta empty but the transaction still legal, we consume a note
+/// without assets.
+#[test]
+fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
+    let account = AccountBuilder::new([12; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::Noop)
+        .with_component(
+            AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
+                .unwrap(),
+        )
+        .build_existing()
+        .unwrap();
+
+    let account_id = account.id();
+    let mut mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
+
+    let p2any_note = create_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[]);
+
+    mock_chain.add_pending_note(OutputNote::Full(p2any_note.clone()));
+    mock_chain.prove_next_block()?;
+
+    let executed_tx = mock_chain
+        .build_tx_context(account_id, &[p2any_note.id()], &[])
+        .expect("failed to build tx context")
+        .build()
+        .execute()
+        .context("failed to execute transaction")?;
+
+    assert_eq!(executed_tx.account_delta().nonce_increment(), miden_objects::ZERO);
+    assert!(executed_tx.account_delta().is_empty());
+    assert_eq!(executed_tx.account_delta().commitment(), Digest::default());
+
+    Ok(())
+}
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {

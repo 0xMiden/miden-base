@@ -28,8 +28,6 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
 ///
 /// The created note does not require authentication and can be consumed by any account.
 pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
-    assert!(!assets.is_empty(), "note must carry at least one asset");
-
     let mut code_body = String::new();
     for i in 0..assets.len() {
         if i == 0 {

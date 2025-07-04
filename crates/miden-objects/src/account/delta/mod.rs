@@ -456,7 +456,7 @@ mod tests {
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::{
-        AccountDeltaError, Digest, ONE, ZERO,
+        AccountDeltaError, ONE, ZERO,
         account::{
             Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
             StorageMapDelta, delta::AccountUpdateDetails,
@@ -601,20 +601,5 @@ mod tests {
 
         let update_details_new = AccountUpdateDetails::New(account);
         assert_eq!(update_details_new.to_bytes().len(), update_details_new.get_size_hint());
-    }
-
-    #[test]
-    fn empty_account_update_commitment_is_empty_word() -> anyhow::Result<()> {
-        let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-        let delta = AccountDelta::new(
-            account_id,
-            AccountStorageDelta::default(),
-            AccountVaultDelta::default(),
-            ZERO,
-        )?;
-
-        assert_eq!(delta.commitment(), Digest::default());
-
-        Ok(())
     }
 }
