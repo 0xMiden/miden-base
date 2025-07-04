@@ -41,6 +41,7 @@
 - Implement serialization for `LexicographicWord` (#1524).
 - Add `with_auth_component` to `AccountBuilder` (#1480).
 - [BREAKING] Refactor account authentication to require a procedure containing `auth__` in its name (#1480).
+- Define the commitment to an empty account delta as `EMPTY_WORD` (#1528).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
