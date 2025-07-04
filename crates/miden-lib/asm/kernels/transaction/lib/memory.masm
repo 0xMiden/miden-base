@@ -855,7 +855,8 @@ export.assert_native_account
     exec.is_native_account assert.err=ERR_ACCOUNT_IS_NOT_NATIVE
 end
 
-#! Returns 1 if the current account data pointer matches the data pointer of the native account.
+#! Returns 1 if the current account data pointer matches the data pointer of the native account,
+#! 0 otherwise.
 #!
 #! Inputs:  []
 #! Outputs: [is_native_account]
