@@ -52,7 +52,7 @@ use vm_processor::{AdviceInputs, Digest, ExecutionError, Process};
 
 use super::{Felt, Word, ZERO};
 use crate::{
-    MockChain, TransactionContext, TransactionContextBuilder, assert_execution_error,
+    Auth, MockChain, TransactionContext, TransactionContextBuilder, assert_execution_error,
     kernel_tests::tx::read_root_mem_word,
     utils::{create_p2any_note, input_note_data_ptr},
 };
@@ -63,6 +63,7 @@ fn test_transaction_prologue() {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let input_note_1 =
@@ -473,40 +474,24 @@ fn input_notes_memory_assertions(
 
 /// Tests that a simple account can be created in a complete transaction execution (not using
 /// [`TransactionContext::execute_code`]).
-///
-/// A nonce increment is necessary because the account's state commitment "changes" from the
-/// EMPTY_WORD sentinel to its actual state commitment.
 #[test]
 fn create_simple_account() -> anyhow::Result<()> {
     let (account, seed) = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?)
         .build()?;
 
-    let code = "
-        use.test::account
-
-        begin
-          padw padw padw push.0.0.0.2
-          call.account::incr_nonce
-          dropw dropw dropw dropw
-        end
-      ";
-
     let tx = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
-        .tx_script(TransactionScript::compile(
-            code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )?)
         .build()
         .execute()
         .context("failed to execute account-creating transaction")?;
 
-    assert_eq!(tx.account_delta().nonce_increment().as_int(), 2);
+    assert_eq!(tx.account_delta().nonce_increment(), Felt::new(1));
     // except for the nonce, the delta should be empty
     assert!(tx.account_delta().is_empty());
-    assert_eq!(tx.final_account().nonce().as_int(), 2);
+    assert_eq!(tx.final_account().nonce(), Felt::new(1));
     // account commitment should not be the empty word
     assert_ne!(*tx.account_delta().commitment(), EMPTY_WORD);
 
@@ -557,6 +542,7 @@ pub fn create_multiple_accounts_test(
         let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
             .account_type(account_type)
             .storage_mode(storage_mode)
+            .with_auth_component(Auth::IncrNonce)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),
@@ -676,6 +662,7 @@ pub fn create_account_invalid_seed() {
 
     let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(BasicWallet)
         .build()
         .unwrap();

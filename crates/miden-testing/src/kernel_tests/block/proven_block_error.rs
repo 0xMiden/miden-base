@@ -6,11 +6,14 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     AccountTreeError, Digest, EMPTY_WORD, Felt, FieldElement, NullifierTreeError,
-    account::{Account, AccountBuilder, AccountId, StorageSlot, delta::AccountUpdateDetails},
+    account::{
+        Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
+        delta::AccountUpdateDetails,
+    },
     batch::ProvenBatch,
     block::{BlockInputs, BlockNumber, ProposedBlock},
-    testing::account_component::AccountMockComponent,
-    transaction::{ProvenTransaction, ProvenTransactionBuilder, TransactionScript},
+    testing::account_component::{AccountMockComponent, IncrNonceAuthComponent},
+    transaction::{ProvenTransaction, ProvenTransactionBuilder},
     vm::ExecutionProof,
 };
 use winterfell::Proof;
@@ -19,7 +22,7 @@ use super::utils::{
     TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
     generate_tracked_note, setup_chain,
 };
-use crate::{MockChain, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{Auth, MockChain, ProvenTransactionExt, TransactionContextBuilder};
 
 struct WitnessTestSetup {
     stale_block_inputs: BlockInputs,
@@ -246,7 +249,13 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // --------------------------------------------------------------------------------------------
 
     let mut mock_chain = MockChain::new();
+
+    let assembler = TransactionKernel::testing_assembler();
+    let auth_component: AccountComponent =
+        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+
     let (account, seed) = AccountBuilder::new([5; 32])
+        .with_auth_component(auth_component.clone())
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -281,28 +290,20 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     );
     assert_eq!(account.init_commitment(), miden_objects::Digest::from(EMPTY_WORD));
 
-    let existing_account =
-        Account::mock(existing_id.into(), Felt::ZERO, TransactionKernel::testing_assembler());
+    let existing_account = Account::mock(
+        existing_id.into(),
+        Felt::ZERO,
+        auth_component,
+        TransactionKernel::testing_assembler(),
+    );
     mock_chain.add_pending_account(existing_account.clone());
     mock_chain.prove_next_block()?;
 
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    // transaction code which only increases the nonce to make the transaction non-empty
-    let default_tx_code = "
-        use.miden::account 
-        
-        begin 
-            push.1 call.account::incr_nonce drop
-        end";
-    let default_tx_script =
-        TransactionScript::compile(default_tx_code, TransactionKernel::testing_assembler())
-            .context("failed to compile the transaction script")?;
-
     let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account)
-        .tx_script(default_tx_script)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .build();
@@ -354,9 +355,9 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
-
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),

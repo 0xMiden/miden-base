@@ -9,7 +9,10 @@ use miden_objects::{
     account::Account,
     assembly::Assembler,
     note::{Note, NoteId},
-    testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    testing::{
+        account_component::{IncrNonceAuthComponent, NoopAuthComponent},
+        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    },
     transaction::{
         AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
     },
@@ -98,10 +101,14 @@ impl TransactionContextBuilder {
     ///   [miden_objects::testing::account_component::AccountMockComponent].
     pub fn with_existing_mock_account() -> Self {
         // Build standard account with normal assembler because the testing one already contains it
+        let assembler = TransactionKernel::testing_assembler();
+        let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
+
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            TransactionKernel::testing_assembler(),
+            auth_component,
+            assembler,
         );
 
         let assembler = TransactionKernel::testing_assembler_with_mock_account();
@@ -120,6 +127,20 @@ impl TransactionContextBuilder {
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
         }
+    }
+
+    pub fn with_noop_auth_account(nonce: Felt) -> Self {
+        let assembler = TransactionKernel::testing_assembler();
+        let auth_component = NoopAuthComponent::new(assembler.clone()).unwrap();
+
+        let account = Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            nonce,
+            auth_component,
+            assembler,
+        );
+
+        Self::new(account)
     }
 
     /// Initializes a [TransactionContextBuilder] with a mocked fungible faucet.

@@ -9,7 +9,10 @@ use miden_objects::{
     asset::{Asset, FungibleAsset},
     crypto::rand::RpoRandomCoin,
     note::NoteType,
-    testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    testing::{
+        account_component::IncrNonceAuthComponent,
+        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    },
     transaction::{TransactionMeasurements, TransactionScript},
 };
 use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
@@ -58,11 +61,15 @@ fn main() -> anyhow::Result<()> {
 /// Runs the default transaction with empty transaction script and two default notes.
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
+    let assembler = TransactionKernel::testing_assembler();
+    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
+
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            TransactionKernel::testing_assembler(),
+            auth_component,
+            assembler,
         );
 
         let input_note_1 =

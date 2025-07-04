@@ -1,5 +1,6 @@
 use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
+use miden_crypto::hash::rpo::RpoDigest;
 use vm_core::{mast::MastForest, prettier::PrettyPrint};
 
 use super::{
@@ -38,6 +39,8 @@ pub struct AccountCode {
 impl AccountCode {
     /// The maximum number of account interface procedures.
     pub const MAX_NUM_PROCEDURES: usize = 256;
+    /// The minimum number of account interface procedures (one auth and at least one non-auth).
+    pub const MIN_NUM_PROCEDURES: usize = 2;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -66,6 +69,8 @@ impl AccountCode {
     /// - The number of procedures in all merged libraries is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`].
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - The first component doesn't contain exactly one authentication procedure.
+    /// - Other components contain authentication procedures.
     /// - The number of [`StorageSlot`](crate::account::StorageSlot)s of a component or of all
     ///   components exceeds 255.
     /// - [`MastForest::merge`] fails on all libraries.
@@ -77,54 +82,18 @@ impl AccountCode {
             MastForest::merge(components.iter().map(|component| component.mast_forest()))
                 .map_err(AccountError::AccountComponentMastForestMergeError)?;
 
-        let mut procedures = Vec::new();
-        let mut proc_root_set = BTreeSet::new();
+        let mut builder = ProcedureInfoBuilder::new(account_type);
+        let mut components_iter = components.iter();
 
-        // Slot 0 is globally reserved for faucet accounts so the accessible slots begin at 1 if
-        // there is a faucet component present.
-        let mut component_storage_offset = if account_type.is_faucet() { 1 } else { 0 };
+        let first_component =
+            components_iter.next().ok_or(AccountError::AccountCodeNoAuthComponent)?;
+        builder.add_auth_component(first_component)?;
 
-        for component in components {
-            let component_storage_size = component.storage_size();
-
-            for module in component.library().module_infos() {
-                for proc_mast_root in module.procedure_digests() {
-                    // We cannot support procedures from multiple components with the same MAST root
-                    // since storage offsets/sizes are set per MAST root. Setting them again for
-                    // procedures where the offset has already been inserted would cause that
-                    // procedure of the earlier component to write to the wrong slot.
-                    if !proc_root_set.insert(proc_mast_root) {
-                        return Err(AccountError::AccountComponentDuplicateProcedureRoot(
-                            proc_mast_root,
-                        ));
-                    }
-
-                    // Components that do not access storage need to have offset and size set to 0.
-                    let (storage_offset, storage_size) = if component_storage_size == 0 {
-                        (0, 0)
-                    } else {
-                        (component_storage_offset, component_storage_size)
-                    };
-
-                    // Note: Offset and size are validated in `AccountProcedureInfo::new`.
-                    procedures.push(AccountProcedureInfo::new(
-                        proc_mast_root,
-                        storage_offset,
-                        storage_size,
-                    )?);
-                }
-            }
-
-            component_storage_offset = component_storage_offset.checked_add(component_storage_size)
-              .expect("account procedure info constructor should return an error if the addition overflows");
+        for component in components_iter {
+            builder.add_component(component)?;
         }
 
-        // make sure the number of procedures is between 1 and 256 (both inclusive)
-        if procedures.is_empty() {
-            return Err(AccountError::AccountCodeNoProcedures);
-        } else if procedures.len() > Self::MAX_NUM_PROCEDURES {
-            return Err(AccountError::AccountCodeTooManyProcedures(procedures.len()));
-        }
+        let procedures = builder.build()?;
 
         Ok(Self {
             commitment: build_procedure_commitment(&procedures),
@@ -349,6 +318,107 @@ impl PrettyPrint for AccountCode {
     }
 }
 
+// ACCOUNT PROCEDURE BUILDER
+// ================================================================================================
+
+struct ProcedureInfoBuilder {
+    procedures: Vec<AccountProcedureInfo>,
+    proc_root_set: BTreeSet<RpoDigest>,
+    storage_offset: u8,
+}
+
+impl ProcedureInfoBuilder {
+    fn new(account_type: AccountType) -> Self {
+        let storage_offset = if account_type.is_faucet() { 1 } else { 0 };
+
+        Self {
+            procedures: Vec::new(),
+            proc_root_set: BTreeSet::new(),
+            storage_offset,
+        }
+    }
+
+    fn add_auth_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
+        let mut auth_proc_count = 0;
+
+        for (proc_root, is_auth) in component.get_procedures() {
+            self.add_procedure(proc_root, component.storage_size())?;
+            if is_auth {
+                let auth_proc_idx = self.procedures.len() - 1;
+                self.procedures.swap(0, auth_proc_idx);
+                auth_proc_count += 1;
+            }
+        }
+
+        if auth_proc_count == 0 {
+            return Err(AccountError::AccountCodeNoAuthComponent);
+        } else if auth_proc_count > 1 {
+            return Err(AccountError::AccountComponentMultipleAuthProcedures);
+        }
+
+        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
+            "account procedure info constructor should return an error if the addition overflows",
+        );
+
+        Ok(())
+    }
+
+    fn add_component(&mut self, component: &AccountComponent) -> Result<(), AccountError> {
+        for (proc_mast_root, is_auth) in component.get_procedures() {
+            if is_auth {
+                return Err(AccountError::AccountCodeMultipleAuthComponents);
+            }
+            self.add_procedure(proc_mast_root, component.storage_size())?;
+        }
+
+        self.storage_offset = self.storage_offset.checked_add(component.storage_size()).expect(
+            "account procedure info constructor should return an error if the addition overflows",
+        );
+
+        Ok(())
+    }
+
+    fn add_procedure(
+        &mut self,
+        proc_mast_root: RpoDigest,
+        component_storage_size: u8,
+    ) -> Result<(), AccountError> {
+        // We cannot support procedures from multiple components with the same MAST root
+        // since storage offsets/sizes are set per MAST root. Setting them again for
+        // procedures where the offset has already been inserted would cause that
+        // procedure of the earlier component to write to the wrong slot.
+        if !self.proc_root_set.insert(proc_mast_root) {
+            return Err(AccountError::AccountComponentDuplicateProcedureRoot(proc_mast_root));
+        }
+
+        // Components that do not access storage need to have offset and size set to 0.
+        let (storage_offset, storage_size) = if component_storage_size == 0 {
+            (0, 0)
+        } else {
+            (self.storage_offset, component_storage_size)
+        };
+
+        // Note: Offset and size are validated in `AccountProcedureInfo::new`.
+        self.procedures.push(AccountProcedureInfo::new(
+            proc_mast_root,
+            storage_offset,
+            storage_size,
+        )?);
+
+        Ok(())
+    }
+
+    fn build(self) -> Result<Vec<AccountProcedureInfo>, AccountError> {
+        if self.procedures.len() < AccountCode::MIN_NUM_PROCEDURES {
+            Err(AccountError::AccountCodeNoProcedures)
+        } else if self.procedures.len() > AccountCode::MAX_NUM_PROCEDURES {
+            Err(AccountError::AccountCodeTooManyProcedures(self.procedures.len()))
+        } else {
+            Ok(self.procedures)
+        }
+    }
+}
+
 // HELPER FUNCTIONS
 // ================================================================================================
 
@@ -377,6 +447,7 @@ mod tests {
     use crate::{
         AccountError,
         account::{AccountComponent, AccountType, StorageSlot, code::build_procedure_commitment},
+        testing::{account_code::CODE, account_component::NoopAuthComponent},
     };
 
     #[test]
@@ -401,6 +472,9 @@ mod tests {
         let code2 = "export.bar sub end";
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
+        let auth_component: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+
         let component1 =
             AccountComponent::new(library1, vec![StorageSlot::Value(Word::default()); 250])
                 .unwrap()
@@ -412,7 +486,7 @@ mod tests {
 
         // This is fine as the offset+size for component 2 is <= 255.
         AccountCode::from_components(
-            &[component1.clone(), component2.clone()],
+            &[auth_component.clone(), component1.clone(), component2.clone()],
             AccountType::RegularAccountUpdatableCode,
         )
         .unwrap();
@@ -421,11 +495,82 @@ mod tests {
         component2.storage_slots.push(StorageSlot::Value(Word::default()));
 
         let err = AccountCode::from_components(
-            &[component1, component2],
+            &[auth_component, component1, component2],
             AccountType::RegularAccountUpdatableCode,
         )
         .unwrap_err();
 
         assert_matches!(err, AccountError::StorageOffsetPlusSizeOutOfBounds(256))
+    }
+
+    #[test]
+    fn test_account_code_only_auth_component() {
+        let auth_component: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+
+        let err = AccountCode::from_components(
+            &[auth_component],
+            AccountType::RegularAccountUpdatableCode,
+        )
+        .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountCodeNoProcedures);
+    }
+
+    #[test]
+    fn test_account_code_no_auth_component() {
+        let component = AccountComponent::compile(CODE, Assembler::default(), vec![])
+            .unwrap()
+            .with_supports_all_types();
+
+        let err =
+            AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
+                .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountCodeNoAuthComponent);
+    }
+
+    #[test]
+    fn test_account_code_multiple_auth_components() {
+        let auth_component1: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+        let auth_component2: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+
+        let err = AccountCode::from_components(
+            &[auth_component1, auth_component2],
+            AccountType::RegularAccountUpdatableCode,
+        )
+        .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountCodeMultipleAuthComponents);
+    }
+
+    #[test]
+    fn test_account_component_multiple_auth_procedures() {
+        use assembly::Assembler;
+
+        let code_with_multiple_auth = "
+            use.miden::account
+
+            export.auth__basic
+                push.1 drop
+            end
+
+            export.auth__secondary
+                push.0 drop
+            end
+        ";
+
+        let component =
+            AccountComponent::compile(code_with_multiple_auth, Assembler::default(), vec![])
+                .unwrap()
+                .with_supports_all_types();
+
+        let err =
+            AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
+                .unwrap_err();
+
+        assert_matches!(err, AccountError::AccountComponentMultipleAuthProcedures);
     }
 }

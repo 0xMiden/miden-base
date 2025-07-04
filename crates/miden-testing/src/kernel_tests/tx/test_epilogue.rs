@@ -14,13 +14,13 @@ use miden_lib::{
 use miden_objects::{
     FieldElement,
     account::{
-        Account, AccountBuilder, AccountDelta, AccountStorageDelta, AccountStorageMode,
-        AccountVaultDelta,
+        Account, AccountBuilder, AccountComponent, AccountDelta, AccountStorageDelta,
+        AccountStorageMode, AccountVaultDelta,
     },
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
     testing::{
-        account_component::AccountMockComponent,
+        account_component::{AccountMockComponent, IncrNonceAuthComponent},
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -37,7 +37,7 @@ use vm_processor::{Felt, ONE, ProcessState};
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::{
-    MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
+    Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
     kernel_tests::tx::read_root_mem_word,
     utils::{create_p2any_note, create_spawn_note},
 };
@@ -48,6 +48,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -79,9 +80,6 @@ fn test_epilogue() -> anyhow::Result<()> {
 
             exec.create_mock_notes
 
-            push.1
-            exec.account::incr_nonce
-
             exec.epilogue::finalize_transaction
 
             # truncate the stack
@@ -97,10 +95,14 @@ fn test_epilogue() -> anyhow::Result<()> {
         )
         .unwrap();
 
+    let assembler = TransactionKernel::assembler();
+    let auth_component: AccountComponent =
+        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,
-        TransactionKernel::assembler(),
+        auth_component,
+        assembler,
     );
 
     let output_notes = OutputNotes::new(
@@ -151,6 +153,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -221,6 +224,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     let account = AccountBuilder::new(Default::default())
         .with_assets(AssetVault::mock().assets())
         .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(mock_component)
         .build_existing()?;
 
@@ -268,8 +272,6 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         begin
             exec.prologue::prepare_transaction
             exec.create_mock_notes
-            push.1
-            call.account::incr_nonce
             exec.epilogue::finalize_transaction
             
             # truncate the stack
@@ -294,6 +296,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     let account = AccountBuilder::new(Default::default())
         .with_assets(AssetVault::mock().assets())
         .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(mock_component)
         .build_existing()?;
 
@@ -352,8 +355,6 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         begin
             exec.prologue::prepare_transaction
             exec.create_mock_notes
-            push.1
-            call.account::incr_nonce
             exec.epilogue::finalize_transaction
                         
             # truncate the stack
@@ -390,9 +391,6 @@ fn test_block_expiration_height_monotonically_decreases() {
             exec.tx::update_expiration_block_num
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
-
-            # update the nonce to make the transaction non-empty
-            push.1 exec.account::incr_nonce
 
             exec.epilogue::finalize_transaction
                         
@@ -463,9 +461,6 @@ fn test_no_expiration_delta_set() {
 
         exec.tx::get_expiration_delta assertz
 
-        # update the nonce to make the transaction non-empty
-        push.1 exec.account::incr_nonce
-
         exec.epilogue::finalize_transaction
                     
         # truncate the stack
@@ -489,10 +484,14 @@ fn test_no_expiration_delta_set() {
 fn test_epilogue_increment_nonce_success() {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
 
-    let code = "
+    let expected_nonce = ONE + ONE;
+
+    let code = format!(
+        "
         use.kernel::prologue
         use.test::account
         use.kernel::epilogue
+        use.kernel::memory
 
         begin
             exec.prologue::prepare_transaction
@@ -502,32 +501,33 @@ fn test_epilogue_increment_nonce_success() {
             call.account::set_item
             dropw
 
-            push.1
-            call.account::incr_nonce
-
             exec.epilogue::finalize_transaction
 
             # clean the stack
             dropw dropw dropw dropw
-        end";
+
+            exec.memory::get_acct_nonce
+            push.{expected_nonce} assert_eq
+        end
+        "
+    );
 
     tx_context
-        .execute_code_with_assembler(code, TransactionKernel::testing_assembler_with_mock_account())
+        .execute_code_with_assembler(
+            code.as_str(),
+            TransactionKernel::testing_assembler_with_mock_account(),
+        )
         .unwrap();
 }
 
 #[test]
 fn test_epilogue_increment_nonce_violation() {
+    let output_note_1 =
+        create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+    let input_note_1 =
+        create_spawn_note(ACCOUNT_ID_SENDER.try_into().unwrap(), vec![&output_note_1]).unwrap();
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            TransactionKernel::testing_assembler(),
-        );
-        let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
-        let input_note_1 = create_spawn_note(account.id(), vec![&output_note_1]).unwrap();
-        TransactionContextBuilder::new(account)
+        TransactionContextBuilder::with_noop_auth_account(ONE)
             .extend_input_notes(vec![input_note_1])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
             .build()
@@ -571,7 +571,7 @@ fn test_epilogue_increment_nonce_violation() {
 
 #[test]
 fn test_epilogue_execute_empty_transaction() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build();
 
     let err = tx_context.execute().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -630,7 +630,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
         note_type = note_type as u8,
     );
 
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build();
 
     let result = tx_context.execute_code(&tx_script_source).map(|_| ());
 

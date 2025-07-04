@@ -129,6 +129,8 @@ impl Account {
     /// - The number of procedures in all merged libraries is 0 or exceeds
     ///   [`AccountCode::MAX_NUM_PROCEDURES`].
     /// - Two or more libraries export a procedure with the same MAST root.
+    /// - The first component doesn't contain exactly one authentication procedure.
+    /// - Other components contain authentication procedures.
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
     /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on all libraries.
     pub(super) fn initialize_from_components(
@@ -426,6 +428,7 @@ mod tests {
         },
         asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
         testing::{
+            account_component::NoopAuthComponent,
             account_id::{
                 ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
             },
@@ -676,12 +679,14 @@ mod tests {
         let library1 = Assembler::default().assemble_library([code1]).unwrap();
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
+        let auth_component: AccountComponent =
+            NoopAuthComponent::new(Assembler::default()).unwrap().into();
         let component1 = AccountComponent::new(library1, vec![]).unwrap().with_supports_all_types();
         let component2 = AccountComponent::new(library2, vec![]).unwrap().with_supports_all_types();
 
         let err = Account::initialize_from_components(
             AccountType::RegularAccountUpdatableCode,
-            &[component1, component2],
+            &[auth_component, component1, component2],
         )
         .unwrap_err();
 

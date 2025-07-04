@@ -20,7 +20,7 @@ use miden_objects::{
 use miden_tx::utils::word_to_masm_push_string;
 use rand::Rng;
 
-use crate::MockChain;
+use crate::{Auth, MockChain};
 
 // ACCOUNT DELTA TESTS
 // ================================================================================================
@@ -28,34 +28,19 @@ use crate::MockChain;
 // - Add test for calling account_delta::compute_commitment from foreign account and make sure it
 //   returns the correct value (i.e. no part of the computation is using foreign account data).
 
-/// Tests that incrementing the nonce by 3 and 2 results in a nonce delta of 5.
+/// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![]);
 
-    let tx_script = compile_tx_script(
-        "
-      begin
-          push.3
-          exec.incr_nonce
-          # => []
-
-          push.2
-          exec.incr_nonce
-          # => []
-      end
-      ",
-    )?;
-
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
-        .tx_script(tx_script)
         .build()
         .execute()
         .context("failed to execute transaction")?;
 
-    assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(5));
+    assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(1));
 
     Ok(())
 }
@@ -127,9 +112,6 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
           # => [index, VALUE]
           exec.set_item
           # => []
-
-          # nonce must increase for state changing transactions
-          push.1 exec.incr_nonce
       end
       ",
         // Set slot 0 to some other value initially.
@@ -270,9 +252,6 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
-
-          # nonce must increase for state changing transactions
-          push.1 exec.incr_nonce
       end
       ",
         key0 = word_to_masm_push_string(&key0),
@@ -390,9 +369,6 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         # => []
         push.{asset3} exec.create_note_with_asset
         # => []
-
-        # nonce must increase for state changing transactions
-        push.1 exec.incr_nonce
     end
     ",
         asset0 = word_to_masm_push_string(&removed_asset0.into()),
@@ -504,9 +480,6 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         # => [ASSET]
         exec.add_asset dropw
         # => []
-
-        # nonce must increase for state changing transactions
-        push.1 exec.incr_nonce
     end
     ",
         asset1 = word_to_masm_push_string(&asset1.into()),
@@ -554,6 +527,7 @@ struct TestSetup {
 fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
     let account = AccountBuilder::new([8; 32])
         .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -573,6 +547,7 @@ fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
 fn setup_asset_test(assets: impl IntoIterator<Item = Asset>) -> TestSetup {
     let account = AccountBuilder::new([3; 32])
         .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
         .with_component(
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),
@@ -609,18 +584,6 @@ fn word(data: [u32; 4]) -> Word {
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.test::account
-
-      #! Inputs:  [nonce_increment]
-      #! Outputs: []
-      proc.incr_nonce
-        repeat.15 push.0 swap end
-        # => [nonce_increment, pad(15)]
-
-        call.account::incr_nonce
-        # => [pad(16)]
-
-        dropw dropw dropw dropw
-      end
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []

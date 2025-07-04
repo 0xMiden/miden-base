@@ -2,7 +2,7 @@ use alloc::{collections::BTreeMap, string::String, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::{
-    account::{auth::RpoFalcon512, wallets::BasicWallet},
+    account::wallets::BasicWallet,
     errors::{
         MasmError, tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT,
     },
@@ -14,7 +14,7 @@ use miden_objects::{
     assembly::diagnostics::miette,
     asset::FungibleAsset,
     crypto::{
-        dsa::rpo_falcon512::PublicKey,
+        dsa::rpo_falcon512::SecretKey,
         rand::{FeltRng, RpoRandomCoin},
     },
     note::{
@@ -74,6 +74,7 @@ fn test_get_sender() {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
+            Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
         let input_note =
@@ -866,7 +867,7 @@ fn test_build_note_metadata() -> miette::Result<()> {
 #[test]
 pub fn test_timelock() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::NoAuth, vec![]);
+    let account = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(
@@ -944,23 +945,26 @@ pub fn test_timelock() -> anyhow::Result<()> {
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
 #[test]
 fn test_public_key_as_note_input() {
+    let mut rng = ChaCha20Rng::from_seed(Default::default());
+    let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
     // well as the input of the input note
-    let public_key_value: Word = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let public_key = sec_key.public_key();
+    let public_key_value: Word = public_key.into();
 
-    let mock_public_key = PublicKey::new(public_key_value);
-    let rpo_component = RpoFalcon512::new(mock_public_key);
+    let (rpo_component, authenticator) = Auth::BasicAuth.build_component();
 
     let mock_seed_1 = Digest::from([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed_1)
+        .with_auth_component(rpo_component.clone())
         .with_component(BasicWallet)
-        .with_component(rpo_component)
         .build_existing()
         .unwrap();
 
     let mock_seed_2 =
         Digest::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed_2)
+        .with_auth_component(rpo_component)
         .with_component(BasicWallet)
         .build_existing()
         .unwrap();
@@ -988,6 +992,7 @@ fn test_public_key_as_note_input() {
 
     let tx_context = TransactionContextBuilder::new(target_account)
         .extend_input_notes(vec![note_with_pub_key])
+        .authenticator(authenticator)
         .build();
     tx_context.execute().unwrap();
 }

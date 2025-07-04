@@ -75,7 +75,6 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
 
             {code_body}
             dropw dropw dropw dropw
-            push.1 call.account::incr_nonce drop
         end
         ",
         num_assets = assets.len(),

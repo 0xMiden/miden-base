@@ -41,7 +41,6 @@ winterfell = { version = "0.12" }
 
 [dev-dependencies]
 anyhow = { version = "1.0", features = ["std", "backtrace"] }
-assembly = { workspace = true }
 assert_matches = { workspace = true }
 miden-objects = { workspace = true, features = ["std"] }
 winter-rand-utils = { version = "0.12" }

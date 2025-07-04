@@ -228,6 +228,27 @@ proc.update_account_storage_commitment
     end
 end
 
+# AUTH PROCEDURE
+# =================================================================================================
+
+#! Executes the auth procedure.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.execute_auth_procedure
+    padw padw padw push.0.0.0
+    # auth procedure is at index 0 within the account procedures section so no offsetting is needed.
+    exec.memory::get_acct_procedures_section_ptr
+    # => [auth_procedure_ptr, pad(15)]
+
+    # execute the auth procedure
+    dyncall
+    # => [OUTPUT_3, OUTPUT_2, OUTPUT_1, OUTPUT_0]
+
+    # clean up auth procedure outputs
+    dropw dropw dropw dropw
+end
+
 # TRANSACTION EPILOGUE PROCEDURE
 # =================================================================================================
 
@@ -250,6 +271,10 @@ end
 export.finalize_transaction
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
+
+    # execute the account authentication procedure
+    exec.execute_auth_procedure
+    # => []
 
     # update account code
     exec.update_account_code
