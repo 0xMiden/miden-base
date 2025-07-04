@@ -1,8 +1,9 @@
 use alloc::string::ToString;
 
 use miden_objects::{
-    AccountError, Word,
+    AccountError, Digest, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType},
+    assembly::ProcedureName,
 };
 
 use super::AuthScheme;
@@ -29,6 +30,47 @@ use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct BasicWallet;
+
+impl BasicWallet {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+    const RECEIVE_ASSET_PROC_NAME: &str = "receive_asset";
+    const CREATE_NOTE_PROC_NAME: &str = "create_note";
+    const MOVE_ASSET_TO_NOTE_PROC_NAME: &str = "move_asset_to_note";
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the digest of the `receive_asset` wallet procedure.
+    pub fn receive_asset_digest() -> Digest {
+        Self::get_procedure_digest_by_name(Self::RECEIVE_ASSET_PROC_NAME)
+    }
+
+    /// Returns the digest of the `create_note` wallet procedure.
+    pub fn create_note_digest() -> Digest {
+        Self::get_procedure_digest_by_name(Self::CREATE_NOTE_PROC_NAME)
+    }
+
+    /// Returns the digest of the `move_asset_to_note` wallet procedure.
+    pub fn move_asset_to_note_digest() -> Digest {
+        Self::get_procedure_digest_by_name(Self::MOVE_ASSET_TO_NOTE_PROC_NAME)
+    }
+
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the digest of the basic wallet procedure with the specified name.
+    fn get_procedure_digest_by_name(procedure_name: &str) -> Digest {
+        let proc_name = ProcedureName::new(procedure_name).expect("procedure name should be valid");
+        let module = basic_wallet_library()
+            .module_infos()
+            .next()
+            .expect("basic_wallet_library should have exactly one module");
+        module.get_procedure_digest_by_name(&proc_name).unwrap_or_else(|| {
+            panic!("basic_wallet_library should contain the '{proc_name}' procedure")
+        })
+    }
+}
 
 impl From<BasicWallet> for AccountComponent {
     fn from(_: BasicWallet) -> Self {
