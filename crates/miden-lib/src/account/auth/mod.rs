@@ -63,7 +63,7 @@ impl From<RpoFalcon512> for AccountComponent {
 /// This component supports all account types.
 pub struct RpoFalcon512Conditional {
     public_key: PublicKey,
-    tracked_procedures: Vec<Digest>,
+    trigger_procedures: Vec<Digest>,
 }
 
 impl RpoFalcon512Conditional {
@@ -72,28 +72,28 @@ impl RpoFalcon512Conditional {
     ///
     /// # Panics
     /// Panics if more than 253 procedures are tracked (to leave room for the public key and count).
-    pub fn new(public_key: PublicKey, tracked_procedures: Vec<Digest>) -> Self {
+    pub fn new(public_key: PublicKey, trigger_procedures: Vec<Digest>) -> Self {
         assert!(
-            tracked_procedures.len() <= u8::MAX as usize - 2,
+            trigger_procedures.len() <= u8::MAX as usize - 2,
             "Cannot track more than 253 procedures"
         );
-        Self { public_key, tracked_procedures }
+        Self { public_key, trigger_procedures }
     }
 }
 
 impl From<RpoFalcon512Conditional> for AccountComponent {
     fn from(conditional: RpoFalcon512Conditional) -> Self {
-        let mut storage_slots = Vec::with_capacity(2 + conditional.tracked_procedures.len());
+        let mut storage_slots = Vec::with_capacity(2 + conditional.trigger_procedures.len());
 
         // Slot 0: Public key
         storage_slots.push(StorageSlot::Value(conditional.public_key.into()));
 
         // Slot 1: Number of tracked procedures
-        let num_procs = Felt::from(conditional.tracked_procedures.len() as u32);
+        let num_procs = Felt::from(conditional.trigger_procedures.len() as u32);
         storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
 
         // Slots 2+: Tracked procedure roots
-        for proc_root in conditional.tracked_procedures {
+        for proc_root in conditional.trigger_procedures {
             storage_slots.push(StorageSlot::Value(proc_root.into()));
         }
 
