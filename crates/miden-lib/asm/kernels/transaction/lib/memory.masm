@@ -1087,6 +1087,18 @@ export.get_acct_procedures_section_ptr
     exec.get_current_account_data_ptr push.ACCT_PROCEDURES_SECTION_OFFSET add
 end
 
+#! Returns the memory pointer to a specific account procedure.
+#!
+#! Inputs:  [proc_idx]
+#! Outputs: [proc_ptr]
+#!
+#! Where:
+#! - proc_idx is the index of the account procedure.
+#! - proc_ptr is the memory pointer to the account procedure at the specified index.
+export.get_acct_procedure_ptr
+    mul.8 exec.get_acct_procedures_section_ptr add
+end
+
 ### ACCOUNT STORAGE #################################################
 
 #! Returns the account storage commitment.
