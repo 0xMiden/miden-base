@@ -93,7 +93,7 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: exec
-export.get_current_commitment
+export.compute_current_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
