@@ -37,11 +37,11 @@ export.compute_commitment
     padw
     # => [CAPACITY]
 
-    exec.memory::get_account_nonce_delta push.0
-    # => [0, nonce_delta, CAPACITY]
+    exec.memory::get_account_delta_nonce_increment push.0
+    # => [0, nonce_increment, CAPACITY]
 
     exec.memory::get_native_account_id
-    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_delta, CAPACITY]
+    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_increment, CAPACITY]
     # => [ID_AND_NONCE, CAPACITY]
 
     padw
@@ -72,7 +72,7 @@ export.compute_commitment
     # so if the nonce increment is zero, then the delta must be empty
     # important caveat: this is only true if the delta sees no further changes after computing
     # the commitment
-    exec.memory::get_account_nonce_delta
+    exec.memory::get_account_delta_nonce_increment
     # => [nonce_increment, EMPTY_WORD, DELTA_COMMITMENT]
 
     eq.0

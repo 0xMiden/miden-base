@@ -126,9 +126,9 @@ impl AccountDelta {
     /// is appended to in the following way. Whenever sorting is expected, it is that of a link map
     /// key. The WORD layout is in memory-order.
     ///
-    /// - Append `[[nonce_delta, 0, account_id_suffix, account_id_prefix], EMPTY_WORD]`, where
+    /// - Append `[[nonce_increment, 0, account_id_suffix, account_id_prefix], EMPTY_WORD]`, where
     ///   account_id_{prefix,suffix} are the prefix and suffix felts of the native account id and
-    ///   nonce_delta is the value by which the nonce was incremented.
+    ///   nonce_increment is the value by which the nonce was incremented.
     /// - Fungible Asset Delta
     ///   - For each **updated** fungible asset, sorted by its vault key, whose amount delta is
     ///     **non-zero**:

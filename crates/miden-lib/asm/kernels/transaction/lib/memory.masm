@@ -171,7 +171,7 @@ const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4128
 # -------------------------------------------------------------------------------------------------
 
 # The pointer at which the delta of the nonce is stored.
-# Layout: [nonce_delta, 0, 0, 0]
+# Layout: [nonce_increment, 0, 0, 0]
 const.ACCOUNT_DELTA_NONCE_PTR=532480
 
 # The link map pointer at which the delta of the fungible asset vault is stored.
@@ -1223,26 +1223,26 @@ end
 
 #! Increments the delta of the account's nonce.
 #!
-#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2, then the
-#! stored nonce_delta will be 5.
+#! Example: If this procedure is called with nonce_increment 3 and again with nonce_increment 2, then the
+#! stored nonce_increment will be 5.
 #!
-#! Inputs:  [nonce_delta]
+#! Inputs:  [nonce_increment]
 #! Outputs: []
 #!
 #! Where:
-#! - nonce_delta is the value by which the nonce changed.
-export.incr_account_nonce_delta
-    exec.get_account_nonce_delta add mem_store.ACCOUNT_DELTA_NONCE_PTR
+#! - nonce_increment is the value by which the nonce changed.
+export.incr_account_delta_nonce_increment
+    exec.get_account_delta_nonce_increment add mem_store.ACCOUNT_DELTA_NONCE_PTR
 end
 
 #! Returns the delta of the account's nonce.
 #!
 #! Inputs:  []
-#! Outputs: [nonce_delta]
+#! Outputs: [nonce_increment]
 #!
 #! Where:
-#! - nonce_delta is the value by which the nonce changed.
-export.get_account_nonce_delta
+#! - nonce_increment is the value by which the nonce changed.
+export.get_account_delta_nonce_increment
     mem_load.ACCOUNT_DELTA_NONCE_PTR
 end
 
