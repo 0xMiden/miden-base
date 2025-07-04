@@ -9,7 +9,7 @@ use miden_objects::assembly::diagnostics::{Report, reporting::PrintDiagnostic};
 #[derive(Debug, thiserror::Error)]
 #[error("failed to build script: {message}")]
 pub struct ScriptBuilderError {
-    /// Stack size of Box<str> is smaller than String.
+    /// Stack size of `Box<str>` is smaller than String.
     message: Box<str>,
     /// thiserror will return this when calling Error::source on ScriptBuilderError.
     source: Option<Box<dyn Error + Send + Sync + 'static>>,
