@@ -57,9 +57,9 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 /// ```
 ///
 /// # Note
-/// For scripts that need access to transaction kernel procedures,
-/// use `ScriptBuilder::with_assembler()` and provide an assembler created with
-/// `TransactionKernel::assembler()` from the miden-lib crate.
+/// The ScriptBuilder automatically includes the `miden` and `std` libraries, which
+/// provide access to transaction kernel procedures. The default constructor
+/// `ScriptBuilder::new()` includes these libraries automatically.
 #[derive(Clone)]
 pub struct ScriptBuilder {
     assembler: Assembler,
