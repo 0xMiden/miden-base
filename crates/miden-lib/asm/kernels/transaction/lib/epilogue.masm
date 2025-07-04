@@ -179,55 +179,6 @@ proc.update_account_code
     # => []
 end
 
-# ACCOUNT STORAGE UPDATE
-# =================================================================================================
-
-#! Updates the account storage commitment by hashing the storage slots and setting the storage
-#! commitment to the newly computed storage hash.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.update_account_storage_commitment
-    # get number of storage slots
-    exec.memory::get_num_storage_slots
-    # => [num_storage_slots]
-
-    # check if there are storage slots
-    dup push.0 neq
-    # => [storage_slots_is_not_empty, num_storage_slots]
-
-    # only loop and hash over storage if there are storage slots
-    if.true
-        # setup start and end ptr
-        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
-        # => [start_ptr, end_ptr]
-
-        # pad stack to read and hash from memory
-        padw padw padw
-        # => [PAD, PAD, PAD, start_ptr, end_ptr]
-
-        # hash elements from memory
-        exec.rpo::absorb_double_words_from_memory
-        # => [PERM, PERM, PERM, start_ptr, end_ptr]
-
-        # extract the digest
-        exec.rpo::squeeze_digest
-        # => [DIGEST, end_ptr, end_ptr]
-
-        # clean stack
-        movup.4 drop movup.4 drop
-        # => [DIGEST]
-
-        # set new account storage commitment
-        exec.memory::set_acct_storage_commitment dropw
-        # => []
-    else
-        # drop number of storage slots
-        drop
-        # => []
-    end
-end
-
 # AUTH PROCEDURE
 # =================================================================================================
 
@@ -280,10 +231,6 @@ export.finalize_transaction
     exec.update_account_code
     # => []
 
-    # update account storage commitment
-    exec.update_account_storage_commitment
-    # => []
-
     # get the initial account commitment
     exec.memory::get_init_account_commitment
     # => [INIT_ACCOUNT_COMMITMENT]
@@ -297,7 +244,7 @@ export.finalize_transaction
     # => [acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
 
     # compute the final account commitment
-    exec.account::get_current_commitment
+    exec.account::compute_current_commitment
     # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
 
     # insert final account data into the advice map

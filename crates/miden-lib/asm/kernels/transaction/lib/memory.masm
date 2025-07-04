@@ -852,9 +852,19 @@ end
 #! Panics if:
 #! - the current account data pointer is not equal to native account data pointer (8192).
 export.assert_native_account
+    exec.is_native_account assert.err=ERR_ACCOUNT_IS_NOT_NATIVE
+end
+
+#! Returns 1 if the current account data pointer matches the data pointer of the native account.
+#!
+#! Inputs:  []
+#! Outputs: [is_native_account]
+export.is_native_account
     exec.get_current_account_data_ptr
-    push.NATIVE_ACCOUNT_DATA_PTR
-    assert_eq.err=ERR_ACCOUNT_IS_NOT_NATIVE
+    # => [current_account_data_ptr]
+
+    eq.NATIVE_ACCOUNT_DATA_PTR
+    # => [is_native_account]
 end
 
 #! Returns a pointer to the end of the core account data section.
