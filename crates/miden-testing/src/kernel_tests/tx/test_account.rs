@@ -850,7 +850,7 @@ fn test_get_vault_root() {
 // ================================================================================================
 
 #[test]
-fn test_authenticate_procedure() -> miette::Result<()> {
+fn test_authenticate_and_track_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
 
@@ -883,7 +883,7 @@ fn test_authenticate_procedure() -> miette::Result<()> {
 
                 # authenticate procedure
                 push.{root}
-                exec.account::authenticate_procedure
+                exec.account::authenticate_and_track_procedure
 
                 # truncate the stack
                 dropw

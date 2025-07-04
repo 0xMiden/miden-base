@@ -47,7 +47,7 @@ proc.authenticate_account_origin
     # => [CALLER]
 
     # assert that the caller is from the user context
-    exec.account::authenticate_procedure
+    exec.account::authenticate_and_track_procedure
     # => [storage_offset, storage_size]
 end
 

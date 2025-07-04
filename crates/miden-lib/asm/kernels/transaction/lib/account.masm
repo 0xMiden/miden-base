@@ -662,7 +662,7 @@ end
 #!
 #! Panics if:
 #! - the procedure root is not part of the account code.
-export.authenticate_procedure.1
+export.authenticate_and_track_procedure.1
     # load procedure index
     emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
     # => [index, PROC_ROOT]
