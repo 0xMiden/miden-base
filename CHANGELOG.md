@@ -38,6 +38,7 @@
 - Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
 - [BREAKING] Introduce errors in `MockChain` API (#1508).
 - [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
+- Implement `WellKnownComponents` enum (#1532).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
