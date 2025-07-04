@@ -16,35 +16,35 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // account_get_nonce
     digest!("0xf1dfe3621b9147803b6668352915be7fb7f85df476c9d18052272270a854fa75"),
     // account_incr_nonce
-    digest!("0xecdd4bd7bb0f2e93c6b927d85b952d913d815aa1899ed312345b4d7ca8c10d34"),
+    digest!("0xf47994fd1d768328fb1a1717f2101b84e627578abc7bc9cdb3eecc2147cc456c"),
     // account_get_code_commitment
-    digest!("0xed9425332a9d92654095a73ce6de35cefc5dfaeb366bb97ce2752e7de6664913"),
+    digest!("0x807a4183a40b2e65b8e04f9e8d13f12b5372b4a7a2910b1209cf67ccbb3d6e20"),
     // account_get_storage_commitment
-    digest!("0x156617f3468741dbe70476d1bee422e972db2fd726d61ff57cc01ced6119fd0d"),
+    digest!("0x9d64c7525b4abf37fc50e4203a0f7cffc757a031719932230a169b21a5a68a21"),
     // account_get_item
-    digest!("0x9cf8a4fb028bfa7fe93167c1638f652dbc69fda8abc45b35a45950e9d254fdac"),
+    digest!("0x2769600f71d8a38441f7bb7f6e877a307eb8d3290494fbc1b978124e2b240e6d"),
     // account_set_item
-    digest!("0x4839791daa3c095a4b7e727ada7782b5e91166ac1ad9dcede44c2ce278adb97a"),
+    digest!("0xefb681fb07ca3f7972b2a4196f59ba64c121ef257e22c9348feaa2235459608a"),
     // account_get_map_item
-    digest!("0xd48d709c63d15de3e8a6f9860045c7a940ef0055482b79a812f5e3c9b5e2c852"),
+    digest!("0x9c8c8586252de23b4e9d75e5591dec26025c61afa946628a28c8d4646dd8aaa9"),
     // account_set_map_item
-    digest!("0x52a82f3d9aed2f0d0ac63f074154b943b26d70c1e1ca60af59d3561d95b89952"),
+    digest!("0xd9e8fb82e9eef51047748804c1e73e0637045297b4f9f9ace311930fdd532b77"),
     // account_get_vault_root
     digest!("0x279b4a9e5adca07f01cadf8ecc1303fa3c670003a7a4e69f09506b070c4023df"),
     // account_add_asset
-    digest!("0x0e7d26f9cf938cc6fa2e84cfeb54d5ca9f6e923117dcdcb350e1b030c712b644"),
+    digest!("0xba139da68ea04f1e4259943fd8bb9a8692e03a2bb152d52ff1cf64fe70448373"),
     // account_remove_asset
-    digest!("0x7033425d6253f7e5e350f1871ea9b4cf6286b84138f4c8a382ce1b9d276e91d8"),
+    digest!("0x8d33ef93b3c82388c34d5a97a0db1a53b3deead4257c06105d3e1a1e92a29e62"),
     // account_get_balance
     digest!("0xc3385953bc66def5211f53a3c44de8facfb4060abbb1c9708859c314268989e8"),
     // account_has_non_fungible_asset
     digest!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
     // account_was_procedure_called
-    digest!("0xedcb9151a8f56a5681e473b40356136c5808bfef324d83b2641f6cf4becdc6f5"),
+    digest!("0xb1e12cb3e2eeb3c940e9465845e93fe2c799ecf5f7c2b468e7fff9d26fd57f4b"),
     // faucet_mint_asset
-    digest!("0xc40e52b7d610c1832f1d5a1fa15903902ddb142241206713e37ca63ace80a646"),
+    digest!("0x10a0b3809e8134e0692678b440c2293ca61fa3806927c0ed7bb9c928b90c3082"),
     // faucet_burn_asset
-    digest!("0xc6d3ffd5c2bf092a85e5c0064b2e5ff2f25492352d2b29b38e43e8a844f7c659"),
+    digest!("0xb8e24d03edbea8ef206106b4f7ad7881373c3267923439fbb3f9dcf5079d8241"),
     // faucet_get_total_fungible_asset_issuance
     digest!("0xd2ee4bd330f989165ee2be0f121a4db916f95e58f6fd2d040d57672f2f0cef63"),
     // faucet_is_non_fungible_asset_issued
@@ -52,7 +52,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // note_get_assets_info
     digest!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
     // note_add_asset
-    digest!("0xb9e001fcd473132abf7b2a650516cfeb7bafdb95da326824656a3d439995a537"),
+    digest!("0x3b70f146d724c11e3510f596e11a1736b37853aac4b25b4b955db6d777ccf79d"),
     // note_get_serial_number
     digest!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
@@ -62,7 +62,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // note_get_script_root
     digest!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // tx_create_note
-    digest!("0x49bf09e20abf6f2d4aa48b7200614633d61cec0d9c128a4dee0a0c1f102d080d"),
+    digest!("0x68fe140321a9ef6bd23a2bf7a86c4a6914e922f3402c4d78155bf582c43702d7"),
     // tx_get_input_notes_commitment
     digest!("0x16cb840dc9131e2fd2b3e83b8d796eb466722ae36f29f27b4b053f1bee2ed473"),
     // tx_get_output_notes_commitment
