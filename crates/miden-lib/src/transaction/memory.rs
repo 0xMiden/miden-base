@@ -41,10 +41,11 @@ pub type StorageSlot = u8;
 // | Num procedures    | 28 (7)                                | 31 (7)                              |                                     |
 // | Procedures info   | 32 (8)                                | 2_079 (519)                         | 255 procedures max, 8 elements each |
 // | Padding           | 2_080 (520)                           | 2_083 (520)                         |                                     |
-// | Num storage slots | 2_084 (521)                           | 2_087 (521)                         |                                     |
-// | Storage slot info | 2_088 (522)                           | 4_127 (1031)                        | 255 slots max, 8 elements each      |
-// | Initial slot info | 4_128 (1032)                          | 6_167 (1541)                        | Only present on the native account  |
-// | Padding           | 6_168 (1541)                          | 8_191 (2047)                        |                                     |
+// | Proc tracking     | 2_084 (521)                           | 2_339 (584)                         |                                     |
+// | Num storage slots | 2_340 (585)                           | 2_343 (585)                         |                                     |
+// | Storage slot info | 2_344 (586)                           | 4_383 (1095)                        | 255 slots max, 8 elements each      |
+// | Initial slot info | 4_384 (1096)                          | 6_423 (1545)                        | Only present on the native account  |
+// | Padding           | 6_424 (1545)                          | 8_191 (2047)                        |                                     |
 
 // Relative layout of the native account's delta.
 //
@@ -267,9 +268,18 @@ pub const ACCT_PROCEDURES_SECTION_OFFSET: MemoryAddress = 32;
 pub const NATIVE_ACCT_PROCEDURES_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_PROCEDURES_SECTION_OFFSET;
 
+/// The offset at which the account procedures call tracking section begins relative to the start of
+/// the account data segment.
+pub const ACCT_PROCEDURES_CALL_TRACKING_OFFSET: MemoryAddress = 2084;
+
+/// The memory address at which the account procedures call tracking section begins in the native
+/// account.
+pub const NATIVE_ACCT_PROCEDURES_CALL_TRACKING_PTR: MemoryAddress =
+    NATIVE_ACCOUNT_DATA_PTR + ACCT_PROCEDURES_CALL_TRACKING_OFFSET;
+
 /// The offset at which the number of storage slots contained in the account storage is stored
 /// relative to the start of the account data segment.
-pub const NUM_ACCT_STORAGE_SLOTS_OFFSET: MemoryAddress = 2084;
+pub const NUM_ACCT_STORAGE_SLOTS_OFFSET: MemoryAddress = 2340;
 
 /// The memory address at which number of storage slots contained in the account storage is stored
 /// in the native account.
@@ -278,7 +288,7 @@ pub const NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR: MemoryAddress =
 
 /// The offset at which the account storage slots section begins relative to the start of the
 /// account data segment.
-pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2088;
+pub const ACCT_STORAGE_SLOTS_SECTION_OFFSET: MemoryAddress = 2344;
 
 /// The number of elements that each storage slot takes up in memory.
 pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;

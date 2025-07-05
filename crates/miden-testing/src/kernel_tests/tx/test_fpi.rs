@@ -1378,10 +1378,11 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         );
         let expected_word = Word::try_from(elements).unwrap();
 
-        // Out of the procedure metadata containing [storage_offset, storage_size, was_called, 0],
-        // we don't care about the `was_called` field.
+        // Procedure metadata now only contains [storage_offset, storage_size, 0, 0] as was_called
+        // has been moved to a separate memory region for better handling of future code updates.
         assert_eq!(memory_word[0], expected_word[0]);
         assert_eq!(memory_word[1], expected_word[1]);
+        assert_eq!(memory_word[2], expected_word[2]);
         assert_eq!(memory_word[3], expected_word[3]);
     }
 }
