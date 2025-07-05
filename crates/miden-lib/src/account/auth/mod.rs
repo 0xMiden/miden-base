@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use miden_objects::{
     Digest, Felt, FieldElement,
-    account::{AccountComponent, StorageSlot},
+    account::{AccountComponent, StorageMap, StorageSlot},
     crypto::dsa::rpo_falcon512::PublicKey,
 };
 
@@ -56,9 +56,9 @@ impl From<RpoFalcon512> for AccountComponent {
 /// - If at least one was called, performs standard RpoFalcon512 signature verification
 ///
 /// The storage layout is:
-/// - Slot 0: Public key (same as RpoFalcon512)
-/// - Slot 1: Number of tracked procedures
-/// - Slots 2+: Procedure roots that trigger authentication (one Word per procedure)
+/// - Slot 0(value): Public key (same as RpoFalcon512)
+/// - Slot 1(value): Number of tracked procedures
+/// - Slot 2(map): A map with tracked procedure roots
 ///
 /// This component supports all account types.
 pub struct RpoFalcon512Conditional {
@@ -83,7 +83,7 @@ impl RpoFalcon512Conditional {
 
 impl From<RpoFalcon512Conditional> for AccountComponent {
     fn from(conditional: RpoFalcon512Conditional) -> Self {
-        let mut storage_slots = Vec::with_capacity(2 + conditional.trigger_procedures.len());
+        let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
         storage_slots.push(StorageSlot::Value(conditional.public_key.into()));
@@ -92,9 +92,15 @@ impl From<RpoFalcon512Conditional> for AccountComponent {
         let num_procs = Felt::from(conditional.trigger_procedures.len() as u32);
         storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
 
-        // Slots 2+: Tracked procedure roots
-        for proc_root in conditional.trigger_procedures {
-            storage_slots.push(StorageSlot::Value(proc_root.into()));
+        // Slots 2: A map with tracked procedure roots
+        for (i, proc_root) in conditional.trigger_procedures.iter().enumerate() {
+            storage_slots.push(StorageSlot::Map(
+                StorageMap::with_entries([(
+                    [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::from(i as u32)].into(),
+                    proc_root.into(),
+                )])
+                .unwrap(),
+            ));
         }
 
         AccountComponent::new(rpo_falcon_512_conditional_library(), storage_slots)

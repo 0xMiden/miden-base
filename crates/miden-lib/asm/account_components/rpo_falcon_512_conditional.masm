@@ -27,42 +27,47 @@ const.TRACKED_PROCS_START_SLOT=2
 export.auth__tx_rpo_falcon512_conditional
     # Get the number of tracked procedures
     push.NUM_TRACKED_PROCS_SLOT exec.account::get_item
-    # => [num_tracked_procs, pad(15)]
+    # => [num_tracked_procs, pad(16)]
 
     # Check if any tracked procedure was called
     # Counter `i` starts at `num_tracked_procs` and flag `was_any_called` starts at 0
     push.0
-    # => [was_any_called, i, pad(13)]
+    # => [was_any_called, i, pad(16)]
 
     # Loop through tracked procedures
     dup.1 neq.0
     while.true
+        # => [was_any_called, i, pad(16)]
+
         # Get the tracked procedure root from storage
-        dup.1 push.TRACKED_PROCS_START_SLOT add exec.account::get_item
-        # => [TRACKED_PROC_ROOT, was_any_called, i, pad(10)]
+        dup.1 sub.1 push.TRACKED_PROCS_START_SLOT
+        # => [TRACKED_PROCS_START_SLOT, i-1, was_any_called, i, pad(16)]
+
+        exec.account::get_map_item
+        # => [TRACKED_PROC_ROOT, was_any_called, i, pad(16)]
 
         exec.account::was_procedure_called
-        # => [was_called, was_any_called, i, pad(13)]
+        # => [was_called, was_any_called, i, pad(16)]
         
         # Increment counter
-        add
-        # => [was_any_called', i, pad(14)]
+        or
+        # => [was_any_called', i, pad(16)]
 
         swap
         sub.1
         swap
-        # => [was_any_called', i-1, pad(13)]
+        # => [was_any_called', i-1, pad(16)]
 
         # Check if we should continue looping
         dup.1 neq.0
-        # => [should_continue, was_any_called', i-1, pad(13)]
+        # => [should_continue, was_any_called', i-1, pad(16)]
     end
 
-    # TODO make sure we end up with the right stack
-    # => [was_any_called, pad(15)]
+    # => [was_any_called, i-1, pad(16)]
 
     # If any tracked procedure was called, perform signature verification
     if.true
         exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     end
+    drop
 end
