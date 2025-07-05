@@ -74,7 +74,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // tx_get_block_timestamp
     digest!("0x786863e6dbcd5026619afd3831b7dcbf824cda54950b0e0724ebf9d9370ec723"),
     // tx_start_foreign_context
-    digest!("0xfe874188640a8913c530714e7963639ef3c6f13aa0b560fa37d31e605227c6aa"),
+    digest!("0x564659db9393b9c6e04819aae697c046c014467b9edfe7fa9bbca04249d3a7e7"),
     // tx_end_foreign_context
     digest!("0x90a107168d81c1c0c23890e61fb7910a64b4711afd0bf8c3098d74737e4853ba"),
     // tx_get_expiration_delta
