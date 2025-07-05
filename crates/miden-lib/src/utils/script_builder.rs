@@ -71,9 +71,7 @@ impl ScriptBuilder {
 
     /// Creates a new ScriptBuilder with the specified debug mode.
     ///
-    /// This creates a basic assembler. For transaction scripts that need access to
-    /// transaction kernel procedures, use `ScriptBuilder::with_assembler()` and provide
-    /// an assembler created with `TransactionKernel::assembler()`.
+    /// This creates a basic assembler using `TransactionKernel::assembler()`.
     ///
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
@@ -263,51 +261,6 @@ impl ScriptBuilder {
         NoteScript::compile(program.as_ref(), assembler).map_err(|err| {
             ScriptBuilderError::build_error_with_source("failed to compile note script", err)
         })
-    }
-
-    // LIBRARY COMPILATION
-    // --------------------------------------------------------------------------------------------
-
-    /// Compiles the provided library code and library path into a Library.
-    ///
-    /// This method allows you to compile libraries independently and pass them
-    /// to `compile_tx_script()` as needed. This matches the original client API pattern:
-    /// ```ignore
-    /// let library = builder.compile_library(account_code, library_path)?;
-    /// let tx_script = builder.compile_tx_script(script_code, Some(library))?;
-    /// ```
-    ///
-    /// # Arguments
-    /// * `library_code` - The source code of the library
-    /// * `library_path` - The path identifier for the library (e.g., "my_lib::my_module")
-    ///
-    /// # Errors
-    /// Returns an error if:
-    /// - The library path is invalid
-    /// - The library code cannot be parsed
-    /// - The library cannot be assembled
-    pub fn compile_library(
-        self,
-        library_code: impl AsRef<str>,
-        library_path: impl AsRef<str>,
-    ) -> Result<Library, ScriptBuilderError> {
-        let assembler = self.assembler;
-
-        // Parse the library path
-        let lib_path = LibraryPath::new(library_path.as_ref()).map_err(|err| {
-            ScriptBuilderError::build_error_with_source(
-                format!("invalid library path: {}", library_path.as_ref()),
-                err,
-            )
-        })?;
-
-        let source = NamedSource::new(format!("{lib_path}"), String::from(library_code.as_ref()));
-
-        let library = assembler.assemble_library([source]).map_err(|err| {
-            ScriptBuilderError::build_error_with_report("failed to assemble library", err)
-        })?;
-
-        Ok(library)
     }
 }
 

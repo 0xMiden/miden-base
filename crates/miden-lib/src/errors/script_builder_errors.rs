@@ -16,12 +16,6 @@ pub struct ScriptBuilderError {
 }
 
 impl ScriptBuilderError {
-    /// Creates a script builder error from an error message.
-    pub fn build_error(message: impl Into<String>) -> Self {
-        let message: String = message.into();
-        Self { message: message.into(), source: None }
-    }
-
     /// Creates a script builder error from an error message and a source error.
     pub fn build_error_with_source(
         message: impl Into<String>,

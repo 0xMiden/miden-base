@@ -1,4 +1,4 @@
-use miden_lib::objects_utils::word_to_masm_push_string;
+use miden_lib::utils::word_to_masm_push_string;
 use miden_objects::{
     account::AccountId,
     asset::NonFungibleAsset,

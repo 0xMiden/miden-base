@@ -24,9 +24,7 @@ pub mod utils;
 
 // RE-EXPORTS
 // ================================================================================================
-pub use miden_objects::utils as objects_utils;
 pub use miden_stdlib::StdLibrary;
-pub use utils as lib_utils;
 
 // CONSTANTS
 // ================================================================================================

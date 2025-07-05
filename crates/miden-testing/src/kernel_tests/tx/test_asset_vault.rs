@@ -7,8 +7,8 @@ use miden_lib::{
         ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
         ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
     },
-    objects_utils::word_to_masm_push_string,
     transaction::{TransactionKernel, memory},
+    utils::word_to_masm_push_string,
 };
 use miden_objects::{
     AssetVaultError,

@@ -9,8 +9,8 @@ use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2ide_note},
-    objects_utils::word_to_masm_push_string,
     transaction::TransactionKernel,
+    utils::word_to_masm_push_string,
 };
 use miden_objects::{
     Felt, FieldElement, MIN_PROOF_SECURITY_LEVEL, Word,

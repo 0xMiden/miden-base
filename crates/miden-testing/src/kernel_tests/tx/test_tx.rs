@@ -5,7 +5,6 @@ use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
     },
-    objects_utils::word_to_masm_push_string,
     transaction::{
         TransactionKernel,
         memory::{
@@ -13,6 +12,7 @@ use miden_lib::{
             OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
         },
     },
+    utils::word_to_masm_push_string,
 };
 use miden_objects::{
     FieldElement,

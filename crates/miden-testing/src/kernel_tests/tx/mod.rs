@@ -1,12 +1,12 @@
 use alloc::string::String;
 
 use miden_lib::{
-    objects_utils::word_to_masm_push_string,
     transaction::memory::{
         NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
         OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_NUM_ASSETS_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET,
         OUTPUT_NOTE_SECTION_OFFSET,
     },
+    utils::word_to_masm_push_string,
 };
 use miden_objects::{
     Felt, Hasher, ONE, Word, ZERO, note::Note, testing::storage::prepare_assets, vm::StackInputs,
