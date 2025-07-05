@@ -48,12 +48,21 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 ///
 /// ## Builder Pattern Example
 ///
-/// ```ignore
+/// ```no_run
+/// # use miden_lib::utils::ScriptBuilder;
+/// # use miden_objects::assembly::Library;
+/// # use miden_stdlib::StdLibrary;
+/// # let module_code = "export.test begin nop end";
+/// # let script_code = "begin nop end";
+/// # // Create sample libraries for the example
+/// # let my_lib = StdLibrary::default().into(); // Convert StdLibrary to Library
+/// # let fpi_lib = StdLibrary::default().into();
 /// let script = ScriptBuilder::new(true)
 ///     .with_linked_module("my::module", module_code)?
 ///     .with_statically_linked_library(&my_lib)?
 ///     .with_dynamically_linked_library(&fpi_lib)?  // For FPI calls
 ///     .compile_tx_script(script_code)?;
+/// # Ok::<(), Box<dyn std::error::Error>>(())
 /// ```
 ///
 /// # Note
