@@ -41,6 +41,7 @@
 - Implement serialization for `LexicographicWord` (#1524).
 - Add `with_auth_component` to `AccountBuilder` (#1480).
 - [BREAKING] Refactor account authentication to require a procedure containing `auth__` in its name (#1480).
+- Make `Account:increment_nonce()` method public ([#1533](https://github.com/0xMiden/miden-base/pull/1533)).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
