@@ -1200,7 +1200,7 @@ export.was_procedure_called
     exec.get_procedure_info
     # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
 
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
+    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
     # => [index]
 
     exec.memory::get_acct_procedures_call_tracking_ptr
