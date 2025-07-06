@@ -704,11 +704,11 @@ export.assert_auth_procedure
     # => [index, PROC_ROOT]
 
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT]
 
     # verify that PROC_ROOT exists in memory at index
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
     # => []
 end
 
@@ -1043,6 +1043,26 @@ proc.set_item_raw
     # => [OLD_VALUE]
 end
 
+#! Returns the procedure root.
+#!
+#! Note:
+#! - We assume that index has been validated and is within bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [PROC_ROOT]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure.
+proc.get_procedure_root
+    # get procedure pointer
+    exec.memory::get_acct_procedure_ptr
+    # => [proc_ptr]
+
+    # load procedure root from memory
+    padw movup.4 mem_loadw
+    # => [PROC_ROOT]
+end
+
 #! Returns the procedure metadata.
 #!
 #! Note:
@@ -1196,11 +1216,12 @@ export.was_procedure_called
 
     dup movdn.5
 
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
+    # get procedure root from memory stored at index
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT, index]
 
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # verify that PROC_ROOT exists in memory at index
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
     # => [index]
 
     exec.memory::get_acct_procedures_call_tracking_ptr
