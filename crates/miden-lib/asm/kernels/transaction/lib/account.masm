@@ -1076,11 +1076,11 @@ end
 #! - storage_size is the number of storage slots the procedure is allowed to access.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
-    exec.memory::get_acct_procedure_ptr add.4
-    # => [storage_offset_ptr]
+    padw exec.memory::get_acct_procedure_ptr add.4
+    # => [storage_offset_ptr, 0, 0, 0, 0]
 
     # load procedure metadata from memory and keep relevant data
-    padw movup.4 mem_loadw drop drop swap
+    mem_loadw drop drop swap
     # => [storage_offset, storage_size]
 end
 
