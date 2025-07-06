@@ -848,7 +848,7 @@ fn test_get_vault_root() {
 // ================================================================================================
 
 #[test]
-fn test_authenticate_procedure() -> miette::Result<()> {
+fn test_authenticate_and_track_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
 
@@ -881,7 +881,7 @@ fn test_authenticate_procedure() -> miette::Result<()> {
 
                 # authenticate procedure
                 push.{root}
-                exec.account::authenticate_procedure
+                exec.account::authenticate_and_track_procedure
 
                 # truncate the stack
                 dropw
@@ -899,6 +899,77 @@ fn test_authenticate_procedure() -> miette::Result<()> {
             false => assert!(process.is_err(), "An invalid procedure should fail to authenticate"),
         }
     }
+
+    Ok(())
+}
+
+// PROCEDURE INTROSPECTION TESTS
+// ================================================================================================
+
+#[test]
+fn test_was_procedure_called() -> miette::Result<()> {
+    // Create a standard account using the mock component
+    let mock_component = AccountMockComponent::new_with_slots(
+        TransactionKernel::assembler(),
+        AccountStorage::mock_storage_slots(),
+    )
+    .unwrap();
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(mock_component)
+        .build_existing()
+        .unwrap();
+
+    // Create a transaction script that:
+    // 1. Checks that get_item hasn't been called yet
+    // 2. Calls get_item from the mock account
+    // 3. Checks that get_item has been called
+    // 4. Calls get_item **again**
+    // 5. Checks that `was_procedure_called` returns `true`
+    let tx_script_code = r#"
+        use.test::account->test_account
+        use.miden::account
+
+        begin
+            # First check that get_item procedure hasn't been called yet
+            procref.test_account::get_item
+            exec.account::was_procedure_called
+            assertz.err="procedure should not have been called"
+
+            # Call the procedure first time
+            push.0
+            call.test_account::get_item dropw
+            # => []
+
+            procref.test_account::get_item
+            exec.account::was_procedure_called
+            assert.err="procedure should have been called"
+
+            # Call the procedure second time
+            push.0
+            call.test_account::get_item dropw
+
+            procref.test_account::get_item
+            exec.account::was_procedure_called
+            assert.err="2nd call should not change the was_called flag"
+        end
+        "#;
+
+    // Compile the transaction script using the testing assembler with mock account
+    let assembler = TransactionKernel::testing_assembler_with_mock_account();
+    let tx_script = TransactionScript::new(
+        assembler
+            .assemble_program(tx_script_code)
+            .wrap_err("Failed to compile transaction script")?,
+    );
+
+    // Create transaction context and execute
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build();
+
+    tx_context
+        .execute()
+        .into_diagnostic()
+        .wrap_err("Failed to execute transaction")?;
 
     Ok(())
 }

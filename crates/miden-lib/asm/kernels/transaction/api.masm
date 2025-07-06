@@ -47,7 +47,7 @@ proc.authenticate_account_origin
     # => [CALLER]
 
     # assert that the caller is from the user context
-    exec.account::authenticate_procedure
+    exec.account::authenticate_and_track_procedure
     # => [storage_offset, storage_size]
 end
 
@@ -1044,6 +1044,25 @@ export.tx_get_expiration_delta
     # truncate the stack
     swap drop
     # => [block_height_delta, pad(15)]
+end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT, pad(12)]
+#! Outputs: [was_called, pad(15)]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called at least once during tx execution, 0 otherwise.
+#!
+#! Panics if:
+#! - the procedure root is not part of the account code.
+#!
+#! Invocation: dynexec
+export.account_was_procedure_called
+    # check if the procedure was called
+    exec.account::was_procedure_called
+    # => [was_called, pad(15)]
 end
 
 #! Executes a kernel procedure specified by its offset.
