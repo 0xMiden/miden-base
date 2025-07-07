@@ -490,7 +490,8 @@ fn create_simple_account() -> anyhow::Result<()> {
 
     assert_eq!(tx.account_delta().nonce_increment(), Felt::new(1));
     // except for the nonce, the delta should be empty
-    assert!(tx.account_delta().is_empty());
+    assert!(tx.account_delta().storage().is_empty());
+    assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
     // account commitment should not be the empty word
     assert_ne!(*tx.account_delta().commitment(), EMPTY_WORD);

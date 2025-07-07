@@ -7,6 +7,11 @@ use.kernel::asset_vault
 use.std::crypto::hashes::rpo
 use.std::math::u64
 
+# ERRORS
+# =================================================================================================
+
+const.ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_WITH_VAULT_OR_STORAGE_CHANGES="account delta nonce must incremented if vault or storage changed"
+
 # CONSTANTS
 # =================================================================================================
 
@@ -32,6 +37,9 @@ const.DOMAIN_MAP=3
 #!
 #! Where:
 #! - DELTA_COMMITMENT is the commitment to the account delta.
+#!
+#! Panics if:
+#! - the vault or storage delta is not empty but the nonce increment is zero.
 export.compute_commitment
     # pad capacity element of the hasher
     padw
@@ -50,38 +58,43 @@ export.compute_commitment
     hperm
     # => [RATE, RATE, PERM]
 
+    # save the ID and nonce digest (the 2nd rate word) for a later check
+    dupw.1 movdnw.3
+    # => [RATE, RATE, PERM, ID_AND_NONCE_DIGEST]
+
     exec.update_fungible_asset_delta
-    # => [RATE, RATE, PERM]
+    # => [RATE, RATE, PERM, ID_AND_NONCE_DIGEST]
 
     exec.update_non_fungible_asset_delta
-    # => [RATE, RATE, PERM]
+    # => [RATE, RATE, PERM, ID_AND_NONCE_DIGEST]
 
     exec.update_storage_delta
-    # => [RATE, RATE, PERM]
+    # => [RATE, RATE, PERM, ID_AND_NONCE_DIGEST]
 
     exec.rpo::squeeze_digest
-    # => [DELTA_COMMITMENT]
+    # => [DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
-    # if the account delta is empty (no storage and vault changes and a nonce increment of zero)
-    # then the commitment to it is defined as the empty word
-    padw
-    # => [EMPTY_WORD, DELTA_COMMITMENT]
-
-    # the epilogue will ensure that if the state has changed, then the
-    # nonce must be incremented.
-    # so if the nonce increment is zero, then the delta must be empty
-    # important caveat: this is only true if the delta sees no further changes after computing
-    # the commitment
     exec.memory::get_account_delta_nonce_increment
-    # => [nonce_increment, EMPTY_WORD, DELTA_COMMITMENT]
+    # => [nonce_increment, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
     eq.0
-    # => [is_delta_empty, EMPTY_WORD, DELTA_COMMITMENT]
+    # => [is_nonce_zero, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
-    # If is_delta_empty EMPTY_WORD remains.
-    # If !is_delta_empty DELTA_COMMITMENT remains.
-    cdropw
-    # => [EMPTY_WORD, DELTA_COMMITMENT]
+    if.true
+        # if the nonce wasn't incremented, then the vault and storage changes must be empty
+        # if the delta commitment is equivalent to the ID_AND_NONCE_DIGEST, then storage
+        # and vault delta were empty
+        assert_eqw.err=ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_WITH_VAULT_OR_STORAGE_CHANGES
+        # => []
+
+        # if the delta is empty, its commitment is defined as the empty word
+        padw
+        # => [EMPTY_WORD]
+    else
+        # drop the ID and nonce digest
+        swapw dropw
+        # => [DELTA_COMMITMENT]
+    end
 end
 
 #! Updates the given delta hasher with the storage slots.
