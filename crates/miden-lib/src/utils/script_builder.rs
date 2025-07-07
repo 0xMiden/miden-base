@@ -136,7 +136,8 @@ impl ScriptBuilder {
     /// * `library` - The compiled library to statically link
     ///
     /// # Errors
-    /// Returns an error if the library cannot be added to the assembler
+    /// Returns an error if:
+    /// - adding the library to the assembler failed
     pub fn link_static_library(&mut self, library: &Library) -> Result<(), ScriptBuilderError> {
         self.assembler.add_vendored_library(library).map_err(|err| {
             ScriptBuilderError::build_error_with_report("failed to add static library", err)
