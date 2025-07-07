@@ -75,79 +75,84 @@ use crate::{
 /// # Examples
 ///
 /// ## Create mock objects and build a transaction context
-/// ```no_run
+/// ```
+/// # use anyhow::Result;
+/// # use miden_objects::{Felt, asset::FungibleAsset, note::NoteType};
 /// # use miden_testing::{Auth, MockChain, TransactionContextBuilder};
-/// # use miden_objects::{asset::FungibleAsset, Felt, note::NoteType};
+///
+/// # fn main() -> Result<()> {
 /// let mut mock_chain = MockChain::new();
-/// let faucet = mock_chain.add_pending_new_faucet(Auth::BasicAuth, "USDT", 100_000).unwrap();  // Create a USDT faucet
-/// let asset = faucet.mint(1000);
+///
+/// let faucet = mock_chain.add_pending_new_faucet(Auth::BasicAuth, "USDT", 100_000)?;
+/// let _asset = faucet.mint(1000);
+///
 /// let sender = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
 /// let target = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
-/// let note = mock_chain
-///     .add_pending_p2id_note(
-///         faucet.id(),
-///         target.id(),
-///         &[FungibleAsset::mock(10)],
-///         NoteType::Public,
-///     )
-///   .unwrap();
-/// mock_chain.prove_next_block().unwrap();
-/// let tx_context = mock_chain.build_tx_context(sender.id(), &[note.id()], &[]).unwrap().build();
+///
+/// let note = mock_chain.add_pending_p2id_note(
+///     faucet.id(),
+///     target.id(),
+///     &[FungibleAsset::mock(10)],
+///     NoteType::Public,
+/// )?;
+///
+/// mock_chain.prove_next_block()?;
+///
+/// let tx_context = mock_chain.build_tx_context(sender.id(), &[note.id()], &[])?.build()?;
 /// let result = tx_context.execute();
+/// # Ok(())
+/// # }
 /// ```
 ///
-/// ## Executing a Simple Transaction
-///
+/// ## Executing a simple transaction
 /// ```
+/// # use anyhow::Result;
 /// # use miden_objects::{
-/// #   asset::{Asset, FungibleAsset},
-/// #   note::NoteType,
+/// #    asset::{Asset, FungibleAsset},
+/// #    note::NoteType,
 /// # };
 /// # use miden_testing::{Auth, MockChain};
+///
+/// # fn main() -> Result<()> {
 /// let mut mock_chain = MockChain::new();
+///
 /// // Add a recipient wallet.
 /// let receiver = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
+///
 /// // Add a wallet with assets.
 /// let sender = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
 /// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
 ///
 /// // Add a pending P2ID note to the chain.
-/// let note = mock_chain
-///     .add_pending_p2id_note(
-///         sender.id(),
-///         receiver.id(),
-///         &[Asset::Fungible(fungible_asset)],
-///         NoteType::Public,
-///     )
-///     .unwrap();
-/// // Prove the next block to add the pending note to the chain state, making it available for
-/// // consumption.
-/// mock_chain.prove_next_block().unwrap();
+/// let note = mock_chain.add_pending_p2id_note(
+///     sender.id(),
+///     receiver.id(),
+///     &[Asset::Fungible(fungible_asset)],
+///     NoteType::Public,
+/// )?;
 ///
-/// // Create a transaction context that consumes the note and execute it.
+/// mock_chain.prove_next_block()?;
+///
 /// let transaction = mock_chain
-///     .build_tx_context(receiver.id(), &[note.id()], &[])
-///     .unwrap()
-///     .build()
-///     .execute()
-///     .unwrap();
+///     .build_tx_context(receiver.id(), &[note.id()], &[])?
+///     .build()?
+///     .execute()?;
 ///
 /// // Add the transaction to the mock chain's "mempool" of pending transactions.
 /// mock_chain.add_pending_executed_transaction(&transaction);
 ///
 /// // Prove the next block to include the transaction in the chain state.
-/// mock_chain.prove_next_block().unwrap();
+/// mock_chain.prove_next_block()?;
 ///
-/// // Check that the receiver's balance has increased.
 /// assert_eq!(
 ///     mock_chain
-///         .committed_account(receiver.id())
-///         .unwrap()
+///         .committed_account(receiver.id())?
 ///         .vault()
-///         .get_balance(fungible_asset.faucet_id())
-///         .unwrap(),
+///         .get_balance(fungible_asset.faucet_id())?,
 ///     fungible_asset.amount()
 /// );
+/// # Ok(())
+/// # }
 /// ```
 #[derive(Debug, Clone)]
 pub struct MockChain {
@@ -1520,7 +1525,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn with_accounts() {
+    fn with_accounts() -> anyhow::Result<()> {
         let account = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Public)
             .with_auth_component(Auth::IncrNonce)
@@ -1531,21 +1536,22 @@ mod tests {
                 )
                 .unwrap(),
             )
-            .build_existing()
-            .unwrap();
+            .build_existing()?;
 
-        let mock_chain = MockChain::with_accounts(&[account.clone()]).unwrap();
+        let mock_chain = MockChain::with_accounts(&[account.clone()])?;
 
-        assert_eq!(mock_chain.committed_account(account.id()).unwrap(), &account);
+        assert_eq!(mock_chain.committed_account(account.id())?, &account);
 
         // Check that transaction inputs retrieved from the chain are against the block header with
         // the current account tree root.
-        let tx_context = mock_chain.build_tx_context(account.id(), &[], &[]).unwrap().build();
+        let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
         assert_eq!(tx_context.tx_inputs().block_header().block_num(), BlockNumber::from(0u32));
         assert_eq!(
             tx_context.tx_inputs().block_header().account_root(),
             mock_chain.account_tree.root()
         );
+
+        Ok(())
     }
 
     #[test]
@@ -1584,9 +1590,8 @@ mod tests {
         mock_chain.prove_next_block()?;
 
         let tx = mock_chain
-            .build_tx_context(TxContextInput::Account(account), &[], &[note_1])
-            .unwrap()
-            .build()
+            .build_tx_context(TxContextInput::Account(account), &[], &[note_1])?
+            .build()?
             .execute()?;
 
         mock_chain.add_pending_executed_transaction(&tx)?;

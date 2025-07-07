@@ -1258,8 +1258,8 @@ end
 
 #! Increments the delta of the account's nonce.
 #!
-#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2, then the
-#! stored nonce_delta will be 5.
+#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2,
+#! then the stored nonce_delta will be 5.
 #!
 #! Inputs:  [nonce_delta]
 #! Outputs: []
