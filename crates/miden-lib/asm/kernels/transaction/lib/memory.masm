@@ -158,14 +158,15 @@ const.ACCT_CODE_COMMITMENT_OFFSET=12
 const.ACCT_CORE_DATA_SECTION_END_OFFSET=16
 const.NUM_ACCT_PROCEDURES_OFFSET=28
 const.ACCT_PROCEDURES_SECTION_OFFSET=32
-const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2084
-const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
+const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
+const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
+const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
 
 # Offset at which an exact copy of the account's storage slot section starting at
 # ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
 # slots accessible to enable computing a diff between the initial and current account storage slots
 # for use in the account delta. This section is only present for the native account.
-const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4128
+const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
@@ -1096,6 +1097,29 @@ end
 #! - account_procedures_section_ptr is the memory pointer to the account procedures section.
 export.get_acct_procedures_section_ptr
     exec.get_current_account_data_ptr push.ACCT_PROCEDURES_SECTION_OFFSET add
+end
+
+#! Returns the memory pointer to the account procedures call tracking section.
+#!
+#! Inputs:  []
+#! Outputs: [procedures_call_tracking_ptr]
+#!
+#! Where:
+#! - procedures_call_tracking_ptr is the memory pointer to the procedure call tracking section.
+export.get_acct_procedures_call_tracking_ptr
+    exec.get_current_account_data_ptr push.ACCT_PROCEDURES_CALL_TRACKING_OFFSET add
+end
+
+#! Returns the memory pointer to a specific account procedure.
+#!
+#! Inputs:  [proc_idx]
+#! Outputs: [proc_ptr]
+#!
+#! Where:
+#! - proc_idx is the index of the account procedure.
+#! - proc_ptr is the memory pointer to the account procedure at the specified index.
+export.get_acct_procedure_ptr
+    mul.8 exec.get_acct_procedures_section_ptr add
 end
 
 ### ACCOUNT STORAGE #################################################

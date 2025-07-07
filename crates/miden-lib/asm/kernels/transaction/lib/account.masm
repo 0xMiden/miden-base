@@ -648,7 +648,7 @@ export.get_procedure_info
     # => [index]
 
     # get procedure pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add
+    exec.memory::get_acct_procedure_ptr
     # => [proc_ptr]
 
     # get metadata pointer
@@ -658,13 +658,19 @@ export.get_procedure_info
     # load procedure information from memory
     padw movup.4 mem_loadw padw movup.8 mem_loadw
     # => [METADATA, PROC_ROOT]
+    # more explicitly:
+    # => [0, 0, storage_size, storage_offset, PROC_ROOT]
 
     # keep relevant data
-    drop drop swap movdn.5 movdn.5
+    drop drop
+    # => [storage_size, storage_offset, PROC_ROOT]
+
+    swap movdn.5 movdn.5
     # => [PROC_ROOT, storage_offset, storage_size]
 end
 
-#! Verifies that the procedure root is part of the account code.
+#! Verifies that the procedure root is part of the account code and tracks whether it has been
+#! called.
 #!
 #! Inputs:  [PROC_ROOT]
 #! Outputs: [storage_offset, storage_size]
@@ -676,17 +682,23 @@ end
 #!
 #! Panics if:
 #! - the procedure root is not part of the account code.
-export.authenticate_procedure
+export.authenticate_and_track_procedure
     # load procedure index
     emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
     # => [index, PROC_ROOT]
 
+    dup movdn.5
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
     exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
 
     # verify that PROC_ROOT exists in memory at index
     movup.4 movdn.9 movup.4 movdn.9 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [storage_offset, storage_size, index]
+
+    # Set the was_called flag to 1 for this procedure
+    movup.2 exec.set_was_procedure_called
+
     # => [storage_offset, storage_size]
 end
 
@@ -984,7 +996,8 @@ export.save_account_procedure_data
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
     # setup acct_proc_offset and end_ptr for reading from advice stack
-    mul.8 exec.memory::get_acct_procedures_section_ptr dup movdn.2 add swap
+    exec.memory::get_acct_procedure_ptr
+    push.0 exec.memory::get_acct_procedure_ptr
     # OS => [acct_proc_offset, end_ptr, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
@@ -1058,7 +1071,7 @@ end
 #! - storage_size is the number of storage slots the procedure is allowed to access.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
+    exec.memory::get_acct_procedure_ptr add.4
     # => [storage_offset_ptr]
 
     # load procedure metadata from memory and keep relevant data
@@ -1224,4 +1237,52 @@ proc.compute_current_storage_commitment
         drop
         # => []
     end
+end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [was_called]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called, 0 otherwise.
+#!
+#! Panics if:
+#! - the procedure root is not part of the account code.
+export.was_procedure_called
+    # load procedure index
+    emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
+    # => [index, PROC_ROOT]
+
+    dup movdn.5
+
+    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
+    exec.get_procedure_info
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
+
+    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [index]
+
+    exec.memory::get_acct_procedures_call_tracking_ptr
+    # => [was_called_offset, index]
+
+    # load the value of was_called
+    add mem_load
+    # => [was_called]
+end
+
+#! Sets the was_called flag to 1 for the specified procedure.
+#!
+#! This is an internal procedure and contrary to `was_procedure_called`, assumes the stack contains
+#! the index, not the procedure root.
+#!
+#! Inputs:  [proc_idx]
+#! Outputs: []
+export.set_was_procedure_called
+    exec.memory::get_acct_procedures_call_tracking_ptr
+    # => [was_called_offset, proc_idx]
+
+    # save 1 to the was_called address
+    add push.1 swap mem_store
 end
