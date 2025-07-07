@@ -49,13 +49,11 @@ export.auth__tx_rpo_falcon512_conditional
         exec.account::was_procedure_called
         # => [was_called, was_any_called, i, pad(16)]
         
-        # Increment counter
+        # Update was_any_called
         or
         # => [was_any_called', i, pad(16)]
 
-        swap
-        sub.1
-        swap
+        swap sub.1 swap
         # => [was_any_called', i-1, pad(16)]
 
         # Check if we should continue looping
