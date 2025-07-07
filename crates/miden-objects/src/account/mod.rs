@@ -282,7 +282,7 @@ impl Account {
         self.storage.apply_delta(delta.storage())?;
 
         // update nonce
-        self.increment_nonce(delta.nonce_increment())?;
+        self.increment_nonce(delta.nonce_delta())?;
 
         Ok(())
     }
@@ -293,13 +293,13 @@ impl Account {
     ///
     /// Returns an error if:
     /// - Incrementing the nonce overflows a [`Felt`].
-    fn increment_nonce(&mut self, nonce_increment: Felt) -> Result<(), AccountError> {
-        let new_nonce = self.nonce + nonce_increment;
+    fn increment_nonce(&mut self, nonce_delta: Felt) -> Result<(), AccountError> {
+        let new_nonce = self.nonce + nonce_delta;
 
         if new_nonce.as_int() < self.nonce.as_int() {
             return Err(AccountError::NonceOverflow {
                 current: self.nonce,
-                increment: nonce_increment,
+                increment: nonce_delta,
                 new: new_nonce,
             });
         }
@@ -452,7 +452,7 @@ mod tests {
     #[test]
     fn test_serde_account_delta() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
-        let nonce_increment = Felt::new(2);
+        let nonce_delta = Felt::new(2);
         let asset_0 = FungibleAsset::mock(15);
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
         let storage_delta = AccountStorageDeltaBuilder::new()
@@ -464,7 +464,7 @@ mod tests {
             account_id,
             vec![asset_1],
             vec![asset_0],
-            nonce_increment,
+            nonce_delta,
             storage_delta,
         );
 
@@ -605,12 +605,12 @@ mod tests {
         let mut account = build_account(vec![], init_nonce, vec![storage_slot]);
 
         // build account delta
-        let nonce_increment = Felt::new(1);
+        let nonce_delta = Felt::new(1);
         let account_delta = AccountDelta::new(
             account_id,
             AccountStorageDelta::new(),
             AccountVaultDelta::default(),
-            nonce_increment,
+            nonce_delta,
         )
         .unwrap();
 
@@ -622,11 +622,11 @@ mod tests {
         account_id: AccountId,
         added_assets: Vec<Asset>,
         removed_assets: Vec<Asset>,
-        nonce_increment: Felt,
+        nonce_delta: Felt,
         storage_delta: AccountStorageDelta,
     ) -> AccountDelta {
         let vault_delta = AccountVaultDelta::from_iters(added_assets, removed_assets);
-        AccountDelta::new(account_id, storage_delta, vault_delta, nonce_increment).unwrap()
+        AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta).unwrap()
     }
 
     pub fn build_account(assets: Vec<Asset>, nonce: Felt, slots: Vec<StorageSlot>) -> Account {

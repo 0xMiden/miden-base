@@ -242,7 +242,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
 
     /// Extracts the nonce increment from the process state and adds it to the nonce delta tracker.
     ///
-    /// Expected stack state: [nonce_increment, ...]
+    /// Expected stack state: [nonce_delta, ...]
     pub fn on_account_before_increment_nonce(
         &mut self,
         process: ProcessState,

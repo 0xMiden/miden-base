@@ -45,11 +45,11 @@ export.compute_commitment
     padw
     # => [CAPACITY]
 
-    exec.memory::get_account_delta_nonce_increment push.0
-    # => [0, nonce_increment, CAPACITY]
+    exec.memory::get_account_nonce_delta push.0
+    # => [0, nonce_delta, CAPACITY]
 
     exec.memory::get_native_account_id
-    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_increment, CAPACITY]
+    # => [native_acct_id_prefix, native_acct_id_suffix, 0, nonce_delta, CAPACITY]
     # => [ID_AND_NONCE, CAPACITY]
 
     padw
@@ -74,8 +74,8 @@ export.compute_commitment
     exec.rpo::squeeze_digest
     # => [DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
-    exec.memory::get_account_delta_nonce_increment
-    # => [nonce_increment, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
+    exec.memory::get_account_nonce_delta
+    # => [nonce_delta, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
     eq.0
     # => [is_nonce_zero, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]

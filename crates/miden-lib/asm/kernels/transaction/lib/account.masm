@@ -226,8 +226,8 @@ export.incr_nonce
     u32assert.err=ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32
     # => [nonce_increment]
 
-    dup exec.memory::incr_account_delta_nonce_increment
-    # => [nonce_increment]
+    dup exec.memory::incr_account_nonce_delta
+    # => [nonce_delta]
 
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT

@@ -488,7 +488,7 @@ fn create_simple_account() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute account-creating transaction")?;
 
-    assert_eq!(tx.account_delta().nonce_increment(), Felt::new(1));
+    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
     // except for the nonce, the delta should be empty
     assert!(tx.account_delta().storage().is_empty());
     assert!(tx.account_delta().vault().is_empty());

@@ -61,7 +61,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute transaction")?;
 
-    assert_eq!(executed_tx.account_delta().nonce_increment(), ZERO);
+    assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
     assert!(executed_tx.account_delta().is_empty());
     assert_eq!(executed_tx.account_delta().commitment(), Digest::default());
 
@@ -80,7 +80,7 @@ fn delta_nonce() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute transaction")?;
 
-    assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(1));
+    assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
 
     Ok(())
 }
