@@ -51,7 +51,7 @@ pub fn basic_fungible_faucet_library() -> Library {
     BASIC_FUNGIBLE_FAUCET_LIBRARY.clone()
 }
 
-/// Returns the Rpo Falcon 512 Conditional Library.
+/// Returns the Rpo Falcon 512 Procedures ACL Library.
 pub fn rpo_falcon_512_procedure_acl_library() -> Library {
     RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.clone()
 }

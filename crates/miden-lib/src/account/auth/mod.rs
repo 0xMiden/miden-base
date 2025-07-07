@@ -50,7 +50,7 @@ impl From<RpoFalcon512> for AccountComponent {
 /// during the transaction. It stores a list of procedure roots that require authentication, and
 /// the signature verification is only performed if at least one of these procedures was invoked.
 ///
-/// It exports the procedure `auth__tx_rpo_falcon512_conditional`, which:
+/// It exports the procedure `auth__tx_rpo_falcon512_procedures_acl`, which:
 /// - Checks if any of the specified procedures were called during the transaction
 /// - If none were called, authentication is skipped
 /// - If at least one was called, performs standard RpoFalcon512 signature verification
@@ -104,7 +104,7 @@ impl From<RpoFalcon512ProcedureACL> for AccountComponent {
         }
 
         AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
-            .expect("conditional falcon component should satisfy the requirements of a valid account component")
+            .expect("falcon procedures ACL component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
 }
