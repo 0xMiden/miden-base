@@ -227,7 +227,7 @@ export.incr_nonce
     # => [nonce_increment]
 
     dup exec.memory::incr_account_nonce_delta
-    # => [nonce_increment]
+    # => [nonce_delta]
 
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT

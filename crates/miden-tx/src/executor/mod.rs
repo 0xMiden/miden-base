@@ -396,11 +396,11 @@ fn build_executed_transaction(
     }
 
     // make sure nonce delta was computed correctly
-    let nonce_increment = final_account.nonce() - initial_account.nonce();
-    if nonce_increment != account_delta.nonce_increment() {
+    let nonce_delta = final_account.nonce() - initial_account.nonce();
+    if nonce_delta != account_delta.nonce_delta() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: nonce_increment,
-            actual: account_delta.nonce_increment(),
+            expected: nonce_delta,
+            actual: account_delta.nonce_delta(),
         });
     }
 
