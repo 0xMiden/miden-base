@@ -629,7 +629,8 @@ end
 #! - the procedure index is out of bounds.
 export.get_procedure_info
     # check that index < number of procedures contained in the account code
-    dup exec.memory::get_num_account_procedures lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    dup exec.memory::get_num_account_procedures
+    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
@@ -1054,7 +1055,8 @@ end
 #! Panics if:
 #! - the procedure index is out of bounds.
 proc.get_procedure_root
-    dup exec.memory::get_num_account_procedures lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    dup exec.memory::get_num_account_procedures
+    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
