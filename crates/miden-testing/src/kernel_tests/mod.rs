@@ -1117,7 +1117,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
     .code("begin push.2 drop push.0 div end")
     .build(&TransactionKernel::testing_assembler())?;
 
-    let succesful_note_1 = create_p2id_note(
+    let successful_note_1 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
         vec![FungibleAsset::mock(10)],
@@ -1126,7 +1126,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
     )?;
 
-    let succesful_note_2 = create_p2id_note(
+    let successful_note_2 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
         vec![FungibleAsset::mock(145)],
@@ -1140,8 +1140,8 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
             TxContextInput::Account(account),
             &[],
             &[
-                succesful_note_2.clone(),
-                succesful_note_1.clone(),
+                successful_note_2.clone(),
+                successful_note_1.clone(),
                 failing_note_2.clone(),
                 failing_note_1,
             ],
@@ -1170,7 +1170,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         successful_notes,
         error: Some(e)} => {
             assert_eq!(failed_note_id, failing_note_2.id());
-            assert_eq!(successful_notes, [succesful_note_2.id(),succesful_note_1.id()].to_vec());
+            assert_eq!(successful_notes, [successful_note_2.id(),successful_note_1.id()].to_vec());
             assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(
               ExecutionError::DivideByZero { .. }
             ));

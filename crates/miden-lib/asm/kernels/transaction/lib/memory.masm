@@ -184,7 +184,7 @@ const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+8
 # The section of link map pointers where storage map deltas are stored.
 # This section is offset by `slot index` to get the link map ptr for the storage map
 # delta at that slot index. Slot indices that are not map slots are simply unused.
-const.ACCOUNT_DELTA_STORGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_PTR+12
+const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_PTR+12
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -1242,7 +1242,7 @@ end
 #! - account_delta_storage_map_ptr is the link map pointer to the storage map delta for the
 #!   requested slot index.
 export.get_account_delta_storage_map_ptr
-    add.ACCOUNT_DELTA_STORGE_MAP_SECTION
+    add.ACCOUNT_DELTA_STORAGE_MAP_SECTION
 end
 
 #! Increments the delta of the account's nonce.

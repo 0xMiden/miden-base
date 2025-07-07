@@ -345,7 +345,7 @@ impl TransactionKernel {
     }
 
     /// Returns the final account commitment and account delta commitment extracted from the account
-    /// udpate commitment.
+    /// update commitment.
     fn parse_account_update_commitment(
         account_update_commitment: Digest,
         adv_map: &AdviceMap,

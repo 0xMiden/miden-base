@@ -6,7 +6,7 @@ use miden_lib::{
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
         ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
-        ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPY_SMT,
+        ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
     },
     transaction::{
         TransactionKernel,
@@ -648,7 +648,7 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
 
     assert_execution_error!(
         result,
-        ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPY_SMT
+        ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
     );
 
     Ok(())

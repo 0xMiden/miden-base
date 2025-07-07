@@ -425,7 +425,7 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
 
     CodeExecutor::with_advice_provider(MemAdviceProvider::default())
         .run(&code)
-        .with_context(|| format!("comparion test for {procedure_name} failed"))?;
+        .with_context(|| format!("comparison test for {procedure_name} failed"))?;
 
     Ok(())
 }
