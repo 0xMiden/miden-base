@@ -180,7 +180,7 @@ fn insertion() -> anyhow::Result<()> {
         entry3_value = word_to_masm_push_string(&entry3_value),
     );
 
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
@@ -616,7 +616,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     "#
     );
 
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
