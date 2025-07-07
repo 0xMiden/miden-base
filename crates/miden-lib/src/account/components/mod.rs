@@ -27,10 +27,10 @@ static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 });
 
 // Initialize the Rpo Falcon 512 Conditional library only once.
-static RPO_FALCON_512_CONDITIONAL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+static RPO_FALCON_512_PROCEDURE_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/rpo_falcon_512_conditional.masl"
+        "/assets/account_components/rpo_falcon_512_procedure_acl.masl"
     ));
     Library::read_from_bytes(bytes)
         .expect("Shipped Rpo Falcon 512 Conditional library is well-formed")
@@ -52,6 +52,6 @@ pub fn basic_fungible_faucet_library() -> Library {
 }
 
 /// Returns the Rpo Falcon 512 Conditional Library.
-pub fn rpo_falcon_512_conditional_library() -> Library {
-    RPO_FALCON_512_CONDITIONAL_LIBRARY.clone()
+pub fn rpo_falcon_512_procedure_acl_library() -> Library {
+    RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.clone()
 }

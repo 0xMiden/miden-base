@@ -6,7 +6,7 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::PublicKey,
 };
 
-use crate::account::components::{rpo_falcon_512_conditional_library, rpo_falcon_512_library};
+use crate::account::components::{rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library};
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
 /// transactions.
@@ -61,13 +61,13 @@ impl From<RpoFalcon512> for AccountComponent {
 /// - Slot 2(map): A map with tracked procedure roots
 ///
 /// This component supports all account types.
-pub struct RpoFalcon512Conditional {
+pub struct RpoFalcon512ProcedureACL {
     public_key: PublicKey,
     trigger_procedures: Vec<Digest>,
 }
 
-impl RpoFalcon512Conditional {
-    /// Creates a new [`RpoFalcon512Conditional`] component with the given `public_key` and
+impl RpoFalcon512ProcedureACL {
+    /// Creates a new [`RpoFalcon512ProcedureACL`] component with the given `public_key` and
     /// list of procedure roots that require authentication.
     ///
     /// # Panics
@@ -81,8 +81,8 @@ impl RpoFalcon512Conditional {
     }
 }
 
-impl From<RpoFalcon512Conditional> for AccountComponent {
-    fn from(conditional: RpoFalcon512Conditional) -> Self {
+impl From<RpoFalcon512ProcedureACL> for AccountComponent {
+    fn from(conditional: RpoFalcon512ProcedureACL) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
@@ -103,7 +103,7 @@ impl From<RpoFalcon512Conditional> for AccountComponent {
             ));
         }
 
-        AccountComponent::new(rpo_falcon_512_conditional_library(), storage_slots)
+        AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
             .expect("conditional falcon component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
