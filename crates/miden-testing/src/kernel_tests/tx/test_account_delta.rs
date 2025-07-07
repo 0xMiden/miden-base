@@ -67,6 +67,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 
     Ok(())
 }
+
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
