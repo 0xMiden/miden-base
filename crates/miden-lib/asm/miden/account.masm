@@ -459,3 +459,29 @@ export.get_vault_root
     swapdw dropw dropw swapw dropw
     # => [VAULT_ROOT]
 end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [was_called]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called, 0 otherwise.
+#!
+#! Invocation: exec
+export.was_procedure_called
+    exec.kernel_proc_offsets::account_was_procedure_called_offset
+    # => [offset, PROC_ROOT]
+
+    # pad the stack
+    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
+    # => [offset, PROC_ROOT, pad(11)]
+
+    syscall.exec_kernel_proc
+    # => [was_called, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [was_called]
+end

@@ -293,7 +293,7 @@ impl Account {
     ///
     /// Returns an error if:
     /// - Incrementing the nonce overflows a [`Felt`].
-    fn increment_nonce(&mut self, nonce_delta: Felt) -> Result<(), AccountError> {
+    pub fn increment_nonce(&mut self, nonce_delta: Felt) -> Result<(), AccountError> {
         let new_nonce = self.nonce + nonce_delta;
 
         if new_nonce.as_int() < self.nonce.as_int() {
