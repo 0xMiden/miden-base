@@ -207,10 +207,6 @@ export.finalize_transaction
     exec.execute_auth_procedure
     # => []
 
-    # update account code
-    exec.account::update_code_commitment
-    # => []
-
     # get the initial account commitment
     exec.memory::get_init_account_commitment
     # => [INIT_ACCOUNT_COMMITMENT]
