@@ -2,7 +2,7 @@
 // ================================================================================================
 use alloc::vec::Vec;
 use miden_lib::{
-    account::auth::{RpoFalcon512, RpoFalcon512ProcedureACL},
+    account::auth::{RpoFalcon512, RpoFalcon512ProcedureAcl},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -25,7 +25,7 @@ pub enum Auth {
     BasicAuth,
 
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
-    /// authenticate the account with the [RpoFalcon512ProcedureACL]. Authentication will only be
+    /// authenticate the account with the [RpoFalcon512ProcedureAcl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called.
     ///
     /// # Panics
@@ -67,7 +67,7 @@ impl Auth {
                 let pub_key = sec_key.public_key();
 
                 let component =
-                    RpoFalcon512ProcedureACL::new(pub_key, trigger_procedures.clone()).into();
+                    RpoFalcon512ProcedureAcl::new(pub_key, trigger_procedures.clone()).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,

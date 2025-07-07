@@ -61,13 +61,13 @@ impl From<RpoFalcon512> for AccountComponent {
 /// - Slot 2(map): A map with tracked procedure roots
 ///
 /// This component supports all account types.
-pub struct RpoFalcon512ProcedureACL {
+pub struct RpoFalcon512ProcedureAcl {
     public_key: PublicKey,
     trigger_procedures: Vec<Digest>,
 }
 
-impl RpoFalcon512ProcedureACL {
-    /// Creates a new [`RpoFalcon512ProcedureACL`] component with the given `public_key` and
+impl RpoFalcon512ProcedureAcl {
+    /// Creates a new [`RpoFalcon512ProcedureAcl`] component with the given `public_key` and
     /// list of procedure roots that require authentication.
     ///
     /// # Panics
@@ -82,8 +82,8 @@ impl RpoFalcon512ProcedureACL {
     }
 }
 
-impl From<RpoFalcon512ProcedureACL> for AccountComponent {
-    fn from(conditional: RpoFalcon512ProcedureACL) -> Self {
+impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
+    fn from(conditional: RpoFalcon512ProcedureAcl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
