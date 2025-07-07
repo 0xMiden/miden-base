@@ -36,16 +36,16 @@ struct WitnessTestSetup {
 fn witness_test_setup() -> WitnessTestSetup {
     let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(4);
 
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
+    let account0 = accounts.remove(&0).context("failed to remove account 0").unwrap();
+    let account1 = accounts.remove(&1).context("failed to remove account 1").unwrap();
 
     let note = generate_tracked_note(&mut chain, account1.id(), account0.id());
     // Add note to chain.
     chain.prove_next_block().unwrap();
 
     let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note.id()]);
-    let tx1 = txs.remove(&1).unwrap();
-    let tx2 = txs.remove(&2).unwrap();
+    let tx1 = txs.remove(&1).context("failed to remove tx 1").unwrap();
+    let tx2 = txs.remove(&2).context("failed to remove tx 2").unwrap();
 
     let batch1 = generate_batch(&mut chain, vec![tx1, tx2]);
     let batches = vec![batch1];
@@ -168,15 +168,16 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
 
     // Make the block inputs invalid by using a single stale account witness.
     let mut stale_account_witness_block_inputs = valid_block_inputs.clone();
-    let batch_account_id0 = batches[0].updated_accounts().next().unwrap();
+    let batch_account_id0 =
+        batches[0].updated_accounts().next().context("failed to get updated account")?;
 
     *stale_account_witness_block_inputs
         .account_witnesses_mut()
         .get_mut(&batch_account_id0)
-        .unwrap() = stale_block_inputs
+        .context("failed to get account witness")? = stale_block_inputs
         .account_witnesses_mut()
         .get_mut(&batch_account_id0)
-        .unwrap()
+        .context("failed to get stale account witness")?
         .clone();
 
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
@@ -215,15 +216,18 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
 
     // Make the block inputs invalid by using a single stale nullifier witnesses.
     let mut invalid_nullifier_witness_block_inputs = valid_block_inputs.clone();
-    let batch_nullifier0 = batches[0].created_nullifiers().next().unwrap();
+    let batch_nullifier0 = batches[0]
+        .created_nullifiers()
+        .next()
+        .context("failed to get created nullifier")?;
 
     *invalid_nullifier_witness_block_inputs
         .nullifier_witnesses_mut()
         .get_mut(&batch_nullifier0)
-        .unwrap() = stale_block_inputs
+        .context("failed to get nullifier witness")? = stale_block_inputs
         .nullifier_witnesses_mut()
         .get_mut(&batch_nullifier0)
-        .unwrap()
+        .context("failed to get stale nullifier witness")?
         .clone();
 
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
@@ -261,7 +265,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
                 TransactionKernel::testing_assembler(),
                 vec![StorageSlot::Value([5u32.into(); 4])],
             )
-            .unwrap(),
+            .context("failed to create account mock component")?,
         )
         .build()
         .context("failed to build account")?;
@@ -306,7 +310,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
-        .build();
+        .build()?;
     let tx = tx_context.execute().context("failed to execute account creating tx")?;
     let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
 
@@ -363,7 +367,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
                 TransactionKernel::testing_assembler(),
                 vec![StorageSlot::Value([5u32.into(); 4])],
             )
-            .unwrap(),
+            .context("failed to create account mock component")?,
         )
         .build()
         .context("failed to build account")?;
@@ -405,6 +409,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
             )
             .account_update_details(AccountUpdateDetails::Private)
             .build()
+            .context("failed to build proven transaction")
             .unwrap()
         });
 

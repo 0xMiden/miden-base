@@ -58,7 +58,7 @@ use crate::{
 };
 
 #[test]
-fn test_transaction_prologue() {
+fn test_transaction_prologue() -> anyhow::Result<()> {
     let mut tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -74,8 +74,9 @@ fn test_transaction_prologue() {
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(111)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2, input_note_3])
-            .build()
+            .build()?
     };
+
     let code = "
         use.kernel::prologue
 
@@ -115,7 +116,7 @@ fn test_transaction_prologue() {
     .with_note_args(note_args_map);
 
     tx_context.set_tx_args(tx_args);
-    let process = &tx_context.execute_code(code).unwrap();
+    let process = &tx_context.execute_code(code)?;
 
     global_input_memory_assertions(process, &tx_context);
     block_data_memory_assertions(process, &tx_context);
@@ -123,6 +124,8 @@ fn test_transaction_prologue() {
     kernel_data_memory_assertions(process);
     account_data_memory_assertions(process, &tx_context);
     input_notes_memory_assertions(process, &tx_context, &note_args);
+
+    Ok(())
 }
 
 fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext) {
@@ -484,7 +487,7 @@ fn create_simple_account() -> anyhow::Result<()> {
 
     let tx = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
-        .build()
+        .build()?
         .execute()
         .context("failed to execute account-creating transaction")?;
 
@@ -504,15 +507,16 @@ pub fn create_account_test(
     mock_chain: &MockChain,
     account: Account,
     seed: Word,
-) -> Result<(), ExecutionError> {
+) -> Result<Process, ExecutionError> {
     let tx_inputs = mock_chain
         .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
-        .expect("failed to get transaction inputs from mock chain");
+        .unwrap();
 
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
-        .build();
+        .build()
+        .unwrap();
 
     let code = "
   use.kernel::prologue
@@ -522,9 +526,7 @@ pub fn create_account_test(
   end
   ";
 
-    tx_context.execute_code(code)?;
-
-    Ok(())
+    tx_context.execute_code(code)
 }
 
 pub fn create_multiple_accounts_test(
@@ -612,7 +614,7 @@ fn compute_valid_account_id(account: Account) -> (Account, Word) {
 #[test]
 pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block().unwrap();
+    mock_chain.prove_next_block()?;
 
     let account = Account::mock_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -634,7 +636,7 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
 #[test]
 pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block().unwrap();
+    mock_chain.prove_next_block()?;
 
     let account = Account::mock_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
@@ -656,16 +658,15 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
 
 /// Tests that supplying an invalid seed causes account creation to fail.
 #[test]
-pub fn create_account_invalid_seed() {
+pub fn create_account_invalid_seed() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block().unwrap();
+    mock_chain.prove_next_block()?;
 
     let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .with_auth_component(Auth::IncrNonce)
         .with_component(BasicWallet)
-        .build()
-        .unwrap();
+        .build()?;
 
     let tx_inputs = mock_chain
         .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
@@ -680,7 +681,7 @@ pub fn create_account_invalid_seed() {
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .extend_advice_inputs(adv_inputs)
-        .build();
+        .build()?;
 
     let code = "
       use.kernel::prologue
@@ -692,12 +693,14 @@ pub fn create_account_invalid_seed() {
 
     let result = tx_context.execute_code(code);
 
-    assert_execution_error!(result, ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH)
+    assert_execution_error!(result, ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH);
+
+    Ok(())
 }
 
 #[test]
-fn test_get_blk_version() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_get_blk_version() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
     use.kernel::memory
     use.kernel::prologue
@@ -711,14 +714,16 @@ fn test_get_blk_version() {
     end
     ";
 
-    let process = tx_context.execute_code(code).unwrap();
+    let process = tx_context.execute_code(code)?;
 
     assert_eq!(process.stack.get(0), tx_context.tx_inputs().block_header().version().into());
+
+    Ok(())
 }
 
 #[test]
-fn test_get_blk_timestamp() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_get_blk_timestamp() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
     use.kernel::memory
     use.kernel::prologue
@@ -732,9 +737,11 @@ fn test_get_blk_timestamp() {
     end
     ";
 
-    let process = tx_context.execute_code(code).unwrap();
+    let process = tx_context.execute_code(code)?;
 
     assert_eq!(process.stack.get(0), tx_context.tx_inputs().block_header().timestamp().into());
+
+    Ok(())
 }
 
 // HELPER FUNCTIONS

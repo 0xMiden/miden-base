@@ -15,13 +15,13 @@ use super::{Felt, Hasher, ONE, Word};
 use crate::TransactionContextBuilder;
 
 #[test]
-fn test_create_fungible_asset_succeeds() {
+fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
-    .build();
+    .build()?;
 
     let code = format!(
         "
@@ -41,7 +41,7 @@ fn test_create_fungible_asset_succeeds() {
         "
     );
 
-    let process = &tx_context.execute_code(&code).unwrap();
+    let process = &tx_context.execute_code(&code)?;
     let process_state: ProcessState = process.into();
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
@@ -54,16 +54,17 @@ fn test_create_fungible_asset_succeeds() {
             faucet_id.prefix().as_felt(),
         ])
     );
+    Ok(())
 }
 
 #[test]
-fn test_create_non_fungible_asset_succeeds() {
+fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
 
@@ -87,20 +88,21 @@ fn test_create_non_fungible_asset_succeeds() {
             word_to_masm_push_string(&Hasher::hash(&NON_FUNGIBLE_ASSET_DATA)),
     );
 
-    let process = &tx_context.execute_code(&code).unwrap();
+    let process = &tx_context.execute_code(&code)?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(process_state.get_stack_word(0), Word::from(non_fungible_asset));
+    Ok(())
 }
 
 #[test]
-fn test_validate_non_fungible_asset() {
+fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
     let encoded = Word::from(non_fungible_asset);
@@ -120,8 +122,9 @@ fn test_validate_non_fungible_asset() {
         asset = word_to_masm_push_string(&encoded)
     );
 
-    let process = &tx_context.execute_code(&code).unwrap();
+    let process = &tx_context.execute_code(&code)?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(process_state.get_stack_word(0), encoded);
+    Ok(())
 }

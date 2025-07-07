@@ -45,7 +45,7 @@ use crate::{
 
 #[test]
 pub fn test_get_code() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
     let code = "
         use.kernel::prologue
         use.kernel::account
@@ -56,7 +56,7 @@ pub fn test_get_code() -> miette::Result<()> {
         end
         ";
 
-    let process = &tx_context.execute_code(code).wrap_err("failed to execute code")?;
+    let process = &tx_context.execute_code(code).unwrap();
     let process_state: ProcessState = process.into();
 
     assert_eq!(
@@ -104,7 +104,9 @@ pub fn test_account_type() -> miette::Result<()> {
             );
 
             let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
-                .stack_inputs(StackInputs::new(vec![account_id.prefix().as_felt()]).unwrap())
+                .stack_inputs(
+                    StackInputs::new(vec![account_id.prefix().as_felt()]).into_diagnostic()?,
+                )
                 .run(&code)?;
 
             let type_matches = account_id.account_type() == expected_type;
@@ -251,7 +253,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 #[test]
 fn test_get_item() -> miette::Result<()> {
     for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
-        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
         let code = format!(
             "
@@ -274,7 +276,7 @@ fn test_get_item() -> miette::Result<()> {
             item_value = word_to_masm_push_string(&storage_item.slot.value())
         );
 
-        tx_context.execute_code(&code).wrap_err("failed to execute code")?;
+        tx_context.execute_code(&code).unwrap();
     }
 
     Ok(())
@@ -294,7 +296,7 @@ fn test_get_map_item() -> miette::Result<()> {
         .build_existing()
         .unwrap();
 
-    let tx_context = TransactionContextBuilder::new(account).build();
+    let tx_context = TransactionContextBuilder::new(account).build().unwrap();
 
     for (key, value) in STORAGE_LEAVES_2 {
         let code = format!(
@@ -322,7 +324,7 @@ fn test_get_map_item() -> miette::Result<()> {
                 &code,
                 TransactionKernel::testing_assembler_with_mock_account(),
             )
-            .wrap_err("failed to execute code")?;
+            .unwrap();
         let process_state: ProcessState = process.into();
 
         assert_eq!(
@@ -357,7 +359,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
         AccountStorage::mock_item_1(),
         AccountStorage::mock_item_2(),
     ] {
-        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
         let code = format!(
             "
@@ -380,7 +382,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
             item_index = storage_item.index,
         );
 
-        let process = &tx_context.execute_code(&code).wrap_err("failed to execute code")?;
+        let process = &tx_context.execute_code(&code).unwrap();
         let process_state: ProcessState = process.into();
 
         let storage_slot_type = storage_item.slot.slot_type();
@@ -411,7 +413,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
 #[test]
 fn test_set_item() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let new_storage_item: Word = [Felt::new(91), Felt::new(92), Felt::new(93), Felt::new(94)];
 
@@ -442,7 +444,7 @@ fn test_set_item() -> miette::Result<()> {
         new_storage_item_index = 0,
     );
 
-    tx_context.execute_code(&code).wrap_err("failed to execute code")?;
+    tx_context.execute_code(&code).unwrap();
 
     Ok(())
 }
@@ -466,7 +468,7 @@ fn test_set_map_item() -> miette::Result<()> {
         .build_existing()
         .unwrap();
 
-    let tx_context = TransactionContextBuilder::new(account).build();
+    let tx_context = TransactionContextBuilder::new(account).build().unwrap();
     let storage_item = AccountStorage::mock_item_2();
 
     let code = format!(
@@ -503,7 +505,7 @@ fn test_set_map_item() -> miette::Result<()> {
             &code,
             TransactionKernel::testing_assembler_with_mock_account(),
         )
-        .wrap_err("failed to execute code")?;
+        .unwrap();
     let process_state: ProcessState = process.into();
 
     let mut new_storage_map = AccountStorage::mock_map();
@@ -654,7 +656,10 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let tx_script = TransactionScript::new(tx_script_program);
 
     // setup transaction context
-    let tx_context = TransactionContextBuilder::new(account.clone()).tx_script(tx_script).build();
+    let tx_context = TransactionContextBuilder::new(account.clone())
+        .tx_script(tx_script)
+        .build()
+        .unwrap();
 
     // execute code in context
     let tx = tx_context.execute().into_diagnostic()?;
@@ -701,11 +706,8 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
         let tx_context = TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
             .tx_inputs(tx_inputs)
-            .build();
-        tx_context
-            .execute_code(default_tx_code)
-            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
-            .context(format!("failed to execute {account_type} account creating tx"))?;
+            .build()?;
+        tx_context.execute_code(default_tx_code)?;
     }
 
     Ok(())
@@ -752,7 +754,7 @@ fn create_procedure_metadata_test_account(
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
-        .build();
+        .build()?;
 
     let result = tx_context.execute().map_err(|err| {
         let TransactionExecutorError::TransactionProgramExecutionFailed(exec_err) = err else {
@@ -820,8 +822,8 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 // ================================================================================================
 
 #[test]
-fn test_get_vault_root() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_get_vault_root() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let account = tx_context.account();
     let code = format!(
@@ -841,14 +843,15 @@ fn test_get_vault_root() {
         expected_vault_root = word_to_masm_push_string(&account.vault().root()),
     );
 
-    tx_context.execute_code(&code).unwrap();
+    tx_context.execute_code(&code)?;
+    Ok(())
 }
 
 // PROCEDURE AUTHENTICATION TESTS
 // ================================================================================================
 
 #[test]
-fn test_authenticate_procedure() -> miette::Result<()> {
+fn test_authenticate_and_track_procedure() -> miette::Result<()> {
     let mock_component =
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
 
@@ -869,7 +872,7 @@ fn test_authenticate_procedure() -> miette::Result<()> {
         vec![(tc_0, true), (tc_1, true), (tc_2, true), ([ONE, ZERO, ONE, ZERO], false)];
 
     for (root, valid) in test_cases.into_iter() {
-        let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+        let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
         let code = format!(
             "
@@ -881,7 +884,7 @@ fn test_authenticate_procedure() -> miette::Result<()> {
 
                 # authenticate procedure
                 push.{root}
-                exec.account::authenticate_procedure
+                exec.account::authenticate_and_track_procedure
 
                 # truncate the stack
                 dropw
@@ -899,6 +902,77 @@ fn test_authenticate_procedure() -> miette::Result<()> {
             false => assert!(process.is_err(), "An invalid procedure should fail to authenticate"),
         }
     }
+
+    Ok(())
+}
+
+// PROCEDURE INTROSPECTION TESTS
+// ================================================================================================
+
+#[test]
+fn test_was_procedure_called() -> miette::Result<()> {
+    // Create a standard account using the mock component
+    let mock_component = AccountMockComponent::new_with_slots(
+        TransactionKernel::assembler(),
+        AccountStorage::mock_storage_slots(),
+    )
+    .unwrap();
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(mock_component)
+        .build_existing()
+        .unwrap();
+
+    // Create a transaction script that:
+    // 1. Checks that get_item hasn't been called yet
+    // 2. Calls get_item from the mock account
+    // 3. Checks that get_item has been called
+    // 4. Calls get_item **again**
+    // 5. Checks that `was_procedure_called` returns `true`
+    let tx_script_code = r#"
+        use.test::account->test_account
+        use.miden::account
+
+        begin
+            # First check that get_item procedure hasn't been called yet
+            procref.test_account::get_item
+            exec.account::was_procedure_called
+            assertz.err="procedure should not have been called"
+
+            # Call the procedure first time
+            push.0
+            call.test_account::get_item dropw
+            # => []
+
+            procref.test_account::get_item
+            exec.account::was_procedure_called
+            assert.err="procedure should have been called"
+
+            # Call the procedure second time
+            push.0
+            call.test_account::get_item dropw
+
+            procref.test_account::get_item
+            exec.account::was_procedure_called
+            assert.err="2nd call should not change the was_called flag"
+        end
+        "#;
+
+    // Compile the transaction script using the testing assembler with mock account
+    let assembler = TransactionKernel::testing_assembler_with_mock_account();
+    let tx_script = TransactionScript::new(
+        assembler
+            .assemble_program(tx_script_code)
+            .wrap_err("Failed to compile transaction script")?,
+    );
+
+    // Create transaction context and execute
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
+
+    tx_context
+        .execute()
+        .into_diagnostic()
+        .wrap_err("Failed to execute transaction")?;
 
     Ok(())
 }

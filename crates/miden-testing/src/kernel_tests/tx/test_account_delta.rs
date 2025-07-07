@@ -36,7 +36,7 @@ fn delta_nonce() -> anyhow::Result<()> {
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
 
@@ -127,7 +127,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
         .tx_script(tx_script)
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
 
@@ -274,7 +274,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])?
         .tx_script(tx_script)
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
     let maps_delta = executed_tx.account_delta().storage().maps();
@@ -380,7 +380,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     let executed_tx = mock_chain
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
 
@@ -490,7 +490,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let executed_tx = mock_chain
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
 

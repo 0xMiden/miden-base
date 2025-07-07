@@ -62,7 +62,7 @@ fn test_fpi_anchoring_validations() -> anyhow::Result<()> {
     let transaction = mock_chain
         .build_tx_context(new_account.id(), &[], &[])?
         .foreign_accounts(vec![inputs])
-        .build()
+        .build()?
         .execute();
 
     assert_matches::assert_matches!(
@@ -97,9 +97,10 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
     assert!(input_note.location().unwrap().block_num() > 1.into());
 
     mock_chain.prove_next_block()?;
+    mock_chain.prove_next_block()?;
 
     // Attempt to execute with a note created in the future
-    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build();
+    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
     let source_manager = tx_context.source_manager();
 
     let tx_executor = TransactionExecutor::new(&tx_context, None);
@@ -122,7 +123,7 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
 
 #[test]
 fn test_create_note() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let account_id = tx_context.account().id();
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
@@ -156,12 +157,10 @@ fn test_create_note() -> anyhow::Result<()> {
         tag = tag,
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
         read_root_mem_word(&process.into(), NUM_OUTPUT_NOTES_PTR),
@@ -210,8 +209,8 @@ fn test_create_note() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_create_note_with_invalid_tag() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let invalid_tag = Felt::new((NoteType::Public as u64) << 62);
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
@@ -234,10 +233,12 @@ fn test_create_note_with_invalid_tag() {
             )
             .is_ok()
     );
+    Ok(())
+}
 
-    fn note_creation_script(tag: Felt) -> String {
-        format!(
-            "
+fn note_creation_script(tag: Felt) -> String {
+    format!(
+        "
             use.miden::tx
             use.kernel::prologue
     
@@ -256,17 +257,16 @@ fn test_create_note_with_invalid_tag() {
                 dropw dropw
             end
             ",
-            recipient = word_to_masm_push_string(&[ZERO, ONE, Felt::new(2), Felt::new(3)]),
-            execution_hint_always = Felt::from(NoteExecutionHint::always()),
-            PUBLIC_NOTE = NoteType::Public as u8,
-            aux = Felt::ZERO,
-        )
-    }
+        recipient = word_to_masm_push_string(&[ZERO, ONE, Felt::new(2), Felt::new(3)]),
+        execution_hint_always = Felt::from(NoteExecutionHint::always()),
+        PUBLIC_NOTE = NoteType::Public as u8,
+        aux = Felt::ZERO,
+    )
 }
 
 #[test]
-fn test_create_note_too_many_notes() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_create_note_too_many_notes() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = format!(
         "
@@ -302,6 +302,7 @@ fn test_create_note_too_many_notes() {
     );
 
     assert_execution_error!(process, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
+    Ok(())
 }
 
 #[test]
@@ -326,7 +327,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
-            .build()
+            .build()?
     };
 
     // extract input note data
@@ -460,12 +461,10 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         )),
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(
@@ -497,10 +496,10 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_create_note_and_add_asset() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_create_note_and_add_asset() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let aux = Felt::new(27);
     let tag = NoteTag::from_account_id(faucet_id);
@@ -543,12 +542,10 @@ fn test_create_note_and_add_asset() {
         asset = word_to_masm_push_string(&asset),
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(
@@ -562,14 +559,15 @@ fn test_create_note_and_add_asset() {
         ZERO,
         "top item on the stack is the index to the output note"
     );
+    Ok(())
 }
 
 #[test]
-fn test_create_note_and_add_multiple_assets() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-    let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2).unwrap();
+    let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
+    let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2)?;
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let aux = Felt::new(27);
@@ -630,12 +628,10 @@ fn test_create_note_and_add_multiple_assets() {
         nft = word_to_masm_push_string(&non_fungible_asset_encoded),
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
     let process_state: ProcessState = process.into();
 
     assert_eq!(
@@ -667,11 +663,12 @@ fn test_create_note_and_add_multiple_assets() {
         ZERO,
         "top item on the stack is the index to the output note"
     );
+    Ok(())
 }
 
 #[test]
-fn test_create_note_and_add_same_nft_twice() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
     let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
@@ -724,10 +721,11 @@ fn test_create_note_and_add_same_nft_twice() {
     );
 
     assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
+    Ok(())
 }
 
 #[test]
-fn test_build_recipient_hash() {
+fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -740,7 +738,7 @@ fn test_build_recipient_hash() {
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1])
-            .build()
+            .build()?
     };
     let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
 
@@ -800,12 +798,10 @@ fn test_build_recipient_hash() {
         aux = aux,
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
         read_root_mem_word(&process.into(), NUM_OUTPUT_NOTES_PTR),
@@ -823,14 +819,15 @@ fn test_build_recipient_hash() {
         recipient_digest.as_slice(),
         "recipient hash not correct",
     );
+    Ok(())
 }
 
 // BLOCK TESTS
 // ================================================================================================
 
 #[test]
-fn test_block_procedures() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_block_procedures() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
         use.miden::tx
@@ -850,9 +847,10 @@ fn test_block_procedures() {
         end
         ";
 
-    let process = &tx_context
-        .execute_code_with_assembler(code, TransactionKernel::testing_assembler_with_mock_account())
-        .unwrap();
+    let process = &tx_context.execute_code_with_assembler(
+        code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
         process.stack.get_word(0),
@@ -871,4 +869,5 @@ fn test_block_procedures() {
         tx_context.tx_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );
+    Ok(())
 }

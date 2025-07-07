@@ -32,16 +32,19 @@
 - [BREAKING] Remove P2IDR and replace with P2IDE (#1483).
 - [BREAKING] Refactor nonce in delta from `Option<Felt>` to `Felt` (#1492).
 - Normalize account deltas to avoid including no-op updates (#1496).
-- [BREAKING] Refactor transaction to output `ACCOUNT_UPDATE_COMMITMENT` (#1500).
 - Added `Note::is_network_note()` accessor (#1485).
-- [BREAKING] Update handling of the shared modules (#1490).
-- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
-- [BREAKING] Introduce errors in `MockChain` API (#1508).
-- [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
-- Implement serialization for `LexicographicWord` (#1524).
 - Add `with_auth_component` to `AccountBuilder` (#1480).
 - [BREAKING] Refactor account authentication to require a procedure containing `auth__` in its name (#1480).
-- [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` w/o auth in `miden::tx` (#1525).
+- [BREAKING] Update handling of the shared modules (#1490).
+- [BREAKING] Refactor transaction to output `ACCOUNT_UPDATE_COMMITMENT` (#1500).
+- Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
+- Added `ScriptBuilder` to streamline building note & transaction scripts (#1507).
+- [BREAKING] Introduce errors in `MockChain` API (#1508).
+- [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517). 
+- Added procedure `was_procedure_called` to `miden::account` library module (#1521).
+- Implement serialization for `LexicographicWord` (#1524).
+- Make `Account:increment_nonce()` method public ([#1533](https://github.com/0xMiden/miden-base/pull/1533)).
+- [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` (#1525).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
