@@ -73,24 +73,41 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT]
 
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
+            # => []
+
+            call.test_account::get_storage_commitment
+            # => [STORAGE_COMMITMENT0, pad(12)]
+            swapdw dropw dropw swapw dropw
+            # => [STORAGE_COMMITMENT0]
 
             # update a value in the storage map
+            padw push.0.0.0
             push.{value}
             push.{key}
             push.2
-            # => [slot_idx = 2, KEY, VALUE]
+            # => [slot_idx = 2, KEY, VALUE, pad(7)]
             call.test_account::set_map_item
             dropw dropw dropw dropw
-            # => []
+            # => [STORAGE_COMMITMENT0]
 
             # compute the commitment which will recompute the storage commitment
             exec.account::compute_current_commitment
-            # => [CURRENT_COMMITMENT]
+            # => [CURRENT_COMMITMENT, STORAGE_COMMITMENT0]
 
             push.{expected_commitment}
             assert_eqw.err="current commitment should match expected one"
+            # => [STORAGE_COMMITMENT0]
 
-            swapdw dropw dropw
+            padw padw padw padw
+            call.test_account::get_storage_commitment
+            # => [STORAGE_COMMITMENT1, pad(12), STORAGE_COMMITMENT0]
+            swapdw dropw dropw swapw dropw
+            # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
+
+            eqw not assert.err="storage commitment should have been updated by compute_current_commitment"
+            # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
+
+            dropw dropw dropw dropw
         end
     "#,
         key = word_to_masm_push_string(&key),
