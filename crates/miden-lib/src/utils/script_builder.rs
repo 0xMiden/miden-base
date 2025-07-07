@@ -48,20 +48,23 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 /// ## Builder Pattern Example
 ///
 /// ```no_run
+/// # use anyhow::Context;
 /// # use miden_lib::utils::ScriptBuilder;
 /// # use miden_objects::assembly::Library;
 /// # use miden_stdlib::StdLibrary;
-/// # let module_code = "export.test begin nop end";
+/// # fn example() -> anyhow::Result<()> {
+/// # let module_code = "export.test push.1 add end";
 /// # let script_code = "begin nop end";
 /// # // Create sample libraries for the example
 /// # let my_lib = StdLibrary::default().into(); // Convert StdLibrary to Library
 /// # let fpi_lib = StdLibrary::default().into();
 /// let script = ScriptBuilder::new(true)
-///     .with_linked_module("my::module", module_code)?
-///     .with_statically_linked_library(&my_lib)?
-///     .with_dynamically_linked_library(&fpi_lib)?  // For FPI calls
-///     .compile_tx_script(script_code)?;
-/// # Ok::<(), Box<dyn std::error::Error>>(())
+///     .with_linked_module("my::module", module_code).context("failed to link module")?
+///     .with_statically_linked_library(&my_lib).context("failed to link static library")?
+///     .with_dynamically_linked_library(&fpi_lib).context("failed to link dynamic library")?  // For FPI calls
+///     .compile_tx_script(script_code).context("failed to compile tx script")?;
+/// # Ok(())
+/// # }
 /// ```
 ///
 /// # Note
@@ -275,7 +278,7 @@ impl ScriptBuilder {
 
 impl Default for ScriptBuilder {
     fn default() -> Self {
-        Self::new(false)
+        Self::new(true)
     }
 }
 
@@ -284,6 +287,8 @@ impl Default for ScriptBuilder {
 
 #[cfg(test)]
 mod tests {
+    use anyhow::Context;
+
     use super::*;
 
     #[test]
@@ -293,14 +298,16 @@ mod tests {
     }
 
     #[test]
-    fn test_script_builder_basic_script_compilation() {
+    fn test_script_builder_basic_script_compilation() -> anyhow::Result<()> {
         let builder = ScriptBuilder::new(true);
-        let result = builder.compile_tx_script("begin nop end");
-        assert!(result.is_ok() || result.is_err());
+        builder
+            .compile_tx_script("begin nop end")
+            .context("failed to compile basic tx script")?;
+        Ok(())
     }
 
     #[test]
-    fn test_create_library_and_create_tx_script() {
+    fn test_create_library_and_create_tx_script() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
             begin
@@ -324,15 +331,18 @@ mod tests {
         let library_path = "external_contract::counter_contract";
 
         let mut builder_with_lib = ScriptBuilder::new(true);
-        let add_result = builder_with_lib.link_module(library_path, account_code);
+        builder_with_lib
+            .link_module(library_path, account_code)
+            .context("failed to link module")?;
+        builder_with_lib
+            .compile_tx_script(script_code)
+            .context("failed to compile tx script")?;
 
-        if add_result.is_ok() {
-            let _tx_script_result = builder_with_lib.compile_tx_script(script_code);
-        }
+        Ok(())
     }
 
     #[test]
-    fn test_compile_library_and_add_to_builder() {
+    fn test_compile_library_and_add_to_builder() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
             begin
@@ -357,24 +367,30 @@ mod tests {
 
         // Test single library
         let mut builder_with_lib = ScriptBuilder::new(true);
-        let add_result = builder_with_lib.link_module(library_path, account_code);
-
-        if add_result.is_ok() {
-            let _tx_script_result = builder_with_lib.compile_tx_script(script_code);
-        }
+        builder_with_lib
+            .link_module(library_path, account_code)
+            .context("failed to link module")?;
+        builder_with_lib
+            .compile_tx_script(script_code)
+            .context("failed to compile tx script")?;
 
         // Test multiple libraries
         let mut builder_with_libs = ScriptBuilder::new(true);
-        let add_result1 = builder_with_libs.link_module(library_path, account_code);
-        let add_result2 = builder_with_libs.link_module("test::lib", "export.test begin nop end");
+        builder_with_libs
+            .link_module(library_path, account_code)
+            .context("failed to link first module")?;
+        builder_with_libs
+            .link_module("test::lib", "export.test nop end")
+            .context("failed to link second module")?;
+        builder_with_libs
+            .compile_tx_script(script_code)
+            .context("failed to compile tx script with multiple libraries")?;
 
-        if add_result1.is_ok() && add_result2.is_ok() {
-            let _tx_script_result = builder_with_libs.compile_tx_script(script_code);
-        }
+        Ok(())
     }
 
     #[test]
-    fn test_builder_style_chaining() {
+    fn test_builder_style_chaining() -> anyhow::Result<()> {
         let script_code = "
             use.external_contract::counter_contract
             begin
@@ -396,25 +412,93 @@ mod tests {
         ";
 
         // Test builder-style chaining with modules
-        let builder_result = ScriptBuilder::new(true)
-            .with_linked_module("external_contract::counter_contract", account_code);
+        let builder = ScriptBuilder::new(true)
+            .with_linked_module("external_contract::counter_contract", account_code)
+            .context("failed to link module")?;
 
-        if let Ok(builder) = builder_result {
-            let _tx_script_result = builder.compile_tx_script(script_code);
-        }
+        builder.compile_tx_script(script_code).context("failed to compile tx script")?;
+
+        Ok(())
     }
 
     #[test]
-    fn test_multiple_chained_modules() {
-        let script_code = "begin nop end";
+    fn test_multiple_chained_modules() -> anyhow::Result<()> {
+        let script_code =
+            "use.test::lib1 use.test::lib2 begin exec.lib1::test1 exec.lib2::test2 end";
 
         // Test chaining multiple modules
-        let builder_result = ScriptBuilder::new(true)
-            .with_linked_module("test::lib1", "export.test1 begin nop end")
-            .and_then(|b| b.with_linked_module("test::lib2", "export.test2 begin nop end"));
+        let builder = ScriptBuilder::new(true)
+            .with_linked_module("test::lib1", "export.test1 push.1 add end")
+            .context("failed to link first module")?
+            .with_linked_module("test::lib2", "export.test2 push.2 add end")
+            .context("failed to link second module")?;
 
-        if let Ok(builder) = builder_result {
-            let _tx_script_result = builder.compile_tx_script(script_code);
-        }
+        builder.compile_tx_script(script_code).context("failed to compile tx script")?;
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_static_and_dynamic_linking() -> anyhow::Result<()> {
+        let script_code = "
+            use.external_contract::contract_1
+            use.external_contract::contract_2
+
+            begin
+                call.contract_1::increment_1
+                call.contract_2::increment_2
+            end
+        ";
+
+        let account_code_1 = "
+            use.miden::account
+            use.std::sys
+            export.increment_1
+                push.0
+                exec.account::get_item
+                push.1 add
+                push.0
+                exec.account::set_item
+                exec.sys::truncate_stack
+            end
+        ";
+
+        let account_code_2 = "
+            use.miden::account
+            use.std::sys
+            export.increment_2
+                push.0
+                exec.account::get_item
+                push.2 add
+                push.0
+                exec.account::set_item
+                exec.sys::truncate_stack
+            end
+        ";
+
+        // Create libraries using the assembler
+        let temp_assembler = TransactionKernel::assembler();
+
+        let static_lib = temp_assembler
+            .clone()
+            .assemble_library([NamedSource::new("external_contract::contract_1", account_code_1)])
+            .map_err(|e| anyhow::anyhow!("failed to assemble static library: {}", e))?;
+
+        let dynamic_lib = temp_assembler
+            .assemble_library([NamedSource::new("external_contract::contract_2", account_code_2)])
+            .map_err(|e| anyhow::anyhow!("failed to assemble dynamic library: {}", e))?;
+
+        // Test linking both static and dynamic libraries
+        let builder = ScriptBuilder::default()
+            .with_statically_linked_library(&static_lib)
+            .context("failed to link static library")?
+            .with_dynamically_linked_library(&dynamic_lib)
+            .context("failed to link dynamic library")?;
+
+        builder
+            .compile_tx_script(script_code)
+            .context("failed to compile tx script with static and dynamic libraries")?;
+
+        Ok(())
     }
 }

@@ -1,6 +1,8 @@
+#[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
 pub mod tx_kernel_errors;
 
+#[cfg(any(feature = "testing", test))]
 #[rustfmt::skip]
 pub mod note_script_errors;
 
