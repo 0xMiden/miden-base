@@ -1,4 +1,4 @@
-name: Release-plz (main)
+name: Release-plz (next)
 
 permissions:
   pull-requests: write
@@ -7,11 +7,11 @@ permissions:
 on:
   push:
     branches:
-      - main
+      - next
 
 jobs:
-  release-plz-release:
-    name: Release-plz release
+  release-plz-dry-run-release:
+    name: Release-plz release (dry-run)
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == '0xMiden' }}
     permissions:
@@ -25,9 +25,8 @@ jobs:
         uses: dtolnay/rust-toolchain@stable
       - name: Run release-plz
         uses: release-plz/action@v0.5
+        config: .release-plz-dry-run.toml
         with:
-          # Remove `--dry-run` once we are confident in the release-plz workflow.
-          # Till then, it serves the same purpose as the dry-run from the `next` branch.
           command: release --dry-run
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
