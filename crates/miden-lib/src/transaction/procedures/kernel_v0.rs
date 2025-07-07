@@ -50,7 +50,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // note_get_assets_info
     digest!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
     // note_add_asset
-    digest!("0x215b89969345d374a003f782c5176227ace19605cbd4c020dc67ac5b50e5d1ba"),
+    digest!("0x18a7eb3dc20a43bae5270cd2d12e57af7863fa4796c3f2f66e2fd66b31a518ad"),
     // note_get_serial_number
     digest!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
@@ -60,7 +60,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 36] = [
     // note_get_script_root
     digest!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // tx_create_note
-    digest!("0xdf9803f63ee8ab53868f48b337b7689faff84de8ab7eeca1356195a6c7dd7362"),
+    digest!("0x9d4bbfb2ae34601d93b904ef4ae5651345aabf56d0a231444aca138d9849000f"),
     // tx_get_input_notes_commitment
     digest!("0x16cb840dc9131e2fd2b3e83b8d796eb466722ae36f29f27b4b053f1bee2ed473"),
     // tx_get_output_notes_commitment
