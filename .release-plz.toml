@@ -1,5 +1,5 @@
 [workspace]
-release_always = false # We still want to be able to release manually upon release PR merge.
+release_always = true # Without the tracking PR, it would never trigger unless `true`.
 changelog_update = false # For now we have our own changelog.
 
 # `cargo-semver` breaks because of the `async` feature (by default it runs with `--all-features`).

@@ -26,7 +26,6 @@ jobs:
           rustup update --no-self-update
       - name: Run release-plz
         uses: release-plz/action@v0.5
-        config: .release-plz-dry-run.toml
         with:
           command: release --dry-run
         env:
