@@ -92,15 +92,21 @@ impl From<RpoFalcon512ProcedureACL> for AccountComponent {
         let num_procs = Felt::from(conditional.trigger_procedures.len() as u32);
         storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
 
-        // Slots 2: A map with tracked procedure roots
-        for (i, proc_root) in conditional.trigger_procedures.iter().enumerate() {
-            storage_slots.push(StorageSlot::Map(
-                StorageMap::with_entries([(
-                    [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::from(i as u32)].into(),
-                    proc_root.into(),
-                )])
-                .unwrap(),
-            ));
+        // Slot 2: A map with tracked procedure roots
+        if !conditional.trigger_procedures.is_empty() {
+            let map_entries: Vec<_> = conditional
+                .trigger_procedures
+                .iter()
+                .enumerate()
+                .map(|(i, proc_root)| {
+                    (
+                        [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::from(i as u32)].into(),
+                        proc_root.into(),
+                    )
+                })
+                .collect();
+
+            storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
         }
 
         AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
