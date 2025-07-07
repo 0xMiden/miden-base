@@ -1045,15 +1045,18 @@ end
 
 #! Returns the procedure root.
 #!
-#! Note:
-#! - We assume that index has been validated and is within bounds.
-#!
 #! Inputs:  [index]
 #! Outputs: [PROC_ROOT]
 #!
 #! Where:
 #! - PROC_ROOT is the hash of the procedure.
+#!
+#! Panics if:
+#! - the procedure index is out of bounds.
 proc.get_procedure_root
+    dup exec.memory::get_num_account_procedures lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    # => [index]
+
     # get procedure pointer
     exec.memory::get_acct_procedure_ptr
     # => [proc_ptr]
@@ -1215,6 +1218,7 @@ export.was_procedure_called
     # => [index, PROC_ROOT]
 
     dup movdn.5
+    # => [index, PROC_ROOT, index]
 
     # get procedure root from memory stored at index
     exec.get_procedure_root
@@ -1234,8 +1238,10 @@ end
 
 #! Sets the was_called flag to 1 for the specified procedure.
 #!
-#! This is an internal procedure and contrary to `was_procedure_called`, assumes the stack contains
-#! the index, not the procedure root.
+#! Note:
+#! - This is an internal procedure. Unlike `was_procedure_called`, it expects the stack to contain
+#!   the index, not the procedure root.
+#! - We assume the index has been validated and is within bounds.
 #!
 #! Inputs:  [proc_idx]
 #! Outputs: []
