@@ -32,6 +32,7 @@ regex = { version = "1.11" }
 walkdir = { version = "2.5" }
 
 [dev-dependencies]
+anyhow = "1.0"
 assert_matches = { workspace = true }
 miden-objects = { workspace = true, features = ["testing"] }
 vm-processor = { workspace = true, features = ["testing"] }

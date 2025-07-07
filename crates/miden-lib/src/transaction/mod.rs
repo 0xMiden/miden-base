@@ -1,7 +1,7 @@
 use alloc::{string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, TransactionInputError, TransactionOutputError,
+    Digest, EMPTY_WORD, Felt, Hasher, TransactionOutputError,
     account::AccountId,
     assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
     block::BlockNumber,
@@ -30,8 +30,9 @@ pub use outputs::{
     parse_final_account_header,
 };
 
-mod errors;
-pub use errors::{TransactionEventError, TransactionKernelError, TransactionTraceParsingError};
+pub use crate::errors::{
+    TransactionEventError, TransactionKernelError, TransactionTraceParsingError,
+};
 
 mod procedures;
 
@@ -115,7 +116,7 @@ impl TransactionKernel {
         tx_inputs: &TransactionInputs,
         tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
-    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionInputError> {
+    ) -> (StackInputs, TransactionAdviceInputs) {
         let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
@@ -131,7 +132,7 @@ impl TransactionKernel {
             tx_advice_inputs.extend(init_advice_inputs);
         }
 
-        Ok((stack_inputs, tx_advice_inputs))
+        (stack_inputs, tx_advice_inputs)
     }
 
     // ASSEMBLER CONSTRUCTOR
