@@ -218,7 +218,9 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// The storage layout of the faucet account is:
 /// - Slot 0: Reserved slot for faucets.
 /// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: Token metadata of the faucet.
+/// - Slot 2: Number of tracked procedures.
+/// - Slot 3: A map with tracked procedure roots.
+/// - Slot 4: Token metadata of the faucet.
 pub fn create_basic_fungible_faucet(
     init_seed: [u8; 32],
     symbol: TokenSymbol,
