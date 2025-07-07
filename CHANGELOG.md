@@ -38,11 +38,13 @@
 - [BREAKING] Update handling of the shared modules (#1490).
 - [BREAKING] Refactor transaction to output `ACCOUNT_UPDATE_COMMITMENT` (#1500).
 - Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
+- Added `ScriptBuilder` to streamline building note & transaction scripts (#1507).
 - [BREAKING] Introduce errors in `MockChain` API (#1508).
 - [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517). 
 - Added procedure `was_procedure_called` to `miden::account` library module (#1521).
 - Implement serialization for `LexicographicWord` (#1524).
 - Make `Account:increment_nonce()` method public ([#1533](https://github.com/0xMiden/miden-base/pull/1533)).
+- Define the commitment to an empty account delta as `EMPTY_WORD` ([#1528](https://github.com/0xMiden/miden-base/pull/1528)).
 - Add a new auth component `RpoFalcon512ProcedureACL` (#1531).
 - [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureACL` for authentication (#1531).
 

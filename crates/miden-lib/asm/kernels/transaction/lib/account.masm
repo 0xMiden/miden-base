@@ -227,7 +227,7 @@ export.incr_nonce
     # => [nonce_increment]
 
     dup exec.memory::incr_account_nonce_delta
-    # => [nonce_increment]
+    # => [nonce_delta]
 
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT
@@ -629,7 +629,8 @@ end
 #! - the procedure index is out of bounds.
 export.get_procedure_info
     # check that index < number of procedures contained in the account code
-    dup exec.memory::get_num_account_procedures lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    dup exec.memory::get_num_account_procedures
+    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
@@ -704,11 +705,11 @@ export.assert_auth_procedure
     # => [index, PROC_ROOT]
 
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT]
 
     # verify that PROC_ROOT exists in memory at index
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
     # => []
 end
 
@@ -1043,6 +1044,30 @@ proc.set_item_raw
     # => [OLD_VALUE]
 end
 
+#! Returns the procedure root.
+#!
+#! Inputs:  [index]
+#! Outputs: [PROC_ROOT]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure.
+#!
+#! Panics if:
+#! - the procedure index is out of bounds.
+proc.get_procedure_root
+    dup exec.memory::get_num_account_procedures
+    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    # => [index]
+
+    # get procedure pointer
+    exec.memory::get_acct_procedure_ptr
+    # => [proc_ptr]
+
+    # load procedure root from memory
+    padw movup.4 mem_loadw
+    # => [PROC_ROOT]
+end
+
 #! Returns the procedure metadata.
 #!
 #! Note:
@@ -1056,11 +1081,11 @@ end
 #! - storage_size is the number of storage slots the procedure is allowed to access.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
-    exec.memory::get_acct_procedure_ptr add.4
-    # => [storage_offset_ptr]
+    padw exec.memory::get_acct_procedure_ptr add.4
+    # => [storage_offset_ptr, EMPTY_WORD]
 
     # load procedure metadata from memory and keep relevant data
-    padw movup.4 mem_loadw drop drop swap
+    mem_loadw drop drop swap
     # => [storage_offset, storage_size]
 end
 
@@ -1195,12 +1220,14 @@ export.was_procedure_called
     # => [index, PROC_ROOT]
 
     dup movdn.5
+    # => [index, PROC_ROOT, index]
 
-    # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
+    # get procedure root from memory stored at index
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT, index]
 
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # verify that PROC_ROOT exists in memory at index
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
     # => [index]
 
     exec.memory::get_acct_procedures_call_tracking_ptr
@@ -1213,8 +1240,10 @@ end
 
 #! Sets the was_called flag to 1 for the specified procedure.
 #!
-#! This is an internal procedure and contrary to `was_procedure_called`, assumes the stack contains
-#! the index, not the procedure root.
+#! Note:
+#! - This is an internal procedure. Unlike `was_procedure_called`, it expects the stack to contain
+#!   the index, not the procedure root.
+#! - We assume the index has been validated and is within bounds.
 #!
 #! Inputs:  [proc_idx]
 #! Outputs: []

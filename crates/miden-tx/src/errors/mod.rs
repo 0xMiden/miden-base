@@ -68,8 +68,6 @@ pub enum TransactionExecutorError {
 pub enum TransactionProverError {
     #[error("failed to apply account delta")]
     AccountDeltaApplyFailed(#[source] AccountError),
-    #[error("transaction inputs are not valid")]
-    InvalidTransactionInputs(#[source] TransactionInputError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]

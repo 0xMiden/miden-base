@@ -64,17 +64,17 @@ book: ## Builds the book & serves documentation site
 
 .PHONY: test-build
 test-build: ## Build the test binary
-	cargo nextest run --cargo-profile test-dev --features concurrent,testing --no-run
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo nextest run --cargo-profile test-dev --features concurrent,testing --no-run
 
 
 .PHONY: test
-test: ## Run all tests
-	$(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing
+test: ## Run all tests. Running `make test name=test_name` will only run the test `test_name`.
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing $(name)
 
 
 .PHONY: test-dev
 test-dev: ## Run default tests excluding slow prove tests in debug mode intended to be run locally
-	$(BACKTRACE) cargo nextest run --profile default --features concurrent,testing --filter-expr "not test(prove)"
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing --filter-expr "not test(prove)"
 
 
 .PHONY: test-docs
