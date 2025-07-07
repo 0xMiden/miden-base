@@ -33,7 +33,6 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 /// **Dynamic Linking** (`link_dynamic_library()` / `with_dynamically_linked_library()`):
 /// - Use when making Foreign Procedure Invocation (FPI) calls
 /// - The library code is available on-chain and referenced, not copied
-/// - Best for calling procedures in foreign accounts via FPI
 /// - Results in smaller script size but requires the code to be available on-chain
 ///
 /// ## Typical Workflow
