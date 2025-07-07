@@ -41,6 +41,9 @@ format: ## Runs Format using nightly toolchain
 format-check: ## Runs Format using nightly toolchain but only in check mode
 	cargo +nightly fmt --all --check
 
+.PHONY: typos-check
+typos-check: ## Runs spellchecker
+	typos
 
 .PHONY: lint
 lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
@@ -48,6 +51,7 @@ lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) fix
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy-no-std
+	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) typos-check
 
 # --- docs ----------------------------------------------------------------------------------------
 
