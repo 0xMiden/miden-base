@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 
 use miden_objects::{
     Digest, Felt, FieldElement,
-    account::{AccountComponent, StorageMap, StorageSlot},
+    account::{AccountCode, AccountComponent, StorageMap, StorageSlot},
     crypto::dsa::rpo_falcon512::PublicKey,
 };
 
@@ -71,11 +71,12 @@ impl RpoFalcon512ProcedureACL {
     /// list of procedure roots that require authentication.
     ///
     /// # Panics
-    /// Panics if more than 253 procedures are tracked (to leave room for the public key and count).
+    /// Panics if more than 256 procedures are tracked.
     pub fn new(public_key: PublicKey, trigger_procedures: Vec<Digest>) -> Self {
         assert!(
-            trigger_procedures.len() <= u8::MAX as usize - 2,
-            "Cannot track more than 253 procedures"
+            trigger_procedures.len() <= AccountCode::MAX_NUM_PROCEDURES,
+            "Cannot track more than {} procedures (account's maximum limit)",
+            AccountCode::MAX_NUM_PROCEDURES
         );
         Self { public_key, trigger_procedures }
     }
