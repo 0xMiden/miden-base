@@ -159,26 +159,6 @@ proc.build_output_vault
     # => []
 end
 
-# ACCOUNT CODE UPDATE
-# =================================================================================================
-
-#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
-#! is set to the initial account code commitment in the prologue and as such this procedure will
-#! not result in a change to the account code commitment if the `account::set_code` procedure has
-#! not been invoked in this transaction.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.update_account_code
-    # check if the account code commitment has been updated
-    exec.memory::get_new_acct_code_commitment
-    # => [NEW_ACCT_CODE_COMMITMENT]
-
-    # set the account code commitment to the new account code commitment (may not have changed)
-    exec.memory::set_acct_code_commitment dropw
-    # => []
-end
-
 # AUTH PROCEDURE
 # =================================================================================================
 
@@ -228,7 +208,7 @@ export.finalize_transaction
     # => []
 
     # update account code
-    exec.update_account_code
+    exec.account::update_code_commitment
     # => []
 
     # get the initial account commitment

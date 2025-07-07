@@ -201,10 +201,14 @@ export.compute_current_commitment
     exec.memory::is_native_account
     # => [is_native_account]
 
-    # first compute the latest storage commitment. Since foreign accounts do not change during
-    # transaction execution, this step can be skipped for them
+    # first compute the latest storage commitment and update the code commitment
+    # since foreign accounts do not change during transaction execution, this step can be skipped
+    # for them
     if.true
         exec.compute_current_storage_commitment
+        # => []
+
+        exec.update_code_commitment
         # => []
     end
 
@@ -1236,6 +1240,23 @@ proc.compute_current_storage_commitment
         drop
         # => []
     end
+end
+
+#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
+#! is set to the initial account code commitment in the prologue and as such this procedure will
+#! not result in a change to the account code commitment if the `account::set_code` procedure has
+#! not been invoked in this transaction.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.update_code_commitment
+    # fetch the new code commitment, which may be the initial one
+    exec.memory::get_new_acct_code_commitment
+    # => [NEW_ACCT_CODE_COMMITMENT]
+
+    # set the account code commitment to the new account code commitment (may not have changed)
+    exec.memory::set_acct_code_commitment dropw
+    # => []
 end
 
 #! Checks if a procedure has been called during transaction execution.
