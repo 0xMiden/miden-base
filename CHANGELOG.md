@@ -38,8 +38,8 @@
 - [BREAKING] Update handling of the shared modules (#1490).
 - [BREAKING] Refactor transaction to output `ACCOUNT_UPDATE_COMMITMENT` (#1500).
 - Added a new constructor for `TransactionExecutor` that accepts `ExecutionOptions` (#1502).
-- [BREAKING] Introduce errors in `MockChain` API (#1508).
-- [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517). 
+- [BREAKING] Introduce errors in `MockChain`, `TransactionContext` and `TransactionContextBuilder` APIs (#1508, #1519).
+- [BREAKING] `TransactionAdviceInputs` cannot return `Err` anymore (#1517).
 - Added procedure `was_procedure_called` to `miden::account` library module (#1521).
 - Implement serialization for `LexicographicWord` (#1524).
 - Make `Account:increment_nonce()` method public ([#1533](https://github.com/0xMiden/miden-base/pull/1533)).

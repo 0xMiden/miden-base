@@ -3,6 +3,7 @@
 
 use alloc::{collections::BTreeMap, vec::Vec};
 
+use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     EMPTY_WORD, FieldElement,
@@ -41,7 +42,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// # use miden_testing::TransactionContextBuilder;
 /// # use miden_objects::{account::AccountBuilder,Felt, FieldElement};
 /// # use miden_lib::transaction::TransactionKernel;
-/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+/// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 ///
 /// let code = "
 /// use.kernel::prologue
@@ -102,7 +103,8 @@ impl TransactionContextBuilder {
     pub fn with_existing_mock_account() -> Self {
         // Build standard account with normal assembler because the testing one already contains it
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
+        let auth_component =
+            IncrNonceAuthComponent::new(assembler.clone()).expect("valid component");
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -131,7 +133,7 @@ impl TransactionContextBuilder {
 
     pub fn with_noop_auth_account(nonce: Felt) -> Self {
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component = NoopAuthComponent::new(assembler.clone()).unwrap();
+        let auth_component = NoopAuthComponent::new(assembler.clone()).expect("valid component");
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -247,7 +249,7 @@ impl TransactionContextBuilder {
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
-    pub fn build(self) -> TransactionContext {
+    pub fn build(self) -> anyhow::Result<TransactionContext> {
         let source_manager = self.assembler.source_manager();
 
         let tx_inputs = match self.transaction_inputs {
@@ -261,8 +263,8 @@ impl TransactionContextBuilder {
                     mock_chain.add_pending_note(OutputNote::Full(i));
                 }
 
-                mock_chain.prove_next_block().unwrap();
-                mock_chain.prove_next_block().unwrap();
+                mock_chain.prove_next_block().context("failed to prove first block")?;
+                mock_chain.prove_next_block().context("failed to prove second block")?;
 
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
@@ -274,7 +276,7 @@ impl TransactionContextBuilder {
                         &input_note_ids,
                         &[],
                     )
-                    .expect("failed to get transaction inputs from mock chain")
+                    .context("failed to get transaction inputs from mock chain")?
             },
         };
 
@@ -301,7 +303,7 @@ impl TransactionContextBuilder {
             mast_forest_store
         };
 
-        TransactionContext {
+        Ok(TransactionContext {
             expected_output_notes: self.expected_output_notes,
             tx_args,
             tx_inputs,
@@ -309,7 +311,7 @@ impl TransactionContextBuilder {
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
             source_manager,
-        }
+        })
     }
 }
 

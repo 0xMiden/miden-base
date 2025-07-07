@@ -96,7 +96,8 @@ pub fn generate_executed_tx_with_authenticated_notes(
     let tx_context = chain
         .build_tx_context(input, notes, &[])
         .expect("failed to build tx context")
-        .build();
+        .build()
+        .unwrap();
     tx_context.execute().unwrap()
 }
 
@@ -123,7 +124,8 @@ pub fn generate_tx_with_expiration(
         .build_tx_context(input, &[], &[])
         .expect("failed to build tx context")
         .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
-        .build();
+        .build()
+        .unwrap();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
@@ -136,7 +138,8 @@ pub fn generate_tx_with_unauthenticated_notes(
     let tx_context = chain
         .build_tx_context(account_id, &[], notes)
         .expect("failed to build tx context")
-        .build();
+        .build()
+        .unwrap();
     let executed_tx = tx_context.execute().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
