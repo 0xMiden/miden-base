@@ -1077,7 +1077,7 @@ end
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
     padw exec.memory::get_acct_procedure_ptr add.4
-    # => [storage_offset_ptr, 0, 0, 0, 0]
+    # => [storage_offset_ptr, EMPTY_WORD]
 
     # load procedure metadata from memory and keep relevant data
     mem_loadw drop drop swap
