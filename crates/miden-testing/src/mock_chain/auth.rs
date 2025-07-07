@@ -1,6 +1,7 @@
 // AUTH
 // ================================================================================================
 use alloc::vec::Vec;
+
 use miden_lib::{
     account::auth::{RpoFalcon512, RpoFalcon512ProcedureAcl},
     transaction::TransactionKernel,

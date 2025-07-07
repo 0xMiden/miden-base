@@ -148,14 +148,13 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
                         Some(TransactionKernelError::FailedSignatureGeneration(msg)) => {
                             assert_eq!(
                                 *msg, "No authenticator assigned to transaction host",
-                                "Expected 'No authenticator assigned to transaction host' error, got: {}",
-                                msg
+                                "Expected 'No authenticator assigned to transaction host' error, got: {msg}"
                             );
                         },
-                        _ => panic!("Expected FailedSignatureGeneration error, got: {:?}", error),
+                        _ => panic!("Expected FailedSignatureGeneration error, got: {error:?}"),
                     }
                 },
-                _ => panic!("Expected EventError, got: {:?}", execution_error),
+                _ => panic!("Expected EventError, got: {execution_error:?}"),
             }
         },
         _ => panic!("Expected transaction to fail with TransactionProgramExecutionFailed error"),
