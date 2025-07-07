@@ -90,9 +90,9 @@ impl AccountDelta {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns true if this account delta does not contain any updates.
+    /// Returns true if this account delta does not contain any vault, storage or nonce updates.
     pub fn is_empty(&self) -> bool {
-        self.storage.is_empty() && self.vault.is_empty()
+        self.storage.is_empty() && self.vault.is_empty() && self.nonce_increment == ZERO
     }
 
     /// Returns storage updates for this account delta.
@@ -248,8 +248,7 @@ impl AccountDelta {
     /// pair have changed and 2) when two key-value pairs have changed.
     pub fn commitment(&self) -> Digest {
         // The commitment to an empty delta is defined as the empty word.
-        // Note that is_empty does not take the nonce into account.
-        if self.is_empty() && self.nonce_increment() == ZERO {
+        if self.is_empty() {
             return Digest::default();
         }
 

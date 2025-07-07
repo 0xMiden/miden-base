@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Word,
+    Digest, EMPTY_WORD, Felt, Word, ZERO,
     account::{
         AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageMap, StorageSlot,
         delta::LexicographicWord,
@@ -61,7 +61,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute transaction")?;
 
-    assert_eq!(executed_tx.account_delta().nonce_increment(), miden_objects::ZERO);
+    assert_eq!(executed_tx.account_delta().nonce_increment(), ZERO);
     assert!(executed_tx.account_delta().is_empty());
     assert_eq!(executed_tx.account_delta().commitment(), Digest::default());
 
