@@ -325,8 +325,14 @@ mod tests {
             [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
         );
 
-        // The procedure root is stored in slot 3.
-        // TODO assert it equals the root of the distribute procedure.
+        // The procedure root of the distribute procedure is stored in slot 3.
+        assert_eq!(
+            faucet_account
+                .storage()
+                .get_map_item(3, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+                .unwrap(),
+            Word::from(BasicFungibleFaucet::distribute_digest())
+        );
 
         // Check that faucet metadata was initialized to the given values. The faucet component is
         // added second, so its assigned storage slot for the metadata will be 2.
