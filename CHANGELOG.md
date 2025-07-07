@@ -43,6 +43,8 @@
 - Added procedure `was_procedure_called` to `miden::account` library module (#1521).
 - Implement serialization for `LexicographicWord` (#1524).
 - Make `Account:increment_nonce()` method public ([#1533](https://github.com/0xMiden/miden-base/pull/1533)).
+- Add a new auth component `RpoFalcon512ProcedureACL` (#1531).
+- [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureACL` for authentication (#1531).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
