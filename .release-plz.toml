@@ -1,10 +1,23 @@
 [workspace]
 release_always = true # Without the tracking PR, it would never trigger unless `true`.
 changelog_update = false # For now we have our own changelog.
-git_tag_name = "v{version}"
 
+# Disable git releases for all packages by default. See https://release-plz.ieni.dev/docs/extra/single-tag
+git_release_enable = false
+git_tag_enable = false
+
+[[package]]
 # `cargo-semver` breaks because of the `async` feature (by default it runs with `--all-features`).
 # We will either remove the feature (as discussed) or need to add an ability to release-plz to pass flags to `cargo-semver`.
-[[package]]
 name = "miden-testing"
 semver_check = false
+
+[[package]]
+name = "miden-lib"
+git_tag_name = "v{{ version }}"
+git_release_name = "v{{ version }}"
+git_tag_enable = true
+git_release_enable = true
+
+# TODO: Remove this once we are confident in the release-plz workflow.
+git_release_draft = true
