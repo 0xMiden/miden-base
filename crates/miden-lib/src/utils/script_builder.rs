@@ -66,8 +66,8 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 ///
 /// # Note
 /// The ScriptBuilder automatically includes the `miden` and `std` libraries, which
-/// provide access to transaction kernel procedures. The default constructor
-/// `ScriptBuilder::new()` includes these libraries automatically.
+/// provide access to transaction kernel procedures. Due to being available on-chain
+/// these libraries are linked dynamically and do not add to the size of built script.
 #[derive(Clone)]
 pub struct ScriptBuilder {
     assembler: Assembler,
