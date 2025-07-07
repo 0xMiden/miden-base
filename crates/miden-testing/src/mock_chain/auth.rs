@@ -1,7 +1,12 @@
 // AUTH
 // ================================================================================================
-use miden_lib::{account::auth::RpoFalcon512, transaction::TransactionKernel};
+use alloc::vec::Vec;
+use miden_lib::{
+    account::auth::{RpoFalcon512, RpoFalcon512ProcedureACL},
+    transaction::TransactionKernel,
+};
 use miden_objects::{
+    Digest,
     account::{AccountComponent, AuthSecretKey},
     crypto::dsa::rpo_falcon512::SecretKey,
     testing::account_component::{
@@ -13,11 +18,19 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
 /// Specifies which authentication mechanism is desired for accounts
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub enum Auth {
-    /// Creates a [SecretKey] for the account and creates a [BasicAuthenticator] that gets used
-    /// for authenticating the account.
+    /// Creates a [SecretKey] for the account and creates a [BasicAuthenticator] used to
+    /// authenticate the account with the [RpoFalcon512].
     BasicAuth,
+
+    /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
+    /// authenticate the account with the [RpoFalcon512ProcedureACL]. Authentication will only be
+    /// triggered if any of the procedures specified in the list are called.
+    ///
+    /// # Panics
+    /// Panics if more than 256 procedures are tracked.
+    ProcedureAcl { trigger_procedures: Vec<Digest> },
 
     /// Creates a mock authentication mechanism for the account that only increments the nonce.
     IncrNonce,
@@ -41,6 +54,20 @@ impl Auth {
                 let pub_key = sec_key.public_key();
 
                 let component = RpoFalcon512::new(pub_key).into();
+                let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
+                    &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
+                    rng,
+                );
+
+                (component, Some(authenticator))
+            },
+            Auth::ProcedureAcl { trigger_procedures } => {
+                let mut rng = ChaCha20Rng::from_seed(Default::default());
+                let sec_key = SecretKey::with_rng(&mut rng);
+                let pub_key = sec_key.public_key();
+
+                let component =
+                    RpoFalcon512ProcedureACL::new(pub_key, trigger_procedures.clone()).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,

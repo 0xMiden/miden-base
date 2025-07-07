@@ -1,5 +1,6 @@
 extern crate alloc;
 
+mod auth;
 mod scripts;
 mod wallet;
 

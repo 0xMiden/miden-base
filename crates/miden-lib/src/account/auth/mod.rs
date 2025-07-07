@@ -101,7 +101,7 @@ impl From<RpoFalcon512ProcedureACL> for AccountComponent {
                 .enumerate()
                 .map(|(i, proc_root)| {
                     (
-                        [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::from(i as u32)].into(),
+                        [Felt::from(i as u32), Felt::ZERO, Felt::ZERO, Felt::ZERO].into(),
                         proc_root.into(),
                     )
                 })

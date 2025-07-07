@@ -24,9 +24,9 @@ const.TRACKED_PROCS_START_SLOT=2
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-export.auth__tx_rpo_falcon512_conditional
+export.auth__tx_rpo_falcon512_procedures_acl
     # Get the number of tracked procedures
-    push.NUM_TRACKED_PROCS_SLOT exec.account::get_item
+    push.NUM_TRACKED_PROCS_SLOT exec.account::get_item drop drop drop
     # => [num_tracked_procs, pad(16)]
 
     # Check if any tracked procedure was called
@@ -40,15 +40,15 @@ export.auth__tx_rpo_falcon512_conditional
         # => [was_any_called, i, pad(16)]
 
         # Get the tracked procedure root from storage
-        dup.1 sub.1 push.TRACKED_PROCS_START_SLOT
-        # => [TRACKED_PROCS_START_SLOT, i-1, was_any_called, i, pad(16)]
+        dup.1 sub.1 push.0.0.0 push.TRACKED_PROCS_START_SLOT
+        # => [TRACKED_PROCS_START_SLOT, [0, 0, 0, i-1], was_any_called, i, pad(16)]
 
         exec.account::get_map_item
         # => [TRACKED_PROC_ROOT, was_any_called, i, pad(16)]
 
         exec.account::was_procedure_called
         # => [was_called, was_any_called, i, pad(16)]
-        
+
         # Update was_any_called
         or
         # => [was_any_called', i, pad(16)]
