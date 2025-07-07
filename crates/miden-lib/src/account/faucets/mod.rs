@@ -1,9 +1,10 @@
 use miden_objects::{
-    AccountError, Felt, FieldElement, TokenSymbolError, Word,
+    AccountError, Digest, Felt, FieldElement, TokenSymbolError, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
         StorageSlot,
     },
+    assembly::ProcedureName,
     asset::{FungibleAsset, TokenSymbol},
 };
 use thiserror::Error;
@@ -45,6 +46,9 @@ impl BasicFungibleFaucet {
 
     /// The maximum number of decimals supported by the component.
     pub const MAX_DECIMALS: u8 = 12;
+
+    const DISTRIBUTE_PROC_NAME: &str = "distribute";
+    const BURN_PROC_NAME: &str = "burn";
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -136,6 +140,32 @@ impl BasicFungibleFaucet {
     pub fn max_supply(&self) -> Felt {
         self.max_supply
     }
+
+    /// Returns the digest of the `distribute` account procedure.
+    pub fn distribute_digest() -> Digest {
+        Self::get_procedure_digest_by_name(Self::DISTRIBUTE_PROC_NAME)
+    }
+
+    /// Returns the digest of the `burn` account procedure.
+    pub fn burn_digest() -> Digest {
+        Self::get_procedure_digest_by_name(Self::BURN_PROC_NAME)
+    }
+
+    // HELPER FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the digest of the basic faucet procedure with the specified name.
+    /// TODO: Potentially remove once https://github.com/0xMiden/miden-base/pull/1532 is ready
+    fn get_procedure_digest_by_name(procedure_name: &str) -> Digest {
+        let proc_name = ProcedureName::new(procedure_name).expect("procedure name should be valid");
+        let module = basic_fungible_faucet_library()
+            .module_infos()
+            .next()
+            .expect("basic_fungible_faucet_library should have exactly one module");
+        module.get_procedure_digest_by_name(&proc_name).unwrap_or_else(|| {
+            panic!("basic_fungible_faucet_library should contain the '{proc_name}' procedure")
+        })
+    }
 }
 
 impl From<BasicFungibleFaucet> for AccountComponent {
@@ -197,21 +227,7 @@ pub fn create_basic_fungible_faucet(
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
 ) -> Result<(Account, Word), FungibleFaucetError> {
-    // TODO in actual implementation, we should probably get the root of the distribute procedure
-    // in a more reliable way.
-    let mut distribute_proc_root = None;
-    for module in basic_fungible_faucet_library().module_infos() {
-        for (_, procedure_info) in module.procedures() {
-            if procedure_info.name.contains("distribute") {
-                distribute_proc_root = Some(procedure_info.digest);
-                break;
-            }
-        }
-        if distribute_proc_root.is_some() {
-            break;
-        }
-    }
-    let distribute_proc_root = distribute_proc_root.expect("distribute procedure should exist");
+    let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
     let auth_component: RpoFalcon512Conditional = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => {
