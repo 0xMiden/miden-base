@@ -16,7 +16,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // account_get_nonce
     digest!("0xf1dfe3621b9147803b6668352915be7fb7f85df476c9d18052272270a854fa75"),
     // account_incr_nonce
-    digest!("0x54cec6fe9cfaded47c12e579353e900cf0eb5912190a8cb854b6c7f509a2a567"),
+    digest!("0xfb387278b352ca295aba1f4320b5a36ed07697f61fe7b6eb4f5871bb34b0f7d0"),
     // account_get_code_commitment
     digest!("0x7aa35fc4882683a4a31c162038d4a5ec31551b9c2b64930cce61bdecbae72b32"),
     // account_get_storage_commitment
@@ -40,7 +40,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // account_has_non_fungible_asset
     digest!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
     // account_was_procedure_called
-    digest!("0x3793a1a66dd99f6b0ec9a53c9c1c6f5020d02edaf968e87d017afa0de634432e"),
+    digest!("0x0cfe97e306cef13902df65da8edad56e48cae2cb5d13a2cc110849a67f1afc5c"),
     // faucet_mint_asset
     digest!("0xa7c85178735c45456e77bc7ee04df3d005ddfe5946cfb0f39c3f597c15f166c6"),
     // faucet_burn_asset
