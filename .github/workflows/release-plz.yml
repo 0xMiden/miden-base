@@ -1,21 +1,17 @@
 name: Release-plz (main)
 
 permissions:
-  pull-requests: write
-  contents: write
+  contents: read
 
 on:
-  push:
-    branches:
-      - main
+  release:
+    types: [published]
 
 jobs:
   release-plz-release:
     name: Release-plz release
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == '0xMiden' }}
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,9 +23,7 @@ jobs:
       - name: Run release-plz
         uses: release-plz/action@v0.5
         with:
-          # Remove `--dry-run` once we are confident in the release-plz workflow.
-          # Till then, it serves the same purpose as the dry-run from the `next` branch.
-          command: release --dry-run
+          command: release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_REGISTRY_TOKEN }}

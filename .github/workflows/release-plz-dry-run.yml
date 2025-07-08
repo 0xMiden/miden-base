@@ -1,21 +1,17 @@
-name: Release-plz (next)
+name: Release-plz (dry-run)
 
 permissions:
-  pull-requests: write
-  contents: write
+  contents: read
 
 on:
   push:
-    branches:
-      - next
+    branches: [main, next]
 
 jobs:
   release-plz-dry-run-release:
-    name: Release-plz release (dry-run)
+    name: Release-plz dry-run
     runs-on: ubuntu-latest
     if: ${{ github.repository_owner == '0xMiden' }}
-    permissions:
-      contents: write
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
