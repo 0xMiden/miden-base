@@ -14,6 +14,8 @@ use crate::errors::MasmError;
 pub const ERR_ACCOUNT_CODE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("computed account code commitment does not match recorded account code commitment");
 /// Error Message: "account code must be updatable for it to be possible to set new code"
 pub const ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE: MasmError = MasmError::from_static_str("account code must be updatable for it to be possible to set new code");
+/// Error Message: "account delta nonce must incremented if vault or storage changed"
+pub const ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_WITH_VAULT_OR_STORAGE_CHANGES: MasmError = MasmError::from_static_str("account delta nonce must incremented if vault or storage changed");
 /// Error Message: "the account ID must have storage mode public if the network flag is set"
 pub const ERR_ACCOUNT_ID_NON_PUBLIC_NETWORK_ACCOUNT: MasmError = MasmError::from_static_str("the account ID must have storage mode public if the network flag is set");
 /// Error Message: "least significant byte of the account ID suffix must be zero"

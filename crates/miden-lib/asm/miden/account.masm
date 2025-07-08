@@ -93,12 +93,12 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: exec
-export.get_current_commitment
+export.compute_current_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_get_current_commitment_offset
+    exec.kernel_proc_offsets::account_compute_current_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -263,7 +263,7 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets the code commitment of the account the transaction is being executed against.
+#! Gets the account code commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
@@ -288,7 +288,10 @@ export.get_code_commitment
     # => [CODE_COMMITMENT]
 end
 
-#! Gets the storage commitment of the account the transaction is being executed against.
+#! Gets the account storage commitment of the current account.
+#!
+#! Note that this commitment may not reflect the changes made to storage. The commitment is
+#! recomputed when `account_compute_current_commitment` is called.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]

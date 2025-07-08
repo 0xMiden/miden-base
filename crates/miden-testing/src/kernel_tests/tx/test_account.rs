@@ -40,6 +40,94 @@ use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor,
 };
 
+// ACCOUNT COMMITMENT TESTS
+// ================================================================================================
+
+#[test]
+pub fn compute_current_commitment() -> miette::Result<()> {
+    let account = Account::mock(
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        ONE,
+        Auth::IncrNonce,
+        TransactionKernel::assembler(),
+    );
+
+    // Precompute a commitment to a changed account so we can assert it during tx script execution.
+    let mut account_clone = account.clone();
+    let key = Digest::from([1, 2, 3, 4u32]);
+    let value = Digest::from([2, 3, 4, 5u32]);
+    account_clone.storage_mut().set_map_item(2, *key, *value).unwrap();
+    let expected_commitment = account_clone.commitment();
+
+    let tx_script = format!(
+        r#"
+        use.miden::prologue
+        use.miden::account
+        use.test::account->test_account
+
+        begin
+            exec.account::get_initial_commitment
+            # => [INITIAL_COMMITMENT]
+
+            exec.account::compute_current_commitment
+            # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT]
+
+            assert_eqw.err="initial and current commitment should be equal when no changes have been made"
+            # => []
+
+            call.test_account::get_storage_commitment
+            # => [STORAGE_COMMITMENT0, pad(12)]
+            swapdw dropw dropw swapw dropw
+            # => [STORAGE_COMMITMENT0]
+
+            # update a value in the storage map
+            padw push.0.0.0
+            push.{value}
+            push.{key}
+            push.2
+            # => [slot_idx = 2, KEY, VALUE, pad(7)]
+            call.test_account::set_map_item
+            dropw dropw dropw dropw
+            # => [STORAGE_COMMITMENT0]
+
+            # compute the commitment which will recompute the storage commitment
+            exec.account::compute_current_commitment
+            # => [CURRENT_COMMITMENT, STORAGE_COMMITMENT0]
+
+            push.{expected_commitment}
+            assert_eqw.err="current commitment should match expected one"
+            # => [STORAGE_COMMITMENT0]
+
+            padw padw padw padw
+            call.test_account::get_storage_commitment
+            # => [STORAGE_COMMITMENT1, pad(12), STORAGE_COMMITMENT0]
+            swapdw dropw dropw swapw dropw
+            # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
+
+            eqw not assert.err="storage commitment should have been updated by compute_current_commitment"
+            # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
+
+            dropw dropw dropw dropw
+        end
+    "#,
+        key = word_to_masm_push_string(&key),
+        value = word_to_masm_push_string(&value),
+        expected_commitment = word_to_masm_push_string(&expected_commitment),
+    );
+
+    let tx_context_builder = TransactionContextBuilder::new(account);
+    let tx_script =
+        TransactionScript::compile(tx_script, tx_context_builder.assembler()).into_diagnostic()?;
+    let tx_context = tx_context_builder
+        .tx_script(tx_script)
+        .build()
+        .map_err(|err| miette::miette!("{err}"))?;
+
+    tx_context.execute().into_diagnostic().wrap_err("failed to execute code")?;
+
+    Ok(())
+}
+
 // ACCOUNT CODE TESTS
 // ================================================================================================
 

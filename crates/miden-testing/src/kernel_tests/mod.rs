@@ -321,7 +321,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     // nonce delta
     // --------------------------------------------------------------------------------------------
 
-    assert_eq!(executed_transaction.account_delta().nonce_increment(), Felt::new(1));
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
 
     // storage delta
     // --------------------------------------------------------------------------------------------
@@ -482,7 +482,7 @@ fn test_send_note_proc() -> miette::Result<()> {
         // --------------------------------------------------------------------------------------------
 
         // nonce was incremented by 1
-        assert_eq!(executed_transaction.account_delta().nonce_increment(), ONE);
+        assert_eq!(executed_transaction.account_delta().nonce_delta(), ONE);
 
         // vault delta
         // --------------------------------------------------------------------------------------------
@@ -960,7 +960,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
     let executed_tx = tx_context.execute().into_diagnostic()?;
 
     // Account's initial nonce of 1 should have been incremented by 1.
-    assert_eq!(executed_tx.account_delta().nonce_increment(), Felt::new(1));
+    assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
 
     // Make sure that account storage has been updated as per the tx script call.
     assert_eq!(

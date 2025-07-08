@@ -67,6 +67,16 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
         # => [CODE_COMMITMENT, pad(12)]
     end
 
+    # Stack:  [pad(16)]
+    # Output: [CODE_COMMITMENT, pad(12)]
+    export.get_storage_commitment
+        exec.account::get_storage_commitment
+        # => [STORAGE_COMMITMENT, pad(16)]
+
+        swapw dropw
+        # => [STORAGE_COMMITMENT, pad(12)]
+    end
+
     # Inputs:  [ASSET, note_idx, pad(11)]
     # Outputs: [ASSET, note_idx, pad(11)]
     export.add_asset_to_note
