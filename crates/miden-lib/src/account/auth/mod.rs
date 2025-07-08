@@ -43,22 +43,22 @@ impl From<RpoFalcon512> for AccountComponent {
     }
 }
 
-/// An [`AccountComponent`] implementing a conditional RpoFalcon512 signature scheme for
+/// An [`AccountComponent`] implementing a procedure-ACL based RpoFalcon512 signature scheme for
 /// authentication of transactions.
 ///
 /// This component only requires authentication when any of the specified procedures are called
 /// during the transaction. It stores a list of procedure roots that require authentication, and
 /// the signature verification is only performed if at least one of these procedures was invoked.
 ///
-/// It exports the procedure `auth__tx_rpo_falcon512_procedures_acl`, which:
-/// - Checks if any of the specified procedures were called during the transaction
+/// It exports the procedure `auth__tx_rpo_falcon512_procedure_acl`, which:
+/// - Checks if any of the specified trigger procedures were called during the transaction
 /// - If none were called, authentication is skipped
 /// - If at least one was called, performs standard RpoFalcon512 signature verification
 ///
 /// The storage layout is:
 /// - Slot 0(value): Public key (same as RpoFalcon512)
-/// - Slot 1(value): Number of tracked procedures
-/// - Slot 2(map): A map with tracked procedure roots
+/// - Slot 1(value): Number of trigger procedures
+/// - Slot 2(map): A map with trigger procedure roots
 ///
 /// This component supports all account types.
 pub struct RpoFalcon512ProcedureAcl {
@@ -71,7 +71,7 @@ impl RpoFalcon512ProcedureAcl {
     /// list of procedure roots that require authentication.
     ///
     /// # Panics
-    /// Panics if more than 256 procedures are tracked.
+    /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(public_key: PublicKey, trigger_procedures: Vec<Digest>) -> Self {
         assert!(
             trigger_procedures.len() <= AccountCode::MAX_NUM_PROCEDURES,
@@ -83,19 +83,19 @@ impl RpoFalcon512ProcedureAcl {
 }
 
 impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
-    fn from(conditional: RpoFalcon512ProcedureAcl) -> Self {
+    fn from(falcon: RpoFalcon512ProcedureAcl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
-        storage_slots.push(StorageSlot::Value(conditional.public_key.into()));
+        storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
 
         // Slot 1: Number of tracked procedures
-        let num_procs = Felt::from(conditional.trigger_procedures.len() as u32);
+        let num_procs = Felt::from(falcon.trigger_procedures.len() as u32);
         storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
 
         // Slot 2: A map with tracked procedure roots
-        if !conditional.trigger_procedures.is_empty() {
-            let map_entries: Vec<_> = conditional
+        if !falcon.trigger_procedures.is_empty() {
+            let map_entries: Vec<_> = falcon
                 .trigger_procedures
                 .iter()
                 .enumerate()
@@ -111,7 +111,7 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         }
 
         AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
-            .expect("falcon procedures ACL component should satisfy the requirements of a valid account component")
+            .expect("falcon procedure ACL component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
 }
