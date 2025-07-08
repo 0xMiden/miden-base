@@ -1,6 +1,7 @@
 use assert_matches::assert_matches;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_objects::{
+    Felt, FieldElement,
     account::{
         AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountStorageMode,
         AccountType,
@@ -160,7 +161,12 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_no_trigger)
         .build();
 
-    tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    assert_eq!(
+        executed.account_delta().nonce_delta(),
+        Felt::ONE,
+        "no auth but should still trigger nonce increment"
+    );
 
     Ok(())
 }
