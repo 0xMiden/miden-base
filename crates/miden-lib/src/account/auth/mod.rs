@@ -111,3 +111,86 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
             .with_supports_all_types()
     }
 }
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use miden_objects::account::AccountBuilder;
+    use miden_objects::{Word, ZERO};
+
+    use crate::account::components::basic_wallet_library;
+    use crate::account::wallets::BasicWallet;
+
+    use super::*;
+
+    #[test]
+    fn test_rpo_falcon_512_procedure_acl_no_procedures() {
+        let public_key = PublicKey::new([ZERO; 4]);
+        let component = RpoFalcon512ProcedureAcl::new(public_key, vec![]);
+
+        let (account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(component)
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
+
+        let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        assert_eq!(public_key_slot, Word::from(public_key).into());
+
+        let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
+        assert_eq!(num_procs_slot, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into());
+
+        // This should be filled with zeros because there are no trigger procedures
+        let proc_root = account
+            .storage()
+            .get_map_item(2, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+            .expect("storage map access failed");
+        assert_eq!(proc_root, Word::default());
+    }
+
+    #[test]
+    fn test_rpo_falcon_512_procedure_acl_with_two_procedures() {
+        let public_key = PublicKey::new([ZERO; 4]);
+
+        // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
+        // TODO refactor to fetch procedure digests by name after
+        // https://github.com/0xMiden/miden-base/pull/1532
+        let trigger_procedures: Vec<Digest> = basic_wallet_library()
+            .module_infos()
+            .next()
+            .expect("at least one module expected")
+            .procedures()
+            .map(|(_, proc_info)| proc_info.digest)
+            .collect();
+
+        assert_eq!(trigger_procedures.len(), 2);
+
+        let component = RpoFalcon512ProcedureAcl::new(public_key, trigger_procedures.clone());
+
+        let (account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(component)
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
+
+        let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        assert_eq!(public_key_slot, Word::from(public_key).into());
+
+        let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
+        assert_eq!(num_procs_slot, [Felt::new(2), Felt::ZERO, Felt::ZERO, Felt::ZERO].into());
+
+        let proc_root_0 = account
+            .storage()
+            .get_map_item(2, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+            .expect("storage map access failed");
+        assert_eq!(proc_root_0, Word::from(trigger_procedures[0]));
+
+        let proc_root_1 = account
+            .storage()
+            .get_map_item(2, [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+            .expect("storage map access failed");
+        assert_eq!(proc_root_1, Word::from(trigger_procedures[1]));
+    }
+}
