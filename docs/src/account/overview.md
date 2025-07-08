@@ -34,7 +34,7 @@ Large amounts of fungible and non-fungible assets can be stored in the account's
 > [!Note]
 > A counter incremented with each state update to the `Account`.
 
-The nonce ensures that an acccount has a unique _commitment_ (or "hash") after every transaction, even if it contains the same assets and has the same storage state. That in turn allows ordering of transactions and prevents replay attacks. Whenever the state of an account changes in a transaction, its nonce must be incremented and it can only be incremented exactly once per transaction.
+The nonce ensures that an account has a unique _commitment_ (or "hash") after every transaction, even if it contains the same assets and has the same storage state. That in turn allows ordering of transactions and prevents replay attacks. Whenever the state of an account changes in a transaction, its nonce must be incremented and it can only be incremented exactly once per transaction.
 
 Note that a transaction does not always change the state of an account. For instance, a transaction in which two SWAP notes are matched together does not necessarily change anything about the account state. Consequently, the nonce does not have to be incremented.
 

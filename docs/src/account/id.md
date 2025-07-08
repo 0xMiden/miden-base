@@ -25,20 +25,16 @@ There are two main categories of accounts in Miden: **basic accounts** and **fau
 
 ### Account storage mode
 
-Users can choose whether their accounts are stored publicly or privately. The preference is encoded in the third and forth most significant bits of the account's [ID](#id):
+Users can choose whether their accounts are stored publicly or privately. The preference is encoded in the third and fourth most significant bits of the account's [ID](#id):
 
 - **Public Accounts:**
   The account's state is stored on-chain, similar to how accounts are stored in public blockchains like Ethereum.
 
 - **Network `Account`s:**
-  The account's state is stored on-chain, just like **public** accounts. Additionally, the network will monitor this account for any public notes targeted at it and attempt to create network transactions against the account, which consume the notes. Contracts that rely on a shared, publicly accessible state (e.g., a DEX) should be network accounts.
+  The account's state is stored on-chain, just like **public** accounts. Additionally, the network will monitor this account for any public notes targeted at it and attempt to create network transactions against the account, which consume the notes. Contracts that rely on a shared, publicly accessible state (e.g., an AMM) should be network accounts.
 
 - **Private Accounts:**
   Only a commitment (hash) to the account's state is stored on-chain. This mode is suitable for users who prioritize privacy or plan to store a large amount of data in their `Account`. To interact with a private `Account`, a user must have knowledge of its interface.
-
-### Network Accounts
-
-Users can choose whether their `Account` is a network account or not. The network will monitor such accounts for any public notes targeted at it and attempt to create network transactions against the account, which consume the notes. Because the network must be able to execute transactions against such an account, the storage mode of such accounts must be **Public**.
 
 ## Encoding
 
@@ -64,4 +60,4 @@ An `Account` ID can be encoded in different formats:
  
 2. **Hexadecimal** (debugging):
    - Example: `0x808c96748fe8d0901d6788f6aa4f42`
-   - Frequenty used encoding for blockchain addresses
+   - Frequently used encoding for blockchain addresses
