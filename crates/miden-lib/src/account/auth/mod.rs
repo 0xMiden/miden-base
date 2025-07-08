@@ -103,10 +103,11 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
             )
         });
 
+        // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
 
         AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
-            .expect("falcon procedure ACL component should satisfy the requirements of a valid account component")
+            .expect("Procedure ACL auth component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
 }
