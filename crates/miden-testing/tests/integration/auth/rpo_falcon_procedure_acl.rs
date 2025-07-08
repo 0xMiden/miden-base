@@ -1,3 +1,4 @@
+use assert_matches::assert_matches;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_objects::{
     account::{
@@ -118,8 +119,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1.clone())
         .build();
 
-    let executed_tx_1 = tx_context_with_auth_1.execute();
-    assert!(executed_tx_1.is_ok(), "Transaction with trigger procedure 1 should succeed");
+    tx_context_with_auth_1.execute().expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
@@ -128,8 +128,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_2)
         .build();
 
-    let executed_tx_2 = tx_context_with_auth_2.execute();
-    assert!(executed_tx_2.is_ok(), "Transaction with trigger procedure 2 should succeed");
+    tx_context_with_auth_2.execute().expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
@@ -140,25 +139,19 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     let executed_tx_no_auth = tx_context_no_auth.execute();
 
-    match executed_tx_no_auth {
-        Err(TransactionExecutorError::TransactionProgramExecutionFailed(execution_error)) => {
-            match execution_error {
-                ExecutionError::EventError { error, .. } => {
-                    match error.downcast_ref::<TransactionKernelError>() {
-                        Some(TransactionKernelError::FailedSignatureGeneration(msg)) => {
-                            assert_eq!(
-                                *msg, "No authenticator assigned to transaction host",
-                                "Expected 'No authenticator assigned to transaction host' error, got: {msg}"
-                            );
-                        },
-                        _ => panic!("Expected FailedSignatureGeneration error, got: {error:?}"),
-                    }
-                },
-                _ => panic!("Expected EventError, got: {execution_error:?}"),
-            }
-        },
-        _ => panic!("Expected transaction to fail with TransactionProgramExecutionFailed error"),
-    }
+    assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
+        execution_error
+    )) => {
+        assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
+            let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
+            assert_matches!(kernel_error, TransactionKernelError::FailedSignatureGeneration(msg) => {
+                assert_eq!(
+                    *msg, "No authenticator assigned to transaction host",
+                    "Expected 'No authenticator assigned to transaction host' error, got: {msg}"
+                );
+            })
+        })
+    });
 
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     let tx_context_no_trigger = mock_chain
@@ -167,12 +160,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_no_trigger)
         .build();
 
-    let executed_tx_no_trigger = tx_context_no_trigger.execute();
-    assert!(
-        executed_tx_no_trigger.is_ok(),
-        "Transaction with non-trigger procedure should succeed without authenticator, got: {:?}",
-        executed_tx_no_trigger.unwrap_err()
-    );
+    tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
 
     Ok(())
 }
