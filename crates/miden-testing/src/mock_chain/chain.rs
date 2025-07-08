@@ -616,18 +616,82 @@ impl MockChain {
         Ok(tx_context_builder)
     }
 
+    pub fn build_tx_context_at_block(
+        &self,
+        reference_block: impl Into<BlockNumber>,
+        input: impl Into<TxContextInput>,
+        note_ids: &[NoteId],
+        unauthenticated_notes: &[Note],
+    ) -> anyhow::Result<TransactionContextBuilder> {
+        let reference_block = reference_block.into();
+        anyhow::ensure!(
+            reference_block.as_usize() < self.blocks.len(),
+            "reference block {reference_block} is out of range (latest {})",
+            self.latest_block_header().block_num()
+        );
+
+        let mock_account = match input.into() {
+            TxContextInput::AccountId(account_id) => {
+                if account_id.is_private() {
+                    return Err(anyhow::anyhow!(
+                        "transaction contexts for private accounts should be created with TxContextInput::Account"
+                    ));
+                }
+
+                self.committed_accounts
+                    .get(&account_id)
+                    .with_context(|| {
+                        format!("account {account_id} not found in committed accounts")
+                    })?
+                    .clone()
+            },
+            TxContextInput::Account(account) => {
+                let committed_account = self.committed_accounts.get(&account.id());
+                let authenticator = committed_account.and_then(|a| a.authenticator());
+                let seed = committed_account.and_then(|a| a.seed());
+                MockAccount::new(account, seed.cloned(), authenticator.cloned())
+            },
+            TxContextInput::ExecutedTransaction(executed_transaction) => {
+                let mut initial_account = executed_transaction.initial_account().clone();
+                initial_account
+                    .apply_delta(executed_transaction.account_delta())
+                    .context("could not apply delta from previous transaction")?;
+
+                let committed_account = self.committed_accounts.get(&initial_account.id());
+                let authenticator = committed_account.and_then(|a| a.authenticator());
+                let seed = committed_account.and_then(|a| a.seed());
+                MockAccount::new(initial_account, seed.cloned(), authenticator.cloned())
+            },
+        };
+
+        let tx_inputs = self.get_transaction_inputs_at_block(
+            reference_block,
+            mock_account.account().clone(),
+            mock_account.seed().cloned(),
+            note_ids,
+            unauthenticated_notes,
+        )?;
+
+        Ok(TransactionContextBuilder::new(mock_account.account().clone())
+            .authenticator(mock_account.authenticator().cloned())
+            .account_seed(mock_account.seed().cloned())
+            .tx_inputs(tx_inputs))
+    }
+
     // INPUTS APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities.
-    pub fn get_transaction_inputs(
+    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
+    /// specific block number.
+    pub fn get_transaction_inputs_at_block(
         &self,
+        reference_block: BlockNumber,
         account: Account,
         account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
-        let block = self.blocks.last().expect("at least one block should have been created");
+        let ref_block = self.block_header(reference_block.as_usize());
 
         let mut input_notes = vec![];
         let mut block_headers_map: BTreeMap<BlockNumber, BlockHeader> = BTreeMap::new();
@@ -645,7 +709,14 @@ impl MockChain {
                 .with_context(|| format!("note location not available: {note}"))?
                 .block_num();
 
-            if note_block_num != block.header().block_num() {
+            if note_block_num > ref_block.block_num() {
+                anyhow::bail!(
+                    "note with ID {note} was created in block {note_block_num} which is larger than the reference block number {}",
+                    ref_block.block_num()
+                )
+            }
+
+            if note_block_num != ref_block.block_num() {
                 let block_header = self
                     .blocks
                     .get(note_block_num.as_usize())
@@ -663,17 +734,41 @@ impl MockChain {
         }
 
         let block_headers = block_headers_map.values().cloned();
-        let mmr = PartialBlockchain::from_blockchain(&self.chain, block_headers)?;
+        let mmr = PartialBlockchain::new(
+            self.chain.partial_mmr_from_blocks(
+                &(block_headers.clone().map(|b| b.block_num()).collect()),
+                ref_block.block_num(),
+            )?,
+            block_headers,
+        )?;
 
         let input_notes = InputNotes::new(input_notes)?;
 
         Ok(TransactionInputs::new(
             account,
             account_seed,
-            block.header().clone(),
+            ref_block.clone(),
             mmr,
             input_notes,
         )?)
+    }
+
+    /// Returns a valid [`TransactionInputs`] for the specified entities.
+    pub fn get_transaction_inputs(
+        &self,
+        account: Account,
+        account_seed: Option<Word>,
+        notes: &[NoteId],
+        unauthenticated_notes: &[Note],
+    ) -> anyhow::Result<TransactionInputs> {
+        let latest_block_num = self.latest_block_header().block_num();
+        self.get_transaction_inputs_at_block(
+            latest_block_num,
+            account,
+            account_seed,
+            notes,
+            unauthenticated_notes,
+        )
     }
 
     /// Returns inputs for a transaction batch for all the reference blocks of the provided

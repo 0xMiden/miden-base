@@ -23,17 +23,15 @@ use crate::assert_transaction_executor_error;
 #[test]
 fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
     // Create sender and target accounts
     let sender_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
     let target_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
     let malicious_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
 
-    let fungible_asset: Asset = FungibleAsset::mock(100);
-
     let reclaim_height = None; // if 0, means it is not reclaimable
     let timelock_height = None; // if 0 means it is not timelocked
+    let fungible_asset: Asset = FungibleAsset::mock(100);
 
     let p2ide_note = mock_chain.add_pending_p2ide_note(
         sender_account.id(),
@@ -44,8 +42,7 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
         timelock_height,
     )?;
 
-    mock_chain.prove_next_block()?;
-    mock_chain.prove_next_block()?;
+    mock_chain.prove_until_block(10u32).context("failed to prove multiple blocks")?;
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
@@ -128,7 +125,6 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
 #[test]
 fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
     // Create sender and target and malicious account
     let sender_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
@@ -148,11 +144,16 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
         Some(timelock_height),
     )?;
 
-    mock_chain.prove_next_block()?;
+    mock_chain.prove_until_block(10)?;
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
+        .build_tx_context_at_block(
+            timelock_height.as_u32() - 1,
+            sender_account.id(),
+            &[p2ide_note.id()],
+            &[],
+        )?
         .build()?
         .execute();
 
@@ -160,14 +161,16 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
-        .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
+        .build_tx_context_at_block(
+            timelock_height.as_u32() - 1,
+            target_account.id(),
+            &[p2ide_note.id()],
+            &[],
+        )?
         .build()?
         .execute();
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
-
-    // ───────────────────── advance chain past unlock height block height ──────────────────────
-    mock_chain.prove_until_block(timelock_height + 1)?;
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
@@ -203,7 +206,6 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 #[test]
 fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    mock_chain.prove_until_block(1u32).context("failed to prove multiple blocks")?;
 
     // Create sender and target account
     let sender_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
@@ -222,16 +224,12 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
         Some(reclaim_height),
         Some(timelock_height),
     )?;
-    mock_chain.prove_next_block()?;
 
-    // fast forward to reclaim block height + 2
-    mock_chain
-        .prove_until_block(reclaim_height + 2)
-        .context("failed to prove multiple blocks")?;
+    mock_chain.prove_until_block(reclaim_height + 4)?;
 
     // CONSTRUCT AND EXECUTE TX (Failure - sender_account tries to reclaim)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
+        .build_tx_context_at_block(1, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
         .execute();
 
@@ -240,11 +238,9 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
         ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
     );
 
-    mock_chain.prove_until_block(timelock_height)?;
-
     // CONSTRUCT AND EXECUTE TX (Success - sender_account)
-    let executed_transaction_1 = mock_chain
-        .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
+    let executed_transaction_2 = mock_chain
+        .build_tx_context_at_block(timelock_height, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
         .execute()?;
 
@@ -257,7 +253,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        executed_transaction_1.final_account().commitment(),
+        executed_transaction_2.final_account().commitment(),
         sender_account_after.commitment()
     );
 
