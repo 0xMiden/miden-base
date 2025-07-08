@@ -12,12 +12,9 @@ repository.workspace = true
 rust-version.workspace = true
 edition.workspace = true
 
-[[test]]
-name = "miden-integration-tests"
-path = "tests/integration/main.rs"
-
 [features]
 async = ["winter-maybe-async/async", "miden-tx/async"]
+std = ["miden-lib/std"]
 
 [dependencies]
 # Workspace dependencies

@@ -118,7 +118,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[], &[note.clone()])?
         .authenticator(authenticator.clone())
         .tx_script(tx_script_trigger_1.clone())
-        .build();
+        .build()?;
 
     tx_context_with_auth_1.execute().expect("trigger 1 with auth should succeed");
 
@@ -127,7 +127,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[], &[note.clone()])?
         .authenticator(authenticator)
         .tx_script(tx_script_trigger_2)
-        .build();
+        .build()?;
 
     tx_context_with_auth_2.execute().expect("trigger 2 with auth should succeed");
 
@@ -136,7 +136,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[], &[note.clone()])?
         .authenticator(None)
         .tx_script(tx_script_trigger_1)
-        .build();
+        .build()?;
 
     let executed_tx_no_auth = tx_context_no_auth.execute();
 
@@ -159,7 +159,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[], &[note.clone()])?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
-        .build();
+        .build()?;
 
     let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
     assert_eq!(

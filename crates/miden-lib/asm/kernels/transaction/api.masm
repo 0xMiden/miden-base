@@ -96,7 +96,7 @@ export.account_get_initial_commitment
     # => [INIT_COMMITMENT, pad(12)]
 end
 
-#! Computes and returns the account commitment from account data stored in memory.
+#! Computes the account commitment of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ACCOUNT_COMMITMENT, pad(12)]
@@ -105,9 +105,9 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: dynexec
-export.account_get_current_commitment
-    # get the current account commitment
-    exec.account::get_current_commitment
+export.account_compute_current_commitment
+    # compute the current account commitment
+    exec.account::compute_current_commitment
     # => [ACCOUNT_COMMITMENT, pad(16)]
 
     # truncate the stack
@@ -182,7 +182,7 @@ export.account_incr_nonce
     # => [pad(16)]
 end
 
-#! Gets the account code commitment.
+#! Gets the account code commitment of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [CODE_COMMITMENT, pad(12)]
@@ -205,7 +205,10 @@ export.account_get_code_commitment
     # => [CODE_COMMITMENT, pad(12)]
 end
 
-#! Gets the account storage commitment.
+#! Gets the account storage commitment of the current account.
+#!
+#! Note that this commitment may not reflect the changes made to storage. The commitment is
+#! recomputed when `account_compute_current_commitment` is called.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [STORAGE_COMMITMENT, pad(12)]
@@ -661,16 +664,11 @@ end
 #!
 #! Panics if:
 #! - the procedure is called from a non-account context.
-#! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
 export.note_add_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [note_idx, ASSET, pad(11)]
-
-    # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
     # => [note_idx, ASSET, pad(11)]
 
     # duplicate the asset word to be able to return it
@@ -782,18 +780,10 @@ end
 #! - RECIPIENT is the recipient of the note.
 #! - note_idx is the index of the created note.
 #!
-#! Panics if:
-#! - the procedure is called from a non-account context.
-#! - the invocation of this procedure does not originate from the native account.
-#!
 #! Invocation: dynexec
 export.tx_create_note
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     exec.tx::create_note

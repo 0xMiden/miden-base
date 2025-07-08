@@ -16,7 +16,6 @@ use miden_objects::{
 mod auth;
 pub use auth::AuthScheme;
 
-#[cfg(any(feature = "testing", test))]
 pub mod account;
 pub mod errors;
 pub mod note;

@@ -132,7 +132,7 @@ fn test_create_note() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::contracts::wallets::basic->wallet
+        use.miden::tx
         
         use.kernel::prologue
 
@@ -145,7 +145,7 @@ fn test_create_note() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.wallet::create_note
+            call.tx::create_note
 
             # truncate the stack
             swapdw dropw dropw
@@ -239,7 +239,7 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
 fn note_creation_script(tag: Felt) -> String {
     format!(
         "
-            use.miden::contracts::wallets::basic->wallet
+            use.miden::tx
             use.kernel::prologue
     
             begin
@@ -251,7 +251,7 @@ fn note_creation_script(tag: Felt) -> String {
                 push.{aux}
                 push.{tag}
     
-                call.wallet::create_note
+                call.tx::create_note
 
                 # clean the stack
                 dropw dropw
@@ -270,7 +270,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::contracts::wallets::basic->wallet
+        use.miden::tx
         use.kernel::constants
         use.kernel::memory
         use.kernel::prologue
@@ -286,7 +286,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.wallet::create_note
+            call.tx::create_note
         end
         ",
         tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
@@ -393,7 +393,6 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.miden::contracts::wallets::basic->wallet
         use.miden::tx
 
         use.kernel::prologue
@@ -410,11 +409,11 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             push.{PUBLIC_NOTE}
             push.{aux_1}
             push.{tag_1}
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx]
 
             push.{asset_1}
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [ASSET, note_idx]
             
             dropw drop
@@ -426,11 +425,11 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             push.{PUBLIC_NOTE}
             push.{aux_2}
             push.{tag_2}
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx]
 
             push.{asset_2} 
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [ASSET, note_idx]
 
             dropw drop
@@ -508,7 +507,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::contracts::wallets::basic->wallet
+        use.miden::tx
 
         use.kernel::prologue
         use.test::account
@@ -522,11 +521,11 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx]
 
             push.{asset}
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [ASSET, note_idx]
 
             dropw
@@ -584,7 +583,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::contracts::wallets::basic->wallet
+        use.miden::tx
 
         use.kernel::prologue
         use.test::account
@@ -597,23 +596,23 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx]
 
             push.{asset}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             push.{asset_2}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             push.{asset_3}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             push.{nft}
-            call.account::add_asset_to_note dropw
+            call.tx::add_asset_to_note dropw
             # => [note_idx]
 
             # truncate the stack
@@ -680,7 +679,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
         "
         use.kernel::prologue
         use.test::account
-        use.miden::contracts::wallets::basic->wallet
+        use.miden::tx
 
         begin
             exec.prologue::prepare_transaction
@@ -693,16 +692,16 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx, pad(15)]
 
             push.{nft} 
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
             dropw
 
             push.{nft} 
-            call.account::add_asset_to_note
+            call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
 
             repeat.5 dropw end
@@ -754,7 +753,6 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
     let code = format!(
         "
-        use.miden::contracts::wallets::basic->wallet
         use.miden::tx
         use.kernel::prologue
 
@@ -785,7 +783,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             push.{tag}
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
 
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx, pad(19)]
 
             # clean the stack

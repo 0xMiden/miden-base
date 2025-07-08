@@ -227,13 +227,14 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
+            use.miden::tx
             begin
                 push.{recipient_1}
                 push.{note_execution_hint_1}
                 push.{note_type_1}
                 push.0              # aux
                 push.{tag_1}
-                call.::miden::contracts::wallets::basic::create_note
+                call.tx::create_note
 
                 push.{asset_1}
                 call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -244,7 +245,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
                 push.{note_type_2}
                 push.0              # aux
                 push.{tag_2}
-                call.::miden::contracts::wallets::basic::create_note
+                call.tx::create_note
 
                 push.{asset_2}
                 call.::miden::contracts::wallets::basic::move_asset_to_note

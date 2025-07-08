@@ -27,7 +27,7 @@ const.ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY="reserved slo
 
 const.ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE="reserved slot for new fungible faucet has an invalid type"
 
-const.ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPY_SMT="reserved slot for non-fungible faucet is not a valid empty SMT"
+const.ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT="reserved slot for non-fungible faucet is not a valid empty SMT"
 
 const.ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE="reserved slot for new non-fungible faucet has an invalid type"
 
@@ -371,7 +371,7 @@ proc.validate_new_account
             # assert the non-fungible faucet reserved slot is initialized correctly (root of
             # empty SMT)
             exec.constants::get_empty_smt_root
-            assert_eqw.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPY_SMT
+            assert_eqw.err=ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
             # => []
 
             # get the faucet reserved storage data slot type

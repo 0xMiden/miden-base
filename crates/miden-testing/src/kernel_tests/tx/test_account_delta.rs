@@ -57,7 +57,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[p2any_note.id()], &[])
         .expect("failed to build tx context")
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
 
@@ -240,7 +240,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         StorageSlot::Map(map1),
         StorageSlot::Map(map2),
         // Include an empty map which does not receive any updates, to test that the "metadata
-        // header" in the delta committment is not appended if there are no updates to a map
+        // header" in the delta commitment is not appended if there are no updates to a map
         // slot.
         StorageSlot::Map(StorageMap::new()),
     ]);
@@ -624,6 +624,7 @@ fn word(data: [u32; 4]) -> Word {
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.test::account
+      use.miden::tx
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []
@@ -676,7 +677,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-          call.account::create_note
+          call.tx::create_note
           # => [note_idx, pad(15)]
 
           repeat.15 swap drop end

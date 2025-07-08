@@ -217,7 +217,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
             # create the note
-            call.::miden::contracts::wallets::basic::create_note
+            call.tx::create_note
             # => [note_idx, pad(15)]
 
             # move an asset to the created note to partially deplete fungible asset balance
@@ -239,6 +239,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.test::account
+        use.miden::tx
 
         ## TRANSACTION SCRIPT
         ## ========================================================================================
@@ -428,6 +429,7 @@ fn test_send_note_proc() -> miette::Result<()> {
         let tx_script_src = format!(
             "\
             use.miden::contracts::wallets::basic->wallet
+            use.miden::tx
             use.test::account
 
             ## TRANSACTION SCRIPT
@@ -445,7 +447,7 @@ fn test_send_note_proc() -> miette::Result<()> {
                 padw padw swapdw
                 # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8) ...]
 
-                call.wallet::create_note
+                call.tx::create_note
                 # => [note_idx, GARBAGE(15)]
 
                 movdn.4
@@ -586,6 +588,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.miden::contracts::wallets::basic->wallet
+        use.miden::tx
         use.test::account
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
@@ -596,7 +599,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
             padw padw swapdw
             # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
 
-            call.wallet::create_note
+            call.tx::create_note
             # => [note_idx, pad(15)]
 
             # remove excess PADs from the stack
@@ -1126,7 +1129,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
     .code("begin push.2 drop push.0 div end")
     .build(&TransactionKernel::testing_assembler())?;
 
-    let succesful_note_1 = create_p2id_note(
+    let successful_note_1 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
         vec![FungibleAsset::mock(10)],
@@ -1135,7 +1138,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
     )?;
 
-    let succesful_note_2 = create_p2id_note(
+    let successful_note_2 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
         vec![FungibleAsset::mock(145)],
@@ -1149,8 +1152,8 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
             TxContextInput::Account(account),
             &[],
             &[
-                succesful_note_2.clone(),
-                succesful_note_1.clone(),
+                successful_note_2.clone(),
+                successful_note_1.clone(),
                 failing_note_2.clone(),
                 failing_note_1,
             ],
@@ -1179,7 +1182,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         successful_notes,
         error: Some(e)} => {
             assert_eq!(failed_note_id, failing_note_2.id());
-            assert_eq!(successful_notes, [succesful_note_2.id(),succesful_note_1.id()].to_vec());
+            assert_eq!(successful_notes, [successful_note_2.id(),successful_note_1.id()].to_vec());
             assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(
               ExecutionError::DivideByZero { .. }
             ));

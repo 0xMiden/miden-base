@@ -9,8 +9,8 @@ use miden_objects::{digest, Digest};
 pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // account_get_initial_commitment
     digest!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
-    // account_get_current_commitment
-    digest!("0x1c294b4d92eedce11252353164d712200adfa5cc443ac3667dd86ef33b303c8c"),
+    // account_compute_current_commitment
+    digest!("0xe543eb85d3021c8f9b224a4540948af61f868c27abcec07001ee9828c76eca2b"),
     // account_get_id
     digest!("0x1a5583b3a4011d0ca83ac9633fc12b0c6ec2cba03ee8c5f380ac69fc4f767075"),
     // account_get_nonce
@@ -52,7 +52,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // note_get_assets_info
     digest!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
     // note_add_asset
-    digest!("0x330802d380fcd588a766978a36de31d5fbe4710aa36d8cd29f02e57068fc80d3"),
+    digest!("0x18a7eb3dc20a43bae5270cd2d12e57af7863fa4796c3f2f66e2fd66b31a518ad"),
     // note_get_serial_number
     digest!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
@@ -62,7 +62,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // note_get_script_root
     digest!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // tx_create_note
-    digest!("0xdaa0b6dd010522956def931af4e9472c9a48cec01d719157ef3232031dbba48a"),
+    digest!("0x9d4bbfb2ae34601d93b904ef4ae5651345aabf56d0a231444aca138d9849000f"),
     // tx_get_input_notes_commitment
     digest!("0x16cb840dc9131e2fd2b3e83b8d796eb466722ae36f29f27b4b053f1bee2ed473"),
     // tx_get_output_notes_commitment
@@ -74,7 +74,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // tx_get_block_timestamp
     digest!("0x786863e6dbcd5026619afd3831b7dcbf824cda54950b0e0724ebf9d9370ec723"),
     // tx_start_foreign_context
-    digest!("0x564659db9393b9c6e04819aae697c046c014467b9edfe7fa9bbca04249d3a7e7"),
+    digest!("0xa18344624bf0dd93c674e4b3823292a3e1ddf0e09f7fa805f0dbe92b452fd98d"),
     // tx_end_foreign_context
     digest!("0x90a107168d81c1c0c23890e61fb7910a64b4711afd0bf8c3098d74737e4853ba"),
     // tx_get_expiration_delta

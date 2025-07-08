@@ -28,32 +28,6 @@ export.receive_asset
     # => [pad(16)]
 end
 
-#! Creates a new note.
-#!
-#! The created note will not have any assets attached to it. To add assets to this note use the
-#! `move_asset_to_note` procedure.
-#!
-#! This procedure is expected to be invoked using a `call` instruction. It makes no guarantees about
-#! the contents of the `PAD` elements shown below. It is the caller's responsibility to make sure
-#! these elements do not contain any meaningful data.
-#!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-#! Outputs: [note_idx, pad(15)]
-#!
-#! Where:
-#! - tag is the tag to be included in the note.
-#! - aux is the auxiliary data to be included in the note.
-#! - note_type is the note's storage type
-#! - execution_hint is the note's execution hint
-#! - RECIPIENT is the recipient of the note, i.e.,
-#!   hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)
-#!
-#! Invocation: call
-export.create_note
-    exec.tx::create_note
-    # => [note_idx, pad(15) ...]
-end
-
 #! Removes the specified asset from the account and adds it to the output note with the specified
 #! index.
 #!

@@ -41,6 +41,9 @@ format: ## Runs Format using nightly toolchain
 format-check: ## Runs Format using nightly toolchain but only in check mode
 	cargo +nightly fmt --all --check
 
+.PHONY: typos-check
+typos-check: ## Runs spellchecker
+	typos
 
 .PHONY: lint
 lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
@@ -48,6 +51,7 @@ lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) fix
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy-no-std
+	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) typos-check
 
 # --- docs ----------------------------------------------------------------------------------------
 
@@ -64,17 +68,19 @@ book: ## Builds the book & serves documentation site
 
 .PHONY: test-build
 test-build: ## Build the test binary
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo nextest run --cargo-profile test-dev --features concurrent,testing --no-run
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo nextest run --cargo-profile test-dev --features concurrent,testing,std --no-run
 
 
 .PHONY: test
 test: ## Run all tests. Running `make test name=test_name` will only run the test `test_name`.
-	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing $(name)
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing,std $(name)
 
 
+# This uses the std feature to be able to load the MASM source files back into the assembler
+# source manager (see `source_manager_ext::load_masm_source_files`).
 .PHONY: test-dev
 test-dev: ## Run default tests excluding slow prove tests in debug mode intended to be run locally
-	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing --filter-expr "not test(prove)"
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing,std --filter-expr "not test(prove)"
 
 
 .PHONY: test-docs
