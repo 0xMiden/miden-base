@@ -64,17 +64,19 @@ book: ## Builds the book & serves documentation site
 
 .PHONY: test-build
 test-build: ## Build the test binary
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo nextest run --cargo-profile test-dev --features concurrent,testing --no-run
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo nextest run --cargo-profile test-dev --features concurrent,testing,std --no-run
 
 
 .PHONY: test
 test: ## Run all tests. Running `make test name=test_name` will only run the test `test_name`.
-	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing $(name)
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing,std $(name)
 
 
+# This uses the std feature to be able to load the MASM source files back into the assembler
+# source manager (see `source_manager_ext::load_masm_source_files`).
 .PHONY: test-dev
 test-dev: ## Run default tests excluding slow prove tests in debug mode intended to be run locally
-	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing --filter-expr "not test(prove)"
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing,std --filter-expr "not test(prove)"
 
 
 .PHONY: test-docs

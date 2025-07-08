@@ -169,6 +169,14 @@ impl TransactionContextBuilder {
         Self { account, ..Self::default() }
     }
 
+    /// Returns a clone of the assembler.
+    ///
+    /// This is primarily useful to assemble a script whose source will end up in the source manager
+    /// that is passed to the processor. This will help generate better error messages.
+    pub fn assembler(&self) -> Assembler {
+        self.assembler.clone()
+    }
+
     /// Override and set the account seed manually
     pub fn account_seed(mut self, account_seed: Option<Word>) -> Self {
         self.account_seed = account_seed;

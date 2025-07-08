@@ -57,7 +57,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[p2any_note.id()], &[])
         .expect("failed to build tx context")
-        .build()
+        .build()?
         .execute()
         .context("failed to execute transaction")?;
 

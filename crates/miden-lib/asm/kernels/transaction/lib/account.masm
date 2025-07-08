@@ -190,26 +190,44 @@ end
 # PROCEDURES
 # =================================================================================================
 
-#! Computes and returns the account commitment from account data stored in memory.
+#! Computes the account commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]
 #!
 #! Where:
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
-export.get_current_commitment
+export.compute_current_commitment
+    exec.memory::is_native_account
+    # => [is_native_account]
+
+    # first compute the latest storage commitment and update the code commitment
+    # since foreign accounts do not change during transaction execution, this step can be skipped
+    # for them
+    if.true
+        exec.compute_current_storage_commitment
+        # => []
+
+        exec.update_code_commitment
+        # => []
+    end
+
     # prepare the stack for computing the account commitment
     exec.memory::get_current_account_data_ptr padw padw padw
+    # => [RATE, RATE, PERM, account_data_ptr]
 
     # stream account data and compute sequential hash. We perform two `mem_stream` operations
-    # because account data consists of exactly 4 words.
+    # because the account data consists of exactly 4 words.
     mem_stream hperm mem_stream hperm
+    # => [RATE, RATE, PERM, account_data_ptr']
 
     # extract account commitment
     exec.rpo::squeeze_digest
+    # => [ACCOUNT_COMMITMENT, account_data_ptr']
 
-    # drop memory pointer
+    # drop account_data_ptr
     movup.4 drop
+    # => [ACCOUNT_COMMITMENT]
 end
 
 #! Increments the account nonce by the provided increment.
@@ -269,7 +287,7 @@ export.memory::get_acct_nonce->get_nonce
 #! - INIT_COMMITMENT is the initial account commitment.
 export.memory::get_init_account_commitment->get_initial_commitment
 
-#! Gets the code commitment of the account the transaction is being executed against.
+#! Gets the code commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
@@ -282,7 +300,7 @@ export.get_code_commitment
     # => [CODE_COMMITMENT]
 end
 
-#! Gets the storage commitment of the account the transaction is being executed against.
+#! Gets the storage commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
@@ -1183,7 +1201,7 @@ export.validate_current_foreign_account
     # => [FOREIGN_ACCOUNT_COMMITMENT, ACCOUNT_DB_ROOT]
 
     # get the foreign account's commitment from memory and compare with the verified commitment
-    exec.get_current_commitment assert_eqw.err=ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT
+    exec.compute_current_commitment assert_eqw.err=ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT
     # => [ACCOUNT_DB_ROOT]
 
     # clean the stack
@@ -1201,6 +1219,69 @@ end
 proc.hash_map_key
     hash
     # => [HASHED_KEY]
+end
+
+#! Computes the account storage commitment by hashing the storage slots and updates the storage
+#! commitment in memory to the newly computed storage commitment.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.compute_current_storage_commitment
+    # get number of storage slots
+    exec.memory::get_num_storage_slots
+    # => [num_storage_slots]
+
+    # check if there are storage slots
+    dup push.0 neq
+    # => [storage_slots_is_not_empty, num_storage_slots]
+
+    # only loop and hash over storage if there are storage slots
+    if.true
+        # setup start and end ptr
+        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
+        # => [start_ptr, end_ptr]
+
+        # pad stack to read and hash from memory
+        padw padw padw
+        # => [PAD, PAD, PAD, start_ptr, end_ptr]
+
+        # hash elements from memory
+        exec.rpo::absorb_double_words_from_memory
+        # => [PERM, PERM, PERM, start_ptr, end_ptr]
+
+        # extract the digest
+        exec.rpo::squeeze_digest
+        # => [DIGEST, end_ptr, end_ptr]
+
+        # clean stack
+        movup.4 drop movup.4 drop
+        # => [DIGEST]
+
+        # set new account storage commitment
+        exec.memory::set_acct_storage_commitment dropw
+        # => []
+    else
+        # drop number of storage slots
+        drop
+        # => []
+    end
+end
+
+#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
+#! is set to the initial account code commitment in the prologue and as such this procedure will
+#! not result in a change to the account code commitment if the `account::set_code` procedure has
+#! not been invoked in this transaction.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.update_code_commitment
+    # fetch the new code commitment, which may be the initial one
+    exec.memory::get_new_acct_code_commitment
+    # => [NEW_ACCT_CODE_COMMITMENT]
+
+    # set the account code commitment to the new account code commitment (may not have changed)
+    exec.memory::set_acct_code_commitment dropw
+    # => []
 end
 
 #! Checks if a procedure has been called during transaction execution.

@@ -9,8 +9,8 @@ use miden_objects::{digest, Digest};
 pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // account_get_initial_commitment
     digest!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
-    // account_get_current_commitment
-    digest!("0x1c294b4d92eedce11252353164d712200adfa5cc443ac3667dd86ef33b303c8c"),
+    // account_compute_current_commitment
+    digest!("0xe543eb85d3021c8f9b224a4540948af61f868c27abcec07001ee9828c76eca2b"),
     // account_get_id
     digest!("0x1a5583b3a4011d0ca83ac9633fc12b0c6ec2cba03ee8c5f380ac69fc4f767075"),
     // account_get_nonce
@@ -74,7 +74,7 @@ pub const KERNEL0_PROCEDURES: [Digest; 37] = [
     // tx_get_block_timestamp
     digest!("0x786863e6dbcd5026619afd3831b7dcbf824cda54950b0e0724ebf9d9370ec723"),
     // tx_start_foreign_context
-    digest!("0x564659db9393b9c6e04819aae697c046c014467b9edfe7fa9bbca04249d3a7e7"),
+    digest!("0xa18344624bf0dd93c674e4b3823292a3e1ddf0e09f7fa805f0dbe92b452fd98d"),
     // tx_end_foreign_context
     digest!("0x90a107168d81c1c0c23890e61fb7910a64b4711afd0bf8c3098d74737e4853ba"),
     // tx_get_expiration_delta

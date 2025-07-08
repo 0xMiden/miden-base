@@ -3,7 +3,7 @@ use alloc::{string::ToString, sync::Arc, vec::Vec};
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, Hasher, TransactionOutputError,
     account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, KernelLibrary},
+    assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
     block::BlockNumber,
     transaction::{
         OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
@@ -141,7 +141,12 @@ impl TransactionKernel {
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
     /// Miden stdlib as well as with miden-lib.
     pub fn assembler() -> Assembler {
-        let source_manager = Arc::new(DefaultSourceManager::default());
+        let source_manager: Arc<dyn SourceManager + Send + Sync> =
+            Arc::new(DefaultSourceManager::default());
+
+        #[cfg(all(any(feature = "testing", test), feature = "std"))]
+        source_manager_ext::load_masm_source_files(&source_manager);
+
         Assembler::with_kernel(source_manager, Self::kernel())
             .with_library(StdLibrary::default())
             .expect("failed to load std-lib")
@@ -407,8 +412,12 @@ impl TransactionKernel {
     /// the kernel binary (`main.masm`) include this code, it is not exposed explicitly. By adding
     /// it separately, we can expose procedures from `/lib` and test them individually.
     pub fn testing_assembler() -> Assembler {
-        let source_manager = Arc::new(DefaultSourceManager::default());
+        let source_manager: Arc<dyn SourceManager + Send + Sync> =
+            Arc::new(DefaultSourceManager::default());
         let kernel_library = Self::kernel_as_library();
+
+        #[cfg(all(any(feature = "testing", test), feature = "std"))]
+        source_manager_ext::load_masm_source_files(&source_manager);
 
         Assembler::with_kernel(source_manager, Self::kernel())
             .with_library(StdLibrary::default())
@@ -428,5 +437,79 @@ impl TransactionKernel {
         let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
 
         assembler.with_library(library).expect("failed to add mock account code")
+    }
+}
+
+#[cfg(all(any(feature = "testing", test), feature = "std"))]
+mod source_manager_ext {
+    use std::{
+        fs, io,
+        path::{Path, PathBuf},
+        sync::Arc,
+        vec::Vec,
+    };
+
+    use miden_objects::assembly::{SourceManager, diagnostics::SourceManagerExt};
+
+    /// Loads all files with a .masm extension in the `asm` directory into the provided source
+    /// manager.
+    ///
+    /// This source manager is passed to the [`super::TransactionKernel::assembler`] from which it
+    /// can be passed on to the VM processor. If an error occurs, the sources can be used to provide
+    /// a pointer to the failed location.
+    pub fn load_masm_source_files(source_manager: &Arc<dyn SourceManager + Send + Sync>) {
+        if let Err(err) = load(source_manager) {
+            // Stringifying the error is not ideal (we may loose some source errors) but this
+            // should never really error anyway.
+            std::eprintln!("failed to load MASM sources into source manager: {err}");
+        }
+    }
+
+    /// Implements the logic of the above function with error handling.
+    fn load(source_manager: &Arc<dyn SourceManager + Send + Sync>) -> io::Result<()> {
+        for file in get_masm_files(concat!(env!("OUT_DIR"), "/asm"))? {
+            source_manager.load_file(&file).map_err(io::Error::other)?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns a vector with paths to all MASM files in the specified directory and recursive
+    /// directories.
+    ///
+    /// All non-MASM files are skipped.
+    fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> io::Result<Vec<PathBuf>> {
+        let mut files = Vec::new();
+
+        match fs::read_dir(dir_path) {
+            Ok(entries) => {
+                for entry in entries {
+                    match entry {
+                        Ok(entry) => {
+                            let entry_path = entry.path();
+                            if entry_path.is_dir() {
+                                files.extend(get_masm_files(entry_path)?);
+                            } else if entry_path
+                                .extension()
+                                .map(|ext| ext == "masm")
+                                .unwrap_or(false)
+                            {
+                                files.push(entry_path);
+                            }
+                        },
+                        Err(e) => {
+                            return Err(io::Error::other(format!(
+                                "error reading directory entry: {e}",
+                            )));
+                        },
+                    }
+                }
+            },
+            Err(e) => {
+                return Err(io::Error::other(format!("error reading directory: {e}")));
+            },
+        }
+
+        Ok(files)
     }
 }
