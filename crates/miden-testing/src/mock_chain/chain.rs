@@ -541,7 +541,7 @@ impl MockChain {
     // TRANSACTION APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Initializes a [`TransactionContextBuilder`].
+    /// Initializes a [`TransactionContextBuilder`] for executing against a specific block number.
     ///
     /// Depending on the provided `input`, the builder is initialized differently:
     /// - [`TxContextInput::AccountId`]: Initialize the builder with [`TransactionInputs`] fetched
@@ -559,63 +559,6 @@ impl MockChain {
     /// a chain of transactions against the same account that build on top of each other. For
     /// example, transaction A modifies an account from state 0 to 1, and transaction B modifies
     /// it from state 1 to 2.
-    pub fn build_tx_context(
-        &self,
-        input: impl Into<TxContextInput>,
-        note_ids: &[NoteId],
-        unauthenticated_notes: &[Note],
-    ) -> anyhow::Result<TransactionContextBuilder> {
-        let mock_account = match input.into() {
-            TxContextInput::AccountId(account_id) => {
-                if account_id.is_private() {
-                    return Err(anyhow::anyhow!(
-                        "transaction contexts for private accounts should be created with TxContextInput::Account"
-                    ));
-                }
-
-                self.committed_accounts
-                    .get(&account_id)
-                    .with_context(|| {
-                        format!("account {account_id} not found in committed accounts")
-                    })?
-                    .clone()
-            },
-            TxContextInput::Account(account) => {
-                let committed_account = self.committed_accounts.get(&account.id());
-                let authenticator = committed_account.and_then(|a| a.authenticator());
-                let seed = committed_account.and_then(|a| a.seed());
-                MockAccount::new(account, seed.cloned(), authenticator.cloned())
-            },
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                let mut initial_account = executed_transaction.initial_account().clone();
-                initial_account
-                    .apply_delta(executed_transaction.account_delta())
-                    .context("could not apply delta from previous transaction")?;
-
-                let committed_account = self.committed_accounts.get(&initial_account.id());
-                let authenticator = committed_account.and_then(|a| a.authenticator());
-                let seed = committed_account.and_then(|a| a.seed());
-                MockAccount::new(initial_account, seed.cloned(), authenticator.cloned())
-            },
-        };
-
-        let tx_inputs = self
-            .get_transaction_inputs(
-                mock_account.account().clone(),
-                mock_account.seed().cloned(),
-                note_ids,
-                unauthenticated_notes,
-            )
-            .context("failed to gather transaction inputs")?;
-
-        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
-            .authenticator(mock_account.authenticator().cloned())
-            .account_seed(mock_account.seed().cloned())
-            .tx_inputs(tx_inputs);
-
-        Ok(tx_context_builder)
-    }
-
     pub fn build_tx_context_at_block(
         &self,
         reference_block: impl Into<BlockNumber>,
@@ -676,6 +619,67 @@ impl MockChain {
             .authenticator(mock_account.authenticator().cloned())
             .account_seed(mock_account.seed().cloned())
             .tx_inputs(tx_inputs))
+    }
+
+    /// Initializes a [`TransactionContextBuilder`] for executing against the last block header.
+    ///
+    /// Please refer to the docs for [`Self::build_tx_context_at_block`] for a complete explanation
+    /// of the function.
+    pub fn build_tx_context(
+        &self,
+        input: impl Into<TxContextInput>,
+        note_ids: &[NoteId],
+        unauthenticated_notes: &[Note],
+    ) -> anyhow::Result<TransactionContextBuilder> {
+        let mock_account = match input.into() {
+            TxContextInput::AccountId(account_id) => {
+                if account_id.is_private() {
+                    return Err(anyhow::anyhow!(
+                        "transaction contexts for private accounts should be created with TxContextInput::Account"
+                    ));
+                }
+
+                self.committed_accounts
+                    .get(&account_id)
+                    .with_context(|| {
+                        format!("account {account_id} not found in committed accounts")
+                    })?
+                    .clone()
+            },
+            TxContextInput::Account(account) => {
+                let committed_account = self.committed_accounts.get(&account.id());
+                let authenticator = committed_account.and_then(|a| a.authenticator());
+                let seed = committed_account.and_then(|a| a.seed());
+                MockAccount::new(account, seed.cloned(), authenticator.cloned())
+            },
+            TxContextInput::ExecutedTransaction(executed_transaction) => {
+                let mut initial_account = executed_transaction.initial_account().clone();
+                initial_account
+                    .apply_delta(executed_transaction.account_delta())
+                    .context("could not apply delta from previous transaction")?;
+
+                let committed_account = self.committed_accounts.get(&initial_account.id());
+                let authenticator = committed_account.and_then(|a| a.authenticator());
+                let seed = committed_account.and_then(|a| a.seed());
+                MockAccount::new(initial_account, seed.cloned(), authenticator.cloned())
+            },
+        };
+
+        let tx_inputs = self
+            .get_transaction_inputs(
+                mock_account.account().clone(),
+                mock_account.seed().cloned(),
+                note_ids,
+                unauthenticated_notes,
+            )
+            .context("failed to gather transaction inputs")?;
+
+        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
+            .authenticator(mock_account.authenticator().cloned())
+            .account_seed(mock_account.seed().cloned())
+            .tx_inputs(tx_inputs);
+
+        Ok(tx_context_builder)
     }
 
     // INPUTS APIS
