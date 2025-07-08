@@ -85,7 +85,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         begin
             push.1.2.3.4 push.0
             call.account::set_item
-            dropw dropw dropw dropw
+            dropw dropw
         end
         "#;
 

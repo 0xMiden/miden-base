@@ -16,11 +16,13 @@ const.NUM_AUTH_TRIGGER_PROCS_SLOT=1
 # The slot where the map of auth trigger procedure roots is stored.
 const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 
-#! Authenticate a transaction using the Falcon signature scheme only if certain procedures were called
+#! Authenticate a transaction using the Falcon signature scheme only if specified auth trigger
+#! procedures were called.
 #!
 #! This authentication procedure checks if any of the trigger procedures were called during the
 #! transaction. If none were called, authentication is skipped. If at least one was called,
 #! the standard RpoFalcon512 signature verification is performed.
+#! Nonce is incremented in both cases.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]

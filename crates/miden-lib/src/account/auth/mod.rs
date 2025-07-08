@@ -54,6 +54,7 @@ impl From<RpoFalcon512> for AccountComponent {
 /// - Checks if any of the specified auth trigger procedures were called during the transaction
 /// - If none were called, authentication is skipped
 /// - If at least one was called, performs standard RpoFalcon512 signature verification
+/// - Always increments the nonce
 ///
 /// The storage layout is:
 /// - Slot 0(value): Public key (same as RpoFalcon512)
@@ -79,7 +80,7 @@ impl RpoFalcon512ProcedureAcl {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if auth_trigger_procedures.len() > max_procedures {
             return Err(AccountError::AssumptionViolated(
-                "Cannot track more than {max_procedures} procedures".to_string(),
+                "Cannot track more than {max_procedures} procedures (account limit)".to_string(),
             ));
         }
 
@@ -146,11 +147,11 @@ mod tests {
         let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
         assert_eq!(num_procs_slot, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into());
 
-        // This should be filled with zeros because there are no trigger procedures
         let proc_root = account
             .storage()
             .get_map_item(2, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
             .expect("storage map access failed");
+        // This should be filled with zeros because there are no auth trigger procedures
         assert_eq!(proc_root, Word::default());
     }
 
