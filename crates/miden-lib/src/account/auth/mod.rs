@@ -94,21 +94,16 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
 
         // Slot 2: A map with tracked procedure roots
-        if !falcon.trigger_procedures.is_empty() {
-            let map_entries: Vec<_> = falcon
-                .trigger_procedures
-                .iter()
-                .enumerate()
-                .map(|(i, proc_root)| {
-                    (
-                        [Felt::from(i as u32), Felt::ZERO, Felt::ZERO, Felt::ZERO].into(),
-                        proc_root.into(),
-                    )
-                })
-                .collect();
+        // We add the map even if there are no trigger procedures, to always maintain the same
+        // storage layout.
+        let map_entries = falcon.trigger_procedures.iter().enumerate().map(|(i, proc_root)| {
+            (
+                [Felt::from(i as u32), Felt::ZERO, Felt::ZERO, Felt::ZERO].into(),
+                proc_root.into(),
+            )
+        });
 
-            storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
-        }
+        storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
 
         AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
             .expect("falcon procedure ACL component should satisfy the requirements of a valid account component")
