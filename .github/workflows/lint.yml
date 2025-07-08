@@ -14,6 +14,17 @@ on:
     types: [opened, reopened, synchronize]
 
 jobs:
+  typos:
+    name: spellcheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: typos
+      - run: make typos-check
+
   clippy:
     name: clippy
     runs-on: ubuntu-latest

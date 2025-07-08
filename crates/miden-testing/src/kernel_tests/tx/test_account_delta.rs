@@ -240,7 +240,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         StorageSlot::Map(map1),
         StorageSlot::Map(map2),
         // Include an empty map which does not receive any updates, to test that the "metadata
-        // header" in the delta committment is not appended if there are no updates to a map
+        // header" in the delta commitment is not appended if there are no updates to a map
         // slot.
         StorageSlot::Map(StorageMap::new()),
     ]);

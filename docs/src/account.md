@@ -52,7 +52,7 @@ An `Account` ID can be encoded in different formats:
  
 2. **Hexadecimal** (debugging):
    - Example: `0x808c96748fe8d0901d6788f6aa4f42`
-   - Frequenty used encoding for blockchain addresses
+   - Frequently used encoding for blockchain addresses
 
 ### Code
 
