@@ -32,13 +32,14 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
+        use.miden::tx
         begin
             push.{recipient}
             push.{note_execution_hint}
             push.{note_type}
             push.0              # aux
             push.{tag}
-            call.::miden::contracts::wallets::basic::create_note
+            call.tx::create_note
 
             push.{asset}
             call.::miden::contracts::wallets::basic::move_asset_to_note

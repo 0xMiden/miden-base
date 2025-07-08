@@ -664,16 +664,11 @@ end
 #!
 #! Panics if:
 #! - the procedure is called from a non-account context.
-#! - the invocation of this procedure does not originate from the native account.
 #!
 #! Invocation: dynexec
 export.note_add_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [note_idx, ASSET, pad(11)]
-
-    # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
     # => [note_idx, ASSET, pad(11)]
 
     # duplicate the asset word to be able to return it
@@ -785,18 +780,10 @@ end
 #! - RECIPIENT is the recipient of the note.
 #! - note_idx is the index of the created note.
 #!
-#! Panics if:
-#! - the procedure is called from a non-account context.
-#! - the invocation of this procedure does not originate from the native account.
-#!
 #! Invocation: dynexec
 export.tx_create_note
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    # authenticate that the procedure invocation originates from the account context
-    exec.authenticate_account_origin drop drop
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
     exec.tx::create_note

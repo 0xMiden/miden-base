@@ -21,7 +21,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
     use.miden::tx
 
     export.::miden::contracts::wallets::basic::receive_asset
-    export.::miden::contracts::wallets::basic::create_note
     export.::miden::contracts::wallets::basic::move_asset_to_note
     export.::miden::contracts::faucets::basic_fungible::distribute
 
@@ -75,13 +74,6 @@ pub(crate) const MOCK_ACCOUNT_CODE: &str = "
 
         swapw dropw
         # => [STORAGE_COMMITMENT, pad(12)]
-    end
-
-    # Inputs:  [ASSET, note_idx, pad(11)]
-    # Outputs: [ASSET, note_idx, pad(11)]
-    export.add_asset_to_note
-        exec.tx::add_asset_to_note
-        # => [ASSET, note_idx, pad(11)]
     end
 
     # Stack:  [ASSET, pad(12)]

@@ -101,8 +101,7 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
 /// Returns the code for a note that creates all notes in `output_notes`
 fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
-    let mut out =
-        String::from("use.miden::contracts::wallets::basic->wallet\nuse.test::account\n\nbegin\n");
+    let mut out = String::from("use.miden::tx\nuse.test::account\n\nbegin\n");
 
     for (idx, note) in output_notes.iter().enumerate() {
         if idx == 0 {
@@ -117,7 +116,7 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
               push.{note_type}
               push.{aux}
               push.{tag}
-              call.wallet::create_note\n",
+              call.tx::create_note\n",
             recipient = word_to_masm_push_string(&note.recipient().digest()),
             hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
@@ -128,7 +127,7 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.account::add_asset_to_note\n",
+                  call.tx::add_asset_to_note\n",
             ));
         }
     }
