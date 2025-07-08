@@ -1,6 +1,8 @@
+use std::collections::BTreeMap;
+
 use miden_lib::{account::interface::AccountInterface, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, ONE,
+    Digest, Felt, ONE,
     asset::{Asset, FungibleAsset},
     crypto::rand::{FeltRng, RpoRandomCoin},
     note::{
@@ -18,6 +20,7 @@ use miden_testing::{Auth, MockChain};
 #[test]
 fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
+    let sent_asset = FungibleAsset::mock(10);
     let sender_basic_wallet_account =
         mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![FungibleAsset::mock(100)]);
 
@@ -31,7 +34,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         NoteExecutionHint::always(),
         Default::default(),
     )?;
-    let assets = NoteAssets::new(vec![FungibleAsset::mock(10)]).unwrap();
+    let assets = NoteAssets::new(vec![sent_asset]).unwrap();
     let note_script =
         NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
     let serial_num =
@@ -48,13 +51,28 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         false,
     )?;
 
-    let _executed_transaction = mock_chain
+    let executed_transaction = mock_chain
         .build_tx_context(sender_basic_wallet_account.id(), &[], &[])
         .expect("failed to build tx context")
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
         .execute()?;
+
+    // assert that the removed asset is in the delta
+    let mut removed_assets: BTreeMap<_, _> = executed_transaction
+        .account_delta()
+        .vault()
+        .removed_assets()
+        .map(|asset| (Digest::from(asset.vault_key()), asset))
+        .collect();
+    assert_eq!(removed_assets.len(), 1, "one asset should have been removed");
+    assert_eq!(
+        removed_assets.remove(&Digest::from(sent_asset.vault_key())).unwrap(),
+        sent_asset,
+        "sent asset should be in removed assets"
+    );
+
     Ok(())
 }
 

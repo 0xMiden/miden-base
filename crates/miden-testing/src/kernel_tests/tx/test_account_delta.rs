@@ -1,27 +1,37 @@
 use alloc::vec::Vec;
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, Word, ZERO,
     account::{
-        AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageMap, StorageSlot,
-        delta::LexicographicWord,
+        AccountBuilder, AccountId, AccountStorage, AccountStorageMode, AccountType, StorageMap,
+        StorageSlot, delta::LexicographicWord,
     },
-    asset::{Asset, FungibleAsset},
-    note::{Note, NoteType},
+    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
+    note::{Note, NoteExecutionHint, NoteTag, NoteType},
     testing::{
         account_component::AccountMockComponent,
-        account_id::{ACCOUNT_ID_SENDER, AccountIdBuilder},
+        account_id::{
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+            ACCOUNT_ID_SENDER, AccountIdBuilder,
+        },
         asset::NonFungibleAssetBuilder,
+        constants::{
+            CONSUMED_ASSET_1_AMOUNT, CONSUMED_ASSET_3_AMOUNT, FUNGIBLE_ASSET_AMOUNT,
+            NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2,
+        },
+        storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
     transaction::{OutputNote, TransactionScript},
 };
 use miden_tx::utils::word_to_masm_push_string;
-use rand::Rng;
+use rand::{Rng, SeedableRng};
+use rand_chacha::ChaCha20Rng;
 
-use crate::{Auth, MockChain, utils::create_p2any_note};
+use crate::{Auth, MockChain, TransactionContextBuilder, utils::create_p2any_note};
 
 // ACCOUNT DELTA TESTS
 //
@@ -553,6 +563,239 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     assert_eq!(added_assets.remove(&Digest::from(asset0.vault_key())).unwrap(), asset0);
     assert_eq!(removed_assets.remove(&Digest::from(asset1.vault_key())).unwrap(), asset1);
 
+    Ok(())
+}
+
+/// Tests that adding and removing assets and updating value and map storage slots results in the
+/// correct delta.
+#[test]
+fn asset_and_storage_delta() -> anyhow::Result<()> {
+    let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
+
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(AccountMockComponent::new_with_slots(
+            TransactionKernel::testing_assembler(),
+            AccountStorage::mock_storage_slots(),
+        )?)
+        .with_assets(account_assets)
+        .build_existing()?;
+
+    // updated storage
+    let updated_slot_value = [Felt::new(7), Felt::new(9), Felt::new(11), Felt::new(13)];
+
+    // updated storage map
+    let updated_map_key = [Felt::new(14), Felt::new(15), Felt::new(16), Felt::new(17)];
+    let updated_map_value = [Felt::new(18), Felt::new(19), Felt::new(20), Felt::new(21)];
+
+    // removed assets
+    let removed_asset_1 = FungibleAsset::mock(FUNGIBLE_ASSET_AMOUNT / 2);
+    let removed_asset_2 = Asset::Fungible(
+        FungibleAsset::new(
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into().expect("id is valid"),
+            FUNGIBLE_ASSET_AMOUNT,
+        )
+        .expect("asset is valid"),
+    );
+    let removed_asset_3 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
+    let removed_assets = [removed_asset_1, removed_asset_2, removed_asset_3];
+
+    let tag1 =
+        NoteTag::from_account_id(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?);
+    let tag2 = NoteTag::for_local_use_case(0, 0)?;
+    let tag3 = NoteTag::for_local_use_case(0, 0)?;
+    let tags = [tag1, tag2, tag3];
+
+    let aux_array = [Felt::new(27), Felt::new(28), Felt::new(29)];
+
+    let note_types = [NoteType::Private; 3];
+
+    tag1.validate(NoteType::Private)
+        .expect("note tag 1 should support private notes");
+    tag2.validate(NoteType::Private)
+        .expect("note tag 2 should support private notes");
+    tag3.validate(NoteType::Private)
+        .expect("note tag 3 should support private notes");
+
+    let execution_hint_1 = Felt::from(NoteExecutionHint::always());
+    let execution_hint_2 = Felt::from(NoteExecutionHint::none());
+    let execution_hint_3 = Felt::from(NoteExecutionHint::on_block_slot(1, 1, 1));
+    let hints = [execution_hint_1, execution_hint_2, execution_hint_3];
+
+    let mut send_asset_script = String::new();
+    for i in 0..3 {
+        send_asset_script.push_str(&format!(
+            "
+            ### note {i}
+            # prepare the stack for a new note creation
+            push.0.1.2.3           # recipient
+            push.{EXECUTION_HINT}  # note_execution_hint
+            push.{NOTETYPE}        # note_type
+            push.{aux}             # aux
+            push.{tag}             # tag
+            # => [tag, aux, note_type, execution_hint, RECIPIENT]
+
+            # pad the stack before calling the `create_note`
+            padw padw swapdw
+            # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+            # create the note
+            call.tx::create_note
+            # => [note_idx, pad(15)]
+
+            # move an asset to the created note to partially deplete fungible asset balance
+            swapw dropw push.{REMOVED_ASSET}
+            call.::miden::contracts::wallets::basic::move_asset_to_note
+            # => [ASSET, note_idx, pad(11)]
+
+            # clear the stack
+            dropw dropw dropw dropw
+        ",
+            EXECUTION_HINT = hints[i],
+            NOTETYPE = note_types[i] as u8,
+            aux = aux_array[i],
+            tag = tags[i],
+            REMOVED_ASSET = word_to_masm_push_string(&Word::from(removed_assets[i]))
+        ));
+    }
+
+    let tx_script_src = format!(
+        "\
+        use.test::account
+        use.miden::tx
+
+        ## TRANSACTION SCRIPT
+        ## ========================================================================================
+        begin
+            ## Update account storage item
+            ## ------------------------------------------------------------------------------------
+            # push a new value for the storage slot onto the stack
+            push.{UPDATED_SLOT_VALUE}
+            # => [13, 11, 9, 7]
+
+            # get the index of account storage slot
+            push.{STORAGE_INDEX_0}
+            # => [idx, 13, 11, 9, 7]
+            # update the storage value
+            call.account::set_item dropw
+            # => []
+
+            ## Update account storage map
+            ## ------------------------------------------------------------------------------------
+            # push a new VALUE for the storage map onto the stack
+            push.{UPDATED_MAP_VALUE}
+            # => [18, 19, 20, 21]
+
+            # push a new KEY for the storage map onto the stack
+            push.{UPDATED_MAP_KEY}
+            # => [14, 15, 16, 17, 18, 19, 20, 21]
+
+            # get the index of account storage slot
+            push.{STORAGE_INDEX_2}
+            # => [idx, 14, 15, 16, 17, 18, 19, 20, 21]
+
+            # update the storage value
+            call.account::set_map_item dropw dropw dropw
+            # => []
+
+            ## Send some assets from the account vault
+            ## ------------------------------------------------------------------------------------
+            {send_asset_script}
+
+            dropw dropw dropw dropw
+        end
+    ",
+        UPDATED_SLOT_VALUE = word_to_masm_push_string(&Word::from(updated_slot_value)),
+        UPDATED_MAP_VALUE = word_to_masm_push_string(&Word::from(updated_map_value)),
+        UPDATED_MAP_KEY = word_to_masm_push_string(&Word::from(updated_map_key)),
+    );
+
+    let tx_script = TransactionScript::compile(
+        tx_script_src,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
+
+    // Create the input note that carries the assets that we will assert later
+    let input_note = {
+        let faucet_id_1 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
+        let faucet_id_3 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3)?;
+
+        let fungible_asset_1: Asset =
+            FungibleAsset::new(faucet_id_1, CONSUMED_ASSET_1_AMOUNT)?.into();
+        let fungible_asset_3: Asset =
+            FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
+        let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
+
+        create_p2any_note(account.id(), &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
+    };
+
+    let tx_context = TransactionContextBuilder::new(account)
+        .extend_input_notes(vec![input_note.clone()])
+        .tx_script(tx_script)
+        .build()?;
+
+    // Storing assets that will be added to assert correctness later
+    let added_assets = input_note.assets().iter().cloned().collect::<Vec<_>>();
+
+    // expected delta
+    // --------------------------------------------------------------------------------------------
+    // execute the transaction and get the witness
+    let executed_transaction = tx_context.execute()?;
+
+    // nonce delta
+    // --------------------------------------------------------------------------------------------
+
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
+
+    // storage delta
+    // --------------------------------------------------------------------------------------------
+    // We expect one updated item and one updated map
+    assert_eq!(executed_transaction.account_delta().storage().values().len(), 1);
+    assert_eq!(
+        executed_transaction.account_delta().storage().values().get(&STORAGE_INDEX_0),
+        Some(&updated_slot_value)
+    );
+
+    assert_eq!(executed_transaction.account_delta().storage().maps().len(), 1);
+    let map_delta = executed_transaction
+        .account_delta()
+        .storage()
+        .maps()
+        .get(&STORAGE_INDEX_2)
+        .context("failed to get expected value from storage map")?
+        .entries();
+    assert_eq!(
+        *map_delta.get(&LexicographicWord::new(Digest::from(updated_map_key))).unwrap(),
+        updated_map_value
+    );
+
+    // vault delta
+    // --------------------------------------------------------------------------------------------
+    // assert that added assets are tracked
+    assert!(
+        executed_transaction
+            .account_delta()
+            .vault()
+            .added_assets()
+            .all(|x| added_assets.contains(&x))
+    );
+    assert_eq!(
+        added_assets.len(),
+        executed_transaction.account_delta().vault().added_assets().count()
+    );
+
+    // assert that removed assets are tracked
+    assert!(
+        executed_transaction
+            .account_delta()
+            .vault()
+            .removed_assets()
+            .all(|x| removed_assets.contains(&x))
+    );
+    assert_eq!(
+        removed_assets.len(),
+        executed_transaction.account_delta().vault().removed_assets().count()
+    );
     Ok(())
 }
 

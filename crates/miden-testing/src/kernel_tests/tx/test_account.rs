@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use anyhow::Context;
 use miden_lib::{
     errors::tx_kernel_errors::{
@@ -16,7 +18,7 @@ use miden_objects::{
     },
     assembly::{
         Library,
-        diagnostics::{IntoDiagnostic, Report, WrapErr, miette},
+        diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette},
     },
     asset::AssetVault,
     testing::{
@@ -1062,5 +1064,87 @@ fn test_was_procedure_called() -> miette::Result<()> {
         .into_diagnostic()
         .wrap_err("Failed to execute transaction")?;
 
+    Ok(())
+}
+
+/// Tests that an account can call code in a custom library when loading that library into the
+/// executor.
+///
+/// The call chain and dependency graph in this test is:
+/// `tx script -> account code -> external library`
+#[test]
+fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
+    const EXTERNAL_LIBRARY_CODE: &str = r#"
+      use.miden::account
+
+      export.external_setter
+        push.2.3.4.5
+        push.0
+        exec.account::set_item
+        dropw dropw
+      end"#;
+
+    const ACCOUNT_COMPONENT_CODE: &str = "
+      use.external_library::external_module
+
+      export.custom_setter
+        exec.external_module::external_setter
+      end";
+
+    let external_library_source =
+        NamedSource::new("external_library::external_module", EXTERNAL_LIBRARY_CODE);
+    let external_library =
+        TransactionKernel::assembler().assemble_library([external_library_source])?;
+
+    let mut assembler = TransactionKernel::testing_assembler_with_mock_account();
+    assembler.add_vendored_library(&external_library)?;
+
+    let account_component_source =
+        NamedSource::new("account_component::account_module", ACCOUNT_COMPONENT_CODE);
+    let account_component_lib =
+        assembler.clone().assemble_library([account_component_source]).unwrap();
+
+    let tx_script_src = "\
+          use.account_component::account_module
+
+          begin
+            call.account_module::custom_setter
+          end";
+
+    let account_component =
+        AccountComponent::new(account_component_lib.clone(), AccountStorage::mock_storage_slots())
+            .into_diagnostic()?
+            .with_supports_all_types();
+
+    // Build an existing account with nonce 1.
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(account_component)
+        .build_existing()
+        .into_diagnostic()?;
+
+    let tx_script = TransactionScript::compile(
+        tx_script_src,
+        // Add the account component library since the transaction script is calling the account's
+        // procedure.
+        assembler.with_library(&account_component_lib)?,
+    )
+    .into_diagnostic()?;
+
+    let tx_context = TransactionContextBuilder::new(native_account.clone())
+        .tx_script(tx_script)
+        .build()
+        .unwrap();
+
+    let executed_tx = tx_context.execute().into_diagnostic()?;
+
+    // Account's initial nonce of 1 should have been incremented by 1.
+    assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
+
+    // Make sure that account storage has been updated as per the tx script call.
+    assert_eq!(
+        *executed_tx.account_delta().storage().values(),
+        BTreeMap::from([(0, [Felt::new(2), Felt::new(3), Felt::new(4), Felt::new(5)])]),
+    );
     Ok(())
 }
