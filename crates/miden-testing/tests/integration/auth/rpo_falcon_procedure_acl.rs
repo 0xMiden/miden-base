@@ -41,10 +41,10 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     let get_item_proc_root = get_item_proc_root.expect("get_item procedure should exist");
     let set_item_proc_root = set_item_proc_root.expect("set_item procedure should exist");
-    let trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
+    let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
     let (auth_component, authenticator) = Auth::ProcedureAcl {
-        trigger_procedures: trigger_procedures.clone(),
+        auth_trigger_procedures: auth_trigger_procedures.clone(),
     }
     .build_component();
 

@@ -10,11 +10,11 @@ const.FALCON_SIG_TO_STACK=131087
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
-# The slot where the number of trigger procedures is stored.
-const.NUM_TRIGGER_PROCS_SLOT=1
+# The slot where the number of auth trigger procedures is stored.
+const.NUM_AUTH_TRIGGER_PROCS_SLOT=1
 
-# The slot where the map of trigger procedure roots is stored.
-const.TRIGGER_PROCS_MAP_SLOT=2
+# The slot where the map of auth trigger procedure roots is stored.
+const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 
 #! Authenticate a transaction using the Falcon signature scheme only if certain procedures were called
 #!
@@ -26,11 +26,11 @@ const.TRIGGER_PROCS_MAP_SLOT=2
 #! Outputs: [pad(16)]
 export.auth__tx_rpo_falcon512_procedure_acl
     # Get the number of trigger procedures
-    push.NUM_TRIGGER_PROCS_SLOT exec.account::get_item drop drop drop
-    # => [num_trigger_procs, pad(16)]
+    push.NUM_AUTH_TRIGGER_PROCS_SLOT exec.account::get_item drop drop drop
+    # => [num_auth_trigger_procs, pad(16)]
 
     # Check if any trigger procedure was called
-    # Counter `i` starts at `num_trigger_procs` and flag `was_any_called` starts at 0
+    # Counter `i` starts at `num_auth_trigger_procs` and flag `was_any_called` starts at 0
     push.0
     # => [was_any_called, i, pad(16)]
 
@@ -39,12 +39,12 @@ export.auth__tx_rpo_falcon512_procedure_acl
     while.true
         # => [was_any_called, i, pad(16)]
 
-        # Get the trigger procedure root from storage
-        dup.1 sub.1 push.0.0.0 push.TRIGGER_PROCS_MAP_SLOT
-        # => [TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], was_any_called, i, pad(16)]
+        # Get the procedure root from storage
+        dup.1 sub.1 push.0.0.0 push.AUTH_TRIGGER_PROCS_MAP_SLOT
+        # => [AUTH_TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], was_any_called, i, pad(16)]
 
         exec.account::get_map_item
-        # => [TRIGGER_PROC_ROOT, was_any_called, i, pad(16)]
+        # => [AUTH_TRIGGER_PROC_ROOT, was_any_called, i, pad(16)]
 
         exec.account::was_procedure_called
         # => [was_called, was_any_called, i, pad(16)]

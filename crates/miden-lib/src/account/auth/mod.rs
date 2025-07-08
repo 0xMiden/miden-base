@@ -51,7 +51,7 @@ impl From<RpoFalcon512> for AccountComponent {
 /// the signature verification is only performed if at least one of these procedures was invoked.
 ///
 /// It exports the procedure `auth__tx_rpo_falcon512_procedure_acl`, which:
-/// - Checks if any of the specified trigger procedures were called during the transaction
+/// - Checks if any of the specified auth trigger procedures were called during the transaction
 /// - If none were called, authentication is skipped
 /// - If at least one was called, performs standard RpoFalcon512 signature verification
 ///
@@ -63,7 +63,7 @@ impl From<RpoFalcon512> for AccountComponent {
 /// This component supports all account types.
 pub struct RpoFalcon512ProcedureAcl {
     public_key: PublicKey,
-    trigger_procedures: Vec<Digest>,
+    auth_trigger_procedures: Vec<Digest>,
 }
 
 impl RpoFalcon512ProcedureAcl {
@@ -74,16 +74,16 @@ impl RpoFalcon512ProcedureAcl {
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
         public_key: PublicKey,
-        trigger_procedures: Vec<Digest>,
+        auth_trigger_procedures: Vec<Digest>,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
-        if trigger_procedures.len() > max_procedures {
+        if auth_trigger_procedures.len() > max_procedures {
             return Err(AccountError::AssumptionViolated(
                 "Cannot track more than {max_procedures} procedures".to_string(),
             ));
         }
 
-        Ok(Self { public_key, trigger_procedures })
+        Ok(Self { public_key, auth_trigger_procedures })
     }
 }
 
@@ -95,18 +95,19 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
 
         // Slot 1: Number of tracked procedures
-        let num_procs = Felt::from(falcon.trigger_procedures.len() as u32);
+        let num_procs = Felt::from(falcon.auth_trigger_procedures.len() as u32);
         storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
 
         // Slot 2: A map with tracked procedure roots
         // We add the map even if there are no trigger procedures, to always maintain the same
         // storage layout.
-        let map_entries = falcon.trigger_procedures.iter().enumerate().map(|(i, proc_root)| {
-            (
-                [Felt::from(i as u32), Felt::ZERO, Felt::ZERO, Felt::ZERO].into(),
-                proc_root.into(),
-            )
-        });
+        let map_entries =
+            falcon.auth_trigger_procedures.iter().enumerate().map(|(i, proc_root)| {
+                (
+                    [Felt::from(i as u32), Felt::ZERO, Felt::ZERO, Felt::ZERO].into(),
+                    proc_root.into(),
+                )
+            });
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
@@ -160,7 +161,7 @@ mod tests {
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
         // TODO refactor to fetch procedure digests by name after
         // https://github.com/0xMiden/miden-base/pull/1532
-        let trigger_procedures: Vec<Digest> = basic_wallet_library()
+        let auth_trigger_procedures: Vec<Digest> = basic_wallet_library()
             .module_infos()
             .next()
             .expect("at least one module expected")
@@ -168,9 +169,9 @@ mod tests {
             .map(|(_, proc_info)| proc_info.digest)
             .collect();
 
-        assert_eq!(trigger_procedures.len(), 2);
+        assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component = RpoFalcon512ProcedureAcl::new(public_key, trigger_procedures.clone())
+        let component = RpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone())
             .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
@@ -189,12 +190,12 @@ mod tests {
             .storage()
             .get_map_item(2, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
             .expect("storage map access failed");
-        assert_eq!(proc_root_0, Word::from(trigger_procedures[0]));
+        assert_eq!(proc_root_0, Word::from(auth_trigger_procedures[0]));
 
         let proc_root_1 = account
             .storage()
             .get_map_item(2, [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO])
             .expect("storage map access failed");
-        assert_eq!(proc_root_1, Word::from(trigger_procedures[1]));
+        assert_eq!(proc_root_1, Word::from(auth_trigger_procedures[1]));
     }
 }
