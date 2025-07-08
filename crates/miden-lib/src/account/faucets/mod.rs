@@ -234,6 +234,7 @@ pub fn create_basic_fungible_faucet(
     let auth_component: RpoFalcon512ProcedureAcl = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => {
             RpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root])
+                .map_err(FungibleFaucetError::AccountError)?
         },
     };
 

@@ -67,8 +67,9 @@ impl Auth {
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component =
-                    RpoFalcon512ProcedureAcl::new(pub_key, trigger_procedures.clone()).into();
+                let component = RpoFalcon512ProcedureAcl::new(pub_key, trigger_procedures.clone())
+                    .expect("component creation failed")
+                    .into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,

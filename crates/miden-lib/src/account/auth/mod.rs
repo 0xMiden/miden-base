@@ -1,7 +1,7 @@
-use alloc::vec::Vec;
+use alloc::{string::ToString, vec::Vec};
 
 use miden_objects::{
-    Digest, Felt, FieldElement,
+    AccountError, Digest, Felt, FieldElement,
     account::{AccountCode, AccountComponent, StorageMap, StorageSlot},
     crypto::dsa::rpo_falcon512::PublicKey,
 };
@@ -72,13 +72,18 @@ impl RpoFalcon512ProcedureAcl {
     ///
     /// # Panics
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
-    pub fn new(public_key: PublicKey, trigger_procedures: Vec<Digest>) -> Self {
-        assert!(
-            trigger_procedures.len() <= AccountCode::MAX_NUM_PROCEDURES,
-            "Cannot track more than {} procedures (account's maximum limit)",
-            AccountCode::MAX_NUM_PROCEDURES
-        );
-        Self { public_key, trigger_procedures }
+    pub fn new(
+        public_key: PublicKey,
+        trigger_procedures: Vec<Digest>,
+    ) -> Result<Self, AccountError> {
+        let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
+        if trigger_procedures.len() > max_procedures {
+            return Err(AccountError::AssumptionViolated(
+                "Cannot track more than {max_procedures} procedures".to_string(),
+            ));
+        }
+
+        Ok(Self { public_key, trigger_procedures })
     }
 }
 
@@ -117,18 +122,16 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::account::AccountBuilder;
-    use miden_objects::{Word, ZERO};
-
-    use crate::account::components::basic_wallet_library;
-    use crate::account::wallets::BasicWallet;
+    use miden_objects::{Word, ZERO, account::AccountBuilder};
 
     use super::*;
+    use crate::account::{components::basic_wallet_library, wallets::BasicWallet};
 
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
         let public_key = PublicKey::new([ZERO; 4]);
-        let component = RpoFalcon512ProcedureAcl::new(public_key, vec![]);
+        let component =
+            RpoFalcon512ProcedureAcl::new(public_key, vec![]).expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -167,7 +170,8 @@ mod tests {
 
         assert_eq!(trigger_procedures.len(), 2);
 
-        let component = RpoFalcon512ProcedureAcl::new(public_key, trigger_procedures.clone());
+        let component = RpoFalcon512ProcedureAcl::new(public_key, trigger_procedures.clone())
+            .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
