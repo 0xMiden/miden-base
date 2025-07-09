@@ -1,0 +1,12 @@
+[workspace]
+release_always = true # Without the tracking PR, it would never trigger unless `true`.
+changelog_update = false # For now we have our own changelog.
+
+git_release_enable = false
+git_tag_enable = false
+
+[[package]]
+# `cargo-semver` breaks because of the `async` feature (by default it runs with `--all-features`).
+# We will either remove the feature (as discussed) or need to add an ability to release-plz to pass flags to `cargo-semver`.
+name = "miden-testing"
+semver_check = false
