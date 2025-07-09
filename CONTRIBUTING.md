@@ -76,7 +76,13 @@ We are using [Github Flow](https://docs.github.com/en/get-started/quickstart/git
   // ================================================================================
   ```
 
-- [Rustfmt](https://github.com/rust-lang/rustfmt), [Clippy](https://github.com/rust-lang/rust-clippy), [Rustdoc](https://doc.rust-lang.org/rustdoc/index.html) and [Typos](https://github.com/crate-ci/typos) linting is included in CI pipeline. Anyways it's preferable to run linting locally before push. To simplify running these commands in a reproducible manner we use `make` commands, you can run:
+- [Rustfmt](https://github.com/rust-lang/rustfmt), [Clippy](https://github.com/rust-lang/rust-clippy), [Rustdoc](https://doc.rust-lang.org/rustdoc/index.html) and [Typos](https://github.com/crate-ci/typos) linting is included in CI pipeline. Anyways it's preferable to run linting locally before push. To simplify running these commands in a reproducible manner we use `make` commands, you can install the required tools by running:
+
+  ```
+  make install-tools
+  ```
+
+  and then run:
 
   ```
   make lint

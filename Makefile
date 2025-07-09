@@ -130,3 +130,20 @@ bench-tx: ## Run transaction benchmarks
 bench-prover: ## Run prover benchmarks and consolidate results.
 	cargo bench --bin bench-prover --bench benches
 	cargo run --bin bench-prover
+
+# --- installing ----------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Checks if development tools are installed
+	@echo "Checking development tools..."
+	@command -v mdbook >/dev/null 2>&1 && echo "[OK] mdbook is installed" || echo "[MISSING] mdbook is not installed (run: make install-tools)"
+	@command -v typos >/dev/null 2>&1 && echo "[OK] typos is installed" || echo "[MISSING] typos is not installed (run: make install-tools)"
+	@command -v nextest >/dev/null 2>&1 && echo "[OK] nextest is installed" || echo "[MISSING] nextest is not installed (run: make install-tools)"
+
+.PHONY: install-tools
+install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest)
+	@echo "Installing development tools..."
+	cargo install mdbook --locked
+	cargo install typos-cli --locked
+	cargo install cargo-nextest --locked
+	@echo "Development tools installation complete!"

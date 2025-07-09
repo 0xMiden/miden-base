@@ -48,6 +48,9 @@
 - [BREAKING] Rename `account_get_current_commitment` to `account_compute_current_commitment` and include the latest storage commitment in the returned commitment ([#1529](https://github.com/0xMiden/miden-base/pull/1529)).
 - Load MASM source files into `TransactionKernel::assembler` for better errors ([#1527]((https://github.com/0xMiden/miden-base/pull/1527))).
 - [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` ([#1525](https://github.com/0xMiden/miden-base/pull/1525)).
+- [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` (#1525).
+- Add a new auth component `RpoFalcon512ProcedureAcl` (#1531).
+- [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureAcl` for authentication (#1531).
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 
