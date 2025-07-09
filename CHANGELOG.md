@@ -3,6 +3,7 @@
 ## 0.11.0 (TBD)
 
 - [BREAKING] Incremented MSRV to 1.88.
+- Make `ExecutedTransaction` implement `Send` for easier consumption ([#1560](https://github.com/0xMiden/miden-base/pull/1560)).
 
 ## 0.10.0 (2025-07-08)
 
@@ -59,7 +60,6 @@
 - [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` (#1525).
 - Add a new auth component `RpoFalcon512ProcedureAcl` (#1531).
 - [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureAcl` for authentication (#1531).
-- Make `ExecutedTransaction` implement `Send` for easier consumption (#1560).
 
 ### Fixes
 
