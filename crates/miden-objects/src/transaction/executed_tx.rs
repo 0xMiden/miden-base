@@ -260,15 +260,20 @@ impl Deserializable for TransactionMeasurements {
     }
 }
 
-/// Add assurance `ExecutedTransaction` remains `Send`
+// TESTS
+// ================================================================================================
+
 #[cfg(test)]
-mod test_send {
+mod tests {
+    use core::marker::PhantomData;
+
     use crate::transaction::ExecutedTransaction;
 
-    fn ensure_send<T: Send>(_: core::marker::PhantomData<T>) {}
+    fn ensure_send<T: Send>(_: PhantomData<T>) {}
 
+    /// Add assurance `ExecutedTransaction` remains `Send`
     #[allow(dead_code)]
-    fn ensure_send_for_types() {
-        ensure_send::<ExecutedTransaction>(Default::default());
+    fn compiletime_ensure_send_for_types() {
+        ensure_send::<ExecutedTransaction>(PhantomData::default());
     }
 }
