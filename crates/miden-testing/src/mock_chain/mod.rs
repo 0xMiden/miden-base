@@ -1,4 +1,3 @@
-mod account;
 mod auth;
 mod chain;
 mod fungible_faucet;

@@ -6,6 +6,7 @@ use alloc::{
 };
 
 use anyhow::Context;
+use itertools::Itertools;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::{
     account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
@@ -22,7 +23,8 @@ use miden_objects::{
     batch::{ProposedBatch, ProvenBatch},
     block::{
         AccountTree, AccountWitness, BlockAccountUpdate, BlockHeader, BlockInputs, BlockNoteTree,
-        BlockNumber, Blockchain, NullifierTree, NullifierWitness, ProposedBlock, ProvenBlock,
+        BlockNumber, Blockchain, NullifierTree, NullifierWitness, OutputNoteBatch, ProposedBlock,
+        ProvenBlock,
     },
     crypto::merkle::SmtProof,
     note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
@@ -31,15 +33,13 @@ use miden_objects::{
         OutputNote, PartialBlockchain, ProvenTransaction, TransactionHeader, TransactionInputs,
     },
 };
+use miden_tx::auth::BasicAuthenticator;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{Digest, Felt, Word, ZERO, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
-use crate::{
-    Auth, MockFungibleFaucet, ProvenTransactionExt, TransactionContextBuilder,
-    mock_chain::account::MockAccount,
-};
+use crate::{Auth, MockFungibleFaucet, ProvenTransactionExt, TransactionContextBuilder};
 
 // MOCK CHAIN
 // ================================================================================================
@@ -183,13 +183,17 @@ pub struct MockChain {
     /// NoteID |-> MockChainNote mapping to simplify note retrieval.
     committed_notes: BTreeMap<NoteId, MockChainNote>,
 
-    /// AccountId |-> MockAccount mapping to simplify transaction creation. Latest known account
+    /// AccountId |-> Account mapping to simplify transaction creation. Latest known account
     /// state is maintained for each account here.
     ///
     /// The map always holds the most recent *public* state known for every account. For private
     /// accounts, however, transactions do not emit the post-transaction state, so their entries
     /// remain at the last observed state.
-    committed_accounts: BTreeMap<AccountId, MockAccount>,
+    committed_accounts: BTreeMap<AccountId, Account>,
+
+    /// AccountId |-> AccountCredentials mapping to store the seed and authenticator for accounts
+    /// to simplify transaction creation.
+    account_credentials: BTreeMap<AccountId, AccountCredentials>,
 
     // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
     rng: ChaCha20Rng,
@@ -216,9 +220,31 @@ impl MockChain {
 
     /// Creates a new `MockChain` with a genesis block containing the provided accounts.
     pub fn with_accounts(accounts: &[Account]) -> anyhow::Result<Self> {
-        let (genesis_block, account_tree) = create_genesis_state(accounts.iter().cloned())
+        let (genesis_block, account_tree) = create_genesis_state(accounts.iter().cloned(), [])
             .context("failed to build account from builder")?;
 
+        let chain = Self::from_genesis_block(genesis_block, account_tree, BTreeMap::new())?;
+
+        for added_account in accounts {
+            debug_assert_eq!(
+                chain.account_tree.get(added_account.id()),
+                added_account.commitment()
+            );
+            debug_assert_eq!(
+                chain.committed_account(added_account.id())?.commitment(),
+                added_account.commitment(),
+            );
+        }
+
+        Ok(chain)
+    }
+
+    /// Creates a new `MockChain` with the provided genesis block and account tree.
+    pub(super) fn from_genesis_block(
+        genesis_block: ProvenBlock,
+        account_tree: AccountTree,
+        account_credentials: BTreeMap<AccountId, AccountCredentials>,
+    ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
             blocks: vec![],
@@ -228,6 +254,7 @@ impl MockChain {
             pending_transactions: Vec::new(),
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
+            account_credentials,
             // Initialize RNG with default seed.
             rng: ChaCha20Rng::from_seed(Default::default()),
         };
@@ -239,18 +266,7 @@ impl MockChain {
             .context("failed to build account from builder")?;
 
         debug_assert_eq!(chain.blocks.len(), 1);
-        debug_assert_eq!(chain.account_tree.num_accounts(), accounts.len());
-        debug_assert_eq!(chain.committed_accounts.len(), accounts.len());
-        for added_account in accounts {
-            debug_assert_eq!(
-                chain.account_tree.get(added_account.id()),
-                added_account.commitment()
-            );
-            debug_assert_eq!(
-                chain.committed_account(added_account.id())?.commitment(),
-                added_account.commitment(),
-            );
-        }
+        debug_assert_eq!(chain.committed_accounts.len(), chain.account_tree.num_accounts());
 
         Ok(chain)
     }
@@ -405,7 +421,6 @@ impl MockChain {
     pub fn committed_account(&self, account_id: AccountId) -> anyhow::Result<&Account> {
         self.committed_accounts
             .get(&account_id)
-            .map(|mock_account| mock_account.account())
             .with_context(|| format!("account {account_id} not found in committed accounts"))
     }
 
@@ -565,7 +580,14 @@ impl MockChain {
         note_ids: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionContextBuilder> {
-        let mock_account = match input.into() {
+        let input = input.into();
+
+        let credentials = self.account_credentials.get(&input.id());
+        let authenticator =
+            credentials.and_then(|credentials| credentials.authenticator().cloned());
+        let seed = credentials.and_then(|credentials| credentials.seed());
+
+        let account = match input {
             TxContextInput::AccountId(account_id) => {
                 if account_id.is_private() {
                     return Err(anyhow::anyhow!(
@@ -580,37 +602,24 @@ impl MockChain {
                     })?
                     .clone()
             },
-            TxContextInput::Account(account) => {
-                let committed_account = self.committed_accounts.get(&account.id());
-                let authenticator = committed_account.and_then(|a| a.authenticator());
-                let seed = committed_account.and_then(|a| a.seed());
-                MockAccount::new(account, seed.cloned(), authenticator.cloned())
-            },
+            TxContextInput::Account(account) => account,
             TxContextInput::ExecutedTransaction(executed_transaction) => {
                 let mut initial_account = executed_transaction.initial_account().clone();
                 initial_account
                     .apply_delta(executed_transaction.account_delta())
                     .context("could not apply delta from previous transaction")?;
 
-                let committed_account = self.committed_accounts.get(&initial_account.id());
-                let authenticator = committed_account.and_then(|a| a.authenticator());
-                let seed = committed_account.and_then(|a| a.seed());
-                MockAccount::new(initial_account, seed.cloned(), authenticator.cloned())
+                initial_account
             },
         };
 
         let tx_inputs = self
-            .get_transaction_inputs(
-                mock_account.account().clone(),
-                mock_account.seed().cloned(),
-                note_ids,
-                unauthenticated_notes,
-            )
+            .get_transaction_inputs(account.clone(), seed, note_ids, unauthenticated_notes)
             .context("failed to gather transaction inputs")?;
 
-        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
-            .authenticator(mock_account.authenticator().cloned())
-            .account_seed(mock_account.seed().cloned())
+        let tx_context_builder = TransactionContextBuilder::new(account)
+            .authenticator(authenticator)
+            .account_seed(seed)
             .tx_inputs(tx_inputs);
 
         Ok(tx_context_builder)
@@ -874,7 +883,7 @@ impl MockChain {
         Ok(note)
     }
 
-    /// Adds a P2IDE [`OutputNote`] (pay‑to‑ID‑escape) to the list of pending notes.
+    /// Adds a P2IDE [`OutputNote`] (pay‑to‑ID‑extended) to the list of pending notes.
     ///
     /// A P2IDE note can include an optional `timelock_height` and/or an optional
     /// `reclaim_height` after which the `sender_account_id` may reclaim the
@@ -1013,8 +1022,9 @@ impl MockChain {
 
         // We have to insert these into the committed accounts so the authenticator is available.
         // Without this, the account couldn't be authenticated.
-        self.committed_accounts
-            .insert(account.id(), MockAccount::new(account.clone(), None, authenticator));
+        self.committed_accounts.insert(account.id(), account.clone());
+        self.account_credentials
+            .insert(account.id(), AccountCredentials::new_authenticator(authenticator));
         self.add_pending_account(account.clone());
 
         Ok(MockFungibleFaucet::new(account))
@@ -1054,8 +1064,9 @@ impl MockChain {
         // We also have to insert these into the committed accounts so the account seed and
         // authenticator are available. Without this, the account couldn't be created or
         // authenticated.
-        self.committed_accounts
-            .insert(account.id(), MockAccount::new(account.clone(), seed, authenticator));
+        self.committed_accounts.insert(account.id(), account.clone());
+        self.account_credentials
+            .insert(account.id(), AccountCredentials::new(seed, authenticator));
 
         // Do not add new accounts to the pending accounts. Usually, new accounts are added in tests
         // to create transactions that create these new accounts in the chain. If we add them to the
@@ -1123,16 +1134,7 @@ impl MockChain {
         for account_update in proven_block.updated_accounts() {
             match account_update.details() {
                 AccountUpdateDetails::New(account) => {
-                    let committed_account =
-                        self.committed_accounts.get(&account_update.account_id());
-                    let authenticator =
-                        committed_account.and_then(|account| account.authenticator());
-                    let seed = committed_account.and_then(|account| account.seed());
-
-                    self.committed_accounts.insert(
-                        account.id(),
-                        MockAccount::new(account.clone(), seed.cloned(), authenticator.cloned()),
-                    );
+                    self.committed_accounts.insert(account.id(), account.clone());
                 },
                 AccountUpdateDetails::Delta(account_delta) => {
                     let committed_account =
@@ -1366,8 +1368,9 @@ impl MockChain {
 
 /// Creates the genesis state, consisting of a block containing the provided account updates and an
 /// account tree with those accounts.
-fn create_genesis_state(
+pub(super) fn create_genesis_state(
     accounts: impl IntoIterator<Item = Account>,
+    notes: impl IntoIterator<Item = OutputNote>,
 ) -> anyhow::Result<(ProvenBlock, AccountTree)> {
     let block_account_updates: Vec<BlockAccountUpdate> = accounts
         .into_iter()
@@ -1387,9 +1390,18 @@ fn create_genesis_state(
     )
     .context("failed to create genesis account tree")?;
 
-    let output_note_batches = Vec::new();
+    let note_chunks = notes.into_iter().chunks(MAX_OUTPUT_NOTES_PER_BATCH);
+    let output_note_batches: Vec<OutputNoteBatch> = note_chunks
+        .into_iter()
+        .map(|batch_notes| batch_notes.into_iter().enumerate().collect::<Vec<_>>())
+        .collect();
+
     let created_nullifiers = Vec::new();
     let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
+
+    // let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
+    //     .context("failed to create block note tree")?;
+    let note_tree = BlockNoteTree::empty();
 
     let version = 0;
     let prev_block_commitment = Digest::default();
@@ -1397,7 +1409,7 @@ fn create_genesis_state(
     let chain_commitment = Blockchain::new().commitment();
     let account_root = account_tree.root();
     let nullifier_root = NullifierTree::new().root();
-    let note_root = BlockNoteTree::empty().root();
+    let note_root = note_tree.root();
     let tx_commitment = transactions.commitment();
     let tx_kernel_commitment = TransactionKernel::kernel_commitment();
     let proof_commitment = Digest::default();
@@ -1478,6 +1490,34 @@ pub enum AccountState {
     Exists,
 }
 
+// ACCOUNT CREDENTIALS
+// ================================================================================================
+
+/// A wrapper around the seed and authenticator of an account.
+#[derive(Debug, Clone)]
+pub(super) struct AccountCredentials {
+    seed: Option<Word>,
+    authenticator: Option<BasicAuthenticator<ChaCha20Rng>>,
+}
+
+impl AccountCredentials {
+    pub fn new(seed: Option<Word>, authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+        Self { seed, authenticator }
+    }
+
+    pub fn new_authenticator(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+        Self::new(None, authenticator)
+    }
+
+    pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
+        self.authenticator.as_ref()
+    }
+
+    pub fn seed(&self) -> Option<Word> {
+        self.seed
+    }
+}
+
 // TX CONTEXT INPUT
 // ================================================================================================
 
@@ -1488,6 +1528,19 @@ pub enum TxContextInput {
     AccountId(AccountId),
     Account(Account),
     ExecutedTransaction(Box<ExecutedTransaction>),
+}
+
+impl TxContextInput {
+    /// Returns the account ID that this input references.
+    fn id(&self) -> AccountId {
+        match self {
+            TxContextInput::AccountId(account_id) => *account_id,
+            TxContextInput::Account(account) => account.id(),
+            TxContextInput::ExecutedTransaction(executed_transaction) => {
+                executed_transaction.account_id()
+            },
+        }
+    }
 }
 
 impl From<AccountId> for TxContextInput {
