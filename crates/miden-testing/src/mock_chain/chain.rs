@@ -39,7 +39,9 @@ use rand_chacha::ChaCha20Rng;
 use vm_processor::{Digest, Felt, Word, ZERO, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
-use crate::{Auth, MockFungibleFaucet, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{
+    Auth, MockChainBuilder, MockFungibleFaucet, ProvenTransactionExt, TransactionContextBuilder,
+};
 
 // MOCK CHAIN
 // ================================================================================================
@@ -216,6 +218,11 @@ impl MockChain {
     /// Creates a new `MockChain` with an empty genesis block.
     pub fn new() -> Self {
         Self::with_accounts(&[]).expect("empty mockchain is valid")
+    }
+
+    /// Returns a new, empty [`MockChainBuilder`].
+    pub fn builder() -> MockChainBuilder {
+        MockChainBuilder::new()
     }
 
     /// Creates a new `MockChain` with a genesis block containing the provided accounts.
@@ -1399,9 +1406,8 @@ pub(super) fn create_genesis_state(
     let created_nullifiers = Vec::new();
     let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
 
-    // let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
-    //     .context("failed to create block note tree")?;
-    let note_tree = BlockNoteTree::empty();
+    let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
+        .context("failed to create block note tree")?;
 
     let version = 0;
     let prev_block_commitment = Digest::default();
