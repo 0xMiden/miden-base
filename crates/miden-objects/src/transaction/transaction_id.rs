@@ -1,7 +1,7 @@
 use alloc::string::String;
 use core::fmt::{Debug, Display};
 
-use super::{Digest, ExecutedTransaction, Felt, Hasher, ProvenTransaction, WORD_SIZE, Word, ZERO};
+use super::{Digest, Felt, Hasher, ProvenTransaction, WORD_SIZE, Word, ZERO};
 use crate::utils::serde::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
@@ -81,19 +81,6 @@ impl From<&ProvenTransaction> for TransactionId {
             tx.account_update().final_state_commitment(),
             tx.input_notes().commitment(),
             tx.output_notes().commitment(),
-        )
-    }
-}
-
-impl From<&ExecutedTransaction> for TransactionId {
-    fn from(tx: &ExecutedTransaction) -> Self {
-        let input_notes_commitment = tx.input_notes().commitment();
-        let output_notes_commitment = tx.output_notes().commitment();
-        Self::new(
-            tx.initial_account().init_commitment(),
-            tx.final_account().commitment(),
-            input_notes_commitment,
-            output_notes_commitment,
         )
     }
 }
