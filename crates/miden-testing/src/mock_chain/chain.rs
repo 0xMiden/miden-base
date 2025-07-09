@@ -285,11 +285,26 @@ impl MockChain {
         reference_blocks: impl IntoIterator<Item = BlockNumber>,
     ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
         let latest_block_header = self.latest_block_header();
+
+        self.selective_partial_blockchain(latest_block_header.block_num(), reference_blocks)
+    }
+
+    /// Creates a new [`PartialBlockchain`] with all reference blocks in the given iterator except
+    /// for the reference block header in the chain and returns that reference block header.
+    ///
+    /// The intended use for the reference block header is to become the reference block of a new
+    /// transaction batch or block.
+    pub fn selective_partial_blockchain(
+        &self,
+        reference_block: BlockNumber,
+        reference_blocks: impl IntoIterator<Item = BlockNumber>,
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
+        let reference_block_header = self.block_header(reference_block.as_usize());
         // Deduplicate block numbers so each header will be included just once. This is required so
         // PartialBlockchain::from_blockchain does not panic.
         let reference_blocks: BTreeSet<_> = reference_blocks.into_iter().collect();
 
-        // Include all block headers of the reference blocks except the latest block.
+        // Include all block headers except the reference block itself.
         let mut block_headers = Vec::new();
 
         for block_ref_num in &reference_blocks {
@@ -299,15 +314,16 @@ impl MockChain {
                 .get(block_index)
                 .ok_or_else(|| anyhow::anyhow!("block {} not found in chain", block_ref_num))?;
             let block_header = block.header().clone();
-            // Exclude the latest block header
-            if block_header.commitment() != latest_block_header.commitment() {
+            // Exclude the reference block header.
+            if block_header.commitment() != reference_block_header.commitment() {
                 block_headers.push(block_header);
             }
         }
 
-        let partial_blockchain = PartialBlockchain::from_blockchain(&self.chain, block_headers)?;
+        let partial_blockchain =
+            PartialBlockchain::from_blockchain_at(&self.chain, reference_block, block_headers)?;
 
-        Ok((latest_block_header, partial_blockchain))
+        Ok((reference_block_header, partial_blockchain))
     }
 
     /// Returns a map of [`AccountWitness`]es for the requested account IDs from the current
@@ -631,55 +647,8 @@ impl MockChain {
         note_ids: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionContextBuilder> {
-        let mock_account = match input.into() {
-            TxContextInput::AccountId(account_id) => {
-                if account_id.is_private() {
-                    return Err(anyhow::anyhow!(
-                        "transaction contexts for private accounts should be created with TxContextInput::Account"
-                    ));
-                }
-
-                self.committed_accounts
-                    .get(&account_id)
-                    .with_context(|| {
-                        format!("account {account_id} not found in committed accounts")
-                    })?
-                    .clone()
-            },
-            TxContextInput::Account(account) => {
-                let committed_account = self.committed_accounts.get(&account.id());
-                let authenticator = committed_account.and_then(|a| a.authenticator());
-                let seed = committed_account.and_then(|a| a.seed());
-                MockAccount::new(account, seed.cloned(), authenticator.cloned())
-            },
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                let mut initial_account = executed_transaction.initial_account().clone();
-                initial_account
-                    .apply_delta(executed_transaction.account_delta())
-                    .context("could not apply delta from previous transaction")?;
-
-                let committed_account = self.committed_accounts.get(&initial_account.id());
-                let authenticator = committed_account.and_then(|a| a.authenticator());
-                let seed = committed_account.and_then(|a| a.seed());
-                MockAccount::new(initial_account, seed.cloned(), authenticator.cloned())
-            },
-        };
-
-        let tx_inputs = self
-            .get_transaction_inputs(
-                mock_account.account().clone(),
-                mock_account.seed().cloned(),
-                note_ids,
-                unauthenticated_notes,
-            )
-            .context("failed to gather transaction inputs")?;
-
-        let tx_context_builder = TransactionContextBuilder::new(mock_account.account().clone())
-            .authenticator(mock_account.authenticator().cloned())
-            .account_seed(mock_account.seed().cloned())
-            .tx_inputs(tx_inputs);
-
-        Ok(tx_context_builder)
+        let reference_block = self.latest_block_header().block_num();
+        self.build_tx_context_at_block(reference_block, input, note_ids, unauthenticated_notes)
     }
 
     // INPUTS APIS
@@ -737,13 +706,10 @@ impl MockChain {
             input_notes.push(InputNote::Unauthenticated { note: note.clone() })
         }
 
-        let block_headers = block_headers_map.values().cloned();
-        let mmr = PartialBlockchain::new(
-            self.chain.partial_mmr_from_blocks(
-                &(block_headers.clone().map(|b| b.block_num()).collect()),
-                ref_block.block_num(),
-            )?,
-            block_headers,
+        let block_headers = block_headers_map.values();
+        let (_, partial_blockchain) = self.selective_partial_blockchain(
+            reference_block,
+            block_headers.map(BlockHeader::block_num),
         )?;
 
         let input_notes = InputNotes::new(input_notes)?;
@@ -752,7 +718,7 @@ impl MockChain {
             account,
             account_seed,
             ref_block.clone(),
-            mmr,
+            partial_blockchain,
             input_notes,
         )?)
     }
