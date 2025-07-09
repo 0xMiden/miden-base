@@ -1,38 +1,38 @@
 [package]
-name = "miden-lib"
-version = "0.11.0"
-description = "Standard library of the Miden protocol"
-readme = "README.md"
-categories = ["no-std"]
-keywords = ["miden", "transaction", "kernel"]
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+authors.workspace      = true
+categories             = ["no-std"]
+description            = "Standard library of the Miden protocol"
+edition.workspace      = true
+homepage.workspace     = true
+keywords               = ["kernel", "miden", "transaction"]
+license.workspace      = true
+name                   = "miden-lib"
+readme                 = "README.md"
+repository.workspace   = true
 rust-version.workspace = true
-edition.workspace = true
+version                = "0.11.0"
 
 [lib]
 
 [features]
-default = ["std"]
-std = ["assembly/std", "miden-objects/std", "miden-stdlib/std", "vm-processor/std"]
-testing = ["miden-objects/testing"]
+default         = ["std"]
+std             = ["assembly/std", "miden-objects/std", "miden-stdlib/std", "vm-processor/std"]
+testing         = ["miden-objects/testing"]
 with-debug-info = ["miden-stdlib/with-debug-info"]
 
 [dependencies]
 miden-objects = { workspace = true }
-miden-stdlib = { workspace = true }
-thiserror = { workspace = true }
+miden-stdlib  = { workspace = true }
+thiserror     = { workspace = true }
 
 [build-dependencies]
-assembly = { workspace = true }
+assembly     = { workspace = true }
 miden-stdlib = { workspace = true }
-regex = { version = "1.11" }
-walkdir = { version = "2.5" }
+regex        = { version = "1.11" }
+walkdir      = { version = "2.5" }
 
 [dev-dependencies]
-anyhow = "1.0"
+anyhow         = "1.0"
 assert_matches = { workspace = true }
-miden-objects = { workspace = true, features = ["testing"] }
-vm-processor = { workspace = true, features = ["testing"] }
+miden-objects  = { features = ["testing"], workspace = true }
+vm-processor   = { features = ["testing"], workspace = true }
