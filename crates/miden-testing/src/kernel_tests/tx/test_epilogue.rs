@@ -13,14 +13,11 @@ use miden_lib::{
 };
 use miden_objects::{
     FieldElement,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountDelta, AccountStorageDelta,
-        AccountStorageMode, AccountVaultDelta,
-    },
+    account::{Account, AccountComponent, AccountDelta, AccountStorageDelta, AccountVaultDelta},
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
     testing::{
-        account_component::{AccountMockComponent, IncrNonceAuthComponent},
+        account_component::IncrNonceAuthComponent,
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -214,17 +211,10 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
 
 #[test]
 fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<()> {
-    let mock_component =
-        AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())?;
-
-    let account = AccountBuilder::new(Default::default())
-        .with_assets(AssetVault::mock().assets())
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(mock_component)
-        .build_existing()?;
-
-    let mock_chain = MockChain::with_accounts(&[account.clone()])?;
+    let mut builder = MockChain::builder();
+    let account = builder
+        .add_existing_mock_account_with_assets(Auth::IncrNonce, AssetVault::mock().assets())?;
+    let mock_chain = builder.build()?;
 
     let fungible_asset_1: Asset = FungibleAsset::new(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
@@ -286,17 +276,10 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
 
 #[test]
 fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyhow::Result<()> {
-    let mock_component =
-        AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())?;
-
-    let account = AccountBuilder::new(Default::default())
-        .with_assets(AssetVault::mock().assets())
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(mock_component)
-        .build_existing()?;
-
-    let mock_chain = MockChain::with_accounts(&[account.clone()])?;
+    let mut builder = MockChain::builder();
+    let account = builder
+        .add_existing_mock_account_with_assets(Auth::IncrNonce, AssetVault::mock().assets())?;
+    let mock_chain = builder.build()?;
 
     let fungible_asset_1: Asset = FungibleAsset::new(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,

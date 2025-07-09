@@ -21,6 +21,7 @@ use vm_processor::crypto::RpoRandomCoin;
 use crate::{
     AccountState, Auth, MockChain,
     mock_chain::chain::{AccountCredentials, create_genesis_state},
+    utils::create_p2any_note,
 };
 
 /// A builder for a [`MockChain`].
@@ -239,13 +240,46 @@ impl MockChainBuilder {
         Ok(account)
     }
 
-    /// TODO: Impl From<Note> for OutputNote?
+    /// Adds the provided account to the list of genesis accounts.
+    ///
+    /// This method only adds the account and cannot not register any seed or authenticator for it.
+    /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
+    /// account is new or if it needs an authenticator.
+    ///
+    /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
+    /// [`MockChainBuilder::add_account_from_builder`].
+    pub fn add_account(&mut self, account: Account) -> anyhow::Result<()> {
+        self.accounts.insert(account.id(), account);
+
+        // This returns a Result to be conservative in case we need to return an error in the future
+        // and do not want to break this API.
+        Ok(())
+    }
+
     /// Adds the provided note to the initial chain state.
     pub fn add_note(&mut self, note: impl Into<OutputNote>) {
         self.notes.push(note.into());
     }
 
-    /// Adds the provided P2ID note to the list of genesis notes.
+    /// Creates a new P2ANY note from the provided parameters and adds it to the list of genesis
+    /// notes. This note is similar to a P2ID note but can be consumed by any account.
+    ///
+    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
+    /// and carries no additional reclaim or timelock conditions.
+    pub fn add_p2any_note(
+        &mut self,
+        sender_account_id: AccountId,
+        asset: &[Asset],
+    ) -> anyhow::Result<Note> {
+        let note = create_p2any_note(sender_account_id, asset);
+
+        self.add_note(OutputNote::Full(note.clone()));
+
+        Ok(note)
+    }
+
+    /// Creates a new P2ID note from the provided parameters and adds it to the list of genesis
+    /// notes.
     ///
     /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
     /// and carries no additional reclaim or timelock conditions.

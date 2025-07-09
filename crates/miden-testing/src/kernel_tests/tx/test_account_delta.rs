@@ -6,8 +6,8 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     Digest, EMPTY_WORD, Felt, Word, ZERO,
     account::{
-        AccountBuilder, AccountId, AccountStorage, AccountStorageMode, AccountType, StorageMap,
-        StorageSlot, delta::LexicographicWord,
+        AccountBuilder, AccountId, AccountStorage, AccountType, StorageMap, StorageSlot,
+        delta::LexicographicWord,
     },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     note::{Note, NoteExecutionHint, NoteTag, NoteType},
@@ -25,7 +25,7 @@ use miden_objects::{
         },
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
-    transaction::{OutputNote, TransactionScript},
+    transaction::TransactionScript,
 };
 use miden_tx::utils::word_to_masm_push_string;
 use rand::{Rng, SeedableRng};
@@ -46,26 +46,14 @@ use crate::{Auth, MockChain, TransactionContextBuilder, utils::create_p2any_note
 /// without assets.
 #[test]
 fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
-    let account = AccountBuilder::new([12; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::Noop)
-        .with_component(
-            AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
-                .unwrap(),
-        )
-        .build_existing()
-        .unwrap();
-
-    let account_id = account.id();
-    let mut mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
-
-    let p2any_note = create_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[]);
-
-    mock_chain.add_pending_note(OutputNote::Full(p2any_note.clone()));
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::Noop)?;
+    let p2any_note =
+        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[])?;
+    let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &[p2any_note.id()], &[])
+        .build_tx_context(account.id(), &[p2any_note.id()], &[])
         .expect("failed to build tx context")
         .build()?
         .execute()
