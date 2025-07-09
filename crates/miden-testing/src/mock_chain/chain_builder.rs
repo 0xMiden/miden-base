@@ -34,6 +34,9 @@ pub struct MockChainBuilder {
 }
 
 impl MockChainBuilder {
+    // CONSTRUCTORS
+    // ----------------------------------------------------------------------------------------
+
     /// Inititalizes a new mock chain builder with an empty state.
     pub fn new() -> Self {
         Self {
@@ -61,6 +64,9 @@ impl MockChainBuilder {
 
         Ok(builder)
     }
+
+    // ACCOUNT METHODS
+    // ----------------------------------------------------------------------------------------
 
     /// Creates a new public [`BasicWallet`] account and registers the authenticator (if any) and
     /// seed.
@@ -273,6 +279,9 @@ impl MockChainBuilder {
         // and do not want to break this API.
         Ok(())
     }
+
+    // NOTE METHODS
+    // ----------------------------------------------------------------------------------------
 
     /// Adds the provided note to the initial chain state.
     pub fn add_note(&mut self, note: impl Into<OutputNote>) {

@@ -217,33 +217,16 @@ impl MockChain {
 
     /// Creates a new `MockChain` with an empty genesis block.
     pub fn new() -> Self {
-        Self::with_accounts(&[]).expect("empty mockchain is valid")
+        let (genesis_block, account_tree) =
+            create_genesis_state([], []).expect("empty chain should be valid");
+
+        Self::from_genesis_block(genesis_block, account_tree, BTreeMap::new())
+            .expect("empty chain should be valid")
     }
 
     /// Returns a new, empty [`MockChainBuilder`].
     pub fn builder() -> MockChainBuilder {
         MockChainBuilder::new()
-    }
-
-    /// Creates a new `MockChain` with a genesis block containing the provided accounts.
-    pub fn with_accounts(accounts: &[Account]) -> anyhow::Result<Self> {
-        let (genesis_block, account_tree) = create_genesis_state(accounts.iter().cloned(), [])
-            .context("failed to build account from builder")?;
-
-        let chain = Self::from_genesis_block(genesis_block, account_tree, BTreeMap::new())?;
-
-        for added_account in accounts {
-            debug_assert_eq!(
-                chain.account_tree.get(added_account.id()),
-                added_account.commitment()
-            );
-            debug_assert_eq!(
-                chain.committed_account(added_account.id())?.commitment(),
-                added_account.commitment(),
-            );
-        }
-
-        Ok(chain)
     }
 
     /// Creates a new `MockChain` with the provided genesis block and account tree.
@@ -1573,45 +1556,12 @@ impl From<ExecutedTransaction> for TxContextInput {
 #[cfg(test)]
 mod tests {
     use miden_objects::{
-        account::{AccountStorage, AccountStorageMode},
+        account::AccountStorageMode,
         asset::FungibleAsset,
-        testing::{
-            account_component::AccountMockComponent,
-            account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
-        },
+        testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
     };
 
     use super::*;
-
-    #[test]
-    fn with_accounts() -> anyhow::Result<()> {
-        let account = AccountBuilder::new([4; 32])
-            .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(Auth::IncrNonce)
-            .with_component(
-                AccountMockComponent::new_with_slots(
-                    TransactionKernel::testing_assembler(),
-                    vec![AccountStorage::mock_item_2().slot],
-                )
-                .unwrap(),
-            )
-            .build_existing()?;
-
-        let mock_chain = MockChain::with_accounts(&[account.clone()])?;
-
-        assert_eq!(mock_chain.committed_account(account.id())?, &account);
-
-        // Check that transaction inputs retrieved from the chain are against the block header with
-        // the current account tree root.
-        let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
-        assert_eq!(tx_context.tx_inputs().block_header().block_num(), BlockNumber::from(0u32));
-        assert_eq!(
-            tx_context.tx_inputs().block_header().account_root(),
-            mock_chain.account_tree.root()
-        );
-
-        Ok(())
-    }
 
     #[test]
     fn prove_until_block() -> anyhow::Result<()> {
