@@ -3,8 +3,11 @@
 # Summary
 
 - [Introduction](./index.md)
-- [Accounts](./account.md)
-  - [Components](./component_templates.md)
+- [Accounts](./account/overview.md)
+  - [ID](./account/id.md)
+  - [Code](./account/code.md)
+  - [Storage](./account/storage.md)
+  - [Component](./account/component.md)
 - [Notes](./note.md)
 - [Assets](./asset.md)
 - [Transactions](./transaction.md)

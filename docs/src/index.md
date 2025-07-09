@@ -24,7 +24,7 @@ Miden uses _accounts_ and _notes_, both of which hold assets. Accounts consume a
 
 ### Accounts
 
-An [Account](account.md) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account.md) describes the design of an account, its storage types, and creating an account.
+An [Account](account/overview.md) can hold assets and define rules how assets can be transferred. Accounts can represent users or autonomous smart contracts. The [account chapter](account/overview.md) describes the design of an account, its storage types, and creating an account.
 
 ### Notes
 

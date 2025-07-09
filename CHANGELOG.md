@@ -13,6 +13,7 @@
 - Added `ScriptBuilder` to streamline building note & transaction scripts ([#1507](https://github.com/0xMiden/miden-base/pull/1507)).
 - Added procedure `was_procedure_called` to `miden::account` library module ([#1521](https://github.com/0xMiden/miden-base/pull/1521)).
 - Enabled loading MASM source files into `TransactionKernel::assembler` for better errors ([#1527]((https://github.com/0xMiden/miden-base/pull/1527))).
+- Refactor account documentation into multiple sections ([#1523](https://github.com/0xMiden/miden-base/pull/1523)).
 
 ### Changes
 

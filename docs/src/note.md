@@ -1,6 +1,6 @@
 # Notes
 
-A `Note` is the medium through which [Accounts](account.md) communicate. A `Note` holds assets and defines how they can be consumed.
+A `Note` is the medium through which [Accounts](account/overview.md) communicate. A `Note` holds assets and defines how they can be consumed.
 
 ## What is the purpose of a note?
 
@@ -74,7 +74,7 @@ Accounts can create notes in a transaction. The `Note` exists if it is included 
 
 #### Note storage mode
 
-As with [accounts](account.md), notes can be stored either publicly or privately:
+As with [accounts](account/overview.md), notes can be stored either publicly or privately:
 
 - **Public mode:** The `Note` data is stored in the [note database](state.md#note-database), making it fully visible on-chain.
 - **Private mode:** Only the `Note`’s hash is stored publicly. The `Note`’s actual data remains off-chain, enhancing privacy.
