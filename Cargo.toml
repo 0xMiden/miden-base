@@ -47,13 +47,14 @@ miden-tx = { path = "crates/miden-tx", version = "0.11", default-features = fals
 miden-tx-batch-prover = { path = "crates/miden-tx-batch-prover", version = "0.11", default-features = false }
 
 # Miden dependencies
-assembly = { package = "miden-assembly", version = "0.15", default-features = false }
-miden-crypto = { version = "0.14", default-features = false }
-miden-prover = { version = "0.15", default-features = false }
-miden-stdlib = { version = "0.15", default-features = false }
-miden-verifier = { version = "0.15", default-features = false }
-vm-core = { package = "miden-core", version = "0.15", default-features = false }
-vm-processor = { package = "miden-processor", version = "0.15", default-features = false }
+assembly = { package = "miden-assembly", version = "0.16", default-features = false }
+miden-crypto = { version = "0.15", default-features = false }
+miden-prover = { version = "0.16", default-features = false }
+miden-stdlib = { version = "0.16", default-features = false }
+miden-utils-sync = { version = "0.16", default-features = false }
+miden-verifier = { version = "0.16", default-features = false }
+vm-core = { package = "miden-core", version = "0.16", default-features = false }
+vm-processor = { package = "miden-processor", version = "0.16", default-features = false }
 
 # External dependencies
 assert_matches = { version = "1.5", default-features = false }

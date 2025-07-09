@@ -1,7 +1,7 @@
 use miden_crypto::merkle::SmtLeaf;
 
 use crate::{
-    Digest, Word,
+    Word,
     account::AccountId,
     block::{AccountTree, AccountWitness},
     crypto::merkle::PartialSmt,
@@ -71,16 +71,16 @@ impl PartialAccountTree {
     ///
     /// Returns an error if:
     /// - the account ID is not tracked by this account tree.
-    pub fn get(&self, account_id: AccountId) -> Result<Digest, AccountTreeError> {
+    pub fn get(&self, account_id: AccountId) -> Result<Word, AccountTreeError> {
         let key = AccountTree::id_to_smt_key(account_id);
         self.smt
             .get_value(&key)
-            .map(Digest::from)
+            .map(Word::from)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
     }
 
     /// Returns the root of the tree.
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.smt.root()
     }
 
@@ -129,7 +129,7 @@ impl PartialAccountTree {
     /// - the account_id is not tracked by this partial account tree.
     pub fn upsert_state_commitments(
         &mut self,
-        updates: impl IntoIterator<Item = (AccountId, Digest)>,
+        updates: impl IntoIterator<Item = (AccountId, Word)>,
     ) -> Result<(), AccountTreeError> {
         for (account_id, state_commitment) in updates {
             self.insert(account_id, state_commitment)?;
@@ -152,8 +152,8 @@ impl PartialAccountTree {
     fn insert(
         &mut self,
         account_id: AccountId,
-        state_commitment: Digest,
-    ) -> Result<Digest, AccountTreeError> {
+        state_commitment: Word,
+    ) -> Result<Word, AccountTreeError> {
         let key = AccountTree::id_to_smt_key(account_id);
 
         // If there exists a tracked leaf whose key is _not_ the one we're about to overwrite, then
@@ -172,7 +172,7 @@ impl PartialAccountTree {
 
         self.smt
             .insert(key, Word::from(state_commitment))
-            .map(Digest::from)
+            .map(Word::from)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
     }
 }

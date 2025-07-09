@@ -29,7 +29,7 @@ pub use errors::{
     ProposedBatchError, ProposedBlockError, ProvenBatchError, ProvenTransactionError,
     TokenSymbolError, TransactionInputError, TransactionOutputError, TransactionScriptError,
 };
-pub use miden_crypto::hash::rpo::{Rpo256 as Hasher, RpoDigest as Digest};
+pub use miden_crypto::{hash::rpo::Rpo256 as Hasher, word::WordError};
 pub use vm_core::{
     EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, Word, ZERO,
     mast::{MastForest, MastNodeId},
@@ -38,26 +38,27 @@ pub use vm_core::{
 
 pub mod assembly {
     pub use assembly::{
-        Assembler, AssemblyError, Compile, CompileOptions, DefaultSourceManager, KernelLibrary,
-        Library, LibraryNamespace, LibraryPath, SourceFile, SourceId, SourceManager, Version,
+        Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, LibraryPath,
+        Parse, ParseOptions, SourceFile, SourceId, SourceManager,
         ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName},
         diagnostics, mast,
     };
 }
 
 pub mod crypto {
-    pub use miden_crypto::{dsa, hash, merkle, rand, utils};
+    pub use miden_crypto::{Word, dsa, hash, merkle, rand, utils};
 }
 
 pub mod utils {
     use alloc::string::{String, ToString};
 
     pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
+    pub use miden_utils_sync;
     pub use vm_core::utils::*;
     use vm_core::{Felt, StarkField, Word};
 
     pub mod serde {
-        pub use miden_crypto::utils::{
+        pub use vm_core::utils::{
             ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
         };
     }
@@ -69,7 +70,7 @@ pub mod utils {
     ///
     /// ```
     /// # use miden_objects::{Word, Felt, utils::word_to_masm_push_string};
-    /// let word = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+    /// let word = Word::from([1, 2, 3, 4u32]);
     /// assert_eq!(word_to_masm_push_string(&word), "1.2.3.4");
     /// ```
     pub fn word_to_masm_push_string(word: &Word) -> String {
@@ -144,7 +145,7 @@ pub mod utils {
                 Err(e) => panic!("{}", e),
             };
 
-            $crate::Digest::new(felts)
+            $crate::Word::new(felts)
         }};
     }
 
@@ -201,7 +202,7 @@ pub mod utils {
             // Right pad to 64 hex digits (66 including prefix). This is required by the
             // Digest::try_from(String) implementation.
             let padded_input = format!("{input:<66}").replace(" ", "0");
-            let expected = crate::Digest::try_from(std::dbg!(padded_input)).unwrap();
+            let expected = crate::Word::try_from(std::dbg!(padded_input)).unwrap();
 
             assert_eq!(uut, expected);
         }

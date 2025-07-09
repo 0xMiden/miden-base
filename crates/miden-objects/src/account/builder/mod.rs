@@ -1,7 +1,6 @@
 use alloc::{boxed::Box, vec::Vec};
 
 use vm_core::FieldElement;
-use vm_processor::Digest;
 
 use crate::{
     AccountError, Felt, Word,
@@ -140,8 +139,8 @@ impl AccountBuilder {
         &self,
         init_seed: [u8; 32],
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Word, AccountError> {
         let seed = AccountIdV0::compute_account_seed(
             init_seed,

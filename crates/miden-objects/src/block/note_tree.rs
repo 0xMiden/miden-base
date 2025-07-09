@@ -1,13 +1,12 @@
 use alloc::string::ToString;
 
+use miden_crypto::merkle::SparseMerklePath;
+
 use crate::{
     BLOCK_NOTE_TREE_DEPTH, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH,
-    MAX_OUTPUT_NOTES_PER_BLOCK,
+    MAX_OUTPUT_NOTES_PER_BLOCK, Word,
     batch::BatchNoteTree,
-    crypto::{
-        hash::rpo::RpoDigest,
-        merkle::{LeafIndex, MerkleError, MerklePath, SimpleSmt},
-    },
+    crypto::merkle::{LeafIndex, MerkleError, SimpleSmt},
     note::{NoteId, NoteMetadata, compute_note_commitment},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -70,12 +69,12 @@ impl BlockNoteTree {
     }
 
     /// Returns the root of the tree
-    pub fn root(&self) -> RpoDigest {
+    pub fn root(&self) -> Word {
         self.0.root()
     }
 
     /// Returns merkle path for the note with specified batch/note indexes.
-    pub fn get_note_path(&self, index: BlockNoteIndex) -> MerklePath {
+    pub fn get_note_path(&self, index: BlockNoteIndex) -> SparseMerklePath {
         // get the path to the leaf containing the note (path len = 16)
         self.0.open(&index.leaf_index()).path
     }
@@ -178,18 +177,18 @@ impl Deserializable for BlockNoteTree {
 #[cfg(test)]
 mod tests {
     use miden_crypto::{
-        Felt, ONE, ZERO,
         merkle::SimpleSmt,
         utils::{Deserializable, Serializable},
     };
 
     use super::BlockNoteTree;
+    use crate::Word;
 
     #[test]
     fn test_serialization() {
         let data = core::iter::repeat(())
             .enumerate()
-            .map(|(idx, ())| (idx as u64, [ONE, ZERO, ONE, Felt::new(idx as u64)]))
+            .map(|(idx, ())| (idx as u64, Word::from([1, 0, 1, idx as u32])))
             .take(100);
         let initial_tree = BlockNoteTree(SimpleSmt::with_leaves(data).unwrap());
 

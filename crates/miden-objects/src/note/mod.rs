@@ -4,7 +4,7 @@ use miden_crypto::{
 };
 use vm_processor::DeserializationError;
 
-use crate::{Digest, Felt, Hasher, NoteError, WORD_SIZE, ZERO, account::AccountId};
+use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO, account::AccountId};
 
 mod assets;
 pub use assets::NoteAssets;
@@ -154,7 +154,7 @@ impl Note {
     ///
     /// This value is used primarily for authenticating notes consumed when the are consumed
     /// in a transaction.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.header.commitment()
     }
 

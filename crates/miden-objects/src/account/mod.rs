@@ -1,5 +1,5 @@
 use crate::{
-    AccountError, Digest, Felt, Hasher, Word, ZERO,
+    AccountError, Felt, Hasher, Word, ZERO,
     asset::AssetVault,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -161,7 +161,7 @@ impl Account {
     /// The commitment of an account is computed as hash(id, nonce, vault_root, storage_commitment,
     /// code_commitment). Computing the account commitment requires 2 permutations of the hash
     /// function.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         hash_account(
             self.id,
             self.nonce,
@@ -180,9 +180,9 @@ impl Account {
     /// [crate::EMPTY_WORD] to distinguish new accounts from existing accounts. The actual
     /// commitment of the initial account state (and the initial state itself), are provided to
     /// the VM via the advice provider.
-    pub fn init_commitment(&self) -> Digest {
+    pub fn init_commitment(&self) -> Word {
         if self.is_new() {
-            Digest::default()
+            Word::default()
         } else {
             self.commitment()
         }
@@ -371,10 +371,10 @@ impl Deserializable for Account {
 pub fn hash_account(
     id: AccountId,
     nonce: Felt,
-    vault_root: Digest,
-    storage_commitment: Digest,
-    code_commitment: Digest,
-) -> Digest {
+    vault_root: Word,
+    storage_commitment: Word,
+    code_commitment: Word,
+) -> Word {
     let mut elements = [ZERO; 16];
     elements[0] = id.suffix();
     elements[1] = id.prefix().as_felt();
@@ -415,7 +415,6 @@ mod tests {
         Felt, Word,
         utils::{Deserializable, Serializable},
     };
-    use vm_processor::Digest;
 
     use super::{
         AccountCode, AccountDelta, AccountId, AccountStorage, AccountStorageDelta,
@@ -441,7 +440,7 @@ mod tests {
         let init_nonce = Felt::new(1);
         let asset_0 = FungibleAsset::mock(99);
         let word = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
-        let storage_slot = StorageSlot::Value(word);
+        let storage_slot = StorageSlot::Value(word.into());
         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 
         let serialized = account.to_bytes();
@@ -457,7 +456,10 @@ mod tests {
         let asset_1 = NonFungibleAsset::mock(&[5, 5, 5]);
         let storage_delta = AccountStorageDeltaBuilder::new()
             .add_cleared_items([0])
-            .add_updated_values([(1_u8, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
+            .add_updated_values([(
+                1_u8,
+                Word::from([1, 2, 3, 4u32]),
+            )])
             .build()
             .unwrap();
         let account_delta = build_account_delta(
@@ -482,18 +484,31 @@ mod tests {
         let asset_1 = NonFungibleAsset::mock(&[1, 2, 3]);
 
         // build storage slots
-        let storage_slot_value_0 =
-            StorageSlot::Value([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-        let storage_slot_value_1 =
-            StorageSlot::Value([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
+        let storage_slot_value_0 = StorageSlot::Value(Word::from([
+            Felt::new(1),
+            Felt::new(2),
+            Felt::new(3),
+            Felt::new(4),
+        ]));
+        let storage_slot_value_1 = StorageSlot::Value(Word::from([
+            Felt::new(5),
+            Felt::new(6),
+            Felt::new(7),
+            Felt::new(8),
+        ]));
         let mut storage_map = StorageMap::with_entries([
             (
-                Digest::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                [Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)],
+                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+                Word::from([
+                    Felt::new(1_u64),
+                    Felt::new(2_u64),
+                    Felt::new(3_u64),
+                    Felt::new(4_u64),
+                ]),
             ),
             (
-                Digest::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
-                [Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)],
+                Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
+                Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
             ),
         ])
         .unwrap();
@@ -507,19 +522,22 @@ mod tests {
 
         // update storage map
         let new_map_entry = (
-            Digest::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+            Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
             [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
         );
 
         let updated_map =
-            StorageMapDelta::from_iters([], [(new_map_entry.0.into(), new_map_entry.1)]);
-        storage_map.insert(new_map_entry.0, new_map_entry.1);
+            StorageMapDelta::from_iters([], [(new_map_entry.0.into(), new_map_entry.1.into())]);
+        storage_map.insert(new_map_entry.0, new_map_entry.1.into());
 
         // build account delta
         let final_nonce = Felt::new(2);
         let storage_delta = AccountStorageDeltaBuilder::new()
             .add_cleared_items([0])
-            .add_updated_values([(1, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
+            .add_updated_values([(
+                1,
+                [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)].into(),
+            )])
             .add_updated_maps([(2, updated_map)])
             .build()
             .unwrap();
@@ -539,7 +557,12 @@ mod tests {
             final_nonce,
             vec![
                 StorageSlot::Value(Word::default()),
-                StorageSlot::Value([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+                StorageSlot::Value(Word::from([
+                    Felt::new(1),
+                    Felt::new(2),
+                    Felt::new(3),
+                    Felt::new(4),
+                ])),
                 StorageSlot::Map(storage_map),
             ],
         );
@@ -561,7 +584,7 @@ mod tests {
         // build account delta
         let storage_delta = AccountStorageDeltaBuilder::new()
             .add_cleared_items([0])
-            .add_updated_values([(1_u8, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
+            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta =
@@ -585,7 +608,7 @@ mod tests {
         let final_nonce = Felt::new(1);
         let storage_delta = AccountStorageDeltaBuilder::new()
             .add_cleared_items([0])
-            .add_updated_values([(1_u8, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])])
+            .add_updated_values([(1_u8, Word::from([1, 2, 3, 4u32]))])
             .build()
             .unwrap();
         let account_delta =
@@ -600,7 +623,7 @@ mod tests {
         // build account
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let init_nonce = Felt::new(1);
-        let word = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
+        let word = Word::from([1, 2, 3, 4u32]);
         let storage_slot = StorageSlot::Value(word);
         let mut account = build_account(vec![], init_nonce, vec![storage_slot]);
 

@@ -5,7 +5,7 @@ use miden_crypto::merkle::{
 };
 
 use crate::{
-    AccountTreeError, Digest, Word,
+    AccountTreeError, Word,
     account::AccountId,
     block::AccountTree,
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
@@ -33,7 +33,7 @@ pub struct AccountWitness {
     /// The account ID that this witness proves inclusion for.
     id: AccountId,
     /// The state commitment of the account ID.
-    commitment: Digest,
+    commitment: Word,
     /// The merkle path of the account witness.
     path: MerklePath,
 }
@@ -47,7 +47,7 @@ impl AccountWitness {
     /// - the merkle path's depth is not [`AccountTree::DEPTH`].
     pub fn new(
         account_id: AccountId,
-        commitment: Digest,
+        commitment: Word,
         path: MerklePath,
     ) -> Result<Self, AccountTreeError> {
         if path.len() != SMT_DEPTH as usize {
@@ -92,7 +92,7 @@ impl AccountWitness {
             },
         };
 
-        let commitment = Digest::from(
+        let commitment = Word::from(
             proof
                 .get(&AccountTree::id_to_smt_key(witness_id))
                 .expect("we should have received a proof for the witness key"),
@@ -110,11 +110,7 @@ impl AccountWitness {
     /// # Warning
     ///
     /// This does not validate any of the guarantees of this type.
-    pub(super) fn new_unchecked(
-        account_id: AccountId,
-        commitment: Digest,
-        path: MerklePath,
-    ) -> Self {
+    pub(super) fn new_unchecked(account_id: AccountId, commitment: Word, path: MerklePath) -> Self {
         Self { id: account_id, commitment, path }
     }
 
@@ -124,7 +120,7 @@ impl AccountWitness {
     }
 
     /// Returns the state commitment of the account witness.
-    pub fn state_commitment(&self) -> Digest {
+    pub fn state_commitment(&self) -> Word {
         self.commitment
     }
 
@@ -135,7 +131,7 @@ impl AccountWitness {
 
     /// Returns the [`SmtLeaf`] of the account witness.
     pub fn leaf(&self) -> SmtLeaf {
-        if self.commitment == Digest::default() {
+        if self.commitment == Word::default() {
             let leaf_idx = LeafIndex::from(AccountTree::id_to_smt_key(self.id));
             SmtLeaf::new_empty(leaf_idx)
         } else {
@@ -155,7 +151,7 @@ impl AccountWitness {
     pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
         let leaf = self.leaf();
         self.path()
-            .inner_nodes(leaf.index().value(), leaf.hash())
+            .authenticated_nodes(leaf.index().value(), leaf.hash())
             .expect("leaf index is u64 and should be less than 2^SMT_DEPTH")
     }
 }
@@ -180,7 +176,7 @@ impl Serializable for AccountWitness {
 impl Deserializable for AccountWitness {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let id = AccountId::read_from(source)?;
-        let commitment = Digest::read_from(source)?;
+        let commitment = Word::read_from(source)?;
         let path = MerklePath::read_from(source)?;
 
         if path.len() != SMT_DEPTH as usize {

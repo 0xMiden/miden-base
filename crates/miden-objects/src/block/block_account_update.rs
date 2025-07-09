@@ -1,5 +1,5 @@
 use crate::{
-    Digest,
+    Word,
     account::{AccountId, delta::AccountUpdateDetails},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -15,7 +15,7 @@ pub struct BlockAccountUpdate {
     account_id: AccountId,
 
     /// Final commitment to the new state of the account after this update.
-    final_state_commitment: Digest,
+    final_state_commitment: Word,
 
     /// A set of changes which can be applied to the previous account state (i.e., the state as of
     /// the last block) to get the new account state. For private accounts, this is set to
@@ -27,7 +27,7 @@ impl BlockAccountUpdate {
     /// Returns a new [BlockAccountUpdate] instantiated from the specified components.
     pub const fn new(
         account_id: AccountId,
-        final_state_commitment: Digest,
+        final_state_commitment: Word,
         details: AccountUpdateDetails,
     ) -> Self {
         Self {
@@ -43,7 +43,7 @@ impl BlockAccountUpdate {
     }
 
     /// Returns the state commitment of the account after this update.
-    pub fn final_state_commitment(&self) -> Digest {
+    pub fn final_state_commitment(&self) -> Word {
         self.final_state_commitment
     }
 
@@ -73,7 +73,7 @@ impl Deserializable for BlockAccountUpdate {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(Self {
             account_id: AccountId::read_from(source)?,
-            final_state_commitment: Digest::read_from(source)?,
+            final_state_commitment: Word::read_from(source)?,
             details: AccountUpdateDetails::read_from(source)?,
         })
     }

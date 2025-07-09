@@ -28,10 +28,11 @@ testing = ["dep:winter-rand-utils", "dep:rand", "dep:rand_xoshiro"]
 # Miden dependencies
 assembly = { workspace = true }
 miden-crypto = { workspace = true }
+miden-utils-sync = { workspace = true }
 miden-verifier = { workspace = true }
 vm-core = { workspace = true }
 vm-processor = { workspace = true }
-winter-rand-utils = { version = "0.12", optional = true }
+winter-rand-utils = { version = "0.13", optional = true }
 
 # External dependencies
 bech32 = { version = "0.11", default-features = false, features = ["alloc"] }
@@ -54,4 +55,4 @@ miden-objects = { path = ".", features = ["testing"] }
 pprof = { version = "0.14", default-features = false, features = ["criterion", "flamegraph"] }
 rstest = { version = "0.25" }
 tempfile = { version = "3.19" }
-winter-air = { version = "0.12" }
+winter-air = { version = "0.13" }

@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    Digest, Felt, Hasher, ZERO,
+    Felt, Hasher, Word, ZERO,
     account::AccountId,
     transaction::{TransactionHeader, TransactionId},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
@@ -39,7 +39,7 @@ impl OrderedTransactionHeaders {
     /// Computes a commitment to the list of transactions.
     ///
     /// This is a sequential hash over each transaction's ID and its account ID.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         Self::compute_commitment(self.0.as_slice().iter().map(|tx| (tx.id(), tx.account_id())))
     }
 
@@ -62,7 +62,7 @@ impl OrderedTransactionHeaders {
     /// against. The commitment is a sequential hash over (transaction_id, account_id) tuples.
     pub fn compute_commitment(
         transactions: impl Iterator<Item = (TransactionId, AccountId)>,
-    ) -> Digest {
+    ) -> Word {
         let mut elements = vec![];
         for (transaction_id, account_id) in transactions {
             let [account_id_prefix, account_id_suffix] = <[Felt; 2]>::from(account_id);

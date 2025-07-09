@@ -1,7 +1,7 @@
 use alloc::string::String;
 use core::fmt::{Debug, Display};
 
-use super::{Digest, ExecutedTransaction, Felt, Hasher, ProvenTransaction, WORD_SIZE, Word, ZERO};
+use super::{ExecutedTransaction, Felt, Hasher, ProvenTransaction, WORD_SIZE, Word, ZERO};
 use crate::utils::serde::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
@@ -20,15 +20,15 @@ use crate::utils::serde::{
 /// - Transactions are identical if and only if they have the same ID.
 /// - Computing transaction ID can be done solely from public transaction data.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct TransactionId(Digest);
+pub struct TransactionId(Word);
 
 impl TransactionId {
     /// Returns a new [TransactionId] instantiated from the provided transaction components.
     pub fn new(
-        init_account_commitment: Digest,
-        final_account_commitment: Digest,
-        input_notes_commitment: Digest,
-        output_notes_commitment: Digest,
+        init_account_commitment: Word,
+        final_account_commitment: Word,
+        input_notes_commitment: Word,
+        output_notes_commitment: Word,
     ) -> Self {
         let mut elements = [ZERO; 4 * WORD_SIZE];
         elements[..4].copy_from_slice(init_account_commitment.as_elements());
@@ -54,7 +54,7 @@ impl TransactionId {
     }
 
     /// Returns the digest defining this transaction ID.
-    pub fn inner(&self) -> Digest {
+    pub fn inner(&self) -> Word {
         self.0
     }
 }
@@ -104,12 +104,6 @@ impl From<Word> for TransactionId {
     }
 }
 
-impl From<Digest> for TransactionId {
-    fn from(value: Digest) -> Self {
-        Self(value)
-    }
-}
-
 // CONVERSIONS FROM TRANSACTION ID
 // ================================================================================================
 
@@ -148,7 +142,7 @@ impl Serializable for TransactionId {
 
 impl Deserializable for TransactionId {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let id = Digest::read_from(source)?;
+        let id = Word::read_from(source)?;
         Ok(Self(id))
     }
 }

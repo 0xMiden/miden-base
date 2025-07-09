@@ -12,7 +12,7 @@ use vm_core::{
     EMPTY_WORD, Felt, Word,
     utils::{ByteReader, Deserializable, Serializable},
 };
-use vm_processor::{DeserializationError, Digest};
+use vm_processor::DeserializationError;
 
 use crate::{
     AccountError, Hasher,
@@ -78,8 +78,8 @@ impl AccountIdV0 {
     /// See [`AccountId::new`](super::AccountId::new) for details.
     pub fn new(
         seed: Word,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Self, AccountIdError> {
         let seed_digest = compute_digest(seed, code_commitment, storage_commitment);
 
@@ -158,8 +158,8 @@ impl AccountIdV0 {
         account_type: AccountType,
         storage_mode: AccountStorageMode,
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Word, AccountError> {
         crate::account::account_id::seed::compute_account_seed(
             init_seed,
@@ -385,7 +385,7 @@ impl TryFrom<u128> for AccountIdV0 {
 // ================================================================================================
 
 impl Serializable for AccountIdV0 {
-    fn write_into<W: miden_crypto::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
         let bytes: [u8; 15] = (*self).into();
         bytes.write_into(target);
     }
@@ -524,11 +524,7 @@ impl fmt::Display for AccountIdV0 {
 
 /// Returns the digest of two hashing permutations over the seed, code commitment, storage
 /// commitment and padding.
-pub(crate) fn compute_digest(
-    seed: Word,
-    code_commitment: Digest,
-    storage_commitment: Digest,
-) -> Digest {
+pub(crate) fn compute_digest(seed: Word, code_commitment: Word, storage_commitment: Word) -> Word {
     let mut elements = Vec::with_capacity(16);
     elements.extend(seed);
     elements.extend(*code_commitment);

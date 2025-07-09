@@ -328,7 +328,7 @@ impl FungibleAssetDelta {
             let was_added = if *amount_delta > 0 { ONE } else { ZERO };
 
             elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
-            elements.extend_from_slice(&Word::from(asset));
+            elements.extend_from_slice(Word::from(asset).as_elements());
         }
     }
 }
@@ -481,7 +481,7 @@ impl NonFungibleAssetDelta {
             };
 
             elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
-            elements.extend_from_slice(&Word::from(*asset));
+            elements.extend_from_slice(Word::from(*asset).as_elements());
         }
     }
 }

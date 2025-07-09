@@ -430,7 +430,7 @@ mod tests {
 
     use super::*;
     use crate::{
-        Digest, Word,
+        Word,
         account::{AccountIdVersion, AccountStorageMode, AccountType},
         transaction::ProvenTransactionBuilder,
     };
@@ -440,15 +440,15 @@ mod tests {
         // create partial blockchain with 3 blocks - i.e., 2 peaks
         let mut mmr = Mmr::default();
         for i in 0..3 {
-            let block_header = BlockHeader::mock(i, None, None, &[], Digest::default());
+            let block_header = BlockHeader::mock(i, None, None, &[], Word::default());
             mmr.add(block_header.commitment());
         }
         let partial_mmr: PartialMmr = mmr.peaks().into();
         let partial_blockchain = PartialBlockchain::new(partial_mmr, Vec::new()).unwrap();
 
         let chain_commitment = partial_blockchain.peaks().hash_peaks();
-        let note_root: Word = rand_array();
-        let tx_kernel_commitment: Word = rand_array();
+        let note_root: Word = Word::new(rand_array()).into();
+        let tx_kernel_commitment: Word = Word::new(rand_array()).into();
         let reference_block_header = BlockHeader::mock(
             3,
             Some(chain_commitment),

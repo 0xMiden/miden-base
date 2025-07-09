@@ -5,7 +5,7 @@ use super::{
     FungibleAsset, NonFungibleAsset, Serializable,
 };
 use crate::{
-    AssetVaultError, Digest,
+    AssetVaultError, Word,
     account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction},
     crypto::merkle::Smt,
 };
@@ -49,7 +49,7 @@ impl AssetVault {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the tree root of this vault.
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.asset_tree.root()
     }
 

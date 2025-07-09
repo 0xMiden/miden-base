@@ -104,7 +104,7 @@ impl PartialBlockchain {
         mmr: PartialMmr,
         blocks: impl IntoIterator<Item = BlockHeader>,
     ) -> Result<Self, PartialBlockchainError> {
-        let chain_length = mmr.forest();
+        let chain_length = mmr.forest().num_leaves();
         let mut block_map = BTreeMap::new();
         for block in blocks {
             let block_num = block.block_num();
@@ -142,7 +142,7 @@ impl PartialBlockchain {
     /// Returns total number of blocks contain in the chain described by this MMR.
     pub fn chain_length(&self) -> BlockNumber {
         BlockNumber::from(
-            u32::try_from(self.mmr.forest())
+            u32::try_from(self.mmr.forest().num_leaves())
                 .expect("partial blockchain should never contain more than u32::MAX blocks"),
         )
     }
@@ -235,13 +235,8 @@ impl Deserializable for PartialBlockchain {
 
 impl Default for PartialBlockchain {
     fn default() -> Self {
-        // TODO: Replace with PartialMmr::default after https://github.com/0xMiden/crypto/pull/409/files
-        // is available for use.
-        let empty_mmr = PartialMmr::from_peaks(
-            MmrPeaks::new(0, Vec::new()).expect("empty MmrPeaks should be valid"),
-        );
-
-        Self::new(empty_mmr, Vec::new()).expect("empty partial blockchain should be valid")
+        Self::new(PartialMmr::default(), Vec::new())
+            .expect("empty partial blockchain should be valid")
     }
 }
 
@@ -255,7 +250,7 @@ mod tests {
 
     use super::PartialBlockchain;
     use crate::{
-        Digest, PartialBlockchainError,
+        PartialBlockchainError, Word,
         alloc::vec::Vec,
         block::{BlockHeader, BlockNumber},
         crypto::merkle::{Mmr, PartialMmr},
@@ -324,7 +319,7 @@ mod tests {
                 .unwrap();
         }
 
-        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Digest::default());
+        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Word::default());
 
         assert_ne!(block_header2.commitment(), fake_block_header2.commitment());
 
@@ -401,15 +396,15 @@ mod tests {
     fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
         BlockHeader::new(
             0,
-            Digest::default(),
+            Word::default(),
             block_num.into(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
+            Word::default(),
+            Word::default(),
+            Word::default(),
+            Word::default(),
+            Word::default(),
+            Word::default(),
+            Word::default(),
             0,
         )
     }

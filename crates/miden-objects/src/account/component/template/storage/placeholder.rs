@@ -8,7 +8,10 @@ use core::{
     fmt::{self, Display},
 };
 
-use miden_crypto::dsa::rpo_falcon512::{self};
+use miden_crypto::{
+    dsa::rpo_falcon512::{self},
+    word::parse_hex_string_as_word,
+};
 use thiserror::Error;
 use vm_core::{
     Felt, Word,
@@ -16,10 +19,7 @@ use vm_core::{
 };
 use vm_processor::DeserializationError;
 
-use crate::{
-    asset::TokenSymbol,
-    utils::{parse_hex_string_as_word, sync::LazyLock},
-};
+use crate::{asset::TokenSymbol, utils::miden_utils_sync::LazyLock};
 
 /// A global registry for template converters.
 ///
@@ -386,13 +386,15 @@ impl TemplateWord for Word {
         TemplateType::native_word()
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        parse_hex_string_as_word(input).map_err(|err| {
-            TemplateTypeError::parse(
-                Self::type_name().as_str(),
-                Self::type_name(),
-                WordParseError(err.into()),
-            )
-        })
+        parse_hex_string_as_word(input)
+            .map_err(|err| {
+                TemplateTypeError::parse(
+                    Self::type_name().as_str(),
+                    Self::type_name(),
+                    WordParseError(err.into()),
+                )
+            })
+            .map(Word::from)
     }
 }
 
@@ -401,13 +403,15 @@ impl TemplateWord for rpo_falcon512::PublicKey {
         TemplateType::new("auth::rpo_falcon512::pub_key").expect("type is well formed")
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        parse_hex_string_as_word(input).map_err(|err| {
-            TemplateTypeError::parse(
-                input.to_string(),
-                Self::type_name(),
-                WordParseError(err.into()),
-            )
-        })
+        parse_hex_string_as_word(input)
+            .map_err(|err| {
+                TemplateTypeError::parse(
+                    input.to_string(),
+                    Self::type_name(),
+                    WordParseError(err.into()),
+                )
+            })
+            .map(Word::from)
     }
 }
 

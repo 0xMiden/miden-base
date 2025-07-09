@@ -1,8 +1,8 @@
 use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Digest, NoteError, Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, NoteError, Serializable,
 };
 use crate::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH,
+    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
     block::BlockNumber,
     crypto::merkle::{InnerNodeInfo, MerklePath},
 };
@@ -80,10 +80,10 @@ impl NoteInclusionProof {
 
     /// Returns an iterator over inner nodes of this proof assuming that `note_commitment` is the
     /// value of the node to which this proof opens.
-    pub fn inner_nodes(&self, note_commitment: Digest) -> impl Iterator<Item = InnerNodeInfo> {
+    pub fn inner_nodes(&self, note_commitment: Word) -> impl Iterator<Item = InnerNodeInfo> {
         // SAFETY: expect() is fine here because we check index consistency in the constructor
         self.note_path
-            .inner_nodes(self.location.node_index_in_block().into(), note_commitment)
+            .authenticated_nodes(self.location.node_index_in_block().into(), note_commitment)
             .expect("note index is not out of bounds")
     }
 }

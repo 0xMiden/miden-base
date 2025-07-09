@@ -3,16 +3,11 @@ use alloc::collections::BTreeMap;
 use miden_crypto::merkle::EmptySubtreeRoots;
 use vm_core::EMPTY_WORD;
 
-use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Digest, Serializable, Word,
-};
+use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
 use crate::{
     Hasher,
     account::StorageMapDelta,
-    crypto::{
-        hash::rpo::RpoDigest,
-        merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof},
-    },
+    crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof},
     errors::StorageMapError,
 };
 
@@ -20,7 +15,7 @@ use crate::{
 // ================================================================================================
 
 /// Empty storage map root.
-pub const EMPTY_STORAGE_MAP_ROOT: Digest = *EmptySubtreeRoots::entry(StorageMap::TREE_DEPTH, 0);
+pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::TREE_DEPTH, 0);
 
 /// An account storage map is a sparse merkle tree of depth [`Self::TREE_DEPTH`] (64).
 ///
@@ -47,7 +42,7 @@ pub struct StorageMap {
     ///
     /// It is an invariant of this type that the map's entries are always consistent with the SMT's
     /// entries and vice-versa.
-    map: BTreeMap<RpoDigest, Word>,
+    map: BTreeMap<Word, Word>,
 }
 
 impl StorageMap {
@@ -76,8 +71,8 @@ impl StorageMap {
     ///
     /// Returns an error if:
     /// - the provided entries contain multiple values for the same key.
-    pub fn with_entries<I: ExactSizeIterator<Item = (RpoDigest, Word)>>(
-        entries: impl IntoIterator<Item = (RpoDigest, Word), IntoIter = I>,
+    pub fn with_entries<I: ExactSizeIterator<Item = (Word, Word)>>(
+        entries: impl IntoIterator<Item = (Word, Word), IntoIter = I>,
     ) -> Result<Self, StorageMapError> {
         let mut map = BTreeMap::new();
 
@@ -95,7 +90,7 @@ impl StorageMap {
     }
 
     /// Creates a new [`StorageMap`] from the given map. For internal use.
-    fn from_btree_map(map: BTreeMap<RpoDigest, Word>) -> Self {
+    fn from_btree_map(map: BTreeMap<Word, Word>) -> Self {
         let hashed_keys_iter = map.iter().map(|(key, value)| (Self::hash_key(*key), *value));
         let smt = Smt::with_entries(hashed_keys_iter)
             .expect("btree maps should not contain duplicate keys");
@@ -107,20 +102,20 @@ impl StorageMap {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the root of the underlying sparse merkle tree.
-    pub fn root(&self) -> RpoDigest {
+    pub fn root(&self) -> Word {
         self.smt.root()
     }
 
     /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
     /// associated with a value.
-    pub fn get(&self, key: &RpoDigest) -> Word {
+    pub fn get(&self, key: &Word) -> Word {
         self.map.get(key).copied().unwrap_or_default()
     }
 
     /// Returns an opening of the leaf associated with `key`.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    pub fn open(&self, key: &RpoDigest) -> SmtProof {
+    pub fn open(&self, key: &Word) -> SmtProof {
         let key = Self::hash_key(*key);
         self.smt.open(&key)
     }
@@ -134,7 +129,7 @@ impl StorageMap {
     }
 
     /// Returns an iterator over the key value pairs of the map.
-    pub fn entries(&self) -> impl Iterator<Item = (&RpoDigest, &Word)> {
+    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
         self.map.iter()
     }
 
@@ -150,7 +145,7 @@ impl StorageMap {
     /// [`Self::EMPTY_VALUE`] if no entry was previously present.
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
-    pub fn insert(&mut self, key: RpoDigest, value: Word) -> Word {
+    pub fn insert(&mut self, key: Word, value: Word) -> Word {
         if value == EMPTY_WORD {
             self.map.remove(&key);
         } else {
@@ -162,7 +157,7 @@ impl StorageMap {
     }
 
     /// Applies the provided delta to this account storage.
-    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Digest {
+    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Word {
         // apply the updated and cleared leaves to the storage map
         for (&key, &value) in delta.entries().iter() {
             self.insert(key.into_inner(), value);
@@ -172,12 +167,12 @@ impl StorageMap {
     }
 
     /// Consumes the map and returns the underlying map of entries.
-    pub fn into_entries(self) -> BTreeMap<RpoDigest, Word> {
+    pub fn into_entries(self) -> BTreeMap<Word, Word> {
         self.map
     }
 
     /// Hashes the given key to get the key of the SMT.
-    pub fn hash_key(key: RpoDigest) -> RpoDigest {
+    pub fn hash_key(key: Word) -> Word {
         Hasher::hash_elements(key.as_elements())
     }
 }
@@ -211,7 +206,7 @@ impl Deserializable for StorageMap {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_crypto::{Felt, hash::rpo::RpoDigest};
+    use miden_crypto::Felt;
 
     use super::{Deserializable, EMPTY_STORAGE_MAP_ROOT, Serializable, StorageMap, Word};
     use crate::errors::StorageMapError;
@@ -224,14 +219,14 @@ mod tests {
         assert_eq!(storage_map_default, StorageMap::read_from_bytes(&bytes).unwrap());
 
         // StorageMap with values
-        let storage_map_leaves_2: [(RpoDigest, Word); 2] = [
+        let storage_map_leaves_2: [(Word, Word); 2] = [
             (
-                RpoDigest::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                [Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)],
+                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+                Word::new([Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)]),
             ),
             (
-                RpoDigest::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
-                [Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)],
+                Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
+                Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
             ),
         ];
         let storage_map = StorageMap::with_entries(storage_map_leaves_2).unwrap();
@@ -253,14 +248,14 @@ mod tests {
     #[test]
     fn account_storage_map_fails_on_duplicate_entries() {
         // StorageMap with values
-        let storage_map_leaves_2: [(RpoDigest, Word); 2] = [
+        let storage_map_leaves_2: [(Word, Word); 2] = [
             (
-                RpoDigest::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                [Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)],
+                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+                Word::new([Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)]),
             ),
             (
-                RpoDigest::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                [Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)],
+                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
+                Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
             ),
         ];
 

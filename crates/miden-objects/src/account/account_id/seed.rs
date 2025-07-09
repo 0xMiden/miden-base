@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    AccountError, Digest, Felt, Word,
+    AccountError, Felt, Word,
     account::{
         AccountStorageMode, AccountType,
         account_id::{
@@ -22,8 +22,8 @@ pub(super) fn compute_account_seed(
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     version: AccountIdVersion,
-    code_commitment: Digest,
-    storage_commitment: Digest,
+    code_commitment: Word,
+    storage_commitment: Word,
 ) -> Result<Word, AccountError> {
     compute_account_seed_single(
         init_seed,
@@ -40,17 +40,17 @@ fn compute_account_seed_single(
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     version: AccountIdVersion,
-    code_commitment: Digest,
-    storage_commitment: Digest,
+    code_commitment: Word,
+    storage_commitment: Word,
 ) -> Result<Word, AccountError> {
     let init_seed: Vec<[u8; 8]> =
         init_seed.chunks(8).map(|chunk| chunk.try_into().unwrap()).collect();
-    let mut current_seed: Word = [
+    let mut current_seed: Word = Word::from([
         Felt::new(u64::from_le_bytes(init_seed[0])),
         Felt::new(u64::from_le_bytes(init_seed[1])),
         Felt::new(u64::from_le_bytes(init_seed[2])),
         Felt::new(u64::from_le_bytes(init_seed[3])),
-    ];
+    ]);
     let mut current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
 
     // loop until we have a seed that satisfies the specified account type.
@@ -69,9 +69,6 @@ fn compute_account_seed_single(
                 && computed_version == version
                 && is_suffix_msb_zero
             {
-                #[cfg(feature = "log")]
-                log.done(current_digest, current_seed);
-
                 return Ok(current_seed);
             };
         }
