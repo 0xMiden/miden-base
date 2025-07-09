@@ -82,13 +82,12 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 /// [faucet]: miden_lib::account::interface::AccountComponentInterface::BasicFungibleFaucet
 #[test]
 fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    let sender_basic_fungible_faucet_account = mock_chain
-        .add_pending_existing_faucet(Auth::BasicAuth, "POL", 200, None)
-        .expect("failed to add pending existing faucet");
+    let mut builder = MockChain::builder();
+    let sender_basic_fungible_faucet_account =
+        builder.add_existing_faucet(Auth::BasicAuth, "POL", 200, None)?;
+    let mock_chain = builder.build()?;
 
-    let sender_account_interface =
-        AccountInterface::from(sender_basic_fungible_faucet_account.account());
+    let sender_account_interface = AccountInterface::from(&sender_basic_fungible_faucet_account);
 
     let tag = NoteTag::from_account_id(sender_basic_fungible_faucet_account.id());
     let metadata = NoteMetadata::new(

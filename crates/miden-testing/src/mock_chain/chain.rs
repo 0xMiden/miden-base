@@ -11,7 +11,7 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::{
     account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
     note::{create_p2id_note, create_p2ide_note},
-    transaction::{TransactionKernel, memory},
+    transaction::TransactionKernel,
 };
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
@@ -36,7 +36,7 @@ use miden_objects::{
 use miden_tx::auth::BasicAuthenticator;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{Digest, Felt, Word, ZERO, crypto::RpoRandomCoin};
+use vm_processor::{Digest, Word, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
 use crate::{
@@ -974,52 +974,6 @@ impl MockChain {
         Ok(MockFungibleFaucet::new(account))
     }
 
-    /// Adds an existing [`BasicFungibleFaucet`] account with the specified authentication method
-    /// and the given token metadata to the list of pending accounts.
-    ///
-    /// A block has to be created to add the account to the chain state as part of that block,
-    /// e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_existing_faucet(
-        &mut self,
-        auth_method: Auth,
-        token_symbol: &str,
-        max_supply: u64,
-        total_issuance: Option<u64>,
-    ) -> anyhow::Result<MockFungibleFaucet> {
-        let token_symbol = TokenSymbol::new(token_symbol).context("invalid argument")?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10u8, Felt::new(max_supply))
-            .context("invalid argument")?;
-
-        let mut account_builder = AccountBuilder::new(self.rng.random())
-            .storage_mode(AccountStorageMode::Public)
-            .with_component(basic_faucet)
-            .account_type(AccountType::FungibleFaucet);
-
-        let (auth_component, authenticator) = auth_method.build_component();
-        account_builder = account_builder.with_auth_component(auth_component);
-        let mut account = account_builder
-            .build_existing()
-            .context("failed to build account from builder")?;
-
-        // The faucet's reserved slot is initialized to an empty word by default.
-        // If total_issuance is set, overwrite it.
-        if let Some(issuance) = total_issuance {
-            account
-                .storage_mut()
-                .set_item(memory::FAUCET_STORAGE_DATA_SLOT, [ZERO, ZERO, ZERO, Felt::new(issuance)])
-                .context("failed to set faucet storage")?;
-        }
-
-        // We have to insert these into the committed accounts so the authenticator is available.
-        // Without this, the account couldn't be authenticated.
-        self.committed_accounts.insert(account.id(), account.clone());
-        self.account_credentials
-            .insert(account.id(), AccountCredentials::new_authenticator(authenticator));
-        self.add_pending_account(account.clone());
-
-        Ok(MockFungibleFaucet::new(account))
-    }
-
     /// Adds the [`AccountComponent`](miden_objects::account::AccountComponent) corresponding to
     /// `auth_method` to the account in the builder and builds a new or existing account
     /// depending on `account_state`.
@@ -1492,10 +1446,6 @@ pub(super) struct AccountCredentials {
 impl AccountCredentials {
     pub fn new(seed: Option<Word>, authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
         Self { seed, authenticator }
-    }
-
-    pub fn new_authenticator(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
-        Self::new(None, authenticator)
     }
 
     pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {

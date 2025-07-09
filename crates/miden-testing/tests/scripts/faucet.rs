@@ -10,7 +10,7 @@ use miden_objects::{
     note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
     transaction::{OutputNote, TransactionScript},
 };
-use miden_testing::{Auth, MockChain, MockFungibleFaucet};
+use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
 
 use crate::{
@@ -25,10 +25,9 @@ use crate::{
 fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
-    let mut mock_chain = MockChain::new();
-    let faucet = mock_chain
-        .add_pending_existing_faucet(Auth::BasicAuth, "TST", 200, None)
-        .expect("failed to add pending existing faucet");
+    let mut builder = MockChain::builder();
+    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let mock_chain = builder.build()?;
 
     let recipient = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
     let tag = NoteTag::for_local_use_case(0, 0).unwrap();
@@ -70,7 +69,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_script =
         TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
     let tx_context = mock_chain
-        .build_tx_context(faucet.account().id(), &[], &[])?
+        .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
         .build()?;
 
@@ -78,7 +77,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     prove_and_verify_transaction(executed_transaction.clone())?;
 
-    let fungible_asset: Asset = FungibleAsset::new(faucet.account().id(), amount.into())?.into();
+    let fungible_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
 
     let output_note = executed_transaction.output_notes().get_note(0).clone();
 
@@ -88,13 +87,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     assert_eq!(output_note.id(), id);
     assert_eq!(
         output_note.metadata(),
-        &NoteMetadata::new(
-            faucet.account().id(),
-            NoteType::Private,
-            tag,
-            note_execution_hint,
-            aux
-        )?
+        &NoteMetadata::new(faucet.id(), NoteType::Private, tag, note_execution_hint, aux)?
     );
 
     Ok(())
@@ -104,10 +97,9 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
 fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure)
     // --------------------------------------------------------------------------------------------
-    let mut mock_chain = MockChain::new();
-    let faucet: MockFungibleFaucet = mock_chain
-        .add_pending_existing_faucet(Auth::BasicAuth, "TST", 200u64, None)
-        .expect("failed to add pending existing faucet");
+    let mut builder = MockChain::builder();
+    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let mock_chain = builder.build()?;
 
     let recipient = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
     let aux = Felt::new(27);
@@ -142,7 +134,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
     let tx_script =
         TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler())?;
     let tx = mock_chain
-        .build_tx_context(faucet.account().id(), &[], &[])?
+        .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
         .build()?
         .execute();
@@ -160,22 +152,20 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
 
 #[test]
 fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    let faucet = mock_chain.add_pending_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
+    let mut builder = MockChain::builder();
+    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
+    let mut mock_chain = builder.build()?;
 
-    let fungible_asset = FungibleAsset::new(faucet.account().id(), 100).unwrap();
+    let fungible_asset = FungibleAsset::new(faucet.id(), 100).unwrap();
 
     // The Fungible Faucet component is added as the second component after auth, so it's storage
     // slot offset will be 2. Check that max_supply at the word's index 0 is 200. The remainder of
     // the word is initialized with the metadata of the faucet which we don't need to check.
-    assert_eq!(faucet.account().storage().get_item(2).unwrap()[0], Felt::new(200));
+    assert_eq!(faucet.storage().get_item(2).unwrap()[0], Felt::new(200));
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
-    assert_eq!(
-        faucet.account().storage().get_item(FAUCET_STORAGE_DATA_SLOT).unwrap()[3],
-        Felt::new(100)
-    );
+    assert_eq!(faucet.storage().get_item(FAUCET_STORAGE_DATA_SLOT).unwrap()[3], Felt::new(100));
 
     // need to create a note with the fungible asset to be burned
     let note_script = "
@@ -207,7 +197,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
     // Execute the transaction and get the witness
     let executed_transaction = mock_chain
-        .build_tx_context(faucet.account().id(), &[note.id()], &[])?
+        .build_tx_context(faucet.id(), &[note.id()], &[])?
         .build()?
         .execute()?;
 
