@@ -880,8 +880,10 @@ fn test_block_procedures() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that the transaction witness retrieved from an executed transaction contains all necessary
+/// advice input to execute the transaction again.
 #[test]
-fn transaction_executor_witness() -> miette::Result<()> {
+fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transaction() -> miette::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut mock_chain = MockChain::new();
