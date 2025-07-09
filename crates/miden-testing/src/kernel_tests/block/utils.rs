@@ -3,34 +3,23 @@ use std::{collections::BTreeMap, vec, vec::Vec};
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt,
-    account::{Account, AccountId, AccountStorageMode},
+    account::{Account, AccountId},
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
     block::BlockNumber,
     crypto::rand::RpoRandomCoin,
     note::{Note, NoteId, NoteTag, NoteType},
-    testing::{account_component::AccountMockComponent, note::NoteBuilder},
+    testing::note::NoteBuilder,
     transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
 };
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
-use crate::{AccountState, Auth, MockChain, TxContextInput, mock_chain::ProvenTransactionExt};
+use crate::{Auth, MockChain, TxContextInput, mock_chain::ProvenTransactionExt};
 
 pub struct TestSetup {
     pub chain: MockChain,
     pub accounts: BTreeMap<usize, Account>,
     pub txs: BTreeMap<usize, ProvenTransaction>,
-}
-
-pub fn generate_account(chain: &mut MockChain) -> Account {
-    let account_builder = Account::builder(rand::rng().random())
-        .storage_mode(AccountStorageMode::Public)
-        .with_component(
-            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
-        );
-    chain
-        .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
-        .expect("failed to add pending account from builder")
 }
 
 pub fn generate_tracked_note(
@@ -58,7 +47,7 @@ pub fn generate_untracked_note(sender: AccountId, receiver: AccountId) -> Note {
     generate_untracked_note_internal(sender, receiver, vec![])
 }
 
-/// Creates an NOP output note sent by the given sender.
+/// Creates a NOP output note sent by the given sender.
 pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
     let mut rng = SmallRng::from_seed(seed);
     NoteBuilder::new(sender, &mut rng)
@@ -171,18 +160,26 @@ pub fn generate_batch(chain: &mut MockChain, txs: Vec<ProvenTransaction>) -> Pro
 ///
 /// This is merely generating some valid data for testing purposes.
 pub fn setup_chain(num_accounts: usize) -> TestSetup {
-    let mut chain = MockChain::new();
-    let sender_account = generate_account(&mut chain);
+    let mut builder = MockChain::builder();
+    let sender_account = builder
+        .add_existing_mock_account(Auth::IncrNonce)
+        .expect("adding account should be valid");
     let mut accounts = BTreeMap::new();
     let mut notes = BTreeMap::new();
     let mut txs = BTreeMap::new();
 
     for i in 0..num_accounts {
-        let account = generate_account(&mut chain);
-        let note = generate_tracked_note(&mut chain, sender_account.id(), account.id());
+        let account = builder
+            .add_existing_mock_account(Auth::IncrNonce)
+            .expect("adding account should be valid");
+        let note = builder
+            .add_p2id_note(sender_account.id(), account.id(), &[], NoteType::Public)
+            .expect("adding p2id note should be valid");
         accounts.insert(i, account);
         notes.insert(i, note);
     }
+
+    let mut chain = builder.build().expect("building chain should be valid");
 
     chain.prove_next_block().expect("failed to prove block");
 

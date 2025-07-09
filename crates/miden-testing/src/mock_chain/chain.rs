@@ -1029,7 +1029,7 @@ impl MockChain {
     /// makes the account seed and authenticator available for account creation and
     /// authentication, respectively. If the account exists, then the next block that is created
     /// will add the pending accounts to the chain state.
-    pub fn add_pending_account_from_builder(
+    fn add_pending_account_from_builder(
         &mut self,
         auth_method: Auth,
         mut account_builder: AccountBuilder,
