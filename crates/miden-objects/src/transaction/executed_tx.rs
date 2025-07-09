@@ -274,6 +274,6 @@ mod tests {
     /// Add assurance `ExecutedTransaction` remains `Send`
     #[allow(dead_code)]
     fn compiletime_ensure_send_for_types() {
-        ensure_send::<ExecutedTransaction>(PhantomData::default());
+        ensure_send::<ExecutedTransaction>(PhantomData);
     }
 }
