@@ -31,7 +31,7 @@ use vm_processor::{AdviceInputs, Felt};
 
 use super::{Process, Word, ZERO};
 use crate::{
-    Auth, MockChain, assert_execution_error,
+    Auth, MockChainBuilder, assert_execution_error,
     kernel_tests::tx::{read_root_mem_word, try_read_root_mem_word},
 };
 
@@ -92,7 +92,8 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block()?;
     let fpi_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -353,11 +354,12 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
-    let mut mock_chain = MockChain::with_accounts(&[
+    let mut mock_chain = MockChainBuilder::with_accounts([
         native_account.clone(),
         foreign_account_1.clone(),
         foreign_account_2.clone(),
-    ])?;
+    ])?
+    .build()?;
     mock_chain.prove_next_block()?;
     let foreign_account_inputs_1 = mock_chain
         .get_foreign_account_inputs(foreign_account_1.id())
@@ -557,7 +559,8 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block()?;
 
     let code = format!(
@@ -777,11 +780,12 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
-    let mut mock_chain = MockChain::with_accounts(&[
+    let mut mock_chain = MockChainBuilder::with_accounts([
         native_account.clone(),
         first_foreign_account.clone(),
         second_foreign_account.clone(),
-    ])?;
+    ])?
+    .build()?;
     mock_chain.prove_next_block()?;
     let foreign_account_inputs = vec![
         mock_chain
@@ -973,9 +977,9 @@ fn test_nested_fpi_stack_overflow() {
                 .build_existing()
                 .unwrap();
 
-            let mut mock_chain = MockChain::with_accounts(
-                &[vec![native_account.clone()], foreign_accounts.clone()].concat(),
-            ).unwrap();
+            let mut mock_chain = MockChainBuilder::with_accounts(
+                [vec![native_account.clone()], foreign_accounts.clone()].concat(),
+            ).unwrap().build().unwrap();
 
             mock_chain.prove_next_block().unwrap();
 
@@ -1093,7 +1097,8 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]).unwrap();
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block().unwrap();
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -1197,7 +1202,8 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block()?;
 
     // Make the foreign account invalid.

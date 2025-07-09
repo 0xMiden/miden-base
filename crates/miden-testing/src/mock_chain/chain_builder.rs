@@ -44,6 +44,24 @@ impl MockChainBuilder {
         }
     }
 
+    /// Inititalizes a new mock chain builder with the provided accounts.
+    ///
+    /// This method only adds the accounts and cannot not register any seed or authenticator for it.
+    /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
+    /// account is new or if they need an authenticator.
+    ///
+    /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
+    /// [`MockChainBuilder::add_account_from_builder`].
+    pub fn with_accounts(accounts: impl IntoIterator<Item = Account>) -> anyhow::Result<Self> {
+        let mut builder = Self::new();
+
+        for account in accounts {
+            builder.add_account(account)?;
+        }
+
+        Ok(builder)
+    }
+
     /// Creates a new public [`BasicWallet`] account and registers the authenticator (if any) and
     /// seed.
     ///
@@ -244,7 +262,7 @@ impl MockChainBuilder {
     ///
     /// This method only adds the account and cannot not register any seed or authenticator for it.
     /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
-    /// account is new or if it needs an authenticator.
+    /// account is new or if they need an authenticator.
     ///
     /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
     /// [`MockChainBuilder::add_account_from_builder`].
