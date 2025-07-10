@@ -33,7 +33,7 @@ use miden_objects::{
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{Digest, Felt, Word, ZERO, crypto::RpoRandomCoin};
+use vm_processor::{Felt, Word, ZERO, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
 use crate::{
@@ -1007,7 +1007,10 @@ impl MockChain {
         if let Some(issuance) = total_issuance {
             account
                 .storage_mut()
-                .set_item(memory::FAUCET_STORAGE_DATA_SLOT, [ZERO, ZERO, ZERO, Felt::new(issuance)])
+                .set_item(
+                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    Word::new([ZERO, ZERO, ZERO, Felt::new(issuance)]),
+                )
                 .context("failed to set faucet storage")?;
         }
 
@@ -1180,7 +1183,7 @@ impl MockChain {
             "current mock chain commitment and new block's chain commitment should match"
         );
         debug_assert_eq!(
-            BlockNumber::from(self.chain.as_mmr().forest() as u32),
+            BlockNumber::from(self.chain.as_mmr().forest().num_leaves() as u32),
             proven_block.header().block_num(),
             "current mock chain length and new block's number should match"
         );
@@ -1392,7 +1395,7 @@ fn create_genesis_state(
     let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
 
     let version = 0;
-    let prev_block_commitment = Digest::default();
+    let prev_block_commitment = Word::default();
     let block_num = BlockNumber::from(0u32);
     let chain_commitment = Blockchain::new().commitment();
     let account_root = account_tree.root();
@@ -1400,7 +1403,7 @@ fn create_genesis_state(
     let note_root = BlockNoteTree::empty().root();
     let tx_commitment = transactions.commitment();
     let tx_kernel_commitment = TransactionKernel::kernel_commitment();
-    let proof_commitment = Digest::default();
+    let proof_commitment = Word::default();
     let timestamp = MockChain::TIMESTAMP_START_SECS;
 
     let header = BlockHeader::new(

@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use miden_lib::{account::interface::AccountInterface, transaction::TransactionKernel};
 use miden_objects::{
-    Digest, Felt, ONE,
+    Word,
     asset::{Asset, FungibleAsset},
     crypto::rand::{FeltRng, RpoRandomCoin},
     note::{
@@ -37,8 +37,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![sent_asset]).unwrap();
     let note_script =
         NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
 
     let note = Note::new(assets.clone(), metadata, recipient);
@@ -64,11 +63,11 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (Digest::from(asset.vault_key()), asset))
+        .map(|asset| (asset.vault_key(), asset))
         .collect();
     assert_eq!(removed_assets.len(), 1, "one asset should have been removed");
     assert_eq!(
-        removed_assets.remove(&Digest::from(sent_asset.vault_key())).unwrap(),
+        removed_assets.remove(&sent_asset.vault_key()).unwrap(),
         sent_asset,
         "sent asset should be in removed assets"
     );
@@ -103,8 +102,7 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     )])?;
     let note_script =
         NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
 
     let note = Note::new(assets.clone(), metadata, recipient);

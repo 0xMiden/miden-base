@@ -32,14 +32,14 @@ async-trait = "0.1"
 rand = { workspace = true, features = ["os_rng", "small_rng"] }
 rand_chacha = { version = "0.9", default-features = false }
 thiserror = { workspace = true }
-winter-maybe-async = { version = "0.12" }
-winterfell = { version = "0.12" }
+winter-maybe-async = { version = "0.13" }
+winterfell = { version = "0.13" }
 
 [dev-dependencies]
 anyhow = { version = "1.0", features = ["std", "backtrace"] }
 assert_matches = { workspace = true }
 miden-objects = { workspace = true, features = ["std"] }
-winter-rand-utils = { version = "0.12" }
+winter-rand-utils = { version = "0.13" }
 
 [package.metadata.cargo-machete]
 # cargo machete flags async-trait as unused but it is used by winter-maybe-async with the async feature

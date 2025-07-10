@@ -1,5 +1,4 @@
-use alloc::{collections::BTreeSet, string::String, vec::Vec};
-use std::sync::Arc;
+use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::{
@@ -16,7 +15,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Digest, FieldElement,
+    FieldElement, Word,
     account::{Account, AccountId},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
@@ -39,12 +38,12 @@ use miden_objects::{
     transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript},
 };
 use miden_tx::{
-    TransactionExecutor, TransactionExecutorError, TransactionHost, TransactionMastStore,
-    host::ScriptMastForestStore,
+    ExecutionOptions, TransactionExecutor, TransactionExecutorError, TransactionHost,
+    TransactionMastStore, host::ScriptMastForestStore,
 };
-use vm_processor::MemAdviceProvider;
+use vm_processor::{AdviceInputs, Process};
 
-use super::{Felt, ONE, ProcessState, Word, ZERO};
+use super::{Felt, ONE, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
     kernel_tests::tx::read_root_mem_word, utils::create_p2any_note,
@@ -134,7 +133,7 @@ fn test_create_note() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let account_id = tx_context.account().id();
 
-    let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = NoteTag::from_account_id(account_id);
 
@@ -171,16 +170,13 @@ fn test_create_note() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process.into(), NUM_OUTPUT_NOTES_PTR),
-        [ONE, ZERO, ZERO, ZERO],
+        read_root_mem_word(&process, NUM_OUTPUT_NOTES_PTR),
+        Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
 
     assert_eq!(
-        read_root_mem_word(
-            &process.into(),
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET
-        ),
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient,
         "recipient must be stored at the correct memory location",
     );
@@ -195,16 +191,14 @@ fn test_create_note() -> anyhow::Result<()> {
     .into();
 
     assert_eq!(
-        read_root_mem_word(
-            &process.into(),
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET
-        ),
-        [
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
+        // TODO: Can we just use expected_note_metadata?
+        Word::from([
             expected_note_metadata[0],
             expected_note_metadata[1],
             expected_note_metadata[2],
             expected_note_metadata[3]
-        ],
+        ]),
         "metadata must be stored at the correct memory location",
     );
 
@@ -265,7 +259,7 @@ fn note_creation_script(tag: Felt) -> String {
                 dropw dropw
             end
             ",
-        recipient = word_to_masm_push_string(&[ZERO, ONE, Felt::new(2), Felt::new(3)]),
+        recipient = word_to_masm_push_string(&Word::from([0, 1, 2, 3u32])),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
         aux = Felt::ZERO,
@@ -298,7 +292,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         end
         ",
         tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
-        recipient = word_to_masm_push_string(&[ZERO, ONE, Felt::new(2), Felt::new(3)]),
+        recipient = word_to_masm_push_string(&Word::from([0, 1, 2, 3u32])),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
         aux = Felt::ZERO,
@@ -361,7 +355,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let local_account = AccountId::try_from(ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET)?;
 
     // create output note 1
-    let output_serial_no_1 = [Felt::new(8); 4];
+    let output_serial_no_1 = Word::from([8u32; 4]);
     let output_tag_1 = NoteTag::from_account_id(network_account);
     let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata = NoteMetadata::new(
@@ -376,7 +370,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_note_1 = Note::new(assets, metadata, recipient);
 
     // create output note 2
-    let output_serial_no_2 = [Felt::new(11); 4];
+    let output_serial_no_2 = Word::from([11u32; 4]);
     let output_tag_2 = NoteTag::from_account_id(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
     let metadata = NoteMetadata::new(
@@ -473,16 +467,15 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         &code,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
-    let process_state: ProcessState = process.into();
 
     assert_eq!(
-        read_root_mem_word(&process_state, NUM_OUTPUT_NOTES_PTR),
-        [Felt::new(2), ZERO, ZERO, ZERO],
+        read_root_mem_word(&process, NUM_OUTPUT_NOTES_PTR),
+        Word::from([2u32, 0, 0, 0]),
         "The test creates two notes",
     );
     assert_eq!(
         NoteMetadata::try_from(read_root_mem_word(
-            &process_state,
+            &process,
             OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET
         ))
         .unwrap(),
@@ -491,7 +484,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     );
     assert_eq!(
         NoteMetadata::try_from(read_root_mem_word(
-            &process_state,
+            &process,
             OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
         ))
         .unwrap(),
@@ -499,7 +492,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         "Validate the output note 1 metadata",
     );
 
-    assert_eq!(process_state.get_stack_word(0), *expected_output_notes_commitment);
+    assert_eq!(process.stack.get_word(0), expected_output_notes_commitment);
     Ok(())
 }
 
@@ -508,10 +501,11 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
-    let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = NoteTag::from_account_id(faucet_id);
-    let asset = [Felt::new(10), ZERO, faucet_id.suffix(), faucet_id.prefix().as_felt()];
+    // TODO: Create FungibleAsset and convert to word.
+    let asset = Word::new([Felt::new(10), ZERO, faucet_id.suffix(), faucet_id.prefix().as_felt()]);
 
     let code = format!(
         "
@@ -554,16 +548,15 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         &code,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
-    let process_state: ProcessState = process.into();
 
     assert_eq!(
-        read_root_mem_word(&process_state, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        process_state.get_stack_item(0),
+        process.stack.get(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );
@@ -577,14 +570,16 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let faucet = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let faucet_2 = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2)?;
 
-    let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = NoteTag::from_account_id(faucet_2);
 
-    let asset = [Felt::new(10), ZERO, faucet.suffix(), faucet.prefix().as_felt()];
-    let asset_2 = [Felt::new(20), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()];
-    let asset_3 = [Felt::new(30), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()];
-    let asset_2_and_3 = [Felt::new(50), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()];
+    // TODO: Use FungibleAsset
+    let asset = Word::new([Felt::new(10), ZERO, faucet.suffix(), faucet.prefix().as_felt()]);
+    let asset_2 = Word::new([Felt::new(20), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()]);
+    let asset_3 = Word::new([Felt::new(30), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()]);
+    let asset_2_and_3 =
+        Word::new([Felt::new(50), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()]);
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
     let non_fungible_asset_encoded = Word::from(non_fungible_asset);
@@ -640,34 +635,27 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         &code,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
-    let process_state: ProcessState = process.into();
 
     assert_eq!(
-        read_root_mem_word(&process_state, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        read_root_mem_word(
-            &process_state,
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4
-        ),
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
         asset_2_and_3,
         "asset_2 and asset_3 must be stored at the same correct memory location",
     );
 
     assert_eq!(
-        read_root_mem_word(
-            &process_state,
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8
-        ),
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
         Word::from(non_fungible_asset_encoded),
         "non_fungible_asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        process_state.get_stack_item(0),
+        process.stack.get(0),
         ZERO,
         "top item on the stack is the index to the output note"
     );
@@ -678,7 +666,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let recipient = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let tag = NoteTag::for_public_use_case(999, 777, NoteExecutionMode::Local).unwrap();
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
     let encoded = Word::from(non_fungible_asset);
@@ -751,7 +739,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let input_note_1 = tx_context.tx_inputs().input_notes().get_note(0).note();
 
     // create output note
-    let output_serial_no = [ZERO, ONE, Felt::new(2), Felt::new(3)];
+    let output_serial_no = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
     let single_input = 2;
@@ -812,19 +800,16 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process.into(), NUM_OUTPUT_NOTES_PTR),
-        [ONE, ZERO, ZERO, ZERO],
+        read_root_mem_word(&process, NUM_OUTPUT_NOTES_PTR),
+        Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
 
-    let recipient_digest: Vec<Felt> = recipient.clone().digest().to_vec();
+    let recipient_digest = recipient.clone().digest();
 
     assert_eq!(
-        read_root_mem_word(
-            &process.into(),
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET
-        ),
-        recipient_digest.as_slice(),
+        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        recipient_digest,
         "recipient hash not correct",
     );
     Ok(())
@@ -862,7 +847,7 @@ fn test_block_procedures() -> anyhow::Result<()> {
 
     assert_eq!(
         process.stack.get_word(0),
-        tx_context.tx_inputs().block_header().commitment().as_elements(),
+        tx_context.tx_inputs().block_header().commitment(),
         "top word on the stack should be equal to the block header commitment"
     );
 
@@ -924,37 +909,44 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         Some(executed_transaction.advice_witness().clone()),
     );
 
-    let mem_advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
+    let mut advice_inputs = advice_inputs.into_inner();
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
     mast_store.load_account_code(tx_inputs.account().code());
 
-    let mut host: TransactionHost<MemAdviceProvider> = TransactionHost::new(
+    let mut host = TransactionHost::new(
         &tx_inputs.account().into(),
-        mem_advice_provider,
+        &mut advice_inputs,
         mast_store.as_ref(),
         scripts_mast_store,
         None,
         BTreeSet::new(),
     )
     .unwrap();
-    let result = vm_processor::execute(
-        &TransactionKernel::main(),
-        stack_inputs,
-        &mut host,
-        Default::default(),
-        source_manager,
-    )?;
 
-    let (advice_provider, _, output_notes, _signatures, _tx_progress) = host.into_parts();
-    let (_, map, _) = advice_provider.into_parts();
-    let tx_outputs = TransactionKernel::from_transaction_parts(
-        result.stack_outputs(),
-        &map.into(),
-        output_notes,
+    let mut process = Process::new(
+        TransactionKernel::main().kernel().clone(),
+        stack_inputs,
+        advice_inputs,
+        ExecutionOptions::default(),
     )
-    .unwrap();
+    .with_source_manager(source_manager);
+
+    let stack_outputs = process
+        .execute(&TransactionKernel::main(), &mut host)
+        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
+        .into_diagnostic()?;
+
+    let advice_inputs = AdviceInputs::default()
+        .with_map(process.advice.map)
+        .with_stack(process.advice.stack)
+        .with_merkle_store(process.advice.store);
+
+    let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
+    let tx_outputs =
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs.map, output_notes)
+            .unwrap();
 
     assert_eq!(
         executed_transaction.final_account().commitment(),
@@ -1019,7 +1011,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // without assets.
 
     // Create the expected output note for Note 2 which is public
-    let serial_num_2 = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+    let serial_num_2 = Word::from([1, 2, 3, 4u32]);
     let note_script_2 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
@@ -1178,8 +1170,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     // assert that the expected output note 1 is present
     let resulting_output_note_1 = executed_transaction.output_notes().get_note(0);
 
-    let expected_recipient_1 =
-        Digest::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
+    let expected_recipient_1 = Word::from([0, 1, 2, 3u32]);
     let expected_note_assets_1 = NoteAssets::new(vec![combined_asset])?;
     let expected_note_id_1 = NoteId::new(expected_recipient_1, expected_note_assets_1.commitment());
     assert_eq!(resulting_output_note_1.id(), expected_note_id_1);
@@ -1231,10 +1222,10 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    let assembler = TransactionKernel::assembler();
+    let mut assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    let assembler = assembler
-        .with_module(source)
+    assembler
+        .compile_and_statically_link(source)
         .map_err(|_| anyhow::anyhow!("adding source module"))?;
 
     let source = "
@@ -1279,8 +1270,8 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
 /// Tests transaction script inputs.
 #[test]
 fn test_tx_script_inputs() -> anyhow::Result<()> {
-    let tx_script_input_key = [Felt::new(9999), Felt::new(8888), Felt::new(9999), Felt::new(8888)];
-    let tx_script_input_value = [Felt::new(9), Felt::new(8), Felt::new(7), Felt::new(6)];
+    let tx_script_input_key = Word::from([9999, 8888, 9999, 8888u32]);
+    let tx_script_input_value = Word::from([9, 8, 7, 6u32]);
     let tx_script_src = format!(
         "
         use.miden::account
@@ -1305,7 +1296,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
-        .extend_advice_map([(tx_script_input_key, tx_script_input_value.into())])
+        .extend_advice_map([(tx_script_input_key, tx_script_input_value.to_vec())])
         .build()?;
 
     tx_context.execute().context("failed to execute transaction")?;
@@ -1316,7 +1307,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 /// Tests transaction script arguments.
 #[test]
 fn test_tx_script_args() -> anyhow::Result<()> {
-    let tx_script_arg = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
+    let tx_script_arg = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
         use.miden::account

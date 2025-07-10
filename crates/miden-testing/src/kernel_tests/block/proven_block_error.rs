@@ -5,7 +5,7 @@ use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    AccountTreeError, Digest, EMPTY_WORD, Felt, FieldElement, NullifierTreeError,
+    AccountTreeError, EMPTY_WORD, Felt, FieldElement, NullifierTreeError, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
         delta::AccountUpdateDetails,
@@ -263,7 +263,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
-                vec![StorageSlot::Value([5u32.into(); 4])],
+                vec![StorageSlot::Value(Word::from([5u32; 4]))],
             )
             .context("failed to create account mock component")?,
         )
@@ -292,7 +292,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         existing_id.suffix(),
         "test should work if suffixes are different, so we want to ensure it"
     );
-    assert_eq!(account.init_commitment(), miden_objects::Digest::from(EMPTY_WORD));
+    assert_eq!(account.init_commitment(), miden_objects::Word::from(EMPTY_WORD));
 
     let existing_account = Account::mock(
         existing_id.into(),
@@ -365,7 +365,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
-                vec![StorageSlot::Value([5u32.into(); 4])],
+                vec![StorageSlot::Value(Word::from([5u32; 4]))],
             )
             .context("failed to create account mock component")?,
         )
@@ -399,9 +399,9 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
         [(id0, [0, 0, 0, 1u32]), (id1, [0, 0, 0, 2u32])].map(|(id, final_state_comm)| {
             ProvenTransactionBuilder::new(
                 id,
-                Digest::default(),
-                Digest::from(final_state_comm),
-                Digest::default(),
+                Word::default(),
+                Word::from(final_state_comm),
+                Word::default(),
                 genesis_block.block_num(),
                 genesis_block.commitment(),
                 BlockNumber::from(u32::MAX),
@@ -434,8 +434,8 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     assert_eq!(witness0.id(), id0);
     assert_eq!(witness1.id(), id1);
 
-    assert_eq!(witness0.state_commitment(), Digest::default());
-    assert_eq!(witness1.state_commitment(), Digest::default());
+    assert_eq!(witness0.state_commitment(), Word::default());
+    assert_eq!(witness1.state_commitment(), Word::default());
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 

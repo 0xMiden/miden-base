@@ -4,7 +4,7 @@ use miden_lib::{
     transaction::TransactionKernel,
 };
 use miden_objects::{
-    Felt, FieldElement,
+    Felt, FieldElement, Word,
     account::{Account, AccountId},
     asset::FungibleAsset,
     note::NoteType,
@@ -21,7 +21,7 @@ use miden_tx::{
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{ExecutionError, ONE, crypto::RpoRandomCoin};
+use vm_processor::{ExecutionError, crypto::RpoRandomCoin};
 
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, utils::create_p2any_note};
 
@@ -36,7 +36,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         vec![FungibleAsset::mock(10)],
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
     let p2ide_note = create_p2ide_note(
@@ -47,7 +47,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         None,
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
@@ -133,7 +133,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         vec![FungibleAsset::mock(10)],
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
     let successful_note_2 = create_p2id_note(
@@ -142,7 +142,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         vec![FungibleAsset::mock(145)],
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
     let tx_context = mock_chain

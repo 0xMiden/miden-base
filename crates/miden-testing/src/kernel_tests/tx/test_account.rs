@@ -35,9 +35,9 @@ use miden_objects::{
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{Digest, EMPTY_WORD, ExecutionError, MemAdviceProvider, ProcessState};
+use vm_processor::{EMPTY_WORD, ExecutionError, Word};
 
-use super::{Felt, ONE, StackInputs, Word, ZERO};
+use super::{Felt, ONE, StackInputs, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor,
 };
@@ -56,9 +56,9 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 
     // Precompute a commitment to a changed account so we can assert it during tx script execution.
     let mut account_clone = account.clone();
-    let key = Digest::from([1, 2, 3, 4u32]);
-    let value = Digest::from([2, 3, 4, 5u32]);
-    account_clone.storage_mut().set_map_item(2, *key, *value).unwrap();
+    let key = Word::from([1, 2, 3, 4u32]);
+    let value = Word::from([2, 3, 4, 5u32]);
+    account_clone.storage_mut().set_map_item(2, key, value).unwrap();
     let expected_commitment = account_clone.commitment();
 
     let tx_script = format!(
@@ -147,11 +147,10 @@ pub fn test_get_code() -> miette::Result<()> {
         ";
 
     let process = &tx_context.execute_code(code).unwrap();
-    let process_state: ProcessState = process.into();
 
     assert_eq!(
-        process_state.get_stack_word(0),
-        tx_context.account().code().commitment().as_elements(),
+        process.stack.get_word(0),
+        tx_context.account().code().commitment(),
         "obtained code commitment is not equal to the account code commitment",
     );
 
@@ -193,7 +192,7 @@ pub fn test_account_type() -> miette::Result<()> {
                 "
             );
 
-            let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
+            let process = CodeExecutor::with_default_host()
                 .stack_inputs(
                     StackInputs::new(vec![account_id.prefix().as_felt()]).into_diagnostic()?,
                 )
@@ -263,7 +262,7 @@ pub fn test_account_validate_id() -> miette::Result<()> {
             end
             ";
 
-        let result = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
+        let result = CodeExecutor::with_default_host()
             .stack_inputs(StackInputs::new(vec![suffix, prefix]).unwrap())
             .run(code);
 
@@ -322,7 +321,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
             prefix = account_id.prefix().as_felt(),
         );
 
-        let process = CodeExecutor::with_advice_provider(MemAdviceProvider::default())
+        let process = CodeExecutor::with_default_host()
             .run(&code)
             .wrap_err("failed to execute is_faucet procedure")?;
 
@@ -415,26 +414,25 @@ fn test_get_map_item() -> miette::Result<()> {
                 TransactionKernel::testing_assembler_with_mock_account(),
             )
             .unwrap();
-        let process_state: ProcessState = process.into();
 
         assert_eq!(
             value,
-            process_state.get_stack_word(0),
+            process.stack.get_word(0),
             "get_map_item result doesn't match the expected value",
         );
         assert_eq!(
             Word::default(),
-            process_state.get_stack_word(1),
+            process.stack.get_word(1),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::default(),
-            process_state.get_stack_word(2),
+            process.stack.get_word(2),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
             Word::default(),
-            process_state.get_stack_word(3),
+            process.stack.get_word(3),
             "The rest of the stack must be cleared",
         );
     }
@@ -473,29 +471,16 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
         );
 
         let process = &tx_context.execute_code(&code).unwrap();
-        let process_state: ProcessState = process.into();
 
         let storage_slot_type = storage_item.slot.slot_type();
 
-        assert_eq!(storage_slot_type, process_state.get_stack_item(0).try_into().unwrap());
-        assert_eq!(process_state.get_stack_item(1), ZERO, "the rest of the stack is empty");
-        assert_eq!(process_state.get_stack_item(2), ZERO, "the rest of the stack is empty");
-        assert_eq!(process_state.get_stack_item(3), ZERO, "the rest of the stack is empty");
-        assert_eq!(
-            Word::default(),
-            process_state.get_stack_word(1),
-            "the rest of the stack is empty"
-        );
-        assert_eq!(
-            Word::default(),
-            process_state.get_stack_word(2),
-            "the rest of the stack is empty"
-        );
-        assert_eq!(
-            Word::default(),
-            process_state.get_stack_word(3),
-            "the rest of the stack is empty"
-        );
+        assert_eq!(storage_slot_type, process.stack.get(0).try_into().unwrap());
+        assert_eq!(process.stack.get(1), ZERO, "the rest of the stack is empty");
+        assert_eq!(process.stack.get(2), ZERO, "the rest of the stack is empty");
+        assert_eq!(process.stack.get(3), ZERO, "the rest of the stack is empty");
+        assert_eq!(Word::default(), process.stack.get_word(1), "the rest of the stack is empty");
+        assert_eq!(Word::default(), process.stack.get_word(2), "the rest of the stack is empty");
+        assert_eq!(Word::default(), process.stack.get_word(3), "the rest of the stack is empty");
     }
 
     Ok(())
@@ -505,7 +490,7 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 fn test_set_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
-    let new_storage_item: Word = [Felt::new(91), Felt::new(92), Felt::new(93), Felt::new(94)];
+    let new_storage_item = Word::from([91, 92, 93, 94u32]);
 
     let code = format!(
         "
@@ -541,10 +526,8 @@ fn test_set_item() -> miette::Result<()> {
 
 #[test]
 fn test_set_map_item() -> miette::Result<()> {
-    let (new_key, new_value) = (
-        Digest::new([Felt::new(109), Felt::new(110), Felt::new(111), Felt::new(112)]),
-        [Felt::new(9_u64), Felt::new(10_u64), Felt::new(11_u64), Felt::new(12_u64)],
-    );
+    let (new_key, new_value) =
+        (Word::from([109, 110, 111, 112u32]), Word::from([9, 10, 11, 12u32]));
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -596,19 +579,18 @@ fn test_set_map_item() -> miette::Result<()> {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value);
 
     assert_eq!(
         new_storage_map.root(),
-        Digest::from(process_state.get_stack_word(0)),
+        process.stack.get_word(0),
         "get_item must return the new updated value",
     );
     assert_eq!(
         storage_item.slot.value(),
-        process_state.get_stack_word(1),
+        process.stack.get_word(1),
         "The original value stored in the map doesn't match the expected value",
     );
 
@@ -951,15 +933,12 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
     )
     .unwrap();
 
-    let tc_0: [Felt; 4] =
-        account_code.procedures()[1].mast_root().as_elements().try_into().unwrap();
-    let tc_1: [Felt; 4] =
-        account_code.procedures()[2].mast_root().as_elements().try_into().unwrap();
-    let tc_2: [Felt; 4] =
-        account_code.procedures()[3].mast_root().as_elements().try_into().unwrap();
+    let tc_0 = *account_code.procedures()[1].mast_root();
+    let tc_1 = *account_code.procedures()[2].mast_root();
+    let tc_2 = *account_code.procedures()[3].mast_root();
 
     let test_cases =
-        vec![(tc_0, true), (tc_1, true), (tc_2, true), ([ONE, ZERO, ONE, ZERO], false)];
+        vec![(tc_0, true), (tc_1, true), (tc_2, true), (Word::from([1, 0, 1, 0u32]), false)];
 
     for (root, valid) in test_cases.into_iter() {
         let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
@@ -1097,7 +1076,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
     let mut assembler = TransactionKernel::testing_assembler_with_mock_account();
-    assembler.add_vendored_library(&external_library)?;
+    assembler.link_static_library(&external_library)?;
 
     let account_component_source =
         NamedSource::new("account_component::account_module", ACCOUNT_COMPONENT_CODE);
@@ -1127,7 +1106,9 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         tx_script_src,
         // Add the account component library since the transaction script is calling the account's
         // procedure.
-        assembler.with_library(&account_component_lib)?,
+        // Because the account code is provided by the account itself in the transaction, it can be
+        // linked dynamically.
+        TransactionKernel::assembler().with_dynamic_library(&account_component_lib)?,
     )
     .into_diagnostic()?;
 
@@ -1144,7 +1125,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
     // Make sure that account storage has been updated as per the tx script call.
     assert_eq!(
         *executed_tx.account_delta().storage().values(),
-        BTreeMap::from([(0, [Felt::new(2), Felt::new(3), Felt::new(4), Felt::new(5)])]),
+        BTreeMap::from([(0, Word::from([2, 3, 4, 5u32]))]),
     );
     Ok(())
 }

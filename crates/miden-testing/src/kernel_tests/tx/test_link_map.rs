@@ -3,10 +3,10 @@ use core::cmp::Ordering;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{Digest, EMPTY_WORD, Word, account::delta::LexicographicWord};
+use miden_objects::{EMPTY_WORD, Word, account::delta::LexicographicWord};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
-use vm_processor::{MemAdviceProvider, ONE, ProcessState, ZERO};
+use vm_processor::{AdviceProvider, ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
@@ -20,15 +20,15 @@ use crate::{TransactionContextBuilder, executor::CodeExecutor};
 fn insertion() -> anyhow::Result<()> {
     let map_ptr = 8u32;
     // check that using an empty word as key is fine
-    let entry0_key = Digest::from([0, 0, 0, 0u32]);
-    let entry0_value = Digest::from([1, 2, 3, 4u32]);
-    let entry1_key = Digest::from([1, 2, 1, 1u32]);
-    let entry1_value = Digest::from([3, 4, 5, 6u32]);
-    let entry2_key = Digest::from([1, 3, 1, 1u32]);
+    let entry0_key = Word::from([0, 0, 0, 0u32]);
+    let entry0_value = Word::from([1, 2, 3, 4u32]);
+    let entry1_key = Word::from([1, 2, 1, 1u32]);
+    let entry1_value = Word::from([3, 4, 5, 6u32]);
+    let entry2_key = Word::from([1, 3, 1, 1u32]);
     // check that using an empty word as value is fine
-    let entry2_value = Digest::from([0, 0, 0, 0u32]);
-    let entry3_key = Digest::from([1, 4, 1, 1u32]);
-    let entry3_value = Digest::from([5, 6, 7, 8u32]);
+    let entry2_value = Word::from([0, 0, 0, 0u32]);
+    let entry3_key = Word::from([1, 4, 1, 1u32]);
+    let entry3_value = Word::from([5, 6, 7, 8u32]);
 
     let code = format!(
         r#"
@@ -184,7 +184,7 @@ fn insertion() -> anyhow::Result<()> {
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
-    let map = LinkMap::new(map_ptr.into(), state);
+    let map = LinkMap::new(map_ptr.into(), &state);
     let mut map_iter = map.iter();
 
     let entry0 = map_iter.next().expect("map should have four entries");
@@ -366,7 +366,7 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
 
     execute_link_map_test(test_operations)
 }
-
+*/
 // COMPARISON OPERATIONS TESTS
 // ================================================================================================
 
@@ -390,8 +390,8 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
     let mut test_code = String::new();
 
     for _ in 0..1000 {
-        let key0 = Word::from(rand_array());
-        let key1 = Word::from(rand_array());
+        let key0 = Word::new(rand_array());
+        let key1 = Word::new(rand_array());
 
         let cmp = LexicographicWord::from(key0).cmp(&LexicographicWord::from(key1));
         let expected = cmp == operation;
@@ -423,7 +423,7 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
         "#,
     );
 
-    CodeExecutor::with_advice_provider(MemAdviceProvider::default())
+    CodeExecutor::with_default_host()
         .run(&code)
         .with_context(|| format!("comparison test for {procedure_name} failed"))?;
 
@@ -433,20 +433,20 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
 // TEST HELPERS
 // ================================================================================================
 
-fn digest(elements: [u32; 4]) -> Digest {
-    Digest::from(elements)
+fn digest(elements: [u32; 4]) -> Word {
+    Word::from(elements)
 }
 
 fn link_map_key(elements: [u32; 4]) -> LexicographicWord {
-    LexicographicWord::from(Word::from(Digest::from(elements)))
+    LexicographicWord::from(Word::from(Word::from(elements)))
 }
 
 enum TestOperation {
     Set {
         map_ptr: u32,
         key: LexicographicWord,
-        value0: Digest,
-        value1: Digest,
+        value0: Word,
+        value1: Word,
     },
     Get {
         map_ptr: u32,
@@ -458,7 +458,7 @@ enum TestOperation {
 }
 
 impl TestOperation {
-    pub fn set(map_ptr: u32, key: LexicographicWord, values: (Digest, Digest)) -> Self {
+    pub fn set(map_ptr: u32, key: LexicographicWord, values: (Word, Word)) -> Self {
         Self::Set {
             map_ptr,
             key,
@@ -476,7 +476,7 @@ impl TestOperation {
 
 fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let mut test_code = String::new();
-    let mut control_maps: BTreeMap<u32, BTreeMap<LexicographicWord, (Digest, Digest)>> =
+    let mut control_maps: BTreeMap<u32, BTreeMap<LexicographicWord, (Word, Word)>> =
         BTreeMap::new();
 
     for operation in operations {
@@ -509,7 +509,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 let (expected_contains_key, (expected_value0, expected_value1)) =
                     match control_value {
                         Some(value) => (true, (value.0, value.1)),
-                        None => (false, (Digest::from(EMPTY_WORD), Digest::from(EMPTY_WORD))),
+                        None => (false, (Word::from(EMPTY_WORD), Word::from(EMPTY_WORD))),
                     };
 
                 let get_code = format!(
@@ -621,7 +621,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     let state = ProcessState::from(&process);
 
     for (map_ptr, control_map) in control_maps {
-        let map = LinkMap::new(map_ptr.into(), state);
+        let map = LinkMap::new(map_ptr.into(), &state);
         let actual_map_len = map.iter().count();
         assert_eq!(
             actual_map_len,
@@ -635,13 +635,13 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 (control_key, (control_value0, control_value1)),
                 (actual_key, (actual_value0, actual_value1)),
             ),
-        ) in
-            control_map
-                .iter()
-                .zip(map.iter().map(|entry| {
-                    (entry.key, (Digest::from(entry.value0), Digest::from(entry.value1)))
-                }))
-                .enumerate()
+        ) in control_map
+            .iter()
+            .zip(
+                map.iter()
+                    .map(|entry| (entry.key, (Word::from(entry.value0), Word::from(entry.value1)))),
+            )
+            .enumerate()
         {
             assert_eq!(
                 actual_key, *control_key,
@@ -663,7 +663,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
 fn generate_set_ops(
     map_ptr: u32,
-    entries: &[(LexicographicWord, (Digest, Digest))],
+    entries: &[(LexicographicWord, (Word, Word))],
 ) -> Vec<TestOperation> {
     entries
         .iter()
@@ -673,12 +673,12 @@ fn generate_set_ops(
 
 fn generate_get_ops(
     map_ptr: u32,
-    entries: &[(LexicographicWord, (Digest, Digest))],
+    entries: &[(LexicographicWord, (Word, Word))],
 ) -> Vec<TestOperation> {
     entries.iter().map(|(key, _)| TestOperation::get(map_ptr, *key)).collect()
 }
 
-fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Digest, Digest))> {
+fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Word, Word))> {
     (0..count)
         .map(|_| {
             let key = rand_link_map_key();
@@ -690,9 +690,9 @@ fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Digest, Digest))> {
 }
 
 fn generate_updates(
-    entries: &[(LexicographicWord, (Digest, Digest))],
+    entries: &[(LexicographicWord, (Word, Word))],
     num_updates: usize,
-) -> Vec<(LexicographicWord, (Digest, Digest))> {
+) -> Vec<(LexicographicWord, (Word, Word))> {
     let mut rng = rand::rng();
 
     entries
@@ -703,8 +703,8 @@ fn generate_updates(
         .collect()
 }
 
-fn rand_digest() -> Digest {
-    Digest::new(rand_array())
+fn rand_digest() -> Word {
+    Word::new(rand_array())
 }
 
 fn rand_link_map_key() -> LexicographicWord {

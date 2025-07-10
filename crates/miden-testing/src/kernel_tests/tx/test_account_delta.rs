@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, string::String};
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Word, ZERO,
+    EMPTY_WORD, Felt, Word, ZERO,
     account::{
         AccountBuilder, AccountId, AccountStorage, AccountStorageMode, AccountType, StorageMap,
         StorageSlot, delta::LexicographicWord,
@@ -73,7 +73,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
     assert!(executed_tx.account_delta().is_empty());
-    assert_eq!(executed_tx.account_delta().commitment(), Digest::default());
+    assert_eq!(executed_tx.account_delta().commitment(), Word::default());
 
     Ok(())
 }
@@ -209,12 +209,12 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     // Test with random keys to make sure the ordering in the MASM and Rust implementations
     // matches.
-    let key0 = Digest::from(word(winter_rand_utils::rand_array()));
-    let key1 = Digest::from(word(winter_rand_utils::rand_array()));
-    let key2 = Digest::from(word(winter_rand_utils::rand_array()));
-    let key3 = Digest::from(word(winter_rand_utils::rand_array()));
-    let key4 = Digest::from(word(winter_rand_utils::rand_array()));
-    let key5 = Digest::from(word(winter_rand_utils::rand_array()));
+    let key0 = Word::from(word(winter_rand_utils::rand_array()));
+    let key1 = Word::from(word(winter_rand_utils::rand_array()));
+    let key2 = Word::from(word(winter_rand_utils::rand_array()));
+    let key3 = Word::from(word(winter_rand_utils::rand_array()));
+    let key4 = Word::from(word(winter_rand_utils::rand_array()));
+    let key5 = Word::from(word(winter_rand_utils::rand_array()));
 
     let key0_init_value = EMPTY_WORD;
     let key1_init_value = EMPTY_WORD;
@@ -438,33 +438,33 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .added_assets()
-        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_fungible().amount()))
+        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
     let mut removed_assets = executed_tx
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_fungible().amount()))
+        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
 
     assert_eq!(added_assets.len(), 2);
     assert_eq!(removed_assets.len(), 2);
 
     assert_eq!(
-        added_assets.remove(&Digest::from(original_asset2.vault_key())).unwrap(),
+        added_assets.remove(&Word::from(original_asset2.vault_key())).unwrap(),
         added_asset2.amount() - removed_asset2.amount()
     );
     assert_eq!(
-        added_assets.remove(&Digest::from(added_asset4.vault_key())).unwrap(),
+        added_assets.remove(&Word::from(added_asset4.vault_key())).unwrap(),
         added_asset4.amount()
     );
 
     assert_eq!(
-        removed_assets.remove(&Digest::from(original_asset0.vault_key())).unwrap(),
+        removed_assets.remove(&Word::from(original_asset0.vault_key())).unwrap(),
         removed_asset0.amount() - added_asset0.amount()
     );
     assert_eq!(
-        removed_assets.remove(&Digest::from(original_asset3.vault_key())).unwrap(),
+        removed_assets.remove(&Word::from(original_asset3.vault_key())).unwrap(),
         removed_asset3.amount()
     );
 
@@ -548,20 +548,20 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .added_assets()
-        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_non_fungible()))
+        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
     let mut removed_assets = executed_tx
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (Digest::from(asset.vault_key()), asset.unwrap_non_fungible()))
+        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
 
     assert_eq!(added_assets.len(), 1);
     assert_eq!(removed_assets.len(), 1);
 
-    assert_eq!(added_assets.remove(&Digest::from(asset0.vault_key())).unwrap(), asset0);
-    assert_eq!(removed_assets.remove(&Digest::from(asset1.vault_key())).unwrap(), asset1);
+    assert_eq!(added_assets.remove(&Word::from(asset0.vault_key())).unwrap(), asset0);
+    assert_eq!(removed_assets.remove(&Word::from(asset1.vault_key())).unwrap(), asset1);
 
     Ok(())
 }
@@ -582,11 +582,11 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
         .build_existing()?;
 
     // updated storage
-    let updated_slot_value = [Felt::new(7), Felt::new(9), Felt::new(11), Felt::new(13)];
+    let updated_slot_value = Word::from([7, 9, 11, 13u32]);
 
     // updated storage map
-    let updated_map_key = [Felt::new(14), Felt::new(15), Felt::new(16), Felt::new(17)];
-    let updated_map_value = [Felt::new(18), Felt::new(19), Felt::new(20), Felt::new(21)];
+    let updated_map_key = Word::from([14, 15, 16, 17u32]);
+    let updated_map_value = Word::from([18, 19, 20, 21u32]);
 
     // removed assets
     let removed_asset_1 = FungibleAsset::mock(FUNGIBLE_ASSET_AMOUNT / 2);
@@ -765,7 +765,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
         .context("failed to get expected value from storage map")?
         .entries();
     assert_eq!(
-        *map_delta.get(&LexicographicWord::new(Digest::from(updated_map_key))).unwrap(),
+        *map_delta.get(&LexicographicWord::new(Word::from(updated_map_key))).unwrap(),
         updated_map_value
     );
 
@@ -862,7 +862,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 }
 
 fn word(data: [u32; 4]) -> Word {
-    Word::from(Digest::from(data))
+    Word::from(Word::from(data))
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "

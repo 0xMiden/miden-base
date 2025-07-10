@@ -1,18 +1,17 @@
 use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
 
-use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent, TransactionEventError};
+use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::{
-    Digest,
+    Felt, Word,
     account::{AccountHeader, AccountVaultDelta},
-    assembly::mast::MastNodeExt,
 };
 use miden_tx::{
     TransactionMastStore,
     host::{AccountProcedureIndexMap, LinkMap},
 };
 use vm_processor::{
-    AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, Host, MastForest,
-    MastForestStore, MemAdviceProvider, ProcessState,
+    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, MastForest, MastForestStore,
+    ProcessState, SyncHost,
 };
 
 // MOCK HOST
@@ -23,7 +22,6 @@ use vm_processor::{
 /// - There is special handling of EMPTY_DIGEST in account procedure index map.
 /// - This host uses `MemAdviceProvider` which is instantiated from the passed in advice inputs.
 pub struct MockHost {
-    adv_provider: MemAdviceProvider,
     acct_procedure_index_map: AccountProcedureIndexMap,
     mast_store: Rc<TransactionMastStore>,
 }
@@ -33,24 +31,23 @@ impl MockHost {
     /// [AdviceInputs](vm_processor::AdviceInputs).
     pub fn new(
         account: AccountHeader,
-        advice_inputs: TransactionAdviceInputs,
+        advice_inputs: &AdviceInputs,
         mast_store: Rc<TransactionMastStore>,
-        mut foreign_code_commitments: BTreeSet<Digest>,
+        mut foreign_code_commitments: BTreeSet<Word>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
-        let adv_provider = MemAdviceProvider::from(advice_inputs.into_inner());
-        let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, &adv_provider);
+        let proc_index_map =
+            AccountProcedureIndexMap::new(foreign_code_commitments, &advice_inputs);
 
         Self {
-            adv_provider,
             acct_procedure_index_map: proc_index_map.unwrap(),
             mast_store,
         }
     }
 
     /// Consumes `self` and returns the advice provider and account vault delta.
-    pub fn into_parts(self) -> (MemAdviceProvider, AccountVaultDelta) {
-        (self.adv_provider, AccountVaultDelta::default())
+    pub fn into_parts(self) -> AccountVaultDelta {
+        AccountVaultDelta::default()
     }
 
     // EVENT HANDLERS
@@ -58,38 +55,30 @@ impl MockHost {
 
     fn on_push_account_procedure_index(
         &mut self,
-        process: ProcessState,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        process: &mut ProcessState,
+        err_ctx: &impl ErrorContext,
     ) -> Result<(), ExecutionError> {
         let proc_idx = self
             .acct_procedure_index_map
             .get_proc_index(&process)
             .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-        self.adv_provider.push_stack(AdviceSource::Value(proc_idx.into()), err_ctx)?;
+        process.advice_provider_mut().push_stack(Felt::from(proc_idx));
         Ok(())
     }
 }
 
-impl Host for MockHost {
-    type AdviceProvider = MemAdviceProvider;
+impl BaseHost for MockHost {}
 
-    fn advice_provider(&self) -> &Self::AdviceProvider {
-        &self.adv_provider
-    }
-
-    fn advice_provider_mut(&mut self) -> &mut Self::AdviceProvider {
-        &mut self.adv_provider
-    }
-
-    fn get_mast_forest(&self, node_digest: &Digest) -> Option<Arc<MastForest>> {
+impl SyncHost for MockHost {
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
         self.mast_store.get(node_digest)
     }
 
     fn on_event(
         &mut self,
-        process: ProcessState,
+        process: &mut ProcessState,
         event_id: u32,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        err_ctx: &impl ErrorContext,
     ) -> Result<(), ExecutionError> {
         let event = TransactionEvent::try_from(event_id)
             .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
@@ -105,12 +94,8 @@ impl Host for MockHost {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process, err_ctx)
             },
-            TransactionEvent::LinkMapSetEvent => {
-                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())
-            },
-            TransactionEvent::LinkMapGetEvent => {
-                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())
-            },
+            TransactionEvent::LinkMapSetEvent => LinkMap::handle_set_event(process),
+            TransactionEvent::LinkMapGetEvent => LinkMap::handle_get_event(process),
             _ => Ok(()),
         }?;
 

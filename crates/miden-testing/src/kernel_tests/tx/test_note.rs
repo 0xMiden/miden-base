@@ -9,7 +9,7 @@ use miden_lib::{
     transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
 };
 use miden_objects::{
-    Digest, EMPTY_WORD, FieldElement, ONE, WORD_SIZE,
+    EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word,
     account::{Account, AccountBuilder, AccountId},
     assembly::diagnostics::miette,
     asset::FungibleAsset,
@@ -33,7 +33,6 @@ use miden_objects::{
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{ProcessState, Word};
 
 use super::{Felt, Process, ZERO, word_to_masm_push_string};
 use crate::{
@@ -225,7 +224,7 @@ fn test_get_assets() -> anyhow::Result<()> {
                 # assert the asset is correct
                 dup padw movup.4 mem_loadw push.{asset} assert_eqw push.4 add
                 ",
-                asset = word_to_masm_push_string(&<[Felt; 4]>::from(*asset))
+                asset = word_to_masm_push_string(&Word::from(asset))
             );
         }
         code
@@ -342,7 +341,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
         let mut code = String::new();
         for input_chunk in note.inputs().values().chunks(WORD_SIZE) {
             let mut input_word = EMPTY_WORD;
-            input_word[..input_chunk.len()].copy_from_slice(input_chunk);
+            input_word.as_mut_slice()[..input_chunk.len()].copy_from_slice(input_chunk);
 
             code += &format!(
                 "
@@ -418,8 +417,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     )?;
 
     // prepare note data
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([4u32; 4])).draw_word();
     let tag = NoteTag::from_account_id(target_id);
     let metadata = NoteMetadata::new(
         sender_id,
@@ -571,10 +569,7 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
         end
         ";
 
-    let note_args = [
-        [Felt::new(91), Felt::new(91), Felt::new(91), Felt::new(91)],
-        [Felt::new(92), Felt::new(92), Felt::new(92), Felt::new(92)],
-    ];
+    let note_args = [Word::from([91, 91, 91, 91u32]), Word::from([92, 92, 92, 92u32])];
     let note_args_map = BTreeMap::from([
         (tx_context.input_notes().get_note(0).note().id(), note_args[1]),
         (tx_context.input_notes().get_note(1).note().id(), note_args[0]),
@@ -610,7 +605,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
 fn note_setup_memory_assertions(process: &Process) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        read_root_mem_word(&process.into(), CURRENT_INPUT_NOTE_PTR)[0],
+        read_root_mem_word(&process, CURRENT_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }
@@ -698,7 +693,6 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     ";
 
     let process = &tx_context.execute_code(code)?;
-    let process_state: ProcessState = process.into();
 
     let note_inputs_5_hash = NoteInputs::new(vec![
         Felt::new(1),
@@ -748,7 +742,7 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(&[ZERO, ZERO, ZERO, ZERO]);
     expected_stack.reverse();
 
-    assert_eq!(process_state.get_stack_state()[0..16], expected_stack);
+    assert_eq!(process.stack.get_state_at(process.system.clk())[0..16], expected_stack);
     Ok(())
 }
 
@@ -787,7 +781,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
     let process = tx_context.execute_code(code)?;
 
     let script_root = tx_context.input_notes().get_note(0).note().script().root();
-    assert_eq!(process.stack.get_word(0), script_root.as_elements());
+    assert_eq!(process.stack.get_word(0), script_root);
     Ok(())
 }
 
@@ -842,12 +836,12 @@ fn test_build_note_metadata() -> miette::Result<()> {
 
         let process = tx_context.execute_code(&code).unwrap();
 
-        let metadata_word = [
+        let metadata_word = Word::new([
             process.stack.get(3),
             process.stack.get(2),
             process.stack.get(1),
             process.stack.get(0),
-        ];
+        ]);
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }
@@ -944,22 +938,20 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
 
     let (rpo_component, authenticator) = Auth::BasicAuth.build_component();
 
-    let mock_seed_1 = Digest::from([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).as_bytes();
+    let mock_seed_1 = Word::from([1, 2, 3, 4u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed_1)
         .with_auth_component(rpo_component.clone())
         .with_component(BasicWallet)
         .build_existing()?;
 
-    let mock_seed_2 =
-        Digest::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]).as_bytes();
+    let mock_seed_2 = Word::from([5, 6, 7, 8u32]).as_bytes();
 
     let sender_account = AccountBuilder::new(mock_seed_2)
         .with_auth_component(rpo_component)
         .with_component(BasicWallet)
         .build_existing()?;
 
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::from_account_id(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
