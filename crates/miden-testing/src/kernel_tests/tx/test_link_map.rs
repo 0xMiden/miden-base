@@ -3,10 +3,10 @@ use core::cmp::Ordering;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_objects::{EMPTY_WORD, Word, account::delta::LexicographicWord};
+use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
-use vm_processor::{AdviceProvider, ONE, ProcessState, ZERO};
+use vm_processor::{ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_array;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
@@ -181,8 +181,8 @@ fn insertion() -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&process);
+    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
+    let state = ProcessState::from(&mut process);
 
     let map = LinkMap::new(map_ptr.into(), &state);
     let mut map_iter = map.iter();
@@ -196,29 +196,29 @@ fn insertion() -> anyhow::Result<()> {
     assert_eq!(entry0.metadata.map_ptr, map_ptr);
     assert_eq!(entry0.metadata.prev_entry_ptr, 0);
     assert_eq!(entry0.metadata.next_entry_ptr, entry1.ptr);
-    assert_eq!(Word::from(entry0.key), *entry0_key);
-    assert_eq!(entry0.value0, *entry0_value);
+    assert_eq!(Word::from(entry0.key), entry0_key);
+    assert_eq!(entry0.value0, entry0_value);
     assert_eq!(entry0.value1, EMPTY_WORD);
 
     assert_eq!(entry1.metadata.map_ptr, map_ptr);
     assert_eq!(entry1.metadata.prev_entry_ptr, entry0.ptr);
     assert_eq!(entry1.metadata.next_entry_ptr, entry2.ptr);
-    assert_eq!(Word::from(entry1.key), *entry1_key);
-    assert_eq!(entry1.value0, *entry1_value);
+    assert_eq!(Word::from(entry1.key), entry1_key);
+    assert_eq!(entry1.value0, entry1_value);
     assert_eq!(entry1.value1, EMPTY_WORD);
 
     assert_eq!(entry2.metadata.map_ptr, map_ptr);
     assert_eq!(entry2.metadata.prev_entry_ptr, entry1.ptr);
     assert_eq!(entry2.metadata.next_entry_ptr, entry3.ptr);
-    assert_eq!(Word::from(entry2.key), *entry2_key);
-    assert_eq!(entry2.value0, *entry2_value);
+    assert_eq!(Word::from(entry2.key), entry2_key);
+    assert_eq!(entry2.value0, entry2_value);
     assert_eq!(entry2.value1, EMPTY_WORD);
 
     assert_eq!(entry3.metadata.map_ptr, map_ptr);
     assert_eq!(entry3.metadata.prev_entry_ptr, entry2.ptr);
     assert_eq!(entry3.metadata.next_entry_ptr, 0);
-    assert_eq!(Word::from(entry3.key), *entry3_key);
-    assert_eq!(entry3.value0, *entry3_value);
+    assert_eq!(Word::from(entry3.key), entry3_key);
+    assert_eq!(entry3.value0, entry3_value);
     assert_eq!(entry3.value1, EMPTY_WORD);
 
     Ok(())
@@ -366,7 +366,7 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
 
     execute_link_map_test(test_operations)
 }
-*/
+
 // COMPARISON OPERATIONS TESTS
 // ================================================================================================
 
@@ -438,7 +438,7 @@ fn digest(elements: [u32; 4]) -> Word {
 }
 
 fn link_map_key(elements: [u32; 4]) -> LexicographicWord {
-    LexicographicWord::from(Word::from(Word::from(elements)))
+    LexicographicWord::from(Word::from(elements))
 }
 
 enum TestOperation {
@@ -509,7 +509,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 let (expected_contains_key, (expected_value0, expected_value1)) =
                     match control_value {
                         Some(value) => (true, (value.0, value.1)),
-                        None => (false, (Word::from(EMPTY_WORD), Word::from(EMPTY_WORD))),
+                        None => (false, (Word::default(), Word::default())),
                     };
 
                 let get_code = format!(
@@ -617,8 +617,8 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let process = tx_context.execute_code(&code).context("failed to execute code")?;
-    let state = ProcessState::from(&process);
+    let mut process = tx_context.execute_code(&code).context("failed to execute code")?;
+    let state = ProcessState::from(&mut process);
 
     for (map_ptr, control_map) in control_maps {
         let map = LinkMap::new(map_ptr.into(), &state);
@@ -637,10 +637,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
             ),
         ) in control_map
             .iter()
-            .zip(
-                map.iter()
-                    .map(|entry| (entry.key, (Word::from(entry.value0), Word::from(entry.value1)))),
-            )
+            .zip(map.iter().map(|entry| (entry.key, (entry.value0, entry.value1))))
             .enumerate()
         {
             assert_eq!(

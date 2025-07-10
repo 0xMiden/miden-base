@@ -21,8 +21,7 @@ mod test_asset_vault;
 mod test_epilogue;
 mod test_faucet;
 mod test_fpi;
-// TODO: Temporarily disabled until a ProcessState can be constructed from a Process.
-// mod test_link_map;
+mod test_link_map;
 mod test_note;
 mod test_prologue;
 mod test_tx;
