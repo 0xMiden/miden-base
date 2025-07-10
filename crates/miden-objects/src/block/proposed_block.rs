@@ -672,7 +672,7 @@ impl AccountUpdateAggregator {
         let initial_state_commitment = if account_id == initial_state_proof.id() {
             initial_state_proof.state_commitment()
         } else {
-            Word::from(EMPTY_WORD)
+            Word::default()
         };
 
         let mut details: Option<AccountUpdateDetails> = None;

@@ -170,13 +170,13 @@ fn test_create_note() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process, NUM_OUTPUT_NOTES_PTR),
+        read_root_mem_word(process, NUM_OUTPUT_NOTES_PTR),
         Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient,
         "recipient must be stored at the correct memory location",
     );
@@ -191,7 +191,7 @@ fn test_create_note() -> anyhow::Result<()> {
     .into();
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
         // TODO: Can we just use expected_note_metadata?
         Word::from([
             expected_note_metadata[0],
@@ -469,13 +469,13 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process, NUM_OUTPUT_NOTES_PTR),
+        read_root_mem_word(process, NUM_OUTPUT_NOTES_PTR),
         Word::from([2u32, 0, 0, 0]),
         "The test creates two notes",
     );
     assert_eq!(
         NoteMetadata::try_from(read_root_mem_word(
-            &process,
+            process,
             OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET
         ))
         .unwrap(),
@@ -484,7 +484,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     );
     assert_eq!(
         NoteMetadata::try_from(read_root_mem_word(
-            &process,
+            process,
             OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
         ))
         .unwrap(),
@@ -550,7 +550,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
@@ -637,20 +637,20 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
         asset_2_and_3,
         "asset_2 and asset_3 must be stored at the same correct memory location",
     );
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
-        Word::from(non_fungible_asset_encoded),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
+        non_fungible_asset_encoded,
         "non_fungible_asset must be stored at the correct memory location",
     );
 
@@ -800,7 +800,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(&process, NUM_OUTPUT_NOTES_PTR),
+        read_root_mem_word(process, NUM_OUTPUT_NOTES_PTR),
         Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
@@ -808,7 +808,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient_digest = recipient.clone().digest();
 
     assert_eq!(
-        read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient_digest,
         "recipient hash not correct",
     );
@@ -1129,10 +1129,8 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         REMOVED_ASSET_2 = word_to_masm_push_string(&Word::from(removed_asset_2)),
         REMOVED_ASSET_3 = word_to_masm_push_string(&Word::from(removed_asset_3)),
         REMOVED_ASSET_4 = word_to_masm_push_string(&Word::from(removed_asset_4)),
-        RECIPIENT2 =
-            word_to_masm_push_string(&Word::from(expected_output_note_2.recipient().digest())),
-        RECIPIENT3 =
-            word_to_masm_push_string(&Word::from(expected_output_note_3.recipient().digest())),
+        RECIPIENT2 = word_to_masm_push_string(&expected_output_note_2.recipient().digest()),
+        RECIPIENT3 = word_to_masm_push_string(&expected_output_note_3.recipient().digest()),
         NOTETYPE1 = note_type1 as u8,
         NOTETYPE2 = note_type2 as u8,
         NOTETYPE3 = note_type3 as u8,

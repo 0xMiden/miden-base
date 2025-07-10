@@ -106,15 +106,14 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
         let _ = account_delta;
         let mut rng = self.rng.write();
 
-        match self.keys.get(&pub_key.into()) {
+        match self.keys.get(&pub_key) {
             Some(key) => match key {
                 AuthSecretKey::RpoFalcon512(falcon_key) => {
                     get_falcon_signature(falcon_key, message, &mut *rng)
                 },
             },
             None => Err(AuthenticationError::UnknownPublicKey(format!(
-                "public key {} is not contained in the authenticator's keys",
-                Word::from(pub_key)
+                "public key {pub_key} is not contained in the authenticator's keys",
             ))),
         }
     }

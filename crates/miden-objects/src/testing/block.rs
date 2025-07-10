@@ -36,12 +36,12 @@ impl BlockHeader {
             proof_commitment,
             timestamp,
         ) = {
-            let prev_block_commitment: Word = Word::new(rand_array()).into();
-            let chain_commitment = chain_commitment.unwrap_or(Word::new(rand_array()).into());
-            let nullifier_root = Word::new(rand_array()).into();
-            let note_root = note_root.unwrap_or(Word::new(rand_array()).into());
-            let tx_commitment = Word::new(rand_array()).into();
-            let proof_commitment = Word::new(rand_array()).into();
+            let prev_block_commitment: Word = Word::new(rand_array());
+            let chain_commitment = chain_commitment.unwrap_or(Word::new(rand_array()));
+            let nullifier_root = Word::new(rand_array());
+            let note_root = note_root.unwrap_or(Word::new(rand_array()));
+            let tx_commitment = Word::new(rand_array());
+            let proof_commitment = Word::new(rand_array());
             let timestamp = rand_value();
 
             (

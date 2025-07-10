@@ -41,14 +41,11 @@ pub fn parse_final_account_header(elements: &[Felt]) -> Result<AccountHeader, Ac
     .map_err(AccountError::FinalAccountHeaderIdParsingFailed)?;
     let nonce = elements[ACCT_ID_AND_NONCE_OFFSET as usize + ACCT_NONCE_IDX];
     let vault_root = parse_word(elements, ACCT_VAULT_ROOT_OFFSET)
-        .expect("we should have sliced off exactly 4 bytes")
-        .into();
+        .expect("we should have sliced off exactly 4 bytes");
     let storage_commitment = parse_word(elements, ACCT_STORAGE_COMMITMENT_OFFSET)
-        .expect("we should have sliced off exactly 4 bytes")
-        .into();
+        .expect("we should have sliced off exactly 4 bytes");
     let code_commitment = parse_word(elements, ACCT_CODE_COMMITMENT_OFFSET)
-        .expect("we should have sliced off exactly 4 bytes")
-        .into();
+        .expect("we should have sliced off exactly 4 bytes");
 
     Ok(AccountHeader::new(id, nonce, vault_root, storage_commitment, code_commitment))
 }

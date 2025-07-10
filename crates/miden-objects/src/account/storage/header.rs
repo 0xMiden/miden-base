@@ -165,7 +165,7 @@ mod tests {
                 StorageSlotType::Value,
                 Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
             ),
-            (StorageSlotType::Map, storage_map.root().into()),
+            (StorageSlotType::Map, storage_map.root()),
         ];
 
         let expected_header = AccountStorageHeader { slots };

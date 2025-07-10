@@ -195,7 +195,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         assert_eq!(
             note.assets().commitment(),
             read_root_mem_word(
-                &process,
+                process,
                 OUTPUT_NOTE_SECTION_OFFSET
                     + i * NOTE_MEM_SIZE
                     + OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET
@@ -205,7 +205,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
 
         assert_eq!(
             Word::from(note.id()),
-            read_root_mem_word(&process, OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
+            read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
             "NOTE_ID didn't match expected value",
         );
     }

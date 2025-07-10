@@ -409,7 +409,7 @@ mod tests {
             .with_description("dummy description"),
         ];
 
-        let test_word: Word = digest!("0x000001").into();
+        let test_word: Word = digest!("0x000001");
         let test_word = test_word.map(FeltRepresentation::from);
 
         let map_representation = MapRepresentation::new(

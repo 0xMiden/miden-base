@@ -90,7 +90,7 @@ impl<'process> LinkMap<'process> {
     pub fn iter(&self) -> impl Iterator<Item = Entry> {
         LinkMapIter {
             current_entry_ptr: self.head().unwrap_or(0),
-            map: self.clone(),
+            map: *self,
         }
     }
 

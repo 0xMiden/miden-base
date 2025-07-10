@@ -66,11 +66,11 @@ impl AccountProcedureIndexMap {
                 .expect("current account code commitment was not initialized")
         };
 
-        let proc_root = process.get_stack_word(0).into();
+        let proc_root = process.get_stack_word(0);
 
         self.0
-            .get(&code_commitment.into())
-            .ok_or(TransactionKernelError::UnknownCodeCommitment(code_commitment.into()))?
+            .get(&code_commitment)
+            .ok_or(TransactionKernelError::UnknownCodeCommitment(code_commitment))?
             .get(&proc_root)
             .cloned()
             .ok_or(TransactionKernelError::UnknownAccountProcedure(proc_root))

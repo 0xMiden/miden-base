@@ -99,8 +99,8 @@ impl From<&ExecutedTransaction> for TransactionId {
 }
 
 impl From<Word> for TransactionId {
-    fn from(value: Word) -> Self {
-        Self(value.into())
+    fn from(digest: Word) -> Self {
+        Self(digest)
     }
 }
 
@@ -109,7 +109,7 @@ impl From<Word> for TransactionId {
 
 impl From<TransactionId> for Word {
     fn from(id: TransactionId) -> Self {
-        id.0.into()
+        id.0
     }
 }
 
@@ -121,7 +121,7 @@ impl From<TransactionId> for [u8; 32] {
 
 impl From<&TransactionId> for Word {
     fn from(id: &TransactionId) -> Self {
-        id.0.into()
+        id.0
     }
 }
 

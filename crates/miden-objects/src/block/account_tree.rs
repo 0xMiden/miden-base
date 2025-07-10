@@ -65,7 +65,7 @@ impl AccountTree {
         let num_accounts = entries.len();
 
         let smt = Smt::with_entries(
-            entries.map(|(id, commitment)| (Self::id_to_smt_key(id), Word::from(commitment))),
+            entries.map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
         )
         .map_err(|err| {
             let MerkleError::DuplicateValuesForIndex(leaf_idx) = err else {
@@ -120,7 +120,7 @@ impl AccountTree {
     /// Returns the current state commitment of the given account ID.
     pub fn get(&self, account_id: AccountId) -> Word {
         let key = Self::id_to_smt_key(account_id);
-        Word::from(self.smt.get_value(&key))
+        self.smt.get_value(&key)
     }
 
     /// Returns the root of the tree.
@@ -178,7 +178,7 @@ impl AccountTree {
         let mutation_set = self.smt.compute_mutations(
             account_commitments
                 .into_iter()
-                .map(|(id, commitment)| (Self::id_to_smt_key(id), Word::from(commitment))),
+                .map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
         );
 
         for id_key in mutation_set.new_pairs().keys() {
@@ -225,7 +225,7 @@ impl AccountTree {
         state_commitment: Word,
     ) -> Result<Word, AccountTreeError> {
         let key = Self::id_to_smt_key(account_id);
-        let prev_value = Word::from(self.smt.insert(key, Word::from(state_commitment)));
+        let prev_value = self.smt.insert(key, state_commitment);
 
         // If the leaf of the account ID now has two or more entries, we've inserted a duplicate
         // prefix.
@@ -334,7 +334,6 @@ pub(super) mod tests {
     use std::vec::Vec;
 
     use assert_matches::assert_matches;
-    use vm_core::EMPTY_WORD;
 
     use super::*;
     use crate::{
@@ -449,7 +448,7 @@ pub(super) mod tests {
         let digest0 = Word::from([0, 0, 0, 1u32]);
         let digest1 = Word::from([0, 0, 0, 2u32]);
         let digest2 = Word::from([0, 0, 0, 3u32]);
-        let empty_digest = Word::from(EMPTY_WORD);
+        let empty_digest = Word::default();
 
         let mut tree =
             AccountTree::with_entries([(id0, digest0), (id1, digest1), (id2, digest2)]).unwrap();

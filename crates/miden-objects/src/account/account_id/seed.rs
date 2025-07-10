@@ -73,7 +73,7 @@ fn compute_account_seed_single(
             };
         }
 
-        current_seed = current_digest.into();
+        current_seed = current_digest;
         current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
     }
 }

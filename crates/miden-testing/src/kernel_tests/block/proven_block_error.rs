@@ -5,7 +5,7 @@ use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    AccountTreeError, EMPTY_WORD, Felt, FieldElement, NullifierTreeError, Word,
+    AccountTreeError, Felt, FieldElement, NullifierTreeError, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
         delta::AccountUpdateDetails,
@@ -292,7 +292,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         existing_id.suffix(),
         "test should work if suffixes are different, so we want to ensure it"
     );
-    assert_eq!(account.init_commitment(), miden_objects::Word::from(EMPTY_WORD));
+    assert_eq!(account.init_commitment(), Word::default());
 
     let existing_account = Account::mock(
         existing_id.into(),

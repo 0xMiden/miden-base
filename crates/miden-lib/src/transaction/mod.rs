@@ -256,13 +256,11 @@ impl TransactionKernel {
     ) -> Result<(Word, Word, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
-            .expect("output_notes_commitment (first word) missing")
-            .into();
+            .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
-            .expect("account_update_commitment (second word) missing")
-            .into();
+            .expect("account_update_commitment (second word) missing");
 
         let expiration_block_num = stack
             .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)

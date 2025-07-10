@@ -36,10 +36,7 @@ impl BlockNoteTree {
         entries: impl IntoIterator<Item = (BlockNoteIndex, NoteId, NoteMetadata)>,
     ) -> Result<Self, MerkleError> {
         let leaves = entries.into_iter().map(|(index, note_id, metadata)| {
-            (
-                index.leaf_index_value() as u64,
-                compute_note_commitment(note_id, &metadata).into(),
-            )
+            (index.leaf_index_value() as u64, compute_note_commitment(note_id, &metadata))
         });
 
         SimpleSmt::with_leaves(leaves).map(Self)

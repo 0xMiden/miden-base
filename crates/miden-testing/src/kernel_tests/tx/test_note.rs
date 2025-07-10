@@ -605,7 +605,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
 fn note_setup_memory_assertions(process: &Process) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        read_root_mem_word(&process, CURRENT_INPUT_NOTE_PTR)[0],
+        read_root_mem_word(process, CURRENT_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }

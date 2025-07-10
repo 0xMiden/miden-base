@@ -447,14 +447,14 @@ mod tests {
         let partial_blockchain = PartialBlockchain::new(partial_mmr, Vec::new()).unwrap();
 
         let chain_commitment = partial_blockchain.peaks().hash_peaks();
-        let note_root: Word = Word::new(rand_array()).into();
-        let tx_kernel_commitment: Word = Word::new(rand_array()).into();
+        let note_root: Word = Word::new(rand_array());
+        let tx_kernel_commitment: Word = Word::new(rand_array());
         let reference_block_header = BlockHeader::mock(
             3,
             Some(chain_commitment),
-            Some(note_root.into()),
+            Some(note_root),
             &[],
-            tx_kernel_commitment.into(),
+            tx_kernel_commitment,
         );
 
         let account_id = AccountId::dummy(

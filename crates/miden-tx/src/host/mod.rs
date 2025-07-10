@@ -127,7 +127,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
         );
 
         let proc_index_map =
-            AccountProcedureIndexMap::new(foreign_account_code_commitments, &advice_inputs)?;
+            AccountProcedureIndexMap::new(foreign_account_code_commitments, advice_inputs)?;
 
         Ok(Self {
             mast_store,
@@ -182,7 +182,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
 
         assert_eq!(note_idx, self.output_notes.len(), "note index mismatch");
 
-        let note_builder = OutputNoteBuilder::new(stack, &process.advice_provider())?;
+        let note_builder = OutputNoteBuilder::new(stack, process.advice_provider())?;
 
         self.output_notes.insert(note_idx, note_builder);
 
@@ -227,7 +227,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
         &mut self,
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let proc_idx = self.acct_procedure_index_map.get_proc_index(&process)?;
+        let proc_idx = self.acct_procedure_index_map.get_proc_index(process)?;
         process.advice_provider_mut().push_stack(Felt::from(proc_idx));
         Ok(())
     }
@@ -340,7 +340,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
 
         self.account_delta.storage().set_map_item(
             slot_index.as_int() as u8,
-            key.into(),
+            key,
             prev_map_value,
             new_map_value,
         );
@@ -409,7 +409,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
-        let signature_key = Hasher::merge(&[pub_key.into(), msg.into()]);
+        let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature =
             if let Ok(signature) = process.advice_provider().get_mapped_values(&signature_key) {

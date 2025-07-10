@@ -191,9 +191,8 @@ fn build_input_note_commitment<T: ToInputNoteCommitments>(notes: &[T]) -> Word {
     let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 2);
     for commitment_data in notes {
         let nullifier = commitment_data.nullifier();
-        let empty_word_or_note_commitment = &commitment_data
-            .note_commitment()
-            .map_or(Word::default(), |note_id| note_id.into());
+        let empty_word_or_note_commitment =
+            &commitment_data.note_commitment().map_or(Word::default(), |note_id| note_id);
 
         elements.extend_from_slice(nullifier.as_elements());
         elements.extend_from_slice(empty_word_or_note_commitment.as_elements());

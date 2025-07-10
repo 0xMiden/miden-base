@@ -282,15 +282,15 @@ mod tests {
 
     #[test]
     fn test_serde() {
-        let chain_commitment: Word = Word::new(rand_array()).into();
-        let note_root: Word = Word::new(rand_array()).into();
-        let tx_kernel_commitment: Word = Word::new(rand_array()).into();
+        let chain_commitment: Word = Word::new(rand_array());
+        let note_root: Word = Word::new(rand_array());
+        let tx_kernel_commitment: Word = Word::new(rand_array());
         let header = BlockHeader::mock(
             0,
-            Some(chain_commitment.into()),
-            Some(note_root.into()),
+            Some(chain_commitment),
+            Some(note_root),
             &[],
-            tx_kernel_commitment.into(),
+            tx_kernel_commitment,
         );
         let serialized = header.to_bytes();
         let deserialized = BlockHeader::read_from_bytes(&serialized).unwrap();

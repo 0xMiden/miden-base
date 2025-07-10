@@ -548,7 +548,7 @@ impl MapRepresentation {
                 let value = map_entry
                     .value()
                     .try_build_word(init_storage_data, self.identifier.name.clone())?;
-                Ok((key.into(), value))
+                Ok((key, value))
             })
             .collect::<Result<Vec<(Word, Word)>, _>>()?;
 

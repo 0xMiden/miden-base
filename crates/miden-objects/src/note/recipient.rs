@@ -77,7 +77,7 @@ impl NoteRecipient {
 }
 
 fn compute_recipient_digest(serial_num: Word, script: &NoteScript, inputs: &NoteInputs) -> Word {
-    let serial_num_hash = Hasher::merge(&[serial_num.into(), Word::default()]);
+    let serial_num_hash = Hasher::merge(&[serial_num, Word::default()]);
     let merge_script = Hasher::merge(&[serial_num_hash, script.root()]);
     Hasher::merge(&[merge_script, inputs.commitment()])
 }

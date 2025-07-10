@@ -168,7 +168,7 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     main_assembler
         .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
     main_assembler
-        .compile_and_statically_link_from_dir(kernel_namespace.clone(), &source_dir.join("lib"))?;
+        .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
 
     let main_file_path = source_dir.join("main.masm");
     let kernel_main = main_assembler.clone().assemble_program(main_file_path)?;

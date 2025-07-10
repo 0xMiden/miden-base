@@ -172,7 +172,7 @@ fn test_add_fungible_asset_success() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        read_root_mem_word(&process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        read_root_mem_word(process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
         account_vault.root()
     );
 
@@ -256,7 +256,7 @@ fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        read_root_mem_word(&process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        read_root_mem_word(process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
         account_vault.root()
     );
 
@@ -341,7 +341,7 @@ fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Result<(
     );
 
     assert_eq!(
-        read_root_mem_word(&process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        read_root_mem_word(process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
         account_vault.root()
     );
 
@@ -428,7 +428,7 @@ fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Result<()> 
     );
 
     assert_eq!(
-        read_root_mem_word(&process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        read_root_mem_word(process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
         account_vault.root()
     );
 
@@ -519,7 +519,7 @@ fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
     );
 
     assert_eq!(
-        read_root_mem_word(&process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        read_root_mem_word(process, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
         account_vault.root()
     );
 

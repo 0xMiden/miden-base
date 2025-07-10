@@ -345,11 +345,11 @@ impl StorageMapDelta {
         Self(BTreeMap::from_iter(
             cleared_leaves
                 .into_iter()
-                .map(|key| (LexicographicWord::new(Word::from(key)), EMPTY_WORD))
+                .map(|key| (LexicographicWord::new(key), EMPTY_WORD))
                 .chain(
                     updated_leaves
                         .into_iter()
-                        .map(|(key, value)| (LexicographicWord::new(Word::from(key)), value)),
+                        .map(|(key, value)| (LexicographicWord::new(key), value)),
                 ),
         ))
     }

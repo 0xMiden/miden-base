@@ -114,8 +114,8 @@ impl From<&NoteDetails> for Nullifier {
 }
 
 impl From<Word> for Nullifier {
-    fn from(value: Word) -> Self {
-        Self(value.into())
+    fn from(digest: Word) -> Self {
+        Self(digest)
     }
 }
 
@@ -124,7 +124,7 @@ impl From<Word> for Nullifier {
 
 impl From<Nullifier> for Word {
     fn from(nullifier: Nullifier) -> Self {
-        nullifier.0.into()
+        nullifier.0
     }
 }
 
@@ -136,7 +136,7 @@ impl From<Nullifier> for [u8; 32] {
 
 impl From<&Nullifier> for Word {
     fn from(nullifier: &Nullifier) -> Self {
-        nullifier.0.into()
+        nullifier.0
     }
 }
 

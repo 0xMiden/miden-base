@@ -75,7 +75,6 @@ impl PartialAccountTree {
         let key = AccountTree::id_to_smt_key(account_id);
         self.smt
             .get_value(&key)
-            .map(Word::from)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
     }
 
@@ -171,8 +170,7 @@ impl PartialAccountTree {
         }
 
         self.smt
-            .insert(key, Word::from(state_commitment))
-            .map(Word::from)
+            .insert(key, state_commitment)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
     }
 }
@@ -262,7 +260,7 @@ mod tests {
         // account IDs with the same prefix.
         let full_tree = Smt::with_entries(
             setup_duplicate_prefix_ids()
-                .map(|(id, commitment)| (AccountTree::id_to_smt_key(id), Word::from(commitment))),
+                .map(|(id, commitment)| (AccountTree::id_to_smt_key(id), commitment)),
         )
         .unwrap();
 
@@ -274,16 +272,10 @@ mod tests {
         let proof1 = full_tree.open(&key1);
         assert_eq!(proof0.leaf(), proof1.leaf());
 
-        let witness0 = AccountWitness::new_unchecked(
-            id0,
-            proof0.get(&key0).unwrap().into(),
-            proof0.into_parts().0,
-        );
-        let witness1 = AccountWitness::new_unchecked(
-            id1,
-            proof1.get(&key1).unwrap().into(),
-            proof1.into_parts().0,
-        );
+        let witness0 =
+            AccountWitness::new_unchecked(id0, proof0.get(&key0).unwrap(), proof0.into_parts().0);
+        let witness1 =
+            AccountWitness::new_unchecked(id1, proof1.get(&key1).unwrap(), proof1.into_parts().0);
 
         let mut partial_tree = PartialAccountTree::new();
         partial_tree.track_account(witness0).unwrap();

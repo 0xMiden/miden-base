@@ -36,8 +36,7 @@ impl MockHost {
         mut foreign_code_commitments: BTreeSet<Word>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
-        let proc_index_map =
-            AccountProcedureIndexMap::new(foreign_code_commitments, &advice_inputs);
+        let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs);
 
         Self {
             acct_procedure_index_map: proc_index_map.unwrap(),
@@ -60,7 +59,7 @@ impl MockHost {
     ) -> Result<(), ExecutionError> {
         let proc_idx = self
             .acct_procedure_index_map
-            .get_proc_index(&process)
+            .get_proc_index(process)
             .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
         process.advice_provider_mut().push_stack(Felt::from(proc_idx));
         Ok(())

@@ -25,7 +25,7 @@ impl BatchNoteTree {
     ) -> Result<Self, MerkleError> {
         let leaves = entries
             .into_iter()
-            .map(|(note_id, metadata)| compute_note_commitment(note_id, metadata).into());
+            .map(|(note_id, metadata)| compute_note_commitment(note_id, metadata));
 
         SimpleSmt::with_contiguous_leaves(leaves).map(Self)
     }

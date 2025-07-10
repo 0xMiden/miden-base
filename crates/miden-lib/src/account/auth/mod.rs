@@ -140,7 +140,7 @@ mod tests {
             .expect("account building failed");
 
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(public_key_slot, Word::from(public_key).into());
+        assert_eq!(public_key_slot, Word::from(public_key));
 
         let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
         assert_eq!(num_procs_slot, Word::default());
@@ -180,7 +180,7 @@ mod tests {
             .expect("account building failed");
 
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(public_key_slot, Word::from(public_key).into());
+        assert_eq!(public_key_slot, Word::from(public_key));
 
         let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
         assert_eq!(num_procs_slot, Word::from([2u32, 0, 0, 0]));
@@ -189,12 +189,12 @@ mod tests {
             .storage()
             .get_map_item(2, Word::default())
             .expect("storage map access failed");
-        assert_eq!(proc_root_0, Word::from(auth_trigger_procedures[0]));
+        assert_eq!(proc_root_0, auth_trigger_procedures[0]);
 
         let proc_root_1 = account
             .storage()
             .get_map_item(2, Word::from([1, 0, 0, 0u32]))
             .expect("storage map access failed");
-        assert_eq!(proc_root_1, Word::from(auth_trigger_procedures[1]));
+        assert_eq!(proc_root_1, auth_trigger_procedures[1]);
     }
 }

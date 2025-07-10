@@ -36,7 +36,7 @@ impl PartialOrd for NonFungibleAsset {
 
 impl Ord for NonFungibleAsset {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        Word::from(self.0).cmp(&Word::from(other.0))
+        self.0.cmp(&other.0)
     }
 }
 
@@ -58,7 +58,7 @@ impl NonFungibleAsset {
     /// Returns an error if the provided faucet ID is not for a non-fungible asset faucet.
     pub fn new(details: &NonFungibleAssetDetails) -> Result<Self, AssetError> {
         let data_hash = Hasher::hash(details.asset_data());
-        Self::from_parts(details.faucet_id(), data_hash.into())
+        Self::from_parts(details.faucet_id(), data_hash)
     }
 
     /// Return a non-fungible asset created from the specified faucet and using the provided

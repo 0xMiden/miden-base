@@ -70,8 +70,8 @@ impl From<&NoteDetails> for NoteId {
 }
 
 impl From<Word> for NoteId {
-    fn from(value: Word) -> Self {
-        Self(value.into())
+    fn from(digest: Word) -> Self {
+        Self(digest)
     }
 }
 
@@ -99,7 +99,7 @@ impl From<NoteId> for [u8; 32] {
 
 impl From<&NoteId> for Word {
     fn from(id: &NoteId) -> Self {
-        id.0.into()
+        id.0
     }
 }
 

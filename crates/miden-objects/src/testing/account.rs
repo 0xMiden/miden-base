@@ -83,7 +83,7 @@ impl Account {
             false => {
                 let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
                 let vault_key = asset.vault_key();
-                vec![(vault_key.into(), asset.into())]
+                vec![(vault_key, asset.into())]
             },
         };
 

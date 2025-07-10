@@ -125,7 +125,7 @@ impl AccountStorage {
                 slots_len: self.slots.len() as u8,
                 index,
             })
-            .map(|slot| slot.value().into())
+            .map(|slot| slot.value())
     }
 
     /// Returns a map item from a map located in storage at the specified index.
@@ -138,7 +138,7 @@ impl AccountStorage {
             slots_len: self.slots.len() as u8,
             index,
         })? {
-            StorageSlot::Map(map) => Ok(map.get(&Word::from(key))),
+            StorageSlot::Map(map) => Ok(map.get(&key)),
             _ => Err(AccountError::StorageSlotNotMap(index)),
         }
     }
@@ -251,9 +251,9 @@ impl AccountStorage {
         let old_root = storage_map.root();
 
         // update the key-value pair in the map
-        let old_value = storage_map.insert(key.into(), value);
+        let old_value = storage_map.insert(key, value);
 
-        Ok((old_root.into(), old_value))
+        Ok((old_root, old_value))
     }
 }
 

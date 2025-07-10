@@ -92,11 +92,9 @@ impl AccountWitness {
             },
         };
 
-        let commitment = Word::from(
-            proof
-                .get(&AccountTree::id_to_smt_key(witness_id))
-                .expect("we should have received a proof for the witness key"),
-        );
+        let commitment = proof
+            .get(&AccountTree::id_to_smt_key(witness_id))
+            .expect("we should have received a proof for the witness key");
 
         // SAFETY: The proof is guaranteed to have depth AccountTree::DEPTH if it comes from one of
         // the account trees.
@@ -136,7 +134,7 @@ impl AccountWitness {
             SmtLeaf::new_empty(leaf_idx)
         } else {
             let key = AccountTree::id_to_smt_key(self.id);
-            SmtLeaf::new_single(key, Word::from(self.commitment))
+            SmtLeaf::new_single(key, self.commitment)
         }
     }
 

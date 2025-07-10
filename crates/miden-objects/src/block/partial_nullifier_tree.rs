@@ -121,9 +121,9 @@ mod tests {
     /// tree root and thus an error.
     #[test]
     fn partial_nullifier_tree_root_mismatch() {
-        let key0 = Word::from(Word::new(rand_array()));
-        let key1 = Word::from(Word::new(rand_array()));
-        let key2 = Word::from(Word::new(rand_array()));
+        let key0 = Word::new(rand_array());
+        let key1 = Word::new(rand_array());
+        let key2 = Word::new(rand_array());
 
         let value0 = EMPTY_WORD;
         let value1 = Word::new(rand_array());

@@ -209,12 +209,12 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     // Test with random keys to make sure the ordering in the MASM and Rust implementations
     // matches.
-    let key0 = Word::from(word(winter_rand_utils::rand_array()));
-    let key1 = Word::from(word(winter_rand_utils::rand_array()));
-    let key2 = Word::from(word(winter_rand_utils::rand_array()));
-    let key3 = Word::from(word(winter_rand_utils::rand_array()));
-    let key4 = Word::from(word(winter_rand_utils::rand_array()));
-    let key5 = Word::from(word(winter_rand_utils::rand_array()));
+    let key0 = word(winter_rand_utils::rand_array());
+    let key1 = word(winter_rand_utils::rand_array());
+    let key2 = word(winter_rand_utils::rand_array());
+    let key3 = word(winter_rand_utils::rand_array());
+    let key4 = word(winter_rand_utils::rand_array());
+    let key5 = word(winter_rand_utils::rand_array());
 
     let key0_init_value = EMPTY_WORD;
     let key1_init_value = EMPTY_WORD;
@@ -438,33 +438,30 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .added_assets()
-        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_fungible().amount()))
+        .map(|asset| (asset.vault_key(), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
     let mut removed_assets = executed_tx
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_fungible().amount()))
+        .map(|asset| (asset.vault_key(), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
 
     assert_eq!(added_assets.len(), 2);
     assert_eq!(removed_assets.len(), 2);
 
     assert_eq!(
-        added_assets.remove(&Word::from(original_asset2.vault_key())).unwrap(),
+        added_assets.remove(&original_asset2.vault_key()).unwrap(),
         added_asset2.amount() - removed_asset2.amount()
     );
-    assert_eq!(
-        added_assets.remove(&Word::from(added_asset4.vault_key())).unwrap(),
-        added_asset4.amount()
-    );
+    assert_eq!(added_assets.remove(&added_asset4.vault_key()).unwrap(), added_asset4.amount());
 
     assert_eq!(
-        removed_assets.remove(&Word::from(original_asset0.vault_key())).unwrap(),
+        removed_assets.remove(&original_asset0.vault_key()).unwrap(),
         removed_asset0.amount() - added_asset0.amount()
     );
     assert_eq!(
-        removed_assets.remove(&Word::from(original_asset3.vault_key())).unwrap(),
+        removed_assets.remove(&original_asset3.vault_key()).unwrap(),
         removed_asset3.amount()
     );
 
@@ -548,20 +545,20 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .added_assets()
-        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_non_fungible()))
+        .map(|asset| (asset.vault_key(), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
     let mut removed_assets = executed_tx
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (Word::from(asset.vault_key()), asset.unwrap_non_fungible()))
+        .map(|asset| (asset.vault_key(), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
 
     assert_eq!(added_assets.len(), 1);
     assert_eq!(removed_assets.len(), 1);
 
-    assert_eq!(added_assets.remove(&Word::from(asset0.vault_key())).unwrap(), asset0);
-    assert_eq!(removed_assets.remove(&Word::from(asset1.vault_key())).unwrap(), asset1);
+    assert_eq!(added_assets.remove(&asset0.vault_key()).unwrap(), asset0);
+    assert_eq!(removed_assets.remove(&asset1.vault_key()).unwrap(), asset1);
 
     Ok(())
 }
@@ -705,9 +702,9 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             dropw dropw dropw dropw
         end
     ",
-        UPDATED_SLOT_VALUE = word_to_masm_push_string(&Word::from(updated_slot_value)),
-        UPDATED_MAP_VALUE = word_to_masm_push_string(&Word::from(updated_map_value)),
-        UPDATED_MAP_KEY = word_to_masm_push_string(&Word::from(updated_map_key)),
+        UPDATED_SLOT_VALUE = word_to_masm_push_string(&updated_slot_value),
+        UPDATED_MAP_VALUE = word_to_masm_push_string(&updated_map_value),
+        UPDATED_MAP_KEY = word_to_masm_push_string(&updated_map_key),
     );
 
     let tx_script = TransactionScript::compile(
@@ -765,7 +762,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
         .context("failed to get expected value from storage map")?
         .entries();
     assert_eq!(
-        *map_delta.get(&LexicographicWord::new(Word::from(updated_map_key))).unwrap(),
+        *map_delta.get(&LexicographicWord::new(updated_map_key)).unwrap(),
         updated_map_value
     );
 
@@ -862,7 +859,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 }
 
 fn word(data: [u32; 4]) -> Word {
-    Word::from(Word::from(data))
+    Word::from(data)
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "

@@ -57,7 +57,7 @@ impl NoteHeader {
 /// This value is used primarily for authenticating notes consumed when they are consumed
 /// in a transaction.
 pub fn compute_note_commitment(id: NoteId, metadata: &NoteMetadata) -> Word {
-    Hasher::merge(&[id.inner(), Word::from(metadata).into()])
+    Hasher::merge(&[id.inner(), Word::from(metadata)])
 }
 
 // CONVERSIONS FROM NOTE HEADER

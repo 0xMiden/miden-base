@@ -110,7 +110,7 @@ pub fn create_swap_note<R: FeltRng>(
     let payback_serial_num = rng.draw_word();
     let payback_recipient = utils::build_p2id_recipient(sender, payback_serial_num)?;
 
-    let payback_recipient_word: Word = payback_recipient.digest().into();
+    let payback_recipient_word: Word = payback_recipient.digest();
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::from_account_id(sender);
 

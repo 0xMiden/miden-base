@@ -83,7 +83,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let output_note = executed_transaction.output_notes().get_note(0).clone();
 
     let assets = NoteAssets::new(vec![fungible_asset])?;
-    let id = NoteId::new(recipient.into(), assets.commitment());
+    let id = NoteId::new(recipient, assets.commitment());
 
     assert_eq!(output_note.id(), id);
     assert_eq!(

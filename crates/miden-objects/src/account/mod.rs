@@ -524,7 +524,7 @@ mod tests {
         );
 
         let updated_map =
-            StorageMapDelta::from_iters([], [(new_map_entry.0.into(), new_map_entry.1.into())]);
+            StorageMapDelta::from_iters([], [(new_map_entry.0, new_map_entry.1.into())]);
         storage_map.insert(new_map_entry.0, new_map_entry.1.into());
 
         // build account delta
