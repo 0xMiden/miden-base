@@ -47,7 +47,8 @@ use crate::{auth::TransactionAuthenticator, errors::TransactionHostError};
 // TRANSACTION HOST
 // ================================================================================================
 
-/// Transaction host is responsible for handling [Host] requests made by a transaction kernel.
+/// The transaction host is responsible for handling [`SyncHost`] requests made by the transaction
+/// kernel.
 ///
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
@@ -91,7 +92,7 @@ pub struct TransactionHost<'store, 'auth> {
 }
 
 impl<'store, 'auth> TransactionHost<'store, 'auth> {
-    /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
+    /// Creates a new [`TransactionHost`] instance from the provided inputs.
     pub fn new(
         account: &PartialAccount,
         advice_inputs: &mut AdviceInputs,
