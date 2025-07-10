@@ -3,6 +3,8 @@
 ## 0.11.0 (TBD)
 
 - [BREAKING] Incremented MSRV to 1.88.
+- [BREAKING] Upgrade Miden VM to `0.16`, `miden-crypto` to `0.15` and `winterfell` crates to `0.13` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
+- [BREAKING] `Digest` was removed in favor of `Word` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
 
 ## 0.10.0 (2025-07-08)
 
