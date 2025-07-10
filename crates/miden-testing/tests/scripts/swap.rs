@@ -1,5 +1,5 @@
 use anyhow::Context;
-use miden_lib::{note::create_swap_note, transaction::TransactionKernel, note::utils};
+use miden_lib::{note::create_swap_note, note::utils, transaction::TransactionKernel};
 use miden_objects::{
     Felt, NoteError,
     account::AccountId,
@@ -109,6 +109,72 @@ fn prove_consume_swap_note_private_payback_note() -> anyhow::Result<()> {
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block().unwrap();
 
+    let consume_swap_note_tx = mock_chain
+        .build_tx_context(target_account.id(), &[note.id()], &[])
+        .context("failed to build tx context")?
+        .build()?
+        .execute()?;
+
+    let target_account = mock_chain
+        .add_pending_executed_transaction(&consume_swap_note_tx)
+        .context("failed to add pending executed transaction")?;
+
+    let output_payback_note = consume_swap_note_tx.output_notes().iter().next().unwrap().clone();
+    assert!(output_payback_note.id() == payback_note.id());
+    assert_eq!(output_payback_note.assets().unwrap().iter().next().unwrap(), &requested_asset);
+
+    assert!(prove_and_verify_transaction(consume_swap_note_tx).is_ok());
+    assert!(target_account.vault().assets().count() == 1);
+    assert!(target_account.vault().assets().any(|asset| asset == offered_asset));
+
+    // CONSUME PAYBACK P2ID NOTE
+    // --------------------------------------------------------------------------------------------
+
+    let full_payback_note = Note::new(
+        payback_note.assets().clone(),
+        *output_payback_note.metadata(),
+        payback_note.recipient().clone(),
+    );
+
+    let consume_payback_tx = mock_chain
+        .build_tx_context(sender_account.id(), &[], &[full_payback_note])
+        .context("failed to build tx context")?
+        .build()?
+        .execute()?;
+
+    let sender_account = mock_chain
+        .add_pending_executed_transaction(&consume_payback_tx)
+        .context("failed to add pending executed transaction")?;
+    assert!(sender_account.vault().assets().any(|asset| asset == requested_asset));
+    assert!(prove_and_verify_transaction(consume_payback_tx).is_ok());
+    Ok(())
+}
+
+// Consumes the swap note (same as the one used in the above test) and proves the transaction
+// The sender account also consumes the payback note
+#[test]
+fn prove_consume_swap_note_public_payback_note() -> anyhow::Result<()> {
+    let mut mock_chain = MockChain::new();
+    let offered_asset = mock_chain
+        .add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64)
+        .context("failed to add pending new faucet")?
+        .mint(2000);
+    let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+    let sender_account =
+        mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![offered_asset]);
+
+    let payback_note_type = NoteType::Private;
+    let (note, payback_note) =
+        get_swap_notes(sender_account.id(), offered_asset, requested_asset, payback_note_type);
+
+    // CONSUME CREATED NOTE
+    // --------------------------------------------------------------------------------------------
+
+    let target_account =
+        mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![requested_asset]);
+    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
+    mock_chain.prove_next_block().unwrap();
+
     let payback_p2id_note = create_p2id_note_exact(
         target_account.id(),
         sender_account.id(),
@@ -122,6 +188,7 @@ fn prove_consume_swap_note_private_payback_note() -> anyhow::Result<()> {
     let consume_swap_note_tx = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])
         .context("failed to build tx context")?
+        .extend_expected_output_notes(vec![OutputNote::Full(payback_p2id_note)])
         .build()?
         .execute()?;
 
