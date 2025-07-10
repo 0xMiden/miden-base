@@ -101,7 +101,8 @@ pub fn create_swap_note<R: FeltRng>(
     sender: AccountId,
     offered_asset: Asset,
     requested_asset: Asset,
-    note_type: NoteType,
+    swap_note_type: NoteType,
+    payback_note_type: NoteType,
     aux: Felt,
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
@@ -123,16 +124,18 @@ pub fn create_swap_note<R: FeltRng>(
         requested_asset_word[1],
         requested_asset_word[2],
         requested_asset_word[3],
+        payback_note_type.into(),
         payback_tag.as_u32().into(),
         NoteExecutionHint::always().into(),
     ])?;
 
     // build the tag for the SWAP use case
-    let tag = build_swap_tag(note_type, &offered_asset, &requested_asset)?;
+    let tag = build_swap_tag(swap_note_type, &offered_asset, &requested_asset)?;
     let serial_num = rng.draw_word();
 
     // build the outgoing note
-    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), aux)?;
+    let metadata =
+        NoteMetadata::new(sender, swap_note_type, tag, NoteExecutionHint::always(), aux)?;
     let assets = NoteAssets::new(vec![offered_asset])?;
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
     let note = Note::new(assets, metadata, recipient);

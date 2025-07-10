@@ -2,11 +2,6 @@ use.miden::note
 use.miden::tx
 use.miden::contracts::wallets::basic->wallet
 
-# CONSTANTS
-# =================================================================================================
-
-const.PRIVATE_NOTE=2
-
 # ERRORS
 # =================================================================================================
 
@@ -66,8 +61,8 @@ begin
     push.0 exec.note::get_inputs
     # => [num_inputs, inputs_ptr]
 
-    # make sure the number of inputs is 10
-    eq.10 assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
+    # make sure the number of inputs is 11
+    eq.11 assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
     # => [inputs_ptr]
 
     # load RECIPIENT
@@ -78,17 +73,20 @@ begin
     # => [ASSET, RECIPIENT]
 
     padw mem_loadw.8
-    # => [0, 0, execution_hint, tag, ASSET, RECIPIENT]
+    # => [0, execution_hint, tag, payback_note_type, ASSET, RECIPIENT]
 
-    drop drop swap
-    # => [tag, execution_hint, ASSET, RECIPIENT]
+    drop
+    # => [execution_hint, tag, payback_note_type, ASSET, RECIPIENT]
+
+    swap
+    # => [tag, execution_hint, payback_note_type, ASSET, RECIPIENT]
 
     # we add aux = 0 to the note assuming we don't need it for the second leg of the SWAP
     push.0 swap
-    # => [tag, aux, execution_hint, ASSET, RECIPIENT]
+    # => [tag, aux, execution_hint, payback_note_type, ASSET, RECIPIENT]
 
-    push.PRIVATE_NOTE movdn.2
-    # => [tag, aux, note_type, execution_hint, ASSET, RECIPIENT]
+    movup.3 movdn.2
+    # => [tag, aux, payback_note_type, execution_hint, ASSET, RECIPIENT]
 
     swapw
     # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
@@ -96,6 +94,7 @@ begin
     # create a note using inputs
     padw swapdw padw movdnw.2
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8), ASSET]
+    
     call.tx::create_note
     # => [note_idx, pad(15), ASSET]
 
