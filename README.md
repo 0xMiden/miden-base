@@ -3,7 +3,7 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/0xMiden/miden-base/blob/main/LICENSE)
 [![test](https://github.com/0xMiden/miden-base/actions/workflows/test.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/test.yml)
 [![build](https://github.com/0xMiden/miden-base/actions/workflows/build.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/build.yml)
-[![RUST_VERSION](https://img.shields.io/badge/rustc-1.87+-lightgray.svg)](https://www.rust-lang.org/tools/install)
+[![RUST_VERSION](https://img.shields.io/badge/rustc-1.88+-lightgray.svg)](https://www.rust-lang.org/tools/install)
 [![GitHub Release](https://img.shields.io/github/release/0xMiden/miden-base)](https://github.com/0xMiden/miden-base/releases/)
 
 Description and core structures for the Miden Rollup protocol.
@@ -23,7 +23,7 @@ If you want to join the technical discussion or learn more about the project, pl
 
 ## Status and features
 
-Miden is currently on release v0.10. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
+Miden is currently on release v0.11. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
 
 ### Feature highlights
 
@@ -36,10 +36,10 @@ Miden is currently on release v0.10. This is an early version of the protocol an
 - **Standard notes**. Can create notes using standardized note scripts such as Pay-to-ID (`P2ID`) and atomic swap (`SWAP`). In the future, the set of standardized notes will be expanded.
 - **Delegated note inclusion proofs**. By delegating note inclusion proofs, users can create chains of dependent notes which are included into a block as a single batch.
 - **Transaction recency conditions**. Users are able to specify how close to the chain tip their transactions are to be executed. This enables things like rate limiting and oracles.
+- **Network transactions**. Users will be able to create notes intended for network execution. Such notes will be included into transactions executed and proven by the Miden operator.
 
 ### Planned features
 
-- **Network transactions**. Users will be able to create notes intended for network execution. Such notes will be included into transactions executed and proven by the Miden operator.
 - **Encrypted notes**. With encrypted notes users will be able to put all note details on-chain, but the data contained within the notes would be encrypted with the recipient's key.
 
 ## Project structure

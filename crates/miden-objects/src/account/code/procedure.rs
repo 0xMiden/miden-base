@@ -19,7 +19,7 @@ use crate::{
 /// by this procedure.
 ///
 /// The offset is applied to any accesses made from within the procedure to the associated
-/// account's storage. For example, if storage offset for a procedure is set ot 1, a call
+/// account's storage. For example, if storage offset for a procedure is set to 1, a call
 /// to the account::get_item(storage_slot=4) made from this procedure would actually access
 /// storage slot with index 5.
 ///

@@ -39,7 +39,7 @@ use crate::{AccountError, errors::AccountIdError};
 /// # Layout
 ///
 /// An `AccountId` consists of two field elements, where the first is called the prefix and the
-/// second is called the suffix. It is layed out as follows:
+/// second is called the suffix. It is laid out as follows:
 ///
 /// ```text
 /// prefix: [hash (56 bits) | storage mode (2 bits) | type (2 bits) | version (4 bits)]

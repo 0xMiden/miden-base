@@ -79,7 +79,7 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(150)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
-            .build()
+            .build()?
     };
     let executed_transaction = tx_context.execute().context("failed to execute transaction")?;
 
@@ -124,7 +124,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
         .extend_input_notes(vec![note])
         .tx_script(tx_script_target)
         .authenticator(Some(falcon_auth))
-        .build();
+        .build()?;
 
     let executed_transaction = tx_context.execute()?;
 

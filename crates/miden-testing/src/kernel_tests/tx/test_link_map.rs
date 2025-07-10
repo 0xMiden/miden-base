@@ -180,7 +180,7 @@ fn insertion() -> anyhow::Result<()> {
         entry3_value = word_to_masm_push_string(&entry3_value),
     );
 
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 
@@ -425,7 +425,7 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
 
     CodeExecutor::with_advice_provider(MemAdviceProvider::default())
         .run(&code)
-        .with_context(|| format!("comparion test for {procedure_name} failed"))?;
+        .with_context(|| format!("comparison test for {procedure_name} failed"))?;
 
     Ok(())
 }
@@ -616,7 +616,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
     "#
     );
 
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let process = tx_context.execute_code(&code).context("failed to execute code")?;
     let state = ProcessState::from(&process);
 

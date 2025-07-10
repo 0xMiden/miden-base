@@ -18,7 +18,6 @@ use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
 /// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.
-/// - `create_note`, which can be used to create a new note without any assets attached to it.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
 ///   it to the output note with the specified index.
 ///
@@ -43,7 +42,6 @@ impl From<BasicWallet> for AccountComponent {
 ///
 /// The basic wallet interface exposes three procedures:
 /// - `receive_asset`, which can be used to add an asset to the account.
-/// - `create_note`, which can be used to create a new note without any assets attached to it.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
 ///   it to the output note with the specified index.
 ///

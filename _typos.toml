@@ -1,0 +1,2 @@
+[default]
+extend-ignore-identifiers-re = [".*1st.*", ".*2nd.*", ".*3rd.*"]

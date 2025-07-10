@@ -235,24 +235,23 @@ fn test_basic_wallet_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
+        use.miden::tx
         use.miden::contracts::wallets::basic->wallet
         use.miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
-                
+
                 # unsupported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
             else
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -273,7 +272,7 @@ fn test_basic_wallet_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # unsupported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
@@ -282,7 +281,6 @@ fn test_basic_wallet_custom_notes() {
                 call.fungible_faucet::distribute
 
                 # supported procs
-                call.wallet::create_note
                 call.wallet::receive_asset
                 call.wallet::move_asset_to_note
             end
@@ -338,7 +336,7 @@ fn test_basic_fungible_faucet_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
@@ -348,7 +346,6 @@ fn test_basic_fungible_faucet_custom_notes() {
 
                 # unsupported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -369,11 +366,11 @@ fn test_basic_fungible_faucet_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
-            
+
                 # unsupported proc
                 call.wallet::receive_asset
             else
@@ -381,7 +378,6 @@ fn test_basic_fungible_faucet_custom_notes() {
                 call.fungible_faucet::burn
 
                 # unsupported procs
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -458,7 +454,7 @@ fn test_custom_account_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported proc
                 call.test_account::procedure_1
 
@@ -491,12 +487,11 @@ fn test_custom_account_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 call.wallet::receive_asset
                 call.test_account::procedure_1
             else
                 call.test_account::procedure_2
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -580,17 +575,15 @@ fn test_custom_account_multiple_components_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
             else
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
@@ -622,10 +615,9 @@ fn test_custom_account_multiple_components_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2

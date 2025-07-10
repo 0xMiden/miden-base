@@ -25,7 +25,7 @@ use crate::{
 /// - Transaction script argument: a [`Word`], which will be pushed to the operand stack before the
 ///   transaction script execution. If this argument is not specified, the [`EMPTY_WORD`] would be
 ///   used as a default value. If the [AdviceInputs] are propagated with some user defined map
-///   entires, this script argument could be used as a key to access the corresponding value.
+///   entries, this script argument could be used as a key to access the corresponding value.
 /// - Note arguments: data put onto the stack right before a note script is executed. These are
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.

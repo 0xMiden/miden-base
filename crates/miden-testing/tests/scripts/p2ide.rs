@@ -35,23 +35,22 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let reclaim_height = None; // if 0, means it is not reclaimable
     let timelock_height = None; // if 0 means it is not timelocked
 
-    let p2ide_note = mock_chain
-        .add_pending_p2ide_note(
-            sender_account.id(),
-            target_account.id(),
-            &[fungible_asset],
-            NoteType::Public,
-            reclaim_height,
-            timelock_height,
-        )
-        .unwrap();
+    let p2ide_note = mock_chain.add_pending_p2ide_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset],
+        NoteType::Public,
+        reclaim_height,
+        timelock_height,
+    )?;
 
+    mock_chain.prove_next_block()?;
     mock_chain.prove_next_block()?;
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
         .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDE_RECLAIM_DISABLED);
@@ -59,13 +58,12 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Success - Target Account)
     let executed_transaction_2 = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let target_account_after: Account = Account::from_parts(
         target_account.id(),
-        AssetVault::new(&[fungible_asset]).unwrap(),
+        AssetVault::new(&[fungible_asset])?,
         target_account.storage().clone(),
         target_account.code().clone(),
         Felt::new(2),
@@ -93,29 +91,26 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
     let reclaim_height = BlockNumber::from(5u32);
     let timelock_height = None;
 
-    let p2ide_note = mock_chain
-        .add_pending_p2ide_note(
-            sender_account.id(),
-            target_account.id(),
-            &[fungible_asset],
-            NoteType::Public,
-            Some(reclaim_height),
-            timelock_height,
-        )
-        .unwrap();
+    let p2ide_note = mock_chain.add_pending_p2ide_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset],
+        NoteType::Public,
+        Some(reclaim_height),
+        timelock_height,
+    )?;
 
     mock_chain.prove_until_block(4).context("failed to prove multiple blocks")?;
 
     // CONSTRUCT AND EXECUTE TX (Success - Target Account)
     let executed_transaction_1 = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let target_account_after: Account = Account::from_parts(
         target_account.id(),
-        AssetVault::new(&[fungible_asset]).unwrap(),
+        AssetVault::new(&[fungible_asset])?,
         target_account.storage().clone(),
         target_account.code().clone(),
         Felt::new(2),
@@ -144,23 +139,21 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let reclaim_height = None;
     let timelock_height = BlockNumber::from(5u32);
 
-    let p2ide_note = mock_chain
-        .add_pending_p2ide_note(
-            sender_account.id(),
-            target_account.id(),
-            &[fungible_asset],
-            NoteType::Public,
-            reclaim_height,
-            Some(timelock_height),
-        )
-        .unwrap();
+    let p2ide_note = mock_chain.add_pending_p2ide_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset],
+        NoteType::Public,
+        reclaim_height,
+        Some(timelock_height),
+    )?;
 
     mock_chain.prove_next_block()?;
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
@@ -168,18 +161,18 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past unlock height block height ──────────────────────
-    mock_chain.prove_until_block(timelock_height + 1).unwrap();
+    mock_chain.prove_until_block(timelock_height + 1)?;
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_DISABLED);
@@ -187,9 +180,8 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let target_after = Account::from_parts(
         target_account.id(),
@@ -222,16 +214,14 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let reclaim_height = BlockNumber::from(1u32);
     let timelock_height = BlockNumber::from(5u32);
 
-    let p2ide_note = mock_chain
-        .add_pending_p2ide_note(
-            sender_account.id(),
-            target_account.id(),
-            &[fungible_asset],
-            NoteType::Public,
-            Some(reclaim_height),
-            Some(timelock_height),
-        )
-        .unwrap();
+    let p2ide_note = mock_chain.add_pending_p2ide_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset],
+        NoteType::Public,
+        Some(reclaim_height),
+        Some(timelock_height),
+    )?;
     mock_chain.prove_next_block()?;
 
     // fast forward to reclaim block height + 2
@@ -242,7 +232,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure - sender_account tries to reclaim)
     let executed_transaction_1 = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(
@@ -250,18 +240,17 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
         ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED
     );
 
-    mock_chain.prove_until_block(timelock_height).unwrap();
+    mock_chain.prove_until_block(timelock_height)?;
 
     // CONSTRUCT AND EXECUTE TX (Success - sender_account)
     let executed_transaction_1 = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let sender_account_after: Account = Account::from_parts(
         sender_account.id(),
-        AssetVault::new(&[fungible_asset]).unwrap(),
+        AssetVault::new(&[fungible_asset])?,
         sender_account.storage().clone(),
         sender_account.code().clone(),
         Felt::new(2),
@@ -291,23 +280,21 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let reclaim_height = BlockNumber::from(10u32);
     let timelock_height = BlockNumber::from(7u32);
 
-    let p2ide_note = mock_chain
-        .add_pending_p2ide_note(
-            sender_account.id(),
-            target_account.id(),
-            &[fungible_asset],
-            NoteType::Public,
-            Some(reclaim_height),
-            Some(timelock_height),
-        )
-        .unwrap();
+    let p2ide_note = mock_chain.add_pending_p2ide_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset],
+        NoteType::Public,
+        Some(reclaim_height),
+        Some(timelock_height),
+    )?;
     mock_chain.prove_next_block()?;
     mock_chain.prove_next_block()?;
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
@@ -315,29 +302,29 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past timelock height ──────────────────────
-    mock_chain.prove_until_block(timelock_height + 1).unwrap();
+    mock_chain.prove_until_block(timelock_height + 1)?;
 
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past reclaim height ──────────────────────
-    mock_chain.prove_until_block(reclaim_height + 1).unwrap();
+    mock_chain.prove_until_block(reclaim_height + 1)?;
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
         .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(
@@ -348,9 +335,8 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     // ───────────────────── target spends successfully ───────────────────────
     let final_tx = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let target_after = Account::from_parts(
         target_account.id(),
@@ -389,8 +375,7 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
         NoteType::Public,
         Felt::new(0),
         &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
-    )
-    .unwrap();
+    )?;
 
     // push note on-chain
     mock_chain.add_pending_note(OutputNote::Full(p2id_extended.clone()));
@@ -399,20 +384,19 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
     // ───────────────────── early reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])?
-        .build()
+        .build()?
         .execute();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
     // ───────────────────── advance chain past reclaim height ──────────────────────
-    mock_chain.prove_until_block(reclaim_block_height + 1).unwrap();
+    mock_chain.prove_until_block(reclaim_block_height + 1)?;
 
     // ───────────────────── sender reclaims successfully ───────────────────────
     let final_tx = mock_chain
         .build_tx_context(sender_account.id(), &[p2id_extended.id()], &[])?
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let sender_after = Account::from_parts(
         sender_account.id(),

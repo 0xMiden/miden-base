@@ -57,6 +57,10 @@ impl TransactionContext {
     /// # Errors
     ///
     /// Returns an error if the assembly or execution of the provided code fails.
+    ///
+    /// # Panics
+    ///
+    /// - If the provided `code` is not a valid program.
     pub fn execute_code_with_assembler(
         &self,
         code: &str,
@@ -66,8 +70,7 @@ impl TransactionContext {
             &self.tx_inputs,
             &self.tx_args,
             Some(self.advice_inputs.clone()),
-        )
-        .unwrap();
+        );
 
         let test_lib = TransactionKernel::kernel_as_library();
 
@@ -79,7 +82,7 @@ impl TransactionContext {
         let program = assembler
             .with_debug_mode(true)
             .assemble_program(virtual_source_file)
-            .expect("compilation of the provided code failed");
+            .expect("code was not well formed");
 
         let mast_store = Rc::new(TransactionMastStore::new());
 

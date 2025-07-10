@@ -154,8 +154,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
-                .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
@@ -228,8 +227,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
-                .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
         let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
 
         let scripts_mast_store =
@@ -299,8 +297,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
-                .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
 
@@ -399,11 +396,11 @@ fn build_executed_transaction(
     }
 
     // make sure nonce delta was computed correctly
-    let nonce_increment = final_account.nonce() - initial_account.nonce();
-    if nonce_increment != account_delta.nonce_increment() {
+    let nonce_delta = final_account.nonce() - initial_account.nonce();
+    if nonce_delta != account_delta.nonce_delta() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
-            expected: nonce_increment,
-            actual: account_delta.nonce_increment(),
+            expected: nonce_delta,
+            actual: account_delta.nonce_delta(),
         });
     }
 

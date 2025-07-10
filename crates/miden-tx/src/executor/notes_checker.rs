@@ -37,7 +37,7 @@ impl<'a> NoteConsumptionChecker<'a> {
     ///   - Returns `NoteAccountExecution::Failure` if some note returned an error. The fields
     ///     associated with `Failure` variant contains the ID of the failed note, a vector of IDs of
     ///     the notes, which were successfully executed, and the [TransactionExecutorError] if the
-    ///     check failed durning the execution stage.
+    ///     check failed during the execution stage.
     #[maybe_async]
     pub fn check_notes_consumability(
         &self,

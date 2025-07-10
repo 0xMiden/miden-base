@@ -133,7 +133,7 @@ impl NoteTag {
             AccountStorageMode::Network => {
                 let prefix_id: u64 = account_id.prefix().into();
 
-                // Shift the high bits of the account ID such that they are layed out as:
+                // Shift the high bits of the account ID such that they are laid out as:
                 // [34 zero bits | remaining high bits (30 bits)].
                 let high_bits = prefix_id >> 34;
 
@@ -146,7 +146,7 @@ impl NoteTag {
             AccountStorageMode::Private | AccountStorageMode::Public => {
                 let prefix_id: u64 = account_id.prefix().into();
 
-                // Shift the high bits of the account ID such that they are layed out as:
+                // Shift the high bits of the account ID such that they are laid out as:
                 // [34 zero bits | remaining high bits (30 bits)].
                 let high_bits = prefix_id >> 34;
 

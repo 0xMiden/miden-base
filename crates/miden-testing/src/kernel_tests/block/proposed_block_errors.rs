@@ -363,7 +363,7 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
     let original_note_proof = original_block_inputs
         .unauthenticated_note_proofs()
         .get(&note0.id())
-        .expect("note proof should have beeen fetched")
+        .expect("note proof should have been fetched")
         .clone();
     let mut invalid_note_path = original_note_proof.note_path().clone();
     // Add a random hash to the path to make it invalid.
