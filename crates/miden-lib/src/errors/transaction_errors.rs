@@ -21,8 +21,6 @@ pub enum TransactionKernelError {
         "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
     )]
     InvalidStorageSlotIndex { max: u64, actual: u64 },
-    #[error("failed to push element {0} to advice stack")]
-    FailedToPushAdviceStack(Felt),
     #[error("failed to generate signature: {0}")]
     FailedSignatureGeneration(&'static str),
     #[error("asset data extracted from the stack by event handler `{handler}` is not well formed")]
