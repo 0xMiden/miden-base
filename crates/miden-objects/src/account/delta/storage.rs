@@ -5,10 +5,10 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    LexicographicWord, Serializable, Word,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    Word,
 };
-use crate::{EMPTY_WORD, Felt, ZERO, account::StorageMap};
+use crate::{account::StorageMap, Felt, LexicographicWord, EMPTY_WORD, ZERO};
 
 // ACCOUNT STORAGE DELTA
 // ================================================================================================

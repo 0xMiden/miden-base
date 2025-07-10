@@ -620,11 +620,11 @@ mod tests {
 
     use super::ProvenTransaction;
     use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ONE, ProvenTransactionError, Word, ZERO,
+        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
+        ZERO,
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, StorageMapDelta,
-            delta::{AccountUpdateDetails, LexicographicWord},
+            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
         },
         block::BlockNumber,
         testing::account_id::{

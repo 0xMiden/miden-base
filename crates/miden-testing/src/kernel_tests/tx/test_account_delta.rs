@@ -4,10 +4,10 @@ use std::{collections::BTreeMap, string::String};
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    EMPTY_WORD, Felt, Word, ZERO,
+    EMPTY_WORD, Felt, LexicographicWord, Word, ZERO,
     account::{
         AccountBuilder, AccountId, AccountStorage, AccountStorageMode, AccountType, StorageMap,
-        StorageSlot, delta::LexicographicWord,
+        StorageSlot,
     },
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     note::{Note, NoteExecutionHint, NoteTag, NoteType},

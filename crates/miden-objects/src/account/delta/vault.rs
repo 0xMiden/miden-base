@@ -5,11 +5,10 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    LexicographicWord, Serializable,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{
-    Felt, ONE, Word, ZERO,
+    Felt, LexicographicWord, ONE, Word, ZERO,
     account::{AccountId, AccountType},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
 };

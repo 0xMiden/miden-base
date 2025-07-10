@@ -6,9 +6,6 @@ use super::{
 };
 use crate::{AccountDeltaError, EMPTY_WORD, Hasher, account::AccountId};
 
-mod lexicographic_word;
-pub use lexicographic_word::LexicographicWord;
-
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
 

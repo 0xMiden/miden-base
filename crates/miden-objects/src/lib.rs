@@ -32,7 +32,7 @@ pub use errors::{
 pub use miden_crypto::{
     hash::rpo::Rpo256 as Hasher,
     word,
-    word::{WordError, parse_hex_string_as_word},
+    word::{LexicographicWord, WordError, parse_hex_string_as_word},
 };
 pub use vm_core::{
     EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, Word, ZERO,
