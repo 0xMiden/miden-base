@@ -192,13 +192,7 @@ fn test_create_note() -> anyhow::Result<()> {
 
     assert_eq!(
         read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
-        // TODO: Can we just use expected_note_metadata?
-        Word::from([
-            expected_note_metadata[0],
-            expected_note_metadata[1],
-            expected_note_metadata[2],
-            expected_note_metadata[3]
-        ]),
+        expected_note_metadata,
         "metadata must be stored at the correct memory location",
     );
 
@@ -504,8 +498,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = NoteTag::from_account_id(faucet_id);
-    // TODO: Create FungibleAsset and convert to word.
-    let asset = Word::new([Felt::new(10), ZERO, faucet_id.suffix(), faucet_id.prefix().as_felt()]);
+    let asset = Word::from(FungibleAsset::new(faucet_id, 10)?);
 
     let code = format!(
         "
@@ -574,12 +567,10 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let aux = Felt::new(27);
     let tag = NoteTag::from_account_id(faucet_2);
 
-    // TODO: Use FungibleAsset
-    let asset = Word::new([Felt::new(10), ZERO, faucet.suffix(), faucet.prefix().as_felt()]);
-    let asset_2 = Word::new([Felt::new(20), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()]);
-    let asset_3 = Word::new([Felt::new(30), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()]);
-    let asset_2_and_3 =
-        Word::new([Felt::new(50), ZERO, faucet_2.suffix(), faucet_2.prefix().as_felt()]);
+    let asset = Word::from(FungibleAsset::new(faucet, 10)?);
+    let asset_2 = Word::from(FungibleAsset::new(faucet_2, 20)?);
+    let asset_3 = Word::from(FungibleAsset::new(faucet_2, 30)?);
+    let asset_2_and_3 = Word::from(FungibleAsset::new(faucet_2, 50)?);
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
     let non_fungible_asset_encoded = Word::from(non_fungible_asset);

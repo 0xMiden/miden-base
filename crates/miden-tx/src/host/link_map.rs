@@ -1,6 +1,6 @@
 use core::cmp::Ordering;
 
-use miden_objects::{Felt, Word, ZERO, LexicographicWord};
+use miden_objects::{Felt, LexicographicWord, Word, ZERO};
 use vm_processor::{ContextId, ExecutionError, ProcessState};
 
 // LINK MAP

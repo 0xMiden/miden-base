@@ -3,9 +3,9 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
-use miden_crypto::word::parse_hex_string_as_word;
 use core::fmt;
 
+use miden_crypto::word::parse_hex_string_as_word;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{self, Error, MapAccess, SeqAccess, Visitor, value::MapAccessDeserializer},
