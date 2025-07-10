@@ -739,7 +739,7 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(note_inputs_5_hash.as_elements());
     expected_stack.extend_from_slice(note_inputs_8_hash.as_elements());
     expected_stack.extend_from_slice(note_inputs_15_hash.as_elements());
-    expected_stack.extend_from_slice(&[ZERO, ZERO, ZERO, ZERO]);
+    expected_stack.extend_from_slice(Word::default().as_elements());
     expected_stack.reverse();
 
     assert_eq!(process.stack.get_state_at(process.system.clk())[0..16], expected_stack);

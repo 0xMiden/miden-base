@@ -514,12 +514,12 @@ mod tests {
 
         let storage_delta = AccountStorageDelta::from_iters(
             [1],
-            [(2, Word::from([ONE, ONE, ONE, ONE])), (3, Word::from([ONE, ONE, ZERO, ONE]))],
+            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
             [(
                 4,
                 StorageMapDelta::from_iters(
-                    [Word::from([ONE, ONE, ONE, ZERO]), Word::from([ZERO, ONE, ONE, ONE])],
-                    [(Word::from([ONE, ONE, ONE, ONE]), Word::from([ONE, ONE, ONE, ONE]))],
+                    [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
+                    [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],
                 ),
             )],
         );

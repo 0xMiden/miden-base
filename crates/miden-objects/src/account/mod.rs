@@ -439,8 +439,8 @@ mod tests {
     fn test_serde_account() {
         let init_nonce = Felt::new(1);
         let asset_0 = FungibleAsset::mock(99);
-        let word = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
-        let storage_slot = StorageSlot::Value(word.into());
+        let word = Word::from([1, 2, 3, 4u32]);
+        let storage_slot = StorageSlot::Value(word);
         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 
         let serialized = account.to_bytes();
@@ -481,18 +481,8 @@ mod tests {
         let asset_1 = NonFungibleAsset::mock(&[1, 2, 3]);
 
         // build storage slots
-        let storage_slot_value_0 = StorageSlot::Value(Word::from([
-            Felt::new(1),
-            Felt::new(2),
-            Felt::new(3),
-            Felt::new(4),
-        ]));
-        let storage_slot_value_1 = StorageSlot::Value(Word::from([
-            Felt::new(5),
-            Felt::new(6),
-            Felt::new(7),
-            Felt::new(8),
-        ]));
+        let storage_slot_value_0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
+        let storage_slot_value_1 = StorageSlot::Value(Word::from([5, 6, 7, 8u32]));
         let mut storage_map = StorageMap::with_entries([
             (
                 Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
@@ -531,10 +521,7 @@ mod tests {
         let final_nonce = Felt::new(2);
         let storage_delta = AccountStorageDeltaBuilder::new()
             .add_cleared_items([0])
-            .add_updated_values([(
-                1,
-                [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)].into(),
-            )])
+            .add_updated_values([(1, Word::from([1, 2, 3, 4u32]))])
             .add_updated_maps([(2, updated_map)])
             .build()
             .unwrap();
@@ -554,12 +541,7 @@ mod tests {
             final_nonce,
             vec![
                 StorageSlot::Value(Word::default()),
-                StorageSlot::Value(Word::from([
-                    Felt::new(1),
-                    Felt::new(2),
-                    Felt::new(3),
-                    Felt::new(4),
-                ])),
+                StorageSlot::Value(Word::from([1, 2, 3, 4u32])),
                 StorageSlot::Map(storage_map),
             ],
         );

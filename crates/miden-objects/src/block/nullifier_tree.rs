@@ -1,7 +1,7 @@
 use vm_core::EMPTY_WORD;
 
 use crate::{
-    Felt, FieldElement, Word,
+    Word,
     block::{BlockNumber, NullifierWitness},
     crypto::merkle::{MutationSet, SMT_DEPTH, Smt},
     errors::NullifierTreeError,
@@ -172,7 +172,7 @@ impl NullifierTree {
 
     /// Returns the nullifier's leaf value in the SMT by its block number.
     pub(super) fn block_num_to_leaf_value(block: BlockNumber) -> Word {
-        Word::from([Felt::from(block), Felt::ZERO, Felt::ZERO, Felt::ZERO])
+        Word::from([block.as_u32(), 0, 0, 0])
     }
 
     /// Given the leaf value of the nullifier SMT, returns the nullifier's block number.

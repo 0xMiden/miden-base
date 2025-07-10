@@ -621,7 +621,6 @@ mod tests {
     use super::ProvenTransaction;
     use crate::{
         ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
-        ZERO,
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
             AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
@@ -657,7 +656,7 @@ mod tests {
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let storage_delta = AccountStorageDelta::from_iters(
             [1, 2, 3, 4],
-            [(2, Word::from([ONE, ONE, ONE, ONE])), (3, Word::from([ONE, ONE, ZERO, ONE]))],
+            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
             [],
         );
         let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)

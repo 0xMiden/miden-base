@@ -1,7 +1,7 @@
 use alloc::string::{String, ToString};
 
 use crate::{
-    Felt, ONE, Word, ZERO,
+    Felt, Word,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
@@ -22,7 +22,7 @@ impl StorageSlotType {
     pub fn as_word(&self) -> Word {
         match self {
             StorageSlotType::Value => Word::default(),
-            StorageSlotType::Map => Word::from([ONE, ZERO, ZERO, ZERO]),
+            StorageSlotType::Map => Word::from([1, 0, 0, 0u32]),
         }
     }
 }

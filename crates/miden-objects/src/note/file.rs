@@ -160,7 +160,7 @@ mod tests {
         let target =
             AccountId::try_from(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE).unwrap();
 
-        let serial_num = Word::from([Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)]);
+        let serial_num = Word::from([0, 1, 2, 3u32]);
         let script = NoteScript::mock();
         let note_inputs = NoteInputs::new(vec![target.prefix().into()]).unwrap();
         let recipient = NoteRecipient::new(serial_num, script, note_inputs);

@@ -2,7 +2,7 @@ use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
 use vm_processor::SMT_DEPTH;
 
 use crate::{
-    Felt, FieldElement, Word,
+    Felt, Word,
     account::{AccountId, AccountIdPrefix},
     block::AccountWitness,
     errors::AccountTreeError,
@@ -260,11 +260,11 @@ impl AccountTree {
     pub(super) fn id_to_smt_key(account_id: AccountId) -> Word {
         // We construct this in such a way that we're forced to use the constants, so that when
         // they're updated, the other usages of the constants are also updated.
-        let mut key = [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO];
+        let mut key = Word::default();
         key[Self::KEY_SUFFIX_IDX] = account_id.suffix();
         key[Self::KEY_PREFIX_IDX] = account_id.prefix().as_felt();
 
-        Word::from(key)
+        key
     }
 
     /// Returns the [`AccountId`] recovered from the given SMT key.
@@ -356,8 +356,8 @@ pub(super) mod tests {
         .unwrap();
         assert_eq!(id0.prefix(), id1.prefix(), "test requires that these ids have the same prefix");
 
-        let commitment0 = Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(42)]);
-        let commitment1 = Word::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(24)]);
+        let commitment0 = Word::from([0, 0, 0, 42u32]);
+        let commitment1 = Word::from([0, 0, 0, 24u32]);
 
         assert_eq!(id0.prefix(), id1.prefix(), "test requires that these ids have the same prefix");
         [(id0, commitment0), (id1, commitment1)]

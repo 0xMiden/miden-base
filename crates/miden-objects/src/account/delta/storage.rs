@@ -429,8 +429,7 @@ mod tests {
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
     use crate::{
-        Felt, ONE, Word, ZERO, account::StorageMapDelta,
-        testing::storage::AccountStorageDeltaBuilder,
+        ONE, Word, ZERO, account::StorageMapDelta, testing::storage::AccountStorageDeltaBuilder,
     };
 
     #[test]
@@ -522,10 +521,8 @@ mod tests {
         let deserialized = StorageMapDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_map_delta);
 
-        let storage_map_delta = StorageMapDelta::from_iters(
-            [],
-            [(Word::from([ZERO, ZERO, ZERO, ZERO]), Word::from([ONE, ONE, ONE, ONE]))],
-        );
+        let storage_map_delta =
+            StorageMapDelta::from_iters([], [(Word::default(), Word::from([ONE, ONE, ONE, ONE]))]);
         let serialized = storage_map_delta.to_bytes();
         let deserialized = StorageMapDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_map_delta);
@@ -537,14 +534,14 @@ mod tests {
     #[case::some_none(Some(1), None, None)]
     #[test]
     fn merge_items(
-        #[case] x: Option<u64>,
-        #[case] y: Option<u64>,
-        #[case] expected: Option<u64>,
+        #[case] x: Option<u32>,
+        #[case] y: Option<u32>,
+        #[case] expected: Option<u32>,
     ) -> anyhow::Result<()> {
         /// Creates a delta containing the item as an update if Some, else with the item cleared.
-        fn create_delta(item: Option<u64>) -> anyhow::Result<AccountStorageDelta> {
+        fn create_delta(item: Option<u32>) -> anyhow::Result<AccountStorageDelta> {
             const SLOT: u8 = 123;
-            let item = item.map(|x| (SLOT, Word::from([Felt::new(x), ZERO, ZERO, ZERO])));
+            let item = item.map(|x| (SLOT, Word::from([x, 0, 0, 0])));
 
             AccountStorageDeltaBuilder::new()
                 .add_cleared_items(item.is_none().then_some(SLOT))
@@ -569,14 +566,13 @@ mod tests {
     #[case::none_some(None, Some(2), Some(2))]
     #[case::some_none(Some(1), None, None)]
     #[test]
-    fn merge_maps(#[case] x: Option<u64>, #[case] y: Option<u64>, #[case] expected: Option<u64>) {
-        fn create_delta(value: Option<u64>) -> StorageMapDelta {
-            let key = Word::from([Felt::new(10), ZERO, ZERO, ZERO]);
+    fn merge_maps(#[case] x: Option<u32>, #[case] y: Option<u32>, #[case] expected: Option<u32>) {
+        fn create_delta(value: Option<u32>) -> StorageMapDelta {
+            let key = Word::from([10u32, 0, 0, 0]);
             match value {
-                Some(value) => StorageMapDelta::from_iters(
-                    [],
-                    [(key, Word::from([Felt::new(value), ZERO, ZERO, ZERO]))],
-                ),
+                Some(value) => {
+                    StorageMapDelta::from_iters([], [(key, Word::from([value, 0, 0, 0]))])
+                },
                 None => StorageMapDelta::from_iters([key], []),
             }
         }

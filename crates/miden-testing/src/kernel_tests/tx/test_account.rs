@@ -738,15 +738,9 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     account.apply_delta(tx.account_delta()).unwrap();
 
     // assert that elements have been set at the correct locations in storage
-    assert_eq!(
-        account.storage().get_item(0).unwrap(),
-        [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)].into()
-    );
+    assert_eq!(account.storage().get_item(0).unwrap(), Word::from([1, 2, 3, 4u32]));
 
-    assert_eq!(
-        account.storage().get_item(1).unwrap(),
-        [Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)].into()
-    );
+    assert_eq!(account.storage().get_item(1).unwrap(), Word::from([5, 6, 7, 8u32]));
 
     Ok(())
 }
