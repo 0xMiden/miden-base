@@ -180,8 +180,8 @@ impl OutputNote {
         }
     }
 
-    /// Returns the recipient of the precessed [`Full`](OutputNote::Full) output note. Returns
-    /// [`None`] if the note type is not [`Full`](OutputNote::Full).
+    /// Returns the recipient of the processed [`Full`](OutputNote::Full) output note, [`None`] if
+    /// the note type is not [`Full`](OutputNote::Full).
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient(&self) -> Option<&NoteRecipient> {

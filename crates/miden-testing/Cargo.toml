@@ -1,44 +1,44 @@
 [package]
-name = "miden-testing"
-version = "0.11.0"
-description = "Miden protocol testing tools"
-readme = "README.md"
-categories = ["no-std"]
-keywords = ["miden", "mock", "test"]
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+authors.workspace      = true
+categories             = ["no-std"]
+description            = "Miden protocol testing tools"
+edition.workspace      = true
+homepage.workspace     = true
+keywords               = ["miden", "mock", "test"]
+license.workspace      = true
+name                   = "miden-testing"
+readme                 = "README.md"
+repository.workspace   = true
 rust-version.workspace = true
-edition.workspace = true
+version                = "0.11.0"
 
 [features]
-async = ["winter-maybe-async/async", "miden-tx/async"]
-std = ["miden-lib/std"]
+async = ["miden-tx/async", "winter-maybe-async/async"]
+std   = ["miden-lib/std"]
 
 [dependencies]
 # Workspace dependencies
-miden-block-prover = { workspace = true, features = ["testing"] }
-miden-lib = { workspace = true, features = ["testing"] }
-miden-objects = { workspace = true, features = ["testing"] }
-miden-tx = { workspace = true, features = ["testing"] }
+miden-block-prover = { features = ["testing"], workspace = true }
+miden-lib          = { features = ["testing"], workspace = true }
+miden-objects      = { features = ["testing"], workspace = true }
+miden-tx           = { features = ["testing"], workspace = true }
 
 # Miden dependencies
 vm-processor = { workspace = true }
 
 # External dependencies
-anyhow = { version = "1.0", default-features = false }
-async-trait = "0.1"
-rand = { workspace = true, features = ["os_rng", "small_rng"] }
-rand_chacha = { version = "0.9", default-features = false }
-thiserror = { workspace = true }
+anyhow             = { version = "1.0", default-features = false }
+async-trait        = "0.1"
+rand               = { workspace = true, features = ["os_rng", "small_rng"] }
+rand_chacha        = { version = "0.9", default-features = false }
+thiserror          = { workspace = true }
 winter-maybe-async = { version = "0.13" }
-winterfell = { version = "0.13" }
+winterfell         = { version = "0.13" }
 
 [dev-dependencies]
-anyhow = { version = "1.0", features = ["std", "backtrace"] }
-assert_matches = { workspace = true }
-miden-objects = { workspace = true, features = ["std"] }
+anyhow            = { version = "1.0", features = ["backtrace", "std"] }
+assert_matches    = { workspace = true }
+miden-objects     = { workspace = true, features = ["std"] }
 winter-rand-utils = { version = "0.13" }
 
 [package.metadata.cargo-machete]

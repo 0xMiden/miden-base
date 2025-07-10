@@ -1,24 +1,24 @@
 [package]
-name = "miden-tx-batch-prover"
-version = "0.11.0"
-description = "Miden blockchain transaction batch executor and prover"
-readme = "README.md"
-categories = ["no-std"]
-keywords = ["miden", "batch", "prover"]
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+authors.workspace      = true
+categories             = ["no-std"]
+description            = "Miden blockchain transaction batch executor and prover"
+edition.workspace      = true
+homepage.workspace     = true
+keywords               = ["batch", "miden", "prover"]
+license.workspace      = true
+name                   = "miden-tx-batch-prover"
+readme                 = "README.md"
+repository.workspace   = true
 rust-version.workspace = true
-edition.workspace = true
+version                = "0.11.0"
 
 [lib]
 bench = false
 
 [features]
 default = ["std"]
-std = ["miden-objects/std", "miden-tx/std"]
+std     = ["miden-objects/std", "miden-tx/std"]
 
 [dependencies]
 miden-objects = { workspace = true }
-miden-tx = { workspace = true }
+miden-tx      = { workspace = true }
