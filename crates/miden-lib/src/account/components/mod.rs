@@ -1,6 +1,6 @@
 use miden_objects::{
     assembly::Library,
-    utils::{Deserializable, sync::LazyLock},
+    utils::{Deserializable, miden_utils_sync::LazyLock},
 };
 
 // Initialize the Basic Wallet library only once.

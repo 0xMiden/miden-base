@@ -10,7 +10,7 @@ extern crate std;
 
 use miden_objects::{
     assembly::{Library, mast::MastForest},
-    utils::{serde::Deserializable, sync::LazyLock},
+    utils::{miden_utils_sync::LazyLock, serde::Deserializable},
 };
 
 mod auth;

@@ -1,5 +1,5 @@
 use miden_objects::{
-    AccountError, Felt, WORD_SIZE, Word,
+    AccountError, Felt, WORD_SIZE, Word, WordError,
     account::{AccountHeader, AccountId},
 };
 
@@ -57,6 +57,6 @@ pub fn parse_final_account_header(elements: &[Felt]) -> Result<AccountHeader, Ac
 // ================================================================================================
 
 /// Creates a new `Word` instance from the slice of `Felt`s using provided offset.
-fn parse_word(data: &[Felt], offset: MemoryOffset) -> Option<Word> {
-    TryInto::<[Felt; 4]>::try_into(&data[offset as usize..offset as usize + WORD_SIZE]).ok()
+fn parse_word(data: &[Felt], offset: MemoryOffset) -> Result<Word, WordError> {
+    Word::try_from(&data[offset as usize..offset as usize + WORD_SIZE])
 }

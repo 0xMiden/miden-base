@@ -1,7 +1,7 @@
 use alloc::{boxed::Box, vec::Vec};
 use core::error::Error;
 
-use miden_objects::{AccountDeltaError, AssetError, Digest, Felt, NoteError, note::NoteMetadata};
+use miden_objects::{AccountDeltaError, AssetError, Felt, NoteError, Word, note::NoteMetadata};
 use thiserror::Error;
 
 // TRANSACTION KERNEL ERROR
@@ -16,7 +16,7 @@ pub enum TransactionKernelError {
     #[error("failed to add asset to note")]
     FailedToAddAssetToNote(#[source] NoteError),
     #[error("note input data has hash {actual} but expected hash {expected}")]
-    InvalidNoteInputs { expected: Digest, actual: Digest },
+    InvalidNoteInputs { expected: Word, actual: Word },
     #[error(
         "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
     )]
@@ -52,15 +52,15 @@ pub enum TransactionKernelError {
     #[error(
         "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
     )]
-    PublicNoteMissingDetails(NoteMetadata, Digest),
+    PublicNoteMissingDetails(NoteMetadata, Word),
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]
     TooFewElementsForNoteInputs { specified: u64, actual: u64 },
     #[error("account procedure with procedure root {0} is not in the advice provider")]
-    UnknownAccountProcedure(Digest),
+    UnknownAccountProcedure(Word),
     #[error("code commitment {0} is not in the advice provider")]
-    UnknownCodeCommitment(Digest),
+    UnknownCodeCommitment(Word),
     #[error("account storage slots number is missing in memory at address {0}")]
     AccountStorageSlotsNumMissing(u32),
 }
