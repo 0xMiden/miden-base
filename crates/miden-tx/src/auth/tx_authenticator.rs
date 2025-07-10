@@ -1,9 +1,9 @@
 use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
-use miden_lib::utils::sync::RwLock;
+use miden_lib::utils::miden_utils_sync::RwLock;
 use miden_objects::account::{AccountDelta, AuthSecretKey};
 use rand::Rng;
-use vm_processor::{Digest, Felt, Word};
+use vm_processor::{Felt, Word};
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
@@ -17,7 +17,7 @@ use crate::errors::AuthenticationError;
 /// a key managed by the authenticator. That is, the authenticator maintains a set of public-
 /// private key pairs, and can be requested to generate signatures against any of the managed keys.
 ///
-/// The public keys are defined by [Digest]'s which are the hashes of the actual public keys.
+/// The public keys are defined by [Word]'s which are the hashes of the actual public keys.
 pub trait TransactionAuthenticator {
     /// Retrieves a signature for a specific message as a list of [Felt].
     ///
@@ -61,7 +61,7 @@ where
 /// Represents a signer for [AuthSecretKey] keys.
 pub struct BasicAuthenticator<R> {
     /// pub_key |-> secret_key mapping
-    keys: BTreeMap<Digest, AuthSecretKey>,
+    keys: BTreeMap<Word, AuthSecretKey>,
     rng: Arc<RwLock<R>>,
 }
 
@@ -77,7 +77,7 @@ impl<R: Rng> BasicAuthenticator<R> {
     pub fn new_with_rng(keys: &[(Word, AuthSecretKey)], rng: R) -> Self {
         let mut key_map = BTreeMap::new();
         for (word, secret_key) in keys {
-            key_map.insert(word.into(), secret_key.clone());
+            key_map.insert(*word, secret_key.clone());
         }
 
         BasicAuthenticator {
@@ -114,7 +114,7 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
             },
             None => Err(AuthenticationError::UnknownPublicKey(format!(
                 "public key {} is not contained in the authenticator's keys",
-                Digest::from(pub_key)
+                Word::from(pub_key)
             ))),
         }
     }

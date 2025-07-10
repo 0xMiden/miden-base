@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeMap, sync::Arc};
 
 use miden_objects::{
-    Digest, assembly::mast::MastForest, note::NoteScript, transaction::TransactionScript,
+    Word, assembly::mast::MastForest, note::NoteScript, transaction::TransactionScript,
     vm::AdviceMap,
 };
 use vm_processor::MastForestStore;
@@ -11,7 +11,7 @@ use vm_processor::MastForestStore;
 /// A [ScriptMastForestStore] is meant to exclusively store MAST forests related to both
 /// transaction and input note scripts.
 pub struct ScriptMastForestStore {
-    mast_forests: BTreeMap<Digest, Arc<MastForest>>,
+    mast_forests: BTreeMap<Word, Arc<MastForest>>,
     adv_data: AdviceMap,
 }
 
@@ -59,7 +59,7 @@ impl ScriptMastForestStore {
 // ================================================================================================
 
 impl MastForestStore for ScriptMastForestStore {
-    fn get(&self, procedure_root: &Digest) -> Option<Arc<MastForest>> {
+    fn get(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
         self.mast_forests.get(procedure_root).cloned()
     }
 }

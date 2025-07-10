@@ -10,17 +10,16 @@ use miden_lib::transaction::{
     memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
 };
 use miden_objects::{
-    Digest, Hasher,
+    Hasher, Word,
     account::{AccountDelta, PartialAccount},
-    assembly::mast::MastNodeExt,
     asset::Asset,
     note::NoteId,
     transaction::{OutputNote, TransactionMeasurements},
     vm::RowIndex,
 };
 use vm_processor::{
-    AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, Felt, Host, MastForest,
-    MastForestStore, MemoryError, ProcessState,
+    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, Felt, MastForest,
+    MastForestStore, MemoryError, ProcessState, SyncHost,
 };
 
 mod account_delta_tracker;
@@ -53,11 +52,7 @@ use crate::{auth::TransactionAuthenticator, errors::TransactionHostError};
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
 /// execution.
-pub struct TransactionHost<'store, 'auth, A> {
-    /// Advice provider which is used to provide non-deterministic inputs to the transaction
-    /// runtime.
-    adv_provider: A,
-
+pub struct TransactionHost<'store, 'auth> {
     /// MAST store which contains the code required to execute account code functions.
     mast_store: &'store dyn MastForestStore,
 
@@ -87,7 +82,7 @@ pub struct TransactionHost<'store, 'auth, A> {
     ///
     /// If a required signature is not present in this map, the host will attempt to generate the
     /// signature using the transaction authenticator.
-    generated_signatures: BTreeMap<Digest, Vec<Felt>>,
+    generated_signatures: BTreeMap<Word, Vec<Felt>>,
 
     /// Tracks the number of cycles for each of the transaction execution stages.
     ///
@@ -95,15 +90,15 @@ pub struct TransactionHost<'store, 'auth, A> {
     tx_progress: TransactionProgress,
 }
 
-impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
+impl<'store, 'auth> TransactionHost<'store, 'auth> {
     /// Returns a new [TransactionHost] instance with the provided [AdviceProvider].
     pub fn new(
         account: &PartialAccount,
-        mut adv_provider: A,
+        advice_inputs: &mut AdviceInputs,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
-        mut foreign_account_code_commitments: BTreeSet<Digest>,
+        mut foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
         // currently, the executor/prover do not keep track of the code commitment of the native
         // account, so we add it to the set here
@@ -113,21 +108,16 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         // This ensures that the advice map is available during the note script execution when it
         // calls the account's code that relies on the it's advice map data (data segments) loaded
         // into the advice provider
-        for (key, values) in account.code().mast().advice_map().clone() {
-            adv_provider.insert_into_map(*key, values);
-        }
+        advice_inputs.map.merge_advice_map(account.code().mast().advice_map());
 
         // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
         // advice provider has all the necessary data for script execution
-        for (key, values) in scripts_mast_store.advice_data().clone() {
-            adv_provider.insert_into_map(*key, values);
-        }
+        advice_inputs.map.merge_advice_map(scripts_mast_store.advice_data());
 
         let proc_index_map =
-            AccountProcedureIndexMap::new(foreign_account_code_commitments, &adv_provider)?;
+            AccountProcedureIndexMap::new(foreign_account_code_commitments, &advice_inputs)?;
 
         Ok(Self {
-            adv_provider,
             mast_store,
             scripts_mast_store,
             account_delta: AccountDeltaTracker::new(
@@ -146,17 +136,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// signatures, and transaction progress.
     pub fn into_parts(
         self,
-    ) -> (
-        A,
-        AccountDelta,
-        Vec<OutputNote>,
-        BTreeMap<Digest, Vec<Felt>>,
-        TransactionProgress,
-    ) {
+    ) -> (AccountDelta, Vec<OutputNote>, BTreeMap<Word, Vec<Felt>>, TransactionProgress) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
 
         (
-            self.adv_provider,
             self.account_delta.into_delta(),
             output_notes,
             self.generated_signatures,
@@ -178,7 +161,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: `[NOTE_METADATA, RECIPIENT, ...]`
     fn on_note_after_created(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let stack = process.get_stack_state();
         // # => [NOTE_METADATA]
@@ -187,7 +170,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
 
         assert_eq!(note_idx, self.output_notes.len(), "note index mismatch");
 
-        let note_builder = OutputNoteBuilder::new(stack, &self.adv_provider)?;
+        let note_builder = OutputNoteBuilder::new(stack, &process.advice_provider())?;
 
         self.output_notes.insert(note_idx, note_builder);
 
@@ -199,7 +182,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [ASSET, note_ptr, num_of_assets, note_idx]
     fn on_note_before_add_asset(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let stack = process.get_stack_state();
         //# => [ASSET, note_ptr, num_of_assets, note_idx]
@@ -230,13 +213,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [PROC_ROOT, ...]
     fn on_account_push_procedure_index(
         &mut self,
-        process: ProcessState,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(&process)?;
-        self.adv_provider
-            .push_stack(AdviceSource::Value(proc_idx.into()), err_ctx)
-            .expect("failed to push value onto advice stack");
+        process.advice_provider_mut().push_stack(Felt::from(proc_idx));
         Ok(())
     }
 
@@ -245,7 +225,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [nonce_delta, ...]
     pub fn on_account_before_increment_nonce(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let value = process.get_stack_item(0);
         self.account_delta.increment_nonce(value);
@@ -261,7 +241,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [slot_index, NEW_SLOT_VALUE, CURRENT_SLOT_VALUE, ...]
     pub fn on_account_storage_after_set_item(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         // get slot index from the stack and make sure it is valid
         let slot_index = process.get_stack_item(0);
@@ -277,20 +257,20 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         }
 
         // get the value to which the slot is being updated
-        let new_slot_value = [
+        let new_slot_value = Word::new([
             process.get_stack_item(4),
             process.get_stack_item(3),
             process.get_stack_item(2),
             process.get_stack_item(1),
-        ];
+        ]);
 
         // get the current value for the slot
-        let current_slot_value = [
+        let current_slot_value = Word::new([
             process.get_stack_item(8),
             process.get_stack_item(7),
             process.get_stack_item(6),
             process.get_stack_item(5),
-        ];
+        ]);
 
         self.account_delta.storage().set_item(
             slot_index.as_int() as u8,
@@ -307,7 +287,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [slot_index, KEY, PREV_MAP_VALUE, NEW_MAP_VALUE]
     pub fn on_account_storage_after_set_map_item(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         // get slot index from the stack and make sure it is valid
         let slot_index = process.get_stack_item(0);
@@ -323,28 +303,28 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         }
 
         // get the KEY to which the slot is being updated
-        let key = [
+        let key = Word::new([
             process.get_stack_item(4),
             process.get_stack_item(3),
             process.get_stack_item(2),
             process.get_stack_item(1),
-        ];
+        ]);
 
         // get the previous VALUE of the slot
-        let prev_map_value = [
+        let prev_map_value = Word::new([
             process.get_stack_item(8),
             process.get_stack_item(7),
             process.get_stack_item(6),
             process.get_stack_item(5),
-        ];
+        ]);
 
         // get the VALUE to which the slot is being updated
-        let new_map_value = [
+        let new_map_value = Word::new([
             process.get_stack_item(12),
             process.get_stack_item(11),
             process.get_stack_item(10),
             process.get_stack_item(9),
-        ];
+        ]);
 
         self.account_delta.storage().set_map_item(
             slot_index.as_int() as u8,
@@ -365,7 +345,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [ASSET, ...]
     pub fn on_account_vault_after_add_asset(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
@@ -387,7 +367,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Expected stack state: [ASSET, ...]
     pub fn on_account_vault_after_remove_asset(
         &mut self,
-        process: ProcessState,
+        process: &ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
@@ -413,42 +393,39 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// the host's authenticator.
     pub fn on_signature_requested(
         &mut self,
-        process: ProcessState,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
         let signature_key = Hasher::merge(&[pub_key.into(), msg.into()]);
 
-        let signature = if let Some(signature) = self.adv_provider.get_mapped_values(&signature_key)
-        {
-            signature.to_vec()
-        } else {
-            let account_delta = self.account_delta.clone().into_delta();
+        let signature =
+            if let Ok(signature) = process.advice_provider().get_mapped_values(&signature_key) {
+                signature.to_vec()
+            } else {
+                let account_delta = self.account_delta.clone().into_delta();
 
-            let signature: Vec<Felt> = match &self.authenticator {
-                None => {
-                    return Err(TransactionKernelError::FailedSignatureGeneration(
-                        "No authenticator assigned to transaction host",
-                    ));
-                },
-                Some(authenticator) => {
-                    authenticator.get_signature(pub_key, msg, &account_delta).map_err(|_| {
-                        TransactionKernelError::FailedSignatureGeneration(
-                            "Error generating signature",
-                        )
-                    })
-                },
-            }?;
+                let signature: Vec<Felt> = match &self.authenticator {
+                    None => {
+                        return Err(TransactionKernelError::FailedSignatureGeneration(
+                            "No authenticator assigned to transaction host",
+                        ));
+                    },
+                    Some(authenticator) => {
+                        authenticator.get_signature(pub_key, msg, &account_delta).map_err(|_| {
+                            TransactionKernelError::FailedSignatureGeneration(
+                                "Error generating signature",
+                            )
+                        })
+                    },
+                }?;
 
-            self.generated_signatures.insert(signature_key, signature.clone());
-            signature
-        };
+                self.generated_signatures.insert(signature_key, signature.clone());
+                signature
+            };
 
-        for r in signature {
-            self.adv_provider
-                .push_stack(AdviceSource::Value(r), err_ctx)
-                .map_err(|_| TransactionKernelError::FailedToPushAdviceStack(r))?;
+        for signature_felt in signature {
+            process.advice_provider_mut().push_stack(signature_felt);
         }
 
         Ok(())
@@ -464,8 +441,8 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// Returns an error if the address of the currently executing input note is invalid (e.g.,
     /// greater than `u32::MAX`).
     fn get_current_note_id(
-        process: ProcessState,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        process: &ProcessState,
+        err_ctx: &impl ErrorContext,
     ) -> Result<Option<NoteId>, ExecutionError> {
         // get the note address in `Felt` or return `None` if the address hasn't been accessed
         // previously.
@@ -484,7 +461,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
         if note_address == 0 {
             Ok(None)
         } else {
-            Ok(process.get_mem_word(process.ctx(), note_address)?.map(NoteId::from))
+            Ok(process
+                .get_mem_word(process.ctx(), note_address)
+                .map_err(ExecutionError::MemoryError)?
+                .map(NoteId::from))
         }
     }
 
@@ -493,7 +473,7 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
     /// # Errors
     /// Returns an error if the memory location supposed to contain the account storage slot number
     /// has not been initialized.
-    fn get_num_storage_slots(process: ProcessState) -> Result<u64, TransactionKernelError> {
+    fn get_num_storage_slots(process: &ProcessState) -> Result<u64, TransactionKernelError> {
         let num_storage_slots_felt = process
             .get_mem_value(process.ctx(), NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR)
             .ok_or(TransactionKernelError::AccountStorageSlotsNumMissing(
@@ -507,18 +487,10 @@ impl<'store, 'auth, A: AdviceProvider> TransactionHost<'store, 'auth, A> {
 // HOST IMPLEMENTATION FOR TRANSACTION HOST
 // ================================================================================================
 
-impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
-    type AdviceProvider = A;
+impl BaseHost for TransactionHost<'_, '_> {}
 
-    fn advice_provider(&self) -> &Self::AdviceProvider {
-        &self.adv_provider
-    }
-
-    fn advice_provider_mut(&mut self) -> &mut Self::AdviceProvider {
-        &mut self.adv_provider
-    }
-
-    fn get_mast_forest(&self, node_digest: &Digest) -> Option<Arc<MastForest>> {
+impl SyncHost for TransactionHost<'_, '_> {
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
         // Search in the note MAST forest store, otherwise fall back to the user-provided store
         match self.scripts_mast_store.get(node_digest) {
             Some(forest) => Some(forest),
@@ -528,9 +500,9 @@ impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
 
     fn on_event(
         &mut self,
-        process: ProcessState,
+        process: &mut ProcessState,
         event_id: u32,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
+        err_ctx: &impl ErrorContext,
     ) -> Result<(), ExecutionError> {
         let transaction_event = TransactionEvent::try_from(event_id)
             .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
@@ -572,7 +544,7 @@ impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
             TransactionEvent::AccountAfterIncrementNonce => Ok(()),
 
             TransactionEvent::AccountPushProcedureIndex => {
-                self.on_account_push_procedure_index(process,err_ctx)
+                self.on_account_push_procedure_index(process)
             },
 
             TransactionEvent::NoteBeforeCreated => Ok(()),
@@ -581,7 +553,7 @@ impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process),
             TransactionEvent::NoteAfterAddAsset => Ok(()),
 
-            TransactionEvent::FalconSigToStack => self.on_signature_requested(process,err_ctx),
+            TransactionEvent::FalconSigToStack => self.on_signature_requested(process),
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
@@ -631,11 +603,11 @@ impl<A: AdviceProvider> Host for TransactionHost<'_, '_, A> {
                 Ok(())
             }
             TransactionEvent::LinkMapSetEvent => {
-                LinkMap::handle_set_event(process, err_ctx, self.advice_provider_mut())?;
+                LinkMap::handle_set_event(process)?;
                 Ok(())
             },
             TransactionEvent::LinkMapGetEvent => {
-                LinkMap::handle_get_event(process, err_ctx, self.advice_provider_mut())?;
+                LinkMap::handle_get_event(process)?;
                 Ok(())
             }
         }

@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 
 use miden_objects::{
-    Digest, Word,
+    Word,
     account::{AccountStorageDelta, AccountStorageHeader},
 };
 
@@ -23,7 +23,7 @@ pub struct StorageDeltaTracker {
     storage_header: AccountStorageHeader,
     /// A map from slot index to a map of key-value pairs where the key is a storage map key and
     /// the value represents the value of that key at the beginning of transaction execution.
-    init_maps: BTreeMap<u8, BTreeMap<Digest, Word>>,
+    init_maps: BTreeMap<u8, BTreeMap<Word, Word>>,
     /// The account storage delta.
     delta: AccountStorageDelta,
 }
@@ -53,7 +53,7 @@ impl StorageDeltaTracker {
     }
 
     /// Updates a map slot.
-    pub fn set_map_item(&mut self, slot_index: u8, key: Digest, prev_value: Word, new_value: Word) {
+    pub fn set_map_item(&mut self, slot_index: u8, key: Word, prev_value: Word, new_value: Word) {
         // Don't update the delta if the new value matches the old one.
         if prev_value != new_value {
             self.set_init_map_item(slot_index, key, prev_value);
@@ -71,7 +71,7 @@ impl StorageDeltaTracker {
 
     /// Sets the initial value of the given key in the given slot to the given value, if no value is
     /// already tracked for that key.
-    fn set_init_map_item(&mut self, slot_index: u8, key: Digest, prev_value: Word) {
+    fn set_init_map_item(&mut self, slot_index: u8, key: Word, prev_value: Word) {
         let slot_map = self.init_maps.entry(slot_index).or_default();
         slot_map.entry(key).or_insert(prev_value);
     }

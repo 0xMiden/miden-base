@@ -2,8 +2,8 @@ use alloc::{boxed::Box, string::String};
 use core::error::Error;
 
 use miden_objects::{
-    AccountError, Digest, Felt, ProvenTransactionError, TransactionInputError,
-    TransactionOutputError, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
+    AccountError, Felt, ProvenTransactionError, TransactionInputError, TransactionOutputError,
+    Word, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
     block::BlockNumber, crypto::merkle::SmtProofError, note::NoteId,
 };
 use miden_verifier::VerificationError;
@@ -35,8 +35,8 @@ pub enum TransactionExecutorError {
         "account delta commitment computed in transaction kernel ({in_kernel_commitment}) does not match account delta computed via the host ({host_commitment})"
     )]
     InconsistentAccountDeltaCommitment {
-        in_kernel_commitment: Digest,
-        host_commitment: Digest,
+        in_kernel_commitment: Word,
+        host_commitment: Word,
     },
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
     InconsistentAccountId {
