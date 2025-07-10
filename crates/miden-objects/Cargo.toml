@@ -40,7 +40,7 @@ miden-utils-sync  = { workspace = true }
 miden-verifier    = { workspace = true }
 vm-core           = { workspace = true }
 vm-processor      = { workspace = true }
-winter-rand-utils = { version = "0.13", optional = true }
+winter-rand-utils = { optional = true, version = "0.13" }
 
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }
@@ -58,9 +58,9 @@ getrandom = { features = ["wasm_js"], version = "0.3" }
 [dev-dependencies]
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
 assert_matches = { workspace = true }
-criterion      = { version = "0.5", default-features = false, features = ["html_reports"] }
-miden-objects  = { path = ".", features = ["testing"] }
-pprof          = { version = "0.14", default-features = false, features = ["criterion", "flamegraph"] }
+criterion      = { default-features = false, features = ["html_reports"], version = "0.5" }
+miden-objects  = { features = ["testing"], path = "." }
+pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.14" }
 rstest         = { version = "0.25" }
 tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }

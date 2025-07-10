@@ -51,7 +51,7 @@ toml: ## Runs Format for all TOML files
 
 .PHONY: toml-check
 toml-check: ## Runs Format for all TOML files but only in check mode
-	taplo fmt --check --verbose
+	taplo fmt --check
 
 .PHONY: lint
 lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)

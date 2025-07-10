@@ -27,18 +27,18 @@ miden-tx           = { features = ["testing"], workspace = true }
 vm-processor = { workspace = true }
 
 # External dependencies
-anyhow             = { version = "1.0", default-features = false }
+anyhow             = { default-features = false, version = "1.0" }
 async-trait        = "0.1"
-rand               = { workspace = true, features = ["os_rng", "small_rng"] }
-rand_chacha        = { version = "0.9", default-features = false }
+rand               = { features = ["os_rng", "small_rng"], workspace = true }
+rand_chacha        = { default-features = false, version = "0.9" }
 thiserror          = { workspace = true }
 winter-maybe-async = { version = "0.13" }
 winterfell         = { version = "0.13" }
 
 [dev-dependencies]
-anyhow            = { version = "1.0", features = ["backtrace", "std"] }
+anyhow            = { features = ["backtrace", "std"], version = "1.0" }
 assert_matches    = { workspace = true }
-miden-objects     = { workspace = true, features = ["std"] }
+miden-objects     = { features = ["std"], workspace = true }
 winter-rand-utils = { version = "0.13" }
 
 [package.metadata.cargo-machete]
