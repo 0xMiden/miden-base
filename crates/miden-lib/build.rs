@@ -92,7 +92,7 @@ fn main() -> Result<()> {
 
     // compile miden library
     let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;
-    assembler.add_library(miden_lib)?;
+    assembler.link_dynamic_library(miden_lib)?;
 
     // compile note scripts
     compile_note_scripts(
@@ -143,14 +143,16 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
 
     let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the kernel::util namespace
-    assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+    assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+
+    // Add the lib/ directory manually so we can set our custom kernel namespace, whereas
+    // assemble_kernel_from_dir always picks the $kernel namespace.
+    assembler
+        .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
-    let kernel_lib = KernelLibrary::from_dir(
-        source_dir.join("api.masm"),
-        Some(source_dir.join("lib")),
-        assembler,
-    )?;
+    let kernel_lib =
+        assembler.assemble_kernel_from_dir(source_dir.join("api.masm"), None::<&str>)?;
 
     // generate `kernel_v0.rs` file
     generate_kernel_proc_hash_file(kernel_lib.clone())?;
@@ -163,8 +165,10 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
     // add the shared util modules to the kernel lib under the kernel::util namespace
-    main_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
-    main_assembler.add_modules_from_dir(kernel_namespace, &source_dir.join("lib"))?;
+    main_assembler
+        .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+    main_assembler
+        .compile_and_statically_link_from_dir(kernel_namespace.clone(), &source_dir.join("lib"))?;
 
     let main_file_path = source_dir.join("main.masm");
     let kernel_main = main_assembler.clone().assemble_program(main_file_path)?;
@@ -181,15 +185,14 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
         // Build kernel as a library and save it to file.
         // This is needed in test assemblers to access individual procedures which would otherwise
         // be hidden when using KernelLibrary (api.masm)
-        let kernel_namespace =
-            "kernel".parse::<LibraryNamespace>().expect("invalid base namespace");
 
         // add the shared util modules to the kernel lib under the kernel::util namespace
-        kernel_lib_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+        kernel_lib_assembler
+            .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
-        let test_lib =
-            Library::from_dir(source_dir.join("lib"), kernel_namespace, kernel_lib_assembler)
-                .unwrap();
+        let test_lib = kernel_lib_assembler
+            .assemble_library_from_dir(source_dir.join("lib"), kernel_namespace)
+            .unwrap();
 
         let masb_file_path =
             target_dir.join("kernel_library").with_extension(Library::LIBRARY_EXTENSION);
@@ -301,9 +304,9 @@ fn compile_miden_lib(
 
     let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
     // add the shared modules to the kernel lib under the miden::util namespace
-    assembler.add_modules_from_dir(miden_namespace.clone(), &shared_path)?;
+    assembler.compile_and_statically_link_from_dir(miden_namespace.clone(), &shared_path)?;
 
-    let miden_lib = Library::from_dir(source_dir, miden_namespace, assembler)?;
+    let miden_lib = assembler.assemble_library_from_dir(source_dir, miden_namespace)?;
 
     let output_file = target_dir.join("miden").with_extension(Library::LIBRARY_EXTENSION);
     miden_lib.write_to_file(output_file).into_diagnostic()?;
@@ -330,7 +333,7 @@ fn compile_note_scripts(
     // Add utils.masm as a library to the assembler
     let utils_file_path = source_dir.join("utils.masm");
     let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
-    assembler.add_module(NamedSource::new("note_scripts::utils", utils_source))?;
+    assembler.compile_and_statically_link(NamedSource::new("note_scripts::utils", utils_source))?;
 
     for masm_file_path in get_masm_files(source_dir).unwrap() {
         // Skip utils.masm since it was added as a library
@@ -404,7 +407,7 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
         .map(|kernel| Assembler::with_kernel(Arc::new(DefaultSourceManager::default()), kernel))
         .unwrap_or_default()
         .with_debug_mode(cfg!(feature = "with-debug-info"))
-        .with_library(miden_stdlib::StdLibrary::default())
+        .with_dynamic_library(miden_stdlib::StdLibrary::default())
 }
 
 /// Recursively copies `src` into `dst`.
