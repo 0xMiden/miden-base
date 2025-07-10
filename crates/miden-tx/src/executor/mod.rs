@@ -174,34 +174,23 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         // Execute the transaction kernel
-        // let trace = vm_processor::execute(
-        //     &TransactionKernel::main(),
-        //     stack_inputs,
-        //     AdviceInputs::from(advice_inputs),
-        //     &mut host,
-        //     self.exec_options,
-        //     source_manager,
-        // )
-        // .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
-
-        let mut process = Process::new(
-            TransactionKernel::main().kernel().clone(),
+        let trace = vm_processor::execute(
+            &TransactionKernel::main(),
             stack_inputs,
             advice_inputs,
+            &mut host,
             self.exec_options,
+            source_manager,
         )
-        .with_source_manager(source_manager);
-
-        let stack_outputs = process
-            .execute(&TransactionKernel::main(), &mut host)
-            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
         // TODO: It's unclear if the merkle store is necessary or not to have complete advice for
         // re-execution.
         let advice_inputs = AdviceInputs::default()
-            .with_map(process.advice.map)
-            .with_merkle_store(process.advice.store);
+            .with_map(advice_provider.map)
+            .with_merkle_store(advice_provider.store);
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
