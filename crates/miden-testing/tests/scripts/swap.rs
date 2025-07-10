@@ -1,5 +1,8 @@
 use anyhow::Context;
-use miden_lib::{note::create_swap_note, note::utils, transaction::TransactionKernel};
+use miden_lib::{
+    note::{create_swap_note, utils},
+    transaction::TransactionKernel,
+};
 use miden_objects::{
     Felt, NoteError,
     account::AccountId,
