@@ -391,9 +391,9 @@ mod tests {
                 },
             },
         },
-        digest,
         errors::AccountComponentTemplateError,
         testing::account_code::CODE,
+        word,
     };
 
     #[test]
@@ -409,7 +409,7 @@ mod tests {
             .with_description("dummy description"),
         ];
 
-        let test_word: Word = digest!("0x000001");
+        let test_word: Word = word!("0x000001");
         let test_word = test_word.map(FeltRepresentation::from);
 
         let map_representation = MapRepresentation::new(

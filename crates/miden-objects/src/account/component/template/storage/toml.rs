@@ -3,6 +3,7 @@ use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
+use miden_crypto::word::parse_hex_string_as_word;
 use core::fmt;
 
 use serde::{
@@ -26,7 +27,6 @@ use crate::{
         },
     },
     errors::AccountComponentTemplateError,
-    utils::parse_hex_string_as_word,
 };
 
 // ACCOUNT COMPONENT METADATA TOML FROM/TO
