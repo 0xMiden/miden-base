@@ -1,7 +1,7 @@
 use alloc::{string::ToString, vec::Vec};
 
 use miden_objects::{
-    AccountError, Felt, ONE, Word, ZERO,
+    AccountError, Felt, Word, ZERO,
     account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
     assembly::{Assembler, diagnostics::NamedSource},
     asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
@@ -35,7 +35,7 @@ use crate::{
 
 #[test]
 fn test_basic_wallet_default_notes() {
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -146,7 +146,7 @@ fn test_custom_account_default_note() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(account_component.clone())
@@ -208,7 +208,7 @@ fn test_custom_account_default_note() {
 
 #[test]
 fn test_basic_wallet_custom_notes() {
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -413,7 +413,7 @@ fn test_custom_account_custom_notes() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(account_component.clone())
@@ -421,7 +421,7 @@ fn test_custom_account_custom_notes() {
         .unwrap();
     let target_account_interface = AccountInterface::from(&target_account);
 
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -530,7 +530,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(custom_component.clone())
@@ -539,7 +539,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .unwrap();
     let target_account_interface = AccountInterface::from(&target_account);
 
-    let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)

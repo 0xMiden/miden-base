@@ -41,12 +41,12 @@ pub mod assembly {
         Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, LibraryPath,
         Parse, ParseOptions, SourceFile, SourceId, SourceManager,
         ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName},
-        diagnostics, mast,
+        debuginfo, diagnostics, mast,
     };
 }
 
 pub mod crypto {
-    pub use miden_crypto::{Word, dsa, hash, merkle, rand, utils};
+    pub use miden_crypto::{Word, dsa, hash, merkle, rand, utils, word};
 }
 
 pub mod utils {

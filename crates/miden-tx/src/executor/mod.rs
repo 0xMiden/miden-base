@@ -11,7 +11,7 @@ use miden_objects::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
-    vm::{AdviceMap, StackOutputs},
+    vm::StackOutputs,
 };
 use vm_processor::{AdviceInputs, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
@@ -196,9 +196,11 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .execute(&TransactionKernel::main(), &mut host)
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
+        // The stack is not necessary since it is being reconstructed when re-executing.
+        // TODO: It's unclear if the merkle store is necessary or not to have complete advice for
+        // re-execution.
         let advice_inputs = AdviceInputs::default()
             .with_map(process.advice.map)
-            .with_stack(process.advice.stack)
             .with_merkle_store(process.advice.store);
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)

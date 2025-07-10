@@ -18,7 +18,7 @@ use miden_objects::{
     vm::RowIndex,
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, Felt, MastForest,
+    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, Felt, KvMap, MastForest,
     MastForestStore, MemoryError, ProcessState, SyncHost,
 };
 
@@ -108,11 +108,23 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
         // This ensures that the advice map is available during the note script execution when it
         // calls the account's code that relies on the it's advice map data (data segments) loaded
         // into the advice provider
-        advice_inputs.map.merge_advice_map(account.code().mast().advice_map());
+        advice_inputs.extend_map(
+            account
+                .code()
+                .mast()
+                .advice_map()
+                .iter()
+                .map(|(key, values)| (*key, values.clone())),
+        );
 
         // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
         // advice provider has all the necessary data for script execution
-        advice_inputs.map.merge_advice_map(scripts_mast_store.advice_data());
+        advice_inputs.extend_map(
+            scripts_mast_store
+                .advice_data()
+                .iter()
+                .map(|(key, values)| (*key, values.clone())),
+        );
 
         let proc_index_map =
             AccountProcedureIndexMap::new(foreign_account_code_commitments, &advice_inputs)?;

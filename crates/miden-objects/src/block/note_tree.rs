@@ -1,6 +1,6 @@
 use alloc::string::ToString;
 
-use miden_crypto::merkle::SparseMerklePath;
+use miden_crypto::merkle::MerklePath;
 
 use crate::{
     BLOCK_NOTE_TREE_DEPTH, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH,
@@ -74,9 +74,10 @@ impl BlockNoteTree {
     }
 
     /// Returns merkle path for the note with specified batch/note indexes.
-    pub fn get_note_path(&self, index: BlockNoteIndex) -> SparseMerklePath {
+    pub fn get_note_path(&self, index: BlockNoteIndex) -> MerklePath {
         // get the path to the leaf containing the note (path len = 16)
-        self.0.open(&index.leaf_index()).path
+        // TODO: Return SparseMerklePath
+        self.0.open(&index.leaf_index()).path.into()
     }
 
     /// Returns the number of notes in this block note tree.

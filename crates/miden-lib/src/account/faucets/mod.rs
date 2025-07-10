@@ -282,7 +282,7 @@ pub enum FungibleFaucetError {
 mod tests {
     use assert_matches::assert_matches;
     use miden_objects::{
-        FieldElement, ONE, Word, ZERO,
+        FieldElement, ONE, Word,
         crypto::dsa::rpo_falcon512::{self, PublicKey},
     };
 
@@ -352,7 +352,7 @@ mod tests {
     fn faucet_create_from_account() {
         // prepare the test data
         let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
-        let mock_seed = Word::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+        let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
 
         // valid account
         let token_symbol = TokenSymbol::new("POL").expect("invalid token symbol");

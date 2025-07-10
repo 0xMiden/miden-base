@@ -76,8 +76,10 @@ pub const STORAGE_INDEX_0: u8 = 0;
 pub const STORAGE_INDEX_1: u8 = 1;
 pub const STORAGE_INDEX_2: u8 = 2;
 
-pub const STORAGE_VALUE_0: Word = Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-pub const STORAGE_VALUE_1: Word = Word::new([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
+pub const STORAGE_VALUE_0: Word =
+    Word::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+pub const STORAGE_VALUE_1: Word =
+    Word::new([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
 pub const STORAGE_LEAVES_2: [(Word, Word); 2] = [
     (
         Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),

@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Digest,
+    Word,
     account::AccountId,
     block::{
         AccountUpdateWitness, BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree,
@@ -149,7 +149,7 @@ impl LocalBlockProver {
         let tx_kernel_commitment = TransactionKernel::kernel_commitment();
 
         // For now, we're not actually proving the block.
-        let proof_commitment = Digest::default();
+        let proof_commitment = Word::default();
 
         let header = BlockHeader::new(
             version,
@@ -187,7 +187,7 @@ fn compute_nullifiers(
     created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
     prev_block_header: &BlockHeader,
     block_num: BlockNumber,
-) -> Result<(Vec<Nullifier>, Digest), ProvenBlockError> {
+) -> Result<(Vec<Nullifier>, Word), ProvenBlockError> {
     // If no nullifiers were created, the nullifier tree root is unchanged.
     if created_nullifiers.is_empty() {
         return Ok((Vec::new(), prev_block_header.nullifier_root()));
@@ -234,7 +234,7 @@ fn compute_nullifiers(
 fn compute_chain_commitment(
     mut partial_blockchain: PartialBlockchain,
     prev_block_header: BlockHeader,
-) -> Digest {
+) -> Word {
     // SAFETY: This does not panic as long as the block header we're adding is the next one in the
     // chain which is validated as part of constructing a `ProposedBlock`.
     partial_blockchain.add_block(prev_block_header, true);
@@ -248,7 +248,7 @@ fn compute_chain_commitment(
 fn compute_account_root(
     updated_accounts: &[(AccountId, AccountUpdateWitness)],
     prev_block_header: &BlockHeader,
-) -> Result<Digest, ProvenBlockError> {
+) -> Result<Word, ProvenBlockError> {
     // If no accounts were updated, the account tree root is unchanged.
     if updated_accounts.is_empty() {
         return Ok(prev_block_header.account_root());

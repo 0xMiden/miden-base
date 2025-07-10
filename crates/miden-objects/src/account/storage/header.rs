@@ -160,10 +160,7 @@ mod tests {
 
         // create new storage header from AccountStorage
         let slots = vec![
-            (
-                StorageSlotType::Value,
-                Word::from([1, 2, 3, 4u32]),
-            ),
+            (StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
             (
                 StorageSlotType::Value,
                 Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
