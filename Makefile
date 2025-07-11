@@ -45,13 +45,22 @@ format-check: ## Runs Format using nightly toolchain but only in check mode
 typos-check: ## Runs spellchecker
 	typos
 
+.PHONY: toml
+toml: ## Runs Format for all TOML files
+	taplo fmt
+
+.PHONY: toml-check
+toml-check: ## Runs Format for all TOML files but only in check mode
+	taplo fmt --check
+
 .PHONY: lint
-lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
+lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) format
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) fix
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy-no-std
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) typos-check
+	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) toml
 
 # --- docs ----------------------------------------------------------------------------------------
 
@@ -139,11 +148,13 @@ check-tools: ## Checks if development tools are installed
 	@command -v mdbook >/dev/null 2>&1 && echo "[OK] mdbook is installed" || echo "[MISSING] mdbook is not installed (run: make install-tools)"
 	@command -v typos >/dev/null 2>&1 && echo "[OK] typos is installed" || echo "[MISSING] typos is not installed (run: make install-tools)"
 	@command -v nextest >/dev/null 2>&1 && echo "[OK] nextest is installed" || echo "[MISSING] nextest is not installed (run: make install-tools)"
+	@command -v taplo >/dev/null 2>&1 && echo "[OK] taplo is installed" || echo "[MISSING] taplo is not installed (run: make install-tools)"
 
 .PHONY: install-tools
-install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest)
+install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest, taplo)
 	@echo "Installing development tools..."
 	cargo install mdbook --locked
 	cargo install typos-cli --locked
 	cargo install cargo-nextest --locked
+	cargo install taplo-cli --locked
 	@echo "Development tools installation complete!"

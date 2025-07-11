@@ -2,13 +2,11 @@ use alloc::{string::ToString, vec::Vec};
 
 use super::{InputNote, ToInputNoteCommitments};
 use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError,
+    ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word,
     account::delta::AccountUpdateDetails,
     block::BlockNumber,
     note::NoteHeader,
-    transaction::{
-        AccountId, Digest, InputNotes, Nullifier, OutputNote, OutputNotes, TransactionId,
-    },
+    transaction::{AccountId, InputNotes, Nullifier, OutputNote, OutputNotes, TransactionId},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
     vm::ExecutionProof,
 };
@@ -44,7 +42,7 @@ pub struct ProvenTransaction {
     ref_block_num: BlockNumber,
 
     /// The block commitment of the transaction's reference block.
-    ref_block_commitment: Digest,
+    ref_block_commitment: Word,
 
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
@@ -90,7 +88,7 @@ impl ProvenTransaction {
     }
 
     /// Returns the commitment of the block transaction was executed against.
-    pub fn ref_block_commitment(&self) -> Digest {
+    pub fn ref_block_commitment(&self) -> Word {
         self.ref_block_commitment
     }
 
@@ -143,13 +141,12 @@ impl ProvenTransaction {
             // otherwise this transaction is empty
             if self.account_update.initial_state_commitment()
                 == self.account_update.final_state_commitment()
-                && *self.input_notes.commitment() == EMPTY_WORD
+                && self.input_notes.commitment() == EMPTY_WORD
             {
                 return Err(ProvenTransactionError::EmptyTransaction);
             }
 
-            let is_new_account =
-                self.account_update.initial_state_commitment() == Digest::default();
+            let is_new_account = self.account_update.initial_state_commitment() == Word::empty();
             match self.account_update.details() {
                 AccountUpdateDetails::Private => {
                     return Err(ProvenTransactionError::OnChainAccountMissingDetails(
@@ -213,7 +210,7 @@ impl Deserializable for ProvenTransaction {
         let output_notes = OutputNotes::read_from(source)?;
 
         let ref_block_num = BlockNumber::read_from(source)?;
-        let ref_block_commitment = Digest::read_from(source)?;
+        let ref_block_commitment = Word::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
         let proof = ExecutionProof::read_from(source)?;
 
@@ -251,13 +248,13 @@ pub struct ProvenTransactionBuilder {
     account_id: AccountId,
 
     /// The commitment of the account before the transaction was executed.
-    initial_account_commitment: Digest,
+    initial_account_commitment: Word,
 
     /// The commitment of the account after the transaction was executed.
-    final_account_commitment: Digest,
+    final_account_commitment: Word,
 
     /// The commitment of the account delta produced by the transaction.
-    account_delta_commitment: Digest,
+    account_delta_commitment: Word,
 
     /// State changes to the account due to the transaction.
     account_update_details: AccountUpdateDetails,
@@ -271,8 +268,8 @@ pub struct ProvenTransactionBuilder {
     /// [`BlockNumber`] of the transaction's reference block.
     ref_block_num: BlockNumber,
 
-    /// Block [Digest] of the transaction's reference block.
-    ref_block_commitment: Digest,
+    /// Block digest of the transaction's reference block.
+    ref_block_commitment: Word,
 
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
@@ -288,11 +285,11 @@ impl ProvenTransactionBuilder {
     /// Returns a [ProvenTransactionBuilder] used to build a [ProvenTransaction].
     pub fn new(
         account_id: AccountId,
-        initial_account_commitment: Digest,
-        final_account_commitment: Digest,
-        account_delta_commitment: Digest,
+        initial_account_commitment: Word,
+        final_account_commitment: Word,
+        account_delta_commitment: Word,
         ref_block_num: BlockNumber,
-        ref_block_commitment: Digest,
+        ref_block_commitment: Word,
         expiration_block_num: BlockNumber,
         proof: ExecutionProof,
     ) -> Self {
@@ -410,14 +407,14 @@ pub struct TxAccountUpdate {
 
     /// The commitment of the account before the transaction was executed.
     ///
-    /// Set to `Digest::default()` for new accounts.
-    init_state_commitment: Digest,
+    /// Set to `Word::empty()` for new accounts.
+    init_state_commitment: Word,
 
     /// The commitment of the account state after the transaction was executed.
-    final_state_commitment: Digest,
+    final_state_commitment: Word,
 
     /// The commitment to the account delta resulting from the execution of the transaction.
-    account_delta_commitment: Digest,
+    account_delta_commitment: Word,
 
     /// A set of changes which can be applied the account's state prior to the transaction to
     /// get the account state after the transaction. For private accounts this is set to
@@ -429,9 +426,9 @@ impl TxAccountUpdate {
     /// Returns a new [TxAccountUpdate] instantiated from the specified components.
     pub const fn new(
         account_id: AccountId,
-        init_state_commitment: Digest,
-        final_state_commitment: Digest,
-        account_delta_commitment: Digest,
+        init_state_commitment: Word,
+        final_state_commitment: Word,
+        account_delta_commitment: Word,
         details: AccountUpdateDetails,
     ) -> Self {
         Self {
@@ -449,17 +446,17 @@ impl TxAccountUpdate {
     }
 
     /// Returns the commitment of the account before the transaction was executed.
-    pub fn initial_state_commitment(&self) -> Digest {
+    pub fn initial_state_commitment(&self) -> Word {
         self.init_state_commitment
     }
 
     /// Returns the commitment of the account after the transaction was executed.
-    pub fn final_state_commitment(&self) -> Digest {
+    pub fn final_state_commitment(&self) -> Word {
         self.final_state_commitment
     }
 
     /// Returns the commitment to the account delta resulting from the execution of the transaction.
-    pub fn account_delta_commitment(&self) -> Digest {
+    pub fn account_delta_commitment(&self) -> Word {
         self.account_delta_commitment
     }
 
@@ -506,9 +503,9 @@ impl Deserializable for TxAccountUpdate {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(Self {
             account_id: AccountId::read_from(source)?,
-            init_state_commitment: Digest::read_from(source)?,
-            final_state_commitment: Digest::read_from(source)?,
-            account_delta_commitment: Digest::read_from(source)?,
+            init_state_commitment: Word::read_from(source)?,
+            final_state_commitment: Word::read_from(source)?,
+            account_delta_commitment: Word::read_from(source)?,
             details: AccountUpdateDetails::read_from(source)?,
         })
     }
@@ -584,7 +581,7 @@ impl ToInputNoteCommitments for InputNoteCommitment {
         self.nullifier
     }
 
-    fn note_commitment(&self) -> Option<Digest> {
+    fn note_commitment(&self) -> Option<Word> {
         self.header.map(|header| header.commitment())
     }
 }
@@ -619,15 +616,14 @@ mod tests {
     use miden_verifier::ExecutionProof;
     use vm_core::utils::Deserializable;
     use winter_air::proof::Proof;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
     use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE, Digest, EMPTY_WORD, ONE, ProvenTransactionError, ZERO,
+        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
         account::{
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, StorageMapDelta,
-            delta::{AccountUpdateDetails, LexicographicWord},
+            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
         },
         block::BlockNumber,
         testing::account_id::{
@@ -660,7 +656,7 @@ mod tests {
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
         let storage_delta = AccountStorageDelta::from_iters(
             [1, 2, 3, 4],
-            [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
+            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
             [],
         );
         let delta = AccountDelta::new(account_id, storage_delta, AccountVaultDelta::default(), ONE)
@@ -668,9 +664,9 @@ mod tests {
         let details = AccountUpdateDetails::Delta(delta);
         TxAccountUpdate::new(
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap(),
-            Digest::new(EMPTY_WORD),
-            Digest::new(EMPTY_WORD),
-            Digest::new(EMPTY_WORD),
+            EMPTY_WORD,
+            EMPTY_WORD,
+            EMPTY_WORD,
             details,
         )
         .validate()
@@ -686,7 +682,7 @@ mod tests {
         // 32 bytes in size.
         let required_entries = ACCOUNT_UPDATE_MAX_SIZE / (2 * 32);
         for _ in 0..required_entries {
-            map.insert(LexicographicWord::new(Digest::new(rand_array())), rand_array());
+            map.insert(LexicographicWord::new(rand_value::<Word>()), rand_value::<Word>());
         }
         let storage_delta = StorageMapDelta::new(map);
 
@@ -699,9 +695,9 @@ mod tests {
 
         let err = TxAccountUpdate::new(
             AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap(),
-            Digest::new(EMPTY_WORD),
-            Digest::new(EMPTY_WORD),
-            Digest::new(EMPTY_WORD),
+            EMPTY_WORD,
+            EMPTY_WORD,
+            EMPTY_WORD,
             details,
         )
         .validate()
@@ -727,7 +723,7 @@ mod tests {
         let account_delta_commitment =
             [4; 32].try_into().expect("failed to create account delta commitment");
         let ref_block_num = BlockNumber::from(1);
-        let ref_block_commitment = Digest::default();
+        let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
         let proof = ExecutionProof::new(Proof::new_dummy(), Default::default());
 

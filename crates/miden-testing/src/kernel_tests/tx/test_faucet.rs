@@ -26,7 +26,7 @@ use miden_objects::{
         storage::FAUCET_STORAGE_DATA_SLOT,
     },
 };
-use vm_processor::{Felt, ONE, ProcessState};
+use vm_processor::{Felt, ONE};
 
 use crate::{TransactionContextBuilder, assert_execution_error, utils::create_p2any_note};
 
@@ -78,15 +78,16 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process_state
-        .get_mem_value(process_state.ctx(), faucet_storage_amount_location)
+    let faucet_storage_amount = process
+        .chiplets
+        .memory
+        .get_value(process.system.ctx(), faucet_storage_amount_location)
         .unwrap()
         .as_int();
 
@@ -240,7 +241,7 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         end
         "#,
         non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into()),
-        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key.into())),
+        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key)),
     );
 
     tx_context
@@ -402,15 +403,16 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process_state
-        .get_mem_value(process_state.ctx(), faucet_storage_amount_location)
+    let faucet_storage_amount = process
+        .chiplets
+        .memory
+        .get_value(process.system.ctx(), faucet_storage_amount_location)
         .unwrap()
         .as_int();
 

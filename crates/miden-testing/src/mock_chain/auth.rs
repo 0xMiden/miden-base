@@ -7,7 +7,7 @@ use miden_lib::{
     transaction::TransactionKernel,
 };
 use miden_objects::{
-    Digest,
+    Word,
     account::{AccountComponent, AuthSecretKey},
     crypto::dsa::rpo_falcon512::SecretKey,
     testing::account_component::{
@@ -28,7 +28,7 @@ pub enum Auth {
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [RpoFalcon512ProcedureAcl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
-    ProcedureAcl { auth_trigger_procedures: Vec<Digest> },
+    ProcedureAcl { auth_trigger_procedures: Vec<Word> },
 
     /// Creates a mock authentication mechanism for the account that only increments the nonce.
     IncrNonce,

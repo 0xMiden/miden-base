@@ -1,7 +1,10 @@
 use alloc::vec::Vec;
 
-use super::{Account, AccountId, Digest, Felt, PartialAccount, ZERO, hash_account};
-use crate::utils::serde::{Deserializable, Serializable};
+use super::{Account, AccountId, Felt, PartialAccount, ZERO, hash_account};
+use crate::{
+    Word,
+    utils::serde::{Deserializable, Serializable},
+};
 
 // ACCOUNT HEADER
 // ================================================================================================
@@ -19,9 +22,9 @@ use crate::utils::serde::{Deserializable, Serializable};
 pub struct AccountHeader {
     id: AccountId,
     nonce: Felt,
-    vault_root: Digest,
-    storage_commitment: Digest,
-    code_commitment: Digest,
+    vault_root: Word,
+    storage_commitment: Word,
+    code_commitment: Word,
 }
 
 impl AccountHeader {
@@ -31,9 +34,9 @@ impl AccountHeader {
     pub fn new(
         id: AccountId,
         nonce: Felt,
-        vault_root: Digest,
-        storage_commitment: Digest,
-        code_commitment: Digest,
+        vault_root: Word,
+        storage_commitment: Word,
+        code_commitment: Word,
     ) -> Self {
         Self {
             id,
@@ -52,7 +55,7 @@ impl AccountHeader {
     /// The commitment of an account is computed as hash(id, nonce, vault_root, storage_commitment,
     /// code_commitment). Computing the account commitment requires 2 permutations of the hash
     /// function.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         hash_account(
             self.id,
             self.nonce,
@@ -73,17 +76,17 @@ impl AccountHeader {
     }
 
     /// Returns the vault root of this account.
-    pub fn vault_root(&self) -> Digest {
+    pub fn vault_root(&self) -> Word {
         self.vault_root
     }
 
     /// Returns the storage commitment of this account.
-    pub fn storage_commitment(&self) -> Digest {
+    pub fn storage_commitment(&self) -> Word {
         self.storage_commitment
     }
 
     /// Returns the code commitment of this account.
-    pub fn code_commitment(&self) -> Digest {
+    pub fn code_commitment(&self) -> Word {
         self.code_commitment
     }
 
@@ -162,9 +165,9 @@ impl Deserializable for AccountHeader {
     ) -> Result<Self, vm_processor::DeserializationError> {
         let id = AccountId::read_from(source)?;
         let nonce = Felt::read_from(source)?;
-        let vault_root = Digest::read_from(source)?;
-        let storage_commitment = Digest::read_from(source)?;
-        let code_commitment = Digest::read_from(source)?;
+        let vault_root = Word::read_from(source)?;
+        let storage_commitment = Word::read_from(source)?;
+        let code_commitment = Word::read_from(source)?;
 
         Ok(AccountHeader {
             id,
@@ -188,6 +191,7 @@ mod tests {
 
     use super::AccountHeader;
     use crate::{
+        Word,
         account::{StorageSlot, tests::build_account},
         asset::FungibleAsset,
     };
@@ -196,7 +200,7 @@ mod tests {
     fn test_serde_account_storage() {
         let init_nonce = Felt::new(1);
         let asset_0 = FungibleAsset::mock(99);
-        let word = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
+        let word = Word::from([1, 2, 3, 4u32]);
         let storage_slot = StorageSlot::Value(word);
         let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
 

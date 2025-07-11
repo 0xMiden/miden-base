@@ -1,11 +1,8 @@
 use alloc::vec::Vec;
 
 use crate::{
-    BATCH_NOTE_TREE_DEPTH, EMPTY_WORD,
-    crypto::{
-        hash::rpo::RpoDigest,
-        merkle::{LeafIndex, MerkleError, SimpleSmt},
-    },
+    BATCH_NOTE_TREE_DEPTH, EMPTY_WORD, Word,
+    crypto::merkle::{LeafIndex, MerkleError, SimpleSmt},
     note::{NoteId, NoteMetadata, compute_note_commitment},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -28,13 +25,13 @@ impl BatchNoteTree {
     ) -> Result<Self, MerkleError> {
         let leaves = entries
             .into_iter()
-            .map(|(note_id, metadata)| compute_note_commitment(note_id, metadata).into());
+            .map(|(note_id, metadata)| compute_note_commitment(note_id, metadata));
 
         SimpleSmt::with_contiguous_leaves(leaves).map(Self)
     }
 
     /// Returns the root of the tree
-    pub fn root(&self) -> RpoDigest {
+    pub fn root(&self) -> Word {
         self.0.root()
     }
 

@@ -11,9 +11,9 @@ use miden_objects::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
-    vm::{AdviceMap, StackOutputs},
+    vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{AdviceInputs, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -156,7 +156,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
-        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
@@ -165,7 +165,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let mut host = TransactionHost::new(
             &tx_inputs.account().into(),
-            advice_recorder,
+            &mut advice_inputs,
             self.data_store,
             script_mast_store,
             self.authenticator,
@@ -177,13 +177,20 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let trace = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
+            advice_inputs,
             &mut host,
             self.exec_options,
             source_manager,
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        let (stack_outputs, advice_provider) = trace.into_outputs();
 
-        build_executed_transaction(tx_args, tx_inputs, trace.stack_outputs().clone(), host)
+        // The stack is not necessary since it is being reconstructed when re-executing.
+        let advice_inputs = AdviceInputs::default()
+            .with_map(advice_provider.map)
+            .with_merkle_store(advice_provider.store);
+
+        build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
 
     // SCRIPT EXECUTION
@@ -228,14 +235,14 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
-        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
         let mut host = TransactionHost::new(
             &tx_inputs.account().into(),
-            advice_recorder,
+            &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
             self.authenticator,
@@ -246,6 +253,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let mut process = Process::new(
             TransactionKernel::tx_script_main().kernel().clone(),
             stack_inputs,
+            advice_inputs,
             self.exec_options,
         )
         .with_source_manager(source_manager);
@@ -299,7 +307,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
-        let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
@@ -308,7 +316,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let mut host = TransactionHost::new(
             &tx_inputs.account().into(),
-            advice_provider,
+            &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
             self.authenticator,
@@ -320,6 +328,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let result = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
+            advice_inputs,
             &mut host,
             self.exec_options,
             source_manager,
@@ -362,19 +371,16 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction(
+    mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
-    host: TransactionHost<RecAdviceProvider>,
+    host: TransactionHost,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (advice_recorder, account_delta, output_notes, generated_signatures, tx_progress) =
-        host.into_parts();
+    let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 
-    let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
-
-    let advice_map = AdviceMap::from(map);
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs.map, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
     let initial_account = tx_inputs.account();
@@ -405,14 +411,14 @@ fn build_executed_transaction(
     }
 
     // introduce generated signatures into the witness inputs
-    advice_witness.extend_map(generated_signatures);
+    advice_inputs.extend_map(generated_signatures);
 
     Ok(ExecutedTransaction::new(
         tx_inputs,
         tx_outputs,
         account_delta,
         tx_args,
-        advice_witness,
+        advice_inputs,
         tx_progress.into(),
     ))
 }

@@ -7,7 +7,7 @@ use miden_lib::{
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
-    Felt, NoteError, ZERO,
+    Felt, NoteError, Word, ZERO,
     account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot},
     asset::{Asset, TokenSymbol},
     block::BlockNumber,
@@ -155,7 +155,10 @@ impl MockChainBuilder {
         if let Some(issuance) = total_issuance {
             account
                 .storage_mut()
-                .set_item(memory::FAUCET_STORAGE_DATA_SLOT, [ZERO, ZERO, ZERO, Felt::new(issuance)])
+                .set_item(
+                    memory::FAUCET_STORAGE_DATA_SLOT,
+                    Word::from([ZERO, ZERO, ZERO, Felt::new(issuance)]),
+                )
                 .context("failed to set faucet storage")?;
             self.accounts.insert(account.id(), account.clone());
         }

@@ -1,32 +1,32 @@
 [package]
-name = "bench-prover"
-version = "0.1.0"
-edition.workspace = true
+authors.workspace      = true
+edition.workspace      = true
+exclude.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+name                   = "bench-prover"
+repository.workspace   = true
 rust-version.workspace = true
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
-exclude.workspace = true
+version                = "0.1.0"
 
 [dependencies]
 # Workspace dependencies
-miden-objects = { workspace = true, features = ["testing"] }
+miden-objects = { features = ["testing"], workspace = true }
 miden-testing = { workspace = true }
-miden-tx = { workspace = true }
+miden-tx      = { workspace = true }
 
 # Miden dependencies
 vm-processor = { workspace = true }
 
 # External dependencies
-anyhow = "1.0"
-serde = { version = "1.0", features = ["derive"] }
+anyhow     = "1.0"
+serde      = { features = ["derive"], version = "1.0" }
 serde_json = "1.0"
 
 [dev-dependencies]
-criterion = { version = "0.6", features = ["html_reports"] }
+criterion = { features = ["html_reports"], version = "0.6" }
 
 [[bench]]
-name = "benches"
-path = "benches/benchmarks.rs"
 harness = false
+name    = "benches"
+path    = "benches/benchmarks.rs"

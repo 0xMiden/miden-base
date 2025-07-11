@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeMap, sync::Arc};
 
-use miden_lib::{MidenLib, StdLibrary, transaction::TransactionKernel, utils::sync::RwLock};
-use miden_objects::{Digest, account::AccountCode, assembly::mast::MastForest};
+use miden_lib::{MidenLib, StdLibrary, transaction::TransactionKernel};
+use miden_objects::{Word, account::AccountCode, assembly::mast::MastForest, utils::sync::RwLock};
 use vm_processor::MastForestStore;
 
 // TRANSACTION MAST STORE
@@ -15,7 +15,7 @@ use vm_processor::MastForestStore;
 /// references to external procedures, the store must be loaded with [MastForest]s containing these
 /// procedures.
 pub struct TransactionMastStore {
-    mast_forests: RwLock<BTreeMap<Digest, Arc<MastForest>>>,
+    mast_forests: RwLock<BTreeMap<Word, Arc<MastForest>>>,
 }
 
 #[allow(clippy::new_without_default)]
@@ -65,7 +65,7 @@ impl TransactionMastStore {
 // ================================================================================================
 
 impl MastForestStore for TransactionMastStore {
-    fn get(&self, procedure_root: &Digest) -> Option<Arc<MastForest>> {
+    fn get(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
         self.mast_forests.read().get(procedure_root).cloned()
     }
 }

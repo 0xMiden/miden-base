@@ -1,12 +1,9 @@
 use vm_core::EMPTY_WORD;
 
 use crate::{
-    Felt, FieldElement, Word,
+    Word,
     block::{BlockNumber, NullifierWitness},
-    crypto::{
-        hash::rpo::RpoDigest,
-        merkle::{MutationSet, SMT_DEPTH, Smt},
-    },
+    crypto::merkle::{MutationSet, SMT_DEPTH, Smt},
     errors::NullifierTreeError,
     note::Nullifier,
 };
@@ -52,7 +49,7 @@ impl NullifierTree {
         entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
     ) -> Result<Self, NullifierTreeError> {
         let leaves = entries.into_iter().map(|(nullifier, block_num)| {
-            (nullifier.inner(), Self::block_num_to_leaf_value(block_num))
+            (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
         });
 
         let smt = Smt::with_entries(leaves)
@@ -65,7 +62,7 @@ impl NullifierTree {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the root of the nullifier SMT.
-    pub fn root(&self) -> RpoDigest {
+    pub fn root(&self) -> Word {
         self.smt.root()
     }
 
@@ -88,13 +85,13 @@ impl NullifierTree {
     /// This witness is a proof of the current block number of the given nullifier. If that block
     /// number is zero, it proves that the nullifier is unspent.
     pub fn open(&self, nullifier: &Nullifier) -> NullifierWitness {
-        NullifierWitness::new(self.smt.open(&nullifier.inner()))
+        NullifierWitness::new(self.smt.open(&nullifier.as_word()))
     }
 
     /// Returns the block number for the given nullifier or `None` if the nullifier wasn't spent
     /// yet.
     pub fn get_block_num(&self, nullifier: &Nullifier) -> Option<BlockNumber> {
-        let value = self.smt.get_value(&nullifier.inner());
+        let value = self.smt.get_value(&nullifier.as_word());
         if value == Self::UNSPENT_NULLIFIER {
             return None;
         }
@@ -125,7 +122,7 @@ impl NullifierTree {
 
         let mutation_set =
             self.smt.compute_mutations(nullifiers.into_iter().map(|(nullifier, block_num)| {
-                (nullifier.inner(), Self::block_num_to_leaf_value(block_num))
+                (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
             }));
 
         Ok(NullifierMutationSet::new(mutation_set))
@@ -146,7 +143,7 @@ impl NullifierTree {
         block_num: BlockNumber,
     ) -> Result<(), NullifierTreeError> {
         let prev_nullifier_value =
-            self.smt.insert(nullifier.inner(), Self::block_num_to_leaf_value(block_num));
+            self.smt.insert(nullifier.as_word(), Self::block_num_to_leaf_value(block_num));
 
         if prev_nullifier_value != Self::UNSPENT_NULLIFIER {
             Err(NullifierTreeError::NullifierAlreadySpent(nullifier))
@@ -175,7 +172,7 @@ impl NullifierTree {
 
     /// Returns the nullifier's leaf value in the SMT by its block number.
     pub(super) fn block_num_to_leaf_value(block: BlockNumber) -> Word {
-        [Felt::from(block), Felt::ZERO, Felt::ZERO, Felt::ZERO]
+        Word::from([block.as_u32(), 0, 0, 0])
     }
 
     /// Given the leaf value of the nullifier SMT, returns the nullifier's block number.
@@ -208,7 +205,7 @@ impl Default for NullifierTree {
 /// It is returned by and used in methods on the [`NullifierTree`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct NullifierMutationSet {
-    mutation_set: MutationSet<{ NullifierTree::DEPTH }, RpoDigest, Word>,
+    mutation_set: MutationSet<{ NullifierTree::DEPTH }, Word, Word>,
 }
 
 impl NullifierMutationSet {
@@ -216,7 +213,7 @@ impl NullifierMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`AccountMutationSet`] from the provided raw mutation set.
-    fn new(mutation_set: MutationSet<{ NullifierTree::DEPTH }, RpoDigest, Word>) -> Self {
+    fn new(mutation_set: MutationSet<{ NullifierTree::DEPTH }, Word, Word>) -> Self {
         Self { mutation_set }
     }
 
@@ -224,7 +221,7 @@ impl NullifierMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the underlying [`MutationSet`].
-    pub fn as_mutation_set(&self) -> &MutationSet<{ NullifierTree::DEPTH }, RpoDigest, Word> {
+    pub fn as_mutation_set(&self) -> &MutationSet<{ NullifierTree::DEPTH }, Word, Word> {
         &self.mutation_set
     }
 
@@ -232,7 +229,7 @@ impl NullifierMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Consumes self and returns the underlying [`MutationSet`].
-    pub fn into_mutation_set(self) -> MutationSet<{ NullifierTree::DEPTH }, RpoDigest, Word> {
+    pub fn into_mutation_set(self) -> MutationSet<{ NullifierTree::DEPTH }, Word, Word> {
         self.mutation_set
     }
 }
@@ -243,23 +240,21 @@ impl NullifierMutationSet {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_objects::{Felt, ZERO};
 
     use super::NullifierTree;
-    use crate::{NullifierTreeError, block::BlockNumber, note::Nullifier};
+    use crate::{NullifierTreeError, Word, block::BlockNumber, note::Nullifier};
 
     #[test]
     fn leaf_value_encoding() {
         let block_num = 123;
         let nullifier_value = NullifierTree::block_num_to_leaf_value(block_num.into());
-
-        assert_eq!(nullifier_value, [Felt::from(block_num), ZERO, ZERO, ZERO]);
+        assert_eq!(nullifier_value, Word::from([block_num, 0, 0, 0u32]));
     }
 
     #[test]
     fn leaf_value_decoding() {
         let block_num = 123;
-        let nullifier_value = [Felt::from(block_num), ZERO, ZERO, ZERO];
+        let nullifier_value = Word::from([block_num, 0, 0, 0u32]);
         let decoded_block_num = NullifierTree::leaf_value_to_block_num(nullifier_value);
 
         assert_eq!(decoded_block_num, block_num.into());

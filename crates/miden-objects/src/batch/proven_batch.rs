@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeMap, string::ToString, vec::Vec};
 
 use crate::{
-    Digest, MIN_PROOF_SECURITY_LEVEL,
+    MIN_PROOF_SECURITY_LEVEL, Word,
     account::AccountId,
     batch::{BatchAccountUpdate, BatchId},
     block::BlockNumber,
@@ -15,7 +15,7 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ProvenBatch {
     id: BatchId,
-    reference_block_commitment: Digest,
+    reference_block_commitment: Word,
     reference_block_num: BlockNumber,
     account_updates: BTreeMap<AccountId, BatchAccountUpdate>,
     input_notes: InputNotes<InputNoteCommitment>,
@@ -36,7 +36,7 @@ impl ProvenBatch {
     /// block number.
     pub fn new(
         id: BatchId,
-        reference_block_commitment: Digest,
+        reference_block_commitment: Word,
         reference_block_num: BlockNumber,
         account_updates: BTreeMap<AccountId, BatchAccountUpdate>,
         input_notes: InputNotes<InputNoteCommitment>,
@@ -73,7 +73,7 @@ impl ProvenBatch {
     }
 
     /// Returns the commitment to the reference block of the batch.
-    pub fn reference_block_commitment(&self) -> Digest {
+    pub fn reference_block_commitment(&self) -> Word {
         self.reference_block_commitment
     }
 
@@ -161,7 +161,7 @@ impl Serializable for ProvenBatch {
 impl Deserializable for ProvenBatch {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let id = BatchId::read_from(source)?;
-        let reference_block_commitment = Digest::read_from(source)?;
+        let reference_block_commitment = Word::read_from(source)?;
         let reference_block_num = BlockNumber::read_from(source)?;
         let account_updates = BTreeMap::read_from(source)?;
         let input_notes = InputNotes::<InputNoteCommitment>::read_from(source)?;

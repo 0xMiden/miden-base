@@ -5,7 +5,7 @@ use miden_lib::{
     transaction::{TransactionKernel, memory::FAUCET_STORAGE_DATA_SLOT},
 };
 use miden_objects::{
-    Felt,
+    Felt, Word,
     asset::{Asset, FungibleAsset},
     note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
     transaction::{OutputNote, TransactionScript},
@@ -29,7 +29,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mock_chain = builder.build()?;
 
-    let recipient = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let tag = NoteTag::for_local_use_case(0, 0).unwrap();
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
@@ -82,7 +82,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let output_note = executed_transaction.output_notes().get_note(0).clone();
 
     let assets = NoteAssets::new(vec![fungible_asset])?;
-    let id = NoteId::new(recipient.into(), assets.commitment());
+    let id = NoteId::new(recipient, assets.commitment());
 
     assert_eq!(output_note.id(), id);
     assert_eq!(
@@ -101,7 +101,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
     let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mock_chain = builder.build()?;
 
-    let recipient = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = Felt::new(4);
     let amount = Felt::new(250);

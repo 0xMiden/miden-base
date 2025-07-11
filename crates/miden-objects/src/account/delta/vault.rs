@@ -5,11 +5,10 @@ use alloc::{
 };
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    LexicographicWord, Serializable,
+    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
 use crate::{
-    Felt, ONE, Word, ZERO,
+    Felt, LexicographicWord, ONE, Word, ZERO,
     account::{AccountId, AccountType},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
 };
@@ -328,7 +327,7 @@ impl FungibleAssetDelta {
             let was_added = if *amount_delta > 0 { ONE } else { ZERO };
 
             elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
-            elements.extend_from_slice(&Word::from(asset));
+            elements.extend_from_slice(Word::from(asset).as_elements());
         }
     }
 }
@@ -481,7 +480,7 @@ impl NonFungibleAssetDelta {
             };
 
             elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
-            elements.extend_from_slice(&Word::from(*asset));
+            elements.extend_from_slice(Word::from(*asset).as_elements());
         }
     }
 }

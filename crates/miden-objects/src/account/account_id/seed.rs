@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    AccountError, Digest, Felt, Word,
+    AccountError, Felt, Word,
     account::{
         AccountStorageMode, AccountType,
         account_id::{
@@ -22,8 +22,8 @@ pub(super) fn compute_account_seed(
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     version: AccountIdVersion,
-    code_commitment: Digest,
-    storage_commitment: Digest,
+    code_commitment: Word,
+    storage_commitment: Word,
 ) -> Result<Word, AccountError> {
     compute_account_seed_single(
         init_seed,
@@ -40,27 +40,21 @@ fn compute_account_seed_single(
     account_type: AccountType,
     storage_mode: AccountStorageMode,
     version: AccountIdVersion,
-    code_commitment: Digest,
-    storage_commitment: Digest,
+    code_commitment: Word,
+    storage_commitment: Word,
 ) -> Result<Word, AccountError> {
     let init_seed: Vec<[u8; 8]> =
         init_seed.chunks(8).map(|chunk| chunk.try_into().unwrap()).collect();
-    let mut current_seed: Word = [
+    let mut current_seed: Word = Word::from([
         Felt::new(u64::from_le_bytes(init_seed[0])),
         Felt::new(u64::from_le_bytes(init_seed[1])),
         Felt::new(u64::from_le_bytes(init_seed[2])),
         Felt::new(u64::from_le_bytes(init_seed[3])),
-    ];
+    ]);
     let mut current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
-
-    #[cfg(feature = "log")]
-    let mut log = log::Log::start(current_digest, current_seed, account_type, storage_mode);
 
     // loop until we have a seed that satisfies the specified account type.
     loop {
-        #[cfg(feature = "log")]
-        log.iteration(current_digest, current_seed);
-
         // Check if the seed satisfies the specified type, storage mode and version. Additionally,
         // the most significant bit of the suffix must be zero to ensure felt validity.
         let prefix = current_digest.as_elements()[0];
@@ -75,90 +69,11 @@ fn compute_account_seed_single(
                 && computed_version == version
                 && is_suffix_msb_zero
             {
-                #[cfg(feature = "log")]
-                log.done(current_digest, current_seed);
-
                 return Ok(current_seed);
             };
         }
 
-        current_seed = current_digest.into();
+        current_seed = current_digest;
         current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
-    }
-}
-
-#[cfg(feature = "log")]
-mod log {
-    use alloc::string::String;
-
-    use assembly::utils::to_hex;
-    use miden_crypto::FieldElement;
-    use vm_core::Word;
-    use vm_processor::Digest;
-
-    use super::AccountType;
-    use crate::account::AccountStorageMode;
-
-    /// Keeps track of the best digest found so far and count how many iterations have been done.
-    pub struct Log {
-        digest: Digest,
-        seed: Word,
-        count: usize,
-        pow: u32,
-    }
-
-    /// Given a [Digest] returns its hex representation.
-    pub fn digest_hex(digest: Digest) -> String {
-        to_hex(digest.as_bytes())
-    }
-
-    /// Given a [Word] returns its hex representation.
-    pub fn word_hex(word: Word) -> String {
-        to_hex(FieldElement::elements_as_bytes(&word))
-    }
-
-    impl Log {
-        pub fn start(
-            digest: Digest,
-            seed: Word,
-            account_type: AccountType,
-            storage_mode: AccountStorageMode,
-        ) -> Self {
-            log::info!(
-                "Generating new account seed [digest={}, seed={} type={:?} storage_mode={:?}]",
-                digest_hex(digest),
-                word_hex(seed),
-                account_type,
-                storage_mode,
-            );
-
-            Self { digest, seed, count: 0, pow: 0 }
-        }
-
-        pub fn iteration(&mut self, digest: Digest, seed: Word) {
-            self.count += 1;
-
-            self.digest = digest;
-            self.seed = seed;
-
-            if self.count % 500_000 == 0 {
-                log::debug!(
-                    "Account seed loop [count={}, pow={}, digest={}, seed={}]",
-                    self.count,
-                    self.pow,
-                    digest_hex(self.digest),
-                    word_hex(self.seed),
-                );
-            }
-        }
-
-        pub fn done(self, digest: Digest, seed: Word) {
-            log::info!(
-                "Found account seed [current_digest={}, current_seed={}, count={}]]",
-                digest_hex(digest),
-                word_hex(seed),
-                self.count,
-            );
-        }
     }
 }
