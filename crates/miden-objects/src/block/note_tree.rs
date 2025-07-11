@@ -1,10 +1,12 @@
 use alloc::string::ToString;
 
+use miden_crypto::merkle::SparseMerklePath;
+
 use crate::{
     BLOCK_NOTE_TREE_DEPTH, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH,
     MAX_OUTPUT_NOTES_PER_BLOCK, Word,
     batch::BatchNoteTree,
-    crypto::merkle::{LeafIndex, MerkleError, MerklePath, SimpleSmt},
+    crypto::merkle::{LeafIndex, MerkleError, SimpleSmt},
     note::{NoteId, NoteMetadata, compute_note_commitment},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -69,9 +71,8 @@ impl BlockNoteTree {
     }
 
     /// Returns merkle path for the note with specified batch/note indexes.
-    pub fn get_note_path(&self, index: BlockNoteIndex) -> MerklePath {
+    pub fn open(&self, index: BlockNoteIndex) -> SparseMerklePath {
         // get the path to the leaf containing the note (path len = 16)
-        // TODO: Return SparseMerklePath
         self.0.open(&index.leaf_index()).path.into()
     }
 
