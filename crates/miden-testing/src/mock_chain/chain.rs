@@ -9,17 +9,17 @@ use anyhow::Context;
 use itertools::Itertools;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::{
-    account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
+    account::wallets::BasicWallet,
     note::{create_p2id_note, create_p2ide_note},
     transaction::TransactionKernel,
 };
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
     account::{
-        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
+        Account, AccountBuilder, AccountId, AccountStorageMode, StorageSlot,
         delta::AccountUpdateDetails,
     },
-    asset::{Asset, TokenSymbol},
+    asset::Asset,
     batch::{ProposedBatch, ProvenBatch},
     block::{
         AccountTree, AccountWitness, BlockAccountUpdate, BlockHeader, BlockInputs, BlockNoteTree,
@@ -39,9 +39,7 @@ use rand_chacha::ChaCha20Rng;
 use vm_processor::{Word, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
-use crate::{
-    Auth, MockChainBuilder, MockFungibleFaucet, ProvenTransactionExt, TransactionContextBuilder,
-};
+use crate::{Auth, MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 
 // MOCK CHAIN
 // ================================================================================================
@@ -942,36 +940,6 @@ impl MockChain {
 
         self.add_pending_account_from_builder(auth_method, account_builder, AccountState::Exists)
             .expect("failed to add pending account from builder")
-    }
-
-    /// Adds a new public [`BasicFungibleFaucet`] account with the specified authentication method
-    /// and the given token metadata to the list of pending accounts.
-    ///
-    /// A block has to be created to add the account to the chain state as part of that block,
-    /// e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_new_faucet(
-        &mut self,
-        auth_method: Auth,
-        token_symbol: &str,
-        max_supply: u64,
-    ) -> anyhow::Result<MockFungibleFaucet> {
-        let token_symbol = TokenSymbol::new(token_symbol)
-            .with_context(|| format!("invalid token symbol: {token_symbol}"))?;
-        let max_supply_felt = max_supply.try_into().map_err(|_| {
-            anyhow::anyhow!("max supply value cannot be converted to Felt: {max_supply}")
-        })?;
-        let basic_faucet = BasicFungibleFaucet::new(token_symbol, 10, max_supply_felt)
-            .context("failed to create BasicFungibleFaucet")?;
-
-        let account_builder = AccountBuilder::new(self.rng.random())
-            .storage_mode(AccountStorageMode::Public)
-            .account_type(AccountType::FungibleFaucet)
-            .with_component(basic_faucet);
-
-        let account =
-            self.add_pending_account_from_builder(auth_method, account_builder, AccountState::New)?;
-
-        Ok(MockFungibleFaucet::new(account))
     }
 
     /// Adds the [`AccountComponent`](miden_objects::account::AccountComponent) corresponding to
