@@ -164,13 +164,10 @@ pub struct MockChain {
     /// Tree containing the state commitments of all accounts.
     account_tree: AccountTree,
 
-    /// Objects that have not yet been finalized.
+    /// Note batches created in transactions in the block.
     ///
     /// These will become available once the block is proven.
-    ///
-    /// Note:
-    /// - The [Note]s in this container do not have the `proof` set.
-    pending_objects: PendingObjects,
+    pending_output_notes: Vec<OutputNote>,
 
     /// Transactions that have been submitted to the chain but have not yet been included in a
     /// block.
@@ -234,7 +231,7 @@ impl MockChain {
             blocks: vec![],
             nullifier_tree: NullifierTree::default(),
             account_tree,
-            pending_objects: PendingObjects::new(),
+            pending_output_notes: Vec::new(),
             pending_transactions: Vec::new(),
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
@@ -838,7 +835,7 @@ impl MockChain {
     /// A block has to be created to add the note to that block and make it available in the chain
     /// state, e.g. using [`MockChain::prove_next_block`].
     pub fn add_pending_note(&mut self, note: OutputNote) {
-        self.pending_objects.output_notes.push(note);
+        self.pending_output_notes.push(note);
     }
 
     /// Adds a plain P2ID [`OutputNote`] to the list of pending notes.
@@ -901,9 +898,14 @@ impl MockChain {
     // PRIVATE HELPERS
     // ----------------------------------------------------------------------------------------
 
-    /// Inserts the given block's account updates and created nullifiers into the account tree and
-    /// nullifier tree, respectively.
-    fn apply_block_tree_updates(&mut self, proven_block: &ProvenBlock) -> anyhow::Result<()> {
+    /// Applies the given block to the chain state, which means:
+    ///
+    /// - Insert account and nullifiers into the respective trees.
+    /// - Updated accounts from the block are updated in the committed accounts.
+    /// - Created notes are inserted into the committed notes.
+    /// - Consumed notes are removed from the committed notes.
+    /// - The block is appended to the [`BlockChain`] and the list of proven blocks.
+    fn apply_block(&mut self, proven_block: ProvenBlock) -> anyhow::Result<()> {
         for account_update in proven_block.updated_accounts() {
             self.account_tree
                 .insert(account_update.account_id(), account_update.final_state_commitment())
@@ -920,16 +922,6 @@ impl MockChain {
             // nullifiers, so we'll have to create a second index to do this.
         }
 
-        Ok(())
-    }
-
-    /// Applies the given block to the chain state, which means:
-    ///
-    /// - Updated accounts from the block are updated in the committed accounts.
-    /// - Created notes are inserted into the committed notes.
-    /// - Consumed notes are removed from the committed notes.
-    /// - The block is appended to the [`BlockChain`] and the list of proven blocks.
-    fn apply_block(&mut self, proven_block: ProvenBlock) -> anyhow::Result<()> {
         for account_update in proven_block.updated_accounts() {
             match account_update.details() {
                 AccountUpdateDetails::New(account) => {
@@ -1009,48 +1001,25 @@ impl MockChain {
         Ok(vec![proven_batch])
     }
 
-    fn apply_pending_objects_to_block(
+    fn apply_pending_notes_to_block(
         &mut self,
         proven_block: &mut ProvenBlock,
     ) -> anyhow::Result<()> {
-        // Add pending accounts to block.
-        let pending_account_updates = core::mem::take(&mut self.pending_objects.updated_accounts);
-
-        let updated_accounts_block: BTreeSet<AccountId> = proven_block
-            .updated_accounts()
-            .iter()
-            .map(|update| update.account_id())
-            .collect();
-
-        for (id, account_update) in pending_account_updates {
-            if updated_accounts_block.contains(&id) {
-                return Err(anyhow::anyhow!(
-                    "account {id} is already modified in block through transactions",
-                ));
-            }
-
-            self.account_tree
-                .insert(id, account_update.final_state_commitment())
-                .context("failed to insert pending account into tree")?;
-
-            proven_block.updated_accounts_mut().push(account_update);
-        }
-
         // Add pending output notes to block.
         let output_notes_block: BTreeSet<NoteId> =
             proven_block.output_notes().map(|(_, output_note)| output_note.id()).collect();
 
         // We could distribute notes over multiple batches (if space is available), but most likely
         // one is sufficient.
-        if self.pending_objects.output_notes.len() > MAX_OUTPUT_NOTES_PER_BATCH {
+        if self.pending_output_notes.len() > MAX_OUTPUT_NOTES_PER_BATCH {
             return Err(anyhow::anyhow!(
                 "too many pending output notes: {}, max allowed: {MAX_OUTPUT_NOTES_PER_BATCH}",
-                self.pending_objects.output_notes.len(),
+                self.pending_output_notes.len(),
             ));
         }
 
-        let mut pending_note_batch = Vec::with_capacity(self.pending_objects.output_notes.len());
-        let pending_output_notes = core::mem::take(&mut self.pending_objects.output_notes);
+        let mut pending_note_batch = Vec::with_capacity(self.pending_output_notes.len());
+        let pending_output_notes = core::mem::take(&mut self.pending_output_notes);
         for (note_idx, output_note) in pending_output_notes.into_iter().enumerate() {
             if output_notes_block.contains(&output_note.id()) {
                 return Err(anyhow::anyhow!(
@@ -1072,15 +1041,15 @@ impl MockChain {
 
         let updated_block_note_tree = proven_block.build_output_note_tree().root();
 
-        // Update account tree and nullifier tree root in the block.
+        // Update note tree root in the block header.
         let block_header = proven_block.header();
         let updated_header = BlockHeader::new(
             block_header.version(),
             block_header.prev_block_commitment(),
             block_header.block_num(),
             block_header.chain_commitment(),
-            self.account_tree.root(),
-            self.nullifier_tree.root(),
+            block_header.account_root(),
+            block_header.nullifier_root(),
             updated_block_note_tree,
             block_header.tx_commitment(),
             block_header.tx_kernel_commitment(),
@@ -1102,16 +1071,11 @@ impl MockChain {
     ///
     /// 1. Build batches from pending transactions and a block from those batches. This results in a
     ///    block.
-    /// 2. Take that block and apply only its account/nullifier tree updates to the chain.
-    /// 3. Then take the pending objects and insert them directly into the proven block. This means
-    ///    we have to update the header of the block as well, with the newly inserted pending
-    ///    accounts/nullifiers/notes. This is why we already did step 2, so that we can insert the
-    ///    pending objects directly into the account/nullifier tree to get the latest correct state
-    ///    of those trees. Then take the root of the trees and update them in the header of the
-    ///    block. This should be pretty efficient because we don't have to do any tree insertions
-    ///    multiple times (which would be slow).
-    /// 4. Finally, now the block contains both the updates from the regular transactions/batches as
-    ///    well as the pending objects. Now insert all the remaining updates into the chain state.
+    /// 2. Take the pending notes and insert them directly into the proven block. This means we have
+    ///    to update the header of the block with the updated block note tree root.
+    /// 3. Finally, the block contains both the updates from the regular transactions/batches as
+    ///    well as the pending notes. Now insert all the accounts, nullifier and notes into the
+    ///    chain state.
     fn prove_block_inner(&mut self, timestamp: Option<u32>) -> anyhow::Result<ProvenBlock> {
         // Create batches from pending transactions.
         // ----------------------------------------------------------------------------------------
@@ -1129,13 +1093,8 @@ impl MockChain {
             .context("failed to create proposed block")?;
         let mut proven_block = self.prove_block(proposed_block).context("failed to prove block")?;
 
-        // We apply the block tree updates here, so that apply_pending_objects_to_block can easily
-        // update the block header of this block with the pending accounts and nullifiers.
-        self.apply_block_tree_updates(&proven_block)
-            .context("failed to apply block tree updates")?;
-
-        if !self.pending_objects.is_empty() {
-            self.apply_pending_objects_to_block(&mut proven_block)?;
+        if !self.pending_output_notes.is_empty() {
+            self.apply_pending_notes_to_block(&mut proven_block)?;
         }
 
         self.apply_block(proven_block.clone()).context("failed to apply block")?;
@@ -1221,33 +1180,6 @@ pub(super) fn create_genesis_state(
 impl Default for MockChain {
     fn default() -> Self {
         MockChain::new()
-    }
-}
-
-// PENDING OBJECTS
-// ================================================================================================
-
-/// Aggregates all entities that were added using the _pending_ APIs of the [`MockChain`].
-#[derive(Default, Debug, Clone)]
-struct PendingObjects {
-    /// Account updates for the block.
-    updated_accounts: BTreeMap<AccountId, BlockAccountUpdate>,
-
-    /// Note batches created in transactions in the block.
-    output_notes: Vec<OutputNote>,
-}
-
-impl PendingObjects {
-    pub fn new() -> PendingObjects {
-        PendingObjects {
-            updated_accounts: BTreeMap::new(),
-            output_notes: vec![],
-        }
-    }
-
-    /// Returns `true` if there are no pending objects, `false` otherwise.
-    pub fn is_empty(&self) -> bool {
-        self.updated_accounts.is_empty() && self.output_notes.is_empty()
     }
 }
 
