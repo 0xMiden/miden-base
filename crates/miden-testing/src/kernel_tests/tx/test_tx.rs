@@ -898,7 +898,7 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         Some(executed_transaction.advice_witness().clone()),
     );
 
-    let mut advice_inputs = advice_inputs.into_inner();
+    let mut advice_inputs = advice_inputs.into_advice_inputs();
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());

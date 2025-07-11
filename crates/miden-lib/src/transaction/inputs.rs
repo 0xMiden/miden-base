@@ -70,7 +70,7 @@ impl TransactionAdviceInputs {
     }
 
     /// Converts these transaction advice inputs into the underlying advice inputs.
-    pub fn into_inner(self) -> AdviceInputs {
+    pub fn into_advice_inputs(self) -> AdviceInputs {
         self.0
     }
 

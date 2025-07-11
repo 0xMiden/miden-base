@@ -98,7 +98,7 @@ impl TransactionContext {
             mast_store.load_account_code(acc_inputs.code());
         }
 
-        let advice_inputs = advice_inputs.into_inner();
+        let advice_inputs = advice_inputs.into_advice_inputs();
         CodeExecutor::new(MockHost::new(
             self.tx_inputs.account().into(),
             &advice_inputs,

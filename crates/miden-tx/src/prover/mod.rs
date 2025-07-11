@@ -86,7 +86,7 @@ impl TransactionProver for LocalTransactionProver {
         // execute and prove
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness));
-        let mut advice_inputs = advice_inputs.into_inner();
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());

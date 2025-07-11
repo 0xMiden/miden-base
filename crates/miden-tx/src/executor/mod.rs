@@ -156,7 +156,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
-        let mut advice_inputs = advice_inputs.into_inner();
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
@@ -235,7 +235,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
-        let mut advice_inputs = advice_inputs.into_inner();
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
@@ -307,7 +307,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
-        let mut advice_inputs = advice_inputs.into_inner();
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
