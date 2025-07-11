@@ -298,7 +298,7 @@ impl Deserializable for OutputNote {
 /// notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
 fn build_output_notes_commitment(notes: &[OutputNote]) -> Word {
     if notes.is_empty() {
-        return Word::default();
+        return Word::empty();
     }
 
     let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);

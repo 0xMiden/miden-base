@@ -185,14 +185,14 @@ impl<T: Deserializable + ToInputNoteCommitments> Deserializable for InputNotes<T
 fn build_input_note_commitment<T: ToInputNoteCommitments>(notes: &[T]) -> Word {
     // Note: This implementation must be kept in sync with the kernel's `process_input_notes_data`
     if notes.is_empty() {
-        return Word::default();
+        return Word::empty();
     }
 
     let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 2);
     for commitment_data in notes {
         let nullifier = commitment_data.nullifier();
         let empty_word_or_note_commitment =
-            &commitment_data.note_commitment().map_or(Word::default(), |note_id| note_id);
+            &commitment_data.note_commitment().map_or(Word::empty(), |note_id| note_id);
 
         elements.extend_from_slice(nullifier.as_elements());
         elements.extend_from_slice(empty_word_or_note_commitment.as_elements());

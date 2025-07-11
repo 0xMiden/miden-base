@@ -129,7 +129,7 @@ impl AccountWitness {
 
     /// Returns the [`SmtLeaf`] of the account witness.
     pub fn leaf(&self) -> SmtLeaf {
-        if self.commitment == Word::default() {
+        if self.commitment == Word::empty() {
             let leaf_idx = LeafIndex::from(AccountTree::id_to_smt_key(self.id));
             SmtLeaf::new_empty(leaf_idx)
         } else {

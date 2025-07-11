@@ -320,7 +320,7 @@ mod tests {
         .unwrap();
 
         // The reserved faucet slot should be initialized to an empty word.
-        assert_eq!(faucet_account.storage().get_item(0).unwrap(), Word::default());
+        assert_eq!(faucet_account.storage().get_item(0).unwrap(), Word::empty());
 
         // The falcon auth component is added first so its assigned storage slot for the public key
         // will be 1.
@@ -334,7 +334,7 @@ mod tests {
 
         // The procedure root of the distribute procedure is stored in slot 3.
         assert_eq!(
-            faucet_account.storage().get_map_item(3, Word::default()).unwrap(),
+            faucet_account.storage().get_map_item(3, Word::empty()).unwrap(),
             BasicFungibleFaucet::distribute_digest()
         );
 

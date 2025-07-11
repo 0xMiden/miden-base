@@ -522,7 +522,7 @@ mod tests {
         assert_eq!(deserialized, storage_map_delta);
 
         let storage_map_delta =
-            StorageMapDelta::from_iters([], [(Word::default(), Word::from([ONE, ONE, ONE, ONE]))]);
+            StorageMapDelta::from_iters([], [(Word::empty(), Word::from([ONE, ONE, ONE, ONE]))]);
         let serialized = storage_map_delta.to_bytes();
         let deserialized = StorageMapDelta::read_from_bytes(&serialized).unwrap();
         assert_eq!(deserialized, storage_map_delta);

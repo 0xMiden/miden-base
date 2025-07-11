@@ -336,7 +336,7 @@ mod tests {
 
         // storage with values for default types
         let storage = AccountStorage::new(vec![
-            StorageSlot::Value(Word::default()),
+            StorageSlot::Value(Word::empty()),
             StorageSlot::Map(StorageMap::default()),
         ])
         .unwrap();

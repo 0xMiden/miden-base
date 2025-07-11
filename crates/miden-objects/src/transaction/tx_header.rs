@@ -91,7 +91,7 @@ impl TransactionHeader {
 
     /// Returns a commitment to the state of the account before this update is applied.
     ///
-    /// This is equal to [`Word::default()`] for new accounts.
+    /// This is equal to [`Word::empty()`] for new accounts.
     pub fn initial_state_commitment(&self) -> Word {
         self.initial_state_commitment
     }

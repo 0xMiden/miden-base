@@ -40,8 +40,8 @@ fn grind_account_seed(c: &mut Criterion) {
                 AccountType::RegularAccountImmutableCode,
                 AccountStorageMode::Public,
                 AccountIdVersion::Version0,
-                Word::default(),
-                Word::default(),
+                Word::empty(),
+                Word::empty(),
             )
         })
     });

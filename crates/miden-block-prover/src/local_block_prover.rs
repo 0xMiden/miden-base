@@ -149,7 +149,7 @@ impl LocalBlockProver {
         let tx_kernel_commitment = TransactionKernel::kernel_commitment();
 
         // For now, we're not actually proving the block.
-        let proof_commitment = Word::default();
+        let proof_commitment = Word::empty();
 
         let header = BlockHeader::new(
             version,

@@ -129,7 +129,7 @@ mod tests {
 
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
-        let public_key = PublicKey::new(Word::default());
+        let public_key = PublicKey::new(Word::empty());
         let component =
             RpoFalcon512ProcedureAcl::new(public_key, vec![]).expect("component creation failed");
 
@@ -143,19 +143,19 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_procs_slot, Word::default());
+        assert_eq!(num_procs_slot, Word::empty());
 
         let proc_root = account
             .storage()
-            .get_map_item(2, Word::default())
+            .get_map_item(2, Word::empty())
             .expect("storage map access failed");
         // This should be filled with zeros because there are no auth trigger procedures
-        assert_eq!(proc_root, Word::default());
+        assert_eq!(proc_root, Word::empty());
     }
 
     #[test]
     fn test_rpo_falcon_512_procedure_acl_with_two_procedures() {
-        let public_key = PublicKey::new(Word::default());
+        let public_key = PublicKey::new(Word::empty());
 
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
         // TODO refactor to fetch procedure digests by name after
@@ -187,7 +187,7 @@ mod tests {
 
         let proc_root_0 = account
             .storage()
-            .get_map_item(2, Word::default())
+            .get_map_item(2, Word::empty())
             .expect("storage map access failed");
         assert_eq!(proc_root_0, auth_trigger_procedures[0]);
 

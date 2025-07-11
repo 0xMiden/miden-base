@@ -183,7 +183,7 @@ impl Eq for NoteAssets {}
 /// is returned.
 fn compute_asset_commitment(assets: &[Asset]) -> Word {
     if assets.is_empty() {
-        return Word::default();
+        return Word::empty();
     }
 
     // If we have an odd number of assets we pad the vector with 4 zero elements. This is to
@@ -205,7 +205,7 @@ fn compute_asset_commitment(assets: &[Asset]) -> Word {
     // ensure the number of elements is a multiple of 8 - the size of the hasher rate. This
     // simplifies hashing inside of the virtual machine when ingesting assets from a note.
     if assets.len() % 2 == 1 {
-        asset_elements.extend_from_slice(Word::default().as_elements());
+        asset_elements.extend_from_slice(Word::empty().as_elements());
     }
 
     Hasher::hash_elements(&asset_elements)
@@ -257,7 +257,7 @@ mod tests {
         // create empty assets
         let mut assets = NoteAssets::default();
 
-        assert_eq!(assets.hash, Word::default());
+        assert_eq!(assets.hash, Word::empty());
 
         // add asset1
         assert!(assets.add_asset(asset1).is_ok());

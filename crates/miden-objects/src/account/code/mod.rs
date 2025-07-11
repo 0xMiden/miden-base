@@ -478,11 +478,11 @@ mod tests {
             NoopAuthComponent::new(Assembler::default()).unwrap().into();
 
         let component1 =
-            AccountComponent::new(library1, vec![StorageSlot::Value(Word::default()); 250])
+            AccountComponent::new(library1, vec![StorageSlot::Value(Word::empty()); 250])
                 .unwrap()
                 .with_supports_all_types();
         let mut component2 =
-            AccountComponent::new(library2, vec![StorageSlot::Value(Word::default()); 5])
+            AccountComponent::new(library2, vec![StorageSlot::Value(Word::empty()); 5])
                 .unwrap()
                 .with_supports_all_types();
 
@@ -494,7 +494,7 @@ mod tests {
         .unwrap();
 
         // Push one more slot so offset+size exceeds 255.
-        component2.storage_slots.push(StorageSlot::Value(Word::default()));
+        component2.storage_slots.push(StorageSlot::Value(Word::empty()));
 
         let err = AccountCode::from_components(
             &[auth_component, component1, component2],

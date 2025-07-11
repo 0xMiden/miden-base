@@ -182,7 +182,7 @@ impl Account {
     /// the VM via the advice provider.
     pub fn init_commitment(&self) -> Word {
         if self.is_new() {
-            Word::default()
+            Word::empty()
         } else {
             self.commitment()
         }
@@ -540,7 +540,7 @@ mod tests {
             vec![asset_1],
             final_nonce,
             vec![
-                StorageSlot::Value(Word::default()),
+                StorageSlot::Value(Word::empty()),
                 StorageSlot::Value(Word::from([1, 2, 3, 4u32])),
                 StorageSlot::Map(storage_map),
             ],
@@ -558,7 +558,7 @@ mod tests {
         let init_nonce = Felt::new(1);
         let asset = FungibleAsset::mock(110);
         let mut account =
-            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::default())]);
+            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
 
         // build account delta
         let storage_delta = AccountStorageDeltaBuilder::new()
@@ -581,7 +581,7 @@ mod tests {
         let init_nonce = Felt::new(2);
         let asset = FungibleAsset::mock(100);
         let mut account =
-            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::default())]);
+            build_account(vec![asset], init_nonce, vec![StorageSlot::Value(Word::empty())]);
 
         // build account delta
         let final_nonce = Felt::new(1);

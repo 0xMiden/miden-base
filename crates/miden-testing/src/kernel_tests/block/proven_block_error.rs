@@ -292,7 +292,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         existing_id.suffix(),
         "test should work if suffixes are different, so we want to ensure it"
     );
-    assert_eq!(account.init_commitment(), Word::default());
+    assert_eq!(account.init_commitment(), Word::empty());
 
     let existing_account = Account::mock(
         existing_id.into(),
@@ -399,9 +399,9 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
         [(id0, [0, 0, 0, 1u32]), (id1, [0, 0, 0, 2u32])].map(|(id, final_state_comm)| {
             ProvenTransactionBuilder::new(
                 id,
-                Word::default(),
+                Word::empty(),
                 Word::from(final_state_comm),
-                Word::default(),
+                Word::empty(),
                 genesis_block.block_num(),
                 genesis_block.commitment(),
                 BlockNumber::from(u32::MAX),
@@ -434,8 +434,8 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     assert_eq!(witness0.id(), id0);
     assert_eq!(witness1.id(), id1);
 
-    assert_eq!(witness0.state_commitment(), Word::default());
-    assert_eq!(witness1.state_commitment(), Word::default());
+    assert_eq!(witness0.state_commitment(), Word::empty());
+    assert_eq!(witness1.state_commitment(), Word::empty());
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 

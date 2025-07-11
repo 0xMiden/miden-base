@@ -277,7 +277,7 @@ impl TransactionKernel {
         // Make sure that indices 9, 10 and 11 are zeroes (i.e. the third word without the
         // expiration block number).
         if stack.get_stack_word(9).expect("third word missing").as_elements()[..3]
-            != Word::default().as_elements()[..3]
+            != Word::empty().as_elements()[..3]
         {
             return Err(TransactionOutputError::OutputStackInvalid(
                 "indices 9, 10 and 11 on the output stack should be ZERO".into(),

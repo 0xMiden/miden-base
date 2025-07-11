@@ -283,7 +283,7 @@ mod tests {
     }
     impl From<CustomComponent1> for AccountComponent {
         fn from(custom: CustomComponent1) -> Self {
-            let mut value = Word::default();
+            let mut value = Word::empty();
             value[0] = Felt::new(custom.slot0);
 
             AccountComponent::new(CUSTOM_LIBRARY1.clone(), vec![StorageSlot::Value(value)])
@@ -298,9 +298,9 @@ mod tests {
     }
     impl From<CustomComponent2> for AccountComponent {
         fn from(custom: CustomComponent2) -> Self {
-            let mut value0 = Word::default();
+            let mut value0 = Word::empty();
             value0[3] = Felt::new(custom.slot0);
-            let mut value1 = Word::default();
+            let mut value1 = Word::empty();
             value1[3] = Felt::new(custom.slot1);
 
             AccountComponent::new(

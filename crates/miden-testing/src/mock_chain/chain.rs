@@ -859,7 +859,7 @@ impl MockChain {
         asset: &[Asset],
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
-        let mut rng = RpoRandomCoin::new(Word::default());
+        let mut rng = RpoRandomCoin::new(Word::empty());
 
         let note = create_p2id_note(
             sender_account_id,
@@ -888,7 +888,7 @@ impl MockChain {
         reclaim_height: Option<BlockNumber>,
         timelock_height: Option<BlockNumber>,
     ) -> Result<Note, NoteError> {
-        let mut rng = RpoRandomCoin::new(Word::default());
+        let mut rng = RpoRandomCoin::new(Word::empty());
 
         let note = create_p2ide_note(
             sender_account_id,
@@ -1395,7 +1395,7 @@ fn create_genesis_state(
     let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
 
     let version = 0;
-    let prev_block_commitment = Word::default();
+    let prev_block_commitment = Word::empty();
     let block_num = BlockNumber::from(0u32);
     let chain_commitment = Blockchain::new().commitment();
     let account_root = account_tree.root();
@@ -1403,7 +1403,7 @@ fn create_genesis_state(
     let note_root = BlockNoteTree::empty().root();
     let tx_commitment = transactions.commitment();
     let tx_kernel_commitment = TransactionKernel::kernel_commitment();
-    let proof_commitment = Word::default();
+    let proof_commitment = Word::empty();
     let timestamp = MockChain::TIMESTAMP_START_SECS;
 
     let header = BlockHeader::new(

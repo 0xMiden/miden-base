@@ -21,7 +21,7 @@ impl StorageSlotType {
     /// Returns storage slot type as a [Word]
     pub fn as_word(&self) -> Word {
         match self {
-            StorageSlotType::Value => Word::default(),
+            StorageSlotType::Value => Word::empty(),
             StorageSlotType::Map => Word::from([1, 0, 0, 0u32]),
         }
     }

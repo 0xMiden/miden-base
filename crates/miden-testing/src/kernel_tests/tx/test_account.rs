@@ -421,17 +421,17 @@ fn test_get_map_item() -> miette::Result<()> {
             "get_map_item result doesn't match the expected value",
         );
         assert_eq!(
-            Word::default(),
+            Word::empty(),
             process.stack.get_word(1),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
-            Word::default(),
+            Word::empty(),
             process.stack.get_word(2),
             "The rest of the stack must be cleared",
         );
         assert_eq!(
-            Word::default(),
+            Word::empty(),
             process.stack.get_word(3),
             "The rest of the stack must be cleared",
         );
@@ -478,9 +478,9 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
         assert_eq!(process.stack.get(1), ZERO, "the rest of the stack is empty");
         assert_eq!(process.stack.get(2), ZERO, "the rest of the stack is empty");
         assert_eq!(process.stack.get(3), ZERO, "the rest of the stack is empty");
-        assert_eq!(Word::default(), process.stack.get_word(1), "the rest of the stack is empty");
-        assert_eq!(Word::default(), process.stack.get_word(2), "the rest of the stack is empty");
-        assert_eq!(Word::default(), process.stack.get_word(3), "the rest of the stack is empty");
+        assert_eq!(Word::empty(), process.stack.get_word(1), "the rest of the stack is empty");
+        assert_eq!(Word::empty(), process.stack.get_word(2), "the rest of the stack is empty");
+        assert_eq!(Word::empty(), process.stack.get_word(3), "the rest of the stack is empty");
     }
 
     Ok(())
@@ -671,7 +671,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let component1 = AccountComponent::compile(
         source_code_component1,
         assembler.clone(),
-        vec![StorageSlot::Value(Word::default())],
+        vec![StorageSlot::Value(Word::empty())],
     )
     .unwrap()
     .with_supported_type(AccountType::RegularAccountUpdatableCode);
@@ -679,7 +679,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let component2 = AccountComponent::compile(
         source_code_component2,
         assembler.clone(),
-        vec![StorageSlot::Value(Word::default())],
+        vec![StorageSlot::Value(Word::empty())],
     )
     .unwrap()
     .with_supported_type(AccountType::RegularAccountUpdatableCode);

@@ -19,7 +19,7 @@ pub struct BatchAccountUpdate {
 
     /// Commitment to the state of the account before this update is applied.
     ///
-    /// Equal to `Word::default()` for new accounts.
+    /// Equal to `Word::empty()` for new accounts.
     initial_state_commitment: Word,
 
     /// Commitment to the state of the account after this update is applied.
@@ -72,7 +72,7 @@ impl BatchAccountUpdate {
 
     /// Returns a commitment to the state of the account before this update is applied.
     ///
-    /// This is equal to [`Word::default()`] for new accounts.
+    /// This is equal to [`Word::empty()`] for new accounts.
     pub fn initial_state_commitment(&self) -> Word {
         self.initial_state_commitment
     }

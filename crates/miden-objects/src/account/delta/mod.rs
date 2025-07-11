@@ -241,7 +241,7 @@ impl AccountDelta {
     pub fn commitment(&self) -> Word {
         // The commitment to an empty delta is defined as the empty word.
         if self.is_empty() {
-            return Word::default();
+            return Word::empty();
         }
 
         // Minor optimization: At least 24 elements are always added.

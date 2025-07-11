@@ -260,7 +260,7 @@ impl AccountTree {
     pub(super) fn id_to_smt_key(account_id: AccountId) -> Word {
         // We construct this in such a way that we're forced to use the constants, so that when
         // they're updated, the other usages of the constants are also updated.
-        let mut key = Word::default();
+        let mut key = Word::empty();
         key[Self::KEY_SUFFIX_IDX] = account_id.suffix();
         key[Self::KEY_PREFIX_IDX] = account_id.prefix().as_felt();
 
@@ -448,7 +448,7 @@ pub(super) mod tests {
         let digest0 = Word::from([0, 0, 0, 1u32]);
         let digest1 = Word::from([0, 0, 0, 2u32]);
         let digest2 = Word::from([0, 0, 0, 3u32]);
-        let empty_digest = Word::default();
+        let empty_digest = Word::empty();
 
         let mut tree =
             AccountTree::with_entries([(id0, digest0), (id1, digest1), (id2, digest2)]).unwrap();

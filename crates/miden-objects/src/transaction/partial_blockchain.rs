@@ -319,7 +319,7 @@ mod tests {
                 .unwrap();
         }
 
-        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Word::default());
+        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Word::empty());
 
         assert_ne!(block_header2.commitment(), fake_block_header2.commitment());
 
@@ -396,15 +396,15 @@ mod tests {
     fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
         BlockHeader::new(
             0,
-            Word::default(),
+            Word::empty(),
             block_num.into(),
-            Word::default(),
-            Word::default(),
-            Word::default(),
-            Word::default(),
-            Word::default(),
-            Word::default(),
-            Word::default(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
             0,
         )
     }

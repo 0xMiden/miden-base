@@ -505,7 +505,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                 let (expected_contains_key, (expected_value0, expected_value1)) =
                     match control_value {
                         Some(value) => (true, (value.0, value.1)),
-                        None => (false, (Word::default(), Word::default())),
+                        None => (false, (Word::empty(), Word::empty())),
                     };
 
                 let get_code = format!(

@@ -146,7 +146,7 @@ impl ProvenTransaction {
                 return Err(ProvenTransactionError::EmptyTransaction);
             }
 
-            let is_new_account = self.account_update.initial_state_commitment() == Word::default();
+            let is_new_account = self.account_update.initial_state_commitment() == Word::empty();
             match self.account_update.details() {
                 AccountUpdateDetails::Private => {
                     return Err(ProvenTransactionError::OnChainAccountMissingDetails(
@@ -407,7 +407,7 @@ pub struct TxAccountUpdate {
 
     /// The commitment of the account before the transaction was executed.
     ///
-    /// Set to `Word::default()` for new accounts.
+    /// Set to `Word::empty()` for new accounts.
     init_state_commitment: Word,
 
     /// The commitment of the account state after the transaction was executed.
@@ -723,7 +723,7 @@ mod tests {
         let account_delta_commitment =
             [4; 32].try_into().expect("failed to create account delta commitment");
         let ref_block_num = BlockNumber::from(1);
-        let ref_block_commitment = Word::default();
+        let ref_block_commitment = Word::empty();
         let expiration_block_num = BlockNumber::from(2);
         let proof = ExecutionProof::new(Proof::new_dummy(), Default::default());
 
