@@ -11,10 +11,11 @@ use miden_lib::{
 use miden_objects::{
     Felt, Hasher, ONE, Word, ZERO, note::Note, testing::storage::prepare_assets, vm::StackInputs,
 };
-use vm_processor::{ContextId, Process, ProcessState};
+use vm_processor::{ContextId, Process};
 
 mod test_account;
 mod test_account_delta;
+mod test_account_interface;
 mod test_asset;
 mod test_asset_vault;
 mod test_epilogue;
@@ -52,12 +53,37 @@ macro_rules! assert_execution_error {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-pub fn read_root_mem_word(process: &ProcessState, addr: u32) -> Word {
-    process.get_mem_word(ContextId::root(), addr).unwrap().unwrap()
+/// Extension trait for a [`Process`] to conveniently read kernel memory.
+pub trait ProcessMemoryExt {
+    /// Reads a word from transaction kernel memory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - the address is not word-aligned.
+    /// - the memory location is not initialized.
+    fn get_kernel_mem_word(&self, addr: u32) -> Word;
+
+    /// Reads a word from transaction kernel memory.
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - the address is not word-aligned.
+    fn try_get_kernel_mem_word(&self, addr: u32) -> Option<Word>;
 }
 
-pub fn try_read_root_mem_word(process: &ProcessState, addr: u32) -> Option<Word> {
-    process.get_mem_word(ContextId::root(), addr).unwrap()
+impl ProcessMemoryExt for Process {
+    fn get_kernel_mem_word(&self, addr: u32) -> Word {
+        self.try_get_kernel_mem_word(addr).expect("expected address to be initialized")
+    }
+
+    fn try_get_kernel_mem_word(&self, addr: u32) -> Option<Word> {
+        self.chiplets
+            .memory
+            .get_word(ContextId::root(), addr)
+            .expect("expected address to be word-aligned")
+    }
 }
 
 /// Returns MASM code that defines a procedure called `create_mock_notes` which creates the notes

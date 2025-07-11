@@ -1,7 +1,7 @@
 use alloc::{string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, TransactionOutputError,
+    EMPTY_WORD, Felt, Hasher, TransactionOutputError, Word,
     account::AccountId,
     assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
     block::BlockNumber,
@@ -148,9 +148,9 @@ impl TransactionKernel {
         source_manager_ext::load_masm_source_files(&source_manager);
 
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_library(StdLibrary::default())
+            .with_dynamic_library(StdLibrary::default())
             .expect("failed to load std-lib")
-            .with_library(MidenLib::default())
+            .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")
     }
 
@@ -180,9 +180,9 @@ impl TransactionKernel {
     /// - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
     pub fn build_input_stack(
         account_id: AccountId,
-        init_account_commitment: Digest,
-        input_notes_commitment: Digest,
-        block_commitment: Digest,
+        init_account_commitment: Word,
+        input_notes_commitment: Word,
+        block_commitment: Word,
         block_num: BlockNumber,
     ) -> StackInputs {
         // Note: Must be kept in sync with the transaction's kernel prepare_transaction procedure
@@ -215,9 +215,9 @@ impl TransactionKernel {
     ///   delta commitment.
     /// - expiration_block_num is the block number at which the transaction will expire.
     pub fn build_output_stack(
-        final_account_commitment: Digest,
-        account_delta_commitment: Digest,
-        output_notes_commitment: Digest,
+        final_account_commitment: Word,
+        account_delta_commitment: Word,
+        output_notes_commitment: Word,
         expiration_block_num: BlockNumber,
     ) -> StackOutputs {
         let account_update_commitment =
@@ -253,16 +253,14 @@ impl TransactionKernel {
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
         stack: &StackOutputs,
-    ) -> Result<(Digest, Digest, BlockNumber), TransactionOutputError> {
+    ) -> Result<(Word, Word, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
-            .expect("output_notes_commitment (first word) missing")
-            .into();
+            .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
-            .expect("account_update_commitment (second word) missing")
-            .into();
+            .expect("account_update_commitment (second word) missing");
 
         let expiration_block_num = stack
             .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)
@@ -278,7 +276,9 @@ impl TransactionKernel {
 
         // Make sure that indices 9, 10 and 11 are zeroes (i.e. the third word without the
         // expiration block number).
-        if stack.get_stack_word(9).expect("third word missing")[..3] != EMPTY_WORD[..3] {
+        if stack.get_stack_word(9).expect("third word missing").as_elements()[..3]
+            != Word::empty().as_elements()[..3]
+        {
             return Err(TransactionOutputError::OutputStackInvalid(
                 "indices 9, 10 and 11 on the output stack should be ZERO".into(),
             ));
@@ -353,9 +353,9 @@ impl TransactionKernel {
     /// Returns the final account commitment and account delta commitment extracted from the account
     /// update commitment.
     fn parse_account_update_commitment(
-        account_update_commitment: Digest,
+        account_update_commitment: Word,
         adv_map: &AdviceMap,
-    ) -> Result<(Digest, Digest), TransactionOutputError> {
+    ) -> Result<(Word, Word), TransactionOutputError> {
         let account_update_data = adv_map.get(&account_update_commitment).ok_or_else(|| {
             TransactionOutputError::AccountUpdateCommitment(
                 "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
@@ -371,11 +371,11 @@ impl TransactionKernel {
 
         // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
         // is fine.
-        let final_account_commitment = Digest::from(
+        let final_account_commitment = Word::from(
             <[Felt; 4]>::try_from(&account_update_data[0..4])
                 .expect("we should have sliced off exactly four elements"),
         );
-        let account_delta_commitment = Digest::from(
+        let account_delta_commitment = Word::from(
             <[Felt; 4]>::try_from(&account_update_data[4..8])
                 .expect("we should have sliced off exactly four elements"),
         );
@@ -420,11 +420,11 @@ impl TransactionKernel {
         source_manager_ext::load_masm_source_files(&source_manager);
 
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_library(StdLibrary::default())
+            .with_dynamic_library(StdLibrary::default())
             .expect("failed to load std-lib")
-            .with_library(MidenLib::default())
+            .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")
-            .with_library(kernel_library)
+            .with_dynamic_library(kernel_library)
             .expect("failed to load kernel library (/lib)")
             .with_debug_mode(true)
     }
@@ -436,7 +436,9 @@ impl TransactionKernel {
         let assembler = Self::testing_assembler().with_debug_mode(true);
         let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
 
-        assembler.with_library(library).expect("failed to add mock account code")
+        assembler
+            .with_dynamic_library(library)
+            .expect("failed to add mock account code")
     }
 }
 
@@ -449,7 +451,7 @@ mod source_manager_ext {
         vec::Vec,
     };
 
-    use miden_objects::assembly::{SourceManager, diagnostics::SourceManagerExt};
+    use miden_objects::assembly::{SourceManager, debuginfo::SourceManagerExt};
 
     /// Loads all files with a .masm extension in the `asm` directory into the provided source
     /// manager.

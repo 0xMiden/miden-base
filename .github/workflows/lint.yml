@@ -28,6 +28,17 @@ jobs:
           tool: typos
       - run: make typos-check
 
+  toml:
+    name: toml formatting
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: taplo-cli
+      - run: make toml-check
+
   clippy:
     name: clippy
     runs-on: ubuntu-latest

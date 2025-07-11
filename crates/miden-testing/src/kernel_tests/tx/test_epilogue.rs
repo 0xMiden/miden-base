@@ -12,7 +12,7 @@ use miden_lib::{
     },
 };
 use miden_objects::{
-    FieldElement,
+    FieldElement, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountDelta, AccountStorageDelta,
         AccountStorageMode, AccountVaultDelta,
@@ -33,12 +33,12 @@ use miden_objects::{
 };
 use miden_tx::TransactionExecutorError;
 use rand::rng;
-use vm_processor::{Felt, ONE, ProcessState};
+use vm_processor::{Felt, ONE};
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
-    kernel_tests::tx::read_root_mem_word,
+    kernel_tests::tx::ProcessMemoryExt,
     utils::{create_p2any_note, create_spawn_note},
 };
 
@@ -193,9 +193,8 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         )?;
 
         assert_eq!(
-            note.assets().commitment().as_elements(),
-            read_root_mem_word(
-                &process.into(),
+            note.assets().commitment(),
+            process.get_kernel_mem_word(
                 OUTPUT_NOTE_SECTION_OFFSET
                     + i * NOTE_MEM_SIZE
                     + OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET
@@ -204,8 +203,8 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         );
 
         assert_eq!(
-            note.id().as_elements(),
-            &read_root_mem_word(&process.into(), OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
+            Word::from(note.id()),
+            process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + i * NOTE_MEM_SIZE),
             "NOTE_ID didn't match expected value",
         );
     }
@@ -405,13 +404,12 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             code,
             TransactionKernel::testing_assembler_with_mock_account(),
         )?;
-        let process_state: ProcessState = process.into();
 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
         let expected_expiry =
             v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
-        assert_eq!(process_state.get_stack_item(8).as_int(), expected_expiry);
+        assert_eq!(process.stack.get(8).as_int(), expected_expiry);
     }
 
     Ok(())
@@ -470,10 +468,9 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
         code_template,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
-    let process_state: ProcessState = process.into();
 
     // Default value should be equal to u32::max, set in the prologue
-    assert_eq!(process_state.get_stack_item(8).as_int() as u32, u32::MAX);
+    assert_eq!(process.stack.get(8).as_int() as u32, u32::MAX);
 
     Ok(())
 }

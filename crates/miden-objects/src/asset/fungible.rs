@@ -146,7 +146,7 @@ impl FungibleAsset {
 
     /// Returns the key which is used to store this asset in the account vault.
     pub(super) fn vault_key_from_faucet(faucet_id: AccountId) -> Word {
-        let mut key = Word::default();
+        let mut key = Word::empty();
         key[2] = faucet_id.suffix();
         key[3] = faucet_id.prefix().as_felt();
         key
@@ -155,7 +155,7 @@ impl FungibleAsset {
 
 impl From<FungibleAsset> for Word {
     fn from(asset: FungibleAsset) -> Self {
-        let mut result = Word::default();
+        let mut result = Word::empty();
         result[0] = Felt::new(asset.amount);
         result[2] = asset.faucet_id.suffix();
         result[3] = asset.faucet_id.prefix().as_felt();

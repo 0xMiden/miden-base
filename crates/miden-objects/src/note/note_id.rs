@@ -1,10 +1,10 @@
 use alloc::string::String;
 use core::fmt::Display;
 
-use super::{Digest, Felt, Hasher, NoteDetails, Word};
-use crate::utils::{
-    HexParseError,
-    serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use super::{Felt, Hasher, NoteDetails, Word};
+use crate::{
+    WordError,
+    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
 // NOTE ID
@@ -25,11 +25,11 @@ use crate::utils::{
 /// - To compute a note ID, we do not need to know the note's serial_num. Knowing the hash of the
 ///   serial_num (as well as script root, input commitment, and note assets) is sufficient.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct NoteId(Digest);
+pub struct NoteId(Word);
 
 impl NoteId {
     /// Returns a new [NoteId] instantiated from the provided note components.
-    pub fn new(recipient: Digest, asset_commitment: Digest) -> Self {
+    pub fn new(recipient: Word, asset_commitment: Word) -> Self {
         Self(Hasher::merge(&[recipient, asset_commitment]))
     }
 
@@ -49,7 +49,7 @@ impl NoteId {
     }
 
     /// Returns the digest defining this note ID.
-    pub fn inner(&self) -> Digest {
+    pub fn as_word(&self) -> Word {
         self.0
     }
 }
@@ -70,36 +70,24 @@ impl From<&NoteDetails> for NoteId {
 }
 
 impl From<Word> for NoteId {
-    fn from(value: Word) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<Digest> for NoteId {
-    fn from(value: Digest) -> Self {
-        Self(value)
+    fn from(digest: Word) -> Self {
+        Self(digest)
     }
 }
 
 impl NoteId {
     /// Attempts to convert from a hexadecimal string to [NoteId].
-    pub fn try_from_hex(hex_value: &str) -> Result<NoteId, HexParseError> {
-        Digest::try_from(hex_value).map(NoteId::from)
+    pub fn try_from_hex(hex_value: &str) -> Result<NoteId, WordError> {
+        Word::try_from(hex_value).map(NoteId::from)
     }
 }
 
 // CONVERSIONS FROM NOTE ID
 // ================================================================================================
 
-impl From<NoteId> for Digest {
-    fn from(id: NoteId) -> Self {
-        id.inner()
-    }
-}
-
 impl From<NoteId> for Word {
     fn from(id: NoteId) -> Self {
-        id.0.into()
+        id.as_word()
     }
 }
 
@@ -111,7 +99,7 @@ impl From<NoteId> for [u8; 32] {
 
 impl From<&NoteId> for Word {
     fn from(id: &NoteId) -> Self {
-        id.0.into()
+        id.0
     }
 }
 
@@ -132,7 +120,7 @@ impl Serializable for NoteId {
 
 impl Deserializable for NoteId {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let id = Digest::read_from(source)?;
+        let id = Word::read_from(source)?;
         Ok(Self(id))
     }
 }
@@ -148,6 +136,6 @@ mod tests {
         let note_id_hex = "0xc9d31c82c098e060c9b6e3af2710b3fc5009a1a6f82ef9465f8f35d1f5ba4a80";
         let note_id = NoteId::try_from_hex(note_id_hex).unwrap();
 
-        assert_eq!(note_id.inner().to_string(), note_id_hex)
+        assert_eq!(note_id.as_word().to_string(), note_id_hex)
     }
 }

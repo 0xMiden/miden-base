@@ -426,11 +426,11 @@ mod tests {
     use miden_crypto::merkle::{Mmr, PartialMmr};
     use miden_verifier::ExecutionProof;
     use winter_air::proof::Proof;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::*;
     use crate::{
-        Digest, Word,
+        Word,
         account::{AccountIdVersion, AccountStorageMode, AccountType},
         transaction::ProvenTransactionBuilder,
     };
@@ -440,21 +440,21 @@ mod tests {
         // create partial blockchain with 3 blocks - i.e., 2 peaks
         let mut mmr = Mmr::default();
         for i in 0..3 {
-            let block_header = BlockHeader::mock(i, None, None, &[], Digest::default());
+            let block_header = BlockHeader::mock(i, None, None, &[], Word::empty());
             mmr.add(block_header.commitment());
         }
         let partial_mmr: PartialMmr = mmr.peaks().into();
         let partial_blockchain = PartialBlockchain::new(partial_mmr, Vec::new()).unwrap();
 
         let chain_commitment = partial_blockchain.peaks().hash_peaks();
-        let note_root: Word = rand_array();
-        let tx_kernel_commitment: Word = rand_array();
+        let note_root = rand_value::<Word>();
+        let tx_kernel_commitment = rand_value::<Word>();
         let reference_block_header = BlockHeader::mock(
             3,
             Some(chain_commitment),
-            Some(note_root.into()),
+            Some(note_root),
             &[],
-            tx_kernel_commitment.into(),
+            tx_kernel_commitment,
         );
 
         let account_id = AccountId::dummy(

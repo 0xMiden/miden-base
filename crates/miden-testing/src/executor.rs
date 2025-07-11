@@ -1,9 +1,12 @@
 use alloc::{borrow::ToOwned, sync::Arc};
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::assembly::SourceManager;
+use miden_objects::assembly::{
+    SourceManager,
+    debuginfo::{SourceLanguage, Uri},
+};
 use vm_processor::{
-    AdviceInputs, AdviceProvider, DefaultHost, ExecutionError, Host, Process, Program, StackInputs,
+    AdviceInputs, DefaultHost, ExecutionError, Process, Program, StackInputs, SyncHost,
 };
 
 // MOCK CODE EXECUTOR
@@ -16,7 +19,7 @@ pub struct CodeExecutor<H> {
     advice_inputs: AdviceInputs,
 }
 
-impl<H: Host> CodeExecutor<H> {
+impl<H: SyncHost> CodeExecutor<H> {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
     pub(crate) fn new(host: H) -> Self {
@@ -46,7 +49,8 @@ impl<H: Host> CodeExecutor<H> {
         let source_manager = assembler.source_manager();
 
         // Virtual file name should be unique.
-        let virtual_source_file = source_manager.load("_user_code", code.to_owned());
+        let virtual_source_file =
+            source_manager.load(SourceLanguage::Masm, Uri::new("_user_code"), code.to_owned());
         let program = assembler.assemble_program(virtual_source_file).unwrap();
 
         self.execute_program(program, source_manager)
@@ -61,21 +65,21 @@ impl<H: Host> CodeExecutor<H> {
         program: Program,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<Process, ExecutionError> {
-        let mut process =
-            Process::new_debug(program.kernel().clone(), self.stack_inputs.unwrap_or_default())
-                .with_source_manager(source_manager);
+        let mut process = Process::new_debug(
+            program.kernel().clone(),
+            self.stack_inputs.unwrap_or_default(),
+            self.advice_inputs,
+        )
+        .with_source_manager(source_manager);
         process.execute(&program, &mut self.host)?;
 
         Ok(process)
     }
 }
 
-impl<A> CodeExecutor<DefaultHost<A>>
-where
-    A: AdviceProvider,
-{
-    pub fn with_advice_provider(adv_provider: A) -> Self {
-        let mut host = DefaultHost::new(adv_provider);
+impl CodeExecutor<DefaultHost> {
+    pub fn with_default_host() -> Self {
+        let mut host = DefaultHost::default();
 
         let test_lib = TransactionKernel::kernel_as_library();
         host.load_mast_forest(test_lib.mast_forest().clone()).unwrap();

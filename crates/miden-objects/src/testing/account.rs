@@ -3,7 +3,7 @@ use vm_core::FieldElement;
 
 use super::constants::{self, FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 use crate::{
-    Felt, ZERO,
+    Felt, Word, ZERO,
     account::{
         Account, AccountCode, AccountComponent, AccountId, AccountStorage, StorageMap, StorageSlot,
     },
@@ -66,7 +66,7 @@ impl Account {
         )
         .unwrap();
 
-        let faucet_data_slot = [ZERO, ZERO, ZERO, initial_balance];
+        let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
         account_storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
 
         Account::from_parts(account_id, AssetVault::default(), account_storage, account_code, nonce)
@@ -83,7 +83,7 @@ impl Account {
             false => {
                 let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
                 let vault_key = asset.vault_key();
-                vec![(vault_key.into(), asset.into())]
+                vec![(vault_key, asset.into())]
             },
         };
 

@@ -2,7 +2,7 @@ use std::{collections::BTreeMap, vec, vec::Vec};
 
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
-    Felt,
+    Felt, Word,
     account::{Account, AccountId, AccountStorageMode},
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
@@ -74,12 +74,12 @@ fn generate_untracked_note_internal(
     asset: Vec<Asset>,
 ) -> Note {
     // Use OS-randomness so that notes with the same sender and target have different note IDs.
-    let mut rng = RpoRandomCoin::new([
+    let mut rng = RpoRandomCoin::new(Word::new([
         Felt::new(rand::rng().random()),
         Felt::new(rand::rng().random()),
         Felt::new(rand::rng().random()),
         Felt::new(rand::rng().random()),
-    ]);
+    ]));
     create_p2id_note(sender, receiver, asset, NoteType::Public, Default::default(), &mut rng)
         .unwrap()
 }

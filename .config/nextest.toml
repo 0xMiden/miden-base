@@ -1,9 +1,9 @@
 [profile.default]
+fail-fast      = false
 failure-output = "immediate-final"
-fail-fast = false
 
 [profile.prove]
 # A test which also generates a proof takes around 120sec to complete in the CI
-slow-timeout = { period = "200s", terminate-after = 2 }
+fail-fast      = false
 failure-output = "immediate-final"
-fail-fast = false
+slow-timeout   = { period = "200s", terminate-after = 2 }

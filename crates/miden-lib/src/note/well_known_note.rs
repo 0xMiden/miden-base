@@ -1,5 +1,5 @@
 use miden_objects::{
-    Digest, Felt,
+    Felt, Word,
     account::AccountId,
     assembly::{ProcedureName, QualifiedProcedureName},
     block::BlockNumber,
@@ -43,7 +43,7 @@ fn p2id() -> NoteScript {
 }
 
 /// Returns the P2ID (Pay-to-ID) note script root.
-fn p2id_root() -> Digest {
+fn p2id_root() -> Word {
     P2ID_SCRIPT.root()
 }
 
@@ -53,7 +53,7 @@ fn p2ide() -> NoteScript {
 }
 
 /// Returns the P2IDE (Pay-to-ID with optional reclaim & timelock) note script root.
-fn p2ide_root() -> Digest {
+fn p2ide_root() -> Word {
     P2IDE_SCRIPT.root()
 }
 
@@ -63,7 +63,7 @@ fn swap() -> NoteScript {
 }
 
 /// Returns the SWAP (Swap note) note script root.
-fn swap_root() -> Digest {
+fn swap_root() -> Word {
     SWAP_SCRIPT.root()
 }
 
@@ -133,7 +133,7 @@ impl WellKnownNote {
     }
 
     /// Returns the script root of the current [WellKnownNote] instance.
-    pub fn script_root(&self) -> Digest {
+    pub fn script_root(&self) -> Word {
         match self {
             Self::P2ID => p2id_root(),
             Self::P2IDE => p2ide_root(),

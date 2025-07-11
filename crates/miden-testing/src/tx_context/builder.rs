@@ -194,8 +194,7 @@ impl TransactionContextBuilder {
         mut self,
         map_entries: impl IntoIterator<Item = (Word, Vec<Felt>)>,
     ) -> Self {
-        self.advice_inputs
-            .extend_map(map_entries.into_iter().map(|(hash, input)| (hash.into(), input)));
+        self.advice_inputs.extend_map(map_entries);
         self
     }
 

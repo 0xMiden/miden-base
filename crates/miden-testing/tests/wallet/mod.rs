@@ -38,5 +38,5 @@ fn wallet_creation() {
     assert!(wallet.is_regular_account());
     assert_eq!(wallet.code().commitment(), expected_code_commitment);
     let pub_key_word: Word = pub_key.into();
-    assert_eq!(wallet.storage().get_item(0).unwrap().as_elements(), pub_key_word);
+    assert_eq!(wallet.storage().get_item(0).unwrap(), pub_key_word);
 }

@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_objects::{
+    Word,
     account::AccountId,
     block::BlockNumber,
     crypto::merkle::MerklePath,
@@ -9,15 +10,14 @@ use miden_objects::{
     transaction::{InputNote, OutputNote, ProvenTransaction, ProvenTransactionBuilder},
     vm::ExecutionProof,
 };
-use vm_processor::Digest;
 use winterfell::Proof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.
 pub struct MockProvenTxBuilder {
     account_id: AccountId,
-    initial_account_commitment: Digest,
-    final_account_commitment: Digest,
-    ref_block_commitment: Option<Digest>,
+    initial_account_commitment: Word,
+    final_account_commitment: Word,
+    ref_block_commitment: Option<Word>,
     expiration_block_num: BlockNumber,
     output_notes: Option<Vec<OutputNote>>,
     input_notes: Option<Vec<InputNote>>,
@@ -29,8 +29,8 @@ impl MockProvenTxBuilder {
     /// and final state commitment.
     pub fn with_account(
         account_id: AccountId,
-        initial_account_commitment: Digest,
-        final_account_commitment: Digest,
+        initial_account_commitment: Word,
+        final_account_commitment: Word,
     ) -> Self {
         Self {
             account_id,
@@ -85,7 +85,7 @@ impl MockProvenTxBuilder {
 
     /// Sets the transaction's block reference.
     #[must_use]
-    pub fn ref_block_commitment(mut self, ref_block_commitment: Digest) -> Self {
+    pub fn ref_block_commitment(mut self, ref_block_commitment: Word) -> Self {
         self.ref_block_commitment = Some(ref_block_commitment);
 
         self
@@ -97,7 +97,7 @@ impl MockProvenTxBuilder {
             self.account_id,
             self.initial_account_commitment,
             self.final_account_commitment,
-            Digest::default(),
+            Word::empty(),
             BlockNumber::from(0),
             self.ref_block_commitment.unwrap_or_default(),
             self.expiration_block_num,

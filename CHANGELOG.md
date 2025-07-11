@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.11.0 (TBD)
+
+- [BREAKING] Incremented MSRV to 1.88.
+- Make `ExecutedTransaction` implement `Send` for easier consumption ([#1560](https://github.com/0xMiden/miden-base/pull/1560)).
+- [BREAKING] Upgrade Miden VM to `0.16`, `miden-crypto` to `0.15` and `winterfell` crates to `0.13` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
+- [BREAKING] `Digest` was removed in favor of `Word` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
+- [BREAKING] Renamed `{NoteInclusionProof, AccountWitness}::inner_nodes` to `authenticated_nodes` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
+- [BREAKING] Renamed `{TransactionId, NoteId, Nullifier}::inner` -> `as_word` ([#1571](https://github.com/0xMiden/miden-base/pull/1571)).
+
 ## 0.10.0 (2025-07-08)
 
 ### Features
@@ -55,11 +64,11 @@
 - [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` (#1525).
 - Add a new auth component `RpoFalcon512ProcedureAcl` (#1531).
 - [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureAcl` for authentication (#1531).
+- Introduce `MockChain` methods for executing at an older block (#1541).
 
 ### Fixes
 
 - [BREAKING] Forbid the execution of the empty transactions ([#1459](https://github.com/0xMiden/miden-base/pull/1459)).
-
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 

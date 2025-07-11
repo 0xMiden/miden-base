@@ -1,7 +1,8 @@
 use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Digest, NoteAssets, NoteHeader,
-    NoteId, NoteMetadata, Serializable,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, NoteAssets, NoteHeader, NoteId,
+    NoteMetadata, Serializable,
 };
+use crate::Word;
 
 // PARTIAL NOTE
 // ================================================================================================
@@ -16,13 +17,13 @@ use super::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PartialNote {
     metadata: NoteMetadata,
-    recipient_digest: Digest,
+    recipient_digest: Word,
     assets: NoteAssets,
 }
 
 impl PartialNote {
     /// Returns a new [PartialNote] instantiated from the provided parameters.
-    pub fn new(metadata: NoteMetadata, recipient_digest: Digest, assets: NoteAssets) -> Self {
+    pub fn new(metadata: NoteMetadata, recipient_digest: Word, assets: NoteAssets) -> Self {
         Self { metadata, recipient_digest, assets }
     }
 
@@ -39,7 +40,7 @@ impl PartialNote {
     /// Returns the digest of the recipient associated with this note.
     ///
     /// See [super::NoteRecipient] for more info.
-    pub fn recipient_digest(&self) -> Digest {
+    pub fn recipient_digest(&self) -> Word {
         self.recipient_digest
     }
 
@@ -75,7 +76,7 @@ impl Serializable for PartialNote {
 impl Deserializable for PartialNote {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let metadata = NoteMetadata::read_from(source)?;
-        let recipient_digest = Digest::read_from(source)?;
+        let recipient_digest = Word::read_from(source)?;
         let assets = NoteAssets::read_from(source)?;
 
         Ok(Self::new(metadata, recipient_digest, assets))

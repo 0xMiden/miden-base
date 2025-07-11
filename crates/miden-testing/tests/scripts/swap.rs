@@ -1,7 +1,7 @@
 use anyhow::Context;
 use miden_lib::{note::create_swap_note, transaction::TransactionKernel};
 use miden_objects::{
-    Felt,
+    Felt, Word,
     account::AccountId,
     asset::{Asset, NonFungibleAsset},
     crypto::rand::RpoRandomCoin,
@@ -158,7 +158,7 @@ fn get_swap_notes(
         requested_asset,
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap()
 }

@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    Digest, Felt, Hasher, ZERO,
+    Felt, Hasher, Word, ZERO,
     block::BlockNumber,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -30,18 +30,18 @@ use crate::{
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BlockHeader {
     version: u32,
-    prev_block_commitment: Digest,
+    prev_block_commitment: Word,
     block_num: BlockNumber,
-    chain_commitment: Digest,
-    account_root: Digest,
-    nullifier_root: Digest,
-    note_root: Digest,
-    tx_commitment: Digest,
-    tx_kernel_commitment: Digest,
-    proof_commitment: Digest,
+    chain_commitment: Word,
+    account_root: Word,
+    nullifier_root: Word,
+    note_root: Word,
+    tx_commitment: Word,
+    tx_kernel_commitment: Word,
+    proof_commitment: Word,
     timestamp: u32,
-    sub_commitment: Digest,
-    commitment: Digest,
+    sub_commitment: Word,
+    commitment: Word,
 }
 
 impl BlockHeader {
@@ -49,15 +49,15 @@ impl BlockHeader {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         version: u32,
-        prev_block_commitment: Digest,
+        prev_block_commitment: Word,
         block_num: BlockNumber,
-        chain_commitment: Digest,
-        account_root: Digest,
-        nullifier_root: Digest,
-        note_root: Digest,
-        tx_commitment: Digest,
-        tx_kernel_commitment: Digest,
-        proof_commitment: Digest,
+        chain_commitment: Word,
+        account_root: Word,
+        nullifier_root: Word,
+        note_root: Word,
+        tx_commitment: Word,
+        tx_kernel_commitment: Word,
+        proof_commitment: Word,
         timestamp: u32,
     ) -> Self {
         // compute block sub commitment
@@ -106,7 +106,7 @@ impl BlockHeader {
     }
 
     /// Returns the commitment of the block header.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.commitment
     }
 
@@ -116,12 +116,12 @@ impl BlockHeader {
     /// This is used in the block commitment computation which is a 2-to-1 hash of the sub
     /// commitment and the note root [hash(sub_commitment, note_root)]. This procedure is used to
     /// make the note root easily accessible without having to unhash the entire header.
-    pub fn sub_commitment(&self) -> Digest {
+    pub fn sub_commitment(&self) -> Word {
         self.sub_commitment
     }
 
     /// Returns the commitment to the previous block header.
-    pub fn prev_block_commitment(&self) -> Digest {
+    pub fn prev_block_commitment(&self) -> Word {
         self.prev_block_commitment
     }
 
@@ -138,22 +138,22 @@ impl BlockHeader {
     }
 
     /// Returns the chain commitment.
-    pub fn chain_commitment(&self) -> Digest {
+    pub fn chain_commitment(&self) -> Word {
         self.chain_commitment
     }
 
     /// Returns the account database root.
-    pub fn account_root(&self) -> Digest {
+    pub fn account_root(&self) -> Word {
         self.account_root
     }
 
     /// Returns the nullifier database root.
-    pub fn nullifier_root(&self) -> Digest {
+    pub fn nullifier_root(&self) -> Word {
         self.nullifier_root
     }
 
     /// Returns the note root.
-    pub fn note_root(&self) -> Digest {
+    pub fn note_root(&self) -> Word {
         self.note_root
     }
 
@@ -162,7 +162,7 @@ impl BlockHeader {
     /// The commitment is computed as sequential hash of (`transaction_id`, `account_id`) tuples.
     /// This makes it possible for the verifier to link transaction IDs to the accounts which
     /// they were executed against.
-    pub fn tx_commitment(&self) -> Digest {
+    pub fn tx_commitment(&self) -> Word {
         self.tx_commitment
     }
 
@@ -170,12 +170,12 @@ impl BlockHeader {
     ///
     /// The transaction kernel commitment is computed as a sequential hash of all transaction kernel
     /// hashes.
-    pub fn tx_kernel_commitment(&self) -> Digest {
+    pub fn tx_kernel_commitment(&self) -> Word {
         self.tx_kernel_commitment
     }
 
     /// Returns the proof commitment.
-    pub fn proof_commitment(&self) -> Digest {
+    pub fn proof_commitment(&self) -> Word {
         self.proof_commitment
     }
 
@@ -201,16 +201,16 @@ impl BlockHeader {
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
         version: u32,
-        prev_block_commitment: Digest,
-        chain_commitment: Digest,
-        account_root: Digest,
-        nullifier_root: Digest,
-        tx_commitment: Digest,
-        tx_kernel_commitment: Digest,
-        proof_commitment: Digest,
+        prev_block_commitment: Word,
+        chain_commitment: Word,
+        account_root: Word,
+        nullifier_root: Word,
+        tx_commitment: Word,
+        tx_kernel_commitment: Word,
+        proof_commitment: Word,
         timestamp: u32,
         block_num: BlockNumber,
-    ) -> Digest {
+    ) -> Word {
         let mut elements: Vec<Felt> = Vec::with_capacity(32);
         elements.extend_from_slice(prev_block_commitment.as_elements());
         elements.extend_from_slice(chain_commitment.as_elements());
@@ -276,21 +276,21 @@ impl Deserializable for BlockHeader {
 #[cfg(test)]
 mod tests {
     use vm_core::Word;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::*;
 
     #[test]
     fn test_serde() {
-        let chain_commitment: Word = rand_array();
-        let note_root: Word = rand_array();
-        let tx_kernel_commitment: Word = rand_array();
+        let chain_commitment = rand_value::<Word>();
+        let note_root = rand_value::<Word>();
+        let tx_kernel_commitment = rand_value::<Word>();
         let header = BlockHeader::mock(
             0,
-            Some(chain_commitment.into()),
-            Some(note_root.into()),
+            Some(chain_commitment),
+            Some(note_root),
             &[],
-            tx_kernel_commitment.into(),
+            tx_kernel_commitment,
         );
         let serialized = header.to_bytes();
         let deserialized = BlockHeader::read_from_bytes(&serialized).unwrap();

@@ -1,5 +1,5 @@
 use crate::{
-    Digest,
+    Word,
     account::delta::AccountUpdateDetails,
     block::AccountWitness,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
@@ -15,9 +15,9 @@ use crate::{
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountUpdateWitness {
     /// The state commitment before the update.
-    initial_state_commitment: Digest,
+    initial_state_commitment: Word,
     /// The state commitment after the update.
-    final_state_commitment: Digest,
+    final_state_commitment: Word,
     /// The account witness proving that the initial state commitment is the current state in the
     /// account tree.
     initial_state_proof: AccountWitness,
@@ -33,8 +33,8 @@ impl AccountUpdateWitness {
 
     /// Constructs a new, partial [`AccountUpdateWitness`] from the provided parts.
     pub fn new(
-        initial_state_commitment: Digest,
-        final_state_commitment: Digest,
+        initial_state_commitment: Word,
+        final_state_commitment: Word,
         initial_state_proof: AccountWitness,
         details: AccountUpdateDetails,
     ) -> Self {
@@ -50,12 +50,12 @@ impl AccountUpdateWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the initial state commitment of the account.
-    pub fn initial_state_commitment(&self) -> Digest {
+    pub fn initial_state_commitment(&self) -> Word {
         self.initial_state_commitment
     }
 
     /// Returns the final state commitment of the account.
-    pub fn final_state_commitment(&self) -> Digest {
+    pub fn final_state_commitment(&self) -> Word {
         self.final_state_commitment
     }
 
@@ -85,7 +85,7 @@ impl AccountUpdateWitness {
     }
 
     /// Consumes self and returns its parts.
-    pub fn into_parts(self) -> (Digest, Digest, AccountWitness, AccountUpdateDetails) {
+    pub fn into_parts(self) -> (Word, Word, AccountWitness, AccountUpdateDetails) {
         (
             self.initial_state_commitment,
             self.final_state_commitment,

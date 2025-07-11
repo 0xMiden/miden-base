@@ -4,7 +4,7 @@ use std::{fs::File, io::Write, path::Path};
 use anyhow::Context;
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, FieldElement,
+    Felt, FieldElement, Word,
     account::{Account, AccountId, AccountStorageMode, AccountType},
     asset::{Asset, FungibleAsset},
     crypto::rand::RpoRandomCoin,
@@ -113,7 +113,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
         vec![fungible_asset],
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 

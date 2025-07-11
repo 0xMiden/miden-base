@@ -3,7 +3,7 @@ use miden_lib::{
     transaction::TransactionKernel,
 };
 use miden_objects::{
-    Felt,
+    Felt, Word,
     account::Account,
     asset::{Asset, AssetVault, FungibleAsset},
     crypto::rand::RpoRandomCoin,
@@ -213,7 +213,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         vec![FungibleAsset::mock(10)],
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
 
     let output_note_2 = create_p2id_note(
@@ -222,7 +222,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         vec![FungibleAsset::mock(5)],
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(4), Felt::new(3), Felt::new(2), Felt::new(1)]),
+        &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
     )?;
 
     let tx_script_src = &format!(

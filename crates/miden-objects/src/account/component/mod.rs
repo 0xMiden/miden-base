@@ -1,13 +1,13 @@
 use alloc::{collections::BTreeSet, vec::Vec};
 
-use assembly::{Assembler, Compile, Library};
-use vm_processor::{Digest, MastForest};
+use assembly::{Assembler, Library, Parse};
+use vm_processor::MastForest;
 
 mod template;
 pub use template::*;
 
 use crate::{
-    AccountError,
+    AccountError, Word,
     account::{AccountType, StorageSlot},
 };
 
@@ -75,7 +75,7 @@ impl AccountComponent {
     /// - the compilation of the provided source code fails.
     /// - The number of storage slots exceeds 255.
     pub fn compile(
-        source_code: impl Compile,
+        source_code: impl Parse,
         assembler: Assembler,
         storage_slots: Vec<StorageSlot>,
     ) -> Result<Self, AccountError> {
@@ -147,7 +147,7 @@ impl AccountComponent {
     }
 
     /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
-    pub(crate) fn get_procedures(&self) -> Vec<(Digest, bool)> {
+    pub(crate) fn get_procedures(&self) -> Vec<(Word, bool)> {
         let mut procedures = Vec::new();
         for module in self.library.module_infos() {
             for (_, procedure_info) in module.procedures() {

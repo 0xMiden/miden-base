@@ -1,45 +1,45 @@
 [package]
-name = "miden-tx"
-version = "0.10.0"
-description = "Miden blockchain transaction executor and prover"
-readme = "README.md"
-categories = ["no-std"]
-keywords = ["miden", "transaction"]
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+authors.workspace      = true
+categories             = ["no-std"]
+description            = "Miden blockchain transaction executor and prover"
+edition.workspace      = true
+homepage.workspace     = true
+keywords               = ["miden", "transaction"]
+license.workspace      = true
+name                   = "miden-tx"
+readme                 = "README.md"
+repository.workspace   = true
 rust-version.workspace = true
-edition.workspace = true
+version                = "0.11.0"
 
 [features]
-async = ["winter-maybe-async/async"]
+async      = ["winter-maybe-async/async"]
 concurrent = ["miden-prover/concurrent", "std"]
-default = ["std"]
-std = ["miden-lib/std", "miden-objects/std", "miden-prover/std", "miden-verifier/std", "vm-processor/std"]
-testing = ["miden-objects/testing", "miden-lib/testing", "vm-processor/testing"]
+default    = ["std"]
+std        = ["miden-lib/std", "miden-objects/std", "miden-prover/std", "miden-verifier/std", "vm-processor/std"]
+testing    = ["miden-lib/testing", "miden-objects/testing", "vm-processor/testing"]
 
 [dependencies]
 # Workspace dependencies
-miden-lib = { workspace = true }
+miden-lib     = { workspace = true }
 miden-objects = { workspace = true }
 
 # Miden dependencies
-miden-prover = { workspace = true }
+miden-prover   = { workspace = true }
 miden-verifier = { workspace = true }
-vm-processor = { workspace = true }
+vm-processor   = { workspace = true }
 
 # External dependencies
-async-trait = "0.1"
-rand = { workspace = true }
-thiserror = { workspace = true }
+async-trait        = "0.1"
+rand               = { workspace = true }
+thiserror          = { workspace = true }
 winter-maybe-async = { version = "0.12" }
 
 [dev-dependencies]
-anyhow = { version = "1.0", default-features = false, features = ["std", "backtrace"]}
-assembly = { workspace = true }
+anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
+assembly       = { workspace = true }
 assert_matches = { workspace = true }
-miden-tx = { path = ".", features = ["testing"] }
+miden-tx       = { features = ["testing"], path = "." }
 
 [package.metadata.cargo-machete]
 # cargo machete flags async-trait as unused but it is used by winter-maybe-async with the async feature

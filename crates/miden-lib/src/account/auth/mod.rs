@@ -1,7 +1,7 @@
 use alloc::{string::ToString, vec::Vec};
 
 use miden_objects::{
-    AccountError, Digest, Felt, FieldElement,
+    AccountError, Word,
     account::{AccountCode, AccountComponent, StorageMap, StorageSlot},
     crypto::dsa::rpo_falcon512::PublicKey,
 };
@@ -64,7 +64,7 @@ impl From<RpoFalcon512> for AccountComponent {
 /// This component supports all account types.
 pub struct RpoFalcon512ProcedureAcl {
     public_key: PublicKey,
-    auth_trigger_procedures: Vec<Digest>,
+    auth_trigger_procedures: Vec<Word>,
 }
 
 impl RpoFalcon512ProcedureAcl {
@@ -75,7 +75,7 @@ impl RpoFalcon512ProcedureAcl {
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
         public_key: PublicKey,
-        auth_trigger_procedures: Vec<Digest>,
+        auth_trigger_procedures: Vec<Word>,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if auth_trigger_procedures.len() > max_procedures {
@@ -96,19 +96,17 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
 
         // Slot 1: Number of tracked procedures
-        let num_procs = Felt::from(falcon.auth_trigger_procedures.len() as u32);
-        storage_slots.push(StorageSlot::Value([num_procs, Felt::ZERO, Felt::ZERO, Felt::ZERO]));
+        let num_procs = falcon.auth_trigger_procedures.len() as u32;
+        storage_slots.push(StorageSlot::Value(Word::from([num_procs, 0, 0, 0])));
 
         // Slot 2: A map with tracked procedure roots
         // We add the map even if there are no trigger procedures, to always maintain the same
         // storage layout.
-        let map_entries =
-            falcon.auth_trigger_procedures.iter().enumerate().map(|(i, proc_root)| {
-                (
-                    [Felt::from(i as u32), Felt::ZERO, Felt::ZERO, Felt::ZERO].into(),
-                    proc_root.into(),
-                )
-            });
+        let map_entries = falcon
+            .auth_trigger_procedures
+            .iter()
+            .enumerate()
+            .map(|(i, proc_root)| (Word::from([i as u32, 0, 0, 0]), *proc_root));
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
@@ -124,14 +122,14 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::{Word, ZERO, account::AccountBuilder};
+    use miden_objects::{Word, account::AccountBuilder};
 
     use super::*;
     use crate::account::{components::basic_wallet_library, wallets::BasicWallet};
 
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
-        let public_key = PublicKey::new([ZERO; 4]);
+        let public_key = PublicKey::new(Word::empty());
         let component =
             RpoFalcon512ProcedureAcl::new(public_key, vec![]).expect("component creation failed");
 
@@ -142,27 +140,27 @@ mod tests {
             .expect("account building failed");
 
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(public_key_slot, Word::from(public_key).into());
+        assert_eq!(public_key_slot, Word::from(public_key));
 
         let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_procs_slot, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into());
+        assert_eq!(num_procs_slot, Word::empty());
 
         let proc_root = account
             .storage()
-            .get_map_item(2, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+            .get_map_item(2, Word::empty())
             .expect("storage map access failed");
         // This should be filled with zeros because there are no auth trigger procedures
-        assert_eq!(proc_root, Word::default());
+        assert_eq!(proc_root, Word::empty());
     }
 
     #[test]
     fn test_rpo_falcon_512_procedure_acl_with_two_procedures() {
-        let public_key = PublicKey::new([ZERO; 4]);
+        let public_key = PublicKey::new(Word::empty());
 
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
         // TODO refactor to fetch procedure digests by name after
         // https://github.com/0xMiden/miden-base/pull/1532
-        let auth_trigger_procedures: Vec<Digest> = basic_wallet_library()
+        let auth_trigger_procedures: Vec<Word> = basic_wallet_library()
             .module_infos()
             .next()
             .expect("at least one module expected")
@@ -182,21 +180,21 @@ mod tests {
             .expect("account building failed");
 
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(public_key_slot, Word::from(public_key).into());
+        assert_eq!(public_key_slot, Word::from(public_key));
 
         let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_procs_slot, [Felt::new(2), Felt::ZERO, Felt::ZERO, Felt::ZERO].into());
+        assert_eq!(num_procs_slot, Word::from([2u32, 0, 0, 0]));
 
         let proc_root_0 = account
             .storage()
-            .get_map_item(2, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+            .get_map_item(2, Word::empty())
             .expect("storage map access failed");
-        assert_eq!(proc_root_0, Word::from(auth_trigger_procedures[0]));
+        assert_eq!(proc_root_0, auth_trigger_procedures[0]);
 
         let proc_root_1 = account
             .storage()
-            .get_map_item(2, [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+            .get_map_item(2, Word::from([1, 0, 0, 0u32]))
             .expect("storage map access failed");
-        assert_eq!(proc_root_1, Word::from(auth_trigger_procedures[1]));
+        assert_eq!(proc_root_1, auth_trigger_procedures[1]);
     }
 }

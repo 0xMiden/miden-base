@@ -1,10 +1,8 @@
 #[cfg(not(target_family = "wasm"))]
-use winter_rand_utils::{rand_array, rand_value};
+use winter_rand_utils::rand_value;
 
-#[cfg(not(target_family = "wasm"))]
-use crate::Felt;
 use crate::{
-    Digest,
+    Word,
     account::Account,
     block::{AccountTree, BlockHeader, BlockNumber},
 };
@@ -18,10 +16,10 @@ impl BlockHeader {
     /// targets, values are initialized to [Default::default()]
     pub fn mock(
         block_num: impl Into<BlockNumber>,
-        chain_commitment: Option<Digest>,
-        note_root: Option<Digest>,
+        chain_commitment: Option<Word>,
+        note_root: Option<Word>,
         accounts: &[Account],
-        tx_kernel_commitment: Digest,
+        tx_kernel_commitment: Word,
     ) -> Self {
         let acct_db =
             AccountTree::with_entries(accounts.iter().map(|acct| (acct.id(), acct.commitment())))
@@ -38,12 +36,12 @@ impl BlockHeader {
             proof_commitment,
             timestamp,
         ) = {
-            let prev_block_commitment = rand_array::<Felt, 4>().into();
-            let chain_commitment = chain_commitment.unwrap_or(rand_array::<Felt, 4>().into());
-            let nullifier_root = rand_array::<Felt, 4>().into();
-            let note_root = note_root.unwrap_or(rand_array::<Felt, 4>().into());
-            let tx_commitment = rand_array::<Felt, 4>().into();
-            let proof_commitment = rand_array::<Felt, 4>().into();
+            let prev_block_commitment = rand_value::<Word>();
+            let chain_commitment = chain_commitment.unwrap_or(rand_value::<Word>());
+            let nullifier_root = rand_value::<Word>();
+            let note_root = note_root.unwrap_or(rand_value::<Word>());
+            let tx_commitment = rand_value::<Word>();
+            let proof_commitment = rand_value::<Word>();
             let timestamp = rand_value();
 
             (

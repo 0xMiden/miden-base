@@ -2,7 +2,7 @@ use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
 use vm_processor::SMT_DEPTH;
 
 use crate::{
-    Digest, Felt, FieldElement, Word,
+    Felt, Word,
     account::{AccountId, AccountIdPrefix},
     block::AccountWitness,
     errors::AccountTreeError,
@@ -56,16 +56,16 @@ impl AccountTree {
     /// - the provided entries contain multiple commitments for the same account ID.
     /// - multiple account IDs share the same prefix.
     pub fn with_entries<I>(
-        entries: impl IntoIterator<Item = (AccountId, Digest), IntoIter = I>,
+        entries: impl IntoIterator<Item = (AccountId, Word), IntoIter = I>,
     ) -> Result<Self, AccountTreeError>
     where
-        I: ExactSizeIterator<Item = (AccountId, Digest)>,
+        I: ExactSizeIterator<Item = (AccountId, Word)>,
     {
         let entries = entries.into_iter();
         let num_accounts = entries.len();
 
         let smt = Smt::with_entries(
-            entries.map(|(id, commitment)| (Self::id_to_smt_key(id), Word::from(commitment))),
+            entries.map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
         )
         .map_err(|err| {
             let MerkleError::DuplicateValuesForIndex(leaf_idx) = err else {
@@ -118,13 +118,13 @@ impl AccountTree {
     }
 
     /// Returns the current state commitment of the given account ID.
-    pub fn get(&self, account_id: AccountId) -> Digest {
+    pub fn get(&self, account_id: AccountId) -> Word {
         let key = Self::id_to_smt_key(account_id);
-        Digest::from(self.smt.get_value(&key))
+        self.smt.get_value(&key)
     }
 
     /// Returns the root of the tree.
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.smt.root()
     }
 
@@ -136,7 +136,7 @@ impl AccountTree {
     }
 
     /// Returns an iterator over the account ID state commitment pairs in the tree.
-    pub fn account_commitments(&self) -> impl Iterator<Item = (AccountId, Digest)> {
+    pub fn account_commitments(&self) -> impl Iterator<Item = (AccountId, Word)> {
         self.smt.leaves().map(|(_leaf_idx, leaf)| {
             // SAFETY: By construction no Multiple variant is ever present in the tree.
             // The Empty variant is not returned by Smt::leaves, because it only returns leaves that
@@ -149,7 +149,7 @@ impl AccountTree {
                 // SAFETY: By construction, the tree only contains valid IDs.
                 AccountId::try_from([key[Self::KEY_PREFIX_IDX], key[Self::KEY_SUFFIX_IDX]])
                     .expect("account tree should only contain valid IDs"),
-                Digest::from(commitment),
+                *commitment,
             )
         })
     }
@@ -173,12 +173,12 @@ impl AccountTree {
     ///   tree.
     pub fn compute_mutations(
         &self,
-        account_commitments: impl IntoIterator<Item = (AccountId, Digest)>,
+        account_commitments: impl IntoIterator<Item = (AccountId, Word)>,
     ) -> Result<AccountMutationSet, AccountTreeError> {
         let mutation_set = self.smt.compute_mutations(
             account_commitments
                 .into_iter()
-                .map(|(id, commitment)| (Self::id_to_smt_key(id), Word::from(commitment))),
+                .map(|(id, commitment)| (Self::id_to_smt_key(id), commitment)),
         );
 
         for id_key in mutation_set.new_pairs().keys() {
@@ -222,10 +222,10 @@ impl AccountTree {
     pub fn insert(
         &mut self,
         account_id: AccountId,
-        state_commitment: Digest,
-    ) -> Result<Digest, AccountTreeError> {
+        state_commitment: Word,
+    ) -> Result<Word, AccountTreeError> {
         let key = Self::id_to_smt_key(account_id);
-        let prev_value = Digest::from(self.smt.insert(key, Word::from(state_commitment)));
+        let prev_value = self.smt.insert(key, state_commitment);
 
         // If the leaf of the account ID now has two or more entries, we've inserted a duplicate
         // prefix.
@@ -257,14 +257,14 @@ impl AccountTree {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the SMT key of the given account ID.
-    pub(super) fn id_to_smt_key(account_id: AccountId) -> Digest {
+    pub(super) fn id_to_smt_key(account_id: AccountId) -> Word {
         // We construct this in such a way that we're forced to use the constants, so that when
         // they're updated, the other usages of the constants are also updated.
-        let mut key = [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO];
+        let mut key = Word::empty();
         key[Self::KEY_SUFFIX_IDX] = account_id.suffix();
         key[Self::KEY_PREFIX_IDX] = account_id.prefix().as_felt();
 
-        Digest::from(key)
+        key
     }
 
     /// Returns the [`AccountId`] recovered from the given SMT key.
@@ -274,7 +274,7 @@ impl AccountTree {
     /// Panics if:
     /// - the key is not a valid account ID. This should not happen when used on keys from (partial)
     ///   account tree.
-    pub(super) fn smt_key_to_id(key: Digest) -> AccountId {
+    pub(super) fn smt_key_to_id(key: Word) -> AccountId {
         AccountId::try_from([key[Self::KEY_PREFIX_IDX], key[Self::KEY_SUFFIX_IDX]])
             .expect("account tree should only contain valid IDs")
     }
@@ -297,7 +297,7 @@ impl Default for AccountTree {
 /// It is returned by and used in methods on the [`AccountTree`].
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AccountMutationSet {
-    mutation_set: MutationSet<{ AccountTree::DEPTH }, Digest, Word>,
+    mutation_set: MutationSet<{ AccountTree::DEPTH }, Word, Word>,
 }
 
 impl AccountMutationSet {
@@ -305,7 +305,7 @@ impl AccountMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`AccountMutationSet`] from the provided raw mutation set.
-    fn new(mutation_set: MutationSet<{ AccountTree::DEPTH }, Digest, Word>) -> Self {
+    fn new(mutation_set: MutationSet<{ AccountTree::DEPTH }, Word, Word>) -> Self {
         Self { mutation_set }
     }
 
@@ -313,7 +313,7 @@ impl AccountMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the underlying [`MutationSet`].
-    pub fn as_mutation_set(&self) -> &MutationSet<{ AccountTree::DEPTH }, Digest, Word> {
+    pub fn as_mutation_set(&self) -> &MutationSet<{ AccountTree::DEPTH }, Word, Word> {
         &self.mutation_set
     }
 
@@ -321,7 +321,7 @@ impl AccountMutationSet {
     // --------------------------------------------------------------------------------------------
 
     /// Consumes self and returns the underlying [`MutationSet`].
-    pub fn into_mutation_set(self) -> MutationSet<{ AccountTree::DEPTH }, Digest, Word> {
+    pub fn into_mutation_set(self) -> MutationSet<{ AccountTree::DEPTH }, Word, Word> {
         self.mutation_set
     }
 }
@@ -334,7 +334,6 @@ pub(super) mod tests {
     use std::vec::Vec;
 
     use assert_matches::assert_matches;
-    use vm_core::EMPTY_WORD;
 
     use super::*;
     use crate::{
@@ -342,7 +341,7 @@ pub(super) mod tests {
         testing::account_id::{AccountIdBuilder, account_id},
     };
 
-    pub(crate) fn setup_duplicate_prefix_ids() -> [(AccountId, Digest); 2] {
+    pub(crate) fn setup_duplicate_prefix_ids() -> [(AccountId, Word); 2] {
         let id0 = AccountId::try_from(account_id(
             AccountType::FungibleFaucet,
             AccountStorageMode::Public,
@@ -357,8 +356,8 @@ pub(super) mod tests {
         .unwrap();
         assert_eq!(id0.prefix(), id1.prefix(), "test requires that these ids have the same prefix");
 
-        let commitment0 = Digest::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(42)]);
-        let commitment1 = Digest::from([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(24)]);
+        let commitment0 = Word::from([0, 0, 0, 42u32]);
+        let commitment1 = Word::from([0, 0, 0, 24u32]);
 
         assert_eq!(id0.prefix(), id1.prefix(), "test requires that these ids have the same prefix");
         [(id0, commitment0), (id1, commitment1)]
@@ -406,10 +405,10 @@ pub(super) mod tests {
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);
         let id2 = AccountIdBuilder::new().build_with_seed([7; 32]);
 
-        let digest0 = Digest::from([0, 0, 0, 1u32]);
-        let digest1 = Digest::from([0, 0, 0, 2u32]);
-        let digest2 = Digest::from([0, 0, 0, 3u32]);
-        let digest3 = Digest::from([0, 0, 0, 4u32]);
+        let digest0 = Word::from([0, 0, 0, 1u32]);
+        let digest1 = Word::from([0, 0, 0, 2u32]);
+        let digest2 = Word::from([0, 0, 0, 3u32]);
+        let digest3 = Word::from([0, 0, 0, 4u32]);
 
         let mut tree = AccountTree::with_entries([(id0, digest0), (id1, digest1)]).unwrap();
 
@@ -429,7 +428,7 @@ pub(super) mod tests {
     fn duplicates_in_compute_mutations() {
         let [pair0, pair1] = setup_duplicate_prefix_ids();
         let id2 = AccountIdBuilder::new().build_with_seed([5; 32]);
-        let commitment2 = Digest::from([0, 0, 0, 99u32]);
+        let commitment2 = Word::from([0, 0, 0, 99u32]);
 
         let tree = AccountTree::with_entries([pair0, (id2, commitment2)]).unwrap();
 
@@ -446,10 +445,10 @@ pub(super) mod tests {
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);
         let id2 = AccountIdBuilder::new().build_with_seed([7; 32]);
 
-        let digest0 = Digest::from([0, 0, 0, 1u32]);
-        let digest1 = Digest::from([0, 0, 0, 2u32]);
-        let digest2 = Digest::from([0, 0, 0, 3u32]);
-        let empty_digest = Digest::from(EMPTY_WORD);
+        let digest0 = Word::from([0, 0, 0, 1u32]);
+        let digest1 = Word::from([0, 0, 0, 2u32]);
+        let digest2 = Word::from([0, 0, 0, 3u32]);
+        let empty_digest = Word::empty();
 
         let mut tree =
             AccountTree::with_entries([(id0, digest0), (id1, digest1), (id2, digest2)]).unwrap();
@@ -470,8 +469,8 @@ pub(super) mod tests {
         let id0 = AccountIdBuilder::new().build_with_seed([5; 32]);
         let id1 = AccountIdBuilder::new().build_with_seed([6; 32]);
 
-        let digest0 = Digest::from([0, 0, 0, 1u32]);
-        let digest1 = Digest::from([0, 0, 0, 2u32]);
+        let digest0 = Word::from([0, 0, 0, 1u32]);
+        let digest1 = Word::from([0, 0, 0, 2u32]);
 
         let tree = AccountTree::with_entries([(id0, digest0), (id1, digest1)]).unwrap();
 

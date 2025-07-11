@@ -1,11 +1,11 @@
 use alloc::{sync::Arc, vec::Vec};
 use core::fmt::Display;
 
-use super::{Digest, Felt};
+use super::Felt;
 use crate::{
-    NoteError, PrettyPrint,
+    NoteError, PrettyPrint, Word,
     assembly::{
-        Assembler, Compile,
+        Assembler, Parse,
         mast::{MastForest, MastNodeId},
     },
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
@@ -42,7 +42,7 @@ impl NoteScript {
     ///
     /// # Errors
     /// Returns an error if the compilation of the provided source code fails.
-    pub fn compile(source_code: impl Compile, assembler: Assembler) -> Result<Self, NoteError> {
+    pub fn compile(source_code: impl Parse, assembler: Assembler) -> Result<Self, NoteError> {
         let program = assembler
             .assemble_program(source_code)
             .map_err(NoteError::NoteScriptAssemblyError)?;
@@ -70,7 +70,7 @@ impl NoteScript {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the commitment of this note script (i.e., the script's MAST root).
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.mast[self.entrypoint].digest()
     }
 

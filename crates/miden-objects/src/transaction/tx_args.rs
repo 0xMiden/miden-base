@@ -4,10 +4,10 @@ use alloc::{
     vec::Vec,
 };
 
-use assembly::{Assembler, Compile};
+use assembly::{Assembler, Parse};
 use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{AccountInputs, Digest, Felt, Word};
+use super::{AccountInputs, Felt, Word};
 use crate::{
     EMPTY_WORD, MastForest, MastNodeId, TransactionScriptError,
     note::{NoteId, NoteRecipient},
@@ -128,7 +128,7 @@ impl TransactionArgs {
     }
 
     /// Collects and returns a set containing all code commitments from foreign accounts.
-    pub fn foreign_account_code_commitments(&self) -> BTreeSet<Digest> {
+    pub fn foreign_account_code_commitments(&self) -> BTreeSet<Word> {
         self.foreign_account_inputs()
             .iter()
             .map(|acc| acc.code().commitment())
@@ -178,7 +178,7 @@ impl TransactionArgs {
     }
 
     /// Extends the internal advice inputs' map with the provided key-value pairs.
-    pub fn extend_advice_map<T: IntoIterator<Item = (Digest, Vec<Felt>)>>(&mut self, iter: T) {
+    pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
         self.advice_inputs.extend_map(iter)
     }
 
@@ -253,7 +253,7 @@ impl TransactionScript {
     /// # Errors
     /// Returns an error if the compilation of the provided source code fails.
     pub fn compile(
-        source_code: impl Compile,
+        source_code: impl Parse,
         assembler: Assembler,
     ) -> Result<Self, TransactionScriptError> {
         let program = assembler
@@ -281,7 +281,7 @@ impl TransactionScript {
     }
 
     /// Returns the commitment of this transaction script (i.e., the script's MAST root).
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.mast[self.entrypoint].digest()
     }
 }
