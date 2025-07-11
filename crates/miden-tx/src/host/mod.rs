@@ -122,7 +122,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
         // advice provider has all the necessary data for script execution
         advice_inputs.extend_map(
             scripts_mast_store
-                .advice_data()
+                .advice_map()
                 .iter()
                 .map(|(key, values)| (*key, values.clone())),
         );
