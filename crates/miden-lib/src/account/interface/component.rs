@@ -11,7 +11,7 @@ use miden_objects::{
     utils::word_to_masm_push_string,
 };
 
-use crate::account::{components::WellKnownComponents, interface::AccountInterfaceError};
+use crate::account::{components::WellKnownComponent, interface::AccountInterfaceError};
 
 // ACCOUNT COMPONENT INTERFACE
 // ================================================================================================
@@ -79,7 +79,7 @@ impl AccountComponentInterface {
 
         // Get all available well known components which could be constructed from the `procedures`
         // map and push them to the `component_interface_vec`
-        WellKnownComponents::extract_well_known_components(
+        WellKnownComponent::extract_well_known_components(
             &mut procedures,
             &mut component_interface_vec,
         );

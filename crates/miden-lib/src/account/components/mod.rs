@@ -66,25 +66,23 @@ pub fn rpo_falcon_512_procedure_acl_library() -> Library {
 // ================================================================================================
 
 /// The enum holding the types of basic well-known account components provided by the `miden-lib`.
-pub enum WellKnownComponents {
+pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
     RpoFalcon512,
 }
 
-impl WellKnownComponents {
-    /// Returns the procedure digests vector, containing digests of all procedures provided by the
-    /// current component.
-    fn procedure_digests(&self) -> Vec<Word> {
-        match self {
-            Self::BasicWallet => basic_wallet_library().mast_forest().procedure_digests().collect(),
-            Self::BasicFungibleFaucet => {
-                basic_fungible_faucet_library().mast_forest().procedure_digests().collect()
-            },
-            Self::RpoFalcon512 => {
-                rpo_falcon_512_library().mast_forest().procedure_digests().collect()
-            },
-        }
+impl WellKnownComponent {
+    /// Returns the iterator over procedure digests, containing digests of all procedures provided
+    /// by the current component.
+    fn procedure_digests(&self) -> impl Iterator<Item = Word> {
+        let forest = match self {
+            Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
+            Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
+            Self::RpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
+        };
+
+        forest.procedure_digests()
     }
 
     /// Checks whether all procedures from the current component are presented in the procedures map
@@ -97,12 +95,11 @@ impl WellKnownComponents {
     ) {
         if self
             .procedure_digests()
-            .iter()
-            .all(|proc_digest| procedures_map.contains_key(proc_digest))
+            .all(|proc_digest| procedures_map.contains_key(&proc_digest))
         {
             let mut storage_offset = Default::default();
-            self.procedure_digests().iter().for_each(|component_procedure| {
-                if let Some(proc_info) = procedures_map.remove(component_procedure) {
+            self.procedure_digests().for_each(|component_procedure| {
+                if let Some(proc_info) = procedures_map.remove(&component_procedure) {
                     storage_offset = proc_info.storage_offset();
                 }
             });
