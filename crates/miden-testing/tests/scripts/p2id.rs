@@ -135,25 +135,24 @@ fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
 /// with a basic account
 #[test]
 fn prove_consume_multiple_notes() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    let mut account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-
     let fungible_asset_1: Asset = FungibleAsset::mock(100);
     let fungible_asset_2: Asset = FungibleAsset::mock(23);
 
-    let note_1 = mock_chain.add_pending_p2id_note(
+    let mut builder = MockChain::builder();
+    let mut account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let note_1 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into()?,
         account.id(),
         &[fungible_asset_1],
         NoteType::Private,
     )?;
-    let note_2 = mock_chain.add_pending_p2id_note(
+    let note_2 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into()?,
         account.id(),
         &[fungible_asset_2],
         NoteType::Private,
     )?;
-
+    let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
     let tx_context = mock_chain
