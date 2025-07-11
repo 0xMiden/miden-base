@@ -54,7 +54,7 @@ impl TransactionId {
     }
 
     /// Returns the digest defining this transaction ID.
-    pub fn inner(&self) -> Word {
+    pub fn as_word(&self) -> Word {
         self.0
     }
 }

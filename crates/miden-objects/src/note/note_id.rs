@@ -49,7 +49,7 @@ impl NoteId {
     }
 
     /// Returns the digest defining this note ID.
-    pub fn inner(&self) -> Word {
+    pub fn as_word(&self) -> Word {
         self.0
     }
 }
@@ -87,7 +87,7 @@ impl NoteId {
 
 impl From<NoteId> for Word {
     fn from(id: NoteId) -> Self {
-        id.inner()
+        id.as_word()
     }
 }
 
@@ -136,6 +136,6 @@ mod tests {
         let note_id_hex = "0xc9d31c82c098e060c9b6e3af2710b3fc5009a1a6f82ef9465f8f35d1f5ba4a80";
         let note_id = NoteId::try_from_hex(note_id_hex).unwrap();
 
-        assert_eq!(note_id.inner().to_string(), note_id_hex)
+        assert_eq!(note_id.as_word().to_string(), note_id_hex)
     }
 }

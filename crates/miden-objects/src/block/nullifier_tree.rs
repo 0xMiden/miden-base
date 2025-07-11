@@ -49,7 +49,7 @@ impl NullifierTree {
         entries: impl IntoIterator<Item = (Nullifier, BlockNumber)>,
     ) -> Result<Self, NullifierTreeError> {
         let leaves = entries.into_iter().map(|(nullifier, block_num)| {
-            (nullifier.inner(), Self::block_num_to_leaf_value(block_num))
+            (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
         });
 
         let smt = Smt::with_entries(leaves)
@@ -85,13 +85,13 @@ impl NullifierTree {
     /// This witness is a proof of the current block number of the given nullifier. If that block
     /// number is zero, it proves that the nullifier is unspent.
     pub fn open(&self, nullifier: &Nullifier) -> NullifierWitness {
-        NullifierWitness::new(self.smt.open(&nullifier.inner()))
+        NullifierWitness::new(self.smt.open(&nullifier.as_word()))
     }
 
     /// Returns the block number for the given nullifier or `None` if the nullifier wasn't spent
     /// yet.
     pub fn get_block_num(&self, nullifier: &Nullifier) -> Option<BlockNumber> {
-        let value = self.smt.get_value(&nullifier.inner());
+        let value = self.smt.get_value(&nullifier.as_word());
         if value == Self::UNSPENT_NULLIFIER {
             return None;
         }
@@ -122,7 +122,7 @@ impl NullifierTree {
 
         let mutation_set =
             self.smt.compute_mutations(nullifiers.into_iter().map(|(nullifier, block_num)| {
-                (nullifier.inner(), Self::block_num_to_leaf_value(block_num))
+                (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
             }));
 
         Ok(NullifierMutationSet::new(mutation_set))
@@ -143,7 +143,7 @@ impl NullifierTree {
         block_num: BlockNumber,
     ) -> Result<(), NullifierTreeError> {
         let prev_nullifier_value =
-            self.smt.insert(nullifier.inner(), Self::block_num_to_leaf_value(block_num));
+            self.smt.insert(nullifier.as_word(), Self::block_num_to_leaf_value(block_num));
 
         if prev_nullifier_value != Self::UNSPENT_NULLIFIER {
             Err(NullifierTreeError::NullifierAlreadySpent(nullifier))

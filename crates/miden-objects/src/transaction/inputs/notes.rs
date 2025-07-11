@@ -51,7 +51,7 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
 
         let mut seen_notes = BTreeSet::new();
         for note in notes.iter() {
-            if !seen_notes.insert(note.nullifier().inner()) {
+            if !seen_notes.insert(note.nullifier().as_word()) {
                 return Err(TransactionInputError::DuplicateInputNote(note.nullifier()));
             }
         }

@@ -385,13 +385,13 @@ fn input_notes_memory_assertions(
             process.get_kernel_mem_word(
                 INPUT_NOTE_NULLIFIER_SECTION_PTR + note_idx * WORD_SIZE as u32
             ),
-            note.nullifier().inner(),
+            note.nullifier().as_word(),
             "note nullifier should be computer and stored at the correct offset"
         );
 
         assert_eq!(
             read_note_element(process, note_idx, INPUT_NOTE_ID_OFFSET),
-            note.id().inner(),
+            note.id().as_word(),
             "ID hash should be computed and stored at the correct offset"
         );
 

@@ -420,7 +420,7 @@ fn check_nullifiers(
     for block_input_note in block_input_notes {
         match nullifier_witnesses
             .get(&block_input_note)
-            .and_then(|x| x.proof().get(&block_input_note.inner()))
+            .and_then(|x| x.proof().get(&block_input_note.as_word()))
         {
             Some(nullifier_value) => {
                 if nullifier_value != EMPTY_WORD {

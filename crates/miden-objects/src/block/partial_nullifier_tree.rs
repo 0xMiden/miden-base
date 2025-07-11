@@ -91,7 +91,7 @@ impl PartialNullifierTree {
     ) -> Result<(), NullifierTreeError> {
         let prev_nullifier_value = self
             .0
-            .insert(nullifier.inner(), NullifierTree::block_num_to_leaf_value(block_num))
+            .insert(nullifier.as_word(), NullifierTree::block_num_to_leaf_value(block_num))
             .map_err(|source| NullifierTreeError::UntrackedNullifier { nullifier, source })?;
 
         if prev_nullifier_value != NullifierTree::UNSPENT_NULLIFIER {

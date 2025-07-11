@@ -57,7 +57,7 @@ impl Nullifier {
     }
 
     /// Returns the digest defining this nullifier.
-    pub fn inner(&self) -> Word {
+    pub fn as_word(&self) -> Word {
         self.0
     }
 
@@ -65,7 +65,7 @@ impl Nullifier {
     ///
     /// Nullifier prefix is defined as the 16 most significant bits of the nullifier value.
     pub fn prefix(&self) -> u16 {
-        (self.inner()[3].as_int() >> NULLIFIER_PREFIX_SHIFT) as u16
+        (self.as_word()[3].as_int() >> NULLIFIER_PREFIX_SHIFT) as u16
     }
 
     /// Creates a Nullifier from a hex string. Assumes that the string starts with "0x" and
