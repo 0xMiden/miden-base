@@ -206,7 +206,6 @@ impl Deserializable for StorageMap {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_crypto::Felt;
 
     use super::{Deserializable, EMPTY_STORAGE_MAP_ROOT, Serializable, StorageMap, Word};
     use crate::errors::StorageMapError;
@@ -220,14 +219,8 @@ mod tests {
 
         // StorageMap with values
         let storage_map_leaves_2: [(Word, Word); 2] = [
-            (
-                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                Word::new([Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)]),
-            ),
-            (
-                Word::new([Felt::new(105), Felt::new(106), Felt::new(107), Felt::new(108)]),
-                Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
-            ),
+            (Word::from([101, 102, 103, 104u32]), Word::from([1, 2, 3, 4u32])),
+            (Word::from([105, 106, 107, 108u32]), Word::from([5, 6, 7, 8u32])),
         ];
         let storage_map = StorageMap::with_entries(storage_map_leaves_2).unwrap();
 
@@ -249,14 +242,8 @@ mod tests {
     fn account_storage_map_fails_on_duplicate_entries() {
         // StorageMap with values
         let storage_map_leaves_2: [(Word, Word); 2] = [
-            (
-                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                Word::new([Felt::new(1_u64), Felt::new(2_u64), Felt::new(3_u64), Felt::new(4_u64)]),
-            ),
-            (
-                Word::new([Felt::new(101), Felt::new(102), Felt::new(103), Felt::new(104)]),
-                Word::new([Felt::new(5_u64), Felt::new(6_u64), Felt::new(7_u64), Felt::new(8_u64)]),
-            ),
+            (Word::from([101, 102, 103, 104u32]), Word::from([1, 2, 3, 4u32])),
+            (Word::from([101, 102, 103, 104u32]), Word::from([5, 6, 7, 8u32])),
         ];
 
         let error = StorageMap::with_entries(storage_map_leaves_2).unwrap_err();

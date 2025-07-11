@@ -1,5 +1,5 @@
 #[cfg(not(target_family = "wasm"))]
-use winter_rand_utils::{rand_array, rand_value};
+use winter_rand_utils::rand_value;
 
 use crate::{
     Word,
@@ -36,12 +36,12 @@ impl BlockHeader {
             proof_commitment,
             timestamp,
         ) = {
-            let prev_block_commitment: Word = Word::new(rand_array());
-            let chain_commitment = chain_commitment.unwrap_or(Word::new(rand_array()));
-            let nullifier_root = Word::new(rand_array());
-            let note_root = note_root.unwrap_or(Word::new(rand_array()));
-            let tx_commitment = Word::new(rand_array());
-            let proof_commitment = Word::new(rand_array());
+            let prev_block_commitment = rand_value::<Word>();
+            let chain_commitment = chain_commitment.unwrap_or(rand_value::<Word>());
+            let nullifier_root = rand_value::<Word>();
+            let note_root = note_root.unwrap_or(rand_value::<Word>());
+            let tx_commitment = rand_value::<Word>();
+            let proof_commitment = rand_value::<Word>();
             let timestamp = rand_value();
 
             (

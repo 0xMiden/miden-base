@@ -186,8 +186,6 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
-        // TODO: It's unclear if the merkle store is necessary or not to have complete advice for
-        // re-execution.
         let advice_inputs = AdviceInputs::default()
             .with_map(advice_provider.map)
             .with_merkle_store(advice_provider.store);

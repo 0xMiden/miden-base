@@ -5,7 +5,6 @@ use alloc::{
 };
 use core::fmt;
 
-use miden_crypto::word::parse_hex_string_as_word;
 use serde::{
     Deserialize, Deserializer, Serialize, Serializer,
     de::{self, Error, MapAccess, SeqAccess, Visitor, value::MapAccessDeserializer},
@@ -27,6 +26,7 @@ use crate::{
         },
     },
     errors::AccountComponentTemplateError,
+    utils::parse_hex_string_as_word,
 };
 
 // ACCOUNT COMPONENT METADATA TOML FROM/TO

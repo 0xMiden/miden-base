@@ -426,7 +426,7 @@ mod tests {
     use miden_crypto::merkle::{Mmr, PartialMmr};
     use miden_verifier::ExecutionProof;
     use winter_air::proof::Proof;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::*;
     use crate::{
@@ -447,8 +447,8 @@ mod tests {
         let partial_blockchain = PartialBlockchain::new(partial_mmr, Vec::new()).unwrap();
 
         let chain_commitment = partial_blockchain.peaks().hash_peaks();
-        let note_root: Word = Word::new(rand_array());
-        let tx_kernel_commitment: Word = Word::new(rand_array());
+        let note_root = rand_value::<Word>();
+        let tx_kernel_commitment = rand_value::<Word>();
         let reference_block_header = BlockHeader::mock(
             3,
             Some(chain_commitment),

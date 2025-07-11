@@ -8,14 +8,9 @@ use core::{fmt, hash::Hash};
 use bech32::{Bech32m, primitives::decode::CheckedHrpstring};
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
-use vm_core::{
-    EMPTY_WORD, Felt, Word,
-    utils::{ByteReader, Deserializable, Serializable},
-};
-use vm_processor::DeserializationError;
 
 use crate::{
-    AccountError, Hasher,
+    AccountError, EMPTY_WORD, Felt, Hasher, Word,
     account::{
         AccountIdVersion, AccountStorageMode, AccountType,
         account_id::{
@@ -29,6 +24,7 @@ use crate::{
         },
     },
     errors::{AccountIdError, Bech32Error},
+    utils::{ByteReader, Deserializable, DeserializationError, Serializable},
 };
 
 // ACCOUNT ID VERSION 0

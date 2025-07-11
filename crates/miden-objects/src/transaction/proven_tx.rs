@@ -616,7 +616,7 @@ mod tests {
     use miden_verifier::ExecutionProof;
     use vm_core::utils::Deserializable;
     use winter_air::proof::Proof;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
     use crate::{
@@ -682,7 +682,7 @@ mod tests {
         // 32 bytes in size.
         let required_entries = ACCOUNT_UPDATE_MAX_SIZE / (2 * 32);
         for _ in 0..required_entries {
-            map.insert(LexicographicWord::new(Word::new(rand_array())), Word::new(rand_array()));
+            map.insert(LexicographicWord::new(rand_value::<Word>()), rand_value::<Word>());
         }
         let storage_delta = StorageMapDelta::new(map);
 

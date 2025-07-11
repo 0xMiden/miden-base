@@ -7,7 +7,7 @@ use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
 use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
 use vm_processor::{ONE, ProcessState, ZERO};
-use winter_rand_utils::rand_array;
+use winter_rand_utils::rand_value;
 
 use crate::{TransactionContextBuilder, executor::CodeExecutor};
 
@@ -228,9 +228,9 @@ fn insertion() -> anyhow::Result<()> {
 fn insert_and_update() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 8;
 
-    let value0 = digest([1, 2, 3, 4]);
-    let value1 = digest([2, 3, 4, 5]);
-    let value2 = digest([3, 4, 5, 6]);
+    let value0 = Word::from([1, 2, 3, 4u32]);
+    let value1 = Word::from([2, 3, 4, 5u32]);
+    let value2 = Word::from([3, 4, 5, 6u32]);
 
     let operations = vec![
         TestOperation::set(MAP_PTR, link_map_key([1, 0, 0, 0]), (value0, value1)),
@@ -252,9 +252,9 @@ fn insert_at_head() -> anyhow::Result<()> {
     let key3 = link_map_key([3, 0, 0, 0]);
     let key2 = link_map_key([2, 0, 0, 0]);
     let key1 = link_map_key([1, 0, 0, 0]);
-    let value0 = digest([1, 2, 3, 4]);
-    let value1 = digest([2, 3, 4, 5]);
-    let value2 = digest([3, 4, 5, 6]);
+    let value0 = Word::from([1, 2, 3, 4u32]);
+    let value1 = Word::from([2, 3, 4, 5u32]);
+    let value2 = Word::from([3, 4, 5, 6u32]);
 
     let operations = vec![
         TestOperation::set(MAP_PTR, key3, (value1, value0)),
@@ -275,8 +275,8 @@ fn get_before_set() -> anyhow::Result<()> {
     const MAP_PTR: u32 = 8;
 
     let key0 = link_map_key([3, 0, 0, 0]);
-    let value0 = digest([1, 2, 3, 4]);
-    let value1 = digest([2, 3, 4, 5]);
+    let value0 = Word::from([1, 2, 3, 4u32]);
+    let value1 = Word::from([2, 3, 4, 5u32]);
 
     let operations = vec![
         TestOperation::get(MAP_PTR, key0),
@@ -295,9 +295,9 @@ fn multiple_link_maps() -> anyhow::Result<()> {
     let key3 = link_map_key([3, 0, 0, 0]);
     let key2 = link_map_key([2, 0, 0, 0]);
     let key1 = link_map_key([1, 0, 0, 0]);
-    let value0 = digest([1, 2, 3, 4]);
-    let value1 = digest([2, 3, 4, 5]);
-    let value2 = digest([3, 4, 5, 6]);
+    let value0 = Word::from([1, 2, 3, 4u32]);
+    let value1 = Word::from([2, 3, 4, 5u32]);
+    let value2 = Word::from([3, 4, 5, 6u32]);
 
     let operations = vec![
         TestOperation::set(MAP_PTR0, key3, (value0, value2)),
@@ -390,8 +390,8 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
     let mut test_code = String::new();
 
     for _ in 0..1000 {
-        let key0 = Word::new(rand_array());
-        let key1 = Word::new(rand_array());
+        let key0 = rand_value::<Word>();
+        let key1 = rand_value::<Word>();
 
         let cmp = LexicographicWord::from(key0).cmp(&LexicographicWord::from(key1));
         let expected = cmp == operation;
@@ -432,10 +432,6 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
 
 // TEST HELPERS
 // ================================================================================================
-
-fn digest(elements: [u32; 4]) -> Word {
-    Word::from(elements)
-}
 
 fn link_map_key(elements: [u32; 4]) -> LexicographicWord {
     LexicographicWord::from(Word::from(elements))
@@ -679,8 +675,8 @@ fn generate_entries(count: u64) -> Vec<(LexicographicWord, (Word, Word))> {
     (0..count)
         .map(|_| {
             let key = rand_link_map_key();
-            let value0 = rand_digest();
-            let value1 = rand_digest();
+            let value0 = rand_value::<Word>();
+            let value1 = rand_value::<Word>();
             (key, (value0, value1))
         })
         .collect()
@@ -696,14 +692,10 @@ fn generate_updates(
         .iter()
         .choose_multiple(&mut rng, num_updates)
         .into_iter()
-        .map(|(key, _)| (*key, (rand_digest(), rand_digest())))
+        .map(|(key, _)| (*key, (rand_value::<Word>(), rand_value::<Word>())))
         .collect()
 }
 
-fn rand_digest() -> Word {
-    Word::new(rand_array())
-}
-
 fn rand_link_map_key() -> LexicographicWord {
-    LexicographicWord::from(rand_array())
+    LexicographicWord::new(rand_value())
 }

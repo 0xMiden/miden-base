@@ -276,15 +276,15 @@ impl Deserializable for BlockHeader {
 #[cfg(test)]
 mod tests {
     use vm_core::Word;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::*;
 
     #[test]
     fn test_serde() {
-        let chain_commitment: Word = Word::new(rand_array());
-        let note_root: Word = Word::new(rand_array());
-        let tx_kernel_commitment: Word = Word::new(rand_array());
+        let chain_commitment = rand_value::<Word>();
+        let note_root = rand_value::<Word>();
+        let tx_kernel_commitment = rand_value::<Word>();
         let header = BlockHeader::mock(
             0,
             Some(chain_commitment),

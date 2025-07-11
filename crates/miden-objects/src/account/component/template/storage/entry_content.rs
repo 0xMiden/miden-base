@@ -6,17 +6,15 @@ use alloc::{
 };
 use core::iter;
 
-use vm_core::{
-    Felt, FieldElement, Word,
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
-};
-use vm_processor::DeserializationError;
-
 use super::{
     FieldIdentifier, InitStorageData, MapEntry, StorageValueName, TemplateRequirementsIter,
     placeholder::{PlaceholderTypeRequirement, TEMPLATE_REGISTRY, TemplateType},
 };
-use crate::account::{StorageMap, component::template::AccountComponentTemplateError};
+use crate::{
+    Felt, FieldElement, Word,
+    account::{StorageMap, component::template::AccountComponentTemplateError},
+    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+};
 
 // WORDS
 // ================================================================================================

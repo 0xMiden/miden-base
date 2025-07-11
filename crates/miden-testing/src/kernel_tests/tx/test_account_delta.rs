@@ -30,6 +30,7 @@ use miden_objects::{
 use miden_tx::utils::word_to_masm_push_string;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
+use winter_rand_utils::rand_value;
 
 use crate::{Auth, MockChain, TransactionContextBuilder, utils::create_p2any_note};
 
@@ -103,18 +104,18 @@ fn delta_nonce() -> anyhow::Result<()> {
 /// - Slot 3: [1,3,5,7]  -> [2,3,4,5] -> [1,3,5,7]  -> Delta: None
 #[test]
 fn storage_delta_for_value_slots() -> anyhow::Result<()> {
-    let slot_0_init_value = word([2, 4, 6, 8u32]);
-    let slot_0_tmp_value = word([3, 4, 5, 6u32]);
+    let slot_0_init_value = Word::from([2, 4, 6, 8u32]);
+    let slot_0_tmp_value = Word::from([3, 4, 5, 6u32]);
     let slot_0_final_value = EMPTY_WORD;
 
     let slot_1_init_value = EMPTY_WORD;
-    let slot_1_final_value = word([3, 4, 5, 6u32]);
+    let slot_1_final_value = Word::from([3, 4, 5, 6u32]);
 
-    let slot_2_init_value = word([1, 3, 5, 7u32]);
+    let slot_2_init_value = Word::from([1, 3, 5, 7u32]);
     let slot_2_final_value = slot_2_init_value;
 
-    let slot_3_init_value = word([1, 3, 5, 7u32]);
-    let slot_3_tmp_value = word([2, 3, 4, 5u32]);
+    let slot_3_init_value = Word::from([1, 3, 5, 7u32]);
+    let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
 
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
@@ -209,29 +210,29 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
 fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     // Test with random keys to make sure the ordering in the MASM and Rust implementations
     // matches.
-    let key0 = word(winter_rand_utils::rand_array());
-    let key1 = word(winter_rand_utils::rand_array());
-    let key2 = word(winter_rand_utils::rand_array());
-    let key3 = word(winter_rand_utils::rand_array());
-    let key4 = word(winter_rand_utils::rand_array());
-    let key5 = word(winter_rand_utils::rand_array());
+    let key0 = rand_value::<Word>();
+    let key1 = rand_value::<Word>();
+    let key2 = rand_value::<Word>();
+    let key3 = rand_value::<Word>();
+    let key4 = rand_value::<Word>();
+    let key5 = rand_value::<Word>();
 
     let key0_init_value = EMPTY_WORD;
     let key1_init_value = EMPTY_WORD;
-    let key2_init_value = word([1, 2, 3, 4u32]);
-    let key3_init_value = word([1, 2, 3, 4u32]);
-    let key4_init_value = word([1, 2, 3, 4u32]);
-    let key5_init_value = word([1, 2, 3, 4u32]);
+    let key2_init_value = Word::from([1, 2, 3, 4u32]);
+    let key3_init_value = Word::from([1, 2, 3, 4u32]);
+    let key4_init_value = Word::from([1, 2, 3, 4u32]);
+    let key5_init_value = Word::from([1, 2, 3, 4u32]);
 
-    let key0_final_value = word([1, 2, 3, 4u32]);
-    let key1_tmp_value = word([1, 2, 3, 4u32]);
-    let key1_final_value = word([2, 3, 4, 5u32]);
+    let key0_final_value = Word::from([1, 2, 3, 4u32]);
+    let key1_tmp_value = Word::from([1, 2, 3, 4u32]);
+    let key1_final_value = Word::from([2, 3, 4, 5u32]);
     let key2_final_value = key2_init_value;
     let key3_final_value = EMPTY_WORD;
-    let key4_tmp_value = word([2, 3, 4, 5u32]);
-    let key4_final_value = word([1, 2, 3, 4u32]);
-    let key5_tmp_value = word([2, 3, 4, 5u32]);
-    let key5_final_value = word([1, 2, 3, 4u32]);
+    let key4_tmp_value = Word::from([2, 3, 4, 5u32]);
+    let key4_final_value = Word::from([1, 2, 3, 4u32]);
+    let key5_tmp_value = Word::from([2, 3, 4, 5u32]);
+    let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
     let mut map0 = StorageMap::new();
     map0.insert(key0, key0_init_value);
@@ -856,10 +857,6 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
         TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
     )
     .context("failed to compile tx script")
-}
-
-fn word(data: [u32; 4]) -> Word {
-    Word::from(data)
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "

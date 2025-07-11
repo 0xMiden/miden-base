@@ -112,7 +112,7 @@ impl Default for PartialNullifierTree {
 mod tests {
     use assert_matches::assert_matches;
     use miden_crypto::merkle::Smt;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::*;
     use crate::{EMPTY_WORD, Word};
@@ -121,12 +121,12 @@ mod tests {
     /// tree root and thus an error.
     #[test]
     fn partial_nullifier_tree_root_mismatch() {
-        let key0 = Word::new(rand_array());
-        let key1 = Word::new(rand_array());
-        let key2 = Word::new(rand_array());
+        let key0 = rand_value::<Word>();
+        let key1 = rand_value::<Word>();
+        let key2 = rand_value::<Word>();
 
         let value0 = EMPTY_WORD;
-        let value1 = Word::new(rand_array());
+        let value1 = rand_value::<Word>();
         let value2 = EMPTY_WORD;
 
         let kv_pairs = vec![(key0, value0)];
