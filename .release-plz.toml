@@ -6,7 +6,22 @@ git_release_enable = false
 git_tag_enable     = false
 
 [[package]]
+name = "miden-lib"
+
+[[package]]
+name = "miden-testing"
 # `cargo-semver` breaks because of the `async` feature (by default it runs with `--all-features`).
 # We will either remove the feature (as discussed) or need to add an ability to release-plz to pass flags to `cargo-semver`.
-name         = "miden-testing"
 semver_check = false
+
+[[package]]
+name = "miden-block-prover"
+
+[[package]]
+name = "miden-objects"
+
+[[package]]
+name = "miden-tx"
+
+[[package]]
+name = "miden-tx-batch-prover"
