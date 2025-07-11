@@ -252,7 +252,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
 
-    let mut mock_chain = MockChain::new();
+    let mut builder = MockChain::builder();
 
     let assembler = TransactionKernel::testing_assembler();
     let auth_component: AccountComponent =
@@ -300,8 +300,8 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         auth_component,
         TransactionKernel::testing_assembler(),
     );
-    mock_chain.add_pending_account(existing_account.clone());
-    mock_chain.prove_next_block()?;
+    builder.add_account(existing_account.clone())?;
+    let mut mock_chain = builder.build()?;
 
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
