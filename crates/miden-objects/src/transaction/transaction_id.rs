@@ -1,7 +1,7 @@
 use alloc::string::String;
 use core::fmt::{Debug, Display};
 
-use super::{ExecutedTransaction, Felt, Hasher, ProvenTransaction, WORD_SIZE, Word, ZERO};
+use super::{Felt, Hasher, ProvenTransaction, WORD_SIZE, Word, ZERO};
 use crate::utils::serde::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
 };
