@@ -46,7 +46,7 @@ use vm_processor::Process;
 use super::{Felt, ONE, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::read_root_mem_word, utils::create_p2any_note,
+    kernel_tests::tx::ProcessMemoryExt, utils::create_p2any_note,
 };
 
 #[test]
@@ -170,13 +170,13 @@ fn test_create_note() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(process, NUM_OUTPUT_NOTES_PTR),
+        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
         Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient,
         "recipient must be stored at the correct memory location",
     );
@@ -191,7 +191,7 @@ fn test_create_note() -> anyhow::Result<()> {
     .into();
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET),
         expected_note_metadata,
         "metadata must be stored at the correct memory location",
     );
@@ -463,22 +463,20 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(process, NUM_OUTPUT_NOTES_PTR),
+        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
         Word::from([2u32, 0, 0, 0]),
         "The test creates two notes",
     );
     assert_eq!(
-        NoteMetadata::try_from(read_root_mem_word(
-            process,
-            OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET
-        ))
+        NoteMetadata::try_from(
+            process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET)
+        )
         .unwrap(),
         *output_note_1.metadata(),
         "Validate the output note 1 metadata",
     );
     assert_eq!(
-        NoteMetadata::try_from(read_root_mem_word(
-            process,
+        NoteMetadata::try_from(process.get_kernel_mem_word(
             OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_METADATA_OFFSET + NOTE_MEM_SIZE
         ))
         .unwrap(),
@@ -543,7 +541,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
@@ -628,19 +626,19 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
         asset,
         "asset must be stored at the correct memory location",
     );
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 4),
         asset_2_and_3,
         "asset_2 and asset_3 must be stored at the same correct memory location",
     );
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET + 8),
         non_fungible_asset_encoded,
         "non_fungible_asset must be stored at the correct memory location",
     );
@@ -791,7 +789,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     )?;
 
     assert_eq!(
-        read_root_mem_word(process, NUM_OUTPUT_NOTES_PTR),
+        process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
         Word::from([1, 0, 0, 0u32]),
         "number of output notes must increment by 1",
     );
@@ -799,7 +797,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient_digest = recipient.clone().digest();
 
     assert_eq!(
-        read_root_mem_word(process, OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
+        process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_RECIPIENT_OFFSET),
         recipient_digest,
         "recipient hash not correct",
     );

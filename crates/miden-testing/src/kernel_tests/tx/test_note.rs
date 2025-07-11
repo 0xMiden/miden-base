@@ -38,7 +38,7 @@ use super::{Felt, Process, ZERO, word_to_masm_push_string};
 use crate::{
     Auth, MockChain, TransactionContext, TransactionContextBuilder, TxContextInput,
     assert_execution_error,
-    kernel_tests::tx::read_root_mem_word,
+    kernel_tests::tx::ProcessMemoryExt,
     utils::{create_p2any_note, input_note_data_ptr},
 };
 
@@ -605,7 +605,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
 fn note_setup_memory_assertions(process: &Process) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        read_root_mem_word(process, CURRENT_INPUT_NOTE_PTR)[0],
+        process.get_kernel_mem_word(CURRENT_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }
