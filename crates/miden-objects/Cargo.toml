@@ -1,57 +1,66 @@
 [package]
-name = "miden-objects"
-version = "0.10.0"
-description = "Core components of the Miden protocol"
-readme = "README.md"
-categories = ["no-std"]
-keywords = ["miden", "objects"]
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+authors.workspace      = true
+categories             = ["no-std"]
+description            = "Core components of the Miden protocol"
+edition.workspace      = true
+homepage.workspace     = true
+keywords               = ["miden", "objects"]
+license.workspace      = true
+name                   = "miden-objects"
+readme                 = "README.md"
+repository.workspace   = true
 rust-version.workspace = true
-edition.workspace = true
+version                = "0.11.0"
 
 [[bench]]
-name = "account_seed"
 harness = false
+name    = "account_seed"
 
 [lib]
 bench = false
 
 [features]
 default = ["std"]
-std = ["assembly/std", "miden-crypto/std", "miden-verifier/std", "vm-core/std", "vm-processor/std", "dep:toml", "dep:serde"]
-testing = ["dep:winter-rand-utils", "dep:rand", "dep:rand_xoshiro"]
+std = [
+  "assembly/std",
+  "dep:serde",
+  "dep:toml",
+  "miden-crypto/std",
+  "miden-verifier/std",
+  "vm-core/std",
+  "vm-processor/std",
+]
+testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils"]
 
 [dependencies]
 # Miden dependencies
-assembly = { workspace = true }
-miden-crypto = { workspace = true }
-miden-verifier = { workspace = true }
-vm-core = { workspace = true }
-vm-processor = { workspace = true }
-winter-rand-utils = { version = "0.12", optional = true }
+assembly          = { workspace = true }
+miden-crypto      = { workspace = true }
+miden-utils-sync  = { workspace = true }
+miden-verifier    = { workspace = true }
+vm-core           = { workspace = true }
+vm-processor      = { workspace = true }
+winter-rand-utils = { optional = true, version = "0.13" }
 
 # External dependencies
-bech32 = { version = "0.11", default-features = false, features = ["alloc"] }
-log = { version = "0.4", optional = true }
-rand = { workspace = true, optional = true }
-rand_xoshiro = { version = "0.7", default-features = false, optional = true }
-semver = { version = "1.0", features = ["serde"] }
-serde = { version = "1.0", features = ["derive"], optional = true }
-thiserror = { workspace = true }
-toml = { version = "0.8", optional = true }
+bech32       = { default-features = false, features = ["alloc"], version = "0.11" }
+log          = { optional = true, version = "0.4" }
+rand         = { optional = true, workspace = true }
+rand_xoshiro = { default-features = false, optional = true, version = "0.7" }
+semver       = { features = ["serde"], version = "1.0" }
+serde        = { features = ["derive"], optional = true, version = "1.0" }
+thiserror    = { workspace = true }
+toml         = { optional = true, version = "0.8" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
-getrandom = { version = "0.3", features = ["wasm_js"] }
+getrandom = { features = ["wasm_js"], version = "0.3" }
 
 [dev-dependencies]
-anyhow = { version = "1.0", default-features = false, features = ["std", "backtrace"]}
+anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
 assert_matches = { workspace = true }
-criterion = { version = "0.5", default-features = false, features = ["html_reports"] }
-miden-objects = { path = ".", features = ["testing"] }
-pprof = { version = "0.14", default-features = false, features = ["criterion", "flamegraph"] }
-rstest = { version = "0.25" }
-tempfile = { version = "3.19" }
-winter-air = { version = "0.12" }
+criterion      = { default-features = false, features = ["html_reports"], version = "0.5" }
+miden-objects  = { features = ["testing"], path = "." }
+pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.14" }
+rstest         = { version = "0.25" }
+tempfile       = { version = "3.19" }
+winter-air     = { version = "0.13" }

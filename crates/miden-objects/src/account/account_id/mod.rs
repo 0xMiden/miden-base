@@ -25,12 +25,12 @@ use core::fmt;
 pub use id_version::AccountIdVersion;
 use miden_crypto::utils::hex_to_bytes;
 use vm_core::{
-    Felt, Word,
+    Felt,
     utils::{ByteReader, Deserializable, Serializable},
 };
-use vm_processor::{DeserializationError, Digest};
+use vm_processor::DeserializationError;
 
-use crate::{AccountError, errors::AccountIdError};
+use crate::{AccountError, Word, errors::AccountIdError};
 
 /// The identifier of an [`Account`](crate::account::Account).
 ///
@@ -39,7 +39,7 @@ use crate::{AccountError, errors::AccountIdError};
 /// # Layout
 ///
 /// An `AccountId` consists of two field elements, where the first is called the prefix and the
-/// second is called the suffix. It is layed out as follows:
+/// second is called the suffix. It is laid out as follows:
 ///
 /// ```text
 /// prefix: [hash (56 bits) | storage mode (2 bits) | type (2 bits) | version (4 bits)]
@@ -120,8 +120,8 @@ impl AccountId {
     pub fn new(
         seed: Word,
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Self, AccountIdError> {
         match version {
             AccountIdVersion::Version0 => {
@@ -193,8 +193,8 @@ impl AccountId {
         account_type: AccountType,
         storage_mode: AccountStorageMode,
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Word, AccountError> {
         match version {
             AccountIdVersion::Version0 => AccountIdV0::compute_account_seed(
@@ -462,7 +462,7 @@ impl fmt::Display for AccountId {
 // ================================================================================================
 
 impl Serializable for AccountId {
-    fn write_into<W: miden_crypto::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
         match self {
             AccountId::V0(account_id) => {
                 account_id.write_into(target);

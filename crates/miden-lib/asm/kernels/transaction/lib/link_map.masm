@@ -6,7 +6,7 @@ use.kernel::memory
 # # Basics & Terminology
 #
 # The entries in the list are sorted by their keys. The order is defined by comparing the
-# individual felts of the word from most significant (the top element on a word layed out on the
+# individual felts of the word from most significant (the top element on a word laid out on the
 # stack) to least significant.
 #
 # A link map is identified by a pointer called the map_ptr. The map_ptr points to a single field
@@ -42,7 +42,7 @@ use.kernel::memory
 # - the fourth element in the entry metadata is currently unused.
 #
 # Each entry takes up 4 words or 16 field elements of memory. Note that the above layout is not
-# how the map is layed out in memory, since entries are not guaranteed to be contiguous in memory.
+# how the map is laid out in memory, since entries are not guaranteed to be contiguous in memory.
 #
 # # Memory Allocation
 #

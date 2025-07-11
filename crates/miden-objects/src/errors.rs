@@ -4,11 +4,11 @@ use core::error::Error;
 use assembly::{Report, diagnostics::reporting::PrintDiagnostic};
 use miden_crypto::{merkle::MmrError, utils::HexParseError};
 use thiserror::Error;
-use vm_core::{Felt, FieldElement, mast::MastForestError};
+use vm_core::{Felt, mast::MastForestError};
 use vm_processor::DeserializationError;
 
 use super::{
-    Digest, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
+    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
     account::AccountId,
     asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
     crypto::merkle::MerkleError,
@@ -82,17 +82,17 @@ pub enum AccountError {
     #[error("account code contains {0} procedures but it may contain at most {max} procedures", max = AccountCode::MAX_NUM_PROCEDURES)]
     AccountCodeTooManyProcedures(usize),
     #[error("account procedure {0}'s storage offset {1} does not fit into u8")]
-    AccountCodeProcedureStorageOffsetTooLarge(Digest, Felt),
+    AccountCodeProcedureStorageOffsetTooLarge(Word, Felt),
     #[error("account procedure {0}'s storage size {1} does not fit into u8")]
-    AccountCodeProcedureStorageSizeTooLarge(Digest, Felt),
+    AccountCodeProcedureStorageSizeTooLarge(Word, Felt),
     #[error("account procedure {0}'s final two elements must be Felt::ZERO")]
-    AccountCodeProcedureInvalidPadding(Digest),
+    AccountCodeProcedureInvalidPadding(Word),
     #[error("failed to assemble account component:\n{}", PrintDiagnostic::new(.0))]
     AccountComponentAssemblyError(Report),
     #[error("failed to merge components into one account code mast forest")]
     AccountComponentMastForestMergeError(#[source] MastForestError),
     #[error("procedure with MAST root {0} is present in multiple account components")]
-    AccountComponentDuplicateProcedureRoot(Digest),
+    AccountComponentDuplicateProcedureRoot(Word),
     #[error("failed to create account component")]
     AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
     #[error("account component contains multiple authentication procedures")]
@@ -270,11 +270,8 @@ pub enum AccountDeltaError {
 
 #[derive(Debug, Error)]
 pub enum StorageMapError {
-    #[error("map entries contain key {key} twice with values {value0} and {value1}",
-      value0 = vm_core::utils::to_hex(Felt::elements_as_bytes(value0)),
-      value1 = vm_core::utils::to_hex(Felt::elements_as_bytes(value1))
-    )]
-    DuplicateKey { key: Digest, value0: Word, value1: Word },
+    #[error("map entries contain key {key} twice with values {value0} and {value1}")]
+    DuplicateKey { key: Word, value0: Word, value1: Word },
 }
 
 // BATCH ACCOUNT UPDATE ERROR
@@ -310,9 +307,7 @@ pub enum AssetError {
     FungibleAssetAmountTooBig(u64),
     #[error("subtracting {subtrahend} from fungible asset amount {minuend} would overflow")]
     FungibleAssetAmountNotSufficient { minuend: u64, subtrahend: u64 },
-    #[error("fungible asset word {hex} does not contain expected ZERO at word index 1",
-      hex = vm_core::utils::to_hex(Felt::elements_as_bytes(.0))
-    )]
+    #[error("fungible asset word {0} does not contain expected ZERO at word index 1")]
     FungibleAssetExpectedZero(Word),
     #[error(
         "cannot add fungible asset with issuer {other_issuer} to fungible asset with issuer {original_issuer}"
@@ -449,7 +444,7 @@ pub enum PartialBlockchainError {
     )]
     BlockHeaderCommitmentMismatch {
         block_num: BlockNumber,
-        block_commitment: Digest,
+        block_commitment: Word,
         source: MmrError,
     },
 }
@@ -500,7 +495,7 @@ pub enum TransactionInputError {
     #[error(
         "partial blockchain has commitment {actual} which does not match the block header's chain commitment {expected}"
     )]
-    InconsistentChainCommitment { expected: Digest, actual: Digest },
+    InconsistentChainCommitment { expected: Word, actual: Word },
     #[error("block in which input note with id {0} was created is not in partial blockchain")]
     InputNoteBlockNotInPartialBlockchain(NoteId),
     #[error("input note with id {0} was not created in block {1}")]
@@ -527,7 +522,7 @@ pub enum TransactionOutputError {
     #[error(
         "output notes commitment {expected} from kernel does not match computed commitment {actual}"
     )]
-    OutputNotesCommitmentInconsistent { expected: Digest, actual: Digest },
+    OutputNotesCommitmentInconsistent { expected: Word, actual: Word },
     #[error("transaction kernel output stack is invalid: {0}")]
     OutputStackInvalid(String),
     #[error(
@@ -547,8 +542,8 @@ pub enum ProvenTransactionError {
         "proven transaction's final account commitment {tx_final_commitment} and account details commitment {details_commitment} must match"
     )]
     AccountFinalCommitmentMismatch {
-        tx_final_commitment: Digest,
-        details_commitment: Digest,
+        tx_final_commitment: Word,
+        details_commitment: Word,
     },
     #[error(
         "proven transaction's final account ID {tx_account_id} and account details id {details_account_id} must match"
@@ -640,8 +635,8 @@ pub enum ProposedBatchError {
     )]
     NoteCommitmentMismatch {
         id: NoteId,
-        input_commitment: Digest,
-        output_commitment: Digest,
+        input_commitment: Word,
+        output_commitment: Word,
     },
 
     #[error("failed to merge transaction delta into account {account_id}")]
@@ -676,13 +671,13 @@ pub enum ProposedBatchError {
     #[error(
         "partial blockchain has root {actual} which does not match block header's root {expected}"
     )]
-    InconsistentChainRoot { expected: Digest, actual: Digest },
+    InconsistentChainRoot { expected: Word, actual: Word },
 
     #[error(
         "block {block_reference} referenced by transaction {transaction_id} is not in the partial blockchain"
     )]
     MissingTransactionBlockReference {
-        block_reference: Digest,
+        block_reference: Word,
         transaction_id: TransactionId,
     },
 }
@@ -760,7 +755,7 @@ pub enum ProposedBlockError {
     )]
     ConflictingBatchesUpdateSameAccount {
         account_id: AccountId,
-        initial_state_commitment: Digest,
+        initial_state_commitment: Word,
         first_batch_id: BatchId,
         second_batch_id: BatchId,
     },
@@ -777,8 +772,8 @@ pub enum ProposedBlockError {
         "partial blockchain has commitment {chain_commitment} which does not match the chain commitment {prev_block_chain_commitment} of the previous block {prev_block_num}"
     )]
     ChainRootNotEqualToPreviousBlockChainCommitment {
-        chain_commitment: Digest,
-        prev_block_chain_commitment: Digest,
+        chain_commitment: Word,
+        prev_block_chain_commitment: Word,
         prev_block_num: BlockNumber,
     },
 
@@ -795,8 +790,8 @@ pub enum ProposedBlockError {
     )]
     NoteCommitmentMismatch {
         id: NoteId,
-        input_commitment: Digest,
-        output_commitment: Digest,
+        input_commitment: Word,
+        output_commitment: Word,
     },
 
     #[error(
@@ -826,12 +821,12 @@ pub enum ProposedBlockError {
 
     #[error(
         "account {account_id} with state {state_commitment} cannot transition to any of the remaining states {}",
-        remaining_state_commitments.iter().map(Digest::to_hex).collect::<Vec<_>>().join(", ")
+        remaining_state_commitments.iter().map(Word::to_hex).collect::<Vec<_>>().join(", ")
     )]
     InconsistentAccountStateTransition {
         account_id: AccountId,
-        state_commitment: Digest,
-        remaining_state_commitments: Vec<Digest>,
+        state_commitment: Word,
+        remaining_state_commitments: Vec<Word>,
     },
 
     #[error("no proof for nullifier {0} was provided")]

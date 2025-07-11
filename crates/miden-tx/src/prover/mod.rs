@@ -10,7 +10,7 @@ use miden_objects::{
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
-use vm_processor::{Digest, MemAdviceProvider};
+use vm_processor::Word;
 use winter_maybe_async::*;
 
 use super::{TransactionHost, TransactionProverError};
@@ -85,23 +85,22 @@ impl TransactionProver for LocalTransactionProver {
 
         // execute and prove
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
-                .map_err(TransactionProverError::InvalidTransactionInputs)?;
-        let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness));
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());
 
-        let account_code_commitments: BTreeSet<Digest> = tx_args.foreign_account_code_commitments();
+        let account_code_commitments: BTreeSet<Word> = tx_args.foreign_account_code_commitments();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host: TransactionHost<_> = TransactionHost::new(
+        let mut host: TransactionHost = TransactionHost::new(
             &account.into(),
-            advice_provider,
+            &mut advice_inputs,
             self.mast_store.as_ref(),
             script_mast_store,
             None,
@@ -116,6 +115,7 @@ impl TransactionProver for LocalTransactionProver {
         let (stack_outputs, proof) = maybe_await!(prove(
             &TransactionKernel::main(),
             stack_inputs,
+            advice_inputs.clone(),
             &mut host,
             self.proof_options.clone(),
             source_manager
@@ -123,12 +123,13 @@ impl TransactionProver for LocalTransactionProver {
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         // extract transaction outputs and process transaction data
-        let (advice_provider, account_delta, output_notes, _signatures, _tx_progress) =
-            host.into_parts();
-        let (_, map, _) = advice_provider.into_parts();
-        let tx_outputs =
-            TransactionKernel::from_transaction_parts(&stack_outputs, &map.into(), output_notes)
-                .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
+        let (account_delta, output_notes, _signatures, _tx_progress) = host.into_parts();
+        let tx_outputs = TransactionKernel::from_transaction_parts(
+            &stack_outputs,
+            &advice_inputs.map,
+            output_notes,
+        )
+        .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
 
         // erase private note information (convert private full notes to just headers)
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();

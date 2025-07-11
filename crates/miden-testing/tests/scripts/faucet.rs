@@ -5,7 +5,7 @@ use miden_lib::{
     transaction::{TransactionKernel, memory::FAUCET_STORAGE_DATA_SLOT},
 };
 use miden_objects::{
-    Felt,
+    Felt, Word,
     asset::{Asset, FungibleAsset},
     note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
     transaction::{OutputNote, TransactionScript},
@@ -22,7 +22,7 @@ use crate::{
 // ================================================================================================
 
 #[test]
-fn prove_faucet_contract_mint_fungible_asset_succeeds() {
+fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
     let mut mock_chain = MockChain::new();
@@ -30,7 +30,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() {
         .add_pending_existing_faucet(Auth::BasicAuth, "TST", 200, None)
         .expect("failed to add pending existing faucet");
 
-    let recipient = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let tag = NoteTag::for_local_use_case(0, 0).unwrap();
     let aux = Felt::new(27);
     let note_execution_hint = NoteExecutionHint::on_block_slot(5, 6, 7);
@@ -70,33 +70,38 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() {
     let tx_script =
         TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
     let tx_context = mock_chain
-        .build_tx_context(faucet.account().id(), &[], &[])
-        .unwrap()
+        .build_tx_context(faucet.account().id(), &[], &[])?
         .tx_script(tx_script)
-        .build();
+        .build()?;
 
-    let executed_transaction = tx_context.execute().unwrap();
+    let executed_transaction = tx_context.execute()?;
 
-    prove_and_verify_transaction(executed_transaction.clone()).unwrap();
+    prove_and_verify_transaction(executed_transaction.clone())?;
 
-    let fungible_asset: Asset =
-        FungibleAsset::new(faucet.account().id(), amount.into()).unwrap().into();
+    let fungible_asset: Asset = FungibleAsset::new(faucet.account().id(), amount.into())?.into();
 
     let output_note = executed_transaction.output_notes().get_note(0).clone();
 
-    let assets = NoteAssets::new(vec![fungible_asset]).unwrap();
-    let id = NoteId::new(recipient.into(), assets.commitment());
+    let assets = NoteAssets::new(vec![fungible_asset])?;
+    let id = NoteId::new(recipient, assets.commitment());
 
     assert_eq!(output_note.id(), id);
     assert_eq!(
         output_note.metadata(),
-        &NoteMetadata::new(faucet.account().id(), NoteType::Private, tag, note_execution_hint, aux)
-            .unwrap()
+        &NoteMetadata::new(
+            faucet.account().id(),
+            NoteType::Private,
+            tag,
+            note_execution_hint,
+            aux
+        )?
     );
+
+    Ok(())
 }
 
 #[test]
-fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() {
+fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure)
     // --------------------------------------------------------------------------------------------
     let mut mock_chain = MockChain::new();
@@ -104,7 +109,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() {
         .add_pending_existing_faucet(Auth::BasicAuth, "TST", 200u64, None)
         .expect("failed to add pending existing faucet");
 
-    let recipient = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
+    let recipient = Word::from([0, 1, 2, 3u32]);
     let aux = Felt::new(27);
     let tag = Felt::new(4);
     let amount = Felt::new(250);
@@ -135,12 +140,11 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() {
     );
 
     let tx_script =
-        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
+        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler())?;
     let tx = mock_chain
-        .build_tx_context(faucet.account().id(), &[], &[])
-        .unwrap()
+        .build_tx_context(faucet.account().id(), &[], &[])?
         .tx_script(tx_script)
-        .build()
+        .build()?
         .execute();
 
     // Execute the transaction and get the witness
@@ -148,17 +152,16 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() {
         tx,
         ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED
     );
+    Ok(())
 }
 
 // TESTS BURN FUNGIBLE ASSET
 // ================================================================================================
 
 #[test]
-fn prove_faucet_contract_burn_fungible_asset_succeeds() {
+fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    let faucet = mock_chain
-        .add_pending_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))
-        .expect("failed to add pending existing faucet");
+    let faucet = mock_chain.add_pending_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
 
     let fungible_asset = FungibleAsset::new(faucet.account().id(), 100).unwrap();
 
@@ -198,21 +201,20 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() {
     let note = get_note_with_fungible_asset_and_script(fungible_asset, note_script);
 
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
-    mock_chain.prove_next_block().unwrap();
+    mock_chain.prove_next_block()?;
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
     // Execute the transaction and get the witness
     let executed_transaction = mock_chain
-        .build_tx_context(faucet.account().id(), &[note.id()], &[])
-        .unwrap()
-        .build()
-        .execute()
-        .unwrap();
+        .build_tx_context(faucet.account().id(), &[note.id()], &[])?
+        .build()?
+        .execute()?;
 
     // Prove, serialize/deserialize and verify the transaction
-    prove_and_verify_transaction(executed_transaction.clone()).unwrap();
+    prove_and_verify_transaction(executed_transaction.clone())?;
 
-    assert_eq!(executed_transaction.account_delta().nonce_increment(), Felt::new(1));
+    assert_eq!(executed_transaction.account_delta().nonce_delta(), Felt::new(1));
     assert_eq!(executed_transaction.input_notes().get_note(0).id(), note.id());
+    Ok(())
 }

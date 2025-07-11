@@ -1,11 +1,12 @@
 extern crate alloc;
 
+mod auth;
 mod scripts;
 mod wallet;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    Felt, Word, ZERO,
+    Word, ZERO,
     account::AccountId,
     asset::FungibleAsset,
     crypto::utils::Serializable,
@@ -82,7 +83,7 @@ pub fn get_note_with_fungible_asset_and_script(
 
     let assembler = TransactionKernel::assembler().with_debug_mode(true);
     let note_script = NoteScript::compile(note_script, assembler).unwrap();
-    const SERIAL_NUM: Word = [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)];
+    let serial_num = Word::from([1, 2, 3, 4u32]);
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
     let vault = NoteAssets::new(vec![fungible_asset.into()]).unwrap();
@@ -90,7 +91,7 @@ pub fn get_note_with_fungible_asset_and_script(
         NoteMetadata::new(sender_id, NoteType::Public, 1.into(), NoteExecutionHint::Always, ZERO)
             .unwrap();
     let inputs = NoteInputs::new(vec![]).unwrap();
-    let recipient = NoteRecipient::new(SERIAL_NUM, note_script, inputs);
+    let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
     Note::new(vault, metadata, recipient)
 }

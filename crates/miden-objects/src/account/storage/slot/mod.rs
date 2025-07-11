@@ -40,7 +40,7 @@ impl StorageSlot {
     pub fn default_word(&self) -> Word {
         match self {
             StorageSlot::Value(_) => EMPTY_WORD,
-            StorageSlot::Map(_) => EMPTY_STORAGE_MAP_ROOT.into(),
+            StorageSlot::Map(_) => EMPTY_STORAGE_MAP_ROOT,
         }
     }
 
@@ -62,7 +62,7 @@ impl StorageSlot {
     pub fn value(&self) -> Word {
         match self {
             Self::Value(value) => *value,
-            Self::Map(map) => map.root().into(),
+            Self::Map(map) => map.root(),
         }
     }
 

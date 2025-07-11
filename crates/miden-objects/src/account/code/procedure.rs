@@ -3,9 +3,9 @@ use alloc::{string::ToString, sync::Arc};
 use vm_core::{mast::MastForest, prettier::PrettyPrint};
 use vm_processor::{MastNode, MastNodeId};
 
-use super::{Digest, Felt};
+use super::Felt;
 use crate::{
-    AccountError, FieldElement,
+    AccountError, FieldElement, Word,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
@@ -19,7 +19,7 @@ use crate::{
 /// by this procedure.
 ///
 /// The offset is applied to any accesses made from within the procedure to the associated
-/// account's storage. For example, if storage offset for a procedure is set ot 1, a call
+/// account's storage. For example, if storage offset for a procedure is set to 1, a call
 /// to the account::get_item(storage_slot=4) made from this procedure would actually access
 /// storage slot with index 5.
 ///
@@ -29,7 +29,7 @@ use crate::{
 /// Furthermore storage_size = 0 indicates that a procedure does not need to access storage.
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub struct AccountProcedureInfo {
-    mast_root: Digest,
+    mast_root: Word,
     storage_offset: u8,
     storage_size: u8,
 }
@@ -47,7 +47,7 @@ impl AccountProcedureInfo {
     /// - If `storage_size` is 0 and `storage_offset` is not 0.
     /// - If `storage_size + storage_offset` is greater than `MAX_NUM_STORAGE_SLOTS`.
     pub fn new(
-        mast_root: Digest,
+        mast_root: Word,
         storage_offset: u8,
         storage_size: u8,
     ) -> Result<Self, AccountError> {
@@ -70,7 +70,7 @@ impl AccountProcedureInfo {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the procedure's mast root.
-    pub fn mast_root(&self) -> &Digest {
+    pub fn mast_root(&self) -> &Word {
         &self.mast_root
     }
 
@@ -107,7 +107,7 @@ impl TryFrom<[Felt; 8]> for AccountProcedureInfo {
 
     fn try_from(value: [Felt; 8]) -> Result<Self, Self::Error> {
         // get mast_root from first 4 elements
-        let mast_root = Digest::from(<[Felt; 4]>::try_from(&value[0..4]).unwrap());
+        let mast_root = Word::from(<[Felt; 4]>::try_from(&value[0..4]).unwrap());
 
         // get storage_offset form value[4]
         let storage_offset: u8 = value[4].try_into().map_err(|_| {
@@ -144,7 +144,7 @@ impl Serializable for AccountProcedureInfo {
 
 impl Deserializable for AccountProcedureInfo {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let mast_root: Digest = source.read()?;
+        let mast_root: Word = source.read()?;
         let storage_offset = source.read_u8()?;
         let storage_size = source.read_u8()?;
         Self::new(mast_root, storage_offset, storage_size)
@@ -185,7 +185,7 @@ impl PrintableProcedure {
         self.procedure_info.storage_size()
     }
 
-    pub(crate) fn mast_root(&self) -> &Digest {
+    pub(crate) fn mast_root(&self) -> &Word {
         self.procedure_info.mast_root()
     }
 }

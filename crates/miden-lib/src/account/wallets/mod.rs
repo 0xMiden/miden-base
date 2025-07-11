@@ -1,7 +1,7 @@
 use alloc::string::ToString;
 
 use miden_objects::{
-    AccountError, Digest, Word,
+    AccountError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType},
     assembly::ProcedureName,
 };
@@ -19,7 +19,6 @@ use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
 /// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
 /// of this component are:
 /// - `receive_asset`, which can be used to add an asset to the account.
-/// - `create_note`, which can be used to create a new note without any assets attached to it.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
 ///   it to the output note with the specified index.
 ///
@@ -35,24 +34,18 @@ impl BasicWallet {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
     const RECEIVE_ASSET_PROC_NAME: &str = "receive_asset";
-    const CREATE_NOTE_PROC_NAME: &str = "create_note";
     const MOVE_ASSET_TO_NOTE_PROC_NAME: &str = "move_asset_to_note";
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
     /// Returns the digest of the `receive_asset` wallet procedure.
-    pub fn receive_asset_digest() -> Digest {
+    pub fn receive_asset_digest() -> Word {
         Self::get_procedure_digest_by_name(Self::RECEIVE_ASSET_PROC_NAME)
     }
 
-    /// Returns the digest of the `create_note` wallet procedure.
-    pub fn create_note_digest() -> Digest {
-        Self::get_procedure_digest_by_name(Self::CREATE_NOTE_PROC_NAME)
-    }
-
     /// Returns the digest of the `move_asset_to_note` wallet procedure.
-    pub fn move_asset_to_note_digest() -> Digest {
+    pub fn move_asset_to_note_digest() -> Word {
         Self::get_procedure_digest_by_name(Self::MOVE_ASSET_TO_NOTE_PROC_NAME)
     }
 
@@ -60,7 +53,7 @@ impl BasicWallet {
     // --------------------------------------------------------------------------------------------
 
     /// Returns the digest of the basic wallet procedure with the specified name.
-    fn get_procedure_digest_by_name(procedure_name: &str) -> Digest {
+    fn get_procedure_digest_by_name(procedure_name: &str) -> Word {
         let proc_name = ProcedureName::new(procedure_name).expect("procedure name should be valid");
         let module = basic_wallet_library()
             .module_infos()
@@ -85,7 +78,6 @@ impl From<BasicWallet> for AccountComponent {
 ///
 /// The basic wallet interface exposes three procedures:
 /// - `receive_asset`, which can be used to add an asset to the account.
-/// - `create_note`, which can be used to create a new note without any assets attached to it.
 /// - `move_asset_to_note`, which can be used to remove the specified asset from the account and add
 ///   it to the output note with the specified index.
 ///
@@ -123,14 +115,14 @@ pub fn create_basic_wallet(
 #[cfg(test)]
 mod tests {
 
-    use miden_objects::{ONE, crypto::dsa::rpo_falcon512};
+    use miden_objects::{ONE, Word, crypto::dsa::rpo_falcon512};
     use vm_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
 
     #[test]
     fn test_create_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
+        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },
@@ -145,7 +137,7 @@ mod tests {
 
     #[test]
     fn test_serialize_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
+        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },

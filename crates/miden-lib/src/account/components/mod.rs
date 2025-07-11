@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use miden_objects::{
-    Digest,
+    Word,
     account::AccountProcedureInfo,
     assembly::Library,
     utils::{Deserializable, sync::LazyLock},
@@ -32,9 +32,24 @@ static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Basic Fungible Faucet library is well-formed")
 });
 
+// Initialize the Rpo Falcon 512 Procedure ACL library only once.
+static RPO_FALCON_512_PROCEDURE_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/rpo_falcon_512_procedure_acl.masl"
+    ));
+    Library::read_from_bytes(bytes)
+        .expect("Shipped Rpo Falcon 512 Procedure ACL library is well-formed")
+});
+
 /// Returns the Basic Wallet Library.
 pub fn basic_wallet_library() -> Library {
     BASIC_WALLET_LIBRARY.clone()
+}
+
+/// Returns the Basic Fungible Faucet Library.
+pub fn basic_fungible_faucet_library() -> Library {
+    BASIC_FUNGIBLE_FAUCET_LIBRARY.clone()
 }
 
 /// Returns the Rpo Falcon 512 Library.
@@ -42,9 +57,9 @@ pub fn rpo_falcon_512_library() -> Library {
     RPO_FALCON_512_LIBRARY.clone()
 }
 
-/// Returns the Basic Fungible Faucet Library.
-pub fn basic_fungible_faucet_library() -> Library {
-    BASIC_FUNGIBLE_FAUCET_LIBRARY.clone()
+/// Returns the Rpo Falcon 512 Procedure ACL Library.
+pub fn rpo_falcon_512_procedure_acl_library() -> Library {
+    RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.clone()
 }
 
 // WELL KNOWN COMPONENTS
@@ -60,7 +75,7 @@ pub enum WellKnownComponents {
 impl WellKnownComponents {
     /// Returns the procedure digests vector, containing digests of all procedures provided by the
     /// current component.
-    fn procedure_digests(&self) -> Vec<Digest> {
+    fn procedure_digests(&self) -> Vec<Word> {
         match self {
             Self::BasicWallet => basic_wallet_library().mast_forest().procedure_digests().collect(),
             Self::BasicFungibleFaucet => {
@@ -77,7 +92,7 @@ impl WellKnownComponents {
     /// interface to the component interface vector.
     fn extract_component(
         &self,
-        procedures_map: &mut BTreeMap<Digest, &AccountProcedureInfo>,
+        procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         if self
@@ -107,7 +122,7 @@ impl WellKnownComponents {
     /// Gets all well known components which could be constructed from the provided procedures map
     /// and pushes them to the `component_interface_vec`.
     pub fn extract_well_known_components(
-        procedures_map: &mut BTreeMap<Digest, &AccountProcedureInfo>,
+        procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);

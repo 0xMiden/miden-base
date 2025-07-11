@@ -41,13 +41,26 @@ format: ## Runs Format using nightly toolchain
 format-check: ## Runs Format using nightly toolchain but only in check mode
 	cargo +nightly fmt --all --check
 
+.PHONY: typos-check
+typos-check: ## Runs spellchecker
+	typos
+
+.PHONY: toml
+toml: ## Runs Format for all TOML files
+	taplo fmt
+
+.PHONY: toml-check
+toml-check: ## Runs Format for all TOML files but only in check mode
+	taplo fmt --check
 
 .PHONY: lint
-lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
+lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) format
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) fix
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy-no-std
+	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) typos-check
+	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) toml
 
 # --- docs ----------------------------------------------------------------------------------------
 
@@ -64,17 +77,19 @@ book: ## Builds the book & serves documentation site
 
 .PHONY: test-build
 test-build: ## Build the test binary
-	cargo nextest run --cargo-profile test-dev --features concurrent,testing --no-run
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo nextest run --cargo-profile test-dev --features concurrent,testing,std --no-run
 
 
 .PHONY: test
-test: ## Run all tests
-	$(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing
+test: ## Run all tests. Running `make test name=test_name` will only run the test `test_name`.
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing,std $(name)
 
 
+# This uses the std feature to be able to load the MASM source files back into the assembler
+# source manager (see `source_manager_ext::load_masm_source_files`).
 .PHONY: test-dev
 test-dev: ## Run default tests excluding slow prove tests in debug mode intended to be run locally
-	$(BACKTRACE) cargo nextest run --profile default --features concurrent,testing --filter-expr "not test(prove)"
+	$(BUILD_GENERATED_FILES_IN_SRC) $(BACKTRACE) cargo nextest run --profile default --cargo-profile test-dev --features concurrent,testing,std --filter-expr "not test(prove)"
 
 
 .PHONY: test-docs
@@ -124,3 +139,22 @@ bench-tx: ## Run transaction benchmarks
 bench-prover: ## Run prover benchmarks and consolidate results.
 	cargo bench --bin bench-prover --bench benches
 	cargo run --bin bench-prover
+
+# --- installing ----------------------------------------------------------------------------------
+
+.PHONY: check-tools
+check-tools: ## Checks if development tools are installed
+	@echo "Checking development tools..."
+	@command -v mdbook >/dev/null 2>&1 && echo "[OK] mdbook is installed" || echo "[MISSING] mdbook is not installed (run: make install-tools)"
+	@command -v typos >/dev/null 2>&1 && echo "[OK] typos is installed" || echo "[MISSING] typos is not installed (run: make install-tools)"
+	@command -v nextest >/dev/null 2>&1 && echo "[OK] nextest is installed" || echo "[MISSING] nextest is not installed (run: make install-tools)"
+	@command -v taplo >/dev/null 2>&1 && echo "[OK] taplo is installed" || echo "[MISSING] taplo is not installed (run: make install-tools)"
+
+.PHONY: install-tools
+install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest, taplo)
+	@echo "Installing development tools..."
+	cargo install mdbook --locked
+	cargo install typos-cli --locked
+	cargo install cargo-nextest --locked
+	cargo install taplo-cli --locked
+	@echo "Development tools installation complete!"

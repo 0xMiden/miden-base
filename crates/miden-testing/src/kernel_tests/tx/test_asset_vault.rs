@@ -22,16 +22,15 @@ use miden_objects::{
         constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA},
     },
 };
-use vm_processor::ProcessState;
 
 use super::{Felt, ONE, Word, ZERO};
 use crate::{
-    TransactionContextBuilder, assert_execution_error, kernel_tests::tx::read_root_mem_word,
+    TransactionContextBuilder, assert_execution_error, kernel_tests::tx::ProcessMemoryExt,
 };
 
 #[test]
-fn test_get_balance() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_get_balance() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let code = format!(
@@ -52,22 +51,22 @@ fn test_get_balance() {
         suffix = faucet_id.suffix(),
     );
 
-    let process = tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
         process.stack.get(0).as_int(),
         tx_context.account().vault().get_balance(faucet_id).unwrap()
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_get_balance_non_fungible_fails() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_get_balance_non_fungible_fails() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET).unwrap();
     let code = format!(
@@ -94,11 +93,13 @@ fn test_get_balance_non_fungible_fails() {
         process,
         ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_has_non_fungible_asset() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_has_non_fungible_asset() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let non_fungible_asset =
         tx_context.account().vault().assets().find(Asset::is_non_fungible).unwrap();
 
@@ -119,28 +120,28 @@ fn test_has_non_fungible_asset() {
         non_fungible_asset_key = word_to_masm_push_string(&non_fungible_asset.into())
     );
 
-    let process = tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(process.stack.get(0), ONE);
+
+    Ok(())
 }
 
 #[test]
-fn test_add_fungible_asset_success() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_add_fungible_asset_success() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let mut account_vault = tx_context.account().vault().clone();
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let amount = FungibleAsset::MAX_AMOUNT - FUNGIBLE_ASSET_AMOUNT;
-    let add_fungible_asset = Asset::try_from([
+    let add_fungible_asset = Asset::try_from(Word::new([
         Felt::new(amount),
         ZERO,
         faucet_id.suffix(),
         faucet_id.prefix().as_felt(),
-    ])
+    ]))
     .unwrap();
 
     let code = format!(
@@ -160,38 +161,37 @@ fn test_add_fungible_asset_success() {
         FUNGIBLE_ASSET = word_to_masm_push_string(&add_fungible_asset.into())
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
-    let process_state: ProcessState = process.into();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
-        process_state.get_stack_word(0),
+        process.stack.get_word(0),
         Into::<Word>::into(account_vault.add_asset(add_fungible_asset).unwrap())
     );
 
     assert_eq!(
-        read_root_mem_word(&process_state, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
-        *account_vault.root()
+        process.get_kernel_mem_word(memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        account_vault.root()
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_add_non_fungible_asset_fail_overflow() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_add_non_fungible_asset_fail_overflow() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let mut account_vault = tx_context.account().vault().clone();
 
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let amount = FungibleAsset::MAX_AMOUNT - FUNGIBLE_ASSET_AMOUNT + 1;
-    let add_fungible_asset = Asset::try_from([
+    let add_fungible_asset = Asset::try_from(Word::new([
         Felt::new(amount),
         ZERO,
         faucet_id.suffix(),
         faucet_id.prefix().as_felt(),
-    ])
+    ]))
     .unwrap();
 
     let code = format!(
@@ -215,20 +215,18 @@ fn test_add_non_fungible_asset_fail_overflow() {
 
     assert_execution_error!(process, ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED);
     assert!(account_vault.add_asset(add_fungible_asset).is_err());
+
+    Ok(())
 }
 
 #[test]
-fn test_add_non_fungible_asset_success() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
-    let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET.try_into().unwrap();
+fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+    let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET.try_into()?;
     let mut account_vault = tx_context.account().vault().clone();
-    let add_non_fungible_asset = Asset::NonFungible(
-        NonFungibleAsset::new(
-            &NonFungibleAssetDetails::new(faucet_id.prefix(), vec![1, 2, 3, 4, 5, 6, 7, 8])
-                .unwrap(),
-        )
-        .unwrap(),
-    );
+    let add_non_fungible_asset = Asset::NonFungible(NonFungibleAsset::new(
+        &NonFungibleAssetDetails::new(faucet_id.prefix(), vec![1, 2, 3, 4, 5, 6, 7, 8]).unwrap(),
+    )?);
 
     let code = format!(
         "
@@ -247,28 +245,27 @@ fn test_add_non_fungible_asset_success() {
         FUNGIBLE_ASSET = word_to_masm_push_string(&add_non_fungible_asset.into())
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
-    let process_state: ProcessState = process.into();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
-        process_state.get_stack_word(0),
-        Into::<Word>::into(account_vault.add_asset(add_non_fungible_asset).unwrap())
+        process.stack.get_word(0),
+        Into::<Word>::into(account_vault.add_asset(add_non_fungible_asset)?)
     );
 
     assert_eq!(
-        read_root_mem_word(&process_state, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
-        *account_vault.root()
+        process.get_kernel_mem_word(memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        account_vault.root()
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_add_non_fungible_asset_fail_duplicate() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_add_non_fungible_asset_fail_duplicate() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET.try_into().unwrap();
     let mut account_vault = tx_context.account().vault().clone();
     let non_fungible_asset_details =
@@ -297,21 +294,23 @@ fn test_add_non_fungible_asset_fail_duplicate() {
 
     assert_execution_error!(process, ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     assert!(account_vault.add_asset(non_fungible_asset).is_err());
+
+    Ok(())
 }
 
 #[test]
-fn test_remove_fungible_asset_success_no_balance_remaining() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let mut account_vault = tx_context.account().vault().clone();
 
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let amount = FUNGIBLE_ASSET_AMOUNT;
-    let remove_fungible_asset = Asset::try_from([
+    let remove_fungible_asset = Asset::try_from(Word::new([
         Felt::new(amount),
         ZERO,
         faucet_id.suffix(),
         faucet_id.prefix().as_felt(),
-    ])
+    ]))
     .unwrap();
 
     let code = format!(
@@ -331,36 +330,35 @@ fn test_remove_fungible_asset_success_no_balance_remaining() {
         FUNGIBLE_ASSET = word_to_masm_push_string(&remove_fungible_asset.into())
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
-    let process_state: ProcessState = process.into();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
-        process_state.get_stack_word(0),
+        process.stack.get_word(0),
         Into::<Word>::into(account_vault.remove_asset(remove_fungible_asset).unwrap())
     );
 
     assert_eq!(
-        read_root_mem_word(&process_state, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
-        *account_vault.root()
+        process.get_kernel_mem_word(memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        account_vault.root()
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_remove_fungible_asset_fail_remove_too_much() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_remove_fungible_asset_fail_remove_too_much() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let amount = FUNGIBLE_ASSET_AMOUNT + 1;
-    let remove_fungible_asset = Asset::try_from([
+    let remove_fungible_asset = Asset::try_from(Word::new([
         Felt::new(amount),
         ZERO,
         faucet_id.suffix(),
         faucet_id.prefix().as_felt(),
-    ])
+    ]))
     .unwrap();
 
     let code = format!(
@@ -383,21 +381,23 @@ fn test_remove_fungible_asset_fail_remove_too_much() {
     );
 
     assert_execution_error!(process, ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW);
+
+    Ok(())
 }
 
 #[test]
-fn test_remove_fungible_asset_success_balance_remaining() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let mut account_vault = tx_context.account().vault().clone();
 
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let amount = FUNGIBLE_ASSET_AMOUNT - 1;
-    let remove_fungible_asset = Asset::try_from([
+    let remove_fungible_asset = Asset::try_from(Word::new([
         Felt::new(amount),
         ZERO,
         faucet_id.suffix(),
         faucet_id.prefix().as_felt(),
-    ])
+    ]))
     .unwrap();
 
     let code = format!(
@@ -417,28 +417,27 @@ fn test_remove_fungible_asset_success_balance_remaining() {
         FUNGIBLE_ASSET = word_to_masm_push_string(&remove_fungible_asset.into())
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
-    let process_state: ProcessState = process.into();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
-        process_state.get_stack_word(0),
+        process.stack.get_word(0),
         Into::<Word>::into(account_vault.remove_asset(remove_fungible_asset).unwrap())
     );
 
     assert_eq!(
-        read_root_mem_word(&process_state, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
-        *account_vault.root()
+        process.get_kernel_mem_word(memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        account_vault.root()
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_remove_inexisting_non_fungible_asset_fails() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_remove_inexisting_non_fungible_asset_fails() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1.try_into().unwrap();
     let mut account_vault = tx_context.account().vault().clone();
 
@@ -478,11 +477,13 @@ fn test_remove_inexisting_non_fungible_asset_fails() {
         AssetVaultError::NonFungibleAssetNotFound(err_asset) if err_asset == nonfungible,
         "asset should not be in the vault after the test",
     );
+
+    Ok(())
 }
 
 #[test]
-fn test_remove_non_fungible_asset_success() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET.try_into().unwrap();
     let mut account_vault = tx_context.account().vault().clone();
     let non_fungible_asset_details =
@@ -507,21 +508,20 @@ fn test_remove_non_fungible_asset_success() {
         FUNGIBLE_ASSET = word_to_masm_push_string(&non_fungible_asset.into())
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )
-        .unwrap();
-    let process_state: ProcessState = process.into();
+    let process = &tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
 
     assert_eq!(
-        process_state.get_stack_word(0),
+        process.stack.get_word(0),
         Into::<Word>::into(account_vault.remove_asset(non_fungible_asset).unwrap())
     );
 
     assert_eq!(
-        read_root_mem_word(&process_state, memory::NATIVE_ACCT_VAULT_ROOT_PTR),
-        *account_vault.root()
+        process.get_kernel_mem_word(memory::NATIVE_ACCT_VAULT_ROOT_PTR),
+        account_vault.root()
     );
+
+    Ok(())
 }

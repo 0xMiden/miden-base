@@ -1,5 +1,5 @@
 use miden_objects::{
-    Digest, Felt,
+    Felt, Word,
     account::AccountId,
     block::BlockNumber,
     note::{Note, NoteScript},
@@ -42,7 +42,7 @@ fn p2id() -> NoteScript {
 }
 
 /// Returns the P2ID (Pay-to-ID) note script root.
-fn p2id_root() -> Digest {
+fn p2id_root() -> Word {
     P2ID_SCRIPT.root()
 }
 
@@ -52,7 +52,7 @@ fn p2ide() -> NoteScript {
 }
 
 /// Returns the P2IDE (Pay-to-ID with optional reclaim & timelock) note script root.
-fn p2ide_root() -> Digest {
+fn p2ide_root() -> Word {
     P2IDE_SCRIPT.root()
 }
 
@@ -62,7 +62,7 @@ fn swap() -> NoteScript {
 }
 
 /// Returns the SWAP (Swap note) note script root.
-fn swap_root() -> Digest {
+fn swap_root() -> Word {
     SWAP_SCRIPT.root()
 }
 
@@ -132,7 +132,7 @@ impl WellKnownNote {
     }
 
     /// Returns the script root of the current [WellKnownNote] instance.
-    pub fn script_root(&self) -> Digest {
+    pub fn script_root(&self) -> Word {
         match self {
             Self::P2ID => p2id_root(),
             Self::P2IDE => p2ide_root(),
@@ -156,11 +156,10 @@ impl WellKnownNote {
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
             },
             Self::SWAP => {
-                // Make sure that `receive_asset`, `create_note` and `move_asset_to_note` procedures
-                // are presented in the provided account interfaces: SWAP note requires all three
-                // procedures to be consumed by the account.
+                // Make sure that `receive_asset` and `move_asset_to_note` procedures are presented
+                // in the provided account interfaces: SWAP note requires both procedures to be
+                // consumed by the account.
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
-                    && interface_proc_digests.contains(&BasicWallet::create_note_digest())
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
         }

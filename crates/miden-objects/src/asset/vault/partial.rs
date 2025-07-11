@@ -2,9 +2,9 @@ use alloc::vec::Vec;
 
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 use vm_core::utils::{Deserializable, Serializable};
-use vm_processor::Digest;
 
 use super::AssetVault;
+use crate::Word;
 
 /// A partial representation of an asset vault, containing only proofs for a subset of assets.
 ///
@@ -14,19 +14,19 @@ use super::AssetVault;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PartialVault {
     /// Root of the asset vault tree.
-    root: Digest,
+    root: Word,
     /// Merkle proofs for assets in an account, typically a subset of all assets.
     vault_proofs: Vec<SmtProof>,
 }
 
 impl PartialVault {
     /// Returns a new instance of partial vault with the specified root and vault proofs.
-    pub fn new(root: Digest, vault_proofs: Vec<SmtProof>) -> Self {
+    pub fn new(root: Word, vault_proofs: Vec<SmtProof>) -> Self {
         PartialVault { root, vault_proofs }
     }
 
     /// Returns the root of the partial vault.
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.root
     }
 
@@ -37,7 +37,7 @@ impl PartialVault {
     pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
         self.vault_proofs.iter().flat_map(|proof| {
             let leaf = proof.leaf();
-            proof.path().inner_nodes(leaf.index().value(), leaf.hash()).unwrap()
+            proof.path().authenticated_nodes(leaf.index().value(), leaf.hash()).unwrap()
         })
     }
 

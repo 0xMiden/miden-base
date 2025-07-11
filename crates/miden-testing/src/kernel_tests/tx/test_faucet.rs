@@ -26,7 +26,7 @@ use miden_objects::{
         storage::FAUCET_STORAGE_DATA_SLOT,
     },
 };
-use vm_processor::{Felt, ONE, ProcessState};
+use vm_processor::{Felt, ONE};
 
 use crate::{TransactionContextBuilder, assert_execution_error, utils::create_p2any_note};
 
@@ -34,13 +34,13 @@ use crate::{TransactionContextBuilder, assert_execution_error, utils::create_p2a
 // ================================================================================================
 
 #[test]
-fn test_mint_fungible_asset_succeeds() {
+fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
-    .build();
+    .build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
 
@@ -78,26 +78,28 @@ fn test_mint_fungible_asset_succeeds() {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process_state
-        .get_mem_value(process_state.ctx(), faucet_storage_amount_location)
+    let faucet_storage_amount = process
+        .chiplets
+        .memory
+        .get_value(process.system.ctx(), faucet_storage_amount_location)
         .unwrap()
         .as_int();
 
     assert_eq!(faucet_storage_amount, expected_final_storage_amount);
+    Ok(())
 }
 
 #[test]
-fn test_mint_fungible_asset_fails_not_faucet_account() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_mint_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
 
     let code = format!(
         "
@@ -120,13 +122,14 @@ fn test_mint_fungible_asset_fails_not_faucet_account() {
     );
 
     assert_execution_error!(process, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
+    Ok(())
 }
 
 #[test]
-fn test_mint_fungible_asset_inconsistent_faucet_id() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).unwrap();
+    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
     let code = format!(
         "
         use.kernel::prologue
@@ -148,16 +151,17 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() {
     );
 
     assert_execution_error!(process, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
+    Ok(())
 }
 
 #[test]
-fn test_mint_fungible_asset_fails_saturate_max_amount() {
+fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         Felt::ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
-    .build();
+    .build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let code = format!(
@@ -182,19 +186,20 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() {
     );
 
     assert_execution_error!(process, ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT);
+    Ok(())
 }
 
 // NON-FUNGIBLE FAUCET MINT TESTS
 // ================================================================================================
 
 #[test]
-fn test_mint_non_fungible_asset_succeeds() {
+fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
     let asset_vault_key = non_fungible_asset.vault_key();
@@ -236,7 +241,7 @@ fn test_mint_non_fungible_asset_succeeds() {
         end
         "#,
         non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into()),
-        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key.into())),
+        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key)),
     );
 
     tx_context
@@ -245,11 +250,12 @@ fn test_mint_non_fungible_asset_succeeds() {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
+    Ok(())
 }
 
 #[test]
-fn test_mint_non_fungible_asset_fails_not_faucet_account() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_mint_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
 
@@ -273,11 +279,12 @@ fn test_mint_non_fungible_asset_fails_not_faucet_account() {
     );
 
     assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
+    Ok(())
 }
 
 #[test]
-fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
 
@@ -301,16 +308,17 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() {
     );
 
     assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
+    Ok(())
 }
 
 #[test]
-fn test_mint_non_fungible_asset_fails_asset_already_exists() {
+fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
@@ -334,13 +342,14 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() {
     );
 
     assert_execution_error!(process, ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED);
+    Ok(())
 }
 
 // FUNGIBLE FAUCET BURN TESTS
 // ================================================================================================
 
 #[test]
-fn test_burn_fungible_asset_succeeds() {
+fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock_fungible_faucet(
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
@@ -352,7 +361,7 @@ fn test_burn_fungible_asset_succeeds() {
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             &[FungibleAsset::new(account.id(), 100u64).unwrap().into()],
         );
-        TransactionContextBuilder::new(account).extend_input_notes(vec![note]).build()
+        TransactionContextBuilder::new(account).extend_input_notes(vec![note]).build()?
     };
 
     let faucet_id = tx_context.account().id();
@@ -394,24 +403,26 @@ fn test_burn_fungible_asset_succeeds() {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process_state
-        .get_mem_value(process_state.ctx(), faucet_storage_amount_location)
+    let faucet_storage_amount = process
+        .chiplets
+        .memory
+        .get_value(process.system.ctx(), faucet_storage_amount_location)
         .unwrap()
         .as_int();
 
     assert_eq!(faucet_storage_amount, expected_final_storage_amount);
+    Ok(())
 }
 
 #[test]
-fn test_burn_fungible_asset_fails_not_faucet_account() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_burn_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).unwrap();
 
@@ -436,16 +447,17 @@ fn test_burn_fungible_asset_fails_not_faucet_account() {
     );
 
     assert_execution_error!(process, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
+    Ok(())
 }
 
 #[test]
-fn test_burn_fungible_asset_inconsistent_faucet_id() {
+fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).unwrap();
 
@@ -470,16 +482,17 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() {
     );
 
     assert_execution_error!(process, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
+    Ok(())
 }
 
 #[test]
-fn test_burn_fungible_asset_insufficient_input_amount() {
+fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
         ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
-    .build();
+    .build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).unwrap();
 
@@ -505,19 +518,20 @@ fn test_burn_fungible_asset_insufficient_input_amount() {
     );
 
     assert_execution_error!(process, ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW);
+    Ok(())
 }
 
 // NON-FUNGIBLE FAUCET BURN TESTS
 // ================================================================================================
 
 #[test]
-fn test_burn_non_fungible_asset_succeeds() {
+fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
     let burnt_asset_vault_key = non_fungible_asset_burnt.vault_key();
@@ -584,16 +598,17 @@ fn test_burn_non_fungible_asset_succeeds() {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
+    Ok(())
 }
 
 #[test]
-fn test_burn_non_fungible_asset_fails_does_not_exist() {
+fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&[1, 2, 3]);
 
@@ -618,11 +633,12 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() {
     );
 
     assert_execution_error!(process, ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND);
+    Ok(())
 }
 
 #[test]
-fn test_burn_non_fungible_asset_fails_not_faucet_account() {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build();
+fn test_burn_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&[1, 2, 3]);
 
@@ -650,10 +666,11 @@ fn test_burn_non_fungible_asset_fails_not_faucet_account() {
         process,
         ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET
     );
+    Ok(())
 }
 
 #[test]
-fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() {
+fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result<()> {
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&[1, 2, 3]);
 
     // Run code from a different non-fungible asset issuer
@@ -662,7 +679,7 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() {
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let code = format!(
         "
@@ -685,13 +702,14 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() {
     );
 
     assert_execution_error!(process, ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND);
+    Ok(())
 }
 
 // IS NON FUNGIBLE ASSET ISSUED TESTS
 // ================================================================================================
 
 #[test]
-fn test_is_non_fungible_asset_issued_succeeds() {
+fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
     // NON_FUNGIBLE_ASSET_DATA_2 is "issued" during the mock faucet creation, so it is already in
     // the map of issued assets.
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
@@ -699,7 +717,7 @@ fn test_is_non_fungible_asset_issued_succeeds() {
         ONE,
         false,
     )
-    .build();
+    .build()?;
 
     let non_fungible_asset_1 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
     let non_fungible_asset_2 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
@@ -737,19 +755,20 @@ fn test_is_non_fungible_asset_issued_succeeds() {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
+    Ok(())
 }
 
 // GET TOTAL ISSUANCE TESTS
 // ================================================================================================
 
 #[test]
-fn test_get_total_issuance_succeeds() {
+fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
-    .build();
+    .build()?;
 
     let code = format!(
         r#"
@@ -776,4 +795,5 @@ fn test_get_total_issuance_succeeds() {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
+    Ok(())
 }

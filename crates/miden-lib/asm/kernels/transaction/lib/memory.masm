@@ -158,14 +158,15 @@ const.ACCT_CODE_COMMITMENT_OFFSET=12
 const.ACCT_CORE_DATA_SECTION_END_OFFSET=16
 const.NUM_ACCT_PROCEDURES_OFFSET=28
 const.ACCT_PROCEDURES_SECTION_OFFSET=32
-const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2084
-const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2088
+const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
+const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
+const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
 
 # Offset at which an exact copy of the account's storage slot section starting at
 # ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
 # slots accessible to enable computing a diff between the initial and current account storage slots
 # for use in the account delta. This section is only present for the native account.
-const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4128
+const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
 
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
@@ -183,7 +184,7 @@ const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+8
 # The section of link map pointers where storage map deltas are stored.
 # This section is offset by `slot index` to get the link map ptr for the storage map
 # delta at that slot index. Slot indices that are not map slots are simply unused.
-const.ACCOUNT_DELTA_STORGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_PTR+12
+const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_PTR+12
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -852,9 +853,20 @@ end
 #! Panics if:
 #! - the current account data pointer is not equal to native account data pointer (8192).
 export.assert_native_account
+    exec.is_native_account assert.err=ERR_ACCOUNT_IS_NOT_NATIVE
+end
+
+#! Returns 1 if the current account data pointer matches the data pointer of the native account,
+#! 0 otherwise.
+#!
+#! Inputs:  []
+#! Outputs: [is_native_account]
+export.is_native_account
     exec.get_current_account_data_ptr
-    push.NATIVE_ACCOUNT_DATA_PTR
-    assert_eq.err=ERR_ACCOUNT_IS_NOT_NATIVE
+    # => [current_account_data_ptr]
+
+    eq.NATIVE_ACCOUNT_DATA_PTR
+    # => [is_native_account]
 end
 
 #! Returns a pointer to the end of the core account data section.
@@ -1087,6 +1099,29 @@ export.get_acct_procedures_section_ptr
     exec.get_current_account_data_ptr push.ACCT_PROCEDURES_SECTION_OFFSET add
 end
 
+#! Returns the memory pointer to the account procedures call tracking section.
+#!
+#! Inputs:  []
+#! Outputs: [procedures_call_tracking_ptr]
+#!
+#! Where:
+#! - procedures_call_tracking_ptr is the memory pointer to the procedure call tracking section.
+export.get_acct_procedures_call_tracking_ptr
+    exec.get_current_account_data_ptr push.ACCT_PROCEDURES_CALL_TRACKING_OFFSET add
+end
+
+#! Returns the memory pointer to a specific account procedure.
+#!
+#! Inputs:  [proc_idx]
+#! Outputs: [proc_ptr]
+#!
+#! Where:
+#! - proc_idx is the index of the account procedure.
+#! - proc_ptr is the memory pointer to the account procedure at the specified index.
+export.get_acct_procedure_ptr
+    mul.8 exec.get_acct_procedures_section_ptr add
+end
+
 ### ACCOUNT STORAGE #################################################
 
 #! Returns the account storage commitment.
@@ -1218,13 +1253,13 @@ end
 #! - account_delta_storage_map_ptr is the link map pointer to the storage map delta for the
 #!   requested slot index.
 export.get_account_delta_storage_map_ptr
-    add.ACCOUNT_DELTA_STORGE_MAP_SECTION
+    add.ACCOUNT_DELTA_STORAGE_MAP_SECTION
 end
 
 #! Increments the delta of the account's nonce.
 #!
-#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2, then the
-#! stored nonce_delta will be 5.
+#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2,
+#! then the stored nonce_delta will be 5.
 #!
 #! Inputs:  [nonce_delta]
 #! Outputs: []

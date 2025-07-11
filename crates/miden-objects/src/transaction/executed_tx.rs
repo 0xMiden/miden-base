@@ -1,5 +1,4 @@
 use alloc::vec::Vec;
-use core::cell::OnceCell;
 
 use super::{
     Account, AccountDelta, AccountHeader, AccountId, AdviceInputs, BlockHeader, InputNote,
@@ -26,7 +25,7 @@ use crate::{
 ///   witness).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExecutedTransaction {
-    id: OnceCell<TransactionId>,
+    id: TransactionId,
     tx_inputs: TransactionInputs,
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
@@ -54,8 +53,17 @@ impl ExecutedTransaction {
         // make sure account IDs are consistent across transaction inputs and outputs
         assert_eq!(tx_inputs.account().id(), tx_outputs.account.id());
 
+        // we create the id from the content, so we cannot construct the
+        // `id` value after construction `Self {..}` without moving
+        let id = TransactionId::new(
+            tx_inputs.account().init_commitment(),
+            tx_outputs.account.commitment(),
+            tx_inputs.input_notes().commitment(),
+            tx_outputs.output_notes.commitment(),
+        );
+
         Self {
-            id: OnceCell::new(),
+            id,
             tx_inputs,
             tx_outputs,
             account_delta,
@@ -70,7 +78,7 @@ impl ExecutedTransaction {
 
     /// Returns a unique identifier of this transaction.
     pub fn id(&self) -> TransactionId {
-        *self.id.get_or_init(|| self.into())
+        self.id
     }
 
     /// Returns the ID of the account against which this transaction was executed.
@@ -249,5 +257,23 @@ impl Deserializable for TransactionMeasurements {
             tx_script_processing,
             epilogue,
         })
+    }
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use core::marker::PhantomData;
+
+    use crate::transaction::ExecutedTransaction;
+
+    fn ensure_send<T: Send>(_: PhantomData<T>) {}
+
+    /// Add assurance `ExecutedTransaction` remains `Send`
+    #[allow(dead_code)]
+    fn compiletime_ensure_send_for_types() {
+        ensure_send::<ExecutedTransaction>(PhantomData);
     }
 }

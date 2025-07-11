@@ -397,7 +397,7 @@ export.build_note_metadata
     # of the metadata.
     # --------------------------------------------------------------------------------------------
 
-    # the execution_hint is layed out like this: [26 zero bits | payload (32 bits) | tag (6 bits)]
+    # the execution_hint is laid out like this: [26 zero bits | payload (32 bits) | tag (6 bits)]
     movup.3
     # => [execution_hint, tag, aux, note_type]
     dup u32split drop

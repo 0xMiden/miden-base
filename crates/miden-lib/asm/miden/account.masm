@@ -93,12 +93,12 @@ end
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 #!
 #! Invocation: exec
-export.get_current_commitment
+export.compute_current_commitment
     # pad the stack
     padw padw padw push.0.0.0
     # => [pad(15)]
 
-    exec.kernel_proc_offsets::account_get_current_commitment_offset
+    exec.kernel_proc_offsets::account_compute_current_commitment_offset
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
@@ -263,7 +263,7 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets the code commitment of the account the transaction is being executed against.
+#! Gets the account code commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
@@ -288,7 +288,10 @@ export.get_code_commitment
     # => [CODE_COMMITMENT]
 end
 
-#! Gets the storage commitment of the account the transaction is being executed against.
+#! Gets the account storage commitment of the current account.
+#!
+#! Note that this commitment may not reflect the changes made to storage. The commitment is
+#! recomputed when `account_compute_current_commitment` is called.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
@@ -458,4 +461,30 @@ export.get_vault_root
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [VAULT_ROOT]
+end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [was_called]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called, 0 otherwise.
+#!
+#! Invocation: exec
+export.was_procedure_called
+    exec.kernel_proc_offsets::account_was_procedure_called_offset
+    # => [offset, PROC_ROOT]
+
+    # pad the stack
+    push.0.0.0 movdn.7 movdn.7 movdn.7 padw padw swapdw
+    # => [offset, PROC_ROOT, pad(11)]
+
+    syscall.exec_kernel_proc
+    # => [was_called, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [was_called]
 end

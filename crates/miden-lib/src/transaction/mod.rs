@@ -1,9 +1,9 @@
 use alloc::{string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, TransactionInputError, TransactionOutputError,
+    EMPTY_WORD, Felt, Hasher, TransactionOutputError, Word,
     account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, KernelLibrary},
+    assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
     block::BlockNumber,
     transaction::{
         OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
@@ -30,8 +30,9 @@ pub use outputs::{
     parse_final_account_header,
 };
 
-mod errors;
-pub use errors::{TransactionEventError, TransactionKernelError, TransactionTraceParsingError};
+pub use crate::errors::{
+    TransactionEventError, TransactionKernelError, TransactionTraceParsingError,
+};
 
 mod procedures;
 
@@ -115,7 +116,7 @@ impl TransactionKernel {
         tx_inputs: &TransactionInputs,
         tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
-    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionInputError> {
+    ) -> (StackInputs, TransactionAdviceInputs) {
         let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
@@ -131,7 +132,7 @@ impl TransactionKernel {
             tx_advice_inputs.extend(init_advice_inputs);
         }
 
-        Ok((stack_inputs, tx_advice_inputs))
+        (stack_inputs, tx_advice_inputs)
     }
 
     // ASSEMBLER CONSTRUCTOR
@@ -140,11 +141,16 @@ impl TransactionKernel {
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
     /// Miden stdlib as well as with miden-lib.
     pub fn assembler() -> Assembler {
-        let source_manager = Arc::new(DefaultSourceManager::default());
+        let source_manager: Arc<dyn SourceManager + Send + Sync> =
+            Arc::new(DefaultSourceManager::default());
+
+        #[cfg(all(any(feature = "testing", test), feature = "std"))]
+        source_manager_ext::load_masm_source_files(&source_manager);
+
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_library(StdLibrary::default())
+            .with_dynamic_library(StdLibrary::default())
             .expect("failed to load std-lib")
-            .with_library(MidenLib::default())
+            .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")
     }
 
@@ -174,9 +180,9 @@ impl TransactionKernel {
     /// - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
     pub fn build_input_stack(
         account_id: AccountId,
-        init_account_commitment: Digest,
-        input_notes_commitment: Digest,
-        block_commitment: Digest,
+        init_account_commitment: Word,
+        input_notes_commitment: Word,
+        block_commitment: Word,
         block_num: BlockNumber,
     ) -> StackInputs {
         // Note: Must be kept in sync with the transaction's kernel prepare_transaction procedure
@@ -209,9 +215,9 @@ impl TransactionKernel {
     ///   delta commitment.
     /// - expiration_block_num is the block number at which the transaction will expire.
     pub fn build_output_stack(
-        final_account_commitment: Digest,
-        account_delta_commitment: Digest,
-        output_notes_commitment: Digest,
+        final_account_commitment: Word,
+        account_delta_commitment: Word,
+        output_notes_commitment: Word,
         expiration_block_num: BlockNumber,
     ) -> StackOutputs {
         let account_update_commitment =
@@ -247,16 +253,14 @@ impl TransactionKernel {
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
         stack: &StackOutputs,
-    ) -> Result<(Digest, Digest, BlockNumber), TransactionOutputError> {
+    ) -> Result<(Word, Word, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
-            .expect("output_notes_commitment (first word) missing")
-            .into();
+            .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
-            .expect("account_update_commitment (second word) missing")
-            .into();
+            .expect("account_update_commitment (second word) missing");
 
         let expiration_block_num = stack
             .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)
@@ -272,7 +276,9 @@ impl TransactionKernel {
 
         // Make sure that indices 9, 10 and 11 are zeroes (i.e. the third word without the
         // expiration block number).
-        if stack.get_stack_word(9).expect("third word missing")[..3] != EMPTY_WORD[..3] {
+        if stack.get_stack_word(9).expect("third word missing").as_elements()[..3]
+            != Word::empty().as_elements()[..3]
+        {
             return Err(TransactionOutputError::OutputStackInvalid(
                 "indices 9, 10 and 11 on the output stack should be ZERO".into(),
             ));
@@ -345,11 +351,11 @@ impl TransactionKernel {
     }
 
     /// Returns the final account commitment and account delta commitment extracted from the account
-    /// udpate commitment.
+    /// update commitment.
     fn parse_account_update_commitment(
-        account_update_commitment: Digest,
+        account_update_commitment: Word,
         adv_map: &AdviceMap,
-    ) -> Result<(Digest, Digest), TransactionOutputError> {
+    ) -> Result<(Word, Word), TransactionOutputError> {
         let account_update_data = adv_map.get(&account_update_commitment).ok_or_else(|| {
             TransactionOutputError::AccountUpdateCommitment(
                 "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
@@ -365,11 +371,11 @@ impl TransactionKernel {
 
         // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
         // is fine.
-        let final_account_commitment = Digest::from(
+        let final_account_commitment = Word::from(
             <[Felt; 4]>::try_from(&account_update_data[0..4])
                 .expect("we should have sliced off exactly four elements"),
         );
-        let account_delta_commitment = Digest::from(
+        let account_delta_commitment = Word::from(
             <[Felt; 4]>::try_from(&account_update_data[4..8])
                 .expect("we should have sliced off exactly four elements"),
         );
@@ -406,15 +412,19 @@ impl TransactionKernel {
     /// the kernel binary (`main.masm`) include this code, it is not exposed explicitly. By adding
     /// it separately, we can expose procedures from `/lib` and test them individually.
     pub fn testing_assembler() -> Assembler {
-        let source_manager = Arc::new(DefaultSourceManager::default());
+        let source_manager: Arc<dyn SourceManager + Send + Sync> =
+            Arc::new(DefaultSourceManager::default());
         let kernel_library = Self::kernel_as_library();
 
+        #[cfg(all(any(feature = "testing", test), feature = "std"))]
+        source_manager_ext::load_masm_source_files(&source_manager);
+
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_library(StdLibrary::default())
+            .with_dynamic_library(StdLibrary::default())
             .expect("failed to load std-lib")
-            .with_library(MidenLib::default())
+            .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")
-            .with_library(kernel_library)
+            .with_dynamic_library(kernel_library)
             .expect("failed to load kernel library (/lib)")
             .with_debug_mode(true)
     }
@@ -426,6 +436,82 @@ impl TransactionKernel {
         let assembler = Self::testing_assembler().with_debug_mode(true);
         let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
 
-        assembler.with_library(library).expect("failed to add mock account code")
+        assembler
+            .with_dynamic_library(library)
+            .expect("failed to add mock account code")
+    }
+}
+
+#[cfg(all(any(feature = "testing", test), feature = "std"))]
+mod source_manager_ext {
+    use std::{
+        fs, io,
+        path::{Path, PathBuf},
+        sync::Arc,
+        vec::Vec,
+    };
+
+    use miden_objects::assembly::{SourceManager, debuginfo::SourceManagerExt};
+
+    /// Loads all files with a .masm extension in the `asm` directory into the provided source
+    /// manager.
+    ///
+    /// This source manager is passed to the [`super::TransactionKernel::assembler`] from which it
+    /// can be passed on to the VM processor. If an error occurs, the sources can be used to provide
+    /// a pointer to the failed location.
+    pub fn load_masm_source_files(source_manager: &Arc<dyn SourceManager + Send + Sync>) {
+        if let Err(err) = load(source_manager) {
+            // Stringifying the error is not ideal (we may loose some source errors) but this
+            // should never really error anyway.
+            std::eprintln!("failed to load MASM sources into source manager: {err}");
+        }
+    }
+
+    /// Implements the logic of the above function with error handling.
+    fn load(source_manager: &Arc<dyn SourceManager + Send + Sync>) -> io::Result<()> {
+        for file in get_masm_files(concat!(env!("OUT_DIR"), "/asm"))? {
+            source_manager.load_file(&file).map_err(io::Error::other)?;
+        }
+
+        Ok(())
+    }
+
+    /// Returns a vector with paths to all MASM files in the specified directory and recursive
+    /// directories.
+    ///
+    /// All non-MASM files are skipped.
+    fn get_masm_files<P: AsRef<Path>>(dir_path: P) -> io::Result<Vec<PathBuf>> {
+        let mut files = Vec::new();
+
+        match fs::read_dir(dir_path) {
+            Ok(entries) => {
+                for entry in entries {
+                    match entry {
+                        Ok(entry) => {
+                            let entry_path = entry.path();
+                            if entry_path.is_dir() {
+                                files.extend(get_masm_files(entry_path)?);
+                            } else if entry_path
+                                .extension()
+                                .map(|ext| ext == "masm")
+                                .unwrap_or(false)
+                            {
+                                files.push(entry_path);
+                            }
+                        },
+                        Err(e) => {
+                            return Err(io::Error::other(format!(
+                                "error reading directory entry: {e}",
+                            )));
+                        },
+                    }
+                }
+            },
+            Err(e) => {
+                return Err(io::Error::other(format!("error reading directory: {e}")));
+            },
+        }
+
+        Ok(files)
     }
 }

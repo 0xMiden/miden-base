@@ -1,7 +1,7 @@
 use alloc::{string::ToString, vec::Vec};
 
 use miden_objects::{
-    AccountError, Digest, Felt, ONE, ZERO,
+    AccountError, Felt, Word, ZERO,
     account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
     assembly::{Assembler, diagnostics::NamedSource},
     asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
@@ -35,7 +35,7 @@ use crate::{
 
 #[test]
 fn test_basic_wallet_default_notes() {
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -45,8 +45,7 @@ fn test_basic_wallet_default_notes() {
 
     let wallet_account_interface = AccountInterface::from(&wallet_account);
 
-    let mock_seed =
-        Digest::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
+    let mock_seed = Word::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
     let faucet_account = AccountBuilder::new(mock_seed)
         .account_type(AccountType::FungibleFaucet)
         .with_auth_component(get_mock_auth_component())
@@ -68,7 +67,7 @@ fn test_basic_wallet_default_notes() {
         vec![FungibleAsset::mock(10)],
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
@@ -80,7 +79,7 @@ fn test_basic_wallet_default_notes() {
         None,
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
@@ -93,7 +92,7 @@ fn test_basic_wallet_default_notes() {
         requested_asset,
         NoteType::Public,
         ZERO,
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
@@ -147,7 +146,7 @@ fn test_custom_account_default_note() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(account_component.clone())
@@ -161,7 +160,7 @@ fn test_custom_account_default_note() {
         vec![FungibleAsset::mock(10)],
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
@@ -173,7 +172,7 @@ fn test_custom_account_default_note() {
         None,
         NoteType::Public,
         Default::default(),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
@@ -186,7 +185,7 @@ fn test_custom_account_default_note() {
         requested_asset,
         NoteType::Public,
         ZERO,
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
@@ -209,7 +208,7 @@ fn test_custom_account_default_note() {
 
 #[test]
 fn test_basic_wallet_custom_notes() {
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let wallet_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -219,8 +218,7 @@ fn test_basic_wallet_custom_notes() {
     let wallet_account_interface = AccountInterface::from(&wallet_account);
 
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::from_account_id(wallet_account.id());
     let metadata = NoteMetadata::new(
         sender_account_id,
@@ -233,24 +231,23 @@ fn test_basic_wallet_custom_notes() {
     let vault = NoteAssets::new(vec![FungibleAsset::mock(100)]).unwrap();
 
     let compatible_source_code = "
+        use.miden::tx
         use.miden::contracts::wallets::basic->wallet
         use.miden::contracts::faucets::basic_fungible->fungible_faucet
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
-                
+
                 # unsupported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
             else
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -271,7 +268,7 @@ fn test_basic_wallet_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # unsupported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
@@ -280,7 +277,6 @@ fn test_basic_wallet_custom_notes() {
                 call.fungible_faucet::distribute
 
                 # supported procs
-                call.wallet::create_note
                 call.wallet::receive_asset
                 call.wallet::move_asset_to_note
             end
@@ -299,8 +295,7 @@ fn test_basic_wallet_custom_notes() {
 
 #[test]
 fn test_basic_fungible_faucet_custom_notes() {
-    let mock_seed =
-        Digest::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
+    let mock_seed = Word::from([Felt::new(4), Felt::new(5), Felt::new(6), Felt::new(7)]).as_bytes();
     let faucet_account = AccountBuilder::new(mock_seed)
         .account_type(AccountType::FungibleFaucet)
         .with_auth_component(get_mock_auth_component())
@@ -317,8 +312,7 @@ fn test_basic_fungible_faucet_custom_notes() {
     let faucet_account_interface = AccountInterface::from(&faucet_account);
 
     let sender_account_id = ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into().unwrap();
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::from_account_id(faucet_account.id());
     let metadata = NoteMetadata::new(
         sender_account_id,
@@ -336,7 +330,7 @@ fn test_basic_fungible_faucet_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
@@ -346,7 +340,6 @@ fn test_basic_fungible_faucet_custom_notes() {
 
                 # unsupported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -367,11 +360,11 @@ fn test_basic_fungible_faucet_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.fungible_faucet::distribute
                 call.fungible_faucet::burn
-            
+
                 # unsupported proc
                 call.wallet::receive_asset
             else
@@ -379,7 +372,6 @@ fn test_basic_fungible_faucet_custom_notes() {
                 call.fungible_faucet::burn
 
                 # unsupported procs
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -421,7 +413,7 @@ fn test_custom_account_custom_notes() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(account_component.clone())
@@ -429,7 +421,7 @@ fn test_custom_account_custom_notes() {
         .unwrap();
     let target_account_interface = AccountInterface::from(&target_account);
 
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -437,8 +429,7 @@ fn test_custom_account_custom_notes() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::from_account_id(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
@@ -456,7 +447,7 @@ fn test_custom_account_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported proc
                 call.test_account::procedure_1
 
@@ -472,7 +463,7 @@ fn test_custom_account_custom_notes() {
     let note_script = NoteScript::compile(
         compatible_source_code,
         TransactionKernel::testing_assembler()
-            .with_library(account_component.library())
+            .with_dynamic_library(account_component.library())
             .unwrap(),
     )
     .unwrap();
@@ -489,12 +480,11 @@ fn test_custom_account_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 call.wallet::receive_asset
                 call.test_account::procedure_1
             else
                 call.test_account::procedure_2
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
             end
         end
@@ -502,7 +492,7 @@ fn test_custom_account_custom_notes() {
     let note_script = NoteScript::compile(
         incompatible_source_code,
         TransactionKernel::testing_assembler()
-            .with_library(account_component.library())
+            .with_dynamic_library(account_component.library())
             .unwrap(),
     )
     .unwrap();
@@ -540,7 +530,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     .unwrap()
     .with_supports_all_types();
 
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(custom_component.clone())
@@ -549,7 +539,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .unwrap();
     let target_account_interface = AccountInterface::from(&target_account);
 
-    let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let sender_account = AccountBuilder::new(mock_seed)
         .with_auth_component(get_mock_auth_component())
         .with_component(BasicWallet)
@@ -557,8 +547,7 @@ fn test_custom_account_multiple_components_custom_notes() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::from_account_id(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
@@ -578,17 +567,15 @@ fn test_custom_account_multiple_components_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
             else
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
@@ -601,7 +588,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     let note_script = NoteScript::compile(
         compatible_source_code,
         TransactionKernel::testing_assembler()
-            .with_library(custom_component.library())
+            .with_dynamic_library(custom_component.library())
             .unwrap(),
     )
     .unwrap();
@@ -620,10 +607,9 @@ fn test_custom_account_multiple_components_custom_notes() {
 
         begin
             push.1
-            if.true 
+            if.true
                 # supported procs
                 call.wallet::receive_asset
-                call.wallet::create_note
                 call.wallet::move_asset_to_note
                 call.test_account::procedure_1
                 call.test_account::procedure_2
@@ -643,7 +629,7 @@ fn test_custom_account_multiple_components_custom_notes() {
     let note_script = NoteScript::compile(
         incompatible_source_code,
         TransactionKernel::testing_assembler()
-            .with_library(custom_component.library())
+            .with_dynamic_library(custom_component.library())
             .unwrap(),
     )
     .unwrap();
@@ -698,6 +684,6 @@ impl AccountComponentExt for AccountComponent {
 }
 
 fn get_mock_auth_component() -> RpoFalcon512 {
-    let mock_public_key = PublicKey::new([ZERO, ONE, Felt::new(2), Felt::new(3)]);
+    let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
     RpoFalcon512::new(mock_public_key)
 }

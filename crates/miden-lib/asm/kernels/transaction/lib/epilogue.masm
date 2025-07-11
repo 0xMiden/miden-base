@@ -159,75 +159,6 @@ proc.build_output_vault
     # => []
 end
 
-# ACCOUNT CODE UPDATE
-# =================================================================================================
-
-#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
-#! is set to the initial account code commitment in the prologue and as such this procedure will
-#! not result in a change to the account code commitment if the `account::set_code` procedure has
-#! not been invoked in this transaction.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.update_account_code
-    # check if the account code commitment has been updated
-    exec.memory::get_new_acct_code_commitment
-    # => [NEW_ACCT_CODE_COMMITMENT]
-
-    # set the account code commitment to the new account code commitment (may not have changed)
-    exec.memory::set_acct_code_commitment dropw
-    # => []
-end
-
-# ACCOUNT STORAGE UPDATE
-# =================================================================================================
-
-#! Updates the account storage commitment by hashing the storage slots and setting the storage
-#! commitment to the newly computed storage hash.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.update_account_storage_commitment
-    # get number of storage slots
-    exec.memory::get_num_storage_slots
-    # => [num_storage_slots]
-
-    # check if there are storage slots
-    dup push.0 neq
-    # => [storage_slots_is_not_empty, num_storage_slots]
-
-    # only loop and hash over storage if there are storage slots
-    if.true
-        # setup start and end ptr
-        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
-        # => [start_ptr, end_ptr]
-
-        # pad stack to read and hash from memory
-        padw padw padw
-        # => [PAD, PAD, PAD, start_ptr, end_ptr]
-
-        # hash elements from memory
-        exec.rpo::absorb_double_words_from_memory
-        # => [PERM, PERM, PERM, start_ptr, end_ptr]
-
-        # extract the digest
-        exec.rpo::squeeze_digest
-        # => [DIGEST, end_ptr, end_ptr]
-
-        # clean stack
-        movup.4 drop movup.4 drop
-        # => [DIGEST]
-
-        # set new account storage commitment
-        exec.memory::set_acct_storage_commitment dropw
-        # => []
-    else
-        # drop number of storage slots
-        drop
-        # => []
-    end
-end
-
 # AUTH PROCEDURE
 # =================================================================================================
 
@@ -237,8 +168,8 @@ end
 #! Outputs: []
 proc.execute_auth_procedure
     padw padw padw push.0.0.0
-    # auth procedure is at index 0 within the account procedures section so no offsetting is needed.
-    exec.memory::get_acct_procedures_section_ptr
+    # auth procedure is at index 0 within the account procedures section.
+    push.0 exec.memory::get_acct_procedure_ptr
     # => [auth_procedure_ptr, pad(15)]
 
     # execute the auth procedure
@@ -276,14 +207,6 @@ export.finalize_transaction
     exec.execute_auth_procedure
     # => []
 
-    # update account code
-    exec.update_account_code
-    # => []
-
-    # update account storage commitment
-    exec.update_account_storage_commitment
-    # => []
-
     # get the initial account commitment
     exec.memory::get_init_account_commitment
     # => [INIT_ACCOUNT_COMMITMENT]
@@ -297,7 +220,7 @@ export.finalize_transaction
     # => [acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
 
     # compute the final account commitment
-    exec.account::get_current_commitment
+    exec.account::compute_current_commitment
     # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
 
     # insert final account data into the advice map

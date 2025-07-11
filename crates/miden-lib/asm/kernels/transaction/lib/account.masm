@@ -190,26 +190,44 @@ end
 # PROCEDURES
 # =================================================================================================
 
-#! Computes and returns the account commitment from account data stored in memory.
+#! Computes the account commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]
 #!
 #! Where:
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
-export.get_current_commitment
+export.compute_current_commitment
+    exec.memory::is_native_account
+    # => [is_native_account]
+
+    # first compute the latest storage commitment and update the code commitment
+    # since foreign accounts do not change during transaction execution, this step can be skipped
+    # for them
+    if.true
+        exec.compute_current_storage_commitment
+        # => []
+
+        exec.update_code_commitment
+        # => []
+    end
+
     # prepare the stack for computing the account commitment
     exec.memory::get_current_account_data_ptr padw padw padw
+    # => [RATE, RATE, PERM, account_data_ptr]
 
     # stream account data and compute sequential hash. We perform two `mem_stream` operations
-    # because account data consists of exactly 4 words.
+    # because the account data consists of exactly 4 words.
     mem_stream hperm mem_stream hperm
+    # => [RATE, RATE, PERM, account_data_ptr']
 
     # extract account commitment
     exec.rpo::squeeze_digest
+    # => [ACCOUNT_COMMITMENT, account_data_ptr']
 
-    # drop memory pointer
+    # drop account_data_ptr
     movup.4 drop
+    # => [ACCOUNT_COMMITMENT]
 end
 
 #! Increments the account nonce by the provided increment.
@@ -227,7 +245,7 @@ export.incr_nonce
     # => [nonce_increment]
 
     dup exec.memory::incr_account_nonce_delta
-    # => [nonce_increment]
+    # => [nonce_delta]
 
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT
@@ -269,7 +287,7 @@ export.memory::get_acct_nonce->get_nonce
 #! - INIT_COMMITMENT is the initial account commitment.
 export.memory::get_init_account_commitment->get_initial_commitment
 
-#! Gets the code commitment of the account the transaction is being executed against.
+#! Gets the code commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
@@ -282,7 +300,7 @@ export.get_code_commitment
     # => [CODE_COMMITMENT]
 end
 
-#! Gets the storage commitment of the account the transaction is being executed against.
+#! Gets the storage commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
@@ -629,11 +647,12 @@ end
 #! - the procedure index is out of bounds.
 export.get_procedure_info
     # check that index < number of procedures contained in the account code
-    dup exec.memory::get_num_account_procedures lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    dup exec.memory::get_num_account_procedures
+    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add
+    exec.memory::get_acct_procedure_ptr
     # => [proc_ptr]
 
     # get metadata pointer
@@ -643,13 +662,19 @@ export.get_procedure_info
     # load procedure information from memory
     padw movup.4 mem_loadw padw movup.8 mem_loadw
     # => [METADATA, PROC_ROOT]
+    # more explicitly:
+    # => [0, 0, storage_size, storage_offset, PROC_ROOT]
 
     # keep relevant data
-    drop drop swap movdn.5 movdn.5
+    drop drop
+    # => [storage_size, storage_offset, PROC_ROOT]
+
+    swap movdn.5 movdn.5
     # => [PROC_ROOT, storage_offset, storage_size]
 end
 
-#! Verifies that the procedure root is part of the account code.
+#! Verifies that the procedure root is part of the account code and tracks whether it has been
+#! called.
 #!
 #! Inputs:  [PROC_ROOT]
 #! Outputs: [storage_offset, storage_size]
@@ -661,17 +686,23 @@ end
 #!
 #! Panics if:
 #! - the procedure root is not part of the account code.
-export.authenticate_procedure
+export.authenticate_and_track_procedure
     # load procedure index
     emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
     # => [index, PROC_ROOT]
 
+    dup movdn.5
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
     exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT, index]
 
     # verify that PROC_ROOT exists in memory at index
     movup.4 movdn.9 movup.4 movdn.9 assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [storage_offset, storage_size, index]
+
+    # Set the was_called flag to 1 for this procedure
+    movup.2 exec.set_was_procedure_called
+
     # => [storage_offset, storage_size]
 end
 
@@ -692,11 +723,11 @@ export.assert_auth_procedure
     # => [index, PROC_ROOT]
 
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
-    exec.get_procedure_info
-    # => [MEM_PROC_ROOT, storage_offset, storage_size, PROC_ROOT]
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT]
 
     # verify that PROC_ROOT exists in memory at index
-    movup.4 drop movup.4 drop assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_AUTH_PROC
     # => []
 end
 
@@ -969,7 +1000,8 @@ export.save_account_procedure_data
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
     # setup acct_proc_offset and end_ptr for reading from advice stack
-    mul.8 exec.memory::get_acct_procedures_section_ptr dup movdn.2 add swap
+    exec.memory::get_acct_procedure_ptr
+    push.0 exec.memory::get_acct_procedure_ptr
     # OS => [acct_proc_offset, end_ptr, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
@@ -1030,6 +1062,30 @@ proc.set_item_raw
     # => [OLD_VALUE]
 end
 
+#! Returns the procedure root.
+#!
+#! Inputs:  [index]
+#! Outputs: [PROC_ROOT]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure.
+#!
+#! Panics if:
+#! - the procedure index is out of bounds.
+proc.get_procedure_root
+    dup exec.memory::get_num_account_procedures
+    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    # => [index]
+
+    # get procedure pointer
+    exec.memory::get_acct_procedure_ptr
+    # => [proc_ptr]
+
+    # load procedure root from memory
+    padw movup.4 mem_loadw
+    # => [PROC_ROOT]
+end
+
 #! Returns the procedure metadata.
 #!
 #! Note:
@@ -1043,11 +1099,11 @@ end
 #! - storage_size is the number of storage slots the procedure is allowed to access.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
-    mul.8 exec.memory::get_acct_procedures_section_ptr add add.4
-    # => [storage_offset_ptr]
+    padw exec.memory::get_acct_procedure_ptr add.4
+    # => [storage_offset_ptr, EMPTY_WORD]
 
     # load procedure metadata from memory and keep relevant data
-    padw movup.4 mem_loadw drop drop swap
+    mem_loadw drop drop swap
     # => [storage_offset, storage_size]
 end
 
@@ -1145,7 +1201,7 @@ export.validate_current_foreign_account
     # => [FOREIGN_ACCOUNT_COMMITMENT, ACCOUNT_DB_ROOT]
 
     # get the foreign account's commitment from memory and compare with the verified commitment
-    exec.get_current_commitment assert_eqw.err=ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT
+    exec.compute_current_commitment assert_eqw.err=ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT
     # => [ACCOUNT_DB_ROOT]
 
     # clean the stack
@@ -1163,4 +1219,119 @@ end
 proc.hash_map_key
     hash
     # => [HASHED_KEY]
+end
+
+#! Computes the account storage commitment by hashing the storage slots and updates the storage
+#! commitment in memory to the newly computed storage commitment.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.compute_current_storage_commitment
+    # get number of storage slots
+    exec.memory::get_num_storage_slots
+    # => [num_storage_slots]
+
+    # check if there are storage slots
+    dup push.0 neq
+    # => [storage_slots_is_not_empty, num_storage_slots]
+
+    # only loop and hash over storage if there are storage slots
+    if.true
+        # setup start and end ptr
+        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
+        # => [start_ptr, end_ptr]
+
+        # pad stack to read and hash from memory
+        padw padw padw
+        # => [PAD, PAD, PAD, start_ptr, end_ptr]
+
+        # hash elements from memory
+        exec.rpo::absorb_double_words_from_memory
+        # => [PERM, PERM, PERM, start_ptr, end_ptr]
+
+        # extract the digest
+        exec.rpo::squeeze_digest
+        # => [DIGEST, end_ptr, end_ptr]
+
+        # clean stack
+        movup.4 drop movup.4 drop
+        # => [DIGEST]
+
+        # set new account storage commitment
+        exec.memory::set_acct_storage_commitment dropw
+        # => []
+    else
+        # drop number of storage slots
+        drop
+        # => []
+    end
+end
+
+#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
+#! is set to the initial account code commitment in the prologue and as such this procedure will
+#! not result in a change to the account code commitment if the `account::set_code` procedure has
+#! not been invoked in this transaction.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.update_code_commitment
+    # fetch the new code commitment, which may be the initial one
+    exec.memory::get_new_acct_code_commitment
+    # => [NEW_ACCT_CODE_COMMITMENT]
+
+    # set the account code commitment to the new account code commitment (may not have changed)
+    exec.memory::set_acct_code_commitment dropw
+    # => []
+end
+
+#! Checks if a procedure has been called during transaction execution.
+#!
+#! Inputs:  [PROC_ROOT]
+#! Outputs: [was_called]
+#!
+#! Where:
+#! - PROC_ROOT is the hash of the procedure to check.
+#! - was_called is 1 if the procedure was called, 0 otherwise.
+#!
+#! Panics if:
+#! - the procedure root is not part of the account code.
+export.was_procedure_called
+    # load procedure index
+    emit.ACCOUNT_PUSH_PROCEDURE_INDEX_EVENT adv_push.1
+    # => [index, PROC_ROOT]
+
+    dup movdn.5
+    # => [index, PROC_ROOT, index]
+
+    # get procedure root from memory stored at index
+    exec.get_procedure_root
+    # => [MEM_PROC_ROOT, PROC_ROOT, index]
+
+    # verify that PROC_ROOT exists in memory at index
+    assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
+    # => [index]
+
+    exec.memory::get_acct_procedures_call_tracking_ptr
+    # => [was_called_offset, index]
+
+    # load the value of was_called
+    add mem_load
+    # => [was_called]
+end
+
+#! Sets the was_called flag to 1 for the specified procedure.
+#!
+#! Note:
+#! - This is an internal procedure. Unlike `was_procedure_called`, it expects the stack to contain
+#!   the index, not the procedure root.
+#! - We assume the index has been validated and is within bounds.
+#!
+#! Inputs:  [proc_idx]
+#! Outputs: []
+export.set_was_procedure_called
+    exec.memory::get_acct_procedures_call_tracking_ptr
+    # => [was_called_offset, proc_idx]
+
+    # save 1 to the was_called address
+    add push.1 swap mem_store
 end

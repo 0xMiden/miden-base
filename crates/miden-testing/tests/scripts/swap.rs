@@ -1,6 +1,7 @@
+use anyhow::Context;
 use miden_lib::{note::create_swap_note, transaction::TransactionKernel};
 use miden_objects::{
-    Felt,
+    Felt, Word,
     account::AccountId,
     asset::{Asset, NonFungibleAsset},
     crypto::rand::RpoRandomCoin,
@@ -14,11 +15,11 @@ use crate::prove_and_verify_transaction;
 
 // Creates a swap note and sends it with send_asset
 #[test]
-pub fn prove_send_swap_note() {
+pub fn prove_send_swap_note() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     let offered_asset = mock_chain
         .add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64)
-        .expect("failed to add pending new faucet")
+        .context("failed to add pending new faucet")?
         .mint(2000);
     let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let sender_account =
@@ -31,13 +32,14 @@ pub fn prove_send_swap_note() {
 
     let tx_script_src = &format!(
         "
+        use.miden::tx
         begin
             push.{recipient}
             push.{note_execution_hint}
             push.{note_type}
             push.0              # aux
             push.{tag}
-            call.::miden::contracts::wallets::basic::create_note
+            call.tx::create_note
 
             push.{asset}
             call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -57,16 +59,15 @@ pub fn prove_send_swap_note() {
 
     let create_swap_note_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[])
-        .expect("failed to build tx context")
+        .context("failed to build tx context")?
         .tx_script(tx_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note.clone())])
-        .build()
-        .execute()
-        .unwrap();
+        .build()?
+        .execute()?;
 
     let sender_account = mock_chain
         .add_pending_executed_transaction(&create_swap_note_tx)
-        .expect("failed to add pending executed transaction");
+        .context("failed to add pending executed transaction")?;
 
     assert!(
         create_swap_note_tx
@@ -78,16 +79,17 @@ pub fn prove_send_swap_note() {
     let swap_output_note = create_swap_note_tx.output_notes().iter().next().unwrap();
     assert_eq!(swap_output_note.assets().unwrap().iter().next().unwrap(), &offered_asset);
     assert!(prove_and_verify_transaction(create_swap_note_tx).is_ok());
+    Ok(())
 }
 
 // Consumes the swap note (same as the one used in the above test) and proves the transaction
 // The sender account also consumes the payback note
 #[test]
-fn prove_consume_swap_note() {
+fn prove_consume_swap_note() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     let offered_asset = mock_chain
         .add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64)
-        .expect("failed to add pending new faucet")
+        .context("failed to add pending new faucet")?
         .mint(2000);
     let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let sender_account =
@@ -105,14 +107,13 @@ fn prove_consume_swap_note() {
 
     let consume_swap_note_tx = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])
-        .expect("failed to build tx context")
-        .build()
-        .execute()
-        .unwrap();
+        .context("failed to build tx context")?
+        .build()?
+        .execute()?;
 
     let target_account = mock_chain
         .add_pending_executed_transaction(&consume_swap_note_tx)
-        .expect("failed to add pending executed transaction");
+        .context("failed to add pending executed transaction")?;
 
     let output_payback_note = consume_swap_note_tx.output_notes().iter().next().unwrap().clone();
     assert!(output_payback_note.id() == payback_note.id());
@@ -133,16 +134,16 @@ fn prove_consume_swap_note() {
 
     let consume_payback_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
-        .expect("failed to build tx context")
-        .build()
-        .execute()
-        .unwrap();
+        .context("failed to build tx context")?
+        .build()?
+        .execute()?;
 
     let sender_account = mock_chain
         .add_pending_executed_transaction(&consume_payback_tx)
-        .expect("failed to add pending executed transaction");
+        .context("failed to add pending executed transaction")?;
     assert!(sender_account.vault().assets().any(|asset| asset == requested_asset));
     assert!(prove_and_verify_transaction(consume_payback_tx).is_ok());
+    Ok(())
 }
 
 fn get_swap_notes(
@@ -157,7 +158,7 @@ fn get_swap_notes(
         requested_asset,
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap()
 }

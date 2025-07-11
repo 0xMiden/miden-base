@@ -1,8 +1,8 @@
 use alloc::vec::Vec;
 
 use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Digest, Felt, NoteId,
-    NoteMetadata, Serializable, Word,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, NoteId, NoteMetadata,
+    Serializable, Word,
 };
 use crate::Hasher;
 
@@ -42,7 +42,7 @@ impl NoteHeader {
     ///
     /// This value is used primarily for authenticating notes consumed when they are consumed
     /// in a transaction.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
     }
 }
@@ -56,8 +56,8 @@ impl NoteHeader {
 ///
 /// This value is used primarily for authenticating notes consumed when they are consumed
 /// in a transaction.
-pub fn compute_note_commitment(id: NoteId, metadata: &NoteMetadata) -> Digest {
-    Hasher::merge(&[id.inner(), Word::from(metadata).into()])
+pub fn compute_note_commitment(id: NoteId, metadata: &NoteMetadata) -> Word {
+    Hasher::merge(&[id.as_word(), Word::from(metadata)])
 }
 
 // CONVERSIONS FROM NOTE HEADER
@@ -85,7 +85,7 @@ impl From<&NoteHeader> for [Felt; 8] {
     fn from(note_header: &NoteHeader) -> Self {
         let mut elements: [Felt; 8] = Default::default();
         elements[..4].copy_from_slice(note_header.note_id.as_elements());
-        elements[4..].copy_from_slice(&Word::from(note_header.metadata()));
+        elements[4..].copy_from_slice(Word::from(note_header.metadata()).as_elements());
         elements
     }
 }
@@ -94,7 +94,7 @@ impl From<&NoteHeader> for [Word; 2] {
     fn from(note_header: &NoteHeader) -> Self {
         let mut elements: [Word; 2] = Default::default();
         elements[0].copy_from_slice(note_header.note_id.as_elements());
-        elements[1].copy_from_slice(&Word::from(note_header.metadata()));
+        elements[1].copy_from_slice(Word::from(note_header.metadata()).as_elements());
         elements
     }
 }

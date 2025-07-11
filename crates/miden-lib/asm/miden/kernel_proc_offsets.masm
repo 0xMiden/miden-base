@@ -4,7 +4,7 @@
 ### Account #####################################
 # Entire account commitment
 const.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET=0
-const.ACCOUNT_GET_CURRENT_COMMITMENT_OFFSET=1
+const.ACCOUNT_COMPUTE_CURRENT_COMMITMENT_OFFSET=1
 
 # ID
 const.ACCOUNT_GET_ID_OFFSET=2
@@ -30,43 +30,46 @@ const.ACCOUNT_REMOVE_ASSET_OFFSET=13
 const.ACCOUNT_GET_BALANCE_OFFSET=14
 const.ACCOUNT_HAS_NON_FUNGIBLE_ASSET_OFFSET=15
 
+# Procedure introspection
+const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=16
+
 ### Faucet ######################################
-const.FAUCET_MINT_ASSET_OFFSET=16
-const.FAUCET_BURN_ASSET_OFFSET=17
-const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=18
-const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=19
+const.FAUCET_MINT_ASSET_OFFSET=17
+const.FAUCET_BURN_ASSET_OFFSET=18
+const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=19
+const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=20
 
 ### Note ########################################
 # assets
-const.NOTE_GET_ASSETS_INFO_OFFSET=20             # accessor
-const.NOTE_ADD_ASSET_OFFSET=21                   # mutator
+const.NOTE_GET_ASSETS_INFO_OFFSET=21             # accessor
+const.NOTE_ADD_ASSET_OFFSET=22                   # mutator
 
 # note parameters
-const.NOTE_GET_SERIAL_NUMBER_OFFSET=22
-const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=23
-const.NOTE_GET_SENDER_OFFSET=24
-const.NOTE_GET_SCRIPT_ROOT_OFFSET=25
+const.NOTE_GET_SERIAL_NUMBER_OFFSET=23
+const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=24
+const.NOTE_GET_SENDER_OFFSET=25
+const.NOTE_GET_SCRIPT_ROOT_OFFSET=26
 
 ### Tx ##########################################
 # creation
-const.TX_CREATE_NOTE_OFFSET=26
+const.TX_CREATE_NOTE_OFFSET=27
 
 # io commitments
-const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=27
-const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=28
+const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=28
+const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=29
 
 # block info
-const.TX_GET_BLOCK_COMMITMENT_OFFSET=29
-const.TX_GET_BLOCK_NUMBER_OFFSET=30
-const.TX_GET_BLOCK_TIMESTAMP_OFFSET=31
+const.TX_GET_BLOCK_COMMITMENT_OFFSET=30
+const.TX_GET_BLOCK_NUMBER_OFFSET=31
+const.TX_GET_BLOCK_TIMESTAMP_OFFSET=32
 
 # foreign context
-const.TX_START_FOREIGN_CONTEXT_OFFSET=32
-const.TX_END_FOREIGN_CONTEXT_OFFSET=33
+const.TX_START_FOREIGN_CONTEXT_OFFSET=33
+const.TX_END_FOREIGN_CONTEXT_OFFSET=34
 
 # expiration data
-const.TX_GET_EXPIRATION_DELTA_OFFSET=34          # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=35   # mutator
+const.TX_GET_EXPIRATION_DELTA_OFFSET=35          # accessor
+const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=36   # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -85,16 +88,16 @@ export.account_get_initial_commitment_offset
     push.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET
 end
 
-#! Returns the offset of the `account_get_current_commitment` kernel procedure.
+#! Returns the offset of the `account_compute_current_commitment` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_get_current_commitment` kernel procedure required to get
+#! - proc_offset is the offset of the `account_compute_current_commitment` kernel procedure required to get
 #!   the address where this procedure is stored.
-export.account_get_current_commitment_offset
-    push.ACCOUNT_GET_CURRENT_COMMITMENT_OFFSET
+export.account_compute_current_commitment_offset
+    push.ACCOUNT_COMPUTE_CURRENT_COMMITMENT_OFFSET
 end
 
 #! Returns the offset of the `account_get_id` kernel procedure.
@@ -263,6 +266,18 @@ end
 #!   get the address where this procedure is stored.
 export.account_has_non_fungible_asset_offset
     push.ACCOUNT_HAS_NON_FUNGIBLE_ASSET_OFFSET
+end
+
+#! Returns the offset of the `account_was_procedure_called` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `account_was_procedure_called` kernel procedure required to
+#!   get the address where this procedure is stored.
+export.account_was_procedure_called_offset
+    push.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET
 end
 
 ### FAUCET ######################################
