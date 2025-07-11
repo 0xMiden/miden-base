@@ -19,10 +19,12 @@ use miden_testing::{Auth, MockChain};
 /// [wallet]: miden_lib::account::interface::AccountComponentInterface::BasicWallet
 #[test]
 fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
     let sent_asset = FungibleAsset::mock(10);
+
+    let mut builder = MockChain::builder();
     let sender_basic_wallet_account =
-        mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![FungibleAsset::mock(100)]);
+        builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(100)])?;
+    let mock_chain = builder.build()?;
 
     let sender_account_interface = AccountInterface::from(&sender_basic_wallet_account);
 
