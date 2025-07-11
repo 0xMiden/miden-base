@@ -6,21 +6,16 @@ use alloc::{
 };
 
 use anyhow::Context;
-use itertools::Itertools;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::{
-    note::{create_p2id_note, create_p2ide_note},
-    transaction::TransactionKernel,
-};
+use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
     account::{Account, AccountId, StorageSlot, delta::AccountUpdateDetails},
     asset::Asset,
     batch::{ProposedBatch, ProvenBatch},
     block::{
-        AccountTree, AccountWitness, BlockAccountUpdate, BlockHeader, BlockInputs, BlockNoteTree,
-        BlockNumber, Blockchain, NullifierTree, NullifierWitness, OutputNoteBatch, ProposedBlock,
-        ProvenBlock,
+        AccountTree, AccountWitness, BlockHeader, BlockInputs, BlockNumber, Blockchain,
+        NullifierTree, NullifierWitness, ProposedBlock, ProvenBlock,
     },
     crypto::merkle::SmtProof,
     note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
@@ -208,11 +203,7 @@ impl MockChain {
 
     /// Creates a new `MockChain` with an empty genesis block.
     pub fn new() -> Self {
-        let (genesis_block, account_tree) =
-            create_genesis_state([], []).expect("empty chain should be valid");
-
-        Self::from_genesis_block(genesis_block, account_tree, BTreeMap::new())
-            .expect("empty chain should be valid")
+        Self::builder().build().expect("empty chain should be valid")
     }
 
     /// Returns a new, empty [`MockChainBuilder`].
@@ -1101,80 +1092,6 @@ impl MockChain {
 
         Ok(proven_block)
     }
-}
-
-/// Creates the genesis state, consisting of a block containing the provided account updates and an
-/// account tree with those accounts.
-pub(super) fn create_genesis_state(
-    accounts: impl IntoIterator<Item = Account>,
-    notes: impl IntoIterator<Item = OutputNote>,
-) -> anyhow::Result<(ProvenBlock, AccountTree)> {
-    let block_account_updates: Vec<BlockAccountUpdate> = accounts
-        .into_iter()
-        .map(|account| {
-            BlockAccountUpdate::new(
-                account.id(),
-                account.commitment(),
-                AccountUpdateDetails::New(account),
-            )
-        })
-        .collect();
-
-    let account_tree = AccountTree::with_entries(
-        block_account_updates
-            .iter()
-            .map(|account| (account.account_id(), account.final_state_commitment())),
-    )
-    .context("failed to create genesis account tree")?;
-
-    let note_chunks = notes.into_iter().chunks(MAX_OUTPUT_NOTES_PER_BATCH);
-    let output_note_batches: Vec<OutputNoteBatch> = note_chunks
-        .into_iter()
-        .map(|batch_notes| batch_notes.into_iter().enumerate().collect::<Vec<_>>())
-        .collect();
-
-    let created_nullifiers = Vec::new();
-    let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
-
-    let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
-        .context("failed to create block note tree")?;
-
-    let version = 0;
-    let prev_block_commitment = Word::empty();
-    let block_num = BlockNumber::from(0u32);
-    let chain_commitment = Blockchain::new().commitment();
-    let account_root = account_tree.root();
-    let nullifier_root = NullifierTree::new().root();
-    let note_root = note_tree.root();
-    let tx_commitment = transactions.commitment();
-    let tx_kernel_commitment = TransactionKernel::kernel_commitment();
-    let proof_commitment = Word::empty();
-    let timestamp = MockChain::TIMESTAMP_START_SECS;
-
-    let header = BlockHeader::new(
-        version,
-        prev_block_commitment,
-        block_num,
-        chain_commitment,
-        account_root,
-        nullifier_root,
-        note_root,
-        tx_commitment,
-        tx_kernel_commitment,
-        proof_commitment,
-        timestamp,
-    );
-
-    Ok((
-        ProvenBlock::new_unchecked(
-            header,
-            block_account_updates,
-            output_note_batches,
-            created_nullifiers,
-            transactions,
-        ),
-        account_tree,
-    ))
 }
 
 impl Default for MockChain {

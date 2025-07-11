@@ -1,27 +1,32 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use anyhow::Context;
+use itertools::Itertools;
 use miden_lib::{
     account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
     note::{create_p2id_note, create_p2ide_note},
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
-    Felt, NoteError, Word, ZERO,
-    account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot},
+    Felt, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO,
+    account::{
+        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
+        delta::AccountUpdateDetails,
+    },
     asset::{Asset, TokenSymbol},
-    block::BlockNumber,
+    block::{
+        AccountTree, BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain,
+        NullifierTree, OutputNoteBatch, ProvenBlock,
+    },
     note::{Note, NoteType},
     testing::account_component::AccountMockComponent,
-    transaction::OutputNote,
+    transaction::{OrderedTransactionHeaders, OutputNote},
 };
 use rand::Rng;
 use vm_processor::crypto::RpoRandomCoin;
 
 use crate::{
-    AccountState, Auth, MockChain,
-    mock_chain::chain::{AccountCredentials, create_genesis_state},
-    utils::create_p2any_note,
+    AccountState, Auth, MockChain, mock_chain::chain::AccountCredentials, utils::create_p2any_note,
 };
 
 /// A builder for a [`MockChain`].
@@ -378,4 +383,78 @@ impl Default for MockChainBuilder {
     fn default() -> Self {
         Self::new()
     }
+}
+
+/// Creates the genesis state, consisting of a block containing the provided account updates and an
+/// account tree with those accounts.
+fn create_genesis_state(
+    accounts: impl IntoIterator<Item = Account>,
+    notes: impl IntoIterator<Item = OutputNote>,
+) -> anyhow::Result<(ProvenBlock, AccountTree)> {
+    let block_account_updates: Vec<BlockAccountUpdate> = accounts
+        .into_iter()
+        .map(|account| {
+            BlockAccountUpdate::new(
+                account.id(),
+                account.commitment(),
+                AccountUpdateDetails::New(account),
+            )
+        })
+        .collect();
+
+    let account_tree = AccountTree::with_entries(
+        block_account_updates
+            .iter()
+            .map(|account| (account.account_id(), account.final_state_commitment())),
+    )
+    .context("failed to create genesis account tree")?;
+
+    let note_chunks = notes.into_iter().chunks(MAX_OUTPUT_NOTES_PER_BATCH);
+    let output_note_batches: Vec<OutputNoteBatch> = note_chunks
+        .into_iter()
+        .map(|batch_notes| batch_notes.into_iter().enumerate().collect::<Vec<_>>())
+        .collect();
+
+    let created_nullifiers = Vec::new();
+    let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
+
+    let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
+        .context("failed to create block note tree")?;
+
+    let version = 0;
+    let prev_block_commitment = Word::empty();
+    let block_num = BlockNumber::from(0u32);
+    let chain_commitment = Blockchain::new().commitment();
+    let account_root = account_tree.root();
+    let nullifier_root = NullifierTree::new().root();
+    let note_root = note_tree.root();
+    let tx_commitment = transactions.commitment();
+    let tx_kernel_commitment = TransactionKernel::kernel_commitment();
+    let proof_commitment = Word::empty();
+    let timestamp = MockChain::TIMESTAMP_START_SECS;
+
+    let header = BlockHeader::new(
+        version,
+        prev_block_commitment,
+        block_num,
+        chain_commitment,
+        account_root,
+        nullifier_root,
+        note_root,
+        tx_commitment,
+        tx_kernel_commitment,
+        proof_commitment,
+        timestamp,
+    );
+
+    Ok((
+        ProvenBlock::new_unchecked(
+            header,
+            block_account_updates,
+            output_note_batches,
+            created_nullifiers,
+            transactions,
+        ),
+        account_tree,
+    ))
 }
