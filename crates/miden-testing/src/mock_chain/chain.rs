@@ -80,12 +80,7 @@ use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 /// let sender = builder.create_new_wallet(Auth::BasicAuth)?;
 /// let target = builder.create_new_wallet(Auth::BasicAuth)?;
 ///
-/// let note = builder.add_p2id_note(
-///     faucet.id(),
-///     target.id(),
-///     &[asset],
-///     NoteType::Public,
-/// )?;
+/// let note = builder.add_p2id_note(faucet.id(), target.id(), &[asset], NoteType::Public)?;
 ///
 /// let mock_chain = builder.build()?;
 ///
