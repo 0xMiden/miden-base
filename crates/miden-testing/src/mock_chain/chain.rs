@@ -14,7 +14,7 @@ use miden_lib::{
 };
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
-    account::{Account, AccountBuilder, AccountId, StorageSlot, delta::AccountUpdateDetails},
+    account::{Account, AccountId, StorageSlot, delta::AccountUpdateDetails},
     asset::Asset,
     batch::{ProposedBatch, ProvenBatch},
     block::{
@@ -35,7 +35,7 @@ use rand_chacha::ChaCha20Rng;
 use vm_processor::{Word, crypto::RpoRandomCoin};
 
 use super::note::MockChainNote;
-use crate::{Auth, MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 
 // MOCK CHAIN
 // ================================================================================================
@@ -906,58 +906,6 @@ impl MockChain {
         self.pending_objects.created_nullifiers.push(nullifier);
     }
 
-    /// Adds the [`AccountComponent`](miden_objects::account::AccountComponent) corresponding to
-    /// `auth_method` to the account in the builder and builds a new or existing account
-    /// depending on `account_state`.
-    ///
-    /// The account is added to the list of committed accounts _and_, if [`AccountState::Exists`] is
-    /// passed, is also added to the list of pending accounts. Adding it to committed accounts
-    /// makes the account seed and authenticator available for account creation and
-    /// authentication, respectively. If the account exists, then the next block that is created
-    /// will add the pending accounts to the chain state.
-    fn add_pending_account_from_builder(
-        &mut self,
-        auth_method: Auth,
-        mut account_builder: AccountBuilder,
-        account_state: AccountState,
-    ) -> anyhow::Result<Account> {
-        let (auth_component, authenticator) = auth_method.build_component();
-        account_builder = account_builder.with_auth_component(auth_component);
-
-        let (account, seed) = if let AccountState::New = account_state {
-            let (account, seed) =
-                account_builder.build().context("failed to build account from builder")?;
-            (account, Some(seed))
-        } else {
-            let account = account_builder
-                .build_existing()
-                .context("failed to build account from builder")?;
-            (account, None)
-        };
-
-        // Add account to the committed accounts so transaction inputs can be retrieved via the mock
-        // chain APIs.
-        // We also have to insert these into the committed accounts so the account seed and
-        // authenticator are available. Without this, the account couldn't be created or
-        // authenticated.
-        self.committed_accounts.insert(account.id(), account.clone());
-        self.account_credentials
-            .insert(account.id(), AccountCredentials::new(seed, authenticator));
-
-        // Do not add new accounts to the pending accounts. Usually, new accounts are added in tests
-        // to create transactions that create these new accounts in the chain. If we add them to the
-        // pending accounts and the test calls prove_next_block (which typically happens to add all
-        // pending objects to the chain state as part of the test setup), the account will be added
-        // to the chain which means the account-creating transaction fails because the
-        // account already exists. So new accounts are added only to the committed accounts
-        // so the transaction context APIs work as expected.
-        if let AccountState::Exists = account_state {
-            self.add_pending_account(account.clone());
-        }
-
-        Ok(account)
-    }
-
     /// Adds a new `Account` to the list of pending objects.
     ///
     /// A block has to be created to finalize the new entity.
@@ -1437,13 +1385,15 @@ impl From<ExecutedTransaction> for TxContextInput {
 
 #[cfg(test)]
 mod tests {
+    use miden_lib::account::wallets::BasicWallet;
     use miden_objects::{
-        account::AccountStorageMode,
+        account::{AccountBuilder, AccountStorageMode},
         asset::FungibleAsset,
         testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
     };
 
     use super::*;
+    use crate::Auth;
 
     #[test]
     fn prove_until_block() -> anyhow::Result<()> {
@@ -1462,22 +1412,24 @@ mod tests {
             .storage_mode(AccountStorageMode::Private)
             .with_component(BasicWallet);
 
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_account_from_builder(
+        let mut builder = MockChain::builder();
+        let account = builder.add_account_from_builder(
             Auth::BasicAuth,
             account_builder,
             AccountState::New,
         )?;
+
         let account_id = account.id();
         assert_eq!(account.nonce().as_int(), 0);
 
-        let note_1 = mock_chain.add_pending_p2id_note(
+        let note_1 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[Asset::Fungible(FungibleAsset::new(faucet_id, 1000u64).unwrap())],
             NoteType::Private,
         )?;
 
+        let mut mock_chain = builder.build()?;
         mock_chain.prove_next_block()?;
 
         let tx = mock_chain
