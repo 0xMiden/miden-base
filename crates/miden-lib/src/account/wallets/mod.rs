@@ -3,6 +3,8 @@ use alloc::string::ToString;
 use miden_objects::{
     AccountError, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType},
+    assembly::{ProcedureName, QualifiedProcedureName},
+    utils::sync::LazyLock,
 };
 
 use super::AuthScheme;
@@ -10,6 +12,30 @@ use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
 
 // BASIC WALLET
 // ================================================================================================
+
+// Initialize the `receive_asset` procedure of the Basic Wallet only once.
+static BASIC_WALLET_RECEIVE_ASSET: LazyLock<Word> = LazyLock::new(|| {
+    let receive_asset_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicWallet::RECEIVE_ASSET_PROC_NAME)
+            .expect("failed to create name for 'receive_asset' procedure"),
+    );
+    basic_wallet_library()
+        .get_procedure_root_by_name(receive_asset_proc_name)
+        .expect("Basic Wallet should contain 'receive_asset' procedure")
+});
+
+// Initialize the `move_asset_to_note` procedure of the Basic Wallet only once.
+static BASIC_WALLET_MOVE_ASSET_TO_NOTE: LazyLock<Word> = LazyLock::new(|| {
+    let move_asset_to_note_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicWallet::MOVE_ASSET_TO_NOTE_PROC_NAME)
+            .expect("failed to create name for 'move_asset_to_note' procedure"),
+    );
+    basic_wallet_library()
+        .get_procedure_root_by_name(move_asset_to_note_proc_name)
+        .expect("Basic Wallet should contain 'move_asset_to_note' procedure")
+});
 
 /// An [`AccountComponent`] implementing a basic wallet.
 ///
@@ -28,6 +54,26 @@ use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct BasicWallet;
+
+impl BasicWallet {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+    const RECEIVE_ASSET_PROC_NAME: &str = "receive_asset";
+    const MOVE_ASSET_TO_NOTE_PROC_NAME: &str = "move_asset_to_note";
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the digest of the `receive_asset` wallet procedure.
+    pub fn receive_asset_digest() -> Word {
+        *BASIC_WALLET_RECEIVE_ASSET
+    }
+
+    /// Returns the digest of the `move_asset_to_note` wallet procedure.
+    pub fn move_asset_to_note_digest() -> Word {
+        *BASIC_WALLET_MOVE_ASSET_TO_NOTE
+    }
+}
 
 impl From<BasicWallet> for AccountComponent {
     fn from(_: BasicWallet) -> Self {
