@@ -68,29 +68,31 @@ use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 /// ## Create mock objects and build a transaction context
 /// ```
 /// # use anyhow::Result;
-/// # use miden_objects::{Felt, asset::FungibleAsset, note::NoteType};
+/// # use miden_objects::{Felt, asset::{Asset, FungibleAsset}, note::NoteType};
 /// # use miden_testing::{Auth, MockChain, TransactionContextBuilder};
 ///
 /// # fn main() -> Result<()> {
-/// let mut mock_chain = MockChain::new();
+/// let mut builder = MockChain::builder();
 ///
-/// let faucet = mock_chain.add_pending_new_faucet(Auth::BasicAuth, "USDT", 100_000)?;
-/// let _asset = faucet.mint(1000);
+/// let faucet = builder.create_new_faucet(Auth::BasicAuth, "USDT", 100_000)?;
+/// let asset = Asset::from(FungibleAsset::new(faucet.id(), 10)?);
 ///
-/// let sender = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
-/// let target = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
+/// let sender = builder.create_new_wallet(Auth::BasicAuth)?;
+/// let target = builder.create_new_wallet(Auth::BasicAuth)?;
 ///
-/// let note = mock_chain.add_pending_p2id_note(
+/// let note = builder.add_p2id_note(
 ///     faucet.id(),
 ///     target.id(),
-///     &[FungibleAsset::mock(10)],
+///     &[asset],
 ///     NoteType::Public,
 /// )?;
 ///
-/// mock_chain.prove_next_block()?;
+/// let mock_chain = builder.build()?;
 ///
-/// let tx_context = mock_chain.build_tx_context(sender.id(), &[note.id()], &[])?.build()?;
-/// let result = tx_context.execute();
+/// // The target account is a new account so we move it into the build_tx_context, since the
+/// // chain's committed accounts do not yet contain it.
+/// let tx_context = mock_chain.build_tx_context(target, &[note.id()], &[])?.build()?;
+/// let executed_transaction = tx_context.execute()?;
 /// # Ok(())
 /// # }
 /// ```
@@ -105,24 +107,24 @@ use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 /// # use miden_testing::{Auth, MockChain};
 ///
 /// # fn main() -> Result<()> {
-/// let mut mock_chain = MockChain::new();
+/// let mut builder = MockChain::builder();
 ///
 /// // Add a recipient wallet.
-/// let receiver = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
+/// let receiver = builder.add_existing_wallet(Auth::BasicAuth)?;
 ///
 /// // Add a wallet with assets.
-/// let sender = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
+/// let sender = builder.add_existing_wallet(Auth::IncrNonce)?;
 /// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
 ///
 /// // Add a pending P2ID note to the chain.
-/// let note = mock_chain.add_pending_p2id_note(
+/// let note = builder.add_p2id_note(
 ///     sender.id(),
 ///     receiver.id(),
 ///     &[Asset::Fungible(fungible_asset)],
 ///     NoteType::Public,
 /// )?;
 ///
-/// mock_chain.prove_next_block()?;
+/// let mut mock_chain = builder.build()?;
 ///
 /// let transaction = mock_chain
 ///     .build_tx_context(receiver.id(), &[note.id()], &[])?
