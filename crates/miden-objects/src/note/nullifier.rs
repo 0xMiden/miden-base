@@ -1,11 +1,12 @@
 use alloc::string::String;
 use core::fmt::{Debug, Display, Formatter};
 
+use miden_crypto::WordError;
+
 use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Digest, Felt, Hasher,
-    NoteDetails, Serializable, WORD_SIZE, Word, ZERO,
+    ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Hasher, NoteDetails,
+    Serializable, WORD_SIZE, Word, ZERO,
 };
-use crate::utils::{HexParseError, hex_to_bytes};
 
 // CONSTANTS
 // ================================================================================================
@@ -27,18 +28,18 @@ const NULLIFIER_PREFIX_SHIFT: u8 = 48;
 /// - To compute the nullifier we must know all components of the note: serial_num, script_root,
 ///   input_commitment and asset_commitment.
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Nullifier(Digest);
+pub struct Nullifier(Word);
 
 impl Nullifier {
     /// Returns a new note [Nullifier] instantiated from the provided digest.
     pub fn new(
-        script_root: Digest,
-        inputs_commitment: Digest,
-        asset_commitment: Digest,
+        script_root: Word,
+        inputs_commitment: Word,
+        asset_commitment: Word,
         serial_num: Word,
     ) -> Self {
         let mut elements = [ZERO; 4 * WORD_SIZE];
-        elements[..4].copy_from_slice(&serial_num);
+        elements[..4].copy_from_slice(serial_num.as_elements());
         elements[4..8].copy_from_slice(script_root.as_elements());
         elements[8..12].copy_from_slice(inputs_commitment.as_elements());
         elements[12..].copy_from_slice(asset_commitment.as_elements());
@@ -56,7 +57,7 @@ impl Nullifier {
     }
 
     /// Returns the digest defining this nullifier.
-    pub fn inner(&self) -> Digest {
+    pub fn inner(&self) -> Word {
         self.0
     }
 
@@ -69,11 +70,8 @@ impl Nullifier {
 
     /// Creates a Nullifier from a hex string. Assumes that the string starts with "0x" and
     /// that the hexadecimal characters are big-endian encoded.
-    pub fn from_hex(hex_value: &str) -> Result<Self, HexParseError> {
-        hex_to_bytes(hex_value).and_then(|bytes: [u8; 32]| {
-            let digest = Digest::try_from(bytes)?;
-            Ok(digest.into())
-        })
+    pub fn from_hex(hex_value: &str) -> Result<Self, WordError> {
+        Word::try_from(hex_value).map(Self::from)
     }
 
     /// Returns a big-endian, hex-encoded string.
@@ -85,7 +83,7 @@ impl Nullifier {
     pub fn dummy(n: u64) -> Self {
         use vm_core::FieldElement;
 
-        Self(Digest::new([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(n)]))
+        Self(Word::new([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(n)]))
     }
 }
 
@@ -116,14 +114,8 @@ impl From<&NoteDetails> for Nullifier {
 }
 
 impl From<Word> for Nullifier {
-    fn from(value: Word) -> Self {
-        Self(value.into())
-    }
-}
-
-impl From<Digest> for Nullifier {
-    fn from(value: Digest) -> Self {
-        Self(value)
+    fn from(digest: Word) -> Self {
+        Self(digest)
     }
 }
 
@@ -132,7 +124,7 @@ impl From<Digest> for Nullifier {
 
 impl From<Nullifier> for Word {
     fn from(nullifier: Nullifier) -> Self {
-        nullifier.0.into()
+        nullifier.0
     }
 }
 
@@ -144,7 +136,7 @@ impl From<Nullifier> for [u8; 32] {
 
 impl From<&Nullifier> for Word {
     fn from(nullifier: &Nullifier) -> Self {
-        nullifier.0.into()
+        nullifier.0
     }
 }
 
@@ -165,7 +157,7 @@ impl Serializable for Nullifier {
 
 impl Deserializable for Nullifier {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let nullifier = Digest::read_from(source)?;
+        let nullifier = Word::read_from(source)?;
         Ok(Self(nullifier))
     }
 }

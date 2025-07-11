@@ -2,10 +2,9 @@ use alloc::vec::Vec;
 
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf, SmtProof};
 use vm_core::utils::{Deserializable, Serializable};
-use vm_processor::Digest;
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlot};
-use crate::AccountError;
+use crate::{AccountError, Word};
 
 /// A partial representation of an account storage, containing only a subset of the storage data.
 ///
@@ -15,7 +14,7 @@ use crate::AccountError;
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PartialStorage {
     /// Commitment of the account's storage slots.
-    commitment: Digest,
+    commitment: Word,
     /// Account's storage header, containing top-level slot values.
     header: AccountStorageHeader,
     /// Merkle proofs for a subset of the account's storage maps keys
@@ -42,7 +41,7 @@ impl PartialStorage {
     }
 
     /// Returns the commitment of this partial storage.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.commitment
     }
 
@@ -50,8 +49,8 @@ impl PartialStorage {
     ///
     /// # Errors:
     /// - If the index is out of bounds
-    pub fn get_item(&self, index: u8) -> Result<Digest, AccountError> {
-        self.header.slot(index as usize).map(|(_type, value)| value.into())
+    pub fn get_item(&self, index: u8) -> Result<Word, AccountError> {
+        self.header.slot(index as usize).map(|(_type, value)| *value)
     }
 
     // TODO: Add from account storage with (slot/[key])?
@@ -63,7 +62,7 @@ impl PartialStorage {
         self.storage_map_proofs.iter().flat_map(|proof| {
             proof
                 .path()
-                .inner_nodes(proof.leaf().index().value(), proof.leaf().hash())
+                .authenticated_nodes(proof.leaf().index().value(), proof.leaf().hash())
                 .expect("invalid SMT leaf index")
         })
     }

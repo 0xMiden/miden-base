@@ -5,7 +5,7 @@ use alloc::{
 };
 
 use crate::{
-    Digest, EMPTY_WORD, MAX_BATCHES_PER_BLOCK,
+    EMPTY_WORD, MAX_BATCHES_PER_BLOCK, Word,
     account::{AccountId, delta::AccountUpdateDetails},
     batch::{BatchAccountUpdate, BatchId, InputOutputNoteTracker, OrderedBatches, ProvenBatch},
     block::{
@@ -582,7 +582,7 @@ struct AccountUpdateAggregator {
     /// commitment from which the contained update starts.
     /// An invariant of this field is that if the outer map has an entry for some account, the
     /// inner update map is guaranteed to not be empty as well.
-    updates: BTreeMap<AccountId, BTreeMap<Digest, (BatchAccountUpdate, BatchId)>>,
+    updates: BTreeMap<AccountId, BTreeMap<Word, (BatchAccountUpdate, BatchId)>>,
 }
 
 impl AccountUpdateAggregator {
@@ -665,14 +665,14 @@ impl AccountUpdateAggregator {
     fn aggregate_account(
         account_id: AccountId,
         initial_state_proof: AccountWitness,
-        mut updates: BTreeMap<Digest, (BatchAccountUpdate, BatchId)>,
+        mut updates: BTreeMap<Word, (BatchAccountUpdate, BatchId)>,
     ) -> Result<AccountUpdateWitness, ProposedBlockError> {
         // The account witness could prove inclusion of a different ID in which case the initial
         // state commitment of the current ID is the empty word.
         let initial_state_commitment = if account_id == initial_state_proof.id() {
             initial_state_proof.state_commitment()
         } else {
-            Digest::from(EMPTY_WORD)
+            Word::empty()
         };
 
         let mut details: Option<AccountUpdateDetails> = None;

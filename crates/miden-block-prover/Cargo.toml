@@ -1,16 +1,16 @@
 [package]
-name = "miden-block-prover"
-version = "0.11.0"
-description = "Miden blockchain block executor and prover"
-readme = "README.md"
-categories = ["cryptography"]
-keywords = ["miden", "block", "prover"]
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
+authors.workspace      = true
+categories             = ["cryptography"]
+description            = "Miden blockchain block executor and prover"
+edition.workspace      = true
+homepage.workspace     = true
+keywords               = ["block", "miden", "prover"]
+license.workspace      = true
+name                   = "miden-block-prover"
+readme                 = "README.md"
+repository.workspace   = true
 rust-version.workspace = true
-edition.workspace = true
+version                = "0.11.0"
 
 [lib]
 bench = false
@@ -19,6 +19,6 @@ bench = false
 testing = []
 
 [dependencies]
-miden-lib = { workspace = true }
+miden-lib     = { workspace = true }
 miden-objects = { workspace = true }
-thiserror = { workspace = true }
+thiserror     = { workspace = true }

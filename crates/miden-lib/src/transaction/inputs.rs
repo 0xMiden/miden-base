@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use miden_objects::{
-    Digest, EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO,
+    EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO,
     account::{AccountHeader, AccountId, PartialAccount},
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
@@ -146,7 +146,7 @@ impl TransactionAdviceInputs {
 
         // --- number of notes, script root and args key ----------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
-        self.extend_stack(tx_args.tx_script().map_or(Word::default(), |script| *script.root()));
+        self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
         self.extend_stack(tx_args.tx_script_arg());
     }
 
@@ -252,7 +252,7 @@ impl TransactionAdviceInputs {
         self.add_map_entry(leaf.hash(), leaf.to_elements());
 
         // extend the merkle store and map with account witnesses merkle path
-        self.extend_merkle_store(witness.inner_nodes());
+        self.extend_merkle_store(witness.authenticated_nodes());
     }
 
     // NOTE INJECTION
@@ -299,7 +299,7 @@ impl TransactionAdviceInputs {
             note_data.extend(*recipient.script().root());
             note_data.extend(*recipient.inputs().commitment());
             note_data.extend(*assets.commitment());
-            note_data.extend(Word::from(*note_arg));
+            note_data.extend(*note_arg);
             note_data.extend(Word::from(note.metadata()));
             note_data.push(recipient.inputs().num_values().into());
             note_data.push((assets.num_assets() as u32).into());
@@ -312,7 +312,7 @@ impl TransactionAdviceInputs {
                     note_data.push(Felt::ONE);
 
                     // Merkle path
-                    self.extend_merkle_store(proof.inner_nodes(note.commitment()));
+                    self.extend_merkle_store(proof.authenticated_nodes(note.commitment()));
 
                     let block_num = proof.location().block_num();
                     let block_header = if block_num == tx_inputs.block_header().block_num() {
@@ -343,11 +343,11 @@ impl TransactionAdviceInputs {
     // --------------------------------------------------------------------------------------------
 
     /// Extends the map of values with the given argument, replacing previously inserted items.
-    fn extend_map(&mut self, iter: impl IntoIterator<Item = (Digest, Vec<Felt>)>) {
+    fn extend_map(&mut self, iter: impl IntoIterator<Item = (Word, Vec<Felt>)>) {
         self.0.extend_map(iter);
     }
 
-    fn add_map_entry(&mut self, key: Digest, values: Vec<Felt>) {
+    fn add_map_entry(&mut self, key: Word, values: Vec<Felt>) {
         self.0.extend_map([(key, values)]);
     }
 
@@ -381,6 +381,6 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn build_account_id_key(id: AccountId) -> Digest {
-    Digest::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
+fn build_account_id_key(id: AccountId) -> Word {
+    Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
 }

@@ -7,7 +7,7 @@ use miden_lib::{
     note::create_p2ide_note,
 };
 use miden_objects::{
-    Felt, ONE,
+    Felt, Word,
     account::Account,
     asset::{Asset, AssetVault, FungibleAsset},
     block::BlockNumber,
@@ -374,7 +374,7 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
         Some(timelock_block_height.into()),
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
 
     // push note on-chain

@@ -1,7 +1,7 @@
 use alloc::vec::Vec;
 
 use crate::{
-    Digest, MIN_PROOF_SECURITY_LEVEL,
+    MIN_PROOF_SECURITY_LEVEL, Word,
     block::{BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree, OutputNoteBatch},
     note::Nullifier,
     transaction::{OrderedTransactionHeaders, OutputNote},
@@ -72,7 +72,7 @@ impl ProvenBlock {
     }
 
     /// Returns the commitment to this block.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.header.commitment()
     }
 

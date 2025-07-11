@@ -1,8 +1,8 @@
 use alloc::collections::BTreeSet;
 
-use miden_crypto::merkle::{Mmr, MmrError, MmrPeaks, MmrProof, PartialMmr};
+use miden_crypto::merkle::{Forest, Mmr, MmrError, MmrPeaks, MmrProof, PartialMmr};
 
-use crate::{Digest, block::BlockNumber};
+use crate::{Word, block::BlockNumber};
 
 /// The [Merkle Mountain Range](Mmr) defining the Miden blockchain.
 ///
@@ -47,7 +47,7 @@ impl Blockchain {
     pub fn num_blocks(&self) -> u32 {
         // SAFETY: The chain should never contain more than u32::MAX blocks, so a non-panicking cast
         // should be fine.
-        self.mmr.forest() as u32
+        self.mmr.forest().num_leaves() as u32
     }
 
     /// Returns the tip of the chain, i.e. the number of the latest block in the chain, unless the
@@ -61,7 +61,7 @@ impl Blockchain {
     }
 
     /// Returns the chain commitment.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.peaks().hash_peaks()
     }
 
@@ -81,7 +81,7 @@ impl Blockchain {
     ///
     /// Returns an error if the specified `block` exceeds the number of blocks in the chain.
     pub fn peaks_at(&self, checkpoint: BlockNumber) -> Result<MmrPeaks, MmrError> {
-        self.mmr.peaks_at(checkpoint.as_usize())
+        self.mmr.peaks_at(Forest::new(checkpoint.as_usize()))
     }
 
     /// Returns an [`MmrProof`] for the `block` with the given number.
@@ -107,7 +107,7 @@ impl Blockchain {
         block: BlockNumber,
         checkpoint: BlockNumber,
     ) -> Result<MmrProof, MmrError> {
-        self.mmr.open_at(block.as_usize(), checkpoint.as_usize())
+        self.mmr.open_at(block.as_usize(), Forest::new(checkpoint.as_usize()))
     }
 
     /// Returns a reference to the underlying [`Mmr`].
@@ -156,7 +156,7 @@ impl Blockchain {
     /// Adds a block commitment to the MMR.
     ///
     /// The caller must ensure that this commitent is the one for the next block in the chain.
-    pub fn push(&mut self, block_commitment: Digest) {
+    pub fn push(&mut self, block_commitment: Word) {
         self.mmr.add(block_commitment);
     }
 }

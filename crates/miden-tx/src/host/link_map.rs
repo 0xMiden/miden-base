@@ -1,11 +1,7 @@
 use core::cmp::Ordering;
 
-use miden_objects::{
-    Felt, Word, ZERO, account::delta::LexicographicWord, assembly::mast::MastNodeExt,
-};
-use vm_processor::{
-    AdviceProvider, AdviceSource, ContextId, ErrorContext, ExecutionError, ProcessState,
-};
+use miden_objects::{Felt, LexicographicWord, Word, ZERO};
+use vm_processor::{ContextId, ExecutionError, ProcessState};
 
 // LINK MAP
 // ================================================================================================
@@ -23,7 +19,7 @@ use vm_processor::{
 #[derive(Debug, Clone, Copy)]
 pub struct LinkMap<'process> {
     map_ptr: u32,
-    process: ProcessState<'process>,
+    process: &'process ProcessState<'process>,
 }
 
 impl<'process> LinkMap<'process> {
@@ -31,7 +27,7 @@ impl<'process> LinkMap<'process> {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new link map from the provided map_ptr in the provided process.
-    pub fn new(map_ptr: Felt, process: ProcessState<'process>) -> Self {
+    pub fn new(map_ptr: Felt, process: &'process ProcessState<'process>) -> Self {
         let map_ptr: u32 = map_ptr.try_into().expect("map_ptr must be a valid u32");
 
         Self { map_ptr, process }
@@ -44,25 +40,21 @@ impl<'process> LinkMap<'process> {
     ///
     /// Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
     /// Advice stack state after: [set_operation, entry_ptr]
-    pub fn handle_set_event(
-        process: ProcessState<'_>,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
-        advice_provider: &mut impl AdviceProvider,
-    ) -> Result<(), ExecutionError> {
+    pub fn handle_set_event(process: &mut ProcessState<'_>) -> Result<(), ExecutionError> {
         let map_ptr = process.get_stack_item(0);
-        let map_key = [
+        let map_key = Word::from([
             process.get_stack_item(4),
             process.get_stack_item(3),
             process.get_stack_item(2),
             process.get_stack_item(1),
-        ];
+        ]);
 
         let link_map = LinkMap::new(map_ptr, process);
 
         let (set_op, entry_ptr) = link_map.compute_set_operation(LexicographicWord::from(map_key));
 
-        advice_provider.push_stack(AdviceSource::Value(Felt::from(set_op as u8)), err_ctx)?;
-        advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
+        process.advice_provider_mut().push_stack(Felt::from(set_op as u8));
+        process.advice_provider_mut().push_stack(Felt::from(entry_ptr));
 
         Ok(())
     }
@@ -71,24 +63,20 @@ impl<'process> LinkMap<'process> {
     ///
     /// Expected operand stack state before: [map_ptr, KEY]
     /// Advice stack state after: [get_operation, entry_ptr]
-    pub fn handle_get_event(
-        process: ProcessState<'_>,
-        err_ctx: &ErrorContext<'_, impl MastNodeExt>,
-        advice_provider: &mut impl AdviceProvider,
-    ) -> Result<(), ExecutionError> {
+    pub fn handle_get_event(process: &mut ProcessState<'_>) -> Result<(), ExecutionError> {
         let map_ptr = process.get_stack_item(0);
-        let map_key = [
+        let map_key = Word::from([
             process.get_stack_item(4),
             process.get_stack_item(3),
             process.get_stack_item(2),
             process.get_stack_item(1),
-        ];
+        ]);
 
         let link_map = LinkMap::new(map_ptr, process);
         let (get_op, entry_ptr) = link_map.compute_get_operation(LexicographicWord::from(map_key));
 
-        advice_provider.push_stack(AdviceSource::Value(Felt::from(get_op as u8)), err_ctx)?;
-        advice_provider.push_stack(AdviceSource::Value(Felt::from(entry_ptr)), err_ctx)?;
+        process.advice_provider_mut().push_stack(Felt::from(get_op as u8));
+        process.advice_provider_mut().push_stack(Felt::from(entry_ptr));
 
         Ok(())
     }

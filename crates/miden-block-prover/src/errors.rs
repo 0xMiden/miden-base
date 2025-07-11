@@ -1,4 +1,4 @@
-use miden_objects::{AccountTreeError, Digest, NullifierTreeError};
+use miden_objects::{AccountTreeError, NullifierTreeError, Word};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -16,15 +16,15 @@ pub enum ProvenBlockError {
         "account tree root of the previous block header is {prev_block_account_root} but the root of the partial tree computed from account witnesses is {stale_account_root}, indicating that the witnesses are stale"
     )]
     StaleAccountTreeRoot {
-        prev_block_account_root: Digest,
-        stale_account_root: Digest,
+        prev_block_account_root: Word,
+        stale_account_root: Word,
     },
 
     #[error(
         "nullifier tree root of the previous block header is {prev_block_nullifier_root} but the root of the partial tree computed from nullifier witnesses is {stale_nullifier_root}, indicating that the witnesses are stale"
     )]
     StaleNullifierTreeRoot {
-        prev_block_nullifier_root: Digest,
-        stale_nullifier_root: Digest,
+        prev_block_nullifier_root: Word,
+        stale_nullifier_root: Word,
     },
 }

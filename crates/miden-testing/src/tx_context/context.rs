@@ -5,7 +5,10 @@ use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec}
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     account::{Account, AccountId},
-    assembly::{Assembler, SourceManager},
+    assembly::{
+        Assembler, SourceManager,
+        debuginfo::{SourceLanguage, Uri},
+    },
     block::{BlockHeader, BlockNumber},
     note::Note,
     transaction::{
@@ -18,9 +21,7 @@ use miden_tx::{
     auth::{BasicAuthenticator, TransactionAuthenticator},
 };
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{
-    AdviceInputs, Digest, ExecutionError, MastForest, MastForestStore, Process, Word,
-};
+use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
 use winter_maybe_async::*;
 
 use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
@@ -77,7 +78,11 @@ impl TransactionContext {
         let source_manager = assembler.source_manager();
 
         // Virtual file name should be unique.
-        let virtual_source_file = source_manager.load("_tx_context_code", code.to_owned());
+        let virtual_source_file = source_manager.load(
+            SourceLanguage::Masm,
+            Uri::new("_tx_context_code"),
+            code.to_owned(),
+        );
 
         let program = assembler
             .with_debug_mode(true)
@@ -93,13 +98,15 @@ impl TransactionContext {
             mast_store.load_account_code(acc_inputs.code());
         }
 
+        let advice_inputs = advice_inputs.into_inner();
         CodeExecutor::new(MockHost::new(
             self.tx_inputs.account().into(),
-            advice_inputs,
+            &advice_inputs,
             mast_store,
             self.tx_args.foreign_account_code_commitments(),
         ))
         .stack_inputs(stack_inputs)
+        .extend_advice_inputs(advice_inputs)
         .execute_program(program, source_manager)
     }
 
@@ -183,7 +190,7 @@ impl DataStore for TransactionContext {
 }
 
 impl MastForestStore for TransactionContext {
-    fn get(&self, procedure_hash: &Digest) -> Option<Arc<MastForest>> {
+    fn get(&self, procedure_hash: &Word) -> Option<Arc<MastForest>> {
         self.mast_store.get(procedure_hash)
     }
 }

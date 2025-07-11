@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use crate::{
-    Digest, ProposedBlockError,
+    ProposedBlockError, Word,
     batch::{BatchId, ProvenBatch},
     block::{BlockHeader, BlockNumber},
     crypto::merkle::MerkleError,
@@ -323,8 +323,8 @@ enum InputOutputNoteTrackerError<ContainerId: Copy> {
     },
     NoteCommitmentMismatch {
         id: NoteId,
-        input_commitment: Digest,
-        output_commitment: Digest,
+        input_commitment: Word,
+        output_commitment: Word,
     },
     UnauthenticatedInputNoteBlockNotInPartialBlockchain {
         block_number: BlockNumber,

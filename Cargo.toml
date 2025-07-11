@@ -1,31 +1,31 @@
 [workspace]
-resolver = "3"
 members = [
-    "bin/bench-prover",
-    "bin/bench-tx",
-    "crates/miden-block-prover",
-    "crates/miden-lib",
-    "crates/miden-objects",
-    "crates/miden-testing",
-    "crates/miden-tx",
-    "crates/miden-tx-batch-prover",
+  "bin/bench-prover",
+  "bin/bench-tx",
+  "crates/miden-block-prover",
+  "crates/miden-lib",
+  "crates/miden-objects",
+  "crates/miden-testing",
+  "crates/miden-tx",
+  "crates/miden-tx-batch-prover",
 ]
+resolver = "3"
 
 [workspace.package]
-edition = "2024"
+authors      = ["Miden contributors"]
+edition      = "2024"
+exclude      = [".github/"]
+homepage     = "https://miden.xyz"
+license      = "MIT"
+repository   = "https://github.com/0xMiden/miden-base"
 rust-version = "1.88"
-license = "MIT"
-authors = ["Miden contributors"]
-homepage = "https://miden.xyz"
-repository = "https://github.com/0xMiden/miden-base"
-exclude = [".github/"]
 
 [profile.release]
 codegen-units = 1
-lto = true
+lto           = true
 
 [profile.test-dev]
-inherits = "dev"
+inherits  = "dev"
 opt-level = 1
 
 # Avoid running the expensive debug assertion in winter-prover
@@ -35,27 +35,28 @@ debug-assertions = false
 
 [profile.bench]
 codegen-units = 1
-lto = true
+lto           = true
 
 [workspace.dependencies]
 # Workspace crates
-miden-block-prover = { path = "crates/miden-block-prover", version = "0.11", default-features = false }
-miden-lib = { path = "crates/miden-lib", version = "0.11", default-features = false }
-miden-objects = { path = "crates/miden-objects", version = "0.11", default-features = false }
-miden-testing = { path = "crates/miden-testing", version = "0.11", default-features = false }
-miden-tx = { path = "crates/miden-tx", version = "0.11", default-features = false }
-miden-tx-batch-prover = { path = "crates/miden-tx-batch-prover", version = "0.11", default-features = false }
+miden-block-prover    = { default-features = false, path = "crates/miden-block-prover", version = "0.11" }
+miden-lib             = { default-features = false, path = "crates/miden-lib", version = "0.11" }
+miden-objects         = { default-features = false, path = "crates/miden-objects", version = "0.11" }
+miden-testing         = { default-features = false, path = "crates/miden-testing", version = "0.11" }
+miden-tx              = { default-features = false, path = "crates/miden-tx", version = "0.11" }
+miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly = { package = "miden-assembly", version = "0.15", default-features = false }
-miden-crypto = { version = "0.14", default-features = false }
-miden-prover = { version = "0.15", default-features = false }
-miden-stdlib = { version = "0.15", default-features = false }
-miden-verifier = { version = "0.15", default-features = false }
-vm-core = { package = "miden-core", version = "0.15", default-features = false }
-vm-processor = { package = "miden-processor", version = "0.15", default-features = false }
+assembly         = { default-features = false, package = "miden-assembly", version = "0.16.1" }
+miden-crypto     = { default-features = false, version = "0.15.5" }
+miden-prover     = { default-features = false, version = "0.16.1" }
+miden-stdlib     = { default-features = false, version = "0.16.1" }
+miden-utils-sync = { default-features = false, version = "0.16.1" }
+miden-verifier   = { default-features = false, version = "0.16.1" }
+vm-core          = { default-features = false, package = "miden-core", version = "0.16.1" }
+vm-processor     = { default-features = false, package = "miden-processor", version = "0.16.1" }
 
 # External dependencies
-assert_matches = { version = "1.5", default-features = false }
-rand = { version = "0.9", default-features = false }
-thiserror = { version = "2.0", default-features = false }
+assert_matches = { default-features = false, version = "1.5" }
+rand           = { default-features = false, version = "0.9" }
+thiserror      = { default-features = false, version = "2.0" }

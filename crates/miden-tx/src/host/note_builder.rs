@@ -4,8 +4,9 @@ use miden_objects::{
     asset::Asset,
     note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, PartialNote},
 };
+use vm_processor::AdviceProvider;
 
-use super::{AdviceProvider, Digest, Felt, OutputNote, TransactionKernelError};
+use super::{Felt, OutputNote, TransactionKernelError, Word};
 
 // OUTPUT NOTE BUILDER
 // ================================================================================================
@@ -14,7 +15,7 @@ use super::{AdviceProvider, Digest, Felt, OutputNote, TransactionKernelError};
 pub struct OutputNoteBuilder {
     metadata: NoteMetadata,
     assets: NoteAssets,
-    recipient_digest: Digest,
+    recipient_digest: Word,
     recipient: Option<NoteRecipient>,
 }
 
@@ -39,32 +40,34 @@ impl OutputNoteBuilder {
     ///   [NoteMetadata] object.
     /// - Recipient information in the advice provider is present but is malformed.
     /// - A non-private note is missing recipient details.
-    pub fn new<A: AdviceProvider>(
+    pub fn new(
         stack: Vec<Felt>,
-        adv_provider: &A,
+        adv_provider: &AdviceProvider,
     ) -> Result<Self, TransactionKernelError> {
         // read note metadata info from the stack and build the metadata object
-        let metadata_word = [stack[3], stack[2], stack[1], stack[0]];
+        let metadata_word = Word::from([stack[3], stack[2], stack[1], stack[0]]);
         let metadata: NoteMetadata = metadata_word
             .try_into()
             .map_err(TransactionKernelError::MalformedNoteMetadata)?;
 
         // read recipient digest from the stack and try to build note recipient object if there is
         // enough info available in the advice provider
-        let recipient_digest = Digest::new([stack[8], stack[7], stack[6], stack[5]]);
-        let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
+        let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
+
+        // This method returns an error if the mapped value is not found.
+        let recipient = if let Ok(data) = adv_provider.get_mapped_values(&recipient_digest) {
             if data.len() != 13 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             }
-            let inputs_commitment = Digest::new([data[1], data[2], data[3], data[4]]);
-            let script_root = Digest::new([data[5], data[6], data[7], data[8]]);
-            let serial_num = [data[9], data[10], data[11], data[12]];
+            let inputs_commitment = Word::new([data[1], data[2], data[3], data[4]]);
+            let script_root = Word::new([data[5], data[6], data[7], data[8]]);
+            let serial_num = Word::from([data[9], data[10], data[11], data[12]]);
             let script_data = adv_provider.get_mapped_values(&script_root).unwrap_or(&[]);
 
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
             let inputs = match inputs_data {
-                None => NoteInputs::default(),
-                Some(inputs) => {
+                Err(_) => NoteInputs::default(),
+                Ok(inputs) => {
                     let num_inputs = data[0].as_int() as usize;
 
                     // There must be at least `num_inputs` elements in the advice provider data,

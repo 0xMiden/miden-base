@@ -4,10 +4,7 @@ use super::{
     Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
     Word, ZERO,
 };
-use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
-
-mod lexicographic_word;
-pub use lexicographic_word::LexicographicWord;
+use crate::{AccountDeltaError, EMPTY_WORD, Hasher, account::AccountId};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -241,10 +238,10 @@ impl AccountDelta {
     /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
     /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
     /// pair have changed and 2) when two key-value pairs have changed.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         // The commitment to an empty delta is defined as the empty word.
         if self.is_empty() {
-            return Digest::default();
+            return Word::empty();
         }
 
         // Minor optimization: At least 24 elements are always added.
@@ -257,7 +254,7 @@ impl AccountDelta {
             self.account_id.suffix(),
             self.account_id.prefix().as_felt(),
         ]);
-        elements.extend_from_slice(&EMPTY_WORD);
+        elements.extend_from_slice(EMPTY_WORD.as_elements());
 
         // Vault Delta
         self.vault.append_delta_elements(&mut elements);
@@ -445,7 +442,7 @@ mod tests {
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::{
-        AccountDeltaError, ONE, ZERO,
+        AccountDeltaError, ONE, Word, ZERO,
         account::{
             Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
             StorageMapDelta, delta::AccountUpdateDetails,
@@ -517,12 +514,12 @@ mod tests {
 
         let storage_delta = AccountStorageDelta::from_iters(
             [1],
-            [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
+            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
             [(
                 4,
                 StorageMapDelta::from_iters(
-                    [[ONE, ONE, ONE, ZERO], [ZERO, ONE, ONE, ONE]],
-                    [([ONE, ONE, ONE, ONE], [ONE, ONE, ONE, ONE])],
+                    [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
+                    [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],
                 ),
             )],
         );

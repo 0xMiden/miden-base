@@ -1,7 +1,7 @@
 use alloc::{string::String, vec::Vec};
 
 use crate::{
-    Digest, Felt, Hasher, ZERO,
+    Felt, Hasher, Word, ZERO,
     account::AccountId,
     transaction::{ProvenTransaction, TransactionId},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
@@ -17,7 +17,7 @@ use crate::{
 /// account_id_suffix, 0, 0])` of all transactions and the accounts their executed against in the
 /// batch.
 #[derive(Debug, Copy, Clone, Eq, Ord, PartialEq, PartialOrd, Hash)]
-pub struct BatchId(Digest);
+pub struct BatchId(Word);
 
 impl BatchId {
     /// Calculates a batch ID from the given set of transactions.
@@ -73,6 +73,6 @@ impl Serializable for BatchId {
 
 impl Deserializable for BatchId {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        Ok(Self(Digest::read_from(source)?))
+        Ok(Self(Word::read_from(source)?))
     }
 }
