@@ -4,7 +4,7 @@ use miden_objects::{
     assembly::{ProcedureName, QualifiedProcedureName},
     block::BlockNumber,
     note::{Note, NoteScript},
-    utils::{Deserializable, miden_utils_sync::LazyLock},
+    utils::{Deserializable, sync::LazyLock},
     vm::Program,
 };
 

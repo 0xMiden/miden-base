@@ -1,9 +1,11 @@
 use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
-use miden_lib::utils::miden_utils_sync::RwLock;
-use miden_objects::account::{AccountDelta, AuthSecretKey};
+use miden_objects::{
+    Felt, Word,
+    account::{AccountDelta, AuthSecretKey},
+    utils::sync::RwLock,
+};
 use rand::Rng;
-use vm_processor::{Felt, Word};
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;

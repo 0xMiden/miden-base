@@ -8,7 +8,7 @@ use miden_objects::{
     transaction::{
         OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
     },
-    utils::{miden_utils_sync::LazyLock, serde::Deserializable},
+    utils::{serde::Deserializable, sync::LazyLock},
     vm::{AdviceInputs, AdviceMap, Program, ProgramInfo, StackInputs, StackOutputs},
 };
 use miden_stdlib::StdLibrary;

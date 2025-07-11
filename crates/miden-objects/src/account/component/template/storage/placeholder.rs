@@ -19,7 +19,7 @@ use vm_core::{
 };
 use vm_processor::DeserializationError;
 
-use crate::{asset::TokenSymbol, utils::miden_utils_sync::LazyLock};
+use crate::{asset::TokenSymbol, utils::sync::LazyLock};
 
 /// A global registry for template converters.
 ///

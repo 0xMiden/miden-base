@@ -32,10 +32,10 @@ pub use errors::{
 pub use miden_crypto::{
     hash::rpo::Rpo256 as Hasher,
     word,
-    word::{LexicographicWord, WordError, parse_hex_string_as_word},
+    word::{LexicographicWord, Word, WordError},
 };
 pub use vm_core::{
-    EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, Word, ZERO,
+    EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO,
     mast::{MastForest, MastNodeId},
     prettier::PrettyPrint,
 };
@@ -56,9 +56,11 @@ pub mod crypto {
 pub mod utils {
     use alloc::string::String;
 
-    pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
-    pub use miden_utils_sync;
-    use vm_core::Word;
+    pub use miden_crypto::{
+        utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes},
+        word::parse_hex_string_as_word,
+    };
+    pub use miden_utils_sync as sync;
     pub use vm_core::utils::*;
 
     pub mod serde {
@@ -77,7 +79,7 @@ pub mod utils {
     /// let word = Word::from([1, 2, 3, 4u32]);
     /// assert_eq!(word_to_masm_push_string(&word), "1.2.3.4");
     /// ```
-    pub fn word_to_masm_push_string(word: &Word) -> String {
+    pub fn word_to_masm_push_string(word: &super::Word) -> String {
         format!("{}.{}.{}.{}", word[0], word[1], word[2], word[3])
     }
 }
