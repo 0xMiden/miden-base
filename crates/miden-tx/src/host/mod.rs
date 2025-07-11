@@ -437,9 +437,7 @@ impl<'store, 'auth> TransactionHost<'store, 'auth> {
                 signature
             };
 
-        for signature_felt in signature {
-            process.advice_provider_mut().push_stack(signature_felt);
-        }
+        process.advice_provider_mut().stack.extend(signature);
 
         Ok(())
     }

@@ -1,12 +1,10 @@
 use alloc::string::ToString;
 
-use miden_crypto::merkle::MerklePath;
-
 use crate::{
     BLOCK_NOTE_TREE_DEPTH, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH,
     MAX_OUTPUT_NOTES_PER_BLOCK, Word,
     batch::BatchNoteTree,
-    crypto::merkle::{LeafIndex, MerkleError, SimpleSmt},
+    crypto::merkle::{LeafIndex, MerkleError, MerklePath, SimpleSmt},
     note::{NoteId, NoteMetadata, compute_note_commitment},
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
