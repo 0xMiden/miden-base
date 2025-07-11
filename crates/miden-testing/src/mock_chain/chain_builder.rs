@@ -339,7 +339,7 @@ impl MockChainBuilder {
     /// A P2IDE note can include an optional `timelock_height` and/or an optional
     /// `reclaim_height` after which the `sender_account_id` may reclaim the
     /// funds.
-    pub fn add_pending_p2ide_note(
+    pub fn add_p2ide_note(
         &mut self,
         sender_account_id: AccountId,
         target_account_id: AccountId,

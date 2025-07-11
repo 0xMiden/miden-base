@@ -910,19 +910,6 @@ impl MockChain {
         self.pending_objects.created_nullifiers.push(nullifier);
     }
 
-    /// Adds a new public [`BasicWallet`] account to the list of pending accounts.
-    ///
-    /// A block has to be created to add the account to the chain state as part of that block,
-    /// e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_new_wallet(&mut self, auth_method: Auth) -> Account {
-        let account_builder = AccountBuilder::new(self.rng.random())
-            .storage_mode(AccountStorageMode::Public)
-            .with_component(BasicWallet);
-
-        self.add_pending_account_from_builder(auth_method, account_builder, AccountState::New)
-            .expect("failed to add pending account from builder")
-    }
-
     /// Adds an existing public [`BasicWallet`] account with nonce `1` to the list of pending
     /// accounts.
     ///

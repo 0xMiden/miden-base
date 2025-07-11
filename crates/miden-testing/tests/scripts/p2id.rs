@@ -24,28 +24,27 @@ use crate::{assert_transaction_executor_error, prove_and_verify_transaction};
 /// So we create a note containing two assets that can only be consumed by the target account.
 #[test]
 fn p2id_script_multiple_assets() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-
     // Create assets
     let fungible_asset_1: Asset = FungibleAsset::mock(123);
     let fungible_asset_2: Asset =
         FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 456)?.into();
 
-    // Create sender and target account
-    let sender_account = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
-    let target_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    let mut builder = MockChain::builder();
+
+    // Create accounts
+    let sender_account = builder.create_new_wallet(Auth::BasicAuth)?;
+    let target_account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let malicious_account = builder.add_existing_wallet(Auth::BasicAuth)?;
 
     // Create the note
-    let note = mock_chain
-        .add_pending_p2id_note(
-            sender_account.id(),
-            target_account.id(),
-            &[fungible_asset_1, fungible_asset_2],
-            NoteType::Public,
-        )
-        .unwrap();
+    let note = builder.add_p2id_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset_1, fungible_asset_2],
+        NoteType::Public,
+    )?;
 
-    mock_chain.prove_next_block()?;
+    let mock_chain = builder.build()?;
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
@@ -73,9 +72,6 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
     // A "malicious" account tries to consume the note, we expect an error (not the correct target)
 
-    let malicious_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    mock_chain.prove_next_block().unwrap();
-
     // Execute the transaction and get the result
     let executed_transaction_2 = mock_chain
         .build_tx_context(malicious_account.id(), &[], &[note])?
@@ -90,33 +86,31 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
 /// Consumes an existing note with a new account
 #[test]
 fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-
     // Create assets
     let fungible_asset: Asset = FungibleAsset::mock(123);
 
-    // Create faucet account and target account
-    let faucet_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    let target_account = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
+    let mut builder = MockChain::builder();
+
+    // Create accounts
+    let sender_account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let target_account = builder.create_new_wallet(Auth::BasicAuth)?;
 
     // Create the note
-    let note = mock_chain
-        .add_pending_p2id_note(
-            faucet_account.id(),
-            target_account.id(),
-            &[fungible_asset],
-            NoteType::Public,
-        )
-        .unwrap();
+    let note = builder.add_p2id_note(
+        sender_account.id(),
+        target_account.id(),
+        &[fungible_asset],
+        NoteType::Public,
+    )?;
 
-    mock_chain.prove_next_block().unwrap();
+    let mock_chain = builder.build()?;
 
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
 
     // Execute the transaction and get the witness
     let executed_transaction = mock_chain
-        .build_tx_context(target_account.id(), &[note.id()], &[])?
+        .build_tx_context(target_account.clone(), &[note.id()], &[])?
         .build()?
         .execute()?;
 
@@ -182,30 +176,31 @@ fn prove_consume_multiple_notes() -> anyhow::Result<()> {
 /// Consumes two existing notes and creates two other notes in the same transaction
 #[test]
 fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
+    let mut builder = MockChain::builder();
+
     let mut account =
-        mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![FungibleAsset::mock(20)]);
+        builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(20)])?;
 
     let input_note_faucet_id = ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET.try_into()?;
     let input_note_asset_1: Asset = FungibleAsset::new(input_note_faucet_id, 11)?.into();
 
     let input_note_asset_2: Asset = FungibleAsset::new(input_note_faucet_id, 100)?.into();
 
-    let input_note_1 = mock_chain.add_pending_p2id_note(
+    let input_note_1 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into()?,
         account.id(),
         &[input_note_asset_1],
         NoteType::Private,
     )?;
 
-    let input_note_2 = mock_chain.add_pending_p2id_note(
+    let input_note_2 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into()?,
         account.id(),
         &[input_note_asset_2],
         NoteType::Private,
     )?;
 
-    mock_chain.prove_next_block()?;
+    let mock_chain = builder.build()?;
 
     let output_note_1 = create_p2id_note(
         account.id(),
