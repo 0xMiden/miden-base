@@ -80,7 +80,10 @@ impl NoteInclusionProof {
 
     /// Returns an iterator over inner nodes of this proof assuming that `note_commitment` is the
     /// value of the node to which this proof opens.
-    pub fn inner_nodes(&self, note_commitment: Word) -> impl Iterator<Item = InnerNodeInfo> {
+    pub fn authenticated_nodes(
+        &self,
+        note_commitment: Word,
+    ) -> impl Iterator<Item = InnerNodeInfo> {
         // SAFETY: expect() is fine here because we check index consistency in the constructor
         self.note_path
             .authenticated_nodes(self.location.node_index_in_block().into(), note_commitment)

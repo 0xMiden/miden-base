@@ -252,7 +252,7 @@ impl TransactionAdviceInputs {
         self.add_map_entry(leaf.hash(), leaf.to_elements());
 
         // extend the merkle store and map with account witnesses merkle path
-        self.extend_merkle_store(witness.inner_nodes());
+        self.extend_merkle_store(witness.authenticated_nodes());
     }
 
     // NOTE INJECTION
@@ -312,7 +312,7 @@ impl TransactionAdviceInputs {
                     note_data.push(Felt::ONE);
 
                     // Merkle path
-                    self.extend_merkle_store(proof.inner_nodes(note.commitment()));
+                    self.extend_merkle_store(proof.authenticated_nodes(note.commitment()));
 
                     let block_num = proof.location().block_num();
                     let block_header = if block_num == tx_inputs.block_header().block_num() {

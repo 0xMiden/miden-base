@@ -146,7 +146,7 @@ impl AccountWitness {
     }
 
     /// Returns an iterator over every inner node of this witness' merkle path.
-    pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
+    pub fn authenticated_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
         let leaf = self.leaf();
         self.path()
             .authenticated_nodes(leaf.index().value(), leaf.hash())
