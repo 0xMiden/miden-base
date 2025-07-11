@@ -898,14 +898,6 @@ impl MockChain {
         Ok(note)
     }
 
-    /// Adds the [`Nullifier`] to the list of pending nullifiers.
-    ///
-    /// A block has to be created to add the nullifier to the nullifier tree as part of that block,
-    /// e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_nullifier(&mut self, nullifier: Nullifier) {
-        self.pending_objects.created_nullifiers.push(nullifier);
-    }
-
     // PRIVATE HELPERS
     // ----------------------------------------------------------------------------------------
 
@@ -1042,27 +1034,6 @@ impl MockChain {
                 .context("failed to insert pending account into tree")?;
 
             proven_block.updated_accounts_mut().push(account_update);
-        }
-
-        // Add pending nullifiers to block.
-        let pending_created_nullifiers =
-            core::mem::take(&mut self.pending_objects.created_nullifiers);
-
-        let created_nullifiers_block: BTreeSet<Nullifier> =
-            proven_block.created_nullifiers().iter().copied().collect();
-
-        for nullifier in pending_created_nullifiers {
-            if created_nullifiers_block.contains(&nullifier) {
-                return Err(anyhow::anyhow!(
-                    "nullifier {nullifier} is already created in block through transactions",
-                ));
-            }
-
-            self.nullifier_tree
-                .mark_spent(nullifier, proven_block.header().block_num())
-                .context("failed to insert pending nullifier into tree")?;
-
-            proven_block.created_nullifiers_mut().push(nullifier);
         }
 
         // Add pending output notes to block.
@@ -1264,9 +1235,6 @@ struct PendingObjects {
 
     /// Note batches created in transactions in the block.
     output_notes: Vec<OutputNote>,
-
-    /// Nullifiers produced in transactions in the block.
-    created_nullifiers: Vec<Nullifier>,
 }
 
 impl PendingObjects {
@@ -1274,15 +1242,12 @@ impl PendingObjects {
         PendingObjects {
             updated_accounts: BTreeMap::new(),
             output_notes: vec![],
-            created_nullifiers: vec![],
         }
     }
 
     /// Returns `true` if there are no pending objects, `false` otherwise.
     pub fn is_empty(&self) -> bool {
-        self.updated_accounts.is_empty()
-            && self.output_notes.is_empty()
-            && self.created_nullifiers.is_empty()
+        self.updated_accounts.is_empty() && self.output_notes.is_empty()
     }
 }
 
