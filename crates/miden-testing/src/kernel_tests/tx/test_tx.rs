@@ -85,15 +85,17 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that consuming a note created in a block that is newer than the reference block of the
+/// transaction fails.
 #[test]
-fn test_future_input_note_fails() -> anyhow::Result<()> {
+fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
-    // Create note that will land on a future block
+    // Create a note that will be contained in block 11.
     let note = mock_chain
         .add_pending_p2id_note(
             account.id(),
@@ -102,17 +104,20 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
             NoteType::Private,
         )
         .unwrap();
+    // Create block 11.
     mock_chain.prove_next_block()?;
 
     // Get as input note, and assert that the note was created after block 1 (which we'll
     // use as reference)
     let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
-    assert!(input_note.location().unwrap().block_num() > 1.into());
+    assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
     mock_chain.prove_next_block()?;
     mock_chain.prove_next_block()?;
 
-    // Attempt to execute with a note created in the future
+    // Attempt to execute a transaction against reference block 1 with the note created in block 11
+    // - which should fail.
+    // TODO: Use build_tx_context_at to simplify this.
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
     let source_manager = tx_context.source_manager();
 
