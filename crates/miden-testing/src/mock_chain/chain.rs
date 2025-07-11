@@ -9,16 +9,12 @@ use anyhow::Context;
 use itertools::Itertools;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::{
-    account::wallets::BasicWallet,
     note::{create_p2id_note, create_p2ide_note},
     transaction::TransactionKernel,
 };
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
-    account::{
-        Account, AccountBuilder, AccountId, AccountStorageMode, StorageSlot,
-        delta::AccountUpdateDetails,
-    },
+    account::{Account, AccountBuilder, AccountId, StorageSlot, delta::AccountUpdateDetails},
     asset::Asset,
     batch::{ProposedBatch, ProvenBatch},
     block::{
@@ -34,7 +30,7 @@ use miden_objects::{
     },
 };
 use miden_tx::auth::BasicAuthenticator;
-use rand::{Rng, SeedableRng};
+use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{Word, crypto::RpoRandomCoin};
 
@@ -908,25 +904,6 @@ impl MockChain {
     /// e.g. using [`MockChain::prove_next_block`].
     pub fn add_pending_nullifier(&mut self, nullifier: Nullifier) {
         self.pending_objects.created_nullifiers.push(nullifier);
-    }
-
-    /// Adds an existing public [`BasicWallet`] account with nonce `1` to the list of pending
-    /// accounts.
-    ///
-    /// A block has to be created to add the account to the chain state as part of that block,
-    /// e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_existing_wallet(
-        &mut self,
-        auth_method: Auth,
-        assets: Vec<Asset>,
-    ) -> Account {
-        let account_builder = Account::builder(self.rng.random())
-            .storage_mode(AccountStorageMode::Public)
-            .with_component(BasicWallet)
-            .with_assets(assets);
-
-        self.add_pending_account_from_builder(auth_method, account_builder, AccountState::Exists)
-            .expect("failed to add pending account from builder")
     }
 
     /// Adds the [`AccountComponent`](miden_objects::account::AccountComponent) corresponding to
