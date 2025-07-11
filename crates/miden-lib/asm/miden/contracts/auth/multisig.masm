@@ -1,0 +1,92 @@
+use.miden::account
+use.miden::tx
+use.std::crypto::dsa::rpo_falcon512
+
+# CONSTANTS
+# =================================================================================================
+
+# Event to place the falcon signature of a provided message and public key on the advice stack.
+const.FALCON_SIG_TO_STACK=131087
+
+# The slot in this component's storage layout where the public key is stored.
+const.PUBLIC_KEY_SLOT=0
+
+#! Adds a signature for the given message to storage
+export.add_signature
+    
+#! Authenticate a transaction using the Falcon signature scheme
+#!
+#! Inputs:  [is_last, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT]
+#! Outputs: [pad(16)]
+export.auth__tx_rpo_falcon512_multisig
+
+    if.true
+        # We already have all the data!
+        # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]]
+    else
+        # Get the data to be signed from the actual notes
+        # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]]
+    end
+
+    # Compute the message to be signed on **nonce_delta**
+    # MESSAGE_MULTISIG = h([ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]])
+    hmerge hmerge hmerge dupw
+    # => [MESSAGE_MULTISIG, MESSAGE_MULTISIG, pad(16)]
+
+    # Get public key of the current participant from account storage
+    emit.SIGNER_INDEX_TO_STACK dup movdn.X
+    # => [signer_index, MESSAGE_MULTISIG, MESSAGE_MULTISIG, signer_index, pad(16)]
+
+    exec.get_public_key_for_signer
+    # => [PUBLIC_KEY_SIGNER, MESSAGE_MULTISIG, MESSAGE_MULTISIG, signer_index, pad(16)]
+
+    # See if this signer has already provided a signature for this multisig message
+    exec.store_sig_for_message
+    # => [MESSAGE_MULTISIG, signer_index, pad(16)]
+
+    # check if we have enough signatures for our multisig message
+    exec.check_sig_count
+    # => [sig_count, MESSAGE_MULTISIG, signer_index, pad(16)]
+
+    # get the threshold for the multisig
+    exec.get_threshold
+    # => [threshold, sig_count, MESSAGE_MULTISIG, signer_index, pad(16)]
+
+    # check if we have enough signatures
+    gte
+    # => [has_enough_sigs, MESSAGE_MULTISIG, signer_index, pad(16)]
+
+    if.true
+        # We haven't actually verified the signature here.
+        # loop through all the signatrues. Verify each against the public key of the signer.
+        # TODO: maybe we verify already before storing the signature? Then we can skip this step.
+    else
+        # we don't have enough signatures yet.
+    end
+
+    # => [signer_index, pad(16)]
+
+    # Since the former doesn't provide replay protection, we also check the signature of the submitter. The message is slightly different: here we use the final nonce, rather than the nonce delta.
+    # MESSAGE = h([ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce]])
+    # compute the message, put on stack
+    # => [MESSAGE, signer_index, pad(16)]
+
+    movup.4 exec.get_public_key_for_signer
+    # => [PUBLIC_KEY_SIGNER, MESSAGE, pad(16)]
+
+    # Verify the signature against the public key and the message.
+    emit.FALCON_SIG_TO_STACK
+    exec.rpo_falcon512::verify
+    # => [pad(16)]
+
+    # Get public key from account storage at pos 0 and verify signature
+    push.MULTISIG_PUBLIC_KEY_SLOT exec.account::get_item
+    # => [MULTISIG_PUB_KEY, MESSAGE, pad(16)]
+
+    # Verify the signature against the public key and the message. The procedure gets as inputs the
+    # hash of the public key and the hash of the message via the operand stack. The signature is
+    # provided via the advice stack. The signature is valid if and only if the procedure returns.
+    emit.FALCON_MULTISIG_TO_STACK
+    exec.rpo_falcon512_multisig::verify
+    # => [pad(16)]
+end
