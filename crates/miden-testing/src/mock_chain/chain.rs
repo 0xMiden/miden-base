@@ -575,7 +575,7 @@ impl MockChain {
     /// a chain of transactions against the same account that build on top of each other. For
     /// example, transaction A modifies an account from state 0 to 1, and transaction B modifies
     /// it from state 1 to 2.
-    pub fn build_tx_context_at_block(
+    pub fn build_tx_context_at(
         &self,
         reference_block: impl Into<BlockNumber>,
         input: impl Into<TxContextInput>,
@@ -623,7 +623,7 @@ impl MockChain {
             },
         };
 
-        let tx_inputs = self.get_transaction_inputs_at_block(
+        let tx_inputs = self.get_transaction_inputs_at(
             reference_block,
             mock_account.account().clone(),
             mock_account.seed().cloned(),
@@ -639,8 +639,8 @@ impl MockChain {
 
     /// Initializes a [`TransactionContextBuilder`] for executing against the last block header.
     ///
-    /// Please refer to the docs for [`Self::build_tx_context_at_block`] for a complete explanation
-    /// of the function.
+    /// This is a wrapper around [`Self::build_tx_context_at`] which uses the latest block as the
+    /// reference block. See that function's docs for details.
     pub fn build_tx_context(
         &self,
         input: impl Into<TxContextInput>,
@@ -648,7 +648,7 @@ impl MockChain {
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionContextBuilder> {
         let reference_block = self.latest_block_header().block_num();
-        self.build_tx_context_at_block(reference_block, input, note_ids, unauthenticated_notes)
+        self.build_tx_context_at(reference_block, input, note_ids, unauthenticated_notes)
     }
 
     // INPUTS APIS
@@ -656,7 +656,7 @@ impl MockChain {
 
     /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
     /// specific block number.
-    pub fn get_transaction_inputs_at_block(
+    pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
         account: Account,
@@ -732,7 +732,7 @@ impl MockChain {
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
         let latest_block_num = self.latest_block_header().block_num();
-        self.get_transaction_inputs_at_block(
+        self.get_transaction_inputs_at(
             latest_block_num,
             account,
             account_seed,

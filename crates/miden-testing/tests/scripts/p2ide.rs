@@ -148,7 +148,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 
     // ───────────────────── reclaim attempt (sender) → FAIL ────────────
     let early_reclaim = mock_chain
-        .build_tx_context_at_block(
+        .build_tx_context_at(
             timelock_height.as_u32() - 1,
             sender_account.id(),
             &[p2ide_note.id()],
@@ -161,7 +161,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
 
     // ───────────────────── early spend attempt (target)  → FAIL ─────────────
     let early_spend = mock_chain
-        .build_tx_context_at_block(
+        .build_tx_context_at(
             timelock_height.as_u32() - 1,
             target_account.id(),
             &[p2ide_note.id()],
@@ -229,7 +229,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Failure - sender_account tries to reclaim)
     let executed_transaction_1 = mock_chain
-        .build_tx_context_at_block(1, sender_account.id(), &[p2ide_note.id()], &[])?
+        .build_tx_context_at(1, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
         .execute();
 
@@ -240,7 +240,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Success - sender_account)
     let executed_transaction_2 = mock_chain
-        .build_tx_context_at_block(timelock_height, sender_account.id(), &[p2ide_note.id()], &[])?
+        .build_tx_context_at(timelock_height, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
         .execute()?;
 
