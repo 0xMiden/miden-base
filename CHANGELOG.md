@@ -8,6 +8,7 @@
 - [BREAKING] `Digest` was removed in favor of `Word` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
 - [BREAKING] Renamed `{NoteInclusionProof, AccountWitness}::inner_nodes` to `authenticated_nodes` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
 - [BREAKING] Renamed `{TransactionId, NoteId, Nullifier}::inner` -> `as_word` ([#1571](https://github.com/0xMiden/miden-base/pull/1571)).
+- Replace `MerklePath` with `SparseValuePath` in `NoteInclusionProof` ([#1572](https://github.com/0xMiden/miden-base/pull/1572)) .
 
 ## 0.10.0 (2025-07-08)
 

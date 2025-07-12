@@ -1,10 +1,11 @@
+use miden_crypto::merkle::SparseMerklePath;
+
 use super::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, NoteError, Serializable,
 };
 use crate::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
-    block::BlockNumber,
-    crypto::merkle::{InnerNodeInfo, MerklePath},
+    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word, block::BlockNumber,
+    crypto::merkle::InnerNodeInfo,
 };
 
 /// Contains information about the location of a note.
@@ -41,7 +42,7 @@ pub struct NoteInclusionProof {
     location: NoteLocation,
 
     /// The note's authentication Merkle path its block's the note root.
-    note_path: MerklePath,
+    note_path: SparseMerklePath,
 }
 
 impl NoteInclusionProof {
@@ -49,7 +50,7 @@ impl NoteInclusionProof {
     pub fn new(
         block_num: BlockNumber,
         node_index_in_block: u16,
-        note_path: MerklePath,
+        note_path: SparseMerklePath,
     ) -> Result<Self, NoteError> {
         const HIGHEST_INDEX: usize = MAX_BATCHES_PER_BLOCK * MAX_OUTPUT_NOTES_PER_BATCH - 1;
         if node_index_in_block as usize > HIGHEST_INDEX {
@@ -72,9 +73,9 @@ impl NoteInclusionProof {
         &self.location
     }
 
-    /// Returns the Merkle path to the note in the note Merkle tree of the block the note was
+    /// Returns the Sparse Merkle path to the note in the note Merkle tree of the block the note was
     /// created in.
-    pub fn note_path(&self) -> &MerklePath {
+    pub fn note_path(&self) -> &SparseMerklePath {
         &self.note_path
     }
 
@@ -120,7 +121,7 @@ impl Serializable for NoteInclusionProof {
 impl Deserializable for NoteInclusionProof {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let location = NoteLocation::read_from(source)?;
-        let note_path = MerklePath::read_from(source)?;
+        let note_path = SparseMerklePath::read_from(source)?;
 
         Ok(Self { location, note_path })
     }
