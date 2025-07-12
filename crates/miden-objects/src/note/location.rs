@@ -4,9 +4,8 @@ use super::{
     ByteReader, ByteWriter, Deserializable, DeserializationError, NoteError, Serializable,
 };
 use crate::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
-    block::BlockNumber,
-    crypto::merkle::{InnerNodeInfo, MerklePath},
+    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word, block::BlockNumber,
+    crypto::merkle::InnerNodeInfo,
 };
 
 /// Contains information about the location of a note.
@@ -80,12 +79,6 @@ impl NoteInclusionProof {
         &self.note_path
     }
 
-    /// Returns the Merkle path to the note in the note Merkle tree of the block the note was
-    /// created in.
-    pub fn merkle_path(&self) -> MerklePath {
-        MerklePath::from(self.note_path.clone())
-    }
-
     /// Returns an iterator over inner nodes of this proof assuming that `note_commitment` is the
     /// value of the node to which this proof opens.
     pub fn authenticated_nodes(
@@ -128,12 +121,8 @@ impl Serializable for NoteInclusionProof {
 impl Deserializable for NoteInclusionProof {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let location = NoteLocation::read_from(source)?;
-        let note_path = MerklePath::read_from(source)?;
+        let note_path = SparseMerklePath::read_from(source)?;
 
-        Ok(Self {
-            location,
-            note_path: SparseMerklePath::try_from(note_path)
-                .map_err(|err| DeserializationError::InvalidValue(format!("{err:?}")))?,
-        })
+        Ok(Self { location, note_path })
     }
 }

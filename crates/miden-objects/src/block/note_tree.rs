@@ -73,7 +73,7 @@ impl BlockNoteTree {
     /// Returns merkle path for the note with specified batch/note indexes.
     pub fn open(&self, index: BlockNoteIndex) -> SparseMerklePath {
         // get the path to the leaf containing the note (path len = 16)
-        self.0.open(&index.leaf_index()).path.into()
+        self.0.open(&index.leaf_index()).path
     }
 
     /// Returns the number of notes in this block note tree.
