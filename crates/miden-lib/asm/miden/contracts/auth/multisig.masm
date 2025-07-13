@@ -12,57 +12,75 @@ const.FALCON_SIG_TO_STACK=131087
 const.PUBLIC_KEY_SLOT=0
 
 #! Adds a signature for the given message to storage
-export.add_signature
-    
-#! Authenticate a transaction using the Falcon signature scheme
 #!
-#! Inputs:  [is_last, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT]
+#! Inputs:  [MESSAGE_MULTISIG]
 #! Outputs: [pad(16)]
-export.auth__tx_rpo_falcon512_multisig
-
-    if.true
-        # We already have all the data!
-        # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]]
-    else
-        # Get the data to be signed from the actual notes
-        # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]]
-    end
-
-    # Compute the message to be signed on **nonce_delta**
-    # MESSAGE_MULTISIG = h([ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]])
-    hmerge hmerge hmerge dupw
-    # => [MESSAGE_MULTISIG, MESSAGE_MULTISIG, pad(16)]
+export.add_signature
 
     # Get public key of the current participant from account storage
     emit.SIGNER_INDEX_TO_STACK dup movdn.X
-    # => [signer_index, MESSAGE_MULTISIG, MESSAGE_MULTISIG, signer_index, pad(16)]
+    # => [signer_index, MESSAGE_MULTISIG, signer_index, pad(16)]
 
     exec.get_public_key_for_signer
-    # => [PUBLIC_KEY_SIGNER, MESSAGE_MULTISIG, MESSAGE_MULTISIG, signer_index, pad(16)]
+    # => [PUBLIC_KEY_SIGNER, MESSAGE_MULTISIG, signer_index, pad(16)]
 
     # See if this signer has already provided a signature for this multisig message
     exec.store_sig_for_message
     # => [MESSAGE_MULTISIG, signer_index, pad(16)]
+end
+    
+#! Authenticate a transaction using the Falcon signature scheme.
+#! This is a single auth procedure that handles both the addition of a signature and the multisig tx execution.
+#!
+#! Inputs:  [TX_HASH]
+#! Outputs: [pad(16)]
+export.auth__tx_rpo_falcon512_multisig
+    # => [TX_HASH, pad(16)]
 
-    # check if we have enough signatures for our multisig message
-    exec.check_sig_count
-    # => [sig_count, MESSAGE_MULTISIG, signer_index, pad(16)]
+    # Get the data to be signed from the actual notes
+    # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta], TX_HASH]
 
-    # get the threshold for the multisig
-    exec.get_threshold
-    # => [threshold, sig_count, MESSAGE_MULTISIG, signer_index, pad(16)]
+    # See if all the commitments are empty, i.e. == EMPTY_WORD
+    # => [all_empty, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta], TX_HASH, pad(16)]
 
-    # check if we have enough signatures
-    gte
-    # => [has_enough_sigs, MESSAGE_MULTISIG, signer_index, pad(16)]
-
+    # If nothing is being consumed, we assume the caller is trying to add a signature
     if.true
-        # We haven't actually verified the signature here.
-        # loop through all the signatrues. Verify each against the public key of the signer.
-        # TODO: maybe we verify already before storing the signature? Then we can skip this step.
+        # All the commitments are empty, we simply verify the signature of the caller against the tx hash
+
+        dropw dropw dropw dropw
+        # => [TX_HASH, pad(16)]
+    
+    # If the caller  is trying to consume notes or make other account changes, 
+    # we check if multisig signatures are ready
     else
-        # we don't have enough signatures yet.
+        # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta], TX_HASH, pad(16)]
+
+        # Compute the message to be signed on **nonce_delta**
+        # MESSAGE_MULTISIG = h([ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, nonce_delta]])
+        hmerge hmerge hmerge
+        # => [MESSAGE_MULTISIG, TX_HASH, pad(16)]
+
+        # check if we have enough signatures for our multisig message
+        exec.check_sig_count
+        # => [sig_count, TX_HASH, pad(16)]
+
+        # get the threshold for the multisig
+        exec.get_threshold
+        # => [threshold, sig_count, TX_HASH, pad(16)]
+
+        # check if we have enough signatures
+        gte
+        # => [has_enough_sigs, TX_HASH, pad(16)]
+
+        # If we don't have enough signatures, we fail
+        assert.err=ERR_NOT_ENOUGH_SIGNATURES
+
+        dropw
     end
+
+
+
+
 
     # => [signer_index, pad(16)]
 
