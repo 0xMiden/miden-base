@@ -13,7 +13,9 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{auth::RpoFalcon512ProcedureAcl, components::basic_fungible_faucet_library};
+use crate::account::{
+    auth::AuthRpoFalcon512ProcedureAcl, components::basic_fungible_faucet_library,
+};
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
@@ -235,9 +237,9 @@ pub fn create_basic_fungible_faucet(
 ) -> Result<(Account, Word), FungibleFaucetError> {
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
-    let auth_component: RpoFalcon512ProcedureAcl = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => {
-            RpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root])
+    let auth_component: AuthRpoFalcon512ProcedureAcl = match auth_scheme {
+        AuthScheme::AuthRpoFalcon512 { pub_key } => {
+            AuthRpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root])
                 .map_err(FungibleFaucetError::AccountError)?
         },
     };
@@ -290,12 +292,12 @@ mod tests {
         AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
         FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
     };
-    use crate::account::{auth::RpoFalcon512, wallets::BasicWallet};
+    use crate::account::{auth::AuthRpoFalcon512, wallets::BasicWallet};
 
     #[test]
     fn faucet_contract_creation() {
         let pub_key = rpo_falcon512::PublicKey::new(Word::new([ONE; 4]));
-        let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
+        let auth_scheme: AuthScheme = AuthScheme::AuthRpoFalcon512 { pub_key };
 
         // we need to use an initial seed to create the wallet account
         let init_seed: [u8; 32] = [
@@ -362,7 +364,7 @@ mod tests {
                 BasicFungibleFaucet::new(token_symbol, 10, Felt::new(100))
                     .expect("failed to create a fungible faucet component"),
             )
-            .with_auth_component(RpoFalcon512::new(mock_public_key))
+            .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
             .build_existing()
             .expect("failed to create wallet account");
 
@@ -375,7 +377,7 @@ mod tests {
         // invalid account: basic fungible faucet component is missing
         let invalid_faucet_account = AccountBuilder::new(mock_seed)
             .account_type(AccountType::FungibleFaucet)
-            .with_auth_component(RpoFalcon512::new(mock_public_key))
+            .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
             // we need to add some other component so the builder doesn't fail
             .with_component(BasicWallet)
             .build_existing()

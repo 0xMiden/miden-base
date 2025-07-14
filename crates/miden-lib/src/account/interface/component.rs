@@ -31,11 +31,11 @@ pub enum AccountComponentInterface {
     /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
     BasicFungibleFaucet(u8),
     /// Exposes procedures from the
-    /// [`RpoFalcon512`][crate::account::auth::RpoFalcon512] module.
+    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
     ///
-    /// Internal value holds the storage slot index where the public key for the RpoFalcon512
+    /// Internal value holds the storage slot index where the public key for the AuthRpoFalcon512
     /// authentication scheme is stored.
-    RpoFalcon512(u8),
+    AuthRpoFalcon512(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -55,7 +55,7 @@ impl AccountComponentInterface {
             AccountComponentInterface::BasicFungibleFaucet(_) => {
                 "Basic Fungible Faucet".to_string()
             },
-            AccountComponentInterface::RpoFalcon512(_) => "RPO Falcon512".to_string(),
+            AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()
@@ -126,7 +126,7 @@ impl AccountComponentInterface {
 
         if let Some(proc_info) = procedures.remove(&rpo_falcon_proc) {
             component_interface_vec
-                .push(AccountComponentInterface::RpoFalcon512(proc_info.storage_offset()));
+                .push(AccountComponentInterface::AuthRpoFalcon512(proc_info.storage_offset()));
         }
 
         // Custom interfaces

@@ -6,7 +6,7 @@ use miden_objects::{
 };
 
 use super::AuthScheme;
-use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
+use crate::account::{auth::AuthRpoFalcon512, components::basic_wallet_library};
 
 // BASIC WALLET
 // ================================================================================================
@@ -59,8 +59,8 @@ pub fn create_basic_wallet(
         ));
     }
 
-    let auth_component: RpoFalcon512 = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key),
+    let auth_component: AuthRpoFalcon512 = match auth_scheme {
+        AuthScheme::AuthRpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key),
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -89,7 +89,7 @@ mod tests {
         let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
-            AuthScheme::RpoFalcon512 { pub_key },
+            AuthScheme::AuthRpoFalcon512 { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         );
@@ -104,7 +104,7 @@ mod tests {
         let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
-            AuthScheme::RpoFalcon512 { pub_key },
+            AuthScheme::AuthRpoFalcon512 { pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         )

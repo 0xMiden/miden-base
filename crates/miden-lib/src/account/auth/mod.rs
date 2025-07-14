@@ -21,19 +21,19 @@ use crate::account::components::{rpo_falcon_512_library, rpo_falcon_512_procedur
 /// This component supports all account types.
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
-pub struct RpoFalcon512 {
+pub struct AuthRpoFalcon512 {
     public_key: PublicKey,
 }
 
-impl RpoFalcon512 {
-    /// Creates a new [`RpoFalcon512`] component with the given `public_key`.
+impl AuthRpoFalcon512 {
+    /// Creates a new [`AuthRpoFalcon512`] component with the given `public_key`.
     pub fn new(public_key: PublicKey) -> Self {
         Self { public_key }
     }
 }
 
-impl From<RpoFalcon512> for AccountComponent {
-    fn from(falcon: RpoFalcon512) -> Self {
+impl From<AuthRpoFalcon512> for AccountComponent {
+    fn from(falcon: AuthRpoFalcon512) -> Self {
         AccountComponent::new(
             rpo_falcon_512_library(),
             vec![StorageSlot::Value(falcon.public_key.into())],
@@ -43,7 +43,7 @@ impl From<RpoFalcon512> for AccountComponent {
     }
 }
 
-/// An [`AccountComponent`] implementing a procedure-ACL based RpoFalcon512 signature scheme for
+/// An [`AccountComponent`] implementing a procedure-ACL based AuthRpoFalcon512 signature scheme for
 /// authentication of transactions.
 ///
 /// This component only requires authentication when any of the specified procedures are called
@@ -53,22 +53,22 @@ impl From<RpoFalcon512> for AccountComponent {
 /// It exports the procedure `auth__tx_rpo_falcon512_procedure_acl`, which:
 /// - Checks if any of the specified auth trigger procedures were called during the transaction
 /// - If none were called, authentication is skipped
-/// - If at least one was called, performs standard RpoFalcon512 signature verification
+/// - If at least one was called, performs standard AuthRpoFalcon512 signature verification
 /// - Always increments the nonce
 ///
 /// The storage layout is:
-/// - Slot 0(value): Public key (same as RpoFalcon512)
+/// - Slot 0(value): Public key (same as AuthRpoFalcon512)
 /// - Slot 1(value): Number of trigger procedures
 /// - Slot 2(map): A map with trigger procedure roots
 ///
 /// This component supports all account types.
-pub struct RpoFalcon512ProcedureAcl {
+pub struct AuthRpoFalcon512ProcedureAcl {
     public_key: PublicKey,
     auth_trigger_procedures: Vec<Word>,
 }
 
-impl RpoFalcon512ProcedureAcl {
-    /// Creates a new [`RpoFalcon512ProcedureAcl`] component with the given `public_key` and
+impl AuthRpoFalcon512ProcedureAcl {
+    /// Creates a new [`AuthRpoFalcon512ProcedureAcl`] component with the given `public_key` and
     /// list of procedure roots that require authentication.
     ///
     /// # Panics
@@ -88,8 +88,8 @@ impl RpoFalcon512ProcedureAcl {
     }
 }
 
-impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
-    fn from(falcon: RpoFalcon512ProcedureAcl) -> Self {
+impl From<AuthRpoFalcon512ProcedureAcl> for AccountComponent {
+    fn from(falcon: AuthRpoFalcon512ProcedureAcl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
@@ -130,8 +130,8 @@ mod tests {
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
         let public_key = PublicKey::new(Word::empty());
-        let component =
-            RpoFalcon512ProcedureAcl::new(public_key, vec![]).expect("component creation failed");
+        let component = AuthRpoFalcon512ProcedureAcl::new(public_key, vec![])
+            .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -170,8 +170,9 @@ mod tests {
 
         assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component = RpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone())
-            .expect("component creation failed");
+        let component =
+            AuthRpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone())
+                .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)

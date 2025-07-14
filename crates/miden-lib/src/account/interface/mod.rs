@@ -135,7 +135,7 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::RpoFalcon512(_) => {
+                AccountComponentInterface::AuthRpoFalcon512(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
                 },
@@ -256,8 +256,8 @@ impl From<&Account> for AccountInterface {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
-            if let AccountComponentInterface::RpoFalcon512(storage_index) = interface {
-                auth.push(AuthScheme::RpoFalcon512 {
+            if let AccountComponentInterface::AuthRpoFalcon512(storage_index) = interface {
+                auth.push(AuthScheme::AuthRpoFalcon512 {
                     pub_key: rpo_falcon512::PublicKey::new(
                         account
                             .storage()
