@@ -1,4 +1,3 @@
-use crate::assert_execution_error;
 use miden_lib::{errors::MasmError, transaction::TransactionKernel};
 use miden_objects::{
     account::Account,
@@ -10,7 +9,7 @@ use miden_objects::{
 use miden_tx::TransactionExecutorError;
 
 use super::{Felt, ONE};
-use crate::TransactionContextBuilder;
+use crate::{TransactionContextBuilder, assert_execution_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
 
