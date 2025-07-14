@@ -136,7 +136,6 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
             # OS => [AUTH_ARGS_KEY]
             # AS => [99, 98, 97, 96, incr_nonce_flag]
 
-            debug.stack
             # drop the args commitment
             dropw
             # OS => []
@@ -147,13 +146,11 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
             # OS => [99, 98, 97, 96]
             # AS => []
 
-            debug.stack
 
             # If [99, 98, 97, 96] is passed as an argument, all good.
             # Otherwise we error out.
-            push.99.98.97.96 debug.stack eqw assert.err=WRONG_ARGS
+            push.99.98.97.96 eqw assert.err=WRONG_ARGS
 
-            debug.stack
             # Load the `incr_nonce_flag` from the advice stack.
             adv_push.1
 
