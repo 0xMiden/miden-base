@@ -117,7 +117,6 @@ fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
 
     // Attempt to execute a transaction against reference block 1 with the note created in block 11
     // - which should fail.
-    // TODO: Use build_tx_context_at to simplify this.
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
     let source_manager = tx_context.source_manager();
 
