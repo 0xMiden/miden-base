@@ -1,7 +1,6 @@
 use crate::assert_execution_error;
 use miden_lib::{errors::MasmError, transaction::TransactionKernel};
 use miden_objects::{
-    Word,
     account::Account,
     testing::{
         account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG},
@@ -26,18 +25,15 @@ fn test_auth_procedure_args() {
         TransactionKernel::testing_assembler(),
     );
 
-    let auth_arg_values = [
+    let auth_arg = [
+        ONE, // incr_nonce = true
         Felt::new(99),
         Felt::new(98),
         Felt::new(97),
-        Felt::new(96),
-        ONE, // incr_nonce = true
     ];
-    let auth_arg = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .auth_arg(auth_arg)
-        .extend_advice_map([(auth_arg, auth_arg_values.to_vec())])
+        .auth_arg(auth_arg.into())
         .build()
         .unwrap();
 
@@ -60,19 +56,16 @@ fn test_auth_procedure_args_wrong_inputs() {
         TransactionKernel::testing_assembler(),
     );
 
-    // The auth script expects [99, 98, 97, 96, nonce_increment_flag]
-    let auth_arg_values = [
+    // The auth script expects [99, 98, 97, nonce_increment_flag]
+    let auth_arg = [
+        ONE, // incr_nonce = true
         Felt::new(103),
         Felt::new(102),
         Felt::new(101),
-        Felt::new(100),
-        ONE, // incr_nonce = true
     ];
-    let auth_arg = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .auth_arg(auth_arg)
-        .extend_advice_map([(auth_arg, auth_arg_values.to_vec())])
+        .auth_arg(auth_arg.into())
         .build()
         .unwrap();
 

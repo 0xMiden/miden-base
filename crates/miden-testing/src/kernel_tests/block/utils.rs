@@ -139,21 +139,18 @@ pub fn generate_conditional_tx(
     chain.add_pending_note(OutputNote::Full(noop_note.clone()));
     chain.prove_next_block().unwrap();
 
-    let auth_arg_values = [
+    let auth_arg = [
+        if modify_storage { ONE } else { ZERO }, // increment nonce if modify_storage is true
         Felt::new(99),
         Felt::new(98),
         Felt::new(97),
-        Felt::new(96),
-        if modify_storage { ONE } else { ZERO }, // increment nonce if modify_storage is true
     ];
-    let auth_arg = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 
     let tx_context = chain
         .build_tx_context(input.into(), &[noop_note.id()], &[])
         .unwrap()
         .extend_input_notes(vec![noop_note])
-        .auth_arg(auth_arg)
-        .extend_advice_map([(auth_arg, auth_arg_values.to_vec())])
+        .auth_arg(auth_arg.into())
         .build()
         .unwrap();
     tx_context.execute().unwrap()

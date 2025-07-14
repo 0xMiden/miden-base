@@ -232,7 +232,7 @@ impl Deserializable for TransactionArgs {
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
-        let auth_argument = Word::read_from(source)?;
+        let auth_arg = Word::read_from(source)?;
 
         Ok(Self {
             tx_script,
@@ -240,7 +240,7 @@ impl Deserializable for TransactionArgs {
             note_args,
             advice_inputs,
             foreign_account_inputs,
-            auth_arg: auth_argument,
+            auth_arg,
         })
     }
 }

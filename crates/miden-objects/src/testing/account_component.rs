@@ -124,40 +124,17 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
         const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
         export.auth__conditional
-            # OS => [AUTH_ARGS_KEY]
-            # AS => []
+            # => [AUTH_ARG]
 
-            # `AUTH_ARGS_KEY` value, which is located on the stack at the beginning of
-            # the execution, is the advice map key which allows to obtain auth procedure args
-            # which were specified during the `AuthArguments` creation.
-
-            # move the auth args from advice map to the advice stack
-            adv.push_mapval
-            # OS => [AUTH_ARGS_KEY]
-            # AS => [99, 98, 97, 96, incr_nonce_flag]
-
-            # drop the args commitment
-            dropw
-            # OS => []
-            # AS => [99, 98, 97, 96, incr_nonce_flag]
-
-            # Move the auth arguments array from advice stack to the operand stack.
-            adv_push.4
-            # OS => [99, 98, 97, 96]
-            # AS => []
-
-
-            # If [99, 98, 97, 96] is passed as an argument, all good.
+            # If [97, 98, 99, incr_nonce_flag] is passed as an argument, all good.
             # Otherwise we error out.
-            push.99.98.97.96 eqw assert.err=WRONG_ARGS
-
-            # Load the `incr_nonce_flag` from the advice stack.
-            adv_push.1
+            push.97 assert_eq.err=WRONG_ARGS
+            push.98 assert_eq.err=WRONG_ARGS
+            push.99 assert_eq.err=WRONG_ARGS
 
             if.true
                 push.1 exec.account::incr_nonce
             end
-
             dropw dropw dropw dropw
         end
 "#
