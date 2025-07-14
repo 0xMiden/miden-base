@@ -127,7 +127,7 @@ pub fn create_swap_note<R: FeltRng>(
         payback_recipient_word[3],
         NoteExecutionHint::always().into(),
         payback_note_type.into(),
-        payback_note_aux.into(),
+        payback_note_aux,
         payback_tag.into(),
     ])?;
 
