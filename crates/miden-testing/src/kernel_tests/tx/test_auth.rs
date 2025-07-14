@@ -26,18 +26,18 @@ fn test_auth_procedure_args() {
         TransactionKernel::testing_assembler(),
     );
 
-    let auth_arguments = [
+    let auth_arg_values = [
         Felt::new(99),
         Felt::new(98),
         Felt::new(97),
         Felt::new(96),
         ONE, // incr_nonce = true
     ];
-    let auth_argument_key = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+    let auth_arg = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .auth_argument(auth_argument_key)
-        .extend_advice_map([(auth_argument_key, auth_arguments.to_vec())])
+        .auth_arg(auth_arg)
+        .extend_advice_map([(auth_arg, auth_arg_values.to_vec())])
         .build()
         .unwrap();
 
@@ -61,18 +61,18 @@ fn test_auth_procedure_args_wrong_inputs() {
     );
 
     // The auth script expects [99, 98, 97, 96, nonce_increment_flag]
-    let auth_arguments = [
+    let auth_arg_values = [
         Felt::new(103),
         Felt::new(102),
         Felt::new(101),
         Felt::new(100),
         ONE, // incr_nonce = true
     ];
-    let auth_argument_key = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
+    let auth_arg = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .auth_argument(auth_argument_key)
-        .extend_advice_map([(auth_argument_key, auth_arguments.to_vec())])
+        .auth_arg(auth_arg)
+        .extend_advice_map([(auth_arg, auth_arg_values.to_vec())])
         .build()
         .unwrap();
 

@@ -151,7 +151,7 @@ impl TransactionAdviceInputs {
         self.extend_stack(tx_args.tx_script_arg());
 
         // --- auth procedure args key -------------------------------------------
-        self.extend_stack(tx_args.auth_argument());
+        self.extend_stack(tx_args.auth_arg());
     }
 
     // BLOCKCHAIN INJECTIONS
