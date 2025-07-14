@@ -395,4 +395,11 @@ mod tests {
             .expect("basic fungible faucet creation should fail");
         assert_matches!(err, FungibleFaucetError::NoAvailableInterface);
     }
+
+    /// Check that the obtaining of the basic fungible faucet procedure digests does not panic.
+    #[test]
+    fn get_faucet_procedures() {
+        let _distribute_digest = BasicFungibleFaucet::distribute_digest();
+        let _burn_digest = BasicFungibleFaucet::burn_digest();
+    }
 }
