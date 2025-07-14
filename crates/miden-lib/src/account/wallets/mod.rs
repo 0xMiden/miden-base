@@ -13,7 +13,7 @@ use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
 // BASIC WALLET
 // ================================================================================================
 
-// Initialize the `receive_asset` procedure of the Basic Wallet only once.
+// Initialize the digest of the `receive_asset` procedure of the Basic Wallet only once.
 static BASIC_WALLET_RECEIVE_ASSET: LazyLock<Word> = LazyLock::new(|| {
     let receive_asset_proc_name = QualifiedProcedureName::new(
         Default::default(),
@@ -25,7 +25,7 @@ static BASIC_WALLET_RECEIVE_ASSET: LazyLock<Word> = LazyLock::new(|| {
         .expect("Basic Wallet should contain 'receive_asset' procedure")
 });
 
-// Initialize the `move_asset_to_note` procedure of the Basic Wallet only once.
+// Initialize the digest of the `move_asset_to_note` procedure of the Basic Wallet only once.
 static BASIC_WALLET_MOVE_ASSET_TO_NOTE: LazyLock<Word> = LazyLock::new(|| {
     let move_asset_to_note_proc_name = QualifiedProcedureName::new(
         Default::default(),
