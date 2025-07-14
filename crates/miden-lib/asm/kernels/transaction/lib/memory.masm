@@ -579,7 +579,7 @@ end
 #! Where:
 #! - version is the protocol version of the transaction reference block.
 export.get_blk_version
-    padw mem_loadw.BLOCK_METADATA_PTR drop drop swap drop
+    push.BLOCK_METADATA_PTR add.1 mem_load
 end
 
 #! Returns the block timestamp of the reference block for this transaction.
@@ -590,7 +590,7 @@ end
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
 export.get_blk_timestamp
-    padw mem_loadw.BLOCK_METADATA_PTR drop movdn.2 drop drop
+    push.BLOCK_METADATA_PTR add.2 mem_load
 end
 
 #! Returns the chain commitment of the transaction reference block.
@@ -933,10 +933,7 @@ end
 #! Where:
 #! - acct_nonce is the account nonce.
 export.get_acct_nonce
-    padw
-    exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add
-    mem_loadw
-    movdn.3 drop drop drop
+    exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add mem_load
 end
 
 #! Sets the account nonce.
