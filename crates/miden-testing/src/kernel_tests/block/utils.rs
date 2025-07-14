@@ -123,12 +123,15 @@ pub fn generate_tx_with_authenticated_notes(
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
-/// Generates a NOOP transaction, i.e. one that doesn't change the state of the account.
+/// Generates a transaction, which depending on the `modify_storage` flag, does the following:
+/// - if `modify_storage` is true, it increments the storage item of the account.
+/// - if `modify_storage` is false, it does nothing (NOOP).
 ///
-/// To make this transaction non-empty, it consumes one "noop note", which does nothing.
-pub fn generate_noop_tx(
+/// To make this transaction (always) non-empty, it consumes one "noop note", which does nothing.
+pub fn generate_conditional_tx(
     chain: &mut MockChain,
     input: impl Into<TxContextInput>,
+    modify_storage: bool,
 ) -> ExecutedTransaction {
     let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
         .build(&TransactionKernel::assembler())
@@ -141,7 +144,7 @@ pub fn generate_noop_tx(
         Felt::new(98),
         Felt::new(97),
         Felt::new(96),
-        ZERO, // don't increment nonce
+        if modify_storage { ONE } else { ZERO }, // increment nonce if modify_storage is true
     ];
     let auth_argument_key = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
 
@@ -154,31 +157,6 @@ pub fn generate_noop_tx(
         .build()
         .unwrap();
     tx_context.execute().unwrap()
-}
-
-/// Generates a transaction that increments the storage item of the account.
-pub fn generate_tx_with_storage_increment(
-    chain: &mut MockChain,
-    input: impl Into<TxContextInput>,
-) -> ProvenTransaction {
-    let auth_argument = [
-        Felt::new(99),
-        Felt::new(98),
-        Felt::new(97),
-        Felt::new(96),
-        ONE, // increment nonce
-    ];
-
-    let auth_argument_key = Word::from([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]);
-    let tx_context = chain
-        .build_tx_context(input, &[], &[])
-        .unwrap()
-        .auth_argument(auth_argument_key)
-        .extend_advice_map([(auth_argument_key, auth_argument.to_vec())])
-        .build()
-        .unwrap();
-    let executed_tx = tx_context.execute().unwrap();
-    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
 /// Generates a transaction that expires at the given block number.

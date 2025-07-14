@@ -16,10 +16,7 @@ use super::utils::{
 };
 use crate::{
     ProvenTransactionExt,
-    kernel_tests::block::utils::{
-        generate_account_with_conditional_auth, generate_noop_tx,
-        generate_tx_with_storage_increment,
-    },
+    kernel_tests::block::utils::{generate_account_with_conditional_auth, generate_conditional_tx},
 };
 
 /// Tests that we can build empty blocks.
@@ -262,25 +259,20 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
 
     let account0 = generate_account_with_conditional_auth(&mut chain);
 
-    let tx0 = generate_noop_tx(&mut chain, account0.id());
-    let tx1 = generate_tx_with_storage_increment(&mut chain, tx0.clone());
+    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), false);
+    let state_updating_tx = generate_conditional_tx(&mut chain, noop_tx.clone(), true);
 
     // sanity check: NOOP transaction's init and final commitment should be the same.
-    assert_eq!(tx0.initial_account().commitment(), tx0.final_account().commitment());
+    assert_eq!(noop_tx.initial_account().commitment(), noop_tx.final_account().commitment());
     // sanity check: State-updating transaction's init and final commitment should *not* be the
     // same.
     assert_ne!(
-        tx1.account_update().initial_state_commitment(),
-        tx1.account_update().final_state_commitment()
+        state_updating_tx.initial_account().commitment(),
+        state_updating_tx.final_account().commitment()
     );
 
-    assert_eq!(tx0.initial_account().commitment(), tx0.final_account().commitment());
-    assert_ne!(
-        tx1.account_update().initial_state_commitment(),
-        tx1.account_update().final_state_commitment()
-    );
-
-    let tx0 = ProvenTransaction::from_executed_transaction_mocked(tx0);
+    let tx0 = ProvenTransaction::from_executed_transaction_mocked(noop_tx);
+    let tx1 = ProvenTransaction::from_executed_transaction_mocked(state_updating_tx);
 
     let batch0 = generate_batch(&mut chain, vec![tx0]);
     let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
