@@ -270,11 +270,26 @@ impl MockChain {
         reference_blocks: impl IntoIterator<Item = BlockNumber>,
     ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
         let latest_block_header = self.latest_block_header();
+
+        self.selective_partial_blockchain(latest_block_header.block_num(), reference_blocks)
+    }
+
+    /// Creates a new [`PartialBlockchain`] with all reference blocks in the given iterator except
+    /// for the reference block header in the chain and returns that reference block header.
+    ///
+    /// The intended use for the reference block header is to become the reference block of a new
+    /// transaction batch or block.
+    pub fn selective_partial_blockchain(
+        &self,
+        reference_block: BlockNumber,
+        reference_blocks: impl IntoIterator<Item = BlockNumber>,
+    ) -> anyhow::Result<(BlockHeader, PartialBlockchain)> {
+        let reference_block_header = self.block_header(reference_block.as_usize());
         // Deduplicate block numbers so each header will be included just once. This is required so
         // PartialBlockchain::from_blockchain does not panic.
         let reference_blocks: BTreeSet<_> = reference_blocks.into_iter().collect();
 
-        // Include all block headers of the reference blocks except the latest block.
+        // Include all block headers except the reference block itself.
         let mut block_headers = Vec::new();
 
         for block_ref_num in &reference_blocks {
@@ -284,15 +299,16 @@ impl MockChain {
                 .get(block_index)
                 .ok_or_else(|| anyhow::anyhow!("block {} not found in chain", block_ref_num))?;
             let block_header = block.header().clone();
-            // Exclude the latest block header
-            if block_header.commitment() != latest_block_header.commitment() {
+            // Exclude the reference block header.
+            if block_header.commitment() != reference_block_header.commitment() {
                 block_headers.push(block_header);
             }
         }
 
-        let partial_blockchain = PartialBlockchain::from_blockchain(&self.chain, block_headers)?;
+        let partial_blockchain =
+            PartialBlockchain::from_blockchain_at(&self.chain, reference_block, block_headers)?;
 
-        Ok((latest_block_header, partial_blockchain))
+        Ok((reference_block_header, partial_blockchain))
     }
 
     /// Returns a map of [`AccountWitness`]es for the requested account IDs from the current
@@ -525,7 +541,7 @@ impl MockChain {
     // TRANSACTION APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Initializes a [`TransactionContextBuilder`].
+    /// Initializes a [`TransactionContextBuilder`] for executing against a specific block number.
     ///
     /// Depending on the provided `input`, the builder is initialized differently:
     /// - [`TxContextInput::AccountId`]: Initialize the builder with [`TransactionInputs`] fetched
@@ -543,18 +559,26 @@ impl MockChain {
     /// a chain of transactions against the same account that build on top of each other. For
     /// example, transaction A modifies an account from state 0 to 1, and transaction B modifies
     /// it from state 1 to 2.
-    pub fn build_tx_context(
+    pub fn build_tx_context_at(
         &self,
+        reference_block: impl Into<BlockNumber>,
         input: impl Into<TxContextInput>,
         note_ids: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionContextBuilder> {
         let input = input.into();
+        let reference_block = reference_block.into();
 
         let credentials = self.account_credentials.get(&input.id());
         let authenticator =
             credentials.and_then(|credentials| credentials.authenticator().cloned());
         let seed = credentials.and_then(|credentials| credentials.seed());
+
+        anyhow::ensure!(
+            reference_block.as_usize() < self.blocks.len(),
+            "reference block {reference_block} is out of range (latest {})",
+            self.latest_block_header().block_num()
+        );
 
         let account = match input {
             TxContextInput::AccountId(account_id) => {
@@ -583,7 +607,13 @@ impl MockChain {
         };
 
         let tx_inputs = self
-            .get_transaction_inputs(account.clone(), seed, note_ids, unauthenticated_notes)
+            .get_transaction_inputs_at(
+                reference_block,
+                account.clone(),
+                seed,
+                note_ids,
+                unauthenticated_notes,
+            )
             .context("failed to gather transaction inputs")?;
 
         let tx_context_builder = TransactionContextBuilder::new(account)
@@ -594,18 +624,34 @@ impl MockChain {
         Ok(tx_context_builder)
     }
 
+    /// Initializes a [`TransactionContextBuilder`] for executing against the last block header.
+    ///
+    /// This is a wrapper around [`Self::build_tx_context_at`] which uses the latest block as the
+    /// reference block. See that function's docs for details.
+    pub fn build_tx_context(
+        &self,
+        input: impl Into<TxContextInput>,
+        note_ids: &[NoteId],
+        unauthenticated_notes: &[Note],
+    ) -> anyhow::Result<TransactionContextBuilder> {
+        let reference_block = self.latest_block_header().block_num();
+        self.build_tx_context_at(reference_block, input, note_ids, unauthenticated_notes)
+    }
+
     // INPUTS APIS
     // ----------------------------------------------------------------------------------------
 
-    /// Returns a valid [`TransactionInputs`] for the specified entities.
-    pub fn get_transaction_inputs(
+    /// Returns a valid [`TransactionInputs`] for the specified entities, executing against a
+    /// specific block number.
+    pub fn get_transaction_inputs_at(
         &self,
+        reference_block: BlockNumber,
         account: Account,
         account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
-        let block = self.blocks.last().expect("at least one block should have been created");
+        let ref_block = self.block_header(reference_block.as_usize());
 
         let mut input_notes = vec![];
         let mut block_headers_map: BTreeMap<BlockNumber, BlockHeader> = BTreeMap::new();
@@ -623,7 +669,14 @@ impl MockChain {
                 .with_context(|| format!("note location not available: {note}"))?
                 .block_num();
 
-            if note_block_num != block.header().block_num() {
+            if note_block_num > ref_block.block_num() {
+                anyhow::bail!(
+                    "note with ID {note} was created in block {note_block_num} which is larger than the reference block number {}",
+                    ref_block.block_num()
+                )
+            }
+
+            if note_block_num != ref_block.block_num() {
                 let block_header = self
                     .blocks
                     .get(note_block_num.as_usize())
@@ -640,18 +693,39 @@ impl MockChain {
             input_notes.push(InputNote::Unauthenticated { note: note.clone() })
         }
 
-        let block_headers = block_headers_map.values().cloned();
-        let mmr = PartialBlockchain::from_blockchain(&self.chain, block_headers)?;
+        let block_headers = block_headers_map.values();
+        let (_, partial_blockchain) = self.selective_partial_blockchain(
+            reference_block,
+            block_headers.map(BlockHeader::block_num),
+        )?;
 
         let input_notes = InputNotes::new(input_notes)?;
 
         Ok(TransactionInputs::new(
             account,
             account_seed,
-            block.header().clone(),
-            mmr,
+            ref_block.clone(),
+            partial_blockchain,
             input_notes,
         )?)
+    }
+
+    /// Returns a valid [`TransactionInputs`] for the specified entities.
+    pub fn get_transaction_inputs(
+        &self,
+        account: Account,
+        account_seed: Option<Word>,
+        notes: &[NoteId],
+        unauthenticated_notes: &[Note],
+    ) -> anyhow::Result<TransactionInputs> {
+        let latest_block_num = self.latest_block_header().block_num();
+        self.get_transaction_inputs_at(
+            latest_block_num,
+            account,
+            account_seed,
+            notes,
+            unauthenticated_notes,
+        )
     }
 
     /// Returns inputs for a transaction batch for all the reference blocks of the provided
