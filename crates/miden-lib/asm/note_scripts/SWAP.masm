@@ -2,15 +2,10 @@ use.miden::note
 use.miden::tx
 use.miden::contracts::wallets::basic->wallet
 
-# CONSTANTS
-# =================================================================================================
-
-const.PRIVATE_NOTE=2
-
 # ERRORS
 # =================================================================================================
 
-const.ERR_SWAP_WRONG_NUMBER_OF_INPUTS="SWAP script expects exactly 10 note inputs"
+const.ERR_SWAP_WRONG_NUMBER_OF_INPUTS="SWAP script expects exactly 12 note inputs"
 
 const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset"
 
@@ -25,9 +20,12 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! Outputs: []
 #!
 #! Note inputs are assumed to be as follows:
+#! - REQUESTED_ASSET
 #! - RECIPIENT
-#! - ASSET
-#! - TAG = [tag, 0, 0, 0]
+#! - note_execution_hint
+#! - payback_note_type
+#! - payback_note_aux
+#! - payback_tag
 #!
 #! Panics if:
 #! - account does not expose miden::contracts::wallets::basic::receive_asset procedure.
@@ -36,7 +34,10 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! - adding a fungible asset would result in amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 begin
-    # store the note inputs to memory starting at address 12
+    dropw
+    # => []
+
+    # store the number of note assets to memory starting at address 12
     push.12 exec.note::get_assets
     # => [num_assets, ptr]
 
@@ -49,62 +50,40 @@ begin
     # => [ASSET]
 
     # pad the stack before call
-    padw swapw padw padw swapdw
+    # padw swapw padw padw swapdw
     # => [ASSET, pad(12)]
 
     # add the ASSET to the account
     call.wallet::receive_asset
     # => [pad(16)]
 
-    # clean the stack
-    repeat.4
-        dropw
-    end
-    # => []
-
     # store note inputs into memory starting at address 0
     push.0 exec.note::get_inputs
     # => [num_inputs, inputs_ptr]
 
-    # make sure the number of inputs is 10
-    eq.10 assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
+    # make sure the number of inputs is 12
+    eq.12 assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
     # => [inputs_ptr]
 
     # load RECIPIENT
-    drop padw mem_loadw
-    # => [RECIPIENT]
+    mem_loadw
+    # => [REQUESTED_ASSET]
 
     padw mem_loadw.4
-    # => [ASSET, RECIPIENT]
+    # => [REQUESTED_ASSET, RECIPIENT]
 
     padw mem_loadw.8
-    # => [0, 0, execution_hint, tag, ASSET, RECIPIENT]
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, REQUESTED_ASSET]
 
-    drop drop swap
-    # => [tag, execution_hint, ASSET, RECIPIENT]
-
-    # we add aux = 0 to the note assuming we don't need it for the second leg of the SWAP
-    push.0 swap
-    # => [tag, aux, execution_hint, ASSET, RECIPIENT]
-
-    push.PRIVATE_NOTE movdn.2
-    # => [tag, aux, note_type, execution_hint, ASSET, RECIPIENT]
-
-    swapw
-    # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT]
-
-    # create a note using inputs
-    padw swapdw padw movdnw.2
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8), ASSET]
     call.tx::create_note
-    # => [note_idx, pad(15), ASSET]
+    # => [note_idx, REQUESTED_ASSET]
 
-    swapw dropw movupw.3
-    # => [ASSET, note_idx, pad(11)]
+    movdn.4
+    # => [REQUESTED_ASSET, note_idx]
 
     # move asset to the note
     call.wallet::move_asset_to_note
-    # => [ASSET, note_idx, pad(11)]
+    # => [REQUESTED_ASSET, note_idx]
 
     # clean stack
     dropw dropw dropw dropw
