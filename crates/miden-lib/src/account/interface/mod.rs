@@ -257,7 +257,7 @@ impl From<&Account> for AccountInterface {
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
             if let AccountComponentInterface::AuthRpoFalcon512(storage_index) = interface {
-                auth.push(AuthScheme::AuthRpoFalcon512 {
+                auth.push(AuthScheme::RpoFalcon512 {
                     pub_key: rpo_falcon512::PublicKey::new(
                         account
                             .storage()

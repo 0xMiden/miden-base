@@ -14,7 +14,7 @@ fn wallet_creation() {
 
     let sec_key = SecretKey::with_rng(&mut rng);
     let pub_key = sec_key.public_key();
-    let auth_scheme: AuthScheme = AuthScheme::AuthRpoFalcon512 { pub_key };
+    let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
 
     // we need to use an initial seed to create the wallet account
     let init_seed: [u8; 32] = [
