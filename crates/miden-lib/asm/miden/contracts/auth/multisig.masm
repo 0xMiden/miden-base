@@ -54,10 +54,11 @@ export.auth__tx_rpo_falcon512_multisig
     # 1. signing and execution have to be done together in one tx (for efficiency)
     # 2. only signers can execute (even if all signatures have been provided)
     movwup.3 dupw push.EMPTY_WORD eqw
-    # => [is_adding_signature, TX_HASH, ..., pad(16)]
+    # => [empty_tx_hash, TX_HASH, ..., pad(16)]
     if.false
         exec.add_signature
     end
+    dropw dropw
 
     # See if all the commitments are empty, i.e. == EMPTY_WORD
     # => [all_commitments_empty, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, TX_HASH, pad(16)]
@@ -115,7 +116,7 @@ export.auth__tx_rpo_falcon512_multisig
         emit.FALCON_SIG_TO_STACK
         exec.rpo_falcon512::verify
         # => [pad(16)]
-        
+
         exec.account::incr_nonce
     end
     # => [pad(16)]

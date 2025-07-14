@@ -130,7 +130,7 @@ fn test_multisig() -> anyhow::Result<()> {
         output_notes_commitment,
     ]);
 
-    // No tx script, but we pass the `message` as auth arguments
+    // No tx script now (not executing yet, only approval), but we pass the `message` as auth arguments
     let tx_context_add_sig = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[note.clone()])?
         .authenticator(account_1_authenticator.clone())
@@ -167,12 +167,14 @@ fn test_multisig() -> anyhow::Result<()> {
     // Here we would need a way to pass the transaction around
     // let (_notes, tx_script_send_note) = private_data.deserialize();
 
-    // The actual execute script is the same, just executed in a normal context
+    // Second user both approves the transaction (passing `message` as auth argument) and executes it.
+    // The actual execute script is the same as original, just executed in a "normal" (i.e. non-special) kernel.
     let tx_context_add_sig_2 = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[note.clone()])?
         .authenticator(account_2_authenticator.clone())
         .tx_script(tx_script_send_note)
-        // We pass the message as an auth argument, this way we can just use the original tx script (instead of modifying the state-transition tx script to explicitly call `add_sig`)
+        // We pass the message as an auth argument, this way we can just use the original tx script
+        // (instead of modifying the state-transition tx script to explicitly call `add_sig`)
         .auth_arguments(message)
         .build()?;
 
