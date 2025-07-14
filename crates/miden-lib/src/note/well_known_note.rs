@@ -150,15 +150,13 @@ impl WellKnownNote {
         let interface_proc_digests = account_interface.get_procedure_digests();
         match self {
             Self::P2ID | &Self::P2IDE => {
-                // Check that the `receive_asset` procedure is presented in the provided account
-                // interfaces. P2ID and P2IDE notes requires only this procedure to be consumed by
-                // the account.
+                // To consume P2ID and P2IDE notes, the `receive_asset` procedure must be present in
+                // the provided account interface.
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
             },
             Self::SWAP => {
-                // Make sure that `receive_asset` and `move_asset_to_note` procedures are presented
-                // in the provided account interfaces: SWAP note requires both procedures to be
-                // consumed by the account.
+                // To consume SWAP note, the `receive_asset` and `move_asset_to_note` procedures
+                // must be present in the provided account interface.
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },

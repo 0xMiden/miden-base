@@ -87,7 +87,7 @@ impl WellKnownComponent {
         forest.procedure_digests()
     }
 
-    /// Checks whether all procedures from the current component are presented in the procedures map
+    /// Checks whether all procedures from the current component are present in the procedures map
     /// and if so it removes these procedures from this map and pushes the corresponding component
     /// interface to the component interface vector.
     fn extract_component(
@@ -99,7 +99,9 @@ impl WellKnownComponent {
             .procedure_digests()
             .all(|proc_digest| procedures_map.contains_key(&proc_digest))
         {
-            let mut storage_offset = Default::default();
+            // `storage_offset` is guaranteed to be overwritten because `Self::procedure_digests`
+            // will return at least one digest.
+            let mut storage_offset = 0u8;
             self.procedure_digests().for_each(|component_procedure| {
                 if let Some(proc_info) = procedures_map.remove(&component_procedure) {
                     storage_offset = proc_info.storage_offset();

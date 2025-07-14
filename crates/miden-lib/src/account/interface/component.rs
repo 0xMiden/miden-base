@@ -36,8 +36,8 @@ pub enum AccountComponentInterface {
     /// Exposes procedures from the
     /// [`RpoFalcon512ProcedureAcl`][crate::account::auth::RpoFalcon512ProcedureAcl] module.
     ///
-    /// Internal value holds the storage slot index where the public key for the
-    /// RpoFalcon512ProcedureAcl authentication scheme is stored.
+    /// Internal value holds the storage slot index where the public key for the RpoFalcon512
+    /// authentication scheme is stored.
     RpoFalcon512ProcedureAcl(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
