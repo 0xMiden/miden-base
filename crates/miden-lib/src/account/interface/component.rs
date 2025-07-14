@@ -33,6 +33,12 @@ pub enum AccountComponentInterface {
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
     RpoFalcon512(u8),
+    /// Exposes procedures from the
+    /// [`RpoFalcon512ProcedureAcl`][crate::account::auth::RpoFalcon512ProcedureAcl] module.
+    ///
+    /// Internal value holds the storage slot index where the public key for the
+    /// RpoFalcon512ProcedureAcl authentication scheme is stored.
+    RpoFalcon512ProcedureAcl(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -53,6 +59,9 @@ impl AccountComponentInterface {
                 "Basic Fungible Faucet".to_string()
             },
             AccountComponentInterface::RpoFalcon512(_) => "RPO Falcon512".to_string(),
+            AccountComponentInterface::RpoFalcon512ProcedureAcl(_) => {
+                "RPO Falcon512 Procedure ACL".to_string()
+            },
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()

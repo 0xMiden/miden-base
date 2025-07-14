@@ -70,6 +70,7 @@ pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
     RpoFalcon512,
+    RpoFalcon512ProcedureAcl,
 }
 
 impl WellKnownComponent {
@@ -80,6 +81,7 @@ impl WellKnownComponent {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
             Self::RpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
+            Self::RpoFalcon512ProcedureAcl => RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.mast_forest(),
         };
 
         forest.procedure_digests()
@@ -112,6 +114,8 @@ impl WellKnownComponent {
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
                 Self::RpoFalcon512 => component_interface_vec
                     .push(AccountComponentInterface::RpoFalcon512(storage_offset)),
+                Self::RpoFalcon512ProcedureAcl => component_interface_vec
+                    .push(AccountComponentInterface::RpoFalcon512ProcedureAcl(storage_offset)),
             }
         }
     }
@@ -125,5 +129,6 @@ impl WellKnownComponent {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::RpoFalcon512.extract_component(procedures_map, component_interface_vec);
+        Self::RpoFalcon512ProcedureAcl.extract_component(procedures_map, component_interface_vec);
     }
 }
