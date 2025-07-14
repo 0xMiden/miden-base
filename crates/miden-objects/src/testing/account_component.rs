@@ -121,7 +121,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
         r#"
         use.miden::account
 
-        const.WRONG_ARGS="{}"
+        const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
         export.auth__conditional
             # OS => [AUTH_ARGS_KEY]
@@ -163,8 +163,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
             dropw dropw dropw dropw
         end
-"#,
-        ERR_WRONG_ARGS_MSG
+"#
     )
 });
 
