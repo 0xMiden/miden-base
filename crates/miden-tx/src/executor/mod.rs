@@ -17,8 +17,11 @@ use vm_processor::{AdviceInputs, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
-use super::{TransactionExecutorError, TransactionHost};
-use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
+use super::TransactionExecutorError;
+use crate::{
+    auth::TransactionAuthenticator,
+    host::{ScriptMastForestStore, TransactionExecutorHost},
+};
 
 mod data_store;
 pub use data_store::DataStore;
@@ -163,7 +166,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let mut host = TransactionHost::new(
+        let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             &mut advice_inputs,
             self.data_store,
@@ -240,7 +243,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
-        let mut host = TransactionHost::new(
+        let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             &mut advice_inputs,
             self.data_store,
@@ -314,7 +317,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let mut host = TransactionHost::new(
+        let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             &mut advice_inputs,
             self.data_store,
@@ -375,7 +378,7 @@ fn build_executed_transaction(
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
-    host: TransactionHost,
+    host: TransactionExecutorHost,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 

@@ -15,7 +15,7 @@ pub use executor::{
 };
 
 pub mod host;
-pub use host::{TransactionHost, TransactionProgress};
+pub use host::{TransactionExecutorHost, TransactionProgress, TransactionProverHost};
 
 mod prover;
 pub use prover::{LocalTransactionProver, ProvingOptions, TransactionMastStore, TransactionProver};

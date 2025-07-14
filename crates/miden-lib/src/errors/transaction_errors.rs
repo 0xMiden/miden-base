@@ -21,8 +21,12 @@ pub enum TransactionKernelError {
         "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
     )]
     InvalidStorageSlotIndex { max: u64, actual: u64 },
-    #[error("failed to generate signature: {0}")]
-    FailedSignatureGeneration(&'static str),
+    #[error(
+        "failed to respond to signature requested since no authenticator is assigned to the host"
+    )]
+    MissingAuthenticator,
+    #[error("failed to generate signature")]
+    SignatureGenerationFailed(#[source] Box<dyn Error + Send + Sync + 'static>),
     #[error("asset data extracted from the stack by event handler `{handler}` is not well formed")]
     MalformedAssetInEventHandler {
         handler: &'static str,

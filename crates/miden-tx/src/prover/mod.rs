@@ -13,8 +13,8 @@ use miden_prover::prove;
 use vm_processor::Word;
 use winter_maybe_async::*;
 
-use super::{TransactionHost, TransactionProverError};
-use crate::host::ScriptMastForestStore;
+use super::TransactionProverError;
+use crate::host::{ScriptMastForestStore, TransactionProverHost};
 
 mod mast_store;
 pub use mast_store::TransactionMastStore;
@@ -98,12 +98,11 @@ impl TransactionProver for LocalTransactionProver {
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host: TransactionHost = TransactionHost::new(
+        let mut host: TransactionProverHost = TransactionProverHost::new(
             &account.into(),
             &mut advice_inputs,
             self.mast_store.as_ref(),
             script_mast_store,
-            None,
             account_code_commitments,
         )
         .map_err(TransactionProverError::TransactionHostCreationFailed)?;
@@ -123,7 +122,7 @@ impl TransactionProver for LocalTransactionProver {
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         // extract transaction outputs and process transaction data
-        let (account_delta, output_notes, _signatures, _tx_progress) = host.into_parts();
+        let (account_delta, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs = TransactionKernel::from_transaction_parts(
             &stack_outputs,
             &advice_inputs.map,
