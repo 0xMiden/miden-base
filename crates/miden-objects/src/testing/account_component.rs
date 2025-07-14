@@ -126,12 +126,13 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
         export.auth__conditional
             # => [AUTH_ARG]
 
-            # If [97, 98, 99, incr_nonce_flag] is passed as an argument, all good.
+            # If [97, 98, 99] is passed as an argument, all good.
             # Otherwise we error out.
             push.97 assert_eq.err=WRONG_ARGS
             push.98 assert_eq.err=WRONG_ARGS
             push.99 assert_eq.err=WRONG_ARGS
 
+            # Last element is the incr_nonce_flag.
             if.true
                 push.1 exec.account::incr_nonce
             end
