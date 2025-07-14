@@ -49,10 +49,6 @@ begin
     mem_loadw
     # => [ASSET]
 
-    # pad the stack before call
-    # padw swapw padw padw swapdw
-    # => [ASSET, pad(12)]
-
     # add the ASSET to the account
     call.wallet::receive_asset
     # => [pad(16)]
@@ -65,16 +61,19 @@ begin
     eq.12 assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
     # => [inputs_ptr]
 
-    # load RECIPIENT
+    # load REQUESTED_ASSET
     mem_loadw
     # => [REQUESTED_ASSET]
 
+    # load RECIPIENT
     padw mem_loadw.4
-    # => [REQUESTED_ASSET, RECIPIENT]
+    # => [RECIPIENT, REQUESTED_ASSET]
 
+    # load payback P2ID details
     padw mem_loadw.8
     # => [tag, aux, note_type, execution_hint, RECIPIENT, REQUESTED_ASSET]
 
+    # create payback P2ID note
     call.tx::create_note
     # => [note_idx, REQUESTED_ASSET]
 
