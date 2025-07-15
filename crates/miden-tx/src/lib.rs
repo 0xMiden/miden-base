@@ -11,14 +11,16 @@ pub use miden_objects::transaction::TransactionInputs;
 mod executor;
 pub use executor::{
     DataStore, ExecutionOptions, MastForestStore, NoteAccountExecution, NoteConsumptionChecker,
-    NoteInputsCheck, TransactionExecutor,
+    NoteInputsCheck, TransactionExecutor, TransactionExecutorHost,
 };
 
 pub mod host;
-pub use host::{TransactionExecutorHost, TransactionProgress, TransactionProverHost};
 
 mod prover;
-pub use prover::{LocalTransactionProver, ProvingOptions, TransactionMastStore, TransactionProver};
+pub use prover::{
+    LocalTransactionProver, ProvingOptions, TransactionMastStore, TransactionProver,
+    TransactionProverHost,
+};
 
 mod verifier;
 pub use verifier::TransactionVerifier;

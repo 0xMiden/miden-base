@@ -12,9 +12,8 @@ use vm_processor::{
 };
 
 use crate::{
-    TransactionProgress,
     errors::TransactionHostError,
-    host::{ScriptMastForestStore, TransactionBaseHost},
+    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the

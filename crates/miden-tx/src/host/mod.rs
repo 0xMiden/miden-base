@@ -15,12 +15,6 @@ use note_builder::OutputNoteBuilder;
 mod script_mast_forest_store;
 pub use script_mast_forest_store::ScriptMastForestStore;
 
-mod exec_host;
-pub use exec_host::TransactionExecutorHost;
-
-mod prover_host;
-pub use prover_host::TransactionProverHost;
-
 mod tx_progress;
 use alloc::{
     boxed::Box,
@@ -154,6 +148,11 @@ impl<'store> TransactionBaseHost<'store> {
         &self.tx_progress
     }
 
+    /// Returns a reference to the account delta tracker of this transaction host.
+    pub fn account_delta_tracker(&self) -> &AccountDeltaTracker {
+        &self.account_delta
+    }
+
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
     pub fn into_parts(self) -> (AccountDelta, Vec<OutputNote>, TransactionProgress) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
@@ -166,7 +165,7 @@ impl<'store> TransactionBaseHost<'store> {
 
     /// Handles the given [`TransactionEvent`], for example by updating the account delta or pushing
     /// requested advice to the advice stack.
-    fn handle_event(
+    pub fn handle_event(
         &mut self,
         process: &mut ProcessState,
         transaction_event: TransactionEvent,

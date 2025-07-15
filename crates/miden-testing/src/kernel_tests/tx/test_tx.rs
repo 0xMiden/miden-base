@@ -38,8 +38,8 @@ use miden_objects::{
     transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript},
 };
 use miden_tx::{
-    ExecutionOptions, TransactionExecutor, TransactionExecutorError, TransactionMastStore,
-    host::{ScriptMastForestStore, TransactionExecutorHost},
+    ExecutionOptions, TransactionExecutor, TransactionExecutorError, TransactionExecutorHost,
+    TransactionMastStore, host::ScriptMastForestStore,
 };
 use vm_processor::Process;
 

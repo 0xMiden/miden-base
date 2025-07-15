@@ -18,10 +18,10 @@ pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutorError;
-use crate::{
-    auth::TransactionAuthenticator,
-    host::{ScriptMastForestStore, TransactionExecutorHost},
-};
+use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
+
+mod exec_host;
+pub use exec_host::TransactionExecutorHost;
 
 mod data_store;
 pub use data_store::DataStore;

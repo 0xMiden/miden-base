@@ -17,10 +17,9 @@ use vm_processor::{
 };
 
 use crate::{
-    TransactionProgress,
     auth::TransactionAuthenticator,
     errors::TransactionHostError,
-    host::{ScriptMastForestStore, TransactionBaseHost},
+    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
 /// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
@@ -102,7 +101,7 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
         {
             signature.to_vec()
         } else {
-            let account_delta = self.base_host.account_delta.clone().into_delta();
+            let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;

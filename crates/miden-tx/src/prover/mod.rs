@@ -14,7 +14,10 @@ use vm_processor::Word;
 use winter_maybe_async::*;
 
 use super::TransactionProverError;
-use crate::host::{ScriptMastForestStore, TransactionProverHost};
+use crate::host::ScriptMastForestStore;
+
+mod prover_host;
+pub use prover_host::TransactionProverHost;
 
 mod mast_store;
 pub use mast_store::TransactionMastStore;
