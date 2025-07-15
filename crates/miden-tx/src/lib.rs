@@ -14,7 +14,8 @@ pub use executor::{
     NoteInputsCheck, TransactionExecutor, TransactionExecutorHost,
 };
 
-pub mod host;
+mod host;
+pub use host::{AccountProcedureIndexMap, LinkMap, ScriptMastForestStore};
 
 mod prover;
 pub use prover::{
