@@ -38,8 +38,8 @@ use miden_objects::{
     transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript},
 };
 use miden_tx::{
-    ExecutionOptions, TransactionExecutor, TransactionExecutorError, TransactionHost,
-    TransactionMastStore, host::ScriptMastForestStore,
+    ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
+    TransactionExecutorHost, TransactionMastStore,
 };
 use vm_processor::Process;
 
@@ -904,7 +904,7 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
     let mast_store = Arc::new(TransactionMastStore::new());
     mast_store.load_account_code(tx_inputs.account().code());
 
-    let mut host = TransactionHost::new(
+    let mut host = TransactionExecutorHost::new(
         &tx_inputs.account().into(),
         &mut advice_inputs,
         mast_store.as_ref(),
