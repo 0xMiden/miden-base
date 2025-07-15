@@ -299,7 +299,7 @@ export.compute_output_notes_commitment
         # => [PERM, PERM, PERM, note_ptr + 8, end_ptr, ...]
 
         # increment output note pointer
-        movup.12 push.OUTPUT_NOTE_HASHING_MEM_DIFF add
+        movup.12 add.OUTPUT_NOTE_HASHING_MEM_DIFF
         # => [note_ptr + 2048, PERM, PERM, PERM, end_ptr, ...]
 
         # check if we should loop again

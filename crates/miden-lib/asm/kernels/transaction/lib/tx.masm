@@ -224,7 +224,7 @@ end
 export.update_expiration_block_num
     # Ensure block_height_delta is between 1 and 0xFFFF (inclusive)
     dup neq.0 assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
-    dup push.EXPIRY_UPPER_LIMIT lt assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
+    dup lt.EXPIRY_UPPER_LIMIT assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
     # => [block_height_delta]
 
     exec.get_block_number add
@@ -378,7 +378,7 @@ export.build_note_metadata
     # --------------------------------------------------------------------------------------------
 
     # NOTE: encrypted notes are currently unsupported
-    dup.2 push.PRIVATE_NOTE eq dup.3 push.PUBLIC_NOTE eq or assert.err=ERR_NOTE_INVALID_TYPE
+    dup.2 eq.PRIVATE_NOTE dup.3 eq.PUBLIC_NOTE or assert.err=ERR_NOTE_INVALID_TYPE
     # => [tag, aux, note_type, execution_hint]
 
     # copy data to validate the tag
@@ -389,7 +389,7 @@ export.build_note_metadata
     # => [tag, note_type, public_note, note_type, tag, aux, note_type, execution_hint]
 
     # enforce the note type depending on the tag' bits
-    u32shr.30 push.LOCAL_ANY_PREFIX eq cdrop
+    u32shr.30 eq.LOCAL_ANY_PREFIX cdrop
     assert_eq.err=ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX
     # => [tag, aux, note_type, execution_hint]
 
@@ -404,7 +404,7 @@ export.build_note_metadata
     # => [execution_hint_lo, execution_hint, tag, aux, note_type]
 
     # mask out the lower 6 execution hint tag bits.
-    push.0x3f u32and
+    u32and.0x3f
     # => [execution_hint_tag, execution_hint, tag, aux, note_type]
 
     # compute the payload by subtracting the tag value so the lower 6 bits are zero
@@ -423,7 +423,7 @@ export.build_note_metadata
     # we only need to shift by 26 bits because the payload is already shifted left by 6 bits
     # we shift the payload by multiplying with 2^26
     # this results in the lower 32 bits being zero which is where the note tag will be added
-    push.0x04000000 mul
+    mul.0x04000000
     # => [execution_hint_payload, execution_hint_tag, tag, aux, note_type]
 
     # add the tag to the payload to produce the merged value
@@ -439,7 +439,7 @@ export.build_note_metadata
     movup.5
     # => [note_type, sender_id_prefix, sender_id_suffix, note_tag_hint_payload, execution_hint_tag, aux]
     # multiply by 2^6 to shift the two note_type bits left by 6 bits.
-    push.0x40 mul
+    mul.0x40
     # => [shifted_note_type, sender_id_prefix, sender_id_suffix, note_tag_hint_payload, execution_hint_tag, aux]
 
     # merge execution_hint_tag into the note_type
