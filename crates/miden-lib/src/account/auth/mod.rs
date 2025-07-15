@@ -62,13 +62,13 @@ impl From<AuthRpoFalcon512> for AccountComponent {
 /// - Slot 2(map): A map with trigger procedure roots
 ///
 /// This component supports all account types.
-pub struct AuthRpoFalcon512ProcedureAcl {
+pub struct AuthRpoFalcon512Acl {
     public_key: PublicKey,
     auth_trigger_procedures: Vec<Word>,
 }
 
-impl AuthRpoFalcon512ProcedureAcl {
-    /// Creates a new [`AuthRpoFalcon512ProcedureAcl`] component with the given `public_key` and
+impl AuthRpoFalcon512Acl {
+    /// Creates a new [`AuthRpoFalcon512Acl`] component with the given `public_key` and
     /// list of procedure roots that require authentication.
     ///
     /// # Panics
@@ -88,8 +88,8 @@ impl AuthRpoFalcon512ProcedureAcl {
     }
 }
 
-impl From<AuthRpoFalcon512ProcedureAcl> for AccountComponent {
-    fn from(falcon: AuthRpoFalcon512ProcedureAcl) -> Self {
+impl From<AuthRpoFalcon512Acl> for AccountComponent {
+    fn from(falcon: AuthRpoFalcon512Acl) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
@@ -130,8 +130,8 @@ mod tests {
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
         let public_key = PublicKey::new(Word::empty());
-        let component = AuthRpoFalcon512ProcedureAcl::new(public_key, vec![])
-            .expect("component creation failed");
+        let component =
+            AuthRpoFalcon512Acl::new(public_key, vec![]).expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -170,9 +170,8 @@ mod tests {
 
         assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component =
-            AuthRpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone())
-                .expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(public_key, auth_trigger_procedures.clone())
+            .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
