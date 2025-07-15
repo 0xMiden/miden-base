@@ -5,7 +5,7 @@ use miden_objects::{
     Word,
     account::AccountId,
     block::BlockNumber,
-    crypto::merkle::MerklePath,
+    crypto::merkle::SparseMerklePath,
     note::{Note, NoteInclusionProof, Nullifier},
     transaction::{InputNote, OutputNote, ProvenTransaction, ProvenTransactionBuilder},
     vm::ExecutionProof,
@@ -47,8 +47,12 @@ impl MockProvenTxBuilder {
     /// Adds unauthenticated notes to the transaction.
     #[must_use]
     pub fn authenticated_notes(mut self, notes: Vec<Note>) -> Self {
-        let mock_proof =
-            NoteInclusionProof::new(BlockNumber::from(0), 0, MerklePath::new(vec![])).unwrap();
+        let mock_proof = NoteInclusionProof::new(
+            BlockNumber::from(0),
+            0,
+            SparseMerklePath::from_sized_iter(vec![]).unwrap(),
+        )
+        .unwrap();
         self.input_notes = Some(
             notes
                 .into_iter()
