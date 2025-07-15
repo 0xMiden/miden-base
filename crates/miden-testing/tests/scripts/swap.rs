@@ -244,7 +244,7 @@ fn get_swap_notes(
         ZERO,
         payback_note_type,
         ZERO,
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)].into()),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32]).into()),
     )
     .unwrap()
 }
