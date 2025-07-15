@@ -130,7 +130,7 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
 
     assert!(target_account.vault().assets().count() == 1);
     assert!(target_account.vault().assets().any(|asset| asset == offered_asset));
-
+    assert!(prove_and_verify_transaction(consume_swap_note_tx).is_ok());
     // CONSUME PAYBACK P2ID NOTE
     // --------------------------------------------------------------------------------------------
 
@@ -150,6 +150,7 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .add_pending_executed_transaction(&consume_payback_tx)
         .context("failed to add pending executed transaction")?;
     assert!(sender_account.vault().assets().any(|asset| asset == requested_asset));
+    assert!(prove_and_verify_transaction(consume_payback_tx).is_ok());
     Ok(())
 }
 

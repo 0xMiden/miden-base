@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.10.0 (TBD)
+## 0.11.0 (TBD)
 
 - [BREAKING] Incremented MSRV to 1.88.
 - Make `ExecutedTransaction` implement `Send` for easier consumption ([#1560](https://github.com/0xMiden/miden-base/pull/1560)).
