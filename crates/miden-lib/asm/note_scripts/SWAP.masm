@@ -16,16 +16,16 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! - miden::contracts::wallets::basic::receive_asset procedure.
 #! - miden::contracts::wallets::basic::move_asset_to_note procedure.
 #!
-#! Inputs:  []
-#! Outputs: []
+#! Inputs:  [ARGS, pad(12)]
+#! Outputs: [pad(16)]
 #!
 #! Note inputs are assumed to be as follows:
 #! - REQUESTED_ASSET
 #! - RECIPIENT
-#! - note_execution_hint
+#! - payback_note_execution_hint
 #! - payback_note_type
 #! - payback_note_aux
-#! - payback_tag
+#! - payback_note_tag
 #!
 #! Panics if:
 #! - account does not expose miden::contracts::wallets::basic::receive_asset procedure.
@@ -34,6 +34,7 @@ const.ERR_SWAP_WRONG_NUMBER_OF_ASSETS="SWAP script requires exactly 1 note asset
 #! - adding a fungible asset would result in amount overflow, i.e., the total amount would be
 #!   greater than 2^63.
 begin
+    # dropping note args
     dropw
     # => []
 
@@ -41,7 +42,7 @@ begin
     push.12 exec.note::get_assets
     # => [num_assets, ptr]
 
-    # make sure the number of inputs is 1
+    # make sure the number of assets is 1
     assert.err=ERR_SWAP_WRONG_NUMBER_OF_ASSETS
     # => [ptr]
 
@@ -82,9 +83,9 @@ begin
 
     # move asset to the note
     call.wallet::move_asset_to_note
-    # => [REQUESTED_ASSET, note_idx]
+    # => [REQUESTED_ASSET, note_idx, pad(12)]
 
     # clean stack
-    dropw dropw dropw dropw
+    dropw dropw dropw dropw drop
     # => []
 end
