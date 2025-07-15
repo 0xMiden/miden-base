@@ -1,7 +1,6 @@
 use miden_objects::{
     Felt, Word,
     account::AccountId,
-    assembly::{ProcedureName, QualifiedProcedureName},
     block::BlockNumber,
     note::{Note, NoteScript},
     utils::{Deserializable, sync::LazyLock},
@@ -9,8 +8,8 @@ use miden_objects::{
 };
 
 use crate::account::{
-    components::basic_wallet_library,
     interface::{AccountComponentInterface, AccountInterface, NoteAccountCompatibility},
+    wallets::BasicWallet,
 };
 
 // WELL KNOWN NOTE SCRIPTS
@@ -151,26 +150,15 @@ impl WellKnownNote {
         let interface_proc_digests = account_interface.get_procedure_digests();
         match self {
             Self::P2ID | &Self::P2IDE => {
-                // Get the hash of the "receive_asset" procedure and check that this procedure is
-                // presented in the provided account interfaces. P2ID and P2IDE notes requires only
-                // this procedure to be consumed by the account.
-                let receive_asset_proc_name = QualifiedProcedureName::new(
-                    Default::default(),
-                    ProcedureName::new("receive_asset").unwrap(),
-                );
-                let node_id = basic_wallet_library().get_export_node_id(&receive_asset_proc_name);
-                let receive_asset_digest = basic_wallet_library().mast_forest()[node_id].digest();
-
-                interface_proc_digests.contains(&receive_asset_digest)
+                // To consume P2ID and P2IDE notes, the `receive_asset` procedure must be present in
+                // the provided account interface.
+                interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
             },
             Self::SWAP => {
-                // Make sure that all procedures from the basic wallet library are presented in the
-                // provided account interfaces. SWAP note requires the whole basic wallet interface
-                // to be consumed by the account.
-                basic_wallet_library()
-                    .mast_forest()
-                    .procedure_digests()
-                    .all(|proc_digest| interface_proc_digests.contains(&proc_digest))
+                // To consume SWAP note, the `receive_asset` and `move_asset_to_note` procedures
+                // must be present in the provided account interface.
+                interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
+                    && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
         }
     }

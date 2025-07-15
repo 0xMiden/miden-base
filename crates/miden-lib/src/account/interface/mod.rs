@@ -14,6 +14,7 @@ use crate::{
     AuthScheme,
     account::components::{
         basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library,
+        rpo_falcon_512_procedure_acl_library,
     },
     note::well_known_note::WellKnownNote,
     transaction::TransactionKernel,
@@ -139,6 +140,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::RpoFalcon512ProcedureAcl(_) => {
+                    component_proc_digests.extend(
+                        rpo_falcon_512_procedure_acl_library().mast_forest().procedure_digests(),
+                    );
+                },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
                         .extend(custom_procs.iter().map(|info| *info.mast_root()));
@@ -256,15 +262,20 @@ impl From<&Account> for AccountInterface {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
-            if let AccountComponentInterface::RpoFalcon512(storage_index) = interface {
-                auth.push(AuthScheme::RpoFalcon512 {
-                    pub_key: rpo_falcon512::PublicKey::new(
-                        account
-                            .storage()
-                            .get_item(*storage_index)
-                            .expect("invalid storage index of the public key"),
-                    ),
-                })
+            match interface {
+                // RpoFalcon512 and RpoFalcon512ProcedureAcl use the same RpoFalcon512 auth scheme
+                AccountComponentInterface::RpoFalcon512(storage_index)
+                | AccountComponentInterface::RpoFalcon512ProcedureAcl(storage_index) => {
+                    auth.push(AuthScheme::RpoFalcon512 {
+                        pub_key: rpo_falcon512::PublicKey::new(
+                            account
+                                .storage()
+                                .get_item(*storage_index)
+                                .expect("invalid storage index of the public key"),
+                        ),
+                    })
+                },
+                _ => {},
             }
         });
 
@@ -295,7 +306,7 @@ pub enum NoteAccountCompatibility {
 }
 
 // HELPER FUNCTIONS
-// ================================================================================================
+// ------------------------------------------------------------------------------------------------
 
 /// Verifies that the provided note script is compatible with the target account interfaces.
 ///
