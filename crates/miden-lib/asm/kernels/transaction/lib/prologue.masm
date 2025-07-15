@@ -1116,6 +1116,7 @@ proc.process_tx_script_data
 end
 
 #! Saves the auth procedure args to memory.
+#!
 #! The auth procedure root has already been saved to memory via `process_account_data`.
 #!
 #! Inputs:
