@@ -280,9 +280,6 @@ impl<'store> TransactionBaseHost<'store> {
         Ok(())
     }
 
-    // ADVICE INJECTOR HANDLERS
-    // --------------------------------------------------------------------------------------------
-
     /// Pushes a signature to the advice stack as a response to the `FalconSigToStack` injector.
     ///
     /// The signature is fetched from the advice map and if it is not present, an error is returned.
