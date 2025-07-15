@@ -148,7 +148,7 @@ impl TransactionAdviceInputs {
         // --- number of notes, script root and args key ----------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
         self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
-        self.extend_stack(tx_args.tx_script_arg());
+        self.extend_stack(tx_args.tx_script_args());
 
         // --- auth procedure args key -------------------------------------------
         self.extend_stack(tx_args.auth_arg());

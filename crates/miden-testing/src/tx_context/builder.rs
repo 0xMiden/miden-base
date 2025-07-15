@@ -68,7 +68,7 @@ pub struct TransactionContextBuilder {
     foreign_account_inputs: Vec<AccountInputs>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
-    tx_script_arg: Word,
+    tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_arg: Word,
@@ -83,7 +83,7 @@ impl TransactionContextBuilder {
             input_notes: Vec::new(),
             expected_output_notes: Vec::new(),
             tx_script: None,
-            tx_script_arg: EMPTY_WORD,
+            tx_script_args: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
             transaction_inputs: None,
@@ -126,7 +126,7 @@ impl TransactionContextBuilder {
             expected_output_notes: Vec::new(),
             advice_inputs: Default::default(),
             tx_script: None,
-            tx_script_arg: EMPTY_WORD,
+            tx_script_args: EMPTY_WORD,
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
@@ -226,8 +226,8 @@ impl TransactionContextBuilder {
     }
 
     /// Set the transaction script argument
-    pub fn tx_script_arg(mut self, tx_script_arg: Word) -> Self {
-        self.tx_script_arg = tx_script_arg;
+    pub fn tx_script_args(mut self, tx_script_args: Word) -> Self {
+        self.tx_script_args = tx_script_args;
         self
     }
 
@@ -300,7 +300,7 @@ impl TransactionContextBuilder {
             .with_note_args(self.note_args);
 
         let mut tx_args = if let Some(tx_script) = self.tx_script {
-            tx_args.with_tx_script_and_arg(tx_script, self.tx_script_arg)
+            tx_args.with_tx_script_and_arg(tx_script, self.tx_script_args)
         } else {
             tx_args
         };

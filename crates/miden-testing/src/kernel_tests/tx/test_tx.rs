@@ -1290,7 +1290,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 /// Tests transaction script arguments.
 #[test]
 fn test_tx_script_args() -> anyhow::Result<()> {
-    let tx_script_arg = Word::from([1, 2, 3, 4u32]);
+    let tx_script_args = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
         use.miden::account
@@ -1322,10 +1322,10 @@ fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_advice_map([(
-            tx_script_arg,
+            tx_script_args,
             vec![Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)],
         )])
-        .tx_script_arg(tx_script_arg)
+        .tx_script_args(tx_script_args)
         .build()?;
 
     tx_context.execute()?;

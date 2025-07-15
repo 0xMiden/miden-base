@@ -35,7 +35,7 @@ use crate::{
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
-    tx_script_arg: Word,
+    tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
     foreign_account_inputs: Vec<AccountInputs>,
@@ -51,7 +51,7 @@ impl TransactionArgs {
     pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
         Self {
             tx_script: None,
-            tx_script_arg: EMPTY_WORD,
+            tx_script_args: EMPTY_WORD,
             note_args: Default::default(),
             advice_inputs: AdviceInputs::default().with_map(advice_map),
             foreign_account_inputs,
@@ -78,10 +78,10 @@ impl TransactionArgs {
     pub fn with_tx_script_and_arg(
         mut self,
         tx_script: TransactionScript,
-        tx_script_arg: Word,
+        tx_script_args: Word,
     ) -> Self {
         self.tx_script = Some(tx_script);
-        self.tx_script_arg = tx_script_arg;
+        self.tx_script_args = tx_script_args;
         self
     }
 
@@ -117,8 +117,8 @@ impl TransactionArgs {
     /// transaction script execution. Notice that the corresponding map entry should be provided
     /// separately during the creation with the [`TransactionArgs::new`] or using the
     /// [`TransactionArgs::extend_advice_map`] method.
-    pub fn tx_script_arg(&self) -> Word {
-        self.tx_script_arg
+    pub fn tx_script_args(&self) -> Word {
+        self.tx_script_args
     }
 
     /// Returns a reference to a specific note argument.
@@ -217,7 +217,7 @@ impl TransactionArgs {
 impl Serializable for TransactionArgs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.tx_script.write_into(target);
-        self.tx_script_arg.write_into(target);
+        self.tx_script_args.write_into(target);
         self.note_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_inputs.write_into(target);
@@ -228,7 +228,7 @@ impl Serializable for TransactionArgs {
 impl Deserializable for TransactionArgs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_script = Option::<TransactionScript>::read_from(source)?;
-        let tx_script_arg = Word::read_from(source)?;
+        let tx_script_args = Word::read_from(source)?;
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
@@ -236,7 +236,7 @@ impl Deserializable for TransactionArgs {
 
         Ok(Self {
             tx_script,
-            tx_script_arg,
+            tx_script_args,
             note_args,
             advice_inputs,
             foreign_account_inputs,
