@@ -4,8 +4,9 @@ use miden_objects::{
         Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
         StorageSlot,
     },
-    assembly::ProcedureName,
+    assembly::{ProcedureName, QualifiedProcedureName},
     asset::{FungibleAsset, TokenSymbol},
+    utils::sync::LazyLock,
 };
 use thiserror::Error;
 
@@ -17,6 +18,30 @@ use crate::account::{auth::AuthRpoFalcon512Acl, components::basic_fungible_fauce
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
+
+// Initialize the digest of the `distribute` procedure of the Basic Fungible Faucet only once.
+static BASIC_FUNGIBLE_FAUCET_DISTRIBUTE: LazyLock<Word> = LazyLock::new(|| {
+    let distribute_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicFungibleFaucet::DISTRIBUTE_PROC_NAME)
+            .expect("failed to create name for 'distribute' procedure"),
+    );
+    basic_fungible_faucet_library()
+        .get_procedure_root_by_name(distribute_proc_name)
+        .expect("Basic Fungible Faucet should contain 'distribute' procedure")
+});
+
+// Initialize the digest of the `burn` procedure of the Basic Fungible Faucet only once.
+static BASIC_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
+    let burn_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicFungibleFaucet::BURN_PROC_NAME)
+            .expect("failed to create name for 'burn' procedure"),
+    );
+    basic_fungible_faucet_library()
+        .get_procedure_root_by_name(burn_proc_name)
+        .expect("Basic Fungible Faucet should contain 'burn' procedure")
+});
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
@@ -143,28 +168,12 @@ impl BasicFungibleFaucet {
 
     /// Returns the digest of the `distribute` account procedure.
     pub fn distribute_digest() -> Word {
-        Self::get_procedure_digest_by_name(Self::DISTRIBUTE_PROC_NAME)
+        *BASIC_FUNGIBLE_FAUCET_DISTRIBUTE
     }
 
     /// Returns the digest of the `burn` account procedure.
     pub fn burn_digest() -> Word {
-        Self::get_procedure_digest_by_name(Self::BURN_PROC_NAME)
-    }
-
-    // HELPER FUNCTIONS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the digest of the basic faucet procedure with the specified name.
-    /// TODO: Potentially remove once https://github.com/0xMiden/miden-base/pull/1532 is ready
-    fn get_procedure_digest_by_name(procedure_name: &str) -> Word {
-        let proc_name = ProcedureName::new(procedure_name).expect("procedure name should be valid");
-        let module = basic_fungible_faucet_library()
-            .module_infos()
-            .next()
-            .expect("basic_fungible_faucet_library should have exactly one module");
-        module.get_procedure_digest_by_name(&proc_name).unwrap_or_else(|| {
-            panic!("basic_fungible_faucet_library should contain the '{proc_name}' procedure")
-        })
+        *BASIC_FUNGIBLE_FAUCET_BURN
     }
 }
 
@@ -385,5 +394,12 @@ mod tests {
             .err()
             .expect("basic fungible faucet creation should fail");
         assert_matches!(err, FungibleFaucetError::NoAvailableInterface);
+    }
+
+    /// Check that the obtaining of the basic fungible faucet procedure digests does not panic.
+    #[test]
+    fn get_faucet_procedures() {
+        let _distribute_digest = BasicFungibleFaucet::distribute_digest();
+        let _burn_digest = BasicFungibleFaucet::burn_digest();
     }
 }

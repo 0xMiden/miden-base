@@ -1,12 +1,12 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    TransactionScriptError, Word,
+    TransactionScriptError,
     account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
     assembly::mast::{MastForest, MastNode, MastNodeId},
     crypto::dsa::rpo_falcon512,
     note::{Note, NoteScript, PartialNote},
-    transaction::TransactionScript,
+    transaction::TransactionScript, Word
 };
 use thiserror::Error;
 
@@ -153,6 +153,30 @@ impl AccountInterface {
 // ------------------------------------------------------------------------------------------------
 /// Code generation
 impl AccountInterface {
+    /// Builds a simple authentication script for the transaction that doesn't send any notes.
+    ///
+    /// Resulting transaction script is generated from this source:
+    ///
+    /// ```masm
+    /// begin
+    ///     call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
+    /// end
+    /// ```
+    ///
+    /// # Errors:
+    /// Returns an error if:
+    /// - the account interface does not have any authentication schemes.
+    pub fn build_auth_script(
+        &self,
+        in_debug_mode: bool,
+    ) -> Result<TransactionScript, AccountInterfaceError> {
+        let auth_script_source = format!("begin\n{}\nend", self.build_tx_authentication_section());
+        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
+
+        TransactionScript::compile(auth_script_source, assembler)
+            .map_err(AccountInterfaceError::InvalidTransactionScript)
+    }
+
     /// Returns a transaction script which sends the specified notes using the procedures available
     /// in the current interface.
     ///
@@ -170,7 +194,8 @@ impl AccountInterface {
     ///
     /// # Example
     ///
-    /// Example of the `send_note` script with specified expiration delta and one output note:
+    /// Example of the `send_note` script with specified expiration delta, one output note and
+    /// RpoFalcon512 authentication:
     ///
     /// ```masm
     /// begin
@@ -180,6 +205,8 @@ impl AccountInterface {
     ///
     ///     push.{asset amount}
     ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
+    ///
+    ///     call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
     /// end
     /// ```
     ///
@@ -202,9 +229,10 @@ impl AccountInterface {
         let note_creation_source = self.build_create_notes_section(output_notes)?;
 
         let script = format!(
-            "begin\n{}\n{}\nend",
+            "begin\n{}\n{}\n{}\nend",
             self.build_set_tx_expiration_section(expiration_delta),
             note_creation_source,
+            self.build_tx_authentication_section()
         );
 
         let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
@@ -212,6 +240,19 @@ impl AccountInterface {
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)
+    }
+
+    /// Returns a string with the authentication procedure call for the script.
+    fn build_tx_authentication_section(&self) -> String {
+        let mut auth_script = String::new();
+        self.auth().iter().for_each(|auth_scheme| match auth_scheme {
+            &AuthScheme::RpoFalcon512 { pub_key: _ } => {
+                auth_script
+                    .push_str("call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512\n");
+            },
+        });
+
+        auth_script
     }
 
     /// Generates a note creation code required for the `send_note` transaction script.
@@ -259,10 +300,10 @@ impl From<&Account> for AccountInterface {
             if let AccountComponentInterface::AuthRpoFalcon512(storage_index) = interface {
                 auth.push(AuthScheme::RpoFalcon512 {
                     pub_key: rpo_falcon512::PublicKey::new(
-                        account
+                        (*account
                             .storage()
                             .get_item(*storage_index)
-                            .expect("invalid storage index of the public key"),
+                            .expect("invalid storage index of the public key")).into(),
                     ),
                 })
             }

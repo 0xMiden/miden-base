@@ -62,7 +62,7 @@ impl AccountComponentInterface {
                     .map(|proc_info| proc_info.mast_root().to_hex()[..9].to_string())
                     .collect::<Vec<_>>()
                     .join(", ");
-                format!("Custom([{result}])")
+                format!("Custom([{}])", result)
             },
         }
     }
@@ -167,7 +167,7 @@ impl AccountComponentInterface {
     ///
     /// ```masm
     ///     push.{note_information}
-    ///     call.::miden::tx::create_note
+    ///     call.::miden::contracts::wallets::basic::create_note
     ///
     ///     push.{note asset}
     ///     call.::miden::contracts::wallets::basic::move_asset_to_note dropw
@@ -241,7 +241,7 @@ impl AccountComponentInterface {
                     // stack => []
                 },
                 AccountComponentInterface::BasicWallet => {
-                    body.push_str("call.::miden::tx::create_note\n");
+                    body.push_str("call.::miden::contracts::wallets::basic::create_note\n");
                     // stack => [note_idx]
 
                     for asset in partial_note.assets().iter() {

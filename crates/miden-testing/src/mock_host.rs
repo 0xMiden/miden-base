@@ -5,10 +5,7 @@ use miden_objects::{
     Felt, Word,
     account::{AccountHeader, AccountVaultDelta},
 };
-use miden_tx::{
-    TransactionMastStore,
-    host::{AccountProcedureIndexMap, LinkMap},
-};
+use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
     AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, MastForest, MastForestStore,
     ProcessState, SyncHost,
