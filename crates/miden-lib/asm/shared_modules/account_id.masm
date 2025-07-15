@@ -105,7 +105,7 @@ end
 #! - acct_id_prefix is the prefix of the account ID.
 #! - is_faucet is a boolean indicating whether the account is a faucet.
 export.is_faucet
-    u32split drop u32and.FAUCET_ACCOUNT eq.0 not
+    u32split drop u32and.FAUCET_ACCOUNT neq.0
     # => [is_faucet]
 end
 
