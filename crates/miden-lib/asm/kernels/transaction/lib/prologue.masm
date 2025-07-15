@@ -1103,11 +1103,11 @@ proc.process_tx_script_data
     # => [TX_SCRIPT_ROOT]
 
     # store the transaction script root in memory
-    exec.memory::set_tx_script_root dropw
-    # => []
+    exec.memory::set_tx_script_root
+    # => [TX_SCRIPT_ROOT]
 
-    # read the transaction script args key from the advice stack
-    padw adv_loadw
+    # read the transaction script args key from the advice stack (overwrites TX_SCRIPT_ROOT)
+    adv_loadw
     # => [TX_SCRIPT_ARGS_KEY]
 
     # store the transaction script args key in memory
