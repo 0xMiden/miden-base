@@ -74,7 +74,7 @@ begin
     # => [tag, aux, note_type, execution_hint, RECIPIENT, REQUESTED_ASSET]
 
     # create payback P2ID note
-    call.tx::create_note
+    exec.tx::create_note
     # => [note_idx, REQUESTED_ASSET]
 
     movdn.4
