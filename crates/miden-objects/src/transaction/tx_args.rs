@@ -32,6 +32,10 @@ use crate::{
 /// - Advice inputs: provides data needed by the runtime, like the details of public output notes.
 /// - Foreign account inputs: provides foreign account data that will be used during the foreign
 ///   procedure invocation (FPI).
+/// - Auth arguments: data put onto the stack right before authentication procedure execution. If
+///   this argument is not specified, the [`EMPTY_WORD`] would be used as a default value. If the
+///   [AdviceInputs] are propagated with some user defined map entries, this argument could be used
+///   as a key to access the corresponding value.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
