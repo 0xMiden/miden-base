@@ -82,7 +82,7 @@ const.TX_SCRIPT_ROOT_PTR=420
 const.TX_SCRIPT_ARGS_KEY_PTR=424
 
 # The memory address at which the key of the auth procedure arguments is stored.
-const.AUTH_PROCEDURE_ARGS_KEY_PTR=428
+const.AUTH_ARGS_PTR=428
 
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
@@ -538,28 +538,26 @@ export.set_tx_script_args_key
     mem_storew.TX_SCRIPT_ARGS_KEY_PTR
 end
 
-#! Returns the auth procedure arguments key.
+#! Returns the auth procedure arguments.
 #!
 #! Inputs:  []
-#! Outputs: [AUTH_PROCEDURE_ARGS_KEY]
+#! Outputs: [AUTH_ARGS]
 #!
 #! Where:
-#! - AUTH_PROCEDURE_ARGS_KEY is the key which could be used to obtain the auth procedure arguments.
-#!   from the advice map.
-export.get_auth_procedure_args_key
-    padw mem_loadw.AUTH_PROCEDURE_ARGS_KEY_PTR
+#! - AUTH_ARGS is the argument passed to the auth procedure.
+export.get_auth_args
+    padw mem_loadw.AUTH_ARGS_PTR
 end
 
-#! Sets the auth procedure arguments key.
+#! Sets the auth procedure arguments.
 #!
-#! Inputs:  [AUTH_PROCEDURE_ARGS_KEY]
-#! Outputs: [AUTH_PROCEDURE_ARGS_KEY]
+#! Inputs:  [AUTH_ARGS]
+#! Outputs: [AUTH_ARGS]
 #!
 #! Where:
-#! - AUTH_PROCEDURE_ARGS_KEY is the key which could be used to obtain the auth procedure arguments.
-#!   from the advice map.
-export.set_auth_procedure_args_key
-    mem_storew.AUTH_PROCEDURE_ARGS_KEY_PTR
+#! - AUTH_ARGS is the argument passed to the auth procedure.
+export.set_auth_args
+    mem_storew.AUTH_ARGS_PTR
 end
 
 # BLOCK DATA

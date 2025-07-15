@@ -29,14 +29,14 @@ fn test_auth_procedure_args() -> anyhow::Result<()> {
         TransactionKernel::testing_assembler(),
     );
 
-    let auth_arg = [
+    let auth_args = [
         ONE, // incr_nonce = true
         Felt::new(99),
         Felt::new(98),
         Felt::new(97),
     ];
 
-    let tx_context = TransactionContextBuilder::new(account).auth_arg(auth_arg.into()).build()?;
+    let tx_context = TransactionContextBuilder::new(account).auth_args(auth_args.into()).build()?;
 
     tx_context.execute().context("failed to execute transaction")?;
 
@@ -59,14 +59,14 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
     );
 
     // The auth script expects [99, 98, 97, nonce_increment_flag]
-    let auth_arg = [
+    let auth_args = [
         ONE, // incr_nonce = true
         Felt::new(103),
         Felt::new(102),
         Felt::new(101),
     ];
 
-    let tx_context = TransactionContextBuilder::new(account).auth_arg(auth_arg.into()).build()?;
+    let tx_context = TransactionContextBuilder::new(account).auth_args(auth_args.into()).build()?;
 
     let execution_result = tx_context.execute();
 

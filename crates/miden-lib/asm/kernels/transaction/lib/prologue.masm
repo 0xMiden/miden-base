@@ -1115,26 +1115,25 @@ proc.process_tx_script_data
     # => []
 end
 
-#! Saves the auth procedure args key to memory.
+#! Saves the auth procedure args to memory.
 #! The auth procedure root has already been saved to memory via `process_account_data`.
 #!
 #! Inputs:
 #!   Operand stack: []
-#!   Advice stack: [AUTH_PROCEDURE_ARGS_KEY]
+#!   Advice stack: [AUTH_ARGS]
 #! Outputs:
 #!   Operand stack: []
 #!   Advice stack: []
 #!
 #! Where:
-#! - AUTH_PROCEDURE_ARGS_KEY is the commitment of the auth procedure args used to obtain them from
-#!   the advice map.
+#! - AUTH_ARGS is the argument passed to the auth procedure.
 proc.process_auth_procedure_data
-    # read the auth procedure args key from the advice stack
+    # read the auth procedure args from the advice stack
     padw adv_loadw
-    # => [AUTH_PROCEDURE_ARGS_KEY]
+    # => [AUTH_ARGS]
 
-    # store the auth procedure args key in memory
-    exec.memory::set_auth_procedure_args_key dropw
+    # store the auth procedure args in memory
+    exec.memory::set_auth_args dropw
     # => []
 end
 
@@ -1172,7 +1171,7 @@ end
 #!     number_of_input_notes,
 #!     TX_SCRIPT_ROOT,
 #!     TX_SCRIPT_ARGS_KEY,
-#!     AUTH_PROCEDURE_ARGS_KEY,
+#!     AUTH_ARGS,
 #!   ]
 #!   Advice map: {
 #!      PARTIAL_BLOCKCHAIN_COMMITMENT: [MMR_PEAKS],

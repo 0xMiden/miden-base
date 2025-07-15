@@ -137,7 +137,7 @@ pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
 pub const TX_SCRIPT_ARGS_KEY: MemoryAddress = 424;
 
 /// The memory address at which the key of the auth procedure arguments is stored.
-pub const AUTH_PROCEDURE_ARGS_KEY_PTR: MemoryAddress = 428;
+pub const AUTH_ARGS_PTR: MemoryAddress = 428;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------

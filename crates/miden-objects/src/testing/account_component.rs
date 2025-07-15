@@ -124,7 +124,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
         const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
         export.auth__conditional
-            # => [AUTH_ARG]
+            # => [AUTH_ARGS]
 
             # If [97, 98, 99] is passed as an argument, all good.
             # Otherwise we error out.

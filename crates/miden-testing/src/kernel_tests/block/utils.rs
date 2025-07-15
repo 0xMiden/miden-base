@@ -139,7 +139,7 @@ pub fn generate_conditional_tx(
     chain.add_pending_note(OutputNote::Full(noop_note.clone()));
     chain.prove_next_block().unwrap();
 
-    let auth_arg = [
+    let auth_args = [
         if modify_storage { ONE } else { ZERO }, // increment nonce if modify_storage is true
         Felt::new(99),
         Felt::new(98),
@@ -150,7 +150,7 @@ pub fn generate_conditional_tx(
         .build_tx_context(input.into(), &[noop_note.id()], &[])
         .unwrap()
         .extend_input_notes(vec![noop_note])
-        .auth_arg(auth_arg.into())
+        .auth_args(auth_args.into())
         .build()
         .unwrap();
     tx_context.execute().unwrap()

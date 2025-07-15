@@ -104,7 +104,7 @@ impl TransactionAdviceInputs {
     ///     number_of_input_notes,
     ///     TX_SCRIPT_ROOT,
     ///     TX_SCRIPT_ARGS_KEY,
-    ///     AUTH_PROCEDURE_ARG,
+    ///     AUTH_ARGS,
     /// ]
     fn build_stack(
         &mut self,
@@ -150,8 +150,8 @@ impl TransactionAdviceInputs {
         self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
         self.extend_stack(tx_args.tx_script_args());
 
-        // --- auth procedure args key -------------------------------------------
-        self.extend_stack(tx_args.auth_arg());
+        // --- auth procedure args -------------------------------------------
+        self.extend_stack(tx_args.auth_args());
     }
 
     // BLOCKCHAIN INJECTIONS
