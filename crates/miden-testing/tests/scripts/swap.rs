@@ -179,6 +179,9 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block().unwrap();
 
+    // When consuming a SWAP note with a public payback note output
+    // it is necessary to add the details of the public note to the advice provider
+    // via `.extend_expected_output_notes()`
     let payback_p2id_note = create_p2id_note_exact(
         target_account.id(),
         sender_account.id(),
