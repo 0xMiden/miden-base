@@ -128,7 +128,7 @@ impl TransactionProver for LocalTransactionProver {
         let (account_delta, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs = TransactionKernel::from_transaction_parts(
             &stack_outputs,
-            &advice_inputs.map,
+            &advice_inputs,
             output_notes,
         )
         .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;

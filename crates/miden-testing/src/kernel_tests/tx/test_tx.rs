@@ -41,7 +41,7 @@ use miden_tx::{
     ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
     TransactionExecutorHost, TransactionMastStore,
 };
-use vm_processor::Process;
+use vm_processor::{AdviceInputs, Process};
 
 use super::{Felt, ONE, ZERO};
 use crate::{
@@ -926,11 +926,11 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         .execute(&TransactionKernel::main(), &mut host)
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
         .into_diagnostic()?;
-    let advice_map = process.advice.map;
+    let advice_inputs = AdviceInputs::default().with_map(process.advice.map);
 
     let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .unwrap();
 
     assert_eq!(
