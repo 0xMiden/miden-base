@@ -25,6 +25,7 @@ use miden_testing::{Auth, MockChain};
 use miden_tx::{
     TransactionExecutorError,
     auth::{BasicAuthenticator, MultisigAuthenticator, TransactionAuthenticator},
+    utils::Serializable,
 };
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -47,7 +48,7 @@ fn test_multisig() -> anyhow::Result<()> {
 
     let authenticator_1 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
         &[(pub_key_1.into(), AuthSecretKey::RpoFalcon512(sec_key))],
-        rng,
+        rng.clone(),
     );
     let authenticator_2 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
         &[(pub_key_2.into(), AuthSecretKey::RpoFalcon512(sec_key_2))],
@@ -106,7 +107,7 @@ fn test_multisig() -> anyhow::Result<()> {
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block()?;
 
-    // INIT TX AND ADD FIRST SIGNATURE
+    // INIT TX
     // -------------
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
     let recipient = Word::from([0, 1, 2, 3u32]);
@@ -114,7 +115,6 @@ fn test_multisig() -> anyhow::Result<()> {
     let tag = NoteTag::from_account_id(faucet_id);
     let asset = Word::from(FungibleAsset::new(faucet_id, 10)?);
 
-    // This script is executed in a special kernel that doesn't do auth (before epilogue)
     let tx_script_init_tx = format!(
         "
         use.miden::tx
@@ -152,43 +152,49 @@ fn test_multisig() -> anyhow::Result<()> {
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
-    let tx_context_init_tx = mock_chain
+    let _tx_context_init_tx = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[note.clone()])?
         .tx_script(tx_script_send_note.clone())
         .build()?;
 
-    // Calling `execute_special` kernel that advances through the main tx script except for the epilogue,
-    // Or otherwise getting the commitments and breaking out from execution.
-    // This would normally by the coordinator doing this.
-    let executed_tx_init_tx = tx_context_init_tx.execute()?;
-
-    let error = tx_context_init_tx.execute().unwrap_err();
-
-    let tx_effects = match error {
-        TransactionExecutorError::AbortWithTxEffects(tx_effects) => tx_effects,
-        _ => panic!("expected abort with tx effects"),
-    };
+    // TODO use sth like below once https://github.com/0xMiden/miden-base/pull/1596 is ready.
+    // let error = tx_context_init_tx.execute().unwrap_err();
+    // let tx_effects = match error {
+    //     TransactionExecutorError::AbortWithTxEffects(tx_effects) => tx_effects,
+    //     _ => panic!("expected abort with tx effects"),
+    // };
+    let tx_effects = Word::default();
 
     let aux = Word::default();
+    let mut tx_message_elements = Vec::new();
+    tx_message_elements.extend_from_slice(tx_effects.as_elements());
+    tx_message_elements.extend_from_slice(aux.as_elements());
 
-    let tx_hash = Hasher::hash(&[tx_effects, aux]);
+    let tx_hash = Hasher::hash_elements(&tx_message_elements);
 
     // TODO what do we do about the delta? Actually we should not be passing it here. The approvers should view `tx_effect`, which is more comprehensive than the delta.
-    let sig_1 = authenticator_1.get_signature(pub_key_1, tx_hash)?;
-    let sig_2 = authenticator_2.get_signature(pub_key_2, tx_hash)?;
+    // TODO `get_signature` should get refactored with https://github.com/0xMiden/miden-base/issues/1593
+    // let sig_1 = authenticator_1.get_signature(pub_key_1, tx_hash)?;
+    // let sig_2 = authenticator_2.get_signature(pub_key_2, tx_hash)?;
+    let sig_1 = Vec::new();
+    let sig_2 = Vec::new();
 
     // for each public key, we add the vector of signatures that are associated with it. This is the authenticator that the coordinator uses.
-    // TODO create a new authenticator MultisigAuthenticator
-    // TODO fill the parameters correctly here.
     let mut multisig_authenticator = MultisigAuthenticator::new();
     multisig_authenticator.add_signature(pub_key_1.into(), tx_hash, sig_1);
     multisig_authenticator.add_signature(pub_key_2.into(), tx_hash, sig_2);
     // Approver_2 signs some other message
-    let aux_2 = Word::from([1, 0, 0, 0]);
-    let tx_hash_2 = Hasher::hash(&[tx_effects, aux_2]);
-    let sig_2_b = authenticator_2.get_signature(pub_key_2, tx_hash_2)?;
+    let aux_2 = Word::from([Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO]);
+    let mut tx_message_elements_2 = Vec::new();
+    tx_message_elements_2.extend_from_slice(tx_effects.as_elements());
+    tx_message_elements_2.extend_from_slice(aux_2.as_elements());
+    let tx_hash_2 = Hasher::hash_elements(&tx_message_elements_2);
+
+    // TODO use proper signature once `get_signature` is refactored
+    // let sig_2_b = authenticator_2.get_signature(pub_key_2, tx_hash_2)?;
+    let sig_2_b = Vec::new();
+
     // We also add that signature to the coordinators' authenticator.
-    // TODO the authenticator should have the capability to add more signatures for an existing or new public key
     multisig_authenticator.add_signature(pub_key_2.into(), tx_hash_2, sig_2_b);
 
     let tx_context_execute = mock_chain
