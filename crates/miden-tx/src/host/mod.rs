@@ -174,10 +174,8 @@ impl<'store> TransactionBaseHost<'store> {
         transaction_event: TransactionEvent,
         err_ctx: &impl ErrorContext,
     ) -> Result<(), ExecutionError> {
-        // only the `FalconSigToStack` event can be executed outside the root context
-        if process.ctx() != ContextId::root()
-            && !matches!(transaction_event, TransactionEvent::FalconSigToStack)
-        {
+        // Privileged events can only be emitted from the root context.
+        if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
             return Err(ExecutionError::event_error(
                 Box::new(TransactionEventError::NotRootContext(transaction_event as u32)),
                 err_ctx,

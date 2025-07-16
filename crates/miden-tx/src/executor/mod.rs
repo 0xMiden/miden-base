@@ -13,7 +13,7 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, ExecutionError, ExecutionTrace, Process};
+use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 

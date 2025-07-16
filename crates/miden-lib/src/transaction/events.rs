@@ -112,6 +112,13 @@ pub enum TransactionEvent {
 impl TransactionEvent {
     /// Value of the top 16 bits of a transaction kernel event ID.
     pub const ID_PREFIX: u32 = 2;
+
+    /// Returns `true` if the event is privileged, i.e. it is only allowed to be emitted from the
+    /// root context of the VM, which is where the transaction kernel executes.
+    pub fn is_privileged(&self) -> bool {
+        let is_unprivileged = matches!(self, Self::FalconSigToStack | Self::AbortWithTxEffects);
+        !is_unprivileged
+    }
 }
 
 impl fmt::Display for TransactionEvent {
