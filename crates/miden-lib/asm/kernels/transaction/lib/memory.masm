@@ -81,6 +81,9 @@ const.TX_SCRIPT_ROOT_PTR=420
 # The memory address at which the key of the transaction script arguments is stored.
 const.TX_SCRIPT_ARGS_KEY_PTR=424
 
+# The memory address at which the auth procedure arguments are stored.
+const.AUTH_ARGS_PTR=428
+
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -533,6 +536,28 @@ end
 #!   from the advice map.
 export.set_tx_script_args_key
     mem_storew.TX_SCRIPT_ARGS_KEY_PTR
+end
+
+#! Returns the auth procedure arguments.
+#!
+#! Inputs:  []
+#! Outputs: [AUTH_ARGS]
+#!
+#! Where:
+#! - AUTH_ARGS is the argument passed to the auth procedure.
+export.get_auth_args
+    padw mem_loadw.AUTH_ARGS_PTR
+end
+
+#! Sets the auth procedure arguments.
+#!
+#! Inputs:  [AUTH_ARGS]
+#! Outputs: [AUTH_ARGS]
+#!
+#! Where:
+#! - AUTH_ARGS is the argument passed to the auth procedure.
+export.set_auth_args
+    mem_storew.AUTH_ARGS_PTR
 end
 
 # BLOCK DATA
