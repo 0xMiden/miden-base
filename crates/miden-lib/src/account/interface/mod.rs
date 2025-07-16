@@ -159,7 +159,7 @@ impl AccountInterface {
     ///
     /// ```masm
     /// begin
-    ///     call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
+    ///     call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     /// end
     /// ```
     ///
@@ -206,7 +206,7 @@ impl AccountInterface {
     ///     push.{asset amount}
     ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
     ///
-    ///     call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512
+    ///     call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     /// end
     /// ```
     ///
@@ -248,7 +248,7 @@ impl AccountInterface {
         self.auth().iter().for_each(|auth_scheme| match auth_scheme {
             &AuthScheme::RpoFalcon512 { pub_key: _ } => {
                 auth_script
-                    .push_str("call.::miden::contracts::auth::basic::auth_tx_rpo_falcon512\n");
+                    .push_str("call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512\n");
             },
         });
 
