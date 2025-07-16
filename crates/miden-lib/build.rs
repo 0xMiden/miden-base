@@ -139,16 +139,11 @@ fn main() -> Result<()> {
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
     let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
-    let kernel_namespace = LibraryNamespace::Kernel; //::new("kernel").expect("namespace should be valid");
+    let kernel_namespace = LibraryNamespace::Kernel;
 
     let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the kernel::util namespace
     assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
-
-    // Add the lib/ directory manually so we can set our custom kernel namespace, whereas
-    // assemble_kernel_from_dir always picks the $kernel namespace.
-    // assembler
-    //     .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
     let kernel_lib = assembler
