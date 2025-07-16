@@ -11,29 +11,6 @@ const.FALCON_SIG_TO_STACK=131087
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
-#! Adds a signature for the given message to storage
-#!
-#! Inputs:  [MESSAGE_MULTISIG]
-#! Outputs: [pad(16)]
-export.add_signature
-    dupw
-
-    # Get public key of the current signer from account storage
-    emit.SIGNER_INDEX_TO_STACK
-    # => [signer_index, MESSAGE_MULTISIG, MESSAGE_MULTISIG, pad(16)]
-
-    exec.get_public_key_for_signer dupw movwd.2
-    # => [PUBLIC_KEY_SIGNER, MESSAGE_MULTISIG, PUBLIC_KEY_SIGNER, MESSAGE_MULTISIG, pad(16)]
-
-    # Verify the signature against the public key and the message.
-    emit.FALCON_SIG_TO_STACK
-    exec.rpo_falcon512::verify
-    # => [PUBLIC_KEY_SIGNER, MESSAGE_MULTISIG, pad(16)]
-
-    # Set the signature_provided flag to true for this signer
-    exec.store_sig_for_message
-    # => [pad(16)]
-end
     
 #! Authenticate a transaction using the Falcon signature scheme.
 #! This is a single auth procedure that handles both the addition of a signature and the multisig tx execution.
@@ -43,81 +20,5 @@ end
 #! Outputs: [pad(16)]
 export.auth__tx_rpo_falcon512_multisig
     # => [TX_HASH, pad(16)]
-
-    # Get the data to be signed before we make any changes to the account
-    # Account delta DOES NOT contain the nonce
-    # TOOD: is it safe to consider the delta w/o the nonce?
-    # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, TX_HASH]
-
-    # If the TX_HASH is provided, we assume the caller is trying to add a signature
-    # TODO we might want to make this mandatory, so that:
-    # 1. signing and execution have to be done together in one tx (for efficiency)
-    # 2. only signers can execute (even if all signatures have been provided)
-    movwup.3 dupw push.EMPTY_WORD eqw
-    # => [empty_tx_hash, TX_HASH, ..., pad(16)]
-    if.false
-        exec.add_signature
-    end
-    dropw dropw
-
-    # See if all the commitments are empty, i.e. == EMPTY_WORD
-    # => [all_commitments_empty, ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, TX_HASH, pad(16)]
-
-    # If the caller is trying to consume notes or make other account changes, 
-    # we check if multisig signatures are ready
-    if.false
-        # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, TX_HASH, pad(16)]
-
-        # Compute the message to be signed
-        # MESSAGE_MULTISIG = h([ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT])
-        hmerge hmerge hmerge
-        # => [MESSAGE_MULTISIG, TX_HASH, pad(16)]
-
-        # TODO do we check if TX_HASH and MESSAGE_MULTISIG are the same? If not, this could allow for add a signature to one tx, and executing another tx.
-
-        # check if we have enough signatures for our multisig message
-        exec.check_sig_count
-        # => [sig_count, TX_HASH, pad(16)]
-
-        # get the threshold for the multisig
-        exec.get_threshold
-        # => [threshold, sig_count, TX_HASH, pad(16)]
-
-        # check if we have enough signatures
-        gte
-        # => [has_enough_sigs, TX_HASH, pad(16)]
-
-        # If we don't have enough signatures, we fail
-        assert.err=ERR_NOT_ENOUGH_SIGNATURES
-        
-        # Remove this TX_HASH and associated signature flags from storage map
-
-    end
-
-    # Finally, increment the nonce. We only do this in case of either adding a signature or executing the tx.
-    # => [is_adding_nonce, pad(16)]
-    if.true
-        # To prevent replay attacks, we sign on the current nonce, just like in standard Falcon auth scheme.
-        # We always sign `MESSAGE_MULTISIG || nonce`
-        # Get the relevant data:
-        # => [MESSAGE_MULTISIG, [0, 0, 0, nonce], pad(16)]
-        hmerge
-        # => [MESSAGE', pad(16)]
-
-        # Get public key of the current signer from account storage
-        # TODO if we enforce `add_signature` & `execute` to be together, we already would have `PUBLIC_KEY_SIGNER` from the `add_signature` call.
-        emit.SIGNER_INDEX_TO_STACK
-        # => [signer_index, MESSAGE', pad(16)]
-
-        exec.get_public_key_for_signer
-        # => [PUBLIC_KEY_SIGNER, MESSAGE', pad(16)]
-
-        # Verify the signature against the public key and the message.
-        emit.FALCON_SIG_TO_STACK
-        exec.rpo_falcon512::verify
-        # => [pad(16)]
-
-        exec.account::incr_nonce
-    end
-    # => [pad(16)]
+    dropw
 end
