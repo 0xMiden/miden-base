@@ -5,10 +5,12 @@ use miden_objects::{
     MAX_BATCHES_PER_BLOCK, ProposedBlockError,
     account::AccountId,
     block::{BlockInputs, BlockNumber, ProposedBlock},
+    crypto::merkle::SparseMerklePath,
     note::NoteInclusionProof,
     testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     transaction::{OutputNote, ProvenTransaction},
 };
+use vm_processor::crypto::MerklePath;
 
 use super::utils::{
     TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
@@ -356,9 +358,10 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
         .get(&note0.id())
         .expect("note proof should have been fetched")
         .clone();
-    let mut invalid_note_path = original_note_proof.note_path().clone();
+    let mut original_merkle_path = MerklePath::from(original_note_proof.note_path().clone());
+    original_merkle_path.push(block2.commitment());
     // Add a random hash to the path to make it invalid.
-    invalid_note_path.push(block2.commitment());
+    let invalid_note_path = SparseMerklePath::try_from(original_merkle_path).unwrap();
     let invalid_note_proof = NoteInclusionProof::new(
         original_note_proof.location().block_num(),
         original_note_proof.location().node_index_in_block(),

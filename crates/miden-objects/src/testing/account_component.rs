@@ -1,10 +1,11 @@
-use alloc::vec::Vec;
+use alloc::{string::String, vec::Vec};
 
 use crate::{
     AccountError,
     account::{AccountComponent, StorageSlot},
     assembly::{Assembler, Library, diagnostics::NamedSource},
     testing::account_code::MOCK_ACCOUNT_CODE,
+    utils::sync::LazyLock,
 };
 
 // ACCOUNT COMPONENT ASSEMBLY CODE
@@ -113,23 +114,33 @@ const NOOP_AUTH_CODE: &str = "
     end
 ";
 
-const CONDITIONAL_AUTH_CODE: &str = "
-    use.miden::account
+pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
 
-    export.auth__conditional
-        push.0
-        exec.account::get_item
+static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
+    format!(
+        r#"
+        use.miden::account
 
-        push.99.99.99.99
-        eqw
+        const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
-        # If 99.99.99.99 is in storage, increment nonce
-        if.true
-            push.1 exec.account::incr_nonce
+        export.auth__conditional
+            # => [AUTH_ARGS]
+
+            # If [97, 98, 99] is passed as an argument, all good.
+            # Otherwise we error out.
+            push.97 assert_eq.err=WRONG_ARGS
+            push.98 assert_eq.err=WRONG_ARGS
+            push.99 assert_eq.err=WRONG_ARGS
+
+            # Last element is the incr_nonce_flag.
+            if.true
+                push.1 exec.account::incr_nonce
+            end
+            dropw dropw dropw dropw
         end
-        dropw dropw dropw dropw
-    end
-";
+"#
+    )
+});
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
@@ -163,7 +174,7 @@ pub struct ConditionalAuthComponent {
 impl ConditionalAuthComponent {
     pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
         let library = assembler
-            .assemble_library([CONDITIONAL_AUTH_CODE])
+            .assemble_library([CONDITIONAL_AUTH_CODE.as_str()])
             .map_err(AccountError::AccountComponentAssemblyError)?;
         Ok(Self { library })
     }

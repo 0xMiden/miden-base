@@ -1,6 +1,6 @@
 use alloc::{collections::BTreeSet, vec::Vec};
 
-use assembly::{Assembler, Library, Parse};
+use assembly::{Assembler, Library, Parse, ast::QualifiedProcedureName};
 use vm_processor::MastForest;
 
 mod template;
@@ -156,6 +156,15 @@ impl AccountComponent {
             }
         }
         procedures
+    }
+
+    /// Returns the digest of the procedure with the specified name, or `None` if it was not found
+    /// in this component's library or its library path is malformed.
+    pub fn get_procedure_root_by_name(
+        &self,
+        proc_name: impl TryInto<QualifiedProcedureName>,
+    ) -> Option<Word> {
+        self.library.get_procedure_root_by_name(proc_name)
     }
 
     // MUTATORS

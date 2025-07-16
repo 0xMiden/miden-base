@@ -9,7 +9,7 @@ use miden_objects::{
         OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
     },
     utils::{serde::Deserializable, sync::LazyLock},
-    vm::{AdviceInputs, AdviceMap, Program, ProgramInfo, StackInputs, StackOutputs},
+    vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs},
 };
 use miden_stdlib::StdLibrary;
 use outputs::EXPIRATION_BLOCK_ELEMENT_IDX;
@@ -316,18 +316,18 @@ impl TransactionKernel {
     /// `FINAL_ACCOUNT_COMMITMENT`.
     pub fn from_transaction_parts(
         stack: &StackOutputs,
-        adv_map: &AdviceMap,
+        advice_inputs: &AdviceInputs,
         output_notes: Vec<OutputNote>,
     ) -> Result<TransactionOutputs, TransactionOutputError> {
         let (output_notes_commitment, account_update_commitment, expiration_block_num) =
             Self::parse_output_stack(stack)?;
 
         let (final_account_commitment, account_delta_commitment) =
-            Self::parse_account_update_commitment(account_update_commitment, adv_map)?;
+            Self::parse_account_update_commitment(account_update_commitment, advice_inputs)?;
 
         // parse final account state
-        let final_account_data = adv_map
-            .get(&final_account_commitment)
+        let final_account_data = advice_inputs
+            .mapped_values(&final_account_commitment)
             .ok_or(TransactionOutputError::FinalAccountCommitmentMissingInAdviceMap)?;
 
         let account = parse_final_account_header(final_account_data)
@@ -354,13 +354,14 @@ impl TransactionKernel {
     /// update commitment.
     fn parse_account_update_commitment(
         account_update_commitment: Word,
-        adv_map: &AdviceMap,
+        advice_inputs: &AdviceInputs,
     ) -> Result<(Word, Word), TransactionOutputError> {
-        let account_update_data = adv_map.get(&account_update_commitment).ok_or_else(|| {
-            TransactionOutputError::AccountUpdateCommitment(
-                "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
-            )
-        })?;
+        let account_update_data =
+            advice_inputs.mapped_values(&account_update_commitment).ok_or_else(|| {
+                TransactionOutputError::AccountUpdateCommitment(
+                    "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
+                )
+            })?;
 
         if account_update_data.len() != 8 {
             return Err(TransactionOutputError::AccountUpdateCommitment(

@@ -145,12 +145,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     )) => {
         assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
             let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
-            assert_matches!(kernel_error, TransactionKernelError::FailedSignatureGeneration(msg) => {
-                assert_eq!(
-                    *msg, "No authenticator assigned to transaction host",
-                    "Expected 'No authenticator assigned to transaction host' error, got: {msg}"
-                );
-            })
+            assert_matches!(kernel_error, TransactionKernelError::MissingAuthenticator);
         })
     });
 

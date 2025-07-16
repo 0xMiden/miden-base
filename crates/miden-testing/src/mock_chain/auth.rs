@@ -36,7 +36,11 @@ pub enum Auth {
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
 
-    /// TODO update once #1501 is ready.
+    /// Creates a mock authentication mechanism for the account that conditionally succeeds and
+    /// conditionally increments the nonce based on the authentication arguments.
+    ///
+    /// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.
+    /// In case it succeeds, it conditionally increments the nonce based on the fourth argument.
     Conditional,
 }
 

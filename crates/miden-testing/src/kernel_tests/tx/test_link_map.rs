@@ -4,7 +4,7 @@ use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
 use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
-use miden_tx::{host::LinkMap, utils::word_to_masm_push_string};
+use miden_tx::{LinkMap, utils::word_to_masm_push_string};
 use rand::seq::IteratorRandom;
 use vm_processor::{ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_value;
