@@ -383,7 +383,7 @@ fn build_executed_transaction(
     let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs.map, output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
     let initial_account = tx_inputs.account();
