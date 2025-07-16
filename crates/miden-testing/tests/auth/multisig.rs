@@ -1,20 +1,15 @@
-use assert_matches::assert_matches;
 use miden_lib::{
     AuthScheme,
     account::wallets::{BasicWallet, create_basic_wallet},
-    transaction::{TransactionKernel, TransactionKernelError},
+    transaction::TransactionKernel,
 };
 use miden_objects::{
     Felt, FieldElement, Hasher, Word,
-    account::{
-        AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountStorageMode,
-        AccountType, AuthSecretKey,
-    },
+    account::{AccountBuilder, AccountId, AccountStorageMode, AccountType, AuthSecretKey},
     asset::FungibleAsset,
     crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     note::{NoteExecutionHint, NoteTag, NoteType},
     testing::{
-        account_component::AccountMockComponent,
         account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
         note::NoteBuilder,
     },
@@ -22,14 +17,9 @@ use miden_objects::{
     utils::word_to_masm_push_string,
 };
 use miden_testing::{Auth, MockChain};
-use miden_tx::{
-    TransactionExecutorError,
-    auth::{BasicAuthenticator, MultisigAuthenticator, TransactionAuthenticator},
-    utils::Serializable,
-};
+use miden_tx::auth::{BasicAuthenticator, MultisigAuthenticator};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::ExecutionError;
 
 #[test]
 fn test_multisig() -> anyhow::Result<()> {
@@ -202,7 +192,7 @@ fn test_multisig() -> anyhow::Result<()> {
         .tx_script(tx_script_send_note)
         .build()?;
 
-    tx_context_execute.execute().expect("adding signature should succeed");
+    tx_context_execute.execute().expect("Transaction should succeed");
 
     Ok(())
 }
