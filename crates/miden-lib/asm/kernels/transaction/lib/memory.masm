@@ -1,5 +1,5 @@
-use.kernel::account
-use.kernel::constants
+use.$kernel::account
+use.$kernel::constants
 use.std::mem
 
 # ERRORS
@@ -80,6 +80,9 @@ const.TX_SCRIPT_ROOT_PTR=420
 
 # The memory address at which the key of the transaction script arguments is stored.
 const.TX_SCRIPT_ARGS_KEY_PTR=424
+
+# The memory address at which the auth procedure arguments are stored.
+const.AUTH_ARGS_PTR=428
 
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
@@ -535,6 +538,28 @@ export.set_tx_script_args_key
     mem_storew.TX_SCRIPT_ARGS_KEY_PTR
 end
 
+#! Returns the auth procedure arguments.
+#!
+#! Inputs:  []
+#! Outputs: [AUTH_ARGS]
+#!
+#! Where:
+#! - AUTH_ARGS is the argument passed to the auth procedure.
+export.get_auth_args
+    padw mem_loadw.AUTH_ARGS_PTR
+end
+
+#! Sets the auth procedure arguments.
+#!
+#! Inputs:  [AUTH_ARGS]
+#! Outputs: [AUTH_ARGS]
+#!
+#! Where:
+#! - AUTH_ARGS is the argument passed to the auth procedure.
+export.set_auth_args
+    mem_storew.AUTH_ARGS_PTR
+end
+
 # BLOCK DATA
 # -------------------------------------------------------------------------------------------------
 
@@ -578,8 +603,9 @@ end
 #!
 #! Where:
 #! - version is the protocol version of the transaction reference block.
+const.BLOCK_METADATA_VERSION_PTR=BLOCK_METADATA_PTR+1
 export.get_blk_version
-    push.BLOCK_METADATA_PTR add.1 mem_load
+    mem_load.BLOCK_METADATA_VERSION_PTR
 end
 
 #! Returns the block timestamp of the reference block for this transaction.
@@ -589,8 +615,9 @@ end
 #!
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
+const.BLOCK_METADATA_TIMESTAMP_PTR=BLOCK_METADATA_PTR+2
 export.get_blk_timestamp
-    push.BLOCK_METADATA_PTR add.2 mem_load
+    mem_load.BLOCK_METADATA_TIMESTAMP_PTR
 end
 
 #! Returns the chain commitment of the transaction reference block.
@@ -932,9 +959,9 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
+const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
 export.get_acct_nonce
-    exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET
-    add.3
+    exec.get_current_account_data_ptr add.ACCT_NONCE_PTR
     mem_load
 end
 

@@ -47,9 +47,9 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use.test::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             # mint asset
@@ -103,7 +103,7 @@ fn test_mint_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -132,7 +132,7 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -166,7 +166,7 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -208,10 +208,10 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         r#"
         use.std::collections::smt
 
-        use.kernel::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::account
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
         use.test::account->test_account
 
         begin
@@ -261,7 +261,7 @@ fn test_mint_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()>
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -290,7 +290,7 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -324,7 +324,7 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<(
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -369,9 +369,9 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use.test::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             # burn asset
@@ -428,7 +428,7 @@ fn test_burn_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -463,7 +463,7 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -498,7 +498,7 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -538,10 +538,10 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::account
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
         use.test::account->test_account
 
         begin
@@ -614,7 +614,7 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -644,7 +644,7 @@ fn test_burn_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()>
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -683,7 +683,7 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -724,7 +724,7 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::faucet
 
         begin
@@ -772,7 +772,7 @@ fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::faucet
 
         begin

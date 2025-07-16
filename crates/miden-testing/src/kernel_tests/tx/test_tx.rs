@@ -41,7 +41,7 @@ use miden_tx::{
     ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
     TransactionExecutorHost, TransactionMastStore,
 };
-use vm_processor::Process;
+use vm_processor::{AdviceInputs, Process};
 
 use super::{Felt, ONE, ZERO};
 use crate::{
@@ -141,7 +141,7 @@ fn test_create_note() -> anyhow::Result<()> {
         "
         use.miden::tx
         
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -236,7 +236,7 @@ fn note_creation_script(tag: Felt) -> String {
     format!(
         "
             use.miden::tx
-            use.kernel::prologue
+            use.$kernel::prologue
     
             begin
                 exec.prologue::prepare_transaction
@@ -267,9 +267,9 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        use.kernel::constants
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::constants
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             exec.constants::get_max_num_output_notes
@@ -391,7 +391,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -502,7 +502,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         "
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -577,7 +577,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         "
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -662,7 +662,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
         use.miden::tx
 
@@ -739,7 +739,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        use.kernel::prologue
+        use.$kernel::prologue
 
         proc.build_recipient_hash
             exec.tx::build_recipient_hash
@@ -813,7 +813,7 @@ fn test_block_procedures() -> anyhow::Result<()> {
 
     let code = "
         use.miden::tx
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -926,11 +926,11 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         .execute(&TransactionKernel::main(), &mut host)
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
         .into_diagnostic()?;
-    let advice_map = process.advice.map;
+    let advice_inputs = AdviceInputs::default().with_map(process.advice.map);
 
     let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .unwrap();
 
     assert_eq!(
@@ -1290,7 +1290,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 /// Tests transaction script arguments.
 #[test]
 fn test_tx_script_args() -> anyhow::Result<()> {
-    let tx_script_arg = Word::from([1, 2, 3, 4u32]);
+    let tx_script_args = Word::from([1, 2, 3, 4u32]);
 
     let tx_script_src = r#"
         use.miden::account
@@ -1322,10 +1322,10 @@ fn test_tx_script_args() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_advice_map([(
-            tx_script_arg,
+            tx_script_args,
             vec![Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)],
         )])
-        .tx_script_arg(tx_script_arg)
+        .tx_script_args(tx_script_args)
         .build()?;
 
     tx_context.execute()?;
