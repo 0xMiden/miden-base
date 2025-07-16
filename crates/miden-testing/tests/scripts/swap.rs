@@ -232,6 +232,108 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[test]
+fn settle_coincidence_of_wants() -> anyhow::Result<()> {
+    let mut mock_chain = MockChain::new();
+
+    // Create two different assets for the swap
+    let asset_a = mock_chain
+        .add_pending_new_faucet(Auth::BasicAuth, "USDT", 100000u64)
+        .context("failed to add pending new faucet")?
+        .mint(10_000);
+    let asset_b = mock_chain
+        .add_pending_new_faucet(Auth::BasicAuth, "ETH", 100000u64)
+        .context("failed to add pending new faucet")?
+        .mint(1);
+
+    // CREATE ACCOUNT 1: Has asset A, wants asset B
+    // --------------------------------------------------------------------------------------------
+    let account_1 = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![asset_a]);
+
+    let payback_note_type = NoteType::Public;
+    let (swap_note_1, payback_note_1) =
+        get_swap_notes(account_1.id(), asset_a, asset_b, payback_note_type);
+
+    // CREATE ACCOUNT 2: Has asset B, wants asset A
+    // --------------------------------------------------------------------------------------------
+    let account_2 = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![asset_b]);
+
+    let (swap_note_2, payback_note_2) =
+        get_swap_notes(account_2.id(), asset_b, asset_a, payback_note_type);
+
+    // Add both swap notes to the chain
+    mock_chain.add_pending_note(OutputNote::Full(swap_note_1.clone()));
+    mock_chain.add_pending_note(OutputNote::Full(swap_note_2.clone()));
+    mock_chain.prove_next_block().unwrap();
+
+    // CREATE MATCHING ACCOUNT: Has both assets and will fulfill both swaps
+    // --------------------------------------------------------------------------------------------
+
+    // # TODO: matching account should be able to fill both SWAP notes without holding assets A & B
+    let matching_account =
+        mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![asset_a, asset_b]);
+
+    // Store initial matching account balance for verification
+    let initial_matching_balance = matching_account.vault().assets().count();
+    assert_eq!(initial_matching_balance, 2); // Should start with both assets
+
+    // Create expected payback notes for both swaps
+    let payback_p2id_note_1 = create_p2id_note_exact(
+        matching_account.id(),
+        account_1.id(),
+        vec![asset_b],
+        payback_note_type,
+        Felt::new(0),
+        payback_note_1.serial_num(),
+    )
+    .unwrap();
+
+    let payback_p2id_note_2 = create_p2id_note_exact(
+        matching_account.id(),
+        account_2.id(),
+        vec![asset_a],
+        payback_note_type,
+        Felt::new(0),
+        payback_note_2.serial_num(),
+    )
+    .unwrap();
+
+    // EXECUTE SINGLE TRANSACTION TO CONSUME BOTH SWAP NOTES
+    // --------------------------------------------------------------------------------------------
+    let settle_tx = mock_chain
+        .build_tx_context(matching_account.id(), &[swap_note_1.id(), swap_note_2.id()], &[])
+        .context("failed to build tx context")?
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(payback_p2id_note_1.clone()),
+            OutputNote::Full(payback_p2id_note_2.clone()),
+        ])
+        .build()?
+        .execute()?;
+
+    // VERIFY PAYBACK NOTES WERE CREATED CORRECTLY
+    // --------------------------------------------------------------------------------------------
+    let output_notes: Vec<_> = settle_tx.output_notes().iter().collect();
+    assert_eq!(output_notes.len(), 2);
+
+    // Find payback notes by matching their IDs
+    let output_payback_1 = output_notes
+        .iter()
+        .find(|note| note.id() == payback_note_1.id())
+        .expect("Payback note 1 not found");
+    let output_payback_2 = output_notes
+        .iter()
+        .find(|note| note.id() == payback_note_2.id())
+        .expect("Payback note 2 not found");
+
+    // Verify payback note 1 contains exactly the initially requested asset B for account 1
+    assert_eq!(output_payback_1.assets().unwrap().iter().next().unwrap(), &asset_b);
+
+    // Verify payback note 2 contains exactly the initially requested asset A for account 2
+    assert_eq!(output_payback_2.assets().unwrap().iter().next().unwrap(), &asset_a);
+
+    Ok(())
+}
+
 fn get_swap_notes(
     sender_account_id: AccountId,
     offered_asset: Asset,
