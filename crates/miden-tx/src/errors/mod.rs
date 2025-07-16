@@ -1,6 +1,7 @@
 use alloc::{boxed::Box, string::String};
 use core::error::Error;
 
+use miden_lib::errors::TransactionEffects;
 use miden_objects::{
     AccountError, Felt, ProvenTransactionError, TransactionInputError, TransactionOutputError,
     Word, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
@@ -59,6 +60,10 @@ pub enum TransactionExecutorError {
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
+    /// This variant can be matched on to get the effects of a transaction for signing purposes.
+    // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
+    #[error("transaction aborted with effects {0:?}")]
+    AbortWithTxEffects(Box<TransactionEffects>),
 }
 
 // TRANSACTION PROVER ERROR

@@ -1,6 +1,6 @@
 use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
     account::AccountId,
@@ -13,7 +13,7 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, Process};
+use vm_processor::{AdviceInputs, ExecutionError, ExecutionTrace, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -185,7 +185,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.exec_options,
             source_manager,
         )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        .map_err(map_execute_error)?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -480,6 +480,29 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
         })
     } else {
         Ok(())
+    }
+}
+
+/// Remaps an execution error to a transaction executor error.
+///
+/// - If the inner error is [`TransactionKernelError::AbortWithTxEffects`], it is remapped to
+///   [`TransactionExecutorError::AbortWithTxEffects`]. This is done for convenience, so that
+///   callers don't have to go through the trouble of downcasting.
+/// - Otherwise, the execution error is wrapped in
+///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
+fn map_execute_error(exec_err: ExecutionError) -> TransactionExecutorError {
+    match exec_err {
+        ExecutionError::EventError { ref error, .. } => {
+            let maybe_kernel_error: Option<&TransactionKernelError> = error.downcast_ref();
+            match maybe_kernel_error {
+                Some(TransactionKernelError::AbortWithTxEffects(tx_effects)) => {
+                    TransactionExecutorError::AbortWithTxEffects(tx_effects.clone())
+                },
+                Some(_) => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+                None => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+            }
+        },
+        _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
     }
 }
 
