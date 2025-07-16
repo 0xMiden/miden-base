@@ -43,7 +43,7 @@ impl From<AuthRpoFalcon512> for AccountComponent {
     }
 }
 
-/// An [`AccountComponent`] implementing a procedure-ACL based AuthRpoFalcon512 signature scheme for
+/// An [`AccountComponent`] implementing a procedure-ACL based RpoFalcon512 signature scheme for
 /// authentication of transactions.
 ///
 /// This component only requires authentication when any of the specified procedures are called
@@ -53,7 +53,7 @@ impl From<AuthRpoFalcon512> for AccountComponent {
 /// It exports the procedure `auth__tx_rpo_falcon512_procedure_acl`, which:
 /// - Checks if any of the specified auth trigger procedures were called during the transaction
 /// - If none were called, authentication is skipped
-/// - If at least one was called, performs standard AuthRpoFalcon512 signature verification
+/// - If at least one was called, performs standard RpoFalcon512 signature verification
 /// - Always increments the nonce
 ///
 /// The storage layout is:
