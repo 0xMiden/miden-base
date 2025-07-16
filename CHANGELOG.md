@@ -12,6 +12,7 @@
 - Replace `MerklePath` with `SparseMerklePath` in `NoteInclusionProof` ([#1572](https://github.com/0xMiden/miden-base/pull/1572)) .
 - [BREAKING] Split `TransactionHost` into `TransactionProverHost` and `TransactionExecutorHost` ([#1581](https://github.com/0xMiden/miden-base/pull/1581)).
 - Add arguments to the auth procedure ([#1501](https://github.com/0xMiden/miden-base/pull/1501)).
+- Add `TransactionEvent::AbortWithTxEffects` to enable aborting the transaction execution to get its effects for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596)).
 
 ## 0.10.0 (2025-07-08)
 
