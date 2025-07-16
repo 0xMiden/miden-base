@@ -26,7 +26,7 @@ pub enum Auth {
     BasicAuth,
 
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
-    /// authenticate the account with [AuthRpoFalcon512ProcedureAcl]. Authentication will only be
+    /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
     ProcedureAcl { auth_trigger_procedures: Vec<Word> },
 
