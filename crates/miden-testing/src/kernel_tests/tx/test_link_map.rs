@@ -32,7 +32,7 @@ fn insertion() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use.kernel::link_map
+      use.$kernel::link_map
 
       const.MAP_PTR={map_ptr}
 
@@ -415,7 +415,7 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::link_map
+        use.$kernel::link_map
 
         begin
           {test_code}
@@ -605,7 +605,7 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-      use.kernel::link_map
+      use.$kernel::link_map
       begin
           {test_code}
       end

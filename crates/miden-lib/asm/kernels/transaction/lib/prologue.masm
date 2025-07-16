@@ -2,11 +2,11 @@ use.std::mem
 use.std::collections::mmr
 use.std::crypto::hashes::rpo
 
-use.kernel::account
-use.kernel::account_id
-use.kernel::asset_vault
-use.kernel::constants
-use.kernel::memory
+use.$kernel::account
+use.$kernel::account_id
+use.$kernel::asset_vault
+use.$kernel::constants
+use.$kernel::memory
 
 # CONSTS
 # =================================================================================================
@@ -687,7 +687,7 @@ proc.process_note_inputs_length
     # => [inputs_len, note_ptr]
 
     # validate the input length
-    dup exec.::kernel::util::note::get_max_inputs_per_note lte
+    dup exec.::$kernel::util::note::get_max_inputs_per_note lte
     assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
     # => [inputs_len, note_ptr]
 

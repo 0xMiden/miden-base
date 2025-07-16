@@ -1,5 +1,5 @@
-use.kernel::account
-use.kernel::constants
+use.$kernel::account
+use.$kernel::constants
 use.std::mem
 
 # ERRORS

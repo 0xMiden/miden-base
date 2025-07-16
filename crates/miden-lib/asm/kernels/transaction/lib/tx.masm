@@ -1,8 +1,8 @@
-use.kernel::account
-use.kernel::asset
-use.kernel::constants
-use.kernel::memory
-use.kernel::note
+use.$kernel::account
+use.$kernel::asset
+use.$kernel::constants
+use.$kernel::memory
+use.$kernel::note
 
 # CONSTANTS
 # =================================================================================================

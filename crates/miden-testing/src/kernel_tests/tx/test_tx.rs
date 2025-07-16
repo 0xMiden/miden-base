@@ -141,7 +141,7 @@ fn test_create_note() -> anyhow::Result<()> {
         "
         use.miden::tx
         
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -236,7 +236,7 @@ fn note_creation_script(tag: Felt) -> String {
     format!(
         "
             use.miden::tx
-            use.kernel::prologue
+            use.$kernel::prologue
     
             begin
                 exec.prologue::prepare_transaction
@@ -267,9 +267,9 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        use.kernel::constants
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::constants
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             exec.constants::get_max_num_output_notes
@@ -391,7 +391,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -502,7 +502,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         "
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -577,7 +577,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         "
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -662,7 +662,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
         use.miden::tx
 
@@ -739,7 +739,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        use.kernel::prologue
+        use.$kernel::prologue
 
         proc.build_recipient_hash
             exec.tx::build_recipient_hash
@@ -813,7 +813,7 @@ fn test_block_procedures() -> anyhow::Result<()> {
 
     let code = "
         use.miden::tx
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction

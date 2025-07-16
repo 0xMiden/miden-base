@@ -1,7 +1,7 @@
 use.std::crypto::hashes::rpo
 
-use.kernel::constants
-use.kernel::memory
+use.$kernel::constants
+use.$kernel::memory
 
 # ERRORS
 # =================================================================================================

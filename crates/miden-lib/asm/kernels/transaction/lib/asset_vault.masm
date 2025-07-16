@@ -1,8 +1,8 @@
 use.std::collections::smt
 
-use.kernel::account_id
-use.kernel::asset
-use.kernel::memory
+use.$kernel::account_id
+use.$kernel::asset
+use.$kernel::memory
 
 # ERRORS
 # =================================================================================================

@@ -3,12 +3,12 @@ use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
 
-use.kernel::account_id
-use.kernel::asset_vault
-use.kernel::asset
-use.kernel::account_delta
-use.kernel::constants
-use.kernel::memory
+use.$kernel::account_id
+use.$kernel::asset_vault
+use.$kernel::asset
+use.$kernel::account_delta
+use.$kernel::constants
+use.$kernel::memory
 
 # ERRORS
 # =================================================================================================
