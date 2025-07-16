@@ -137,6 +137,60 @@ impl TransactionAuthenticator for () {
     }
 }
 
+// MULTISIG AUTHENTICATOR
+// ================================================================================================
+
+#[derive(Clone, Debug)]
+/// Represents a multisig authenticator that manages signatures from multiple signers.
+pub struct MultisigAuthenticator {
+    /// Nested map: public_key -> message -> signature
+    signatures: BTreeMap<Word, BTreeMap<Word, Vec<Felt>>>,
+}
+
+impl MultisigAuthenticator {
+    pub fn new() -> Self {
+        MultisigAuthenticator { signatures: BTreeMap::new() }
+    }
+
+    /// Adds a signature for a specific public key and message.
+    pub fn add_signature(&mut self, pub_key: Word, message: Word, signature: Vec<Felt>) {
+        self.signatures
+            .entry(pub_key)
+            .or_insert_with(BTreeMap::new)
+            .insert(message, signature);
+    }
+}
+
+impl TransactionAuthenticator for MultisigAuthenticator {
+    /// Retrieves a signature over a message, given a public key.
+    ///
+    /// # Errors
+    /// If no signature is available for the public key and message combination,
+    /// [`AuthenticationError::UnknownPublicKey`] is returned.
+    fn get_signature(
+        &self,
+        pub_key: Word,
+        message: Word,
+        _account_delta: &AccountDelta,
+    ) -> Result<Vec<Felt>, AuthenticationError> {
+        if let Some(message_map) = self.signatures.get(&pub_key) {
+            if let Some(signature) = message_map.get(&message) {
+                Ok(signature.clone())
+            } else {
+                // We have signatures for this key but none match the message
+                Err(AuthenticationError::UnknownPublicKey(format!(
+                    "no signature available for public key {pub_key} and message {message}",
+                )))
+            }
+        } else {
+            // No signatures at all for this public key
+            Err(AuthenticationError::UnknownPublicKey(format!(
+                "no signatures available for public key {pub_key}",
+            )))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     use miden_lib::utils::{Deserializable, Serializable};
