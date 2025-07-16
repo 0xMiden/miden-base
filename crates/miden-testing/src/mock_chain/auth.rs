@@ -3,13 +3,13 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{RpoFalcon512, RpoFalcon512ProcedureAcl},
+    account::auth::{AuthMultisigRpoFalcon512, RpoFalcon512, RpoFalcon512ProcedureAcl},
     transaction::TransactionKernel,
 };
 use miden_objects::{
     Word,
     account::{AccountComponent, AuthSecretKey},
-    crypto::dsa::rpo_falcon512::SecretKey,
+    crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     testing::account_component::{
         ConditionalAuthComponent, IncrNonceAuthComponent, NoopAuthComponent,
     },
@@ -38,6 +38,9 @@ pub enum Auth {
 
     /// TODO update once #1501 is ready.
     Conditional,
+
+    /// Creates a multisig authentication mechanism requiring threshold signatures.
+    Multisig { threshold: u32, approvers: Vec<Word> },
 }
 
 impl Auth {
@@ -90,6 +93,15 @@ impl Auth {
                 let assembler = TransactionKernel::assembler();
                 let component = ConditionalAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
+            },
+            Auth::Multisig { threshold, approvers } => {
+                let pub_keys: Vec<_> = approvers.iter().map(|word| PublicKey::new(*word)).collect();
+
+                let component = AuthMultisigRpoFalcon512::new(*threshold, pub_keys)
+                    .expect("multisig component creation failed")
+                    .into();
+
+                (component, None)
             },
         }
     }
