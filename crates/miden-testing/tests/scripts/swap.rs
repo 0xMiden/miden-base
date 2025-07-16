@@ -232,6 +232,8 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that a SWAP note offering asset A and requesting asset B can be matched against a SWAP
+/// note offering asset B and requesting asset A.
 #[test]
 fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
