@@ -81,7 +81,7 @@ const.TX_SCRIPT_ROOT_PTR=420
 # The memory address at which the key of the transaction script arguments is stored.
 const.TX_SCRIPT_ARGS_KEY_PTR=424
 
-# The memory address at which the key of the auth procedure arguments is stored.
+# The memory address at which the auth procedure arguments are stored.
 const.AUTH_ARGS_PTR=428
 
 # GLOBAL BLOCK DATA

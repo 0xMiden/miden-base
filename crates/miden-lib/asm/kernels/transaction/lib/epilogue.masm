@@ -168,7 +168,7 @@ end
 #! Outputs: []
 proc.execute_auth_procedure
     padw padw padw
-    # get the auth procedure arguments key
+    # get the auth procedure arguments
     exec.memory::get_auth_args
     # => [AUTH_ARGS, pad(12)]
 
