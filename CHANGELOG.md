@@ -14,8 +14,6 @@
 - Add arguments to the auth procedure ([#1501](https://github.com/0xMiden/miden-base/pull/1501)).
 - [BREAKING] Refactored `SWAP` note & added option to select the visibility of the associated payback note ([#1539](https://github.com/0xMiden/miden-base/pull/1539)).
 
-
-
 ## 0.10.0 (2025-07-08)
 
 ### Features
