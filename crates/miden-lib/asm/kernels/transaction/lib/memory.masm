@@ -578,8 +578,9 @@ end
 #!
 #! Where:
 #! - version is the protocol version of the transaction reference block.
+const.BLOCK_METADATA_VERSION_PTR=BLOCK_METADATA_PTR+1
 export.get_blk_version
-    push.BLOCK_METADATA_PTR add.1 mem_load
+    mem_load.BLOCK_METADATA_VERSION_PTR
 end
 
 #! Returns the block timestamp of the reference block for this transaction.
@@ -933,9 +934,9 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
+const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
 export.get_acct_nonce
-    exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add
-    add.3
+    exec.get_current_account_data_ptr add.ACCT_NONCE_PTR
     mem_load
 end
 
