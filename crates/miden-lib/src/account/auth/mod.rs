@@ -58,24 +58,27 @@ impl From<RpoFalcon512> for AccountComponent {
 ///
 /// The storage layout is:
 /// - Slot 0(value): Public key (same as RpoFalcon512)
-/// - Slot 1(value): Number of trigger procedures
+/// - Slot 1(value): [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
 /// - Slot 2(map): A map with trigger procedure roots
 ///
 /// This component supports all account types.
 pub struct RpoFalcon512ProcedureAcl {
     public_key: PublicKey,
     auth_trigger_procedures: Vec<Word>,
+    allow_unauthorized_output_notes: bool,
 }
 
 impl RpoFalcon512ProcedureAcl {
-    /// Creates a new [`RpoFalcon512ProcedureAcl`] component with the given `public_key` and
-    /// list of procedure roots that require authentication.
+    /// Creates a new [`RpoFalcon512ProcedureAcl`] component with the given `public_key`,
+    /// list of procedure roots that require authentication, and whether to allow unauthorized
+    /// output notes.
     ///
     /// # Panics
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
         public_key: PublicKey,
         auth_trigger_procedures: Vec<Word>,
+        allow_unauthorized_output_notes: bool,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if auth_trigger_procedures.len() > max_procedures {
@@ -84,7 +87,11 @@ impl RpoFalcon512ProcedureAcl {
             ));
         }
 
-        Ok(Self { public_key, auth_trigger_procedures })
+        Ok(Self {
+            public_key,
+            auth_trigger_procedures,
+            allow_unauthorized_output_notes,
+        })
     }
 }
 
@@ -95,9 +102,19 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         // Slot 0: Public key
         storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
 
-        // Slot 1: Number of tracked procedures
+        // Slot 1: [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
         let num_procs = falcon.auth_trigger_procedures.len() as u32;
-        storage_slots.push(StorageSlot::Value(Word::from([num_procs, 0, 0, 0])));
+        let allow_unauthorized_output_notes = if falcon.allow_unauthorized_output_notes {
+            1u32
+        } else {
+            0u32
+        };
+        storage_slots.push(StorageSlot::Value(Word::from([
+            0,
+            0,
+            allow_unauthorized_output_notes,
+            num_procs,
+        ])));
 
         // Slot 2: A map with tracked procedure roots
         // We add the map even if there are no trigger procedures, to always maintain the same
@@ -130,8 +147,8 @@ mod tests {
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
         let public_key = PublicKey::new(Word::empty());
-        let component =
-            RpoFalcon512ProcedureAcl::new(public_key, vec![]).expect("component creation failed");
+        let component = RpoFalcon512ProcedureAcl::new(public_key, vec![], false)
+            .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -142,8 +159,10 @@ mod tests {
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
         assert_eq!(public_key_slot, Word::from(public_key));
 
-        let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_procs_slot, Word::empty());
+        let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
+        // Slot 1 should be [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
+        // With 0 procedures and allow_unauthorized_output_notes=false, this should be [0, 0, 0, 0]
+        assert_eq!(slot_1, Word::empty());
 
         let proc_root = account
             .storage()
@@ -170,7 +189,41 @@ mod tests {
 
         assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component = RpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone())
+        let component =
+            RpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone(), false)
+                .expect("component creation failed");
+
+        let (account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(component)
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
+
+        let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        assert_eq!(public_key_slot, Word::from(public_key));
+
+        let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
+        // Slot 1 should be [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
+        // With 2 procedures and allow_unauthorized_output_notes=false, this should be [0, 0, 0, 2]
+        assert_eq!(slot_1, Word::from([0, 0, 0, 2u32]));
+
+        let proc_root_0 = account
+            .storage()
+            .get_map_item(2, Word::empty())
+            .expect("storage map access failed");
+        assert_eq!(proc_root_0, auth_trigger_procedures[0]);
+
+        let proc_root_1 = account
+            .storage()
+            .get_map_item(2, Word::from([1, 0, 0, 0u32]))
+            .expect("storage map access failed");
+        assert_eq!(proc_root_1, auth_trigger_procedures[1]);
+    }
+
+    #[test]
+    fn test_rpo_falcon_512_procedure_acl_with_allow_unauthorized_output_notes() {
+        let public_key = PublicKey::new(Word::empty());
+        let component = RpoFalcon512ProcedureAcl::new(public_key, vec![], true)
             .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
@@ -182,8 +235,44 @@ mod tests {
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
         assert_eq!(public_key_slot, Word::from(public_key));
 
-        let num_procs_slot = account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_procs_slot, Word::from([2u32, 0, 0, 0]));
+        let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
+        // Slot 1 should be [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
+        // With 0 procedures and allow_unauthorized_output_notes=true, this should be [0, 0, 1, 0]
+        assert_eq!(slot_1, Word::from([0, 0, 1, 0u32]));
+    }
+
+    #[test]
+    fn test_rpo_falcon_512_procedure_acl_with_procedures_and_allow_unauthorized_output_notes() {
+        let public_key = PublicKey::new(Word::empty());
+
+        // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
+        let auth_trigger_procedures: Vec<Word> = basic_wallet_library()
+            .module_infos()
+            .next()
+            .expect("at least one module expected")
+            .procedures()
+            .map(|(_, proc_info)| proc_info.digest)
+            .collect();
+
+        assert_eq!(auth_trigger_procedures.len(), 2);
+
+        let component =
+            RpoFalcon512ProcedureAcl::new(public_key, auth_trigger_procedures.clone(), true)
+                .expect("component creation failed");
+
+        let (account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(component)
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
+
+        let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        assert_eq!(public_key_slot, Word::from(public_key));
+
+        let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
+        // Slot 1 should be [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
+        // With 2 procedures and allow_unauthorized_output_notes=true, this should be [0, 0, 1, 2]
+        assert_eq!(slot_1, Word::from([0, 0, 1, 2u32]));
 
         let proc_root_0 = account
             .storage()

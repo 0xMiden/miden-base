@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_objects::{
-    Felt, FieldElement,
+    Felt, FieldElement, Word,
     account::{
         AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountStorageMode,
         AccountType,
@@ -45,6 +45,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     let (auth_component, authenticator) = Auth::ProcedureAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
+        allow_unauthorized_output_notes: false,
     }
     .build_component();
 
@@ -150,6 +151,100 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     });
 
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
+    let tx_context_no_trigger = mock_chain
+        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .authenticator(None)
+        .tx_script(tx_script_no_trigger)
+        .build()?;
+
+    let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    assert_eq!(
+        executed.account_delta().nonce_delta(),
+        Felt::ONE,
+        "no auth but should still trigger nonce increment"
+    );
+
+    Ok(())
+}
+
+#[test]
+fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
+    let assembler = TransactionKernel::assembler();
+
+    let component: AccountComponent = AccountMockComponent::new_with_slots(
+        assembler.clone(),
+        AccountStorage::mock_storage_slots(),
+    )
+    .expect("failed to create mock component")
+    .into();
+
+    let mut get_item_proc_root = None;
+    let mut set_item_proc_root = None;
+
+    for module in component.library().module_infos() {
+        for (_, procedure_info) in module.procedures() {
+            match procedure_info.name.as_str() {
+                "get_item" => get_item_proc_root = Some(procedure_info.digest),
+                "set_item" => set_item_proc_root = Some(procedure_info.digest),
+                _ => {},
+            }
+        }
+    }
+
+    let get_item_proc_root = get_item_proc_root.expect("get_item procedure should exist");
+    let set_item_proc_root = set_item_proc_root.expect("set_item procedure should exist");
+    let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
+
+    let (auth_component, _authenticator) = Auth::ProcedureAcl {
+        auth_trigger_procedures: auth_trigger_procedures.clone(),
+        allow_unauthorized_output_notes: true,
+    }
+    .build_component();
+
+    let account = AccountBuilder::new([0; 32])
+        .with_auth_component(auth_component)
+        .with_component(component)
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    // Verify the storage layout includes the allow_unauthorized_output_notes flag
+    let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
+    // Slot 1 should be [0, 0, allow_unauthorized_output_notes, num_tracked_procs]
+    // With 2 procedures and allow_unauthorized_output_notes=true, this should be [0, 0, 1, 2]
+    assert_eq!(slot_1, Word::from([0, 0, 1, 2u32]));
+
+    let mut mock_chain = MockChain::new();
+    mock_chain.add_pending_account(account.clone());
+    mock_chain.prove_next_block()?;
+
+    // Create a mock note to consume (needed to make the transaction non-empty)
+    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
+
+    let note = NoteBuilder::new(sender_id, &mut rand::rng())
+        .build(&assembler)
+        .expect("failed to create mock note");
+
+    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
+    mock_chain.prove_next_block()?;
+
+    let tx_script_no_trigger = r#"
+        use.test::account
+
+        begin
+            call.account::account_procedure_1
+            drop
+        end
+        "#;
+
+    let tx_script_no_trigger = TransactionScript::compile(
+        tx_script_no_trigger,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
+
+    // Test: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
+    // This tests that when allow_unauthorized_output_notes=true, transactions without
+    // authenticators can still succeed even if they create output notes
     let tx_context_no_trigger = mock_chain
         .build_tx_context(account.id(), &[], &[note.clone()])?
         .authenticator(None)

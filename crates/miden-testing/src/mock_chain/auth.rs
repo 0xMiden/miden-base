@@ -28,7 +28,10 @@ pub enum Auth {
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [RpoFalcon512ProcedureAcl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
-    ProcedureAcl { auth_trigger_procedures: Vec<Word> },
+    ProcedureAcl {
+        auth_trigger_procedures: Vec<Word>,
+        allow_unauthorized_output_notes: bool,
+    },
 
     /// Creates a mock authentication mechanism for the account that only increments the nonce.
     IncrNonce,
@@ -63,15 +66,21 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::ProcedureAcl { auth_trigger_procedures } => {
+            Auth::ProcedureAcl {
+                auth_trigger_procedures,
+                allow_unauthorized_output_notes,
+            } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component =
-                    RpoFalcon512ProcedureAcl::new(pub_key, auth_trigger_procedures.clone())
-                        .expect("component creation failed")
-                        .into();
+                let component = RpoFalcon512ProcedureAcl::new(
+                    pub_key,
+                    auth_trigger_procedures.clone(),
+                    *allow_unauthorized_output_notes,
+                )
+                .expect("component creation failed")
+                .into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,

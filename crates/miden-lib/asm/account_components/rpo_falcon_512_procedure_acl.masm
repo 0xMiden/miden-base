@@ -26,9 +26,15 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-export.auth__tx_rpo_falcon512_procedure_acl
+export.auth__tx_rpo_falcon512_procedure_acl.1
     # Get the number of trigger procedures
-    push.NUM_AUTH_TRIGGER_PROCS_SLOT exec.account::get_item drop drop drop
+    push.NUM_AUTH_TRIGGER_PROCS_SLOT exec.account::get_item
+    # => [num_auth_trigger_procs, allow_unauthorized_output_notes, 0, 0, pad(16)]
+
+    movup.2 movup.3 drop drop
+    # => [num_auth_trigger_procs, allow_unauthorized_output_notes, pad(16)]
+
+    swap loc_store.0
     # => [num_auth_trigger_procs, pad(16)]
 
     # Check if any trigger procedure was called
@@ -62,7 +68,27 @@ export.auth__tx_rpo_falcon512_procedure_acl
         dup.1 neq.0
         # => [should_continue, was_any_called', i-1, pad(16)]
     end
+    # => [was_any_called, i-1, pad(16)]
 
+    exec.tx::get_output_notes_commitment
+    # => [OUTPUT_NOTES_COMMITMENT, was_any_called, i-1, pad(16)]
+
+    padw eqw push.0 eq movdn.8 dropw dropw
+    # => [were_output_notes_created, was_any_called, i-1, pad(16)]
+
+    loc_load.0
+    # => [allow_unauthorized_output_notes, were_output_notes_created, was_any_called, i-1, pad(16)]
+
+    not
+    # => [!allow_unauthorized_output_notes, were_output_notes_created, was_any_called, i-1, pad(16)]
+
+    # were_output_notes_created && !allow_unauthorized_output_notes
+    and
+    # => [require_auth, was_any_called, i-1, pad(16)]
+
+    if.true
+        exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
+    end
     # => [was_any_called, i-1, pad(16)]
 
     # If any trigger procedure was called, perform signature verification
