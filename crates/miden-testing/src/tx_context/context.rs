@@ -1,6 +1,4 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
-use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
@@ -18,13 +16,12 @@ use miden_objects::{
 };
 use miden_tx::{
     DataStore, DataStoreError, TransactionExecutor, TransactionExecutorError, TransactionMastStore,
-    auth::{BasicAuthenticator, TransactionAuthenticator},
+    auth::TransactionAuthenticator,
 };
-use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
 use winter_maybe_async::*;
 
-use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
+use crate::{MockHost, executor::CodeExecutor};
 
 // TRANSACTION CONTEXT
 // ================================================================================================
@@ -39,7 +36,7 @@ pub struct TransactionContext {
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
-    pub(super) authenticator: Option<MockAuthenticator>,
+    pub(super) authenticator: Option<Box<dyn TransactionAuthenticator>>,
     pub(super) source_manager: Arc<dyn SourceManager>,
 }
 
@@ -126,7 +123,7 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-        let authenticator = self.authenticator().map(|x| x as &dyn TransactionAuthenticator);
+        let authenticator = self.authenticator().map(|x| x.as_ref());
 
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
@@ -164,7 +161,7 @@ impl TransactionContext {
         &self.tx_inputs
     }
 
-    pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
+    pub fn authenticator(&self) -> Option<&Box<dyn TransactionAuthenticator>> {
         self.authenticator.as_ref()
     }
 

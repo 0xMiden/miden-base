@@ -134,7 +134,6 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
         .build_tx_context(account.id(), &[], &[note.clone()])?
-        .authenticator(None)
         .tx_script(tx_script_trigger_1)
         .build()?;
 
@@ -157,7 +156,6 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     let tx_context_no_trigger = mock_chain
         .build_tx_context(account.id(), &[], &[note.clone()])?
-        .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
 

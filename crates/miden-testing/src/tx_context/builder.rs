@@ -1,7 +1,7 @@
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
@@ -19,14 +19,13 @@ use miden_objects::{
     },
     vm::AdviceMap,
 };
-use miden_tx::{TransactionMastStore, auth::BasicAuthenticator};
-use rand_chacha::ChaCha20Rng;
+use miden_tx::{TransactionMastStore, auth::TransactionAuthenticator};
 use vm_processor::{AdviceInputs, Felt, Word};
 
 use super::TransactionContext;
 use crate::{MockChain, MockChainNote};
 
-pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
+
 
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
@@ -63,7 +62,7 @@ pub struct TransactionContextBuilder {
     account: Account,
     account_seed: Option<Word>,
     advice_inputs: AdviceInputs,
-    authenticator: Option<MockAuthenticator>,
+    authenticator: Option<Box<dyn TransactionAuthenticator>>,
     expected_output_notes: Vec<Note>,
     foreign_account_inputs: Vec<AccountInputs>,
     input_notes: Vec<Note>,
@@ -199,8 +198,8 @@ impl TransactionContextBuilder {
     }
 
     /// Set the authenticator for the transaction (if needed)
-    pub fn authenticator(mut self, authenticator: Option<MockAuthenticator>) -> Self {
-        self.authenticator = authenticator;
+    pub fn authenticator(mut self, authenticator: Option<impl TransactionAuthenticator + 'static>) -> Self {
+        self.authenticator = authenticator.map(|auth| Box::new(auth) as Box<dyn TransactionAuthenticator>);
         self
     }
 
