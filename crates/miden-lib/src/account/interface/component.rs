@@ -241,7 +241,7 @@ impl AccountComponentInterface {
                     // stack => []
                 },
                 AccountComponentInterface::BasicWallet => {
-                    body.push_str("call.tx::create_note\n");
+                    body.push_str("call.::miden::tx::create_note\n");
                     // stack => [note_idx]
 
                     for asset in partial_note.assets().iter() {

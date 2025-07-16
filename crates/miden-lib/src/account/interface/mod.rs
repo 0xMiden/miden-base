@@ -1,12 +1,12 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    TransactionScriptError,
+    TransactionScriptError, Word,
     account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
     assembly::mast::{MastForest, MastNode, MastNodeId},
     crypto::dsa::rpo_falcon512,
     note::{Note, NoteScript, PartialNote},
-    transaction::TransactionScript, Word
+    transaction::TransactionScript,
 };
 use thiserror::Error;
 
@@ -303,7 +303,8 @@ impl From<&Account> for AccountInterface {
                         (*account
                             .storage()
                             .get_item(*storage_index)
-                            .expect("invalid storage index of the public key")).into(),
+                            .expect("invalid storage index of the public key"))
+                        .into(),
                     ),
                 })
             }
