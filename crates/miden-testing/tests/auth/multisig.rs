@@ -69,7 +69,6 @@ fn test_multisig() -> anyhow::Result<()> {
         AccountStorageMode::Public,
     )?;
 
-    // TODO Add a new enum variant for this which under the hood creates a new component `AuthMultisigRpoFalcon512`. That component should store the number of approvers in one storage slot, the threshold in the other, and a map (index -> pubkey) in the third. Look at `RpoFalcon512ProcedureAcl` for how to store a map.
     let multisig_auth_component = Auth::Multisig {
         threshold: 2,
         approvers: vec![pub_key_1.into(), pub_key_2.into()],
