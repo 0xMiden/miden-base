@@ -252,7 +252,7 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
     let account_1 = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![asset_a]);
 
-    let payback_note_type = NoteType::Public;
+    let payback_note_type = NoteType::Private;
     let (swap_note_1, payback_note_1) =
         get_swap_notes(account_1.id(), asset_a, asset_b, payback_note_type);
 
@@ -279,36 +279,11 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     let initial_matching_balance = matching_account.vault().assets().count();
     assert_eq!(initial_matching_balance, 2); // Should start with both assets
 
-    // Create expected payback notes for both swaps
-    let payback_p2id_note_1 = create_p2id_note_exact(
-        matching_account.id(),
-        account_1.id(),
-        vec![asset_b],
-        payback_note_type,
-        Felt::new(0),
-        payback_note_1.serial_num(),
-    )
-    .unwrap();
-
-    let payback_p2id_note_2 = create_p2id_note_exact(
-        matching_account.id(),
-        account_2.id(),
-        vec![asset_a],
-        payback_note_type,
-        Felt::new(0),
-        payback_note_2.serial_num(),
-    )
-    .unwrap();
-
     // EXECUTE SINGLE TRANSACTION TO CONSUME BOTH SWAP NOTES
     // --------------------------------------------------------------------------------------------
     let settle_tx = mock_chain
         .build_tx_context(matching_account.id(), &[swap_note_1.id(), swap_note_2.id()], &[])
         .context("failed to build tx context")?
-        .extend_expected_output_notes(vec![
-            OutputNote::Full(payback_p2id_note_1.clone()),
-            OutputNote::Full(payback_p2id_note_2.clone()),
-        ])
         .build()?
         .execute()?;
 
