@@ -40,8 +40,7 @@ begin
     push.12 exec.note::get_assets
     # => [num_assets, ptr]
 
-    # make sure the number of inputs is 1
-    assert.err=ERR_SWAP_WRONG_NUMBER_OF_ASSETS
+    eq.1 assert.err=ERR_SWAP_WRONG_NUMBER_OF_ASSETS
     # => [ptr]
 
     # load the ASSET
