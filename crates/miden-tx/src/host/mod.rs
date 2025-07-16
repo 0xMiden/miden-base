@@ -538,7 +538,7 @@ impl<'store> TransactionBaseHost<'store> {
     /// Aborts the transaction by extracting the [`TransactionEffects`] from the stack and returning
     /// them in an error.
     ///
-    /// Expecte stack state:
+    /// Expected stack state:
     ///
     /// ```text
     /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
