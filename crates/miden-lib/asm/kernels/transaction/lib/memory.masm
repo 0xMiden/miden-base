@@ -589,8 +589,9 @@ end
 #!
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
+const.BLOCK_METADATA_TIMESTAMP_PTR=BLOCK_METADATA_PTR+2
 export.get_blk_timestamp
-    push.BLOCK_METADATA_PTR add.2 mem_load
+    mem_load.BLOCK_METADATA_TIMESTAMP_PTR
 end
 
 #! Returns the chain commitment of the transaction reference block.

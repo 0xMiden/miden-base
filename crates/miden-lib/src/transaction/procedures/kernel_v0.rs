@@ -72,7 +72,7 @@ pub const KERNEL0_PROCEDURES: [Word; 37] = [
     // tx_get_block_number
     word!("0x297797dff54b8108dd2df254b95d43895d3f917ab10399efc62adaf861c905ae"),
     // tx_get_block_timestamp
-    word!("0x03fd4a4035c058dce55009aeca2ba3461f63d8606841fc0949d79ea8f6db90a8"),
+    word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
     word!("0xa18344624bf0dd93c674e4b3823292a3e1ddf0e09f7fa805f0dbe92b452fd98d"),
     // tx_end_foreign_context
