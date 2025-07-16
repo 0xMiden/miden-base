@@ -51,6 +51,8 @@ const EPILOGUE_END: u32 = 0x2_0019; // 131097
 const LINK_MAP_SET_EVENT: u32 = 0x2_001a; // 131098
 const LINK_MAP_GET_EVENT: u32 = 0x2_001b; // 131099
 
+const ABORT_WITH_TX_EFFECTS_EVENT: u32 = 0x2_001c; // 131100
+
 /// Events which may be emitted by a transaction kernel.
 ///
 /// The events are emitted via the `emit.<event_id>` instruction. The event ID is a 32-bit
@@ -103,6 +105,8 @@ pub enum TransactionEvent {
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
     LinkMapGetEvent = LINK_MAP_GET_EVENT,
+
+    AbortWithTxEffects = ABORT_WITH_TX_EFFECTS_EVENT,
 }
 
 impl TransactionEvent {
@@ -173,6 +177,8 @@ impl TryFrom<u32> for TransactionEvent {
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),
             LINK_MAP_GET_EVENT => Ok(TransactionEvent::LinkMapGetEvent),
+
+            ABORT_WITH_TX_EFFECTS_EVENT => Ok(TransactionEvent::AbortWithTxEffects),
 
             _ => Err(TransactionEventError::InvalidTransactionEvent(value)),
         }

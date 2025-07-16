@@ -23,9 +23,12 @@ use alloc::{
     vec::Vec,
 };
 
-use miden_lib::transaction::{
-    TransactionEvent, TransactionEventError, TransactionKernelError,
-    memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
+use miden_lib::{
+    errors::TransactionEffects,
+    transaction::{
+        TransactionEvent, TransactionEventError, TransactionKernelError,
+        memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
+    },
 };
 use miden_objects::{
     Hasher, Word,
@@ -273,6 +276,10 @@ impl<'store> TransactionBaseHost<'store> {
             TransactionEvent::LinkMapGetEvent => {
                 LinkMap::handle_get_event(process)?;
                 Ok(())
+            },
+            TransactionEvent::AbortWithTxEffects => {
+              // Note: This always returns an error to abort the transaction.
+              Err(self.on_abort_with_tx_effects(process))
             }
         }
         .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
@@ -528,6 +535,30 @@ impl<'store> TransactionBaseHost<'store> {
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
         Ok(())
+    }
+
+    /// Aborts the transaction by extracting the [`TransactionEffects`] from the stack and returning
+    /// them in an error.
+    ///
+    /// Expecte stack state:
+    ///
+    /// ```text
+    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
+    /// ```
+    pub fn on_abort_with_tx_effects(&self, process: &mut ProcessState) -> TransactionKernelError {
+        let account_delta_commitment = process.get_stack_word(0);
+        let input_notes_commitment = process.get_stack_word(1);
+        let output_notes_commitment = process.get_stack_word(2);
+        let replay_protection = process.get_stack_word(3);
+
+        let effects = TransactionEffects::new(
+            account_delta_commitment,
+            input_notes_commitment,
+            output_notes_commitment,
+            replay_protection,
+        );
+
+        TransactionKernelError::AbortWithTxEffects(Box::new(effects))
     }
 
     // HELPER FUNCTIONS
