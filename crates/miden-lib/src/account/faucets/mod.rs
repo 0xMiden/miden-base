@@ -336,7 +336,8 @@ mod tests {
         assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
 
         // Slot 2 stores [0, 0, allow_unauthorized_output_notes, num_tracked_procs].
-        // With 1 tracked procedure and allow_unauthorized_output_notes=false, this should be [0, 0, 0, 1].
+        // With 1 tracked procedure and allow_unauthorized_output_notes=false,
+        // this should be [0, 0, 0, 1].
         assert_eq!(
             faucet_account.storage().get_item(2).unwrap(),
             [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ONE].into()
