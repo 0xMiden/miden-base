@@ -1,9 +1,4 @@
-use alloc::{
-    collections::BTreeSet,
-    string::String,
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::{
@@ -1344,9 +1339,6 @@ fn test_empty_transaction_script_error() -> anyhow::Result<()> {
 
     use miden_lib::transaction::TransactionKernel;
     use miden_objects::transaction::TransactionScript;
-    
-
-    
 
     // Build a transaction context with a valid account and an explicitly empty transaction script
     let empty_script = "";
@@ -1357,8 +1349,7 @@ fn test_empty_transaction_script_error() -> anyhow::Result<()> {
     let msg = err.to_string();
     assert!(
         msg.contains("empty transaction script"),
-        "Expected error message about empty transaction script, got: {}",
-        msg
+        "Expected error message about empty transaction script, got: {msg}"
     );
     Ok(())
 }
