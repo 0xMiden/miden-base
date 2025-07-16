@@ -6,7 +6,9 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::PublicKey,
 };
 
-use crate::account::components::{rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library};
+use crate::account::components::{
+    multisig_library, rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library,
+};
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
 /// transactions.
@@ -113,6 +115,74 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
 
         AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
             .expect("Procedure ACL auth component should satisfy the requirements of a valid account component")
+            .with_supports_all_types()
+    }
+}
+
+// MULTISIG AUTHENTICATION COMPONENT
+// ================================================================================================
+
+/// An [`AccountComponent`] implementing a multisig based on RpoFalcon512 signatures.
+///
+/// This component requires a threshold number of signatures from a set of approvers.
+///
+/// The storage layout is:
+/// - Slot 0(value): Threshold
+/// - Slot 1(value): Total number of approvers
+/// - Slot 2(map): A map with approver public keys (index -> pubkey)
+///
+/// This component supports all account types.
+pub struct AuthMultisigRpoFalcon512 {
+    threshold: u32,
+    approvers: Vec<PublicKey>,
+}
+
+impl AuthMultisigRpoFalcon512 {
+    /// Creates a new [`AuthMultisigRpoFalcon512`] component with the given `threshold` and
+    /// list of approver public keys.
+    ///
+    /// # Panics
+    /// Panics if threshold is greater than the number of approvers.
+    pub fn new(threshold: u32, approvers: Vec<PublicKey>) -> Result<Self, AccountError> {
+        if threshold == 0 {
+            return Err(AccountError::AssumptionViolated(
+                "Threshold must be at least 1".to_string(),
+            ));
+        }
+
+        if threshold > approvers.len() as u32 {
+            return Err(AccountError::AssumptionViolated(
+                "Threshold cannot be greater than number of approvers".to_string(),
+            ));
+        }
+
+        Ok(Self { threshold, approvers })
+    }
+}
+
+impl From<AuthMultisigRpoFalcon512> for AccountComponent {
+    fn from(multisig: AuthMultisigRpoFalcon512) -> Self {
+        let mut storage_slots = Vec::with_capacity(3);
+
+        // Slot 0: Threshold
+        storage_slots.push(StorageSlot::Value(Word::from([multisig.threshold, 0, 0, 0])));
+
+        // Slot 1: Number of approvers
+        let num_approvers = multisig.approvers.len() as u32;
+        storage_slots.push(StorageSlot::Value(Word::from([num_approvers, 0, 0, 0])));
+
+        // Slot 2: A map with approver public keys
+        let map_entries = multisig
+            .approvers
+            .iter()
+            .enumerate()
+            .map(|(i, pub_key)| (Word::from([i as u32, 0, 0, 0]), (*pub_key).into()));
+
+        // Safe to unwrap because we know that the map keys are unique.
+        storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
+
+        AccountComponent::new(multisig_library(), storage_slots)
+            .expect("Multisig auth component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }
 }

@@ -42,6 +42,15 @@ static RPO_FALCON_512_PROCEDURE_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|
         .expect("Shipped Rpo Falcon 512 Procedure ACL library is well-formed")
 });
 
+// Initialize the Multisig Rpo Falcon 512 library only once.
+static MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/multisig_rpo_falcon_512.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
+});
+
 /// Returns the Basic Wallet Library.
 pub fn basic_wallet_library() -> Library {
     BASIC_WALLET_LIBRARY.clone()
@@ -60,6 +69,11 @@ pub fn rpo_falcon_512_library() -> Library {
 /// Returns the Rpo Falcon 512 Procedure ACL Library.
 pub fn rpo_falcon_512_procedure_acl_library() -> Library {
     RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.clone()
+}
+
+/// Returns the Multisig Library.
+pub fn multisig_library() -> Library {
+    MULTISIG_LIBRARY.clone()
 }
 
 // WELL KNOWN COMPONENTS
