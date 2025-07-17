@@ -702,6 +702,59 @@ export.note_add_asset
     # => [note_idx, ASSET, pad(11)]
 end
 
+#! Returns the number of assets and the assets commitment of the input note by the provided index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [ASSETS_HASH, num_assets, pad(11)]
+#!
+#! Where:
+#! - note_index is the index of the input note which assets info should be returned.
+#! - num_assets is the number of assets in the note which has been requested.
+#! - ASSETS_HASH is the vault hash of the note which has been requested.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the overall number of input notes.
+#!
+#! Invocation: dynexec
+export.input_note_get_assets_info_by_index
+    # get the assets info
+    exec.note::input_note_get_assets_info_by_index
+    # => [ASSETS_HASH, num_assets, pad(16)]
+
+    # truncate the stack
+    repeat.5
+        movup.5 drop
+    end
+    # => [ASSETS_HASH, num_assets, pad(11)]
+end
+
+#! Returns the number of assets and the assets commitment of the output note by the provided 
+#! index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [ASSETS_HASH, num_assets]
+#!
+#! Where:
+#! - note_index is the index of the output note which assets info should be returned.
+#! - num_assets is the number of assets in the note which has been requested.
+#! - ASSETS_HASH is the vault hash of the note which has been requested.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the overall number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_assets_info_by_index
+    # get the assets info
+    exec.note::output_note_get_assets_info_by_index
+    # => [ASSETS_HASH, num_assets, pad(16)]
+
+    # truncate the stack
+    repeat.5
+        movup.5 drop
+    end
+    # => [ASSETS_HASH, num_assets, pad(11)]
+end
+
 #! Returns the serial number of the note currently being processed.
 #!
 #! Inputs:  [pad(16)]
