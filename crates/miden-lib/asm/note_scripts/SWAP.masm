@@ -73,7 +73,10 @@ begin
     # => [REQUESTED_ASSET, note_idx]
 
     # padding stack with 11 zeros
-    padw padw movupw.2 movup.12 push.0.0.0 movdn.7 movdn.7 movdn.7 movdn.4
+    repeat.11
+        push.0
+        movdn.5
+    end
     # => [REQUESTED_ASSET, note_idx, pad(11)]
 
     # move asset to the note
