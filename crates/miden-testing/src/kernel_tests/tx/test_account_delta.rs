@@ -74,7 +74,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
     assert!(executed_tx.account_delta().is_empty());
-    assert_eq!(executed_tx.account_delta().commitment(), Word::empty());
+    assert_eq!(executed_tx.account_delta().to_commitment(), Word::empty());
 
     Ok(())
 }
