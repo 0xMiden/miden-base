@@ -109,6 +109,32 @@ export.compute_current_commitment
     # => [ACCOUNT_COMMITMENT]
 end
 
+#! Computes the commitment to the native account's delta.
+#!
+#! Inputs:  []
+#! Outputs: [DELTA_COMMITMENT]
+#!
+#! Where:
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+#!
+#! Panics if:
+#! - the vault or storage delta is not empty but the nonce increment is zero.
+export.compute_delta_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_compute_current_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [ACCOUNT_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [ACCOUNT_COMMITMENT]
+end
+
 #! Increments the account nonce by the provided value.
 #!
 #! Inputs:  [value]

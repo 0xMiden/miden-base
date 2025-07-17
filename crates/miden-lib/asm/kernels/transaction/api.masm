@@ -1,5 +1,6 @@
 use.std::sys
 
+use.$kernel::account_delta
 use.$kernel::account
 use.$kernel::account_id
 use.$kernel::asset_vault
@@ -109,6 +110,28 @@ export.account_compute_current_commitment
     # compute the current account commitment
     exec.account::compute_current_commitment
     # => [ACCOUNT_COMMITMENT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [ACCOUNT_COMMITMENT, pad(12)]
+end
+
+#! Computes the commitment to the native account's delta.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [DELTA_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+#!
+#! Panics if:
+#! - the vault or storage delta is not empty but the nonce increment is zero.
+#!
+#! Invocation: dynexec
+export.account_compute_delta_commitment
+    # compute the account delta commitment
+    exec.account_delta::compute_commitment
+    # => [DELTA_COMMITMENT, pad(16)]
 
     # truncate the stack
     swapw dropw
