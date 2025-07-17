@@ -1,11 +1,11 @@
 use alloc::vec::Vec;
 
-use miden_crypto::SequentialCommit;
-
 use crate::{
     Felt, Word,
     account::AccountDelta,
+    crypto::SequentialCommit,
     transaction::{InputNote, InputNotes, OutputNotes},
+    utils::{Deserializable, Serializable},
 };
 
 /// The summary of the changes that result from executing a transaction.
@@ -80,5 +80,27 @@ impl SequentialCommit for TransactionSummary {
         elements.extend_from_slice(self.output_notes.commitment().as_elements());
         elements.extend_from_slice(self.replay_protection.as_elements());
         elements
+    }
+}
+
+impl Serializable for TransactionSummary {
+    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+        self.account_delta.write_into(target);
+        self.input_notes.write_into(target);
+        self.output_notes.write_into(target);
+        self.replay_protection.write_into(target);
+    }
+}
+
+impl Deserializable for TransactionSummary {
+    fn read_from<R: vm_core::utils::ByteReader>(
+        source: &mut R,
+    ) -> Result<Self, vm_processor::DeserializationError> {
+        let account_delta = source.read()?;
+        let input_notes = source.read()?;
+        let output_notes = source.read()?;
+        let replay_protection = source.read()?;
+
+        Ok(Self::new(account_delta, input_notes, output_notes, replay_protection))
     }
 }
