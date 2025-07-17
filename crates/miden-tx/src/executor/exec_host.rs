@@ -17,7 +17,7 @@ use vm_processor::{
 };
 
 use crate::{
-    auth::TransactionAuthenticator,
+    auth::{SignatureData, TransactionAuthenticator},
     errors::TransactionHostError,
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
@@ -106,13 +106,13 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
         {
             signature.to_vec()
         } else {
-            let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
+            let signature_data = SignatureData::Blind(msg);
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
             let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key, msg, &account_delta)
+                .get_signature(pub_key, &signature_data)
                 .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
             self.generated_signatures.insert(signature_key, signature.clone());

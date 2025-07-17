@@ -1,14 +1,42 @@
 use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Felt, Word,
-    account::{AccountDelta, AuthSecretKey},
+    Felt, Word, account::AuthSecretKey, crypto::SequentialCommit, transaction::TransactionSummary,
     utils::sync::RwLock,
 };
 use rand::Rng;
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
+
+// SIGNATURE DATA
+// ================================================================================================
+
+/// Data types on which a signature can be requested.
+///
+/// It supports three modes:
+/// - `TransactionSummary`: Structured transaction summary, recommended for authenticating
+///   transactions.
+/// - `Arbitrary`: Arbitrary payload provided by the application.
+/// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It can
+///   assumed to already be a cryptographic commitment to some data.
+pub enum SignatureData {
+    TransactionSummary(TransactionSummary),
+    Arbitrary(Vec<Felt>),
+    Blind(Word),
+}
+
+impl SequentialCommit for SignatureData {
+    type Commitment = Word;
+
+    fn to_elements(&self) -> Vec<Felt> {
+        match self {
+            SignatureData::TransactionSummary(tx_summary) => tx_summary.to_elements(),
+            SignatureData::Arbitrary(elements) => elements.clone(),
+            SignatureData::Blind(word) => word.as_elements().to_vec(),
+        }
+    }
+}
 
 // TRANSACTION AUTHENTICATOR
 // ================================================================================================
@@ -35,8 +63,7 @@ pub trait TransactionAuthenticator {
     fn get_signature(
         &self,
         pub_key: Word,
-        message: Word,
-        account_delta: &AccountDelta,
+        signature_data: &SignatureData,
     ) -> Result<Vec<Felt>, AuthenticationError>;
 }
 
@@ -49,10 +76,9 @@ where
     fn get_signature(
         &self,
         pub_key: Word,
-        message: Word,
-        account_delta: &AccountDelta,
+        signature_data: &SignatureData,
     ) -> Result<Vec<Felt>, AuthenticationError> {
-        TransactionAuthenticator::get_signature(*self, pub_key, message, account_delta)
+        TransactionAuthenticator::get_signature(*self, pub_key, signature_data)
     }
 }
 
@@ -102,10 +128,10 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
     fn get_signature(
         &self,
         pub_key: Word,
-        message: Word,
-        account_delta: &AccountDelta,
+        signature_data: &SignatureData,
     ) -> Result<Vec<Felt>, AuthenticationError> {
-        let _ = account_delta;
+        let message = signature_data.to_commitment();
+
         let mut rng = self.rng.write();
 
         match self.keys.get(&pub_key) {
@@ -128,8 +154,7 @@ impl TransactionAuthenticator for () {
     fn get_signature(
         &self,
         _pub_key: Word,
-        _message: Word,
-        _account_delta: &AccountDelta,
+        _signature_data: &SignatureData,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         Err(AuthenticationError::RejectedSignature(
             "default authenticator cannot provide signatures".to_string(),
