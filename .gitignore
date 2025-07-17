@@ -8,6 +8,9 @@
 # Ignore compiled library files
 *.masl
 
+# Ignore Claude Code config
+.claude/
+
 # Docs platform ignores
 .vscode
 .code

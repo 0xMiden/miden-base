@@ -111,7 +111,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         "
         use.std::sys
         
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -161,7 +161,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -217,7 +217,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -379,7 +379,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -1238,7 +1238,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         "
       use.std::sys
 
-      use.kernel::prologue
+      use.$kernel::prologue
       use.miden::tx
 
       begin

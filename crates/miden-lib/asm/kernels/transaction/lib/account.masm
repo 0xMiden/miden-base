@@ -3,12 +3,12 @@ use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
 
-use.kernel::account_id
-use.kernel::asset_vault
-use.kernel::asset
-use.kernel::account_delta
-use.kernel::constants
-use.kernel::memory
+use.$kernel::account_id
+use.$kernel::asset_vault
+use.$kernel::asset
+use.$kernel::account_delta
+use.$kernel::constants
+use.$kernel::memory
 
 # ERRORS
 # =================================================================================================
@@ -648,7 +648,7 @@ end
 export.get_procedure_info
     # check that index < number of procedures contained in the account code
     dup exec.memory::get_num_account_procedures
-    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
@@ -1074,7 +1074,7 @@ end
 #! - the procedure index is out of bounds.
 proc.get_procedure_root
     dup exec.memory::get_num_account_procedures
-    u32assert2 u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
+    u32assert2.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS u32lt assert.err=ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS
     # => [index]
 
     # get procedure pointer
@@ -1232,7 +1232,7 @@ proc.compute_current_storage_commitment
     # => [num_storage_slots]
 
     # check if there are storage slots
-    dup push.0 neq
+    dup neq.0
     # => [storage_slots_is_not_empty, num_storage_slots]
 
     # only loop and hash over storage if there are storage slots

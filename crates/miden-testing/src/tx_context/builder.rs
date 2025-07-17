@@ -45,7 +45,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 ///
 /// let code = "
-/// use.kernel::prologue
+/// use.$kernel::prologue
 /// use.test::account
 ///
 /// begin

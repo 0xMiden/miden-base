@@ -47,8 +47,8 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     // calling get_sender should return sender
     let code = "
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::memory
+        use.$kernel::prologue
         use.miden::note
 
         begin
@@ -86,8 +86,8 @@ fn test_get_sender() -> anyhow::Result<()> {
 
     // calling get_sender should return sender
     let code = "
-        use.kernel::prologue
-        use.kernel::note->note_internal
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
         use.miden::note
 
         begin
@@ -145,8 +145,8 @@ fn test_get_vault_data() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -237,8 +237,8 @@ fn test_get_assets() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
-        use.kernel::note->note_internal
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
         use.miden::note
 
         proc.process_note_0
@@ -361,8 +361,8 @@ fn test_get_inputs() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
-        use.kernel::note->note_internal
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
         use.miden::note
 
         begin
@@ -459,7 +459,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
         .build()?;
 
     let tx_code = "
-            use.kernel::prologue
+            use.$kernel::prologue
             use.miden::note
 
             begin
@@ -502,8 +502,8 @@ fn test_note_setup() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.kernel::prologue
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -558,9 +558,9 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     };
 
     let code = "
-        use.kernel::prologue
-        use.kernel::memory
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::memory
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -635,7 +635,7 @@ fn test_get_note_serial_number() -> anyhow::Result<()> {
 
     // calling get_serial_number should return the serial number of the note
     let code = "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::note
 
         begin
@@ -771,7 +771,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
 
     // calling get_script_root should return script root
     let code = "
-    use.kernel::prologue
+    use.$kernel::prologue
     use.miden::note
 
     begin
@@ -821,8 +821,8 @@ fn test_build_note_metadata() -> miette::Result<()> {
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
             "
-        use.kernel::prologue
-        use.kernel::tx
+        use.$kernel::prologue
+        use.$kernel::tx
 
         begin
           exec.prologue::prepare_transaction
