@@ -46,17 +46,46 @@ impl From<RpoFalcon512> for AccountComponent {
 /// An [`AccountComponent`] implementing a procedure-ACL based RpoFalcon512 signature scheme for
 /// authentication of transactions.
 ///
-/// This component only requires authentication when any of the specified procedures are called
-/// during the transaction. It stores a list of procedure roots that require authentication, and
-/// the signature verification is only performed if at least one of these procedures was invoked.
+/// This component provides fine-grained authentication control based on three conditions:
+/// 1. **Procedure-based authentication**: Requires authentication when any of the specified trigger
+///    procedures are called during the transaction.
+/// 2. **Output note authentication**: Controls whether creating output notes requires
+///    authentication. Output notes are new notes created by the account and sent to other accounts
+///    (e.g., when transferring assets). When `allow_unauthorized_output_notes` is `false`, any
+///    transaction that creates output notes must be authenticated, ensuring account owners control
+///    when their account sends assets to other accounts.
+/// 3. **Input note authentication**: Controls whether consuming input notes requires
+///    authentication. Input notes are notes that were sent to this account by other accounts (e.g.,
+///    incoming asset transfers). When `allow_unauthorized_input_notes` is `false`, any transaction
+///    that consumes input notes must be authenticated, ensuring account owners control when their
+///    account processes incoming notes.
 ///
-/// It exports the procedure `auth__tx_rpo_falcon512_procedure_acl`, which:
-/// - Checks if any of the specified auth trigger procedures were called during the transaction
-/// - If none were called, authentication is skipped
-/// - If at least one was called, performs standard RpoFalcon512 signature verification
-/// - Always increments the nonce
+/// ## Authentication Logic
 ///
-/// The storage layout is:
+/// Authentication is required if ANY of the following conditions are true:
+/// - Any trigger procedure from the ACL was called
+/// - Output notes were created AND `allow_unauthorized_output_notes` is `false`
+/// - Input notes were consumed AND `allow_unauthorized_input_notes` is `false`
+///
+/// If none of these conditions are met, only the nonce is incremented without requiring a
+/// signature.
+///
+/// ## Use Cases
+///
+/// - **Faucets with burn functionality** (`allow_unauthorized_input_notes=true`): Allows anyone to
+///   send assets to the faucet for burning without requiring authentication, while still protecting
+///   the distribute procedure through the ACL.
+/// - **Smart contracts with automatic operations** (`allow_unauthorized_output_notes=true`):
+///   Enables automatic asset withdrawal for applications like AMMs or lending protocols, where the
+///   contract needs to send assets without manual authentication for each transaction.
+/// - **Restrictive mode** (`allow_unauthorized_output_notes=false`,
+///   `allow_unauthorized_input_notes=false`): All note operations require authentication, providing
+///   maximum security.
+/// - **Procedure-only mode** (`allow_unauthorized_output_notes=true`,
+///   `allow_unauthorized_input_notes=true`): Only specific procedures require authentication,
+///   allowing free note processing while protecting critical account operations.
+///
+/// ## Storage Layout
 /// - Slot 0(value): Public key (same as RpoFalcon512)
 /// - Slot 1(value): [num_tracked_procs, allow_unauthorized_output_notes,
 ///   allow_unauthorized_input_notes, 0]
@@ -66,7 +95,11 @@ impl From<RpoFalcon512> for AccountComponent {
 pub struct RpoFalcon512ProcedureAcl {
     public_key: PublicKey,
     auth_trigger_procedures: Vec<Word>,
+    /// When `false`, creating output notes (sending notes to other accounts) requires
+    /// authentication. When `true`, output notes can be created without authentication.
     allow_unauthorized_output_notes: bool,
+    /// When `false`, consuming input notes (processing notes sent to this account) requires
+    /// authentication. When `true`, input notes can be consumed without authentication.
     allow_unauthorized_input_notes: bool,
 }
 
