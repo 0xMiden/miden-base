@@ -174,22 +174,16 @@ const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
 
-# The pointer at which the boolean flag is stored that indicates whether the nonce was incremented
-# or not.
-# Layout: [was_nonce_incremented, 0, 0, 0]
-# TODO: Remove
-const.ACCOUNT_DELTA_NONCE_FLAG_PTR=532480
-
 # The link map pointer at which the delta of the fungible asset vault is stored.
-const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_FLAG_PTR+4
+const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=532480
 
 # The link map pointer at which the delta of the non-fungible asset vault is stored.
-const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_FLAG_PTR+8
+const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR+4
 
 # The section of link map pointers where storage map deltas are stored.
 # This section is offset by `slot index` to get the link map ptr for the storage map
 # delta at that slot index. Slot indices that are not map slots are simply unused.
-const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_FLAG_PTR+12
+const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR+8
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------

@@ -425,7 +425,7 @@ fn validate_nonce(
     vault: &AccountVaultDelta,
 ) -> Result<(), AccountDeltaError> {
     if (!storage.is_empty() || !vault.is_empty()) && nonce_delta == ZERO {
-        return Err(AccountDeltaError::ZeroNonceForNonEmptyDelta);
+        return Err(AccountDeltaError::NonEmptyStorageOrVaultDeltaWithZeroNonceDelta);
     }
 
     Ok(())
@@ -470,7 +470,7 @@ mod tests {
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
                 .unwrap_err(),
-            AccountDeltaError::ZeroNonceForNonEmptyDelta
+            AccountDeltaError::NonEmptyStorageOrVaultDeltaWithZeroNonceDelta
         );
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
     }
