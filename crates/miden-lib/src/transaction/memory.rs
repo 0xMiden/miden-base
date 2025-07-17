@@ -300,12 +300,6 @@ pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
 
-// ACCOUNT DELTA
-// ------------------------------------------------------------------------------------------------
-
-/// The memory address at which the nonce delta is stored.
-pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
-
 // NOTES DATA
 // ================================================================================================
 

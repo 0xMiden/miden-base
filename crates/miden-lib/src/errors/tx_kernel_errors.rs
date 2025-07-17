@@ -30,10 +30,10 @@ pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str
 pub const ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE: MasmError = MasmError::from_static_str("storage size can only be zero if storage offset is also zero");
 /// Error Message: "the current account is not native"
 pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the current account is not native");
+/// Error Message: "account nonce can only be incremented once"
+pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
 /// Error Message: "account nonce did not increase after a state changing transaction"
 pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = MasmError::from_static_str("account nonce did not increase after a state changing transaction");
-/// Error Message: "account nonce cannot be increased by a greater than u32 value"
-pub const ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32: MasmError = MasmError::from_static_str("account nonce cannot be increased by a greater than u32 value");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure"
