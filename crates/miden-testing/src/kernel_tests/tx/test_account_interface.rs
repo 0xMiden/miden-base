@@ -25,11 +25,8 @@ use vm_processor::{ExecutionError, crypto::RpoRandomCoin};
 
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, utils::create_p2any_note};
 
-#[allow(clippy::arc_with_non_send_sync)]
 #[test]
-fn test_check_note_consumability() -> anyhow::Result<()> {
-    // Success (well known notes)
-    // --------------------------------------------------------------------------------------------
+fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -72,8 +69,11 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
     )?;
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
-    // Success (custom notes)
-    // --------------------------------------------------------------------------------------------
+    Ok(())
+}
+
+#[test]
+fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -106,10 +106,14 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
     )?;
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
-    // Failure
-    // --------------------------------------------------------------------------------------------
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
+    Ok(())
+}
+
+#[test]
+fn check_note_consumability_failure() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let mock_chain = builder.build()?;
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 

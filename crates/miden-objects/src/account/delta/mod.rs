@@ -1,10 +1,11 @@
 use alloc::{string::ToString, vec::Vec};
 
-use super::{
-    Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
-    Word, ZERO,
+use crate::{
+    AccountDeltaError, Felt, Word, ZERO,
+    account::{Account, AccountId},
+    crypto::SequentialCommit,
+    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
-use crate::{AccountDeltaError, EMPTY_WORD, Hasher, account::AccountId};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -238,10 +239,21 @@ impl AccountDelta {
     /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
     /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
     /// pair have changed and 2) when two key-value pairs have changed.
-    pub fn commitment(&self) -> Word {
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
+}
+
+impl SequentialCommit for AccountDelta {
+    type Commitment = Word;
+
+    /// Reduces the delta to a sequence of field elements.
+    ///
+    /// See [AccountDelta::to_commitment()] for more details.
+    fn to_elements(&self) -> Vec<Felt> {
         // The commitment to an empty delta is defined as the empty word.
         if self.is_empty() {
-            return Word::empty();
+            return Vec::new();
         }
 
         // Minor optimization: At least 24 elements are always added.
@@ -254,7 +266,7 @@ impl AccountDelta {
             self.account_id.suffix(),
             self.account_id.prefix().as_felt(),
         ]);
-        elements.extend_from_slice(EMPTY_WORD.as_elements());
+        elements.extend_from_slice(Word::empty().as_elements());
 
         // Vault Delta
         self.vault.append_delta_elements(&mut elements);
@@ -268,9 +280,12 @@ impl AccountDelta {
             elements.len()
         );
 
-        Hasher::hash_elements(&elements)
+        elements
     }
 }
+
+// ACCOUNT UPDATE DETAILS
+// ================================================================================================
 
 /// Describes the details of an account state transition resulting from applying a transaction to
 /// the account.
