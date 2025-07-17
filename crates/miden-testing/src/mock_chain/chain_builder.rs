@@ -42,7 +42,7 @@ impl MockChainBuilder {
     // CONSTRUCTORS
     // ----------------------------------------------------------------------------------------
 
-    /// Inititalizes a new mock chain builder with an empty state.
+    /// Initializes a new mock chain builder with an empty state.
     pub fn new() -> Self {
         Self {
             accounts: BTreeMap::new(),
@@ -52,7 +52,7 @@ impl MockChainBuilder {
         }
     }
 
-    /// Inititalizes a new mock chain builder with the provided accounts.
+    /// Initializes a new mock chain builder with the provided accounts.
     ///
     /// This method only adds the accounts and cannot not register any seed or authenticator for it.
     /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
@@ -274,9 +274,9 @@ impl MockChainBuilder {
 
     /// Adds the provided account to the list of genesis accounts.
     ///
-    /// This method only adds the account and cannot not register any seed or authenticator for it.
-    /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
-    /// account is new or if they need an authenticator.
+    /// This method only adds the account and does not store its account credentials (seed and
+    /// authenticator) for it. Calling [`MockChain::build_tx_context`] on accounts added in this
+    /// way will not work if the account is new or if they need an authenticator.
     ///
     /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
     /// [`MockChainBuilder::add_account_from_builder`].

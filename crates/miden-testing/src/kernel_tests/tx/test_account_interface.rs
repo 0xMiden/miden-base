@@ -26,9 +26,7 @@ use vm_processor::{ExecutionError, crypto::RpoRandomCoin};
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, utils::create_p2any_note};
 
 #[test]
-fn check_note_consumability_success() -> anyhow::Result<()> {
-    // Success (well known notes)
-    // --------------------------------------------------------------------------------------------
+fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -76,8 +74,6 @@ fn check_note_consumability_success() -> anyhow::Result<()> {
 
 #[test]
 fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
-    // Success (custom notes)
-    // --------------------------------------------------------------------------------------------
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -115,8 +111,6 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
 
 #[test]
 fn check_note_consumability_failure() -> anyhow::Result<()> {
-    // Failure
-    // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
     let mock_chain = builder.build()?;
