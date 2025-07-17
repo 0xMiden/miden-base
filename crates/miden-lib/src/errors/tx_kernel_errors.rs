@@ -34,8 +34,8 @@ pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the
 pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
 /// Error Message: "account nonce did not increase after a state changing transaction"
 pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = MasmError::from_static_str("account nonce did not increase after a state changing transaction");
-/// Error Message: "increment account nonce would overflow the field"
-pub const ERR_ACCOUNT_NONCE_OVERFLOW: MasmError = MasmError::from_static_str("increment account nonce would overflow the field");
+/// Error Message: "incrementing the account nonce would overflow the field"
+pub const ERR_ACCOUNT_NONCE_OVERFLOW: MasmError = MasmError::from_static_str("incrementing the account nonce would overflow the field");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure"
