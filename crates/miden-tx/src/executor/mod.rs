@@ -523,21 +523,21 @@ fn map_execute_error(
                     // is a good idea to return an error.
                     let actual_account_delta_commitment = account_delta.commitment();
                     if actual_account_delta_commitment != *account_delta_commitment {
-                        return TransactionExecutorError::TransactionSummaryMismatch(format!(
+                        return TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
                             "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
                         ).into());
                     }
 
                     let actual_input_notes_commitment = input_notes.commitment();
                     if actual_input_notes_commitment != *input_notes_commitment {
-                        return TransactionExecutorError::TransactionSummaryMismatch(format!(
+                        return TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
                             "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
                         ).into());
                     }
 
                     let actual_output_notes_commitment = output_notes.commitment();
                     if actual_output_notes_commitment != *output_notes_commitment {
-                        return TransactionExecutorError::TransactionSummaryMismatch(format!(
+                        return TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
                             "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
                         ).into());
                     }

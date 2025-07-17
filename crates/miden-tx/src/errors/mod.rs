@@ -65,7 +65,7 @@ pub enum TransactionExecutorError {
     #[error("transaction is unauthorized with summary {0:?}")]
     Unauthorized(Box<TransactionSummary>),
     #[error("transaction returned unauthorized event but a commitment did not match: {0}")]
-    TransactionSummaryMismatch(Box<str>),
+    TransactionSummaryCommitmentMismatch(Box<str>),
 }
 
 // TRANSACTION PROVER ERROR
