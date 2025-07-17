@@ -74,11 +74,11 @@ pub const KERNEL0_PROCEDURES: [Word; 37] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x7d40a94f44e40c4364b426887bcdeefd7da6003312f1e4da300551001fc5d895"),
+    word!("0x7df31fef3ba4063915bec5a5c819e275a107f208d31e90f35e5d7c99e69fa527"),
     // tx_end_foreign_context
-    word!("0x90a107168d81c1c0c23890e61fb7910a64b4711afd0bf8c3098d74737e4853ba"),
+    word!("0x1a08ac67331f5962e22ee8b30df0afa37e150efe75f8d26d60bd410646c7f2a8"),
     // tx_get_expiration_delta
     word!("0x756352beed1624a42d4540c434a4faa986d6d9d08ef8437699d9086fcd9ad9e7"),
     // tx_update_expiration_block_num
-    word!("0x11ca0c8662d20e6b05fbff4a20423bfa52595862b6c7c5c5ef1cc0a917e4cb62"),
+    word!("0x17a56dac62236ba00c23746e4458633190696c3bbe6077555d77b0cb9e3e7c13"),
 ];

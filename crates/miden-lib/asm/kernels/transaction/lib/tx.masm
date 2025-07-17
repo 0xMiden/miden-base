@@ -224,7 +224,10 @@ end
 export.update_expiration_block_num
     # Ensure block_height_delta is between 1 and 0xFFFF (inclusive)
     dup neq.0 assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
-    dup lt.EXPIRY_UPPER_LIMIT assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
+
+    dup
+    push.EXPIRY_UPPER_LIMIT
+    u32lt assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
     # => [block_height_delta]
 
     exec.get_block_number add

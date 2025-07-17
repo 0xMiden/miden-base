@@ -834,7 +834,8 @@ end
 export.push_ptr_to_account_stack
     # check that the account stack is not full
     mem_load.ACCOUNT_STACK_TOP_PTR dup
-    lt.MAX_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_OVERFLOW
+    push.MAX_ACCOUNT_STACK_PTR
+    u32lt assert.err=ERR_ACCOUNT_STACK_OVERFLOW
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
     # check that the current account data pointer is not equal to the native account data pointer
@@ -862,7 +863,8 @@ export.pop_ptr_from_account_stack
     # check that the account stack always is at least of size 1, that is, it contains at least the
     # native account
     mem_load.ACCOUNT_STACK_TOP_PTR dup
-    gt.MIN_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
+    push.MIN_ACCOUNT_STACK_PTR
+    u32gt assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
     # => [account_stack_top_ptr]
 
     # move the account stack pointer one element back and store it as the top pointer
