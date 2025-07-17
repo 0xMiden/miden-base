@@ -23,12 +23,9 @@ use alloc::{
     vec::Vec,
 };
 
-use miden_lib::{
-    errors::TransactionEffects,
-    transaction::{
-        TransactionEvent, TransactionEventError, TransactionKernelError,
-        memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
-    },
+use miden_lib::transaction::{
+    TransactionEvent, TransactionEventError, TransactionKernelError,
+    memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
 };
 use miden_objects::{
     Hasher, Word,
@@ -156,6 +153,12 @@ impl<'store> TransactionBaseHost<'store> {
         &self.account_delta
     }
 
+    /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
+    /// are tracked by this host.
+    pub fn to_output_notes(&self) -> Vec<OutputNote> {
+        self.output_notes.values().cloned().map(|builder| builder.build()).collect()
+    }
+
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
     pub fn into_parts(self) -> (AccountDelta, Vec<OutputNote>, TransactionProgress) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
@@ -275,7 +278,7 @@ impl<'store> TransactionBaseHost<'store> {
                 LinkMap::handle_get_event(process)?;
                 Ok(())
             },
-            TransactionEvent::AbortWithTxEffects => {
+            TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
               Err(self.on_abort_with_tx_effects(process))
             }
@@ -543,20 +546,18 @@ impl<'store> TransactionBaseHost<'store> {
     /// ```text
     /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
     /// ```
-    pub fn on_abort_with_tx_effects(&self, process: &mut ProcessState) -> TransactionKernelError {
+    fn on_abort_with_tx_effects(&self, process: &mut ProcessState) -> TransactionKernelError {
         let account_delta_commitment = process.get_stack_word(0);
         let input_notes_commitment = process.get_stack_word(1);
         let output_notes_commitment = process.get_stack_word(2);
         let replay_protection = process.get_stack_word(3);
 
-        let effects = TransactionEffects::new(
+        TransactionKernelError::Unauthorized {
             account_delta_commitment,
             input_notes_commitment,
             output_notes_commitment,
             replay_protection,
-        );
-
-        TransactionKernelError::AbortWithTxEffects(Box::new(effects))
+        }
     }
 
     // HELPER FUNCTIONS

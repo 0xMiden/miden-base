@@ -65,39 +65,14 @@ pub enum TransactionKernelError {
     UnknownCodeCommitment(Word),
     #[error("account storage slots number is missing in memory at address {0}")]
     AccountStorageSlotsNumMissing(u32),
-    /// This variant can be matched on to get the effects of a transaction for signing purposes.
-    // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
-    #[error("transaction aborted with effects {0:?}")]
-    AbortWithTxEffects(Box<TransactionEffects>),
-}
-
-/// The effects of a transaction.
-///
-/// These are the commitments to the account delta and the consumed and created notes. Because this
-/// data is intended to be used for signing a transaction, replay protection is included as well.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct TransactionEffects {
-    pub account_delta_commitment: Word,
-    pub input_notes_commitment: Word,
-    pub output_notes_commitment: Word,
-    pub replay_protection: Word,
-}
-
-impl TransactionEffects {
-    /// Creates a new [`TransactionEffects`] from the provided parts.
-    pub fn new(
+    /// This variant signals that a signature over the contained commitments is required.
+    #[error("transaction requires a signature")]
+    Unauthorized {
         account_delta_commitment: Word,
         input_notes_commitment: Word,
         output_notes_commitment: Word,
         replay_protection: Word,
-    ) -> Self {
-        Self {
-            account_delta_commitment,
-            input_notes_commitment,
-            output_notes_commitment,
-            replay_protection,
-        }
-    }
+    },
 }
 
 // TRANSACTION EVENT PARSING ERROR

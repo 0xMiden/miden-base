@@ -51,7 +51,7 @@ const EPILOGUE_END: u32 = 0x2_0019; // 131097
 const LINK_MAP_SET_EVENT: u32 = 0x2_001a; // 131098
 const LINK_MAP_GET_EVENT: u32 = 0x2_001b; // 131099
 
-const ABORT_WITH_TX_EFFECTS_EVENT: u32 = 0x2_001c; // 131100
+const UNAUTHORIZED_EVENT: u32 = 0x2_001c; // 131100
 
 /// Events which may be emitted by a transaction kernel.
 ///
@@ -106,7 +106,7 @@ pub enum TransactionEvent {
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
     LinkMapGetEvent = LINK_MAP_GET_EVENT,
 
-    AbortWithTxEffects = ABORT_WITH_TX_EFFECTS_EVENT,
+    Unauthorized = UNAUTHORIZED_EVENT,
 }
 
 impl TransactionEvent {
@@ -116,7 +116,7 @@ impl TransactionEvent {
     /// Returns `true` if the event is privileged, i.e. it is only allowed to be emitted from the
     /// root context of the VM, which is where the transaction kernel executes.
     pub fn is_privileged(&self) -> bool {
-        let is_unprivileged = matches!(self, Self::FalconSigToStack | Self::AbortWithTxEffects);
+        let is_unprivileged = matches!(self, Self::FalconSigToStack | Self::Unauthorized);
         !is_unprivileged
     }
 }
@@ -185,7 +185,7 @@ impl TryFrom<u32> for TransactionEvent {
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),
             LINK_MAP_GET_EVENT => Ok(TransactionEvent::LinkMapGetEvent),
 
-            ABORT_WITH_TX_EFFECTS_EVENT => Ok(TransactionEvent::AbortWithTxEffects),
+            UNAUTHORIZED_EVENT => Ok(TransactionEvent::Unauthorized),
 
             _ => Err(TransactionEventError::InvalidTransactionEvent(value)),
         }

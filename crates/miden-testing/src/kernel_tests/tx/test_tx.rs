@@ -1197,9 +1197,9 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that a transaction consuming and creating one note can emit an abort event in its auth
-/// component to result in a [`TransactionExecutorError::AbortWithTxEffects`] error.
+/// component to result in a [`TransactionExecutorError::Unauthorized`] error.
 #[test]
-fn auth_procedure_can_abort_transaction_with_effects() -> anyhow::Result<()> {
+fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = format!("
       use.miden::tx
 
@@ -1220,7 +1220,7 @@ fn auth_procedure_can_abort_transaction_with_effects() -> anyhow::Result<()> {
           emit.{abort_event}
       end
     ",
-        abort_event = TransactionEvent::AbortWithTxEffects as u32
+        abort_event = TransactionEvent::Unauthorized as u32
     );
 
     let auth_component =
@@ -1253,17 +1253,16 @@ fn auth_procedure_can_abort_transaction_with_effects() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;
-    let input_notes_commitment = tx_context.input_notes().commitment();
-    let output_notes = OutputNotes::new(vec![OutputNote::Full(output_note)])?;
-    let output_notes_commitment = output_notes.commitment();
+    let input_notes = tx_context.input_notes().clone();
+    let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
 
     let error = tx_context.execute().unwrap_err();
 
-    assert_matches!(error, TransactionExecutorError::AbortWithTxEffects(tx_effects) => {
-        assert_eq!(tx_effects.account_delta_commitment, Word::empty());
-        assert_eq!(tx_effects.input_notes_commitment, input_notes_commitment);
-        assert_eq!(tx_effects.output_notes_commitment, output_notes_commitment);
-        assert_eq!(tx_effects.replay_protection, Word::empty());
+    assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
+        assert!(tx_summary.account_delta().is_empty());
+        assert_eq!(tx_summary.input_notes(), &input_notes);
+        assert_eq!(tx_summary.output_notes(), &output_notes);
+        assert_eq!(tx_summary.replay_protection(), Word::empty());
     });
 
     Ok(())
