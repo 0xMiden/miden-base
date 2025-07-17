@@ -5,10 +5,7 @@ use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     EMPTY_WORD, Felt, LexicographicWord, Word, ZERO,
-    account::{
-        AccountBuilder, AccountId, AccountStorage, AccountStorageMode, AccountType, StorageMap,
-        StorageSlot,
-    },
+    account::{AccountBuilder, AccountId, AccountStorage, AccountType, StorageMap, StorageSlot},
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     note::{Note, NoteExecutionHint, NoteTag, NoteType},
     testing::{
@@ -25,7 +22,7 @@ use miden_objects::{
         },
         storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
     },
-    transaction::{OutputNote, TransactionScript},
+    transaction::TransactionScript,
 };
 use miden_tx::utils::word_to_masm_push_string;
 use rand::{Rng, SeedableRng};
@@ -47,26 +44,14 @@ use crate::{Auth, MockChain, TransactionContextBuilder, utils::create_p2any_note
 /// without assets.
 #[test]
 fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
-    let account = AccountBuilder::new([12; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::Noop)
-        .with_component(
-            AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
-                .unwrap(),
-        )
-        .build_existing()
-        .unwrap();
-
-    let account_id = account.id();
-    let mut mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
-
-    let p2any_note = create_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[]);
-
-    mock_chain.add_pending_note(OutputNote::Full(p2any_note.clone()));
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::Noop)?;
+    let p2any_note =
+        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[])?;
+    let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &[p2any_note.id()], &[])
+        .build_tx_context(account.id(), &[p2any_note.id()], &[])
         .expect("failed to build tx context")
         .build()?
         .execute()
@@ -82,7 +67,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
-    let TestSetup { mock_chain, account_id } = setup_storage_test(vec![]);
+    let TestSetup { mock_chain, account_id } = setup_test([], [])?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
@@ -118,12 +103,15 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
 
-    let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
-        StorageSlot::Value(slot_0_init_value),
-        StorageSlot::Value(slot_1_init_value),
-        StorageSlot::Value(slot_2_init_value),
-        StorageSlot::Value(slot_3_init_value),
-    ]);
+    let TestSetup { mock_chain, account_id } = setup_test(
+        vec![
+            StorageSlot::Value(slot_0_init_value),
+            StorageSlot::Value(slot_1_init_value),
+            StorageSlot::Value(slot_2_init_value),
+            StorageSlot::Value(slot_3_init_value),
+        ],
+        [],
+    )?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -246,15 +234,18 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let mut map2 = StorageMap::new();
     map2.insert(key5, key5_init_value);
 
-    let TestSetup { mock_chain, account_id } = setup_storage_test(vec![
-        StorageSlot::Map(map0),
-        StorageSlot::Map(map1),
-        StorageSlot::Map(map2),
-        // Include an empty map which does not receive any updates, to test that the "metadata
-        // header" in the delta commitment is not appended if there are no updates to a map
-        // slot.
-        StorageSlot::Map(StorageMap::new()),
-    ]);
+    let TestSetup { mock_chain, account_id } = setup_test(
+        vec![
+            StorageSlot::Map(map0),
+            StorageSlot::Map(map1),
+            StorageSlot::Map(map2),
+            // Include an empty map which does not receive any updates, to test that the "metadata
+            // header" in the delta commitment is not appended if there are no updates to a map
+            // slot.
+            StorageSlot::Map(StorageMap::new()),
+        ],
+        [],
+    )?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -391,9 +382,10 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     let removed_asset2 = FungibleAsset::new(faucet2, 100)?;
     let removed_asset3 = FungibleAsset::new(faucet3, FungibleAsset::MAX_AMOUNT)?;
 
-    let TestSetup { mut mock_chain, account_id } = setup_asset_test(
+    let TestSetup { mut mock_chain, account_id } = setup_test(
+        [],
         [original_asset0, original_asset1, original_asset2, original_asset3].map(Asset::from),
-    );
+    )?;
 
     let mut added_notes = vec![];
     for added_asset in [added_asset0, added_asset1, added_asset2, added_asset4] {
@@ -498,7 +490,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let asset3 = NonFungibleAssetBuilder::new(faucet3.prefix(), &mut rng)?.build()?;
 
     let TestSetup { mut mock_chain, account_id } =
-        setup_asset_test([asset1, asset3].map(Asset::from));
+        setup_test([], [asset1, asset3].map(Asset::from))?;
 
     let mut added_notes = vec![];
     for added_asset in [asset0, asset2] {
@@ -805,42 +797,20 @@ struct TestSetup {
     account_id: AccountId,
 }
 
-fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
-    let account = AccountBuilder::new([8; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::testing_assembler(),
-                storage_slots,
-            )
-            .unwrap(),
-        )
-        .build_existing()
-        .unwrap();
+fn setup_test(
+    storage_slots: impl IntoIterator<Item = StorageSlot>,
+    assets: impl IntoIterator<Item = Asset>,
+) -> anyhow::Result<TestSetup> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account_with_storage_and_assets(
+        Auth::IncrNonce,
+        storage_slots,
+        assets,
+    )?;
 
-    let account_id = account.id();
-    let mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
+    let mock_chain = builder.build()?;
 
-    TestSetup { mock_chain, account_id }
-}
-
-fn setup_asset_test(assets: impl IntoIterator<Item = Asset>) -> TestSetup {
-    let account = AccountBuilder::new([3; 32])
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(
-            AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
-                .unwrap(),
-        )
-        .with_assets(assets)
-        .build_existing()
-        .unwrap();
-
-    let account_id = account.id();
-    let mock_chain = MockChain::with_accounts(&[account]).expect("valid setup");
-
-    TestSetup { mock_chain, account_id }
+    Ok(TestSetup { mock_chain, account_id: account.id() })
 }
 
 fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {

@@ -1,6 +1,5 @@
 use miden_objects::{
-    NoteError,
-    note::{Note, NoteId, NoteInclusionProof, NoteMetadata, NoteType},
+    note::{Note, NoteId, NoteInclusionProof, NoteMetadata},
     transaction::InputNote,
 };
 
@@ -53,11 +52,13 @@ impl MockChainNote {
 }
 
 impl TryFrom<MockChainNote> for InputNote {
-    type Error = NoteError;
+    type Error = anyhow::Error;
 
     fn try_from(value: MockChainNote) -> Result<Self, Self::Error> {
         match value {
-            MockChainNote::Private(..) => Err(NoteError::PublicNoteRequired(NoteType::Private)),
+            MockChainNote::Private(..) => Err(anyhow::anyhow!(
+                "private notes in the mock chain cannot be converted into input notes due to missing details"
+            )),
             MockChainNote::Public(note, proof) => Ok(InputNote::Authenticated { note, proof }),
         }
     }

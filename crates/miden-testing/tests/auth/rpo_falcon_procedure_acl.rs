@@ -57,9 +57,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
-    let mut mock_chain = MockChain::new();
-    mock_chain.add_pending_account(account.clone());
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    builder.add_account(account.clone())?;
+    let mut mock_chain = builder.build()?;
 
     // Create a mock note to consume (needed to make the transaction non-empty)
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;

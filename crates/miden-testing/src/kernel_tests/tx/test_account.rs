@@ -137,8 +137,8 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 pub fn test_get_code() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
     let code = "
-        use.kernel::prologue
-        use.kernel::account
+        use.$kernel::prologue
+        use.$kernel::account
         begin
             exec.prologue::prepare_transaction
             exec.account::get_code_commitment
@@ -184,7 +184,7 @@ pub fn test_account_type() -> miette::Result<()> {
 
             let code = format!(
                 "
-                use.kernel::account_id
+                use.$kernel::account_id
 
                 begin
                     exec.account_id::{procedure}
@@ -255,7 +255,7 @@ pub fn test_account_validate_id() -> miette::Result<()> {
         let suffix = Felt::try_from((account_id % (1u128 << 64)) as u64).unwrap();
 
         let code = "
-            use.kernel::account_id
+            use.$kernel::account_id
 
             begin
                 exec.account_id::validate
@@ -307,7 +307,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account_id
+            use.$kernel::account_id
 
             begin
                 push.{prefix}
@@ -346,8 +346,8 @@ fn test_get_item() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
-            use.kernel::prologue
+            use.$kernel::account
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -390,7 +390,7 @@ fn test_get_map_item() -> miette::Result<()> {
     for (key, value) in STORAGE_LEAVES_2 {
         let code = format!(
             "
-            use.kernel::prologue
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -451,8 +451,8 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
-            use.kernel::prologue
+            use.$kernel::account
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -494,8 +494,8 @@ fn test_set_item() -> miette::Result<()> {
 
     let code = format!(
         "
-        use.kernel::account
-        use.kernel::prologue
+        use.$kernel::account
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -549,7 +549,7 @@ fn test_set_map_item() -> miette::Result<()> {
         use.std::sys
 
         use.test::account
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -750,7 +750,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
     // transaction code which only increases the nonce to make the transaction non-empty
     let default_tx_code = "
-        use.kernel::account 
+        use.$kernel::account 
         
         begin 
             push.1 exec.account::incr_nonce 
@@ -895,7 +895,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::account
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -939,8 +939,8 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
-            use.kernel::prologue
+            use.$kernel::account
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
