@@ -6,6 +6,7 @@ use miden_lib::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+        ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
@@ -1110,5 +1111,43 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         *executed_tx.account_delta().storage().values(),
         BTreeMap::from([(0, Word::from([2, 3, 4, 5u32]))]),
     );
+    Ok(())
+}
+
+/// Tests that incrementing the account nonce twice fails.
+#[test]
+fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
+    let source_code = "
+        use.miden::account
+
+        export.auth__incr_nonce_twice
+            exec.account::incr_nonce
+            exec.account::incr_nonce
+        end
+    ";
+
+    let faulty_auth_component =
+        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
+            .with_supports_all_types();
+    let (account, seed) = AccountBuilder::new([5; 32])
+        .with_auth_component(faulty_auth_component)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        )
+        .build()
+        .context("failed to build account")?;
+
+    let err = TransactionContextBuilder::new(account)
+        .account_seed(Some(seed))
+        .build()?
+        .execute()
+        .unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
     Ok(())
 }

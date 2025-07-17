@@ -203,9 +203,11 @@ impl<'store> TransactionBaseHost<'store> {
             },
 
             TransactionEvent::AccountBeforeIncrementNonce => {
-                self.on_account_before_increment_nonce()
+                Ok(())
             },
-            TransactionEvent::AccountAfterIncrementNonce => Ok(()),
+            TransactionEvent::AccountAfterIncrementNonce => {
+                self.on_account_after_increment_nonce()
+            },
 
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_account_push_procedure_index(process)
@@ -368,7 +370,7 @@ impl<'store> TransactionBaseHost<'store> {
     }
 
     /// Handles the increment nonce event by incrementing the nonce delta by one.
-    pub fn on_account_before_increment_nonce(&mut self) -> Result<(), TransactionKernelError> {
+    pub fn on_account_after_increment_nonce(&mut self) -> Result<(), TransactionKernelError> {
         if self.account_delta.was_nonce_incremented() {
             return Err(TransactionKernelError::NonceCanOnlyIncrementOnce);
         }
