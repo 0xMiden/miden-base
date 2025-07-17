@@ -10,7 +10,7 @@ mod slot;
 pub use slot::{StorageSlot, StorageSlotType};
 
 mod map;
-pub use map::StorageMap;
+pub use map::{PartialStorageMap, StorageMap};
 
 mod header;
 pub use header::{AccountStorageHeader, StorageSlotHeader};

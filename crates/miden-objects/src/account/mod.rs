@@ -35,7 +35,8 @@ pub use delta::{
 
 mod storage;
 pub use storage::{
-    AccountStorage, AccountStorageHeader, PartialStorage, StorageMap, StorageSlot, StorageSlotType,
+    AccountStorage, AccountStorageHeader, PartialStorage, PartialStorageMap, StorageMap,
+    StorageSlot, StorageSlotType,
 };
 
 mod header;
