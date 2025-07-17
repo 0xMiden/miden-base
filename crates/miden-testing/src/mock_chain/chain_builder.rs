@@ -4,11 +4,11 @@ use anyhow::Context;
 use itertools::Itertools;
 use miden_lib::{
     account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
-    note::{create_p2id_note, create_p2ide_note},
+    note::{create_p2id_note, create_p2ide_note, create_swap_note},
     transaction::{TransactionKernel, memory},
 };
 use miden_objects::{
-    Felt, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO,
+    Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO,
     account::{
         Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
         delta::AccountUpdateDetails,
@@ -18,7 +18,7 @@ use miden_objects::{
         AccountTree, BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain,
         NullifierTree, OutputNoteBatch, ProvenBlock,
     },
-    note::{Note, NoteType},
+    note::{Note, NoteDetails, NoteType},
     testing::account_component::AccountMockComponent,
     transaction::{OrderedTransactionHeaders, OutputNote},
 };
@@ -367,6 +367,30 @@ impl MockChainBuilder {
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)
+    }
+
+    /// Adds a public SWAP [`OutputNote`] to the list of genesis notes.
+    pub fn add_swap_note(
+        &mut self,
+        sender: AccountId,
+        offered_asset: Asset,
+        requested_asset: Asset,
+        payback_note_type: NoteType,
+    ) -> anyhow::Result<(Note, NoteDetails)> {
+        let (swap_note, payback_note) = create_swap_note(
+            sender,
+            offered_asset,
+            requested_asset,
+            NoteType::Public,
+            Felt::ZERO,
+            payback_note_type,
+            Felt::ZERO,
+            &mut self.rng,
+        )?;
+
+        self.add_note(OutputNote::Full(swap_note.clone()));
+
+        Ok((swap_note, payback_note))
     }
 
     /// Consumes the builder, creates the genesis block of the chain and returns the [`MockChain`].

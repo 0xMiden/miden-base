@@ -662,7 +662,9 @@ impl MockChain {
                 .with_context(|| format!("note with id {note} not found"))?
                 .clone()
                 .try_into()
-                .context("note error")?;
+                .with_context(|| {
+                    format!("failed to convert mock chain note with id {note} into input note")
+                })?;
 
             let note_block_num = input_note
                 .location()
