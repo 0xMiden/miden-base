@@ -2,12 +2,16 @@ use std::{collections::BTreeMap, vec::Vec};
 
 use anyhow::Context;
 use assert_matches::assert_matches;
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    account::{AccountId, delta::AccountUpdateDetails},
+    account::{Account, AccountId, AccountStorageMode, delta::AccountUpdateDetails},
     block::{BlockInputs, ProposedBlock},
-    testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    testing::{
+        account_component::AccountMockComponent, account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    },
     transaction::{OutputNote, ProvenTransaction, TransactionHeader},
 };
+use rand::Rng;
 
 use super::utils::{
     TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
@@ -15,8 +19,8 @@ use super::utils::{
     generate_tx_with_unauthenticated_notes, generate_untracked_note, setup_chain,
 };
 use crate::{
-    ProvenTransactionExt,
-    kernel_tests::block::utils::{generate_account_with_conditional_auth, generate_conditional_tx},
+    AccountState, Auth, MockChain, ProvenTransactionExt,
+    kernel_tests::block::utils::generate_conditional_tx,
 };
 
 /// Tests that we can build empty blocks.
@@ -255,9 +259,21 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 /// -> Y against the same account A. Both batches are in the same block.
 #[test]
 fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
-    let TestSetup { mut chain, .. } = setup_chain(0);
+    let account_builder = Account::builder(rand::rng().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        );
 
-    let account0 = generate_account_with_conditional_auth(&mut chain);
+    let mut builder = MockChain::builder();
+
+    let account0 = builder.add_account_from_builder(
+        Auth::Conditional,
+        account_builder,
+        AccountState::Exists,
+    )?;
+
+    let mut chain = builder.build()?;
 
     let noop_tx = generate_conditional_tx(&mut chain, account0.id(), false);
     let state_updating_tx = generate_conditional_tx(&mut chain, noop_tx.clone(), true);

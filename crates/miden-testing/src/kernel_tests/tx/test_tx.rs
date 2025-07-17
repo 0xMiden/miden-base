@@ -49,25 +49,31 @@ use crate::{
     kernel_tests::tx::ProcessMemoryExt, utils::create_p2any_note,
 };
 
+/// Tests that executing a transaction with a foreign account whose inputs are stale fails.
 #[test]
-fn test_fpi_anchoring_validations() -> anyhow::Result<()> {
+fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
     // Create a chain with an account
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    let native_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let foreign_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let new_account = builder.create_new_wallet(Auth::IncrNonce)?;
+
+    let mut mock_chain = builder.build()?;
 
     // Retrieve inputs which will become stale
     let inputs = mock_chain
-        .get_foreign_account_inputs(account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
-    // Add account to modify account tree
-    let new_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    // Create a new unrelated account to modify the account tree.
+    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute()?;
+    mock_chain.add_pending_executed_transaction(&tx)?;
     mock_chain.prove_next_block()?;
 
-    // Attempt to execute with older foreign account inputs
+    // Attempt to execute with older foreign account inputs. The AccountWitness in the foreign
+    // account's inputs have become stale and so this should fail.
     let transaction = mock_chain
-        .build_tx_context(new_account.id(), &[], &[])?
+        .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts(vec![inputs])
         .build()?
         .execute();
@@ -79,15 +85,17 @@ fn test_fpi_anchoring_validations() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[allow(clippy::arc_with_non_send_sync)]
+/// Tests that consuming a note created in a block that is newer than the reference block of the
+/// transaction fails.
 #[test]
-fn test_future_input_note_fails() -> anyhow::Result<()> {
+fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
-    // Create note that will land on a future block
+    // Create a note that will be contained in block 11.
     let note = mock_chain
         .add_pending_p2id_note(
             account.id(),
@@ -96,17 +104,19 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
             NoteType::Private,
         )
         .unwrap();
+    // Create block 11.
     mock_chain.prove_next_block()?;
 
     // Get as input note, and assert that the note was created after block 1 (which we'll
     // use as reference)
     let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
-    assert!(input_note.location().unwrap().block_num() > 1.into());
+    assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
     mock_chain.prove_next_block()?;
     mock_chain.prove_next_block()?;
 
-    // Attempt to execute with a note created in the future
+    // Attempt to execute a transaction against reference block 1 with the note created in block 11
+    // - which should fail.
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
     let source_manager = tx_context.source_manager();
 
@@ -861,17 +871,19 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
 -> miette::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note = mock_chain
-            .add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder
+            .add_existing_wallet(Auth::BasicAuth)
+            .map_err(|err| miette::miette!(err))?;
+        let p2id_note = builder
+            .add_p2id_note(
                 ACCOUNT_ID_SENDER.try_into().unwrap(),
                 account.id(),
                 &[FungibleAsset::mock(100)],
                 NoteType::Public,
             )
-            .unwrap();
-        mock_chain.prove_next_block().unwrap();
+            .map_err(|err| miette::miette!(err))?;
+        let mock_chain = builder.build().map_err(|err| miette::miette!(err))?;
 
         mock_chain
             .build_tx_context(account.id(), &[], &[p2id_note])
@@ -1193,7 +1205,6 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that execute_tx_view_script returns the expected stack outputs.
-#[allow(clippy::arc_with_non_send_sync)]
 #[test]
 fn execute_tx_view_script() -> anyhow::Result<()> {
     let test_module_source = "
