@@ -834,6 +834,45 @@ export.tx_get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, pad(12)]
 end
 
+#! Returns the total number of input notes in the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [num_input_notes, pad(15)]
+#!
+#! Where:
+#! - num_input_notes is the total number of input notes in the transaction.
+#!
+#! Invocation: dynexec
+export.tx_get_num_input_notes
+    # get the number of input notes
+    exec.tx::get_num_input_notes
+    # => [num_input_notes, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [num_input_notes, pad(15)]
+end
+
+#! Returns the number of output notes created in this transaction to the moment of this procedure 
+#! execution.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [num_output_notes, pad(15)]
+#!
+#! Where:
+#! - num_output_notes is the number of output notes created in this transaction so far.
+#!
+#! Invocation: dynexec
+export.tx_get_num_output_notes
+    # get the number of input notes
+    exec.tx::get_num_output_notes
+    # => [num_input_notes, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [num_input_notes, pad(15)]
+end
+
 #! Returns the block commitment of the reference block.
 #!
 #! Inputs:  [pad(16)]

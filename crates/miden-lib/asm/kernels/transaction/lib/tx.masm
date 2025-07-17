@@ -129,6 +129,25 @@ export.memory::get_input_notes_commitment
 #! - OUTPUT_NOTES_COMMITMENT is the output notes commitment.
 export.note::compute_output_notes_commitment->get_output_notes_commitment
 
+#! Gets the total number of input notes in the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [num_input_notes]
+#!
+#! Where:
+#! - num_input_notes is the total number of input notes in the transaction.
+export.memory::get_num_input_notes
+
+#! Returns the number of output notes created in this transaction to the moment of this procedure 
+#! execution.
+#!
+#! Inputs:  []
+#! Outputs: [num_output_notes]
+#!
+#! Where:
+#! - num_output_notes is the number of output notes created in this transaction so far.
+export.memory::get_num_output_notes
+
 #! Increments the number of output notes by one. Returns the index of the next note to be created.
 #!
 #! Inputs:  []

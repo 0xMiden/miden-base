@@ -25,7 +25,7 @@ type ErrorCategoryMap = BTreeMap<ErrorCategory, Vec<NamedError>>;
 /// Defines whether the build script should generate files in `/src`.
 /// The docs.rs build pipeline has a read-only filesystem, so we have to avoid writing to `src`,
 /// otherwise the docs will fail to build there. Note that writing to `OUT_DIR` is fine.
-const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN_SRC").is_some();
+const BUILD_GENERATED_FILES_IN_SRC: bool = true; // option_env!("BUILD_GENERATED_FILES_IN_SRC").is_some();
 
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";

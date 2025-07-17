@@ -146,6 +146,57 @@ export.get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT]
 end
 
+#! Gets the total number of input notes in the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [num_input_notes]
+#!
+#! Where:
+#! - num_input_notes is the total number of input notes in the transaction.
+#!
+#! Invocation: exec
+export.get_num_input_notes
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::tx_get_num_input_notes_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [num_input_notes, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [num_input_notes]
+end
+
+#! Returns the number of output notes created in this transaction to the moment of this procedure 
+#! execution.
+#!
+#! Inputs:  []
+#! Outputs: [num_output_notes]
+#!
+#! Where:
+#! - num_output_notes is the number of output notes created in this transaction so far.
+#!
+#! Invocation: exec
+export.get_num_output_notes
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::tx_get_num_output_notes_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [num_output_notes, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [num_output_notes]
+end
+
 #! Creates a new note and returns the index of the note.
 #!
 #! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]

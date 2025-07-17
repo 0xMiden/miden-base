@@ -58,18 +58,22 @@ const.TX_CREATE_NOTE_OFFSET=27
 const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=28
 const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=29
 
+# note number
+const.TX_GET_NUM_INPUT_NOTES_OFFSET=30
+const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=31
+
 # block info
-const.TX_GET_BLOCK_COMMITMENT_OFFSET=30
-const.TX_GET_BLOCK_NUMBER_OFFSET=31
-const.TX_GET_BLOCK_TIMESTAMP_OFFSET=32
+const.TX_GET_BLOCK_COMMITMENT_OFFSET=32
+const.TX_GET_BLOCK_NUMBER_OFFSET=33
+const.TX_GET_BLOCK_TIMESTAMP_OFFSET=34
 
 # foreign context
-const.TX_START_FOREIGN_CONTEXT_OFFSET=33
-const.TX_END_FOREIGN_CONTEXT_OFFSET=34
+const.TX_START_FOREIGN_CONTEXT_OFFSET=35
+const.TX_END_FOREIGN_CONTEXT_OFFSET=36
 
 # expiration data
-const.TX_GET_EXPIRATION_DELTA_OFFSET=35          # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=36   # mutator
+const.TX_GET_EXPIRATION_DELTA_OFFSET=37          # accessor
+const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=38   # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -440,6 +444,30 @@ end
 #!   get the address where this procedure is stored.
 export.tx_get_output_notes_commitment_offset
     push.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET
+end
+
+#! Returns the offset of the `tx_get_num_input_notes` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `tx_get_num_input_notes` kernel procedure required to get the 
+#!   address where this procedure is stored.
+export.tx_get_num_input_notes_offset
+    push.TX_GET_NUM_INPUT_NOTES_OFFSET
+end
+
+#! Returns the offset of the `tx_get_num_output_notes` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `tx_get_num_output_notes` kernel procedure required to get the 
+#!   address where this procedure is stored.
+export.tx_get_num_output_notes_offset
+    push.TX_GET_NUM_OUTPUT_NOTES_OFFSET
 end
 
 #! Returns the offset of the `tx_get_block_commitment` kernel procedure.

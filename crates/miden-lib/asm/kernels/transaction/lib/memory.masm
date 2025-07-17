@@ -259,13 +259,14 @@ const.LINK_MAP_ENTRY_SIZE=16
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the number of output notes.
+#! Returns the number of output notes created in this transaction to the moment of this procedure 
+#! execution.
 #!
 #! Inputs:  []
 #! Outputs: [num_output_notes]
 #!
 #! Where:
-#! - num_output_notes is the number of output notes.
+#! - num_output_notes is the number of output notes created in this transaction so far.
 export.get_num_output_notes
     mem_load.NUM_OUTPUT_NOTES_PTR
 end
