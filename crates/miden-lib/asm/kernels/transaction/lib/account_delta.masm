@@ -1,9 +1,9 @@
-use.kernel::memory
-use.kernel::link_map
-use.kernel::constants
-use.kernel::account
-use.kernel::asset
-use.kernel::asset_vault
+use.$kernel::memory
+use.$kernel::link_map
+use.$kernel::constants
+use.$kernel::account
+use.$kernel::asset
+use.$kernel::asset_vault
 use.std::crypto::hashes::rpo
 use.std::math::u64
 
