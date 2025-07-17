@@ -14,6 +14,7 @@
 - Add arguments to the auth procedure ([#1501](https://github.com/0xMiden/miden-base/pull/1501)).
 - [BREAKING] Refactored `SWAP` note & added option to select the visibility of the associated payback note ([#1539](https://github.com/0xMiden/miden-base/pull/1539)).
 - [BREAKING] Remove pending account APIs on `MockChain` and introduce `MockChainBuilder` to simplify mock chain creation ([#1557](https://github.com/0xMiden/miden-base/pull/1557)).
+- [BREAKING] Change `account::incr_nonce` to always increment the nonce by one and disallow incrementing more than once ([#1608](https://github.com/0xMiden/miden-base/pull/1608)).
 
 ## 0.10.0 (2025-07-08)
 
