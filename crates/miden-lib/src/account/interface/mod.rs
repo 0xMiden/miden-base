@@ -14,6 +14,7 @@ use crate::{
     AuthScheme,
     account::components::{
         basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library,
+        rpo_falcon_512_procedure_acl_library,
     },
     note::well_known_note::WellKnownNote,
     transaction::TransactionKernel,
@@ -139,6 +140,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
+                    component_proc_digests.extend(
+                        rpo_falcon_512_procedure_acl_library().mast_forest().procedure_digests(),
+                    );
+                },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
                         .extend(custom_procs.iter().map(|info| *info.mast_root()));
@@ -153,30 +159,6 @@ impl AccountInterface {
 // ------------------------------------------------------------------------------------------------
 /// Code generation
 impl AccountInterface {
-    /// Builds a simple authentication script for the transaction that doesn't send any notes.
-    ///
-    /// Resulting transaction script is generated from this source:
-    ///
-    /// ```masm
-    /// begin
-    ///     call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
-    /// end
-    /// ```
-    ///
-    /// # Errors:
-    /// Returns an error if:
-    /// - the account interface does not have any authentication schemes.
-    pub fn build_auth_script(
-        &self,
-        in_debug_mode: bool,
-    ) -> Result<TransactionScript, AccountInterfaceError> {
-        let auth_script_source = format!("begin\n{}\nend", self.build_tx_authentication_section());
-        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-
-        TransactionScript::compile(auth_script_source, assembler)
-            .map_err(AccountInterfaceError::InvalidTransactionScript)
-    }
-
     /// Returns a transaction script which sends the specified notes using the procedures available
     /// in the current interface.
     ///
@@ -194,8 +176,7 @@ impl AccountInterface {
     ///
     /// # Example
     ///
-    /// Example of the `send_note` script with specified expiration delta, one output note and
-    /// RpoFalcon512 authentication:
+    /// Example of the `send_note` script with specified expiration delta and one output note:
     ///
     /// ```masm
     /// begin
@@ -205,8 +186,6 @@ impl AccountInterface {
     ///
     ///     push.{asset amount}
     ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
-    ///
-    ///     call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     /// end
     /// ```
     ///
@@ -229,10 +208,9 @@ impl AccountInterface {
         let note_creation_source = self.build_create_notes_section(output_notes)?;
 
         let script = format!(
-            "begin\n{}\n{}\n{}\nend",
+            "begin\n{}\n{}\nend",
             self.build_set_tx_expiration_section(expiration_delta),
             note_creation_source,
-            self.build_tx_authentication_section()
         );
 
         let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
@@ -240,19 +218,6 @@ impl AccountInterface {
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)
-    }
-
-    /// Returns a string with the authentication procedure call for the script.
-    fn build_tx_authentication_section(&self) -> String {
-        let mut auth_script = String::new();
-        self.auth().iter().for_each(|auth_scheme| match auth_scheme {
-            &AuthScheme::RpoFalcon512 { pub_key: _ } => {
-                auth_script
-                    .push_str("call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512\n");
-            },
-        });
-
-        auth_script
     }
 
     /// Generates a note creation code required for the `send_note` transaction script.
@@ -297,16 +262,20 @@ impl From<&Account> for AccountInterface {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
-            if let AccountComponentInterface::AuthRpoFalcon512(storage_index) = interface {
-                auth.push(AuthScheme::RpoFalcon512 {
-                    pub_key: rpo_falcon512::PublicKey::new(
-                        (*account
-                            .storage()
-                            .get_item(*storage_index)
-                            .expect("invalid storage index of the public key"))
-                        .into(),
-                    ),
-                })
+            match interface {
+                // RpoFalcon512 and RpoFalcon512ProcedureAcl use the same RpoFalcon512 auth scheme
+                AccountComponentInterface::AuthRpoFalcon512(storage_index)
+                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
+                    auth.push(AuthScheme::RpoFalcon512 {
+                        pub_key: rpo_falcon512::PublicKey::new(
+                            account
+                                .storage()
+                                .get_item(*storage_index)
+                                .expect("invalid storage index of the public key"),
+                        ),
+                    })
+                },
+                _ => {},
             }
         });
 
@@ -337,7 +306,7 @@ pub enum NoteAccountCompatibility {
 }
 
 // HELPER FUNCTIONS
-// ================================================================================================
+// ------------------------------------------------------------------------------------------------
 
 /// Verifies that the provided note script is compatible with the target account interfaces.
 ///
