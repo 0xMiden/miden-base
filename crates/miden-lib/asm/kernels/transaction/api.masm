@@ -1,13 +1,13 @@
 use.std::sys
 
-use.kernel::account
-use.kernel::account_id
-use.kernel::asset_vault
-use.kernel::constants
-use.kernel::faucet
-use.kernel::memory
-use.kernel::note
-use.kernel::tx
+use.$kernel::account
+use.$kernel::account_id
+use.$kernel::asset_vault
+use.$kernel::constants
+use.$kernel::faucet
+use.$kernel::memory
+use.$kernel::note
+use.$kernel::tx
 
 # NOTE
 # =================================================================================================

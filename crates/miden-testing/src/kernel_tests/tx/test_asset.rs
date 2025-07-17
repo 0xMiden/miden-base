@@ -24,7 +24,7 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::asset
 
         begin
@@ -68,7 +68,7 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::asset
 
         begin
@@ -106,7 +106,7 @@ fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::asset
+        use.$kernel::asset
 
         begin
             push.{asset} 
