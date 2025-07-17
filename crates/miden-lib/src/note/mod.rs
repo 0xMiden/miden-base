@@ -105,6 +105,12 @@ pub fn create_swap_note<R: FeltRng>(
     aux: Felt,
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
+    assert!(
+        requested_asset != offered_asset,
+        "{}",
+        NoteError::RequiredAssetSameAsOffered(requested_asset)
+    );
+
     let note_script = WellKnownNote::SWAP.script();
 
     let payback_serial_num = rng.draw_word();

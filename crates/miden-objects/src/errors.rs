@@ -21,6 +21,7 @@ use crate::{
         AccountCode, AccountIdPrefix, AccountStorage, AccountType, AddressType, StorageValueName,
         StorageValueNameError, TemplateTypeError,
     },
+    asset::Asset,
     batch::BatchId,
     block::BlockNumber,
     note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier},
@@ -418,6 +419,8 @@ pub enum NoteError {
     TooManyInputs(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
+    #[error("required asset {0:?} cannot be the same as the offered asset")]
+    RequiredAssetSameAsOffered(Asset),
 }
 
 // PARTIAL BLOCKCHAIN ERROR
