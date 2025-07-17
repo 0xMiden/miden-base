@@ -6,13 +6,14 @@ use miden_lib::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
-        ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
+        ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE, ERR_ACCOUNT_NONCE_OVERFLOW,
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
+    StarkField,
     account::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
@@ -1148,6 +1149,31 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     };
 
     assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
+    Ok(())
+}
+
+/// Tests that incrementing the account nonce fails if it would overflow the field.
+#[test]
+fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
+    let mut account = AccountBuilder::new([42; 32])
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        )
+        .build_existing()
+        .context("failed to build account")?;
+    // Increment the nonce to the maximum felt value. The nonce is already 1, so we increment by
+    // modulus - 2.
+    account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
+
+    let err = TransactionContextBuilder::new(account).build()?.execute().unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_OVERFLOW);
 
     Ok(())
 }

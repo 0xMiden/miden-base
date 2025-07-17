@@ -15,6 +15,8 @@ use.$kernel::memory
 
 const.ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE="account nonce can only be incremented once"
 
+const.ERR_ACCOUNT_NONCE_OVERFLOW="incrementing the account nonce would overflow the field"
+
 const.ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE="account code must be updatable for it to be possible to set new code"
 
 const.ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH="ID of the new account does not match the ID computed from the seed and commitments"
@@ -250,7 +252,15 @@ export.incr_nonce
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT
 
-    exec.memory::get_acct_nonce add.1
+    exec.memory::get_acct_nonce
+    # => [current_nonce]
+
+    # if the current nonce is the maximum felt value, then incrementing the nonce would overflow
+    # the field
+    dup neq.0xffffffff00000000 assert.err=ERR_ACCOUNT_NONCE_OVERFLOW
+    # => [current_nonce]
+
+    add.1
     # => [new_nonce]
 
     exec.memory::set_acct_nonce
