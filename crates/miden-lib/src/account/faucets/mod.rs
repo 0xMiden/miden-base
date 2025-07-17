@@ -231,7 +231,7 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// The storage layout of the faucet account is:
 /// - Slot 0: Reserved slot for faucets.
 /// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: [0, 0, allow_unauthorized_output_notes, num_tracked_procs].
+/// - Slot 2: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
 /// - Slot 3: A map with tracked procedure roots.
 /// - Slot 4: Token metadata of the faucet.
 pub fn create_basic_fungible_faucet(
@@ -246,7 +246,7 @@ pub fn create_basic_fungible_faucet(
 
     let auth_component: RpoFalcon512ProcedureAcl = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => {
-            RpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root], false)
+            RpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root], false, false)
                 .map_err(FungibleFaucetError::AccountError)?
         },
     };
@@ -335,12 +335,12 @@ mod tests {
         // will be 1.
         assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
 
-        // Slot 2 stores [0, 0, allow_unauthorized_output_notes, num_tracked_procs].
-        // With 1 tracked procedure and allow_unauthorized_output_notes=false,
-        // this should be [0, 0, 0, 1].
+        // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
+        // With 1 tracked procedure, allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false,
+        // this should be [1, 0, 0, 0].
         assert_eq!(
             faucet_account.storage().get_item(2).unwrap(),
-            [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ONE].into()
+            [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
         );
 
         // The procedure root of the distribute procedure is stored in slot 3.

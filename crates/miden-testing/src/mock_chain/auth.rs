@@ -31,6 +31,7 @@ pub enum Auth {
     ProcedureAcl {
         auth_trigger_procedures: Vec<Word>,
         allow_unauthorized_output_notes: bool,
+        allow_unauthorized_input_notes: bool,
     },
 
     /// Creates a mock authentication mechanism for the account that only increments the nonce.
@@ -69,6 +70,7 @@ impl Auth {
             Auth::ProcedureAcl {
                 auth_trigger_procedures,
                 allow_unauthorized_output_notes,
+                allow_unauthorized_input_notes,
             } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
@@ -78,6 +80,7 @@ impl Auth {
                     pub_key,
                     auth_trigger_procedures.clone(),
                     *allow_unauthorized_output_notes,
+                    *allow_unauthorized_input_notes,
                 )
                 .expect("component creation failed")
                 .into();
