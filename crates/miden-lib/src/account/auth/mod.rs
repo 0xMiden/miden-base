@@ -72,18 +72,15 @@ impl From<RpoFalcon512> for AccountComponent {
 ///
 /// ## Use Cases
 ///
-/// - **Faucets with burn functionality** (`allow_unauthorized_input_notes=true`): Allows anyone to
-///   send assets to the faucet for burning without requiring authentication, while still protecting
-///   the distribute procedure through the ACL.
-/// - **Smart contracts with automatic operations** (`allow_unauthorized_output_notes=true`):
-///   Enables automatic asset withdrawal for applications like AMMs or lending protocols, where the
-///   contract needs to send assets without manual authentication for each transaction.
 /// - **Restrictive mode** (`allow_unauthorized_output_notes=false`,
 ///   `allow_unauthorized_input_notes=false`): All note operations require authentication, providing
 ///   maximum security.
+/// - **Selective mode**: Allow some note operations without authentication while protecting
+///   specific procedures, useful for accounts that need to process certain operations
+///   automatically.
 /// - **Procedure-only mode** (`allow_unauthorized_output_notes=true`,
 ///   `allow_unauthorized_input_notes=true`): Only specific procedures require authentication,
-///   allowing free note processing while protecting critical account operations.
+///   allowing free note processing.
 ///
 /// ## Storage Layout
 /// - Slot 0(value): Public key (same as RpoFalcon512)

@@ -218,9 +218,8 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
     // [2, 1, 1, 0]
     assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
 
-    let mut mock_chain = MockChain::new();
-    mock_chain.add_pending_account(account.clone());
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    builder.add_account(account.clone())?;
 
     // Create a mock note to consume (needed to make the transaction non-empty)
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
@@ -229,8 +228,8 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
         .build(&assembler)
         .expect("failed to create mock note");
 
-    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
-    mock_chain.prove_next_block()?;
+    builder.add_note(OutputNote::Full(note.clone()));
+    let mock_chain = builder.build()?;
 
     let tx_script_no_trigger = r#"
         use.test::account
@@ -316,9 +315,8 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
     // be [2, 1, 0, 0]
     assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
 
-    let mut mock_chain = MockChain::new();
-    mock_chain.add_pending_account(account.clone());
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    builder.add_account(account.clone())?;
 
     // Create a mock note to consume (this will trigger input note consumption)
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
@@ -327,8 +325,8 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
         .build(&assembler)
         .expect("failed to create mock note");
 
-    mock_chain.add_pending_note(OutputNote::Full(note.clone()));
-    mock_chain.prove_next_block()?;
+    builder.add_note(OutputNote::Full(note.clone()));
+    let mock_chain = builder.build()?;
 
     let tx_script_no_trigger = r#"
         use.test::account
