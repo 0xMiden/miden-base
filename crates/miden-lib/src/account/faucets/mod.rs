@@ -231,7 +231,8 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// The storage layout of the faucet account is:
 /// - Slot 0: Reserved slot for faucets.
 /// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
+/// - Slot 2: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
+///   0].
 /// - Slot 3: A map with tracked procedure roots.
 /// - Slot 4: Token metadata of the faucet.
 pub fn create_basic_fungible_faucet(
@@ -335,8 +336,9 @@ mod tests {
         // will be 1.
         assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
 
-        // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0].
-        // With 1 tracked procedure, allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false,
+        // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0]. With 1 tracked procedure,
+        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false,
         // this should be [1, 0, 0, 0].
         assert_eq!(
             faucet_account.storage().get_item(2).unwrap(),

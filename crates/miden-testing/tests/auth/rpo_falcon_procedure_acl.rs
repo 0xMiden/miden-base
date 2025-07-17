@@ -212,8 +212,10 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
 
     // Verify the storage layout includes both authorization flags
     let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-    // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-    // With 2 procedures, allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=true, this should be [2, 1, 1, 0]
+    // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+    // allow_unauthorized_input_notes, 0] With 2 procedures,
+    // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=true, this should be
+    // [2, 1, 1, 0]
     assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
 
     let mut mock_chain = MockChain::new();
@@ -308,8 +310,10 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
 
     // Verify the storage layout includes both flags
     let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-    // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-    // With 2 procedures, allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this should be [2, 1, 0, 0]
+    // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+    // allow_unauthorized_input_notes, 0] With 2 procedures,
+    // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this should
+    // be [2, 1, 0, 0]
     assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
 
     let mut mock_chain = MockChain::new();
@@ -340,8 +344,9 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
-    // Test: Transaction WITHOUT authenticator calling non-trigger procedure but consuming input notes
-    // This should FAIL because allow_unauthorized_input_notes=false and we're consuming input notes
+    // Test: Transaction WITHOUT authenticator calling non-trigger procedure but consuming input
+    // notes This should FAIL because allow_unauthorized_input_notes=false and we're consuming
+    // input notes
     let tx_context_no_auth = mock_chain
         .build_tx_context(account.id(), &[], &[note.clone()])?
         .authenticator(None)

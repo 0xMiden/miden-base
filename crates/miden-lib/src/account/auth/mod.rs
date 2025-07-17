@@ -58,7 +58,8 @@ impl From<RpoFalcon512> for AccountComponent {
 ///
 /// The storage layout is:
 /// - Slot 0(value): Public key (same as RpoFalcon512)
-/// - Slot 1(value): [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
+/// - Slot 1(value): [num_tracked_procs, allow_unauthorized_output_notes,
+///   allow_unauthorized_input_notes, 0]
 /// - Slot 2(map): A map with trigger procedure roots
 ///
 /// This component supports all account types.
@@ -105,7 +106,8 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         // Slot 0: Public key
         storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
 
-        // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
+        // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0]
         let num_procs = falcon.auth_trigger_procedures.len() as u32;
         let allow_unauthorized_output_notes = if falcon.allow_unauthorized_output_notes {
             1u32
@@ -168,8 +170,10 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-        // With 0 procedures, allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false, this should be [0, 0, 0, 0]
+        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0] With 0 procedures,
+        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false, this
+        // should be [0, 0, 0, 0]
         assert_eq!(slot_1, Word::empty());
 
         let proc_root = account
@@ -215,8 +219,10 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-        // With 2 procedures, allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false, this should be [2, 0, 0, 0]
+        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0] With 2 procedures,
+        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false, this
+        // should be [2, 0, 0, 0]
         assert_eq!(slot_1, Word::from([2u32, 0, 0, 0]));
 
         let proc_root_0 = account
@@ -248,8 +254,10 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-        // With 0 procedures, allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this should be [0, 1, 0, 0]
+        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0] With 0 procedures,
+        // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this
+        // should be [0, 1, 0, 0]
         assert_eq!(slot_1, Word::from([0, 1, 0, 0u32]));
     }
 
@@ -282,8 +290,10 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-        // With 2 procedures, allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this should be [2, 1, 0, 0]
+        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0] With 2 procedures,
+        // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=false, this
+        // should be [2, 1, 0, 0]
         assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
 
         let proc_root_0 = account
@@ -315,8 +325,10 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-        // With 0 procedures, allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=true, this should be [0, 0, 1, 0]
+        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0] With 0 procedures,
+        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=true, this
+        // should be [0, 0, 1, 0]
         assert_eq!(slot_1, Word::from([0, 0, 1, 0u32]));
     }
 
@@ -349,8 +361,10 @@ mod tests {
         assert_eq!(public_key_slot, Word::from(public_key));
 
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
-        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0]
-        // With 2 procedures, allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=true, this should be [2, 1, 1, 0]
+        // Slot 1 should be [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0] With 2 procedures,
+        // allow_unauthorized_output_notes=true, and allow_unauthorized_input_notes=true, this
+        // should be [2, 1, 1, 0]
         assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
 
         let proc_root_0 = account
