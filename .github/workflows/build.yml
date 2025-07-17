@@ -59,9 +59,10 @@ jobs:
           # Only update the cache on push onto the next branch. This strikes a nice balance between
           # cache hits and cache evictions (github has a 10GB cache limit).
           save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/next' }}
-      # Install cargo-hack
-      - name: Install cargo-hack
-        run: cargo install cargo-hack
+      # Install cargo-hack or restore from cache if already built.
+      - uses: taiki-e/cache-cargo-install-action@v2
+        with:
+          tool: cargo-hack
       - name: Update Rust toolchain
         run: rustup update --no-self-update
       # Run cargo hack check with each feature to ensure crates compile with individual features
