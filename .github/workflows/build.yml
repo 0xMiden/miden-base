@@ -67,4 +67,4 @@ jobs:
         run: rustup update --no-self-update
       # Run cargo hack check with each feature to ensure crates compile with individual features
       - name: Check each feature
-        run: cargo hack check --feature-powerset --workspace --exclude bench-prover
+        run: cargo hack check --each-feature --workspace --exclude bench-prover
