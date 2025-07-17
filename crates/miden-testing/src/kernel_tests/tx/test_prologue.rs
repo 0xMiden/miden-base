@@ -477,7 +477,7 @@ fn create_simple_account() -> anyhow::Result<()> {
     assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
     // account commitment should not be the empty word
-    assert_ne!(tx.account_delta().commitment(), EMPTY_WORD);
+    assert_ne!(tx.account_delta().to_commitment(), EMPTY_WORD);
 
     Ok(())
 }
