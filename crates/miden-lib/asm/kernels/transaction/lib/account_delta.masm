@@ -45,8 +45,9 @@ export.compute_commitment
     padw
     # => [CAPACITY]
 
-    # note that the delta of the nonce is equal to was_nonce_incremented
     exec.was_nonce_incremented push.0
+    # => [0, was_nonce_incremented, CAPACITY]
+    # note that the delta of the nonce is equal to was_nonce_incremented
     # => [0, nonce_delta, CAPACITY]
 
     exec.memory::get_native_account_id
