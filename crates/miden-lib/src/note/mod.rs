@@ -106,7 +106,7 @@ pub fn create_swap_note<R: FeltRng>(
     rng: &mut R,
 ) -> Result<(Note, NoteDetails), NoteError> {
     if requested_asset == offered_asset {
-        return Err(NoteError::RequiredAssetSameAsOffered(requested_asset));
+        return Err(NoteError::other("requested asset same as offered asset"));
     }
 
     let note_script = WellKnownNote::SWAP.script();

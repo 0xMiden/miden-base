@@ -21,7 +21,6 @@ use crate::{
         AccountCode, AccountIdPrefix, AccountStorage, AccountType, AddressType, StorageValueName,
         StorageValueNameError, TemplateTypeError,
     },
-    asset::Asset,
     batch::BatchId,
     block::BlockNumber,
     note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier},
@@ -419,8 +418,33 @@ pub enum NoteError {
     TooManyInputs(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
-    #[error("required asset {0:?} cannot be the same as the offered asset")]
-    RequiredAssetSameAsOffered(Asset),
+    #[error("{error_msg}")]
+    Other {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on NoteError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl NoteError {
+    /// Creates a custom error using the [`NoteError::Other`] variant from an error message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { error_msg: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`NoteError::Other`] variant from an error message and
+    /// a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // PARTIAL BLOCKCHAIN ERROR
