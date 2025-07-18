@@ -213,12 +213,6 @@ impl AccountTree {
         Ok(AccountMutationSet::new(mutation_set))
     }
 
-    /// Checks if the given account ID prefix exists in the tree.
-    pub fn exists(&mut self, account_id: AccountId) -> bool {
-        let key = Self::id_to_smt_key(account_id);
-        !self.smt.get_leaf(&key).is_empty()
-    }
-
     // PUBLIC MUTATORS
     // --------------------------------------------------------------------------------------------
 
