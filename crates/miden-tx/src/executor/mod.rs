@@ -160,10 +160,11 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
+        let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
         let mut host = TransactionExecutorHost::new(
@@ -171,6 +172,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             &mut advice_inputs,
             self.data_store,
             script_mast_store,
+            input_notes.clone(),
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
@@ -248,6 +250,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
+            tx_inputs.input_notes().clone(),
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
@@ -311,10 +314,11 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
+        let input_notes = tx_inputs.input_notes();
 
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
         let mut host = TransactionExecutorHost::new(
@@ -322,6 +326,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
+            input_notes.clone(),
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )

@@ -4,7 +4,7 @@ use miden_lib::transaction::TransactionEvent;
 use miden_objects::{
     Word,
     account::{AccountDelta, PartialAccount},
-    transaction::OutputNote,
+    transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
     AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
@@ -33,6 +33,7 @@ impl<'store> TransactionProverHost<'store> {
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
+        input_notes: InputNotes<InputNote>,
         foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
         let base_host = TransactionBaseHost::new(
@@ -40,6 +41,7 @@ impl<'store> TransactionProverHost<'store> {
             advice_inputs,
             mast_store,
             scripts_mast_store,
+            input_notes,
             foreign_account_code_commitments,
         )?;
 

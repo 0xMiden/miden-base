@@ -9,7 +9,7 @@ use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
 use miden_objects::{
     Felt, Hasher, Word,
     account::{AccountDelta, PartialAccount},
-    transaction::OutputNote,
+    transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
     AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
@@ -55,6 +55,7 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
+        input_notes: InputNotes<InputNote>,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
         foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
@@ -63,6 +64,7 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
             advice_inputs,
             mast_store,
             scripts_mast_store,
+            input_notes,
             foreign_account_code_commitments,
         )?;
 

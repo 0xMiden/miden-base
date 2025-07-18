@@ -106,6 +106,7 @@ impl TransactionProver for LocalTransactionProver {
             &mut advice_inputs,
             self.mast_store.as_ref(),
             script_mast_store,
+            input_notes.clone(),
             account_code_commitments,
         )
         .map_err(TransactionProverError::TransactionHostCreationFailed)?;

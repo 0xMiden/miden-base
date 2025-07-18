@@ -32,7 +32,7 @@ use miden_objects::{
     account::{AccountDelta, PartialAccount},
     asset::Asset,
     note::NoteId,
-    transaction::{OutputNote, TransactionMeasurements},
+    transaction::{InputNote, InputNotes, OutputNote, TransactionMeasurements},
     vm::RowIndex,
 };
 pub use tx_progress::TransactionProgress;
@@ -69,6 +69,9 @@ pub struct TransactionBaseHost<'store> {
     /// map.
     output_notes: BTreeMap<usize, OutputNoteBuilder>,
 
+    /// Input notes for the transaction.
+    input_notes: InputNotes<InputNote>,
+
     /// Tracks the number of cycles for each of the transaction execution stages.
     ///
     /// The progress is updated event handlers.
@@ -85,6 +88,7 @@ impl<'store> TransactionBaseHost<'store> {
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
+        input_notes: InputNotes<InputNote>,
         mut foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
         // currently, the executor/prover do not keep track of the code commitment of the native
@@ -125,6 +129,7 @@ impl<'store> TransactionBaseHost<'store> {
             ),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
+            input_notes,
             tx_progress: TransactionProgress::default(),
         };
 
