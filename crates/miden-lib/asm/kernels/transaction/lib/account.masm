@@ -15,7 +15,7 @@ use.$kernel::memory
 
 const.ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE="account nonce can only be incremented once"
 
-const.ERR_ACCOUNT_NONCE_OVERFLOW="incrementing the account nonce would overflow the field"
+const.ERR_ACCOUNT_NONCE_AT_MAX="account nonce is already at its maximum possible value"
 
 const.ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE="account code must be updatable for it to be possible to set new code"
 
@@ -257,7 +257,7 @@ export.incr_nonce
 
     # if the current nonce is the maximum felt value, then incrementing the nonce would overflow
     # the field
-    dup neq.0xffffffff00000000 assert.err=ERR_ACCOUNT_NONCE_OVERFLOW
+    dup neq.0xffffffff00000000 assert.err=ERR_ACCOUNT_NONCE_AT_MAX
     # => [current_nonce]
 
     add.1

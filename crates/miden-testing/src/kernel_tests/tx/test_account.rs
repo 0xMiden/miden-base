@@ -6,7 +6,7 @@ use miden_lib::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
-        ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE, ERR_ACCOUNT_NONCE_OVERFLOW,
+        ERR_ACCOUNT_NONCE_AT_MAX, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
@@ -1173,7 +1173,7 @@ fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
         anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
     };
 
-    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_OVERFLOW);
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_AT_MAX);
 
     Ok(())
 }
