@@ -1,8 +1,8 @@
 use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Felt, Word, account::AuthSecretKey, crypto::SequentialCommit, transaction::TransactionSummary,
-    utils::sync::RwLock,
+    Felt, Hasher, Word, account::AuthSecretKey, crypto::SequentialCommit,
+    transaction::TransactionSummary, utils::sync::RwLock,
 };
 use rand::Rng;
 
@@ -34,6 +34,17 @@ impl SequentialCommit for SignatureData {
             SignatureData::TransactionSummary(tx_summary) => tx_summary.to_elements(),
             SignatureData::Arbitrary(elements) => elements.clone(),
             SignatureData::Blind(word) => word.as_elements().to_vec(),
+        }
+    }
+
+    fn to_commitment(&self) -> Self::Commitment {
+        match self {
+            // `TransactionSummary` knows how to derive a commitment to itself.
+            SignatureData::TransactionSummary(tx_summary) => tx_summary.to_commitment(),
+            // use the default implementation.
+            SignatureData::Arbitrary(elements) => Hasher::hash_elements(elements),
+            // `Blind` is assumed to already be a commitment.
+            SignatureData::Blind(word) => *word,
         }
     }
 }
