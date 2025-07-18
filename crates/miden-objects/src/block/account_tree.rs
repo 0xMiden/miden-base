@@ -128,6 +128,13 @@ impl AccountTree {
         self.smt.root()
     }
 
+    /// Returns true if the tree contains a leaf for the given account ID.
+    pub fn has_leaf_for_account(&self, account_id: AccountId) -> bool {
+        let key = Self::id_to_smt_key(account_id);
+        let is_empty = matches!(self.smt.get_leaf(&key), SmtLeaf::Empty(_));
+        !is_empty
+    }
+
     /// Returns the number of account IDs in this tree.
     pub fn num_accounts(&self) -> usize {
         // Because each ID's prefix is unique in the tree and occupies a single leaf, the number of
@@ -204,6 +211,12 @@ impl AccountTree {
         }
 
         Ok(AccountMutationSet::new(mutation_set))
+    }
+
+    /// Checks if the given account ID prefix exists in the tree.
+    pub fn exists(&mut self, account_id: AccountId) -> bool {
+        let key = Self::id_to_smt_key(account_id);
+        !self.smt.get_leaf(&key).is_empty()
     }
 
     // PUBLIC MUTATORS
