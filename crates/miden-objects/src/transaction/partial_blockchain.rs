@@ -182,6 +182,26 @@ impl PartialBlockchain {
         self.mmr.add(block_header.commitment(), track);
     }
 
+    /// Drop every block older than `cutoff_block_num` from the partial view.
+    ///
+    /// After the call all block headers with a number smaller than `cutoff_block_num` are gone and their paths are no longer
+    /// tracked in the inner partial MMR.
+    pub fn prune_before(&mut self, cutoff_block_num: BlockNumber) {
+        let kept = self.blocks.split_off(&cutoff_block_num);
+        for block_num in self.blocks.keys() {
+            self.mmr.untrack(block_num.as_usize());
+        }
+
+        self.blocks = kept;
+    }
+
+    /// Prunes a single block off of the [`PartialBlockchain`].
+    pub fn remove(&mut self, block_num: BlockNumber) {
+        if self.blocks.remove(&block_num).is_some() {
+            self.mmr.untrack(block_num.as_usize());
+        }
+    }
+
     // ITERATORS
     // --------------------------------------------------------------------------------------------
 
@@ -407,5 +427,45 @@ mod tests {
             Word::empty(),
             0,
         )
+    }
+
+    #[test]
+    fn prune_before_and_remove() {
+        let total_blocks = 128;
+        let remove_before = 40;
+
+        let mut full_mmr = Mmr::default();
+        let mut headers = Vec::new();
+        for i in 0..total_blocks {
+            let h = int_to_block_header(i);
+            full_mmr.add(h.commitment());
+            headers.push(h);
+        }
+        let mut partial_mmr: PartialMmr = full_mmr.peaks().into();
+        for i in 0..total_blocks {
+            let i: usize = i as usize;
+            partial_mmr
+                .track(i, full_mmr.get(i).unwrap(), &full_mmr.open(i).unwrap().merkle_path)
+                .unwrap();
+        }
+        let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();
+
+        chain.remove(BlockNumber::from(2));
+        assert!(!chain.contains_block(2.into()));
+        assert!(!chain.mmr().is_tracked(2));
+
+        assert!(chain.contains_block(3.into()));
+
+        chain.prune_before(40.into());
+
+        assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
+        for block_num in remove_before..total_blocks {
+            assert!(chain.contains_block(block_num.into()));
+            assert!(chain.mmr().is_tracked(block_num as usize));
+        }
+        for block_num in 0u32..remove_before {
+            assert!(!chain.contains_block(block_num.into()));
+            assert!(!chain.mmr().is_tracked(block_num as usize));
+        }
     }
 }

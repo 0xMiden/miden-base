@@ -18,6 +18,7 @@
 - [BREAKING] Implemented `SequentialCommit` for `AccountDelta` and renamed `AccountDelta::commitment()` to `AccountDelta::to_commitment()` ([#1603](https://github.com/0xMiden/miden-base/pull/1603)).
 - Added `AccountTree::contains_account_id_prefix()` and `AccountTree::id_prefix_to_smt_key()` ([#1610](https://github.com/0xMiden/miden-base/pull/1610)).
 - [BREAKING] Change `account::incr_nonce` to always increment the nonce by one and disallow incrementing more than once ([#1608](https://github.com/0xMiden/miden-base/pull/1608)).
+- Added functions for pruning `PartialBlockchain` (#[1619](https://github.com/0xMiden/miden-base/pull/1619)).
 
 ## 0.10.0 (2025-07-08)
 
