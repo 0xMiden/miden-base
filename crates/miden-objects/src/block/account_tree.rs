@@ -506,10 +506,10 @@ pub(super) mod tests {
         let tree = AccountTree::with_entries([(pair0.0, pair0.1)]).unwrap();
         assert_eq!(tree.num_accounts(), 1);
 
-        // Validate the account leaf exists.
+        // Validate the leaf for the inserted account exists.
         assert!(tree.has_leaf_for_account(pair0.0));
 
-        // Validate the account leaf with same prefix exists.
+        // Validate the leaf for the uninserted account with same prefix exists.
         assert!(tree.has_leaf_for_account(pair1.0));
 
         // Validate the unrelated, uninserted account leaf does not exist.
