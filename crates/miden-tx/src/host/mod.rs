@@ -163,6 +163,11 @@ impl<'store> TransactionBaseHost<'store> {
         self.account_delta_tracker().clone().into_delta()
     }
 
+    /// Returns the input notes of this transaction.
+    pub fn input_notes(&self) -> InputNotes<InputNote> {
+        self.input_notes.clone()
+    }
+
     /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
     /// are tracked by this host.
     pub fn build_output_notes(&self) -> Vec<OutputNote> {
