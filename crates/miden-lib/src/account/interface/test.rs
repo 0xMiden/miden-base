@@ -1,7 +1,8 @@
 use alloc::{string::ToString, vec::Vec};
 
+use assert_matches::assert_matches;
 use miden_objects::{
-    AccountError, Felt, Word, ZERO,
+    AccountError, Felt, NoteError, Word, ZERO,
     account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
     assembly::{Assembler, diagnostics::NamedSource},
     asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
@@ -205,6 +206,27 @@ fn test_custom_account_default_note() {
         NoteAccountCompatibility::No,
         target_account_interface.is_compatible_with(&swap_note)
     );
+}
+
+/// Checks the function `create_swap_note` should fail if the requested asset is the same as the
+/// offered asset.
+#[test]
+fn test_required_asset_same_as_offered() {
+    let offered_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+    let requested_asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+
+    let result = create_swap_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        offered_asset,
+        requested_asset,
+        NoteType::Public,
+        ZERO,
+        NoteType::Public,
+        ZERO,
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
+    );
+
+    assert_matches!(result, Err(NoteError::Other { error_msg, .. }) if error_msg == "requested asset same as offered asset".into());
 }
 
 // CUSTOM NOTES
