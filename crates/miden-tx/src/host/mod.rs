@@ -207,9 +207,11 @@ impl<'store> TransactionBaseHost<'store> {
             },
 
             TransactionEvent::AccountBeforeIncrementNonce => {
-                self.on_account_before_increment_nonce(process)
+                Ok(())
             },
-            TransactionEvent::AccountAfterIncrementNonce => Ok(()),
+            TransactionEvent::AccountAfterIncrementNonce => {
+                self.on_account_after_increment_nonce()
+            },
 
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_account_push_procedure_index(process)
@@ -375,15 +377,13 @@ impl<'store> TransactionBaseHost<'store> {
         Ok(())
     }
 
-    /// Extracts the nonce increment from the process state and adds it to the nonce delta tracker.
-    ///
-    /// Expected stack state: [nonce_delta, ...]
-    pub fn on_account_before_increment_nonce(
-        &mut self,
-        process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
-        let value = process.get_stack_item(0);
-        self.account_delta.increment_nonce(value);
+    /// Handles the increment nonce event by incrementing the nonce delta by one.
+    pub fn on_account_after_increment_nonce(&mut self) -> Result<(), TransactionKernelError> {
+        if self.account_delta.was_nonce_incremented() {
+            return Err(TransactionKernelError::NonceCanOnlyIncrementOnce);
+        }
+
+        self.account_delta.increment_nonce();
         Ok(())
     }
 

@@ -153,29 +153,26 @@ export.account_get_nonce
     # => [nonce, pad(15)]
 end
 
-#! Increments the account nonce by the provided value.
+#! Increments the account nonce by one.
 #!
-#! Inputs:  [increment, pad(15)]
+#! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-#!
-#! Where:
-#! - increment is the value to increment the nonce by.
 #!
 #! Panics if:
 #! - the invocation of this procedure does not originate from the native account.
 #! - the invocation of this procedure does not originate from the authentication procedure
 #!   of the account.
-#! - the increment is greater than 2^32 - 1.
+#! - the nonce has already been incremented.
 #!
 #! Invocation: dynexec
 export.account_incr_nonce
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [increment, pad(15)]
+    # => [pad(16)]
 
     # assert that nonce increment originates from the authentication procedure of the account
     exec.assert_auth_procedure_origin
-    # => [increment, pad(15)]
+    # => [pad(16)]
 
     # increment the account nonce
     exec.account::incr_nonce

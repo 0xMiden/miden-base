@@ -30,7 +30,7 @@ const.DOMAIN_MAP=3
 
 #! Computes the commitment to the native account's delta.
 #!
-#! See the Rust function `AccountDelta::commitment` for a detailed description of how it is computed.
+#! See the Rust function `AccountDelta::to_commitment` for a detailed description of how it is computed.
 #!
 #! Inputs:  []
 #! Outputs: [DELTA_COMMITMENT]
@@ -45,7 +45,9 @@ export.compute_commitment
     padw
     # => [CAPACITY]
 
-    exec.memory::get_account_nonce_delta push.0
+    exec.was_nonce_incremented push.0
+    # => [0, was_nonce_incremented, CAPACITY]
+    # note that the delta of the nonce is equal to was_nonce_incremented
     # => [0, nonce_delta, CAPACITY]
 
     exec.memory::get_native_account_id
@@ -74,8 +76,8 @@ export.compute_commitment
     exec.rpo::squeeze_digest
     # => [DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
-    exec.memory::get_account_nonce_delta
-    # => [nonce_delta, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
+    exec.was_nonce_incremented
+    # => [was_nonce_incremented, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
     eq.0
     # => [is_nonce_zero, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
@@ -482,6 +484,24 @@ end
 
 # DELTA BOOKKEEPING
 # -------------------------------------------------------------------------------------------------
+
+#! Returns a flag indicating whether the account's nonce was incremented.
+#!
+#! Inputs:  []
+#! Outputs: [was_nonce_incremented]
+#!
+#! Where:
+#! - was_nonce_incremented is the boolean flag indicating whether the account nonce was incremented.
+export.was_nonce_incremented
+    exec.memory::get_init_nonce
+    # => [init_nonce]
+
+    exec.memory::get_acct_nonce
+    # => [current_nonce, init_nonce]
+
+    neq
+    # => [was_nonce_incremented]
+end
 
 #! Adds the given asset to the delta.
 #!

@@ -102,7 +102,7 @@ const INCR_NONCE_AUTH_CODE: &str = "
     use.miden::account
 
     export.auth__basic
-        push.1 exec.account::incr_nonce
+        exec.account::incr_nonce
     end
 ";
 
@@ -134,7 +134,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
             # Last element is the incr_nonce_flag.
             if.true
-                push.1 exec.account::incr_nonce
+                exec.account::incr_nonce
             end
             dropw dropw dropw dropw
         end
