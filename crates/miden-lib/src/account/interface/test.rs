@@ -1,5 +1,6 @@
 use alloc::{string::ToString, vec::Vec};
 
+use assert_matches::assert_matches;
 use miden_objects::{
     AccountError, Felt, NoteError, Word, ZERO,
     account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
@@ -225,10 +226,7 @@ fn test_required_asset_same_as_offered() {
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     );
 
-    assert!(matches!(
-        result,
-        Err(NoteError::Other { error_msg, .. }) if error_msg == "requested asset same as offered asset".into()
-    ));
+    assert_matches!(result, Err(NoteError::Other { error_msg, .. }) if error_msg == "requested asset same as offered asset".into());
 }
 
 // CUSTOM NOTES
