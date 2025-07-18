@@ -76,7 +76,7 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the `tx_progress` field of this transaction host.
+    /// Returns a reference to the underlying [`TransactionBaseHost`].
     pub(super) fn base_host(&self) -> &TransactionBaseHost {
         &self.base_host
     }

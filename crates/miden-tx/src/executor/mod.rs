@@ -539,7 +539,7 @@ fn build_tx_summary(
 ) -> Result<TransactionSummary, TransactionExecutorError> {
     let account_delta = host.base_host().account_delta_tracker().clone().into_delta();
     let input_notes = tx_inputs.input_notes().clone();
-    let output_notes = host.base_host().to_output_notes();
+    let output_notes = host.base_host().build_output_notes();
     let output_notes = OutputNotes::new(output_notes)
         .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 

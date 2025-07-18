@@ -155,7 +155,7 @@ impl<'store> TransactionBaseHost<'store> {
 
     /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
     /// are tracked by this host.
-    pub fn to_output_notes(&self) -> Vec<OutputNote> {
+    pub fn build_output_notes(&self) -> Vec<OutputNote> {
         self.output_notes.values().cloned().map(|builder| builder.build()).collect()
     }
 
@@ -280,7 +280,7 @@ impl<'store> TransactionBaseHost<'store> {
             },
             TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
-              Err(self.on_abort_with_tx_effects(process))
+              Err(self.on_unauthorized(process))
             }
         }
         .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
@@ -546,7 +546,7 @@ impl<'store> TransactionBaseHost<'store> {
     /// ```text
     /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
     /// ```
-    fn on_abort_with_tx_effects(&self, process: &mut ProcessState) -> TransactionKernelError {
+    fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
         let account_delta_commitment = process.get_stack_word(0);
         let input_notes_commitment = process.get_stack_word(1);
         let output_notes_commitment = process.get_stack_word(2);

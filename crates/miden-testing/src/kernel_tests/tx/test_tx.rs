@@ -1200,7 +1200,8 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 /// component to result in a [`TransactionExecutorError::Unauthorized`] error.
 #[test]
 fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
-    let source_code = format!("
+    let source_code = format!(
+        "
       use.miden::tx
 
       export.auth__abort_tx
