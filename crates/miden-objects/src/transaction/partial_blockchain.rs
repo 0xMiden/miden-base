@@ -184,8 +184,8 @@ impl PartialBlockchain {
 
     /// Drop every block older than `cutoff_block_num` from the partial view.
     ///
-    /// After the call all block headers with a number smaller than `cutoff_block_num` are gone and their paths are no longer
-    /// tracked in the inner partial MMR.
+    /// After the call all block headers with a number smaller than `cutoff_block_num` are gone and
+    /// their paths are no longer tracked in the inner partial MMR.
     pub fn prune_before(&mut self, cutoff_block_num: BlockNumber) {
         let kept = self.blocks.split_off(&cutoff_block_num);
         for block_num in self.blocks.keys() {
