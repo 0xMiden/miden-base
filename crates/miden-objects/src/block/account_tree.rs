@@ -498,4 +498,22 @@ pub(super) mod tests {
             assert_eq!(witness.path(), &control_path);
         }
     }
+
+    #[test]
+    fn has_account_leaf() {
+        // Create a tree with a single account.
+        let [pair0, pair1] = setup_duplicate_prefix_ids();
+        let tree = AccountTree::with_entries([(pair0.0, pair0.1)]).unwrap();
+        assert_eq!(tree.num_accounts(), 1);
+
+        // Validate the account leaf exists.
+        assert!(tree.has_leaf_for_account(pair0.0));
+
+        // Validate the account leaf with same prefix exists.
+        assert!(tree.has_leaf_for_account(pair1.0));
+
+        // Validate the account leaf does not exist.
+        let id1 = AccountIdBuilder::new().build_with_seed([7; 32]);
+        assert!(!tree.has_leaf_for_account(id1));
+    }
 }
