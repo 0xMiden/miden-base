@@ -188,7 +188,7 @@ where
             self.exec_options,
             source_manager,
         )
-        .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
+        .map_err(|err| map_execution_error(err, &host))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -498,7 +498,6 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
 fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
     exec_err: ExecutionError,
-    tx_inputs: &TransactionInputs,
     host: &TransactionExecutorHost<STORE, AUTH>,
 ) -> TransactionExecutorError {
     match exec_err {
@@ -511,17 +510,19 @@ fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
                     output_notes_commitment,
                     salt,
                 }) => {
-                    let tx_summary = match build_tx_summary(
-                        *account_delta_commitment,
-                        *input_notes_commitment,
-                        *output_notes_commitment,
-                        *salt,
-                        tx_inputs,
-                        host,
-                    ) {
+                    let tx_summary = match build_tx_summary(host, *salt) {
                         Ok(tx_summary) => tx_summary,
                         Err(err) => return err,
                     };
+
+                    if let Err(err) = verify_tx_summary(
+                        &tx_summary,
+                        *account_delta_commitment,
+                        *input_notes_commitment,
+                        *output_notes_commitment,
+                    ) {
+                        return err;
+                    }
 
                     TransactionExecutorError::Unauthorized(Box::new(tx_summary))
                 },
@@ -536,44 +537,50 @@ fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
 fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
-    account_delta_commitment: Word,
-    input_notes_commitment: Word,
-    output_notes_commitment: Word,
-    salt: Word,
-    tx_inputs: &TransactionInputs,
     host: &TransactionExecutorHost<STORE, AUTH>,
+    salt: Word,
 ) -> Result<TransactionSummary, TransactionExecutorError> {
     let account_delta = host.base_host().build_account_delta();
-    let input_notes = tx_inputs.input_notes().clone();
+    let input_notes = host.base_host().input_notes();
     let output_notes = host.base_host().build_output_notes();
     let output_notes = OutputNotes::new(output_notes)
         .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
+    Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
+}
+
+/// Validates that the provided commitments match the actual commitments in the transaction summary.
+pub(crate) fn verify_tx_summary(
+    tx_summary: &TransactionSummary,
+    account_delta_commitment: Word,
+    input_notes_commitment: Word,
+    output_notes_commitment: Word,
+) -> Result<(), TransactionExecutorError> {
     // Validate user-computed commitments match the actual commitments. This could
     // mismatch if user code constructs the commitments incorrectly in which case it
     // is a good idea to return an error.
-    let actual_account_delta_commitment = account_delta.to_commitment();
+    let actual_account_delta_commitment = tx_summary.account_delta().to_commitment();
     if actual_account_delta_commitment != account_delta_commitment {
         return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
           "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
       ).into()));
     }
 
-    let actual_input_notes_commitment = input_notes.commitment();
+    let actual_input_notes_commitment = tx_summary.input_notes().commitment();
     if actual_input_notes_commitment != input_notes_commitment {
         return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
             "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
         ).into()));
     }
 
-    let actual_output_notes_commitment = output_notes.commitment();
+    let actual_output_notes_commitment = tx_summary.output_notes().commitment();
     if actual_output_notes_commitment != output_notes_commitment {
         return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
             "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
         ).into()));
     }
 
-    Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
+    Ok(())
 }
 
 // HELPER ENUM
