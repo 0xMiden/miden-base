@@ -71,7 +71,7 @@ pub enum TransactionKernelError {
         account_delta_commitment: Word,
         input_notes_commitment: Word,
         output_notes_commitment: Word,
-        replay_protection: Word,
+        salt: Word,
     },
 }
 

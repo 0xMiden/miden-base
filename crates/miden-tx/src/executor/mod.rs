@@ -2,7 +2,7 @@ use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
@@ -503,51 +503,21 @@ fn map_execute_error(
                     account_delta_commitment,
                     input_notes_commitment,
                     output_notes_commitment,
-                    replay_protection,
+                    salt,
                 }) => {
-                    let account_delta =
-                        host.base_host().account_delta_tracker().clone().into_delta();
-                    let input_notes = tx_inputs.input_notes().clone();
-                    let output_notes = host.base_host().to_output_notes();
-                    let output_notes = match OutputNotes::new(output_notes) {
-                        Ok(output_notes) => output_notes,
-                        Err(err) => {
-                            return TransactionExecutorError::TransactionOutputConstructionFailed(
-                                err,
-                            );
-                        },
+                    let tx_summary = match build_tx_summary(
+                        *account_delta_commitment,
+                        *input_notes_commitment,
+                        *output_notes_commitment,
+                        *salt,
+                        tx_inputs,
+                        host,
+                    ) {
+                        Ok(tx_summary) => tx_summary,
+                        Err(err) => return err,
                     };
 
-                    // Validate user-computed commitments match the actual commitments. This could
-                    // mismatch if user code constructs the commitments incorrectly in which case it
-                    // is a good idea to return an error.
-                    let actual_account_delta_commitment = account_delta.commitment();
-                    if actual_account_delta_commitment != *account_delta_commitment {
-                        return TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-                            "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
-                        ).into());
-                    }
-
-                    let actual_input_notes_commitment = input_notes.commitment();
-                    if actual_input_notes_commitment != *input_notes_commitment {
-                        return TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-                            "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
-                        ).into());
-                    }
-
-                    let actual_output_notes_commitment = output_notes.commitment();
-                    if actual_output_notes_commitment != *output_notes_commitment {
-                        return TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-                            "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
-                        ).into());
-                    }
-
-                    TransactionExecutorError::Unauthorized(Box::new(TransactionSummary::new(
-                        account_delta,
-                        input_notes,
-                        output_notes,
-                        *replay_protection,
-                    )))
+                    TransactionExecutorError::Unauthorized(Box::new(tx_summary))
                 },
                 Some(_) => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
                 None => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
@@ -555,6 +525,49 @@ fn map_execute_error(
         },
         _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
     }
+}
+
+/// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
+/// host and validating them against the provided commitments.
+fn build_tx_summary(
+    account_delta_commitment: Word,
+    input_notes_commitment: Word,
+    output_notes_commitment: Word,
+    salt: Word,
+    tx_inputs: &TransactionInputs,
+    host: &TransactionExecutorHost,
+) -> Result<TransactionSummary, TransactionExecutorError> {
+    let account_delta = host.base_host().account_delta_tracker().clone().into_delta();
+    let input_notes = tx_inputs.input_notes().clone();
+    let output_notes = host.base_host().to_output_notes();
+    let output_notes = OutputNotes::new(output_notes)
+        .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
+
+    // Validate user-computed commitments match the actual commitments. This could
+    // mismatch if user code constructs the commitments incorrectly in which case it
+    // is a good idea to return an error.
+    let actual_account_delta_commitment = account_delta.commitment();
+    if actual_account_delta_commitment != account_delta_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+          "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+      ).into()));
+    }
+
+    let actual_input_notes_commitment = input_notes.commitment();
+    if actual_input_notes_commitment != input_notes_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+            "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
+        ).into()));
+    }
+
+    let actual_output_notes_commitment = output_notes.commitment();
+    if actual_output_notes_commitment != output_notes_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+            "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
+        ).into()));
+    }
+
+    Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
 }
 
 // HELPER ENUM

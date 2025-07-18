@@ -544,19 +544,19 @@ impl<'store> TransactionBaseHost<'store> {
     /// Expected stack state:
     ///
     /// ```text
-    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
+    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
     /// ```
     fn on_abort_with_tx_effects(&self, process: &mut ProcessState) -> TransactionKernelError {
         let account_delta_commitment = process.get_stack_word(0);
         let input_notes_commitment = process.get_stack_word(1);
         let output_notes_commitment = process.get_stack_word(2);
-        let replay_protection = process.get_stack_word(3);
+        let salt = process.get_stack_word(3);
 
         TransactionKernelError::Unauthorized {
             account_delta_commitment,
             input_notes_commitment,
             output_notes_commitment,
-            replay_protection,
+            salt,
         }
     }
 

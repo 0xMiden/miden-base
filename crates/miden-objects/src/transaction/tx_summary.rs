@@ -11,13 +11,13 @@ use crate::{
 /// The summary of the changes that result from executing a transaction.
 ///
 /// These are the account delta and the consumed and created notes. Because this data is intended to
-/// be used for signing a transaction, replay protection is included as well.
+/// be used for signing a transaction a user-defined salt is included as well.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionSummary {
     account_delta: AccountDelta,
     input_notes: InputNotes<InputNote>,
     output_notes: OutputNotes,
-    replay_protection: Word,
+    salt: Word,
 }
 
 impl TransactionSummary {
@@ -29,13 +29,13 @@ impl TransactionSummary {
         account_delta: AccountDelta,
         input_notes: InputNotes<InputNote>,
         output_notes: OutputNotes,
-        replay_protection: Word,
+        salt: Word,
     ) -> Self {
         Self {
             account_delta,
             input_notes,
             output_notes,
-            replay_protection,
+            salt,
         }
     }
 
@@ -57,9 +57,9 @@ impl TransactionSummary {
         &self.output_notes
     }
 
-    /// Returns the replay protection word of this transaction summary.
-    pub fn replay_protection(&self) -> Word {
-        self.replay_protection
+    /// Returns the salt of this transaction summary.
+    pub fn salt(&self) -> Word {
+        self.salt
     }
 
     /// Computes the commitment to the [`TransactionSummary`].
@@ -78,7 +78,7 @@ impl SequentialCommit for TransactionSummary {
         elements.extend_from_slice(self.account_delta.commitment().as_elements());
         elements.extend_from_slice(self.input_notes.commitment().as_elements());
         elements.extend_from_slice(self.output_notes.commitment().as_elements());
-        elements.extend_from_slice(self.replay_protection.as_elements());
+        elements.extend_from_slice(self.salt.as_elements());
         elements
     }
 }
@@ -88,7 +88,7 @@ impl Serializable for TransactionSummary {
         self.account_delta.write_into(target);
         self.input_notes.write_into(target);
         self.output_notes.write_into(target);
-        self.replay_protection.write_into(target);
+        self.salt.write_into(target);
     }
 }
 
@@ -99,8 +99,8 @@ impl Deserializable for TransactionSummary {
         let account_delta = source.read()?;
         let input_notes = source.read()?;
         let output_notes = source.read()?;
-        let replay_protection = source.read()?;
+        let salt = source.read()?;
 
-        Ok(Self::new(account_delta, input_notes, output_notes, replay_protection))
+        Ok(Self::new(account_delta, input_notes, output_notes, salt))
     }
 }

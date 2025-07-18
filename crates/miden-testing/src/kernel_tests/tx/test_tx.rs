@@ -1205,17 +1205,17 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
 
       export.auth__abort_tx
           padw
-          # => [REPLAY_PROTECTION]
+          # => [SALT]
 
           exec.tx::get_output_notes_commitment
-          # => [OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
+          # => [OUTPUT_NOTES_COMMITMENT, SALT]
 
           exec.tx::get_input_notes_commitment
-          # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
+          # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
 
           # TODO: Replace with account_delta::compute_commitment once available in `miden` lib.
           padw
-          # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, REPLAY_PROTECTION]
+          # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
 
           emit.{abort_event}
       end
@@ -1262,7 +1262,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         assert!(tx_summary.account_delta().is_empty());
         assert_eq!(tx_summary.input_notes(), &input_notes);
         assert_eq!(tx_summary.output_notes(), &output_notes);
-        assert_eq!(tx_summary.replay_protection(), Word::empty());
+        assert_eq!(tx_summary.salt(), Word::empty());
     });
 
     Ok(())
