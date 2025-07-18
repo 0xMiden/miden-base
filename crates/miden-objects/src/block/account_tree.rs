@@ -512,7 +512,7 @@ pub(super) mod tests {
         // Validate the account leaf with same prefix exists.
         assert!(tree.has_leaf_for_account(pair1.0));
 
-        // Validate the account leaf does not exist.
+        // Validate the unrelated, uninserted account leaf does not exist.
         let id1 = AccountIdBuilder::new().build_with_seed([7; 32]);
         assert!(!tree.has_leaf_for_account(id1));
     }
