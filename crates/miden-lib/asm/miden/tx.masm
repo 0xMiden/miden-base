@@ -146,7 +146,7 @@ export.get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT]
 end
 
-#! Gets the total number of input notes in the transaction.
+#! Returns the total number of input notes consumed by the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_input_notes]

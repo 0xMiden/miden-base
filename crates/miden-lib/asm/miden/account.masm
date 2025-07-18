@@ -111,6 +111,10 @@ end
 
 #! Computes the commitment to the native account's delta.
 #!
+#! Note that if the account state has changed, the nonce must be incremented before this procedure
+#! is called, otherwise it will panic. This means it can only be called from an auth procedure,
+#! since only auth procedures are allowed to increment the nonce.
+#!
 #! Inputs:  []
 #! Outputs: [DELTA_COMMITMENT]
 #!
@@ -128,11 +132,11 @@ export.compute_delta_commitment
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
-    # => [ACCOUNT_COMMITMENT, pad(12)]
+    # => [DELTA_COMMITMENT, pad(12)]
 
     # clean the stack
     swapdw dropw dropw swapw dropw
-    # => [ACCOUNT_COMMITMENT]
+    # => [DELTA_COMMITMENT]
 end
 
 #! Increments the account nonce by the provided value.

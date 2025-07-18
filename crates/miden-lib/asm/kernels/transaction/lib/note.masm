@@ -14,6 +14,8 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted t
 
 const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
 
+const.ERR_NOTE_INDEX_EXCEED_LIMIT="requested input note index should be less than the total number of input notes"
+
 # CONSTANTS
 # =================================================================================================
 
@@ -80,7 +82,9 @@ export.get_assets_info
     # => [ASSETS_HASH, num_assets]
 end
 
-#! Returns the number of assets and the assets commitment of the input note by the provided index.
+#! Returns the information about assets in the input note with the specified index.
+#!
+#! This information can then be used to retrieve the actual assets from the advice map.
 #!
 #! Inputs:  [note_index]
 #! Outputs: [ASSETS_HASH, num_assets]
@@ -92,12 +96,12 @@ end
 #!
 #! Panics if:
 #! - the note index is greater or equal to the overall number of input notes.
-export.input_note_get_assets_info_by_index
+export.input_note_get_assets_info
     # assert that the provided note index is less than the total number of notes
     dup exec.memory::get_num_input_notes 
     # => [input_notes_num, note_index, note_index]
     
-    lt assert.err="requested input note index should be less than the total number of input notes"
+    lt assert.err=ERR_NOTE_INDEX_EXCEED_LIMIT
     # => [note_index]
 
     # get the memory pointer to the requested note

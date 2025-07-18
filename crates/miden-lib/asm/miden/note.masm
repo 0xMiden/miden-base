@@ -83,45 +83,6 @@ export.get_assets
     # => [num_assets, dest_ptr]
 end
 
-#! Returns the number of assets and the assets commitment of the input note by the provided index.
-#!
-#! Assets hash then could be used to get the assets data from the advice map.
-#!
-#! Inputs:  [note_index]
-#! Outputs: [ASSETS_HASH, num_assets]
-#!
-#! Where:
-#! - note_index is the index of the input note which assets info should be returned.
-#! - num_assets is the number of assets in the note which has been requested.
-#! - ASSETS_HASH is the vault hash of the note which has been requested.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the overall number of input notes.
-#!
-#! Invocation: exec
-export.input_note_get_assets_info
-    # start padding the stack
-    push.0.0 movup.2
-    # => [note_index, 0, 0]
-
-    exec.kernel_proc_offsets::input_note_get_assets_info_by_index_offset
-    # => [offset, note_index, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, note_index, pad(14)]
-
-    syscall.exec_kernel_proc
-    # => [ASSETS_HASH, num_assets, pad(11)]
-
-    # clean the stack
-    swapdw dropw dropw 
-    repeat.3
-        movup.7 drop
-    end
-    # => [ASSETS_HASH, num_assets]
-end
-
 #! Loads the note's inputs to `dest_ptr`.
 #!
 #! Inputs:

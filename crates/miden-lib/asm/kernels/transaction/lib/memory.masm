@@ -259,7 +259,7 @@ const.LINK_MAP_ENTRY_SIZE=16
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the number of output notes created in this transaction to the moment of this procedure 
+#! Returns the number of output notes created in this transaction at the moment of this procedure 
 #! execution.
 #!
 #! Inputs:  []
