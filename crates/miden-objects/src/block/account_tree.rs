@@ -129,7 +129,7 @@ impl AccountTree {
     }
 
     /// Returns true if the tree contains a leaf for the given account ID prefix.
-    pub fn account_prefix_exists(&self, account_id: AccountId) -> bool {
+    pub fn has_account_prefix(&self, account_id: AccountId) -> bool {
         let key = Self::id_to_smt_key(account_id);
         let is_empty = matches!(self.smt.get_leaf(&key), SmtLeaf::Empty(_));
         !is_empty
@@ -494,20 +494,20 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn has_account_leaf() {
+    fn has_account_prefix() {
         // Create a tree with a single account.
         let [pair0, pair1] = setup_duplicate_prefix_ids();
         let tree = AccountTree::with_entries([(pair0.0, pair0.1)]).unwrap();
         assert_eq!(tree.num_accounts(), 1);
 
         // Validate the leaf for the inserted account exists.
-        assert!(tree.account_prefix_exists(pair0.0));
+        assert!(tree.has_account_prefix(pair0.0));
 
         // Validate the leaf for the uninserted account with same prefix exists.
-        assert!(tree.account_prefix_exists(pair1.0));
+        assert!(tree.has_account_prefix(pair1.0));
 
         // Validate the unrelated, uninserted account leaf does not exist.
         let id1 = AccountIdBuilder::new().build_with_seed([7; 32]);
-        assert!(!tree.account_prefix_exists(id1));
+        assert!(!tree.has_account_prefix(id1));
     }
 }
