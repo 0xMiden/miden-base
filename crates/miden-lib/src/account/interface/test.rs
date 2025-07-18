@@ -689,7 +689,7 @@ impl AccountComponentExt for AccountComponent {
     }
 }
 
-fn get_mock_auth_component() -> RpoFalcon512 {
+fn get_mock_auth_component() -> AccountComponent {
     let mock_public_key = PublicKey::new([ZERO, ONE, Felt::new(2), Felt::new(3)]);
-    RpoFalcon512::new(mock_public_key)
+    RpoFalcon512::new(mock_public_key).into()
 }

@@ -6,7 +6,9 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::PublicKey,
 };
 
-use crate::account::components::{rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library};
+use crate::account::components::{
+    no_auth_library, rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library,
+};
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
 /// transactions.
@@ -29,6 +31,13 @@ impl RpoFalcon512 {
     /// Creates a new [`RpoFalcon512`] component with the given `public_key`.
     pub fn new(public_key: PublicKey) -> Self {
         Self { public_key }
+    }
+
+    /// Creates a NoAuth component that provides no authentication - only increments the nonce.
+    ///
+    /// This is useful for testing scenarios or accounts that don't require authentication.
+    pub fn no_auth() -> AccountComponent {
+        NoAuth.into()
     }
 }
 
@@ -119,6 +128,23 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
     }
 }
 
+/// An [`AccountComponent`] that provides no authentication - it only increments the nonce.
+///
+/// This component exports the procedure `auth__basic`, which simply increments the account nonce
+/// without performing any signature verification. This is useful for testing scenarios or accounts
+/// that don't require authentication.
+///
+/// This component supports all account types.
+pub struct NoAuth;
+
+impl From<NoAuth> for AccountComponent {
+    fn from(_: NoAuth) -> Self {
+        AccountComponent::new(no_auth_library(), vec![StorageSlot::empty_value()])
+            .expect("NoAuth component should satisfy the requirements of a valid account component")
+            .with_supports_all_types()
+    }
+}
+
 // TESTS
 // ================================================================================================
 
@@ -198,5 +224,15 @@ mod tests {
             .get_map_item(2, [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO])
             .expect("storage map access failed");
         assert_eq!(proc_root_1, Word::from(auth_trigger_procedures[1]));
+    }
+
+    #[test]
+    fn test_no_auth_component() {
+        // Create an account using the NoAuth component
+        let (_account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(RpoFalcon512::no_auth())
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
     }
 }

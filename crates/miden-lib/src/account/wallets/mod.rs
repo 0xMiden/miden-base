@@ -59,8 +59,8 @@ pub fn create_basic_wallet(
         ));
     }
 
-    let auth_component: RpoFalcon512 = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key),
+    let auth_component: AccountComponent = match auth_scheme {
+        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key).into(),
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
