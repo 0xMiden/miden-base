@@ -13,7 +13,7 @@ use miden_objects::{
 use vm_processor::crypto::MerklePath;
 
 use super::utils::{
-    TestSetup, generate_account, generate_batch, generate_executed_tx_with_authenticated_notes,
+    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
     generate_fungible_asset, generate_output_note, generate_tracked_note,
     generate_tracked_note_with_asset, generate_tx_with_authenticated_notes,
     generate_tx_with_expiration, generate_tx_with_unauthenticated_notes, generate_untracked_note,
@@ -24,20 +24,11 @@ use crate::{ProvenTransactionExt, utils::create_spawn_note};
 /// Tests that too many batches produce an error.
 #[test]
 fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
-    let count = MAX_BATCHES_PER_BLOCK;
-    let TestSetup { mut chain, accounts, mut txs, .. } = setup_chain(count);
-
-    // At this time, MockChain won't let us build more than 64 transactions before sealing a block,
-    // so we add one more tx manually.
-    let account0 = accounts.get(&0).unwrap();
-    let accountx = generate_account(&mut chain);
-    let notex = generate_tracked_note(&mut chain, account0.id(), accountx.id());
-    chain.prove_next_block()?;
-    let tx = generate_tx_with_authenticated_notes(&mut chain, accountx.id(), &[notex.id()]);
-    txs.insert(count, tx);
+    let count = MAX_BATCHES_PER_BLOCK + 1;
+    let TestSetup { mut chain, mut txs, .. } = setup_chain(count);
 
     let mut batches = Vec::with_capacity(count);
-    for i in 0..(count + 1) {
+    for i in 0..count {
         batches.push(generate_batch(&mut chain, vec![txs.remove(&i).unwrap()]));
     }
 

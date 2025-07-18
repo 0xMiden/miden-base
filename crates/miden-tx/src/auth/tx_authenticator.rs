@@ -59,8 +59,8 @@ where
 // BASIC AUTHENTICATOR
 // ================================================================================================
 
-#[derive(Clone, Debug)]
 /// Represents a signer for [AuthSecretKey] keys.
+#[derive(Clone, Debug)]
 pub struct BasicAuthenticator<R> {
     /// pub_key |-> secret_key mapping
     keys: BTreeMap<Word, AuthSecretKey>,

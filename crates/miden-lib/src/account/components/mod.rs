@@ -115,9 +115,9 @@ impl WellKnownComponent {
                 Self::BasicFungibleFaucet => component_interface_vec
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
                 Self::RpoFalcon512 => component_interface_vec
-                    .push(AccountComponentInterface::RpoFalcon512(storage_offset)),
+                    .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
                 Self::RpoFalcon512ProcedureAcl => component_interface_vec
-                    .push(AccountComponentInterface::RpoFalcon512ProcedureAcl(storage_offset)),
+                    .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
             }
         }
     }

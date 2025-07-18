@@ -21,7 +21,7 @@ use miden_objects::{
 
 use crate::{
     account::{
-        auth::RpoFalcon512,
+        auth::AuthRpoFalcon512,
         faucets::BasicFungibleFaucet,
         interface::{AccountInterface, NoteAccountCompatibility},
         wallets::BasicWallet,
@@ -90,6 +90,8 @@ fn test_basic_wallet_default_notes() {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         offered_asset,
         requested_asset,
+        NoteType::Public,
+        ZERO,
         NoteType::Public,
         ZERO,
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
@@ -183,6 +185,8 @@ fn test_custom_account_default_note() {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         offered_asset,
         requested_asset,
+        NoteType::Public,
+        ZERO,
         NoteType::Public,
         ZERO,
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
@@ -683,7 +687,7 @@ impl AccountComponentExt for AccountComponent {
     }
 }
 
-fn get_mock_auth_component() -> RpoFalcon512 {
+fn get_mock_auth_component() -> AuthRpoFalcon512 {
     let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
-    RpoFalcon512::new(mock_public_key)
+    AuthRpoFalcon512::new(mock_public_key)
 }
