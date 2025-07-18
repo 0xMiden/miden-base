@@ -129,8 +129,8 @@ impl AccountTree {
     }
 
     /// Returns true if the tree contains a leaf for the given account ID prefix.
-    pub fn has_account_prefix(&self, account_id: AccountId) -> bool {
-        let key = Self::id_to_smt_key(account_id);
+    pub fn contains_account_prefix(&self, account_id_prefix: AccountIdPrefix) -> bool {
+        let key = Self::id_prefix_to_smt_key(account_id_prefix);
         let is_empty = matches!(self.smt.get_leaf(&key), SmtLeaf::Empty(_));
         !is_empty
     }
@@ -270,6 +270,16 @@ impl AccountTree {
         let mut key = Word::empty();
         key[Self::KEY_SUFFIX_IDX] = account_id.suffix();
         key[Self::KEY_PREFIX_IDX] = account_id.prefix().as_felt();
+
+        key
+    }
+
+    /// Returns the SMT key of the given account ID prefix.
+    pub(super) fn id_prefix_to_smt_key(account_id: AccountIdPrefix) -> Word {
+        // We construct this in such a way that we're forced to use the constants, so that when
+        // they're updated, the other usages of the constants are also updated.
+        let mut key = Word::empty();
+        key[Self::KEY_PREFIX_IDX] = account_id.as_felt();
 
         key
     }
@@ -494,20 +504,20 @@ pub(super) mod tests {
     }
 
     #[test]
-    fn has_account_prefix() {
+    fn contains_account_prefix() {
         // Create a tree with a single account.
         let [pair0, pair1] = setup_duplicate_prefix_ids();
         let tree = AccountTree::with_entries([(pair0.0, pair0.1)]).unwrap();
         assert_eq!(tree.num_accounts(), 1);
 
         // Validate the leaf for the inserted account exists.
-        assert!(tree.has_account_prefix(pair0.0));
+        assert!(tree.contains_account_prefix(pair0.0.prefix()));
 
         // Validate the leaf for the uninserted account with same prefix exists.
-        assert!(tree.has_account_prefix(pair1.0));
+        assert!(tree.contains_account_prefix(pair1.0.prefix()));
 
         // Validate the unrelated, uninserted account leaf does not exist.
         let id1 = AccountIdBuilder::new().build_with_seed([7; 32]);
-        assert!(!tree.has_account_prefix(id1));
+        assert!(!tree.contains_account_prefix(id1.prefix()));
     }
 }
