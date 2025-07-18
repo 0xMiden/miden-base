@@ -251,7 +251,7 @@ pub enum AccountDeltaError {
         account_id: AccountId,
         source: AccountError,
     },
-    #[error("non-empty account storage or vault delta with zero nonce is not allowed")]
+    #[error("non-empty account storage or vault delta with zero nonce delta is not allowed")]
     NonEmptyStorageOrVaultDeltaWithZeroNonceDelta,
     #[error(
         "account nonce increment {current} plus the other nonce increment {increment} overflows a felt to {new}"
