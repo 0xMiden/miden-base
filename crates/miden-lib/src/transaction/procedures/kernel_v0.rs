@@ -80,5 +80,5 @@ pub const KERNEL0_PROCEDURES: [Word; 37] = [
     // tx_get_expiration_delta
     word!("0x756352beed1624a42d4540c434a4faa986d6d9d08ef8437699d9086fcd9ad9e7"),
     // tx_update_expiration_block_num
-    word!("0x17a56dac62236ba00c23746e4458633190696c3bbe6077555d77b0cb9e3e7c13"),
+    word!("0xc55ba76c7c4d42fbffb1ddd41b8369bac2fd54395a7f9d0c2857667844b79365"),
 ];
