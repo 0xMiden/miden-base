@@ -1756,24 +1756,6 @@ export.set_output_note_assets_hash
     mem_storew
 end
 
-#! Returns the assets commitment for the output note located at the specified memory address.
-#!
-#! TODO: check this statement
-#! Notice that this hash is available only after `tx::compute_output_notes_commitment` procedure has
-#! been called, otherwise this procedure will return an empty word.
-#!
-#! Inputs:  [output_note_data_ptr]
-#! Outputs: [ASSET_COMMITMENT]
-#!
-#! Where:
-#! - output_note_data_ptr is the memory address at which the output note data begins.
-#! - ASSET_COMMITMENT is the sequential hash of the padded assets of an output note.
-export.get_output_note_assets_hash
-    padw
-    movup.4 add.OUTPUT_NOTE_ASSETS_HASH_OFFSET
-    mem_loadw
-end
-
 # KERNEL DATA
 # -------------------------------------------------------------------------------------------------
 
