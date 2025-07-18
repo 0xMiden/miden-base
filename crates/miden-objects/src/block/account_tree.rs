@@ -275,7 +275,7 @@ impl AccountTree {
     }
 
     /// Returns the SMT key of the given account ID prefix.
-    pub(super) fn id_prefix_to_smt_key(account_id: AccountIdPrefix) -> Word {
+    fn id_prefix_to_smt_key(account_id: AccountIdPrefix) -> Word {
         // We construct this in such a way that we're forced to use the constants, so that when
         // they're updated, the other usages of the constants are also updated.
         let mut key = Word::empty();
