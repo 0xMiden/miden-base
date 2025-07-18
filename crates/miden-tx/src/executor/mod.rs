@@ -536,7 +536,7 @@ fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
 
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
-fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
+fn build_tx_summary<STORE: MastForestStore, AUTH: TransactionAuthenticator>(
     host: &TransactionExecutorHost<STORE, AUTH>,
     salt: Word,
 ) -> Result<TransactionSummary, TransactionExecutorError> {

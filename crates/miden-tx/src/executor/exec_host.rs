@@ -19,6 +19,7 @@ use vm_processor::{
 use crate::{
     auth::{SigningInputs, TransactionAuthenticator},
     errors::TransactionHostError,
+    executor::{build_tx_summary, verify_tx_summary},
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
@@ -109,6 +110,27 @@ where
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
+        let account_delta_commitment = process.get_stack_word(2);
+        let input_notes_commitment = process.get_stack_word(3);
+        let output_notes_commitment = process.get_stack_word(4);
+        let salt = process.get_stack_word(5);
+
+        let tx_summary = build_tx_summary(self, salt)
+            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+
+        // TODO only in debug mode?
+        verify_tx_summary(
+            &tx_summary,
+            account_delta_commitment,
+            input_notes_commitment,
+            output_notes_commitment,
+        )
+        .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+
+        let tx_summary_commitment = tx_summary.to_commitment();
+        debug_assert_eq!(tx_summary_commitment, msg);
+
+        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature = if let Ok(signature) =
@@ -116,8 +138,6 @@ where
         {
             signature.to_vec()
         } else {
-            let signing_inputs = SigningInputs::Blind(msg);
-
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
