@@ -75,7 +75,7 @@ impl SequentialCommit for TransactionSummary {
 
     fn to_elements(&self) -> Vec<Felt> {
         let mut elements = Vec::with_capacity(16);
-        elements.extend_from_slice(self.account_delta.commitment().as_elements());
+        elements.extend_from_slice(self.account_delta.to_commitment().as_elements());
         elements.extend_from_slice(self.input_notes.commitment().as_elements());
         elements.extend_from_slice(self.output_notes.commitment().as_elements());
         elements.extend_from_slice(self.salt.as_elements());

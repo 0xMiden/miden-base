@@ -546,7 +546,7 @@ fn build_tx_summary(
     // Validate user-computed commitments match the actual commitments. This could
     // mismatch if user code constructs the commitments incorrectly in which case it
     // is a good idea to return an error.
-    let actual_account_delta_commitment = account_delta.commitment();
+    let actual_account_delta_commitment = account_delta.to_commitment();
     if actual_account_delta_commitment != account_delta_commitment {
         return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
           "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
