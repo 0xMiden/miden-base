@@ -389,7 +389,7 @@ fn build_executed_transaction(
     let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
 
-    let host_delta_commitment = account_delta.commitment();
+    let host_delta_commitment = account_delta.to_commitment();
     if tx_outputs.account_delta_commitment != host_delta_commitment {
         return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
             in_kernel_commitment: tx_outputs.account_delta_commitment,

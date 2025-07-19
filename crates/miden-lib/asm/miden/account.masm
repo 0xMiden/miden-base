@@ -141,7 +141,7 @@ end
 
 #! Increments the account nonce by the provided value.
 #!
-#! Inputs:  [value]
+#! Inputs:  []
 #! Outputs: []
 #!
 #! Where:
@@ -150,21 +150,18 @@ end
 #!
 #! Invocation: exec
 export.incr_nonce
-    # start padding the stack
-    push.0.0 movup.2
-    # => [value, 0, 0]
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
 
     exec.kernel_proc_offsets::account_incr_nonce_offset
-    # => [offset, value, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, value, pad(14)]
+    # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
     # => [pad(16)]
 
     dropw dropw dropw dropw
+    # => []
 end
 
 #! Gets an item from the account storage. Panics if the index is out of bounds.

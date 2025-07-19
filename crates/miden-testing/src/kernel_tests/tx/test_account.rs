@@ -6,12 +6,14 @@ use miden_lib::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+        ERR_ACCOUNT_NONCE_AT_MAX, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
+    StarkField,
     account::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
@@ -748,16 +750,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 /// Tests that we can successfully create regular and faucet accounts with empty storage.
 #[test]
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
-    // transaction code which only increases the nonce to make the transaction non-empty
-    let default_tx_code = "
-        use.$kernel::account 
-        
-        begin 
-            push.1 exec.account::incr_nonce 
-        end";
-
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
-        let mock_chain = MockChain::new();
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
             .with_auth_component(Auth::IncrNonce)
@@ -768,12 +761,10 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
             .build()
             .context("failed to build account")?;
 
-        let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
-        let tx_context = TransactionContextBuilder::new(account)
+        TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
-            .tx_inputs(tx_inputs)
-            .build()?;
-        tx_context.execute_code(default_tx_code)?;
+            .build()?
+            .execute()?;
     }
 
     Ok(())
@@ -1121,5 +1112,68 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         *executed_tx.account_delta().storage().values(),
         BTreeMap::from([(0, Word::from([2, 3, 4, 5u32]))]),
     );
+    Ok(())
+}
+
+/// Tests that incrementing the account nonce twice fails.
+#[test]
+fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
+    let source_code = "
+        use.miden::account
+
+        export.auth__incr_nonce_twice
+            exec.account::incr_nonce
+            exec.account::incr_nonce
+        end
+    ";
+
+    let faulty_auth_component =
+        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
+            .with_supports_all_types();
+    let (account, seed) = AccountBuilder::new([5; 32])
+        .with_auth_component(faulty_auth_component)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        )
+        .build()
+        .context("failed to build account")?;
+
+    let err = TransactionContextBuilder::new(account)
+        .account_seed(Some(seed))
+        .build()?
+        .execute()
+        .unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
+    Ok(())
+}
+
+/// Tests that incrementing the account nonce fails if it would overflow the field.
+#[test]
+fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
+    let mut account = AccountBuilder::new([42; 32])
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        )
+        .build_existing()
+        .context("failed to build account")?;
+    // Increment the nonce to the maximum felt value. The nonce is already 1, so we increment by
+    // modulus - 2.
+    account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
+
+    let err = TransactionContextBuilder::new(account).build()?.execute().unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_AT_MAX);
+
     Ok(())
 }

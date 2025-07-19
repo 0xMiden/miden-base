@@ -3,7 +3,7 @@ pub use alloc::{collections::BTreeMap, string::String};
 use std::fs::{read_to_string, write};
 
 use anyhow::Context;
-use miden_lib::account::{auth::RpoFalcon512, wallets::BasicWallet};
+use miden_lib::account::{auth::AuthRpoFalcon512, wallets::BasicWallet};
 use miden_objects::{
     account::{Account, AccountBuilder, AccountStorageMode, AccountType, AuthSecretKey},
     asset::Asset,
@@ -74,7 +74,7 @@ pub fn get_account_with_basic_authenticated_wallet(
         .storage_mode(storage_mode)
         .with_assets(assets)
         .with_component(BasicWallet)
-        .with_component(RpoFalcon512::new(public_key))
+        .with_component(AuthRpoFalcon512::new(public_key))
         .build_existing()
         .unwrap()
 }

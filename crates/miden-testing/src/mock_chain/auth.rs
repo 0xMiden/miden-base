@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{RpoFalcon512, RpoFalcon512ProcedureAcl},
+    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -22,11 +22,11 @@ use rand_chacha::ChaCha20Rng;
 #[derive(Debug, Clone)]
 pub enum Auth {
     /// Creates a [SecretKey] for the account and creates a [BasicAuthenticator] used to
-    /// authenticate the account with [RpoFalcon512].
+    /// authenticate the account with [AuthRpoFalcon512].
     BasicAuth,
 
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
-    /// authenticate the account with [RpoFalcon512ProcedureAcl]. Authentication will only be
+    /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
     ProcedureAcl { auth_trigger_procedures: Vec<Word> },
 
@@ -55,7 +55,7 @@ impl Auth {
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component = RpoFalcon512::new(pub_key).into();
+                let component = AuthRpoFalcon512::new(pub_key).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,
@@ -68,10 +68,9 @@ impl Auth {
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component =
-                    RpoFalcon512ProcedureAcl::new(pub_key, auth_trigger_procedures.clone())
-                        .expect("component creation failed")
-                        .into();
+                let component = AuthRpoFalcon512Acl::new(pub_key, auth_trigger_procedures.clone())
+                    .expect("component creation failed")
+                    .into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,

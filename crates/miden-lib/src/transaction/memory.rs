@@ -22,7 +22,7 @@ pub type StorageSlot = u8;
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
-// | Account delta      | 532_480 (133_120)                     | 532_746 (133_186)                   |                                             |
+// | Account delta      | 532_480 (133_120)                     | 532_742 (133_185)                   |                                             |
 // | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
 // | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
 // | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)               | Enough for 2_097_151 key-value pairs        |
@@ -55,10 +55,9 @@ pub type StorageSlot = u8;
 //
 // | Section                      | Start address (word pointer) | End address (word pointer) | Comment                             |
 // | ---------------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
-// | Nonce                        | 0 (0)                        | 3 (0)                      |                                     |
-// | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
-// | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
-// | Storage Map Delta Ptrs       | 12 (3)                       | 267 (66)                   | Max 255 storage map deltas          |
+// | Fungible Asset Delta Ptr     | 0 (0)                        | 3 (0)                      |                                     |
+// | Non-Fungible Asset Delta Ptr | 4 (1)                        | 7 (1)                      |                                     |
+// | Storage Map Delta Ptrs       | 8 (2)                        | 263 (65)                   | Max 255 storage map deltas          |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------
@@ -299,12 +298,6 @@ pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
 /// The memory address at which the account storage slots section begins in the native account.
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
-
-// ACCOUNT DELTA
-// ------------------------------------------------------------------------------------------------
-
-/// The memory address at which the nonce delta is stored.
-pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
 
 // NOTES DATA
 // ================================================================================================
