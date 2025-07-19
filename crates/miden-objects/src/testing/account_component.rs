@@ -76,7 +76,7 @@ impl From<AccountMockComponent> for AccountComponent {
 ///
 /// The component defines an `auth__basic` procedure that always increments the nonce by 1.
 pub struct IncrNonceAuthComponent {
-    library: Library,
+    pub library: Library,
 }
 
 impl IncrNonceAuthComponent {
@@ -146,7 +146,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 ///
 /// The component defines an `auth__noop` procedure that does nothing (always succeeds).
 pub struct NoopAuthComponent {
-    library: Library,
+    pub library: Library,
 }
 
 impl NoopAuthComponent {
@@ -168,7 +168,7 @@ impl From<NoopAuthComponent> for AccountComponent {
 
 /// TODO: Add documentation once #1501 is ready.
 pub struct ConditionalAuthComponent {
-    library: Library,
+    pub library: Library,
 }
 
 impl ConditionalAuthComponent {

@@ -1,5 +1,5 @@
 use anyhow::Context;
-use miden_lib::{errors::MasmError, transaction::TransactionKernel};
+use miden_lib::{account::wallets::BasicWallet, errors::MasmError, transaction::TransactionKernel};
 use miden_objects::{
     account::Account,
     testing::{
@@ -13,6 +13,9 @@ use super::{Felt, ONE};
 use crate::{TransactionContextBuilder, assert_execution_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
+
+// Import the new error constant
+use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
 
 /// Tests that authentication arguments are correctly passed to the auth procedure.
 ///
