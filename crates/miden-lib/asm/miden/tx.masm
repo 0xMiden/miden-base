@@ -171,8 +171,10 @@ export.get_num_input_notes
     # => [num_input_notes]
 end
 
-#! Returns the number of output notes created in this transaction to the moment of this procedure 
-#! execution.
+#! Returns the current number of created output notes in this transaction.
+#!
+#! The number of output notes is not fixed during execution and changes as new output notes are 
+#! created.
 #!
 #! Inputs:  []
 #! Outputs: [num_output_notes]

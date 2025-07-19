@@ -259,8 +259,7 @@ const.LINK_MAP_ENTRY_SIZE=16
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the number of output notes created in this transaction at the moment of this procedure 
-#! execution.
+#! Returns the current number of created output notes in this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_output_notes]
@@ -1328,7 +1327,7 @@ end
 # INPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
-#! Gets the total number of input notes in the transaction.
+#! Returns the total number of input notes consumed by the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_input_notes]

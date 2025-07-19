@@ -1,11 +1,12 @@
 use.std::sys
 
-use.$kernel::account_delta
 use.$kernel::account
+use.$kernel::account_delta
 use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::faucet
+use.$kernel::input_notes
 use.$kernel::memory
 use.$kernel::note
 use.$kernel::tx
@@ -651,7 +652,7 @@ end
 
 ### NOTE ########################################
 
-#! Returns the number of assets and the assets commitment of the note currently being processed.
+#! Returns the information about assets in the input note with the specified index.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ASSETS_HASH, num_assets, pad(11)]
@@ -718,7 +719,7 @@ end
 #! Invocation: dynexec
 export.input_note_get_assets_info
     # get the assets info
-    exec.note::input_note_get_assets_info
+    exec.input_notes::get_assets_info
     # => [ASSETS_HASH, num_assets, pad(16)]
 
     # truncate the stack
@@ -883,7 +884,7 @@ export.tx_get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, pad(12)]
 end
 
-#! Returns the total number of input notes in the transaction.
+#! Returns the total number of input notes consumed by the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [num_input_notes, pad(15)]
@@ -902,8 +903,7 @@ export.tx_get_num_input_notes
     # => [num_input_notes, pad(15)]
 end
 
-#! Returns the number of output notes created in this transaction to the moment of this procedure 
-#! execution.
+#! Returns the current number of created output notes in this transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [num_output_notes, pad(15)]
@@ -915,11 +915,11 @@ end
 export.tx_get_num_output_notes
     # get the number of input notes
     exec.tx::get_num_output_notes
-    # => [num_input_notes, pad(16)]
+    # => [num_output_notes, pad(16)]
 
     # truncate the stack
     swap drop
-    # => [num_input_notes, pad(15)]
+    # => [num_output_notes, pad(15)]
 end
 
 #! Returns the block commitment of the reference block.
