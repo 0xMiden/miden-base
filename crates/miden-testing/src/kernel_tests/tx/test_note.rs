@@ -28,7 +28,7 @@ use miden_objects::{
         },
         note::NoteBuilder,
     },
-    transaction::{AccountInputs, OutputNote, TransactionArgs},
+    transaction::{AccountInputs, OutputNote, TransactionArgs, TransactionScript},
 };
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
@@ -182,6 +182,7 @@ fn test_get_vault_data() -> anyhow::Result<()> {
     tx_context.execute_code(&code)?;
     Ok(())
 }
+
 #[test]
 fn test_get_assets() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
@@ -315,6 +316,82 @@ fn test_get_assets() -> anyhow::Result<()> {
     );
 
     tx_context.execute_code(&code)?;
+    Ok(())
+}
+
+#[test]
+fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
+    let mut mock_chain = MockChain::new();
+    let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
+    let p2id_note_1 = mock_chain.add_pending_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(150)],
+        NoteType::Public,
+    )?;
+    let p2id_note_2 = mock_chain.add_pending_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(300)],
+        NoteType::Public,
+    )?;
+    mock_chain.prove_next_block()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_notes
+
+        begin
+            # get the assets hash and assets number from the 0'th note
+            push.0
+            exec.input_notes::get_assets_info
+            # => [ASSETS_HASH_0, num_assets_0]
+
+            # assert the correctness of the assets hash
+            push.{COMPUTED_ASSETS_HASH_0} 
+            assert_eqw.err="note 0 has incorrect assets hash"
+            # => [num_assets_0]
+
+            # assert the number of note assets
+            push.{assets_number_0}
+            assert_eq.err="note 0 has incorrect assets number"
+            # => []
+
+            # get the assets hash and assets number from the 1'st note
+            push.1
+            exec.input_notes::get_assets_info
+            # => [ASSETS_HASH_1, num_assets_1]
+
+            # assert the correctness of the assets hash
+            push.{COMPUTED_ASSETS_HASH_1} 
+            assert_eqw.err="note 0 has incorrect assets hash"
+            # => [num_assets_1]
+
+            # assert the number of note assets
+            push.{assets_number_1}
+            assert_eq.err="note 1 has incorrect assets number"
+            # => []
+        end
+    "#,
+        COMPUTED_ASSETS_HASH_0 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
+        assets_number_0 = p2id_note_1.assets().num_assets(),
+        COMPUTED_ASSETS_HASH_1 = word_to_masm_push_string(&p2id_note_2.assets().commitment()),
+        assets_number_1 = p2id_note_2.assets().num_assets(),
+    );
+
+    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
+
+    let tx_context = mock_chain
+        .build_tx_context(
+            TxContextInput::AccountId(account.id()),
+            &[],
+            &[p2id_note_1, p2id_note_2],
+        )?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute()?;
+
     Ok(())
 }
 
