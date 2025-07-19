@@ -2,10 +2,17 @@
 
 ## 0.11.0 (TBD)
 
-- [BREAKING] Incremented MSRV to 1.88.
+### Features
+
 - Added arguments to the auth procedure ([#1501](https://github.com/0xMiden/miden-base/pull/1501)).
-- Implemented `WellKnownComponents` enum ([#1532](https://github.com/0xMiden/miden-base/pull/1532)).
 - [BREAKING] Refactored `SWAP` note & added option to select the visibility of the associated payback note ([#1539](https://github.com/0xMiden/miden-base/pull/1539)).
+- Added `account_compute_delta_commitment`, `input_note_get_assets_info`, `tx_get_num_input_notes`, and `tx_get_num_output_notes` procedures to the transaction kernel ([#1609](https://github.com/0xMiden/miden-base/pull/1609)).
+
+
+### Changes
+
+- [BREAKING] Incremented MSRV to 1.88.
+- Implemented `WellKnownComponents` enum ([#1532](https://github.com/0xMiden/miden-base/pull/1532)).
 - Made `ExecutedTransaction` implement `Send` for easier consumption ([#1560](https://github.com/0xMiden/miden-base/pull/1560)).
 - [BREAKING] Upgraded Miden VM to `0.16`, `miden-crypto` to `0.15` and `winterfell` crates to `0.13` ([#1564](https://github.com/0xMiden/miden-base/pull/1564), [#1594](https://github.com/0xMiden/miden-base/pull/1594)).
 - [BREAKING] `Digest` was removed in favor of `Word` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
