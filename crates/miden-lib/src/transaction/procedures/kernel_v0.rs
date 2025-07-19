@@ -40,7 +40,7 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // account_has_non_fungible_asset
     word!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
     // account_compute_delta_commitment
-    word!("0x61fa4d3c924b72c885f89a7c2ce6d94f388057f7f58054dcf4320e4ad42f9708"),
+    word!("0x828f6c3389e95319374adaeb0abcc3a1fbd111faa3c931efa66667d2c337ffd9"),
     // account_was_procedure_called
     word!("0xe85f7a761f0d90e4d880239c4c1f349125d5a53db1e058a51c462b9442117ab6"),
     // faucet_mint_asset

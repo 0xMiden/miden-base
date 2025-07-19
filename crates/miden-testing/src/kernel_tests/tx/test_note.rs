@@ -323,20 +323,21 @@ fn test_get_assets() -> anyhow::Result<()> {
 
 #[test]
 fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-    let p2id_note_1 = mock_chain.add_pending_p2id_note(
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
+    let p2id_note_1 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
         &[FungibleAsset::mock(150)],
         NoteType::Public,
     )?;
-    let p2id_note_2 = mock_chain.add_pending_p2id_note(
+    let p2id_note_2 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
         &[FungibleAsset::mock(300)],
         NoteType::Public,
     )?;
+    let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
     let code = format!(
