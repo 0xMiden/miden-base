@@ -83,3 +83,46 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Tests that attempting to call the auth procedure manually from user code fails.
+#[test]
+fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
+    use miden_objects::account::AccountBuilder;
+
+    use crate::Auth;
+
+    let (auth_component, _) = Auth::IncrNonce.build_component();
+
+    let account = AccountBuilder::new([42; 32])
+        .with_auth_component(auth_component.clone())
+        .with_component(BasicWallet)
+        .build_existing()?;
+
+    // Create a transaction script that calls the auth procedure
+    let tx_script_source = "
+        begin
+            call.::auth__basic
+        end
+    ";
+
+    let tx_script = miden_objects::transaction::TransactionScript::compile(
+        tx_script_source,
+        TransactionKernel::testing_assembler()
+            .with_dynamic_library(auth_component.library())
+            .unwrap(),
+    )?;
+
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
+
+    let execution_result = tx_context.execute();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) =
+        execution_result.unwrap_err()
+    else {
+        panic!("unexpected error type")
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT);
+
+    Ok(())
+}
