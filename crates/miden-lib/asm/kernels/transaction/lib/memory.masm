@@ -255,7 +255,7 @@ const.LINK_MAP_ENTRY_SIZE=16
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the current number of created output notes in this transaction.
+#! Returns the current number of output notes created in this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_output_notes]
@@ -1302,13 +1302,13 @@ end
 # INPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the total number of input notes consumed by the transaction.
+#! Returns the total number of input notes consumed by this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_input_notes]
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 export.get_num_input_notes
     mem_load.NUM_INPUT_NOTES_PTR
 end
@@ -1319,7 +1319,7 @@ end
 #! Outputs: []
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 export.set_num_input_notes
     mem_store.NUM_INPUT_NOTES_PTR
 end

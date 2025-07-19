@@ -700,18 +700,18 @@ export.note_add_asset
     # => [note_idx, ASSET, pad(11)]
 end
 
-#! Returns the number of assets and the assets commitment of the input note by the provided index.
+#! Returns the information about assets in the input note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
 #! Outputs: [ASSETS_HASH, num_assets, pad(11)]
 #!
 #! Where:
 #! - note_index is the index of the input note whose assets info should be returned.
-#! - num_assets is the number of assets in the note which has been requested.
-#! - ASSETS_HASH is the assets hash of the requested note.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_HASH is a sequential hash of the assets in the specified note
 #!
 #! Panics if:
-#! - the note index is greater or equal to the overall number of input notes.
+#! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
@@ -881,13 +881,13 @@ export.tx_get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, pad(12)]
 end
 
-#! Returns the total number of input notes consumed by the transaction.
+#! Returns the total number of input notes consumed by this transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [num_input_notes, pad(15)]
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 #!
 #! Invocation: dynexec
 export.tx_get_num_input_notes
@@ -900,7 +900,7 @@ export.tx_get_num_input_notes
     # => [num_input_notes, pad(15)]
 end
 
-#! Returns the current number of created output notes in this transaction.
+#! Returns the current number of output notes created in this transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [num_output_notes, pad(15)]

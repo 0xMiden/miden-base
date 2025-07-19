@@ -153,7 +153,7 @@ pub const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT: MasmError = MasmError::from_s
 /// Error Message: "adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"
 pub const ERR_NOTE_FUNGIBLE_MAX_AMOUNT_EXCEEDED: MasmError = MasmError::from_static_str("adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807");
 /// Error Message: "requested input note index should be less than the total number of input notes"
-pub const ERR_NOTE_INDEX_EXCEED_LIMIT: MasmError = MasmError::from_static_str("requested input note index should be less than the total number of input notes");
+pub const ERR_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested input note index should be less than the total number of input notes");
 /// Error Message: "failed to find note at the given index; index must be within [0, num_of_notes]"
 pub const ERR_NOTE_INVALID_INDEX: MasmError = MasmError::from_static_str("failed to find note at the given index; index must be within [0, num_of_notes]");
 /// Error Message: "invalid note type for the given note tag prefix"
