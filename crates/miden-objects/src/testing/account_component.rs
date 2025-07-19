@@ -166,7 +166,13 @@ impl From<NoopAuthComponent> for AccountComponent {
     }
 }
 
-/// TODO: Add documentation once #1501 is ready.
+/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+///
+/// The component defines an `auth__conditional` procedure that conditionally suceeds and
+/// conditionally increments the nonce based on the authentication arguments.
+///
+/// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.
+/// In case it succeeds, it conditionally increments the nonce based on the fourth argument.
 pub struct ConditionalAuthComponent {
     pub library: Library,
 }
