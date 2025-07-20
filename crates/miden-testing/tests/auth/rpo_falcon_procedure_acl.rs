@@ -15,8 +15,17 @@ use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 use vm_processor::ExecutionError;
 
-#[test]
-fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Sets up the basic components needed for RPO Falcon procedure ACL tests.
+/// Returns (component, auth_trigger_procedures, assembler, note).
+fn setup_rpo_falcon_procedure_acl_test() -> anyhow::Result<(
+    AccountComponent,
+    Vec<Word>,
+    miden_objects::assembly::Assembler,
+    miden_objects::note::Note,
+)> {
     let assembler = TransactionKernel::assembler();
 
     let component: AccountComponent = AccountMockComponent::new_with_slots(
@@ -26,22 +35,27 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     .expect("failed to create mock component")
     .into();
 
-    let mut get_item_proc_root = None;
-    let mut set_item_proc_root = None;
-
-    for module in component.library().module_infos() {
-        for (_, procedure_info) in module.procedures() {
-            match procedure_info.name.as_str() {
-                "get_item" => get_item_proc_root = Some(procedure_info.digest),
-                "set_item" => set_item_proc_root = Some(procedure_info.digest),
-                _ => {},
-            }
-        }
-    }
-
-    let get_item_proc_root = get_item_proc_root.expect("get_item procedure should exist");
-    let set_item_proc_root = set_item_proc_root.expect("set_item procedure should exist");
+    let get_item_proc_root = component
+        .get_procedure_root_by_name("get_item")
+        .expect("get_item procedure should exist");
+    let set_item_proc_root = component
+        .get_procedure_root_by_name("set_item")
+        .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
+
+    // Create a mock note to consume (needed to make the transaction non-empty)
+    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
+    let note = NoteBuilder::new(sender_id, &mut rand::rng())
+        .build(&assembler)
+        .expect("failed to create mock note");
+
+    Ok((component, auth_trigger_procedures, assembler, note))
+}
+
+#[test]
+fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
+    let (component, auth_trigger_procedures, assembler, note) =
+        setup_rpo_falcon_procedure_acl_test()?;
 
     let (auth_component, authenticator) = Auth::ProcedureAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
@@ -60,13 +74,6 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     builder.add_account(account.clone())?;
     let mut mock_chain = builder.build()?;
-
-    // Create a mock note to consume (needed to make the transaction non-empty)
-    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-
-    let note = NoteBuilder::new(sender_id, &mut rand::rng())
-        .build(&assembler)
-        .expect("failed to create mock note");
 
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block()?;
@@ -170,31 +177,8 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
 #[test]
 fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
-    let assembler = TransactionKernel::assembler();
-
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
-
-    let mut get_item_proc_root = None;
-    let mut set_item_proc_root = None;
-
-    for module in component.library().module_infos() {
-        for (_, procedure_info) in module.procedures() {
-            match procedure_info.name.as_str() {
-                "get_item" => get_item_proc_root = Some(procedure_info.digest),
-                "set_item" => set_item_proc_root = Some(procedure_info.digest),
-                _ => {},
-            }
-        }
-    }
-
-    let get_item_proc_root = get_item_proc_root.expect("get_item procedure should exist");
-    let set_item_proc_root = set_item_proc_root.expect("set_item procedure should exist");
-    let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
+    let (component, auth_trigger_procedures, assembler, note) =
+        setup_rpo_falcon_procedure_acl_test()?;
 
     let (auth_component, _authenticator) = Auth::ProcedureAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
@@ -220,14 +204,6 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
 
     let mut builder = MockChain::builder();
     builder.add_account(account.clone())?;
-
-    // Create a mock note to consume (needed to make the transaction non-empty)
-    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-
-    let note = NoteBuilder::new(sender_id, &mut rand::rng())
-        .build(&assembler)
-        .expect("failed to create mock note");
-
     builder.add_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
@@ -266,31 +242,8 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
 
 #[test]
 fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
-    let assembler = TransactionKernel::assembler();
-
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
-
-    let mut get_item_proc_root = None;
-    let mut set_item_proc_root = None;
-
-    for module in component.library().module_infos() {
-        for (_, procedure_info) in module.procedures() {
-            match procedure_info.name.as_str() {
-                "get_item" => get_item_proc_root = Some(procedure_info.digest),
-                "set_item" => set_item_proc_root = Some(procedure_info.digest),
-                _ => {},
-            }
-        }
-    }
-
-    let get_item_proc_root = get_item_proc_root.expect("get_item procedure should exist");
-    let set_item_proc_root = set_item_proc_root.expect("set_item procedure should exist");
-    let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
+    let (component, auth_trigger_procedures, assembler, note) =
+        setup_rpo_falcon_procedure_acl_test()?;
 
     // Create account with allow_unauthorized_input_notes=false (strict input note authentication)
     let (auth_component, _authenticator) = Auth::ProcedureAcl {
@@ -317,14 +270,6 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
 
     let mut builder = MockChain::builder();
     builder.add_account(account.clone())?;
-
-    // Create a mock note to consume (this will trigger input note consumption)
-    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-
-    let note = NoteBuilder::new(sender_id, &mut rand::rng())
-        .build(&assembler)
-        .expect("failed to create mock note");
-
     builder.add_note(OutputNote::Full(note.clone()));
     let mock_chain = builder.build()?;
 
