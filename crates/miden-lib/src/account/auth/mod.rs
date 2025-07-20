@@ -43,7 +43,7 @@ impl From<RpoFalcon512> for AccountComponent {
     }
 }
 
-/// An [`AccountComponent`] implementing a procedure-ACL based RpoFalcon512 signature scheme for
+/// An [`AccountComponent`] implementing a procedure-based Access Control List (ACL) RpoFalcon512 signature scheme for
 /// authentication of transactions.
 ///
 /// This component provides fine-grained authentication control based on three conditions:
@@ -139,20 +139,10 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
         // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
         // allow_unauthorized_input_notes, 0]
         let num_procs = falcon.auth_trigger_procedures.len() as u32;
-        let allow_unauthorized_output_notes = if falcon.allow_unauthorized_output_notes {
-            1u32
-        } else {
-            0u32
-        };
-        let allow_unauthorized_input_notes = if falcon.allow_unauthorized_input_notes {
-            1u32
-        } else {
-            0u32
-        };
         storage_slots.push(StorageSlot::Value(Word::from([
             num_procs,
-            allow_unauthorized_output_notes,
-            allow_unauthorized_input_notes,
+            u32::from(falcon.allow_unauthorized_output_notes),
+            u32::from(falcon.allow_unauthorized_input_notes),
             0,
         ])));
 
