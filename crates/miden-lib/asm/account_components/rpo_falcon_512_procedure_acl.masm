@@ -72,40 +72,43 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     end
     # => [was_any_called, i-1, pad(16)]
 
+    swap drop
+    # => [was_any_called, pad(16)]
+
     # ------ Check if output notes were created ------
 
     exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, was_any_called, i-1, pad(16)]
+    # => [OUTPUT_NOTES_COMMITMENT, was_any_called, pad(16)]
 
-    padw eqw push.0 eq movdn.8 dropw dropw
-    # => [were_output_notes_created, was_any_called, i-1, pad(16)]
+    padw eqw not movdn.8 dropw dropw
+    # => [were_output_notes_created, was_any_called, pad(16)]
 
     loc_load.0 not
-    # => [!allow_unauthorized_output_notes, were_output_notes_created, was_any_called, i-1, pad(16)]
+    # => [!allow_unauthorized_output_notes, were_output_notes_created, was_any_called, pad(16)]
 
     and
-    # => [require_output_note_auth, was_any_called, i-1, pad(16)]
+    # => [require_output_note_auth, was_any_called, pad(16)]
 
     # ------ Check if input notes were consumed ------
 
     exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, require_output_note_auth, was_any_called, i-1, pad(16)]
+    # => [INPUT_NOTES_COMMITMENT, require_output_note_auth, was_any_called, pad(16)]
 
-    padw eqw push.0 eq movdn.8 dropw dropw
-    # => [were_input_notes_consumed, require_output_note_auth, was_any_called, i-1, pad(16)]
+    padw eqw not movdn.8 dropw dropw
+    # => [were_input_notes_consumed, require_output_note_auth, was_any_called, pad(16)]
 
     loc_load.1 not
-    # => [!allow_unauthorized_input_notes, require_output_note_auth, was_any_called, i-1, pad(16)]
+    # => [!allow_unauthorized_input_notes, require_output_note_auth, was_any_called, pad(16)]
 
     and
-    # => [require_input_note_auth, require_output_note_auth, was_any_called, i-1, pad(16)]
+    # => [require_input_note_auth, require_output_note_auth, was_any_called, pad(16)]
 
     or
-    # => [require_note_auth, was_any_called, i-1, pad(16)]
+    # => [require_note_auth, was_any_called, pad(16)]
 
     # Combine note-based auth requirement with procedure-based auth requirement
     or
-    # => [require_auth, i-1, pad(16)]
+    # => [require_auth, pad(16)]
 
     # If authentication is required (either note-based or procedure-based), perform signature verification
     if.true
@@ -113,6 +116,10 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     else
         push.1 exec.account::incr_nonce
     end
+    # => [pad(16)]
 
-    drop
+    repeat.4
+        dropw
+    end
+    # => []
 end
