@@ -20,12 +20,8 @@ use vm_processor::ExecutionError;
 
 /// Sets up the basic components needed for RPO Falcon procedure ACL tests.
 /// Returns (component, auth_trigger_procedures, assembler, note).
-fn setup_rpo_falcon_procedure_acl_test() -> anyhow::Result<(
-    AccountComponent,
-    Vec<Word>,
-    miden_objects::assembly::Assembler,
-    miden_objects::note::Note,
-)> {
+fn setup_rpo_falcon_procedure_acl_test()
+-> anyhow::Result<(AccountComponent, Vec<Word>, miden_objects::note::Note)> {
     let assembler = TransactionKernel::assembler();
 
     let component: AccountComponent = AccountMockComponent::new_with_slots(
@@ -49,13 +45,12 @@ fn setup_rpo_falcon_procedure_acl_test() -> anyhow::Result<(
         .build(&assembler)
         .expect("failed to create mock note");
 
-    Ok((component, auth_trigger_procedures, assembler, note))
+    Ok((component, auth_trigger_procedures, note))
 }
 
 #[test]
 fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
-    let (component, auth_trigger_procedures, assembler, note) =
-        setup_rpo_falcon_procedure_acl_test()?;
+    let (component, auth_trigger_procedures, note) = setup_rpo_falcon_procedure_acl_test()?;
 
     let (auth_component, authenticator) = Auth::ProcedureAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
@@ -177,8 +172,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
 #[test]
 fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
-    let (component, auth_trigger_procedures, assembler, note) =
-        setup_rpo_falcon_procedure_acl_test()?;
+    let (component, auth_trigger_procedures, note) = setup_rpo_falcon_procedure_acl_test()?;
 
     let (auth_component, _authenticator) = Auth::ProcedureAcl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
@@ -242,8 +236,7 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
 
 #[test]
 fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
-    let (component, auth_trigger_procedures, assembler, note) =
-        setup_rpo_falcon_procedure_acl_test()?;
+    let (component, auth_trigger_procedures, note) = setup_rpo_falcon_procedure_acl_test()?;
 
     // Create account with allow_unauthorized_input_notes=false (strict input note authentication)
     let (auth_component, _authenticator) = Auth::ProcedureAcl {
