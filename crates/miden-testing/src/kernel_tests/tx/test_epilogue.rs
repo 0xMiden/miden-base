@@ -115,7 +115,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         AccountVaultDelta::default(),
         ONE,
     )?
-    .commitment();
+    .to_commitment();
 
     let account_update_commitment =
         miden_objects::Hasher::merge(&[final_account.commitment(), account_delta_commitment]);

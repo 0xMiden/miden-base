@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{RpoFalcon512, RpoFalcon512ProcedureAcl},
+    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -59,7 +59,7 @@ impl Auth {
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component = RpoFalcon512::new(pub_key).into();
+                let component = AuthRpoFalcon512::new(pub_key).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,
@@ -76,7 +76,7 @@ impl Auth {
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component = RpoFalcon512ProcedureAcl::new(
+                let component = AuthRpoFalcon512Acl::new(
                     pub_key,
                     auth_trigger_procedures.clone(),
                     *allow_unauthorized_output_notes,

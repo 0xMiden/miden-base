@@ -117,7 +117,7 @@ impl AccountStorageDelta {
     fn cleared_slots(&self) -> impl Iterator<Item = u8> + '_ {
         self.values
             .iter()
-            .filter(|&(_, value)| (value == &EMPTY_WORD))
+            .filter(|&(_, value)| value == &EMPTY_WORD)
             .map(|(slot, _)| *slot)
     }
 

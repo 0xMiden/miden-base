@@ -65,6 +65,8 @@ pub enum TransactionKernelError {
     UnknownCodeCommitment(Word),
     #[error("account storage slots number is missing in memory at address {0}")]
     AccountStorageSlotsNumMissing(u32),
+    #[error("account nonce can only be incremented once")]
+    NonceCanOnlyIncrementOnce,
 }
 
 // TRANSACTION EVENT PARSING ERROR

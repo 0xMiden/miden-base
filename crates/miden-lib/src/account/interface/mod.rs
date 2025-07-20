@@ -136,11 +136,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::RpoFalcon512(_) => {
+                AccountComponentInterface::AuthRpoFalcon512(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::RpoFalcon512ProcedureAcl(_) => {
+                AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
                     component_proc_digests.extend(
                         rpo_falcon_512_procedure_acl_library().mast_forest().procedure_digests(),
                     );
@@ -264,8 +264,8 @@ impl From<&Account> for AccountInterface {
         components.iter().for_each(|interface| {
             match interface {
                 // RpoFalcon512 and RpoFalcon512ProcedureAcl use the same RpoFalcon512 auth scheme
-                AccountComponentInterface::RpoFalcon512(storage_index)
-                | AccountComponentInterface::RpoFalcon512ProcedureAcl(storage_index) => {
+                AccountComponentInterface::AuthRpoFalcon512(storage_index)
+                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
                     auth.push(AuthScheme::RpoFalcon512 {
                         pub_key: rpo_falcon512::PublicKey::new(
                             account

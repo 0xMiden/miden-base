@@ -13,7 +13,9 @@ use.$kernel::memory
 # ERRORS
 # =================================================================================================
 
-const.ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32="account nonce cannot be increased by a greater than u32 value"
+const.ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE="account nonce can only be incremented once"
+
+const.ERR_ACCOUNT_NONCE_AT_MAX="account nonce is already at its maximum possible value"
 
 const.ERR_ACCOUNT_CODE_IS_NOT_UPDATABLE="account code must be updatable for it to be possible to set new code"
 
@@ -230,27 +232,35 @@ export.compute_current_commitment
     # => [ACCOUNT_COMMITMENT]
 end
 
-#! Increments the account nonce by the provided increment.
+#! Increments the account nonce by one.
 #!
-#! Inputs:  [nonce_increment]
+#! Assumes that it is executed only when the current account is the native account.
+#!
+#! Inputs:  []
 #! Outputs: []
 #!
-#! Where:
-#! - nonce_increment is the u32 value to increment the nonce by.
-#!
 #! Panics if:
-#! - the nonce_increment exceeds 2^32 - 1.
+#! - the nonce has already been incremented.
 export.incr_nonce
-    u32assert.err=ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32
-    # => [nonce_increment]
+    exec.account_delta::was_nonce_incremented
+    # => [was_nonce_incremented]
 
-    dup exec.memory::incr_account_nonce_delta
-    # => [nonce_delta]
+    # assert the nonce has not already been incremented
+    assertz.err=ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE
+    # => []
 
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT
 
-    exec.memory::get_acct_nonce add
+    exec.memory::get_acct_nonce
+    # => [current_nonce]
+
+    # if the current nonce is the maximum felt value, then incrementing the nonce would overflow
+    # the field
+    dup neq.0xffffffff00000000 assert.err=ERR_ACCOUNT_NONCE_AT_MAX
+    # => [current_nonce]
+
+    add.1
     # => [new_nonce]
 
     exec.memory::set_acct_nonce
