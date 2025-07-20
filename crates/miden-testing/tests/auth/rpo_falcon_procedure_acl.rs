@@ -36,10 +36,10 @@ fn setup_rpo_falcon_procedure_acl_test() -> anyhow::Result<(
     .into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("get_item")
+        .get_procedure_root_by_name("test::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("set_item")
+        .get_procedure_root_by_name("test::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 

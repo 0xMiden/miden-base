@@ -39,7 +39,8 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     loc_store.1 loc_store.0
     # => [num_auth_trigger_procs, pad(16)]
 
-    # Check if any trigger procedure was called
+    # ------ Check if any trigger procedure was called ------
+
     # Counter `i` starts at `num_auth_trigger_procs` and flag `was_any_called` starts at 0
     push.0
     # => [was_any_called, i, pad(16)]
