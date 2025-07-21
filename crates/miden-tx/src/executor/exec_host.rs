@@ -97,7 +97,7 @@ where
     // ADVICE INJECTOR HANDLERS
     // --------------------------------------------------------------------------------------------
 
-    /// Pushes a signature to the advice stack as a response to the `FalconSigToStack` injector.
+    /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
     /// The signature is fetched from the advice map or otherwise requested from the host's
     /// authenticator.
@@ -175,7 +175,7 @@ where
         match transaction_event {
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
-            TransactionEvent::FalconSigToStack => {
+            TransactionEvent::AuthRequest => {
                 self.on_signature_requested(process)
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
             },
