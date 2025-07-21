@@ -109,6 +109,36 @@ export.compute_current_commitment
     # => [ACCOUNT_COMMITMENT]
 end
 
+#! Computes the commitment to the native account's delta.
+#!
+#! Note that if the account state has changed, the nonce must be incremented before this procedure
+#! is called, otherwise it will panic. This means it can only be called from an auth procedure,
+#! since only auth procedures are allowed to increment the nonce.
+#!
+#! Inputs:  []
+#! Outputs: [DELTA_COMMITMENT]
+#!
+#! Where:
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+#!
+#! Panics if:
+#! - the vault or storage delta is not empty but the nonce increment is zero.
+export.compute_delta_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_compute_current_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [DELTA_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [DELTA_COMMITMENT]
+end
+
 #! Increments the account nonce by the provided value.
 #!
 #! Inputs:  []

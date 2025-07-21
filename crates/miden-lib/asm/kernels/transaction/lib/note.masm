@@ -21,7 +21,7 @@ const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255
 # generating the output notes commitment. Must be NOTE_MEM_SIZE - 8;
 const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 
-# INPUT NOTE PROCEDURES
+# CURRENTLY EXECUTING NOTE PROCEDURES
 # =================================================================================================
 
 #! Returns the sender of the note currently being processed.
