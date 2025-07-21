@@ -26,12 +26,15 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #! If any of these conditions are true, standard RpoFalcon512 signature verification is performed.
 #! Otherwise, only the nonce is incremented.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [AUTH_ARGS, pad(16)]
 #! Outputs: [pad(16)]
 export.auth__tx_rpo_falcon512_procedure_acl.2
+    dropw
+    # => [pad(16)]
+
     # Get the number of trigger procedures
     push.NUM_AUTH_TRIGGER_PROCS_SLOT exec.account::get_item
-    # => [num_auth_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, 0, pad(16)]
+    # => [0, num_auth_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, pad(16)]
 
     drop
     # => [allow_unauthorized_input_notes, allow_unauthorized_output_notes, num_auth_trigger_procs, pad(16)]
