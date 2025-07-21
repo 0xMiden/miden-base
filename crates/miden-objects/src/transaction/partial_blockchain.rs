@@ -183,7 +183,7 @@ impl PartialBlockchain {
         self.mmr.add(block_header.commitment(), track);
     }
 
-    /// Drop every block header whose number falls within 0..`to` (strictly less than `to.end`).
+    /// Drop every block header whose number is strictly less than `to.end`.
     ///
     /// After the call, all such headers are removed, and each pruned header’s path is `untrack`‑ed
     /// from the internal [`PartialMmr`], eliminating local authentication data for those leaves
@@ -462,7 +462,7 @@ mod tests {
 
         assert!(chain.contains_block(3.into()));
 
-        chain.prune_before(40.into());
+        chain.prune_to(..40.into());
 
         assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
         for block_num in remove_before..total_blocks {
