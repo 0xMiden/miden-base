@@ -153,6 +153,11 @@ impl<'store> TransactionBaseHost<'store> {
         &self.account_delta
     }
 
+    /// Clones the inner [`AccountDeltaTracker`] and converts it into an [`AccountDelta`].
+    pub fn build_account_delta(&self) -> AccountDelta {
+        self.account_delta_tracker().clone().into_delta()
+    }
+
     /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
     /// are tracked by this host.
     pub fn build_output_notes(&self) -> Vec<OutputNote> {
@@ -538,8 +543,9 @@ impl<'store> TransactionBaseHost<'store> {
         Ok(())
     }
 
-    /// Aborts the transaction by extracting the [`TransactionEffects`] from the stack and returning
-    /// them in an error.
+    /// Aborts the transaction by extracting the
+    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) from the stack and
+    /// returns it in an error.
     ///
     /// Expected stack state:
     ///

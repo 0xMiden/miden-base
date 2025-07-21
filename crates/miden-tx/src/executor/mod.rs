@@ -185,7 +185,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.exec_options,
             source_manager,
         )
-        .map_err(|err| map_execute_error(err, &tx_inputs, &host))?;
+        .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -490,7 +490,7 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   account delta and input/output notes.
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execute_error(
+fn map_execution_error(
     exec_err: ExecutionError,
     tx_inputs: &TransactionInputs,
     host: &TransactionExecutorHost,
@@ -537,7 +537,7 @@ fn build_tx_summary(
     tx_inputs: &TransactionInputs,
     host: &TransactionExecutorHost,
 ) -> Result<TransactionSummary, TransactionExecutorError> {
-    let account_delta = host.base_host().account_delta_tracker().clone().into_delta();
+    let account_delta = host.base_host().build_account_delta();
     let input_notes = tx_inputs.input_notes().clone();
     let output_notes = host.base_host().build_output_notes();
     let output_notes = OutputNotes::new(output_notes)
