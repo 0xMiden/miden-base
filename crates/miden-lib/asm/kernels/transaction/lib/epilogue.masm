@@ -184,7 +184,7 @@ proc.execute_auth_procedure
     # if auth procedure was called already, it must have been called by a user, which is disallowed
     exec.account::was_procedure_called
     # => [was_auth_called, auth_procedure_ptr, AUTH_ARGS, pad(12)]
-    eq.0 assert.err=ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
+    assertz.err=ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
 
     # execute the auth procedure
     dyncall
