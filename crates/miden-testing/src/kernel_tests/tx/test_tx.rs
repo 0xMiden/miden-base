@@ -1384,18 +1384,18 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         use.miden::account
 
         begin
-            # => [TX_SCRIPT_ARG]
-            # `TX_SCRIPT_ARG` value is a user provided word, which could be used during the
+            # => [TX_SCRIPT_ARGS]
+            # `TX_SCRIPT_ARGS` value is a user provided word, which could be used during the
             # transaction execution. In this example it is a `[1, 2, 3, 4]` word.
 
             # assert the correctness of the argument
-            dupw push.1.2.3.4 assert_eqw.err="provided transaction argument doesn't match the expected one"
-            # => [TX_SCRIPT_ARG]
+            dupw push.1.2.3.4 assert_eqw.err="provided transaction arguments don't match the expected ones"
+            # => [TX_SCRIPT_ARGS]
 
-            # since we provided an advice map entry with the transaction script argument as a key,
+            # since we provided an advice map entry with the transaction script arguments as a key,
             # we can obtain the value of this entry
             adv.push_mapval adv_push.4
-            # => [[map_entry_values], TX_SCRIPT_ARG]
+            # => [[map_entry_values], TX_SCRIPT_ARGS]
 
             # assert the correctness of the map entry values
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"

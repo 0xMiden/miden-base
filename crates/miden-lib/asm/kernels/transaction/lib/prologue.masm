@@ -1094,15 +1094,15 @@ end
 #!
 #! Inputs:
 #!   Operand stack: []
-#!   Advice stack: [TX_SCRIPT_ROOT, TX_SCRIPT_ARGS_KEY]
+#!   Advice stack: [TX_SCRIPT_ROOT, TX_SCRIPT_ARGS]
 #! Outputs:
 #!   Operand stack: []
 #!   Advice stack: []
 #!
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction's script root.
-#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script args used to obtain them from
-#!   the advice map.
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#!   some values associated with it from the advice map.
 proc.process_tx_script_data
     # read the transaction script root from the advice stack
     padw adv_loadw
@@ -1112,12 +1112,12 @@ proc.process_tx_script_data
     exec.memory::set_tx_script_root
     # => [TX_SCRIPT_ROOT]
 
-    # read the transaction script args key from the advice stack (overwrites TX_SCRIPT_ROOT)
+    # read the transaction script args from the advice stack (overwrites TX_SCRIPT_ROOT)
     adv_loadw
-    # => [TX_SCRIPT_ARGS_KEY]
+    # => [TX_SCRIPT_ARGS]
 
-    # store the transaction script args key in memory
-    exec.memory::set_tx_script_args_key dropw
+    # store the transaction script args in memory
+    exec.memory::set_tx_script_args dropw
     # => []
 end
 
@@ -1177,7 +1177,7 @@ end
 #!     ACCOUNT_CODE_COMMITMENT,
 #!     number_of_input_notes,
 #!     TX_SCRIPT_ROOT,
-#!     TX_SCRIPT_ARGS_KEY,
+#!     TX_SCRIPT_ARGS,
 #!     AUTH_ARGS,
 #!   ]
 #!   Advice map: {
@@ -1221,6 +1221,7 @@ end
 #! - ACCOUNT_STORAGE_SLOT_DATA is the vector of the account's storage slot data.
 #! - number_of_input_notes is the number of input notes.
 #! - TX_SCRIPT_ROOT is the transaction's script root.
+#! - TX_SCRIPT_ARGS are the arguments provided to the stack, see prologue::process_tx_script_data.
 #! - MMR_PEAKS is the MMR peak data, see process_chain_data.
 #! - NOTE_DATA is the input notes' details, for format see prologue::process_input_note.
 #!
