@@ -6,7 +6,7 @@ use miden_objects::{word, Word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Word; 37] = [
+pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
@@ -39,6 +39,8 @@ pub const KERNEL0_PROCEDURES: [Word; 37] = [
     word!("0xc3385953bc66def5211f53a3c44de8facfb4060abbb1c9708859c314268989e8"),
     // account_has_non_fungible_asset
     word!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
+    // account_compute_delta_commitment
+    word!("0x828f6c3389e95319374adaeb0abcc3a1fbd111faa3c931efa66667d2c337ffd9"),
     // account_was_procedure_called
     word!("0xe85f7a761f0d90e4d880239c4c1f349125d5a53db1e058a51c462b9442117ab6"),
     // faucet_mint_asset
@@ -61,12 +63,18 @@ pub const KERNEL0_PROCEDURES: [Word; 37] = [
     word!("0x01172024b89517e5da80121cedfa6c19dd2ace0fe4d09a8cde6605103fe62952"),
     // note_get_script_root
     word!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
+    // input_note_get_assets_info
+    word!("0xbc0eb21713a5a005c53d9acc97d41cc2584bd0b36e1e5eb27c9bb5a761350a2b"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
     word!("0x16cb840dc9131e2fd2b3e83b8d796eb466722ae36f29f27b4b053f1bee2ed473"),
+    // tx_get_num_input_notes
+    word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
     // tx_get_output_notes_commitment
     word!("0x0c241940512d130ad36c70c4e946285cb5841f2655c4fe12df001cb834256a29"),
+    // tx_get_num_output_notes
+    word!("0x0d9d5cca827893238181b973ec43af8ee4b4018dd32c8d2e85fd797d978c88c0"),
     // tx_get_block_commitment
     word!("0xe474b491a64d222397fcf83ee5db7b048061988e5e83ce99b91bae6fd75a3522"),
     // tx_get_block_number

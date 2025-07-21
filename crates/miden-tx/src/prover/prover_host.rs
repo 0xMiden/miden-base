@@ -18,12 +18,18 @@ use crate::{
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.
-pub struct TransactionProverHost<'store> {
+pub struct TransactionProverHost<'store, STORE>
+where
+    STORE: MastForestStore,
+{
     /// The underlying base transaction host.
-    base_host: TransactionBaseHost<'store>,
+    base_host: TransactionBaseHost<'store, STORE>,
 }
 
-impl<'store> TransactionProverHost<'store> {
+impl<'store, STORE> TransactionProverHost<'store, STORE>
+where
+    STORE: MastForestStore,
+{
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -31,7 +37,7 @@ impl<'store> TransactionProverHost<'store> {
     pub fn new(
         account: &PartialAccount,
         advice_inputs: &mut AdviceInputs,
-        mast_store: &'store dyn MastForestStore,
+        mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
         foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
@@ -63,9 +69,12 @@ impl<'store> TransactionProverHost<'store> {
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl BaseHost for TransactionProverHost<'_> {}
+impl<STORE> BaseHost for TransactionProverHost<'_, STORE> where STORE: MastForestStore {}
 
-impl SyncHost for TransactionProverHost<'_> {
+impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
+where
+    STORE: MastForestStore,
+{
     fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
         self.base_host.get_mast_forest(procedure_root)
     }

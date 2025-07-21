@@ -48,9 +48,9 @@ use crate::errors::TransactionHostError;
 
 /// The base transaction host that implements shared behavior of all transaction host
 /// implementations.
-pub struct TransactionBaseHost<'store> {
+pub struct TransactionBaseHost<'store, STORE> {
     /// MAST store which contains the code required to execute account code functions.
-    mast_store: &'store dyn MastForestStore,
+    mast_store: &'store STORE,
 
     /// MAST store which contains the forests of all scripts involved in the transaction. These
     /// include input note scripts and the transaction script, but not account code.
@@ -75,7 +75,10 @@ pub struct TransactionBaseHost<'store> {
     tx_progress: TransactionProgress,
 }
 
-impl<'store> TransactionBaseHost<'store> {
+impl<'store, STORE> TransactionBaseHost<'store, STORE>
+where
+    STORE: MastForestStore,
+{
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -83,7 +86,7 @@ impl<'store> TransactionBaseHost<'store> {
     pub fn new(
         account: &PartialAccount,
         advice_inputs: &mut AdviceInputs,
-        mast_store: &'store dyn MastForestStore,
+        mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
         mut foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
@@ -153,6 +156,17 @@ impl<'store> TransactionBaseHost<'store> {
         &self.account_delta
     }
 
+    /// Clones the inner [`AccountDeltaTracker`] and converts it into an [`AccountDelta`].
+    pub fn build_account_delta(&self) -> AccountDelta {
+        self.account_delta_tracker().clone().into_delta()
+    }
+
+    /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
+    /// are tracked by this host.
+    pub fn build_output_notes(&self) -> Vec<OutputNote> {
+        self.output_notes.values().cloned().map(|builder| builder.build()).collect()
+    }
+
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
     pub fn into_parts(self) -> (AccountDelta, Vec<OutputNote>, TransactionProgress) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
@@ -171,10 +185,8 @@ impl<'store> TransactionBaseHost<'store> {
         transaction_event: TransactionEvent,
         err_ctx: &impl ErrorContext,
     ) -> Result<(), ExecutionError> {
-        // only the `FalconSigToStack` event can be executed outside the root context
-        if process.ctx() != ContextId::root()
-            && !matches!(transaction_event, TransactionEvent::FalconSigToStack)
-        {
+        // Privileged events can only be emitted from the root context.
+        if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
             return Err(ExecutionError::event_error(
                 Box::new(TransactionEventError::NotRootContext(transaction_event as u32)),
                 err_ctx,
@@ -275,6 +287,10 @@ impl<'store> TransactionBaseHost<'store> {
             TransactionEvent::LinkMapGetEvent => {
                 LinkMap::handle_get_event(process)?;
                 Ok(())
+            },
+            TransactionEvent::Unauthorized => {
+              // Note: This always returns an error to abort the transaction.
+              Err(self.on_unauthorized(process))
             }
         }
         .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
@@ -528,6 +544,29 @@ impl<'store> TransactionBaseHost<'store> {
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
         Ok(())
+    }
+
+    /// Aborts the transaction by extracting the
+    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) from the stack and
+    /// returns it in an error.
+    ///
+    /// Expected stack state:
+    ///
+    /// ```text
+    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+    /// ```
+    fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
+        let account_delta_commitment = process.get_stack_word(0);
+        let input_notes_commitment = process.get_stack_word(1);
+        let output_notes_commitment = process.get_stack_word(2);
+        let salt = process.get_stack_word(3);
+
+        TransactionKernelError::Unauthorized {
+            account_delta_commitment,
+            input_notes_commitment,
+            output_notes_commitment,
+            salt,
+        }
     }
 
     // HELPER FUNCTIONS
