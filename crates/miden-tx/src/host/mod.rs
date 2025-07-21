@@ -48,9 +48,9 @@ use crate::errors::TransactionHostError;
 
 /// The base transaction host that implements shared behavior of all transaction host
 /// implementations.
-pub struct TransactionBaseHost<'store> {
+pub struct TransactionBaseHost<'store, STORE> {
     /// MAST store which contains the code required to execute account code functions.
-    mast_store: &'store dyn MastForestStore,
+    mast_store: &'store STORE,
 
     /// MAST store which contains the forests of all scripts involved in the transaction. These
     /// include input note scripts and the transaction script, but not account code.
@@ -75,7 +75,10 @@ pub struct TransactionBaseHost<'store> {
     tx_progress: TransactionProgress,
 }
 
-impl<'store> TransactionBaseHost<'store> {
+impl<'store, STORE> TransactionBaseHost<'store, STORE>
+where
+    STORE: MastForestStore,
+{
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -83,7 +86,7 @@ impl<'store> TransactionBaseHost<'store> {
     pub fn new(
         account: &PartialAccount,
         advice_inputs: &mut AdviceInputs,
-        mast_store: &'store dyn MastForestStore,
+        mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
         mut foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
