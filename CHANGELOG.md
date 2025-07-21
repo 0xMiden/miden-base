@@ -26,6 +26,7 @@
 - Added `AccountTree::contains_account_id_prefix()` and `AccountTree::id_prefix_to_smt_key()` ([#1610](https://github.com/0xMiden/miden-base/pull/1610)).
 - [BREAKING] Change `account::incr_nonce` to always increment the nonce by one and disallow incrementing more than once ([#1608](https://github.com/0xMiden/miden-base/pull/1608)).
 - Add robustness check to `create_swap_note`: error if `requested_asset` != `offered_asset` ([#1604](https://github.com/0xMiden/miden-base/pull/1604)).
+- Add `TransactionEvent::Unauthorized` to enable aborting the transaction execution to get its transaction summary for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596)).
 - [BREAKING] Disallow calling the auth procedure explicitly (from outside the epilogue) ([#1622](https://github.com/0xMiden/miden-base/pull/1622)).
 
 ## 0.10.0 (2025-07-08)

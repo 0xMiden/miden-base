@@ -1,12 +1,15 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
+use assert_matches::assert_matches;
 use miden_lib::{
+    account::wallets::BasicWallet,
     errors::tx_kernel_errors::{
         ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
     },
+    note::create_p2id_note,
     transaction::{
-        TransactionKernel,
+        TransactionEvent, TransactionKernel,
         memory::{
             NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
             OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
@@ -16,7 +19,7 @@ use miden_lib::{
 };
 use miden_objects::{
     FieldElement, Word,
-    account::{Account, AccountId},
+    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
@@ -41,12 +44,13 @@ use miden_tx::{
     ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
     TransactionExecutorHost, TransactionMastStore,
 };
-use vm_processor::{AdviceInputs, Process};
+use vm_processor::{AdviceInputs, Process, crypto::RpoRandomCoin};
 
 use super::{Felt, ONE, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt, utils::create_p2any_note,
+    kernel_tests::tx::ProcessMemoryExt,
+    utils::{create_p2any_note, create_spawn_note},
 };
 
 /// Tests that executing a transaction with a foreign account whose inputs are stale fails.
@@ -1200,6 +1204,79 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         resulting_note_3_recipient.inputs().num_values(),
         expected_output_note_3.inputs().num_values()
     );
+
+    Ok(())
+}
+
+/// Tests that a transaction consuming and creating one note can emit an abort event in its auth
+/// component to result in a [`TransactionExecutorError::Unauthorized`] error.
+#[test]
+fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
+    let source_code = format!(
+        "
+      use.miden::tx
+
+      export.auth__abort_tx
+          padw
+          # => [SALT]
+
+          exec.tx::get_output_notes_commitment
+          # => [OUTPUT_NOTES_COMMITMENT, SALT]
+
+          exec.tx::get_input_notes_commitment
+          # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+
+          # TODO: Replace with account_delta::compute_commitment once available in `miden` lib.
+          padw
+          # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+
+          emit.{abort_event}
+      end
+    ",
+        abort_event = TransactionEvent::Unauthorized as u32
+    );
+
+    let auth_component =
+        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])
+            .context("failed to compile auth component")?
+            .with_supports_all_types();
+
+    let account = AccountBuilder::new([42; 32])
+        .storage_mode(AccountStorageMode::Private)
+        .with_auth_component(auth_component)
+        .with_component(BasicWallet)
+        .build_existing()
+        .context("failed to build account")?;
+
+    // Consume and create a note so the input and outputs notes commitment is not the empty word.
+    let mut rng = RpoRandomCoin::new(Word::empty());
+    let output_note = create_p2id_note(
+        account.id(),
+        account.id(),
+        vec![],
+        NoteType::Private,
+        Felt::ZERO,
+        &mut rng,
+    )?;
+    let input_note = create_spawn_note(account.id(), vec![&output_note])?;
+
+    let mut mock_chain = MockChain::new();
+
+    mock_chain.add_pending_note(OutputNote::Full(input_note.clone()));
+    mock_chain.prove_next_block()?;
+
+    let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;
+    let input_notes = tx_context.input_notes().clone();
+    let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
+
+    let error = tx_context.execute().unwrap_err();
+
+    assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
+        assert!(tx_summary.account_delta().is_empty());
+        assert_eq!(tx_summary.input_notes(), &input_notes);
+        assert_eq!(tx_summary.output_notes(), &output_notes);
+        assert_eq!(tx_summary.salt(), Word::empty());
+    });
 
     Ok(())
 }
