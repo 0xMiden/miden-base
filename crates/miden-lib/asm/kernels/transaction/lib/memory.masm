@@ -78,8 +78,8 @@ const.INIT_NONCE_PTR=416
 # The memory address at which the transaction script mast root is stored.
 const.TX_SCRIPT_ROOT_PTR=420
 
-# The memory address at which the key of the transaction script arguments is stored.
-const.TX_SCRIPT_ARGS_KEY_PTR=424
+# The memory address at which the transaction script arguments are stored.
+const.TX_SCRIPT_ARGS_PTR=424
 
 # The memory address at which the auth procedure arguments are stored.
 const.AUTH_ARGS_PTR=428
@@ -510,28 +510,28 @@ export.set_tx_script_root
     mem_storew.TX_SCRIPT_ROOT_PTR
 end
 
-#! Returns the transaction script arguments key.
+#! Returns the transaction script arguments.
 #!
 #! Inputs:  []
-#! Outputs: [TX_SCRIPT_ARGS_KEY]
+#! Outputs: [TX_SCRIPT_ARGS]
 #!
 #! Where:
-#! - TX_SCRIPT_ARGS_KEY is the key which could be used to obtain the transaction script arguments 
-#!   from the advice map.
-export.get_tx_script_args_key
-    padw mem_loadw.TX_SCRIPT_ARGS_KEY_PTR
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#!   some values associated with it from the advice map.
+export.get_tx_script_args
+    padw mem_loadw.TX_SCRIPT_ARGS_PTR
 end
 
-#! Sets the transaction script arguments key.
+#! Sets the transaction script arguments.
 #!
-#! Inputs:  [TX_SCRIPT_ARGS_KEY]
-#! Outputs: [TX_SCRIPT_ARGS_KEY]
+#! Inputs:  [TX_SCRIPT_ARGS]
+#! Outputs: [TX_SCRIPT_ARGS]
 #!
 #! Where:
-#! - TX_SCRIPT_ARGS_KEY is the key which could be used to obtain the transaction script arguments 
-#!   from the advice map.
-export.set_tx_script_args_key
-    mem_storew.TX_SCRIPT_ARGS_KEY_PTR
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#!   some values associated with it from the advice map.
+export.set_tx_script_args
+    mem_storew.TX_SCRIPT_ARGS_PTR
 end
 
 #! Returns the auth procedure arguments.

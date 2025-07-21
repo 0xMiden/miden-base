@@ -22,10 +22,10 @@ use crate::{
 ///
 /// - Transaction script: a program that is executed in a transaction after all input notes scripts
 ///   have been executed.
-/// - Transaction script argument: a [`Word`], which will be pushed to the operand stack before the
-///   transaction script execution. If this argument is not specified, the [`EMPTY_WORD`] would be
-///   used as a default value. If the [AdviceInputs] are propagated with some user defined map
-///   entries, this script argument could be used as a key to access the corresponding value.
+/// - Transaction script arguments: a [`Word`], which will be pushed to the operand stack before the
+///   transaction script execution. If these arguments are not specified, the [`EMPTY_WORD`] would
+///   be used as a default value. If the [AdviceInputs] are propagated with some user defined map
+///   entries, this script arguments word could be used as a key to access the corresponding value.
 /// - Note arguments: data put onto the stack right before a note script is executed. These are
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.
@@ -74,12 +74,12 @@ impl TransactionArgs {
     }
 
     /// Returns new [TransactionArgs] instantiated with the provided transaction script and its
-    /// argument.
+    /// arguments.
     ///
-    /// If the transaction script and argument are already set, they will be overwritten with the
+    /// If the transaction script and arguments are already set, they will be overwritten with the
     /// newly provided ones.
     #[must_use]
-    pub fn with_tx_script_and_arg(
+    pub fn with_tx_script_and_args(
         mut self,
         tx_script: TransactionScript,
         tx_script_args: Word,
@@ -114,10 +114,10 @@ impl TransactionArgs {
         self.tx_script.as_ref()
     }
 
-    /// Returns the transaction script argument, or [`EMPTY_WORD`] if the argument was not
+    /// Returns the transaction script arguments, or [`EMPTY_WORD`] if the arguments were not
     /// specified.
     ///
-    /// This argument could be potentially used as a key to access the advice map during the
+    /// These arguments could be potentially used as a key to access the advice map during the
     /// transaction script execution. Notice that the corresponding map entry should be provided
     /// separately during the creation with the [`TransactionArgs::new`] or using the
     /// [`TransactionArgs::extend_advice_map`] method.
