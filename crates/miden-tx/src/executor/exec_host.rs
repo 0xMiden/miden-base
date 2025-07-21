@@ -97,7 +97,7 @@ where
     // ADVICE INJECTOR HANDLERS
     // --------------------------------------------------------------------------------------------
 
-    /// Pushes a signature to the advice stack as a response to the `FalconSigToStack` injector.
+    /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
     /// The signature is fetched from the advice map or otherwise requested from the host's
     /// authenticator.

@@ -298,7 +298,7 @@ where
         Ok(())
     }
 
-    /// Pushes a signature to the advice stack as a response to the `FalconSigToStack` injector.
+    /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
     /// The signature is fetched from the advice map and if it is not present, an error is returned.
     pub fn on_signature_requested(

@@ -116,7 +116,7 @@ impl TransactionEvent {
     /// Returns `true` if the event is privileged, i.e. it is only allowed to be emitted from the
     /// root context of the VM, which is where the transaction kernel executes.
     pub fn is_privileged(&self) -> bool {
-        let is_unprivileged = matches!(self, Self::FalconSigToStack | Self::Unauthorized);
+        let is_unprivileged = matches!(self, Self::AuthRequest | Self::Unauthorized);
         !is_unprivileged
     }
 }
