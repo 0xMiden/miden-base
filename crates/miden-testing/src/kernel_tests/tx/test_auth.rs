@@ -1,7 +1,11 @@
 use anyhow::Context;
-use miden_lib::{account::wallets::BasicWallet, errors::MasmError, transaction::TransactionKernel};
+use miden_lib::{
+    account::wallets::BasicWallet,
+    errors::{MasmError, note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT},
+    transaction::TransactionKernel,
+};
 use miden_objects::{
-    account::Account,
+    account::{Account, AccountBuilder},
     testing::{
         account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG},
         account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -10,12 +14,9 @@ use miden_objects::{
 use miden_tx::TransactionExecutorError;
 
 use super::{Felt, ONE};
-use crate::{TransactionContextBuilder, assert_execution_error};
+use crate::{Auth, TransactionContextBuilder, assert_execution_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
-
-// Import the new error constant
-use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
 
 /// Tests that authentication arguments are correctly passed to the auth procedure.
 ///
@@ -87,10 +88,6 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
 /// Tests that attempting to call the auth procedure manually from user code fails.
 #[test]
 fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
-    use miden_objects::account::AccountBuilder;
-
-    use crate::Auth;
-
     let (auth_component, _) = Auth::IncrNonce.build_component();
 
     let account = AccountBuilder::new([42; 32])
