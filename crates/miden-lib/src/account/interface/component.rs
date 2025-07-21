@@ -49,7 +49,7 @@ pub enum AccountComponentInterface {
 impl AccountComponentInterface {
     /// Returns a string line with the name of the [AccountComponentInterface] enum variant.
     ///
-    /// In case of a [AccountComponentInterface::Custom] along with the name of the enum variant  
+    /// In case of a [AccountComponentInterface::Custom] along with the name of the enum variant
     /// the vector of shortened hex representations of the used procedures is returned, e.g.
     /// `Custom([0x6d93447, 0x0bf23d8])`.
     pub fn name(&self) -> String {
@@ -142,7 +142,7 @@ impl AccountComponentInterface {
     ///
     /// ```masm
     ///     push.{note information}
-    ///     
+    ///
     ///     push.{asset amount}
     ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
     /// ```
@@ -198,7 +198,7 @@ impl AccountComponentInterface {
                     }
 
                     body.push_str(&format!(
-                        "push.{amount} 
+                        "push.{amount}
                         call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop\n",
                         amount = asset.unwrap_fungible().amount()
                     ));

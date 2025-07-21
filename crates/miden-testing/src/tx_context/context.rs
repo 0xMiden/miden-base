@@ -18,7 +18,7 @@ use miden_objects::{
 };
 use miden_tx::{
     DataStore, DataStoreError, TransactionExecutor, TransactionExecutorError, TransactionMastStore,
-    auth::{BasicAuthenticator, TransactionAuthenticator},
+    auth::BasicAuthenticator,
 };
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
@@ -40,7 +40,7 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
-    pub(super) source_manager: Arc<dyn SourceManager>,
+    pub(super) source_manager: Arc<dyn SourceManager + Send + Sync>,
 }
 
 impl TransactionContext {
@@ -126,7 +126,7 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-        let authenticator = self.authenticator().map(|x| x as &dyn TransactionAuthenticator);
+        let authenticator = self.authenticator();
 
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
@@ -169,7 +169,7 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
         Arc::clone(&self.source_manager)
     }
 }
