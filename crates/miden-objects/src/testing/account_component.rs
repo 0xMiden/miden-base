@@ -168,7 +168,7 @@ impl From<NoopAuthComponent> for AccountComponent {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth__conditional` procedure that conditionally suceeds and
+/// The component defines an `auth__conditional` procedure that conditionally succeeds and
 /// conditionally increments the nonce based on the authentication arguments.
 ///
 /// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.
