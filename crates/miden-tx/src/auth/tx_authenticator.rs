@@ -19,7 +19,7 @@ use crate::errors::AuthenticationError;
 ///   transactions.
 /// - `Arbitrary`: Arbitrary payload provided by the application.
 /// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It can
-///   assumed to already be a cryptographic commitment to some data.
+///   be assumed to already be a cryptographic commitment to some data.
 #[allow(clippy::large_enum_variant)]
 pub enum SignatureData {
     TransactionSummary(TransactionSummary),
