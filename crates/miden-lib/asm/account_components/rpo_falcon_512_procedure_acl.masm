@@ -44,71 +44,72 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
 
     # ------ Check if any trigger procedure was called ------
 
-    # Counter `i` starts at `num_auth_trigger_procs` and flag `was_any_called` starts at 0
+    # Counter `i` starts at `num_auth_trigger_procs` and flag `require_acl_auth` starts at 0
+    # `require_acl_auth` is true if any ACL procedures were called
     push.0
-    # => [was_any_called, i, pad(16)]
+    # => [require_acl_auth, i, pad(16)]
 
     # Loop through trigger procedures
     dup.1 neq.0
     while.true
-        # => [was_any_called, i, pad(16)]
+        # => [require_acl_auth, i, pad(16)]
 
         # Get the procedure root from storage
         dup.1 sub.1 push.0.0.0 push.AUTH_TRIGGER_PROCS_MAP_SLOT
-        # => [AUTH_TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], was_any_called, i, pad(16)]
+        # => [AUTH_TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], require_acl_auth, i, pad(16)]
 
         exec.account::get_map_item
-        # => [AUTH_TRIGGER_PROC_ROOT, was_any_called, i, pad(16)]
+        # => [AUTH_TRIGGER_PROC_ROOT, require_acl_auth, i, pad(16)]
 
         exec.account::was_procedure_called
-        # => [was_called, was_any_called, i, pad(16)]
+        # => [was_called, require_acl_auth, i, pad(16)]
 
-        # Update was_any_called
+        # Update require_acl_auth
         or
-        # => [was_any_called', i, pad(16)]
+        # => [require_acl_auth', i, pad(16)]
 
         swap sub.1 swap
-        # => [was_any_called', i-1, pad(16)]
+        # => [require_acl_auth', i-1, pad(16)]
 
         # Check if we should continue looping
         dup.1 neq.0
-        # => [should_continue, was_any_called', i-1, pad(16)]
+        # => [should_continue, require_acl_auth', i-1, pad(16)]
     end
-    # => [was_any_called, i-1, pad(16)]
+    # => [require_acl_auth, i-1, pad(16)]
 
     swap drop
-    # => [was_any_called, pad(16)]
+    # => [require_acl_auth, pad(16)]
 
     # ------ Check if output notes were created ------
 
     exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, was_any_called, pad(16)]
+    # => [OUTPUT_NOTES_COMMITMENT, require_acl_auth, pad(16)]
 
     padw eqw not movdn.8 dropw dropw
-    # => [were_output_notes_created, was_any_called, pad(16)]
+    # => [were_output_notes_created, require_acl_auth, pad(16)]
 
     loc_load.0 not
-    # => [!allow_unauthorized_output_notes, were_output_notes_created, was_any_called, pad(16)]
+    # => [!allow_unauthorized_output_notes, were_output_notes_created, require_acl_auth, pad(16)]
 
     and
-    # => [require_output_note_auth, was_any_called, pad(16)]
+    # => [require_output_note_auth, require_acl_auth, pad(16)]
 
     # ------ Check if input notes were consumed ------
 
     exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, require_output_note_auth, was_any_called, pad(16)]
+    # => [INPUT_NOTES_COMMITMENT, require_output_note_auth, require_acl_auth, pad(16)]
 
     padw eqw not movdn.8 dropw dropw
-    # => [were_input_notes_consumed, require_output_note_auth, was_any_called, pad(16)]
+    # => [were_input_notes_consumed, require_output_note_auth, require_acl_auth, pad(16)]
 
     loc_load.1 not
-    # => [!allow_unauthorized_input_notes, require_output_note_auth, was_any_called, pad(16)]
+    # => [!allow_unauthorized_input_notes, require_output_note_auth, require_acl_auth, pad(16)]
 
     and
-    # => [require_input_note_auth, require_output_note_auth, was_any_called, pad(16)]
+    # => [require_input_note_auth, require_output_note_auth, require_acl_auth, pad(16)]
 
     or
-    # => [require_note_auth, was_any_called, pad(16)]
+    # => [require_note_auth, require_acl_auth, pad(16)]
 
     # Combine note-based auth requirement with procedure-based auth requirement
     or
