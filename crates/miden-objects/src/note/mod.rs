@@ -4,7 +4,10 @@ use miden_crypto::{
 };
 use vm_processor::DeserializationError;
 
-use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO, account::AccountId};
+use crate::{
+    Felt, Hasher, NoteError, WORD_SIZE, ZERO, account::AccountId,
+    transaction::ToInputNoteCommitments,
+};
 
 mod assets;
 pub use assets::NoteAssets;
@@ -170,6 +173,29 @@ impl Note {
 impl AsRef<NoteRecipient> for Note {
     fn as_ref(&self) -> &NoteRecipient {
         self.recipient()
+    }
+}
+
+// TO INPUT NOTE COMMITMENTS
+// ================================================================================================
+
+impl ToInputNoteCommitments for Note {
+    fn nullifier(&self) -> Nullifier {
+        self.nullifier()
+    }
+
+    fn note_commitment(&self) -> Option<Word> {
+        Some(self.commitment())
+    }
+}
+
+impl ToInputNoteCommitments for &Note {
+    fn nullifier(&self) -> Nullifier {
+        (*self).nullifier()
+    }
+
+    fn note_commitment(&self) -> Option<Word> {
+        Some((*self).commitment())
     }
 }
 
