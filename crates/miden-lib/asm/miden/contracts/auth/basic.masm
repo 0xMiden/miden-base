@@ -1,5 +1,6 @@
 use.miden::account
 use.miden::tx
+use.std::crypto::hashes::rpo
 use.std::crypto::dsa::rpo_falcon512
 
 # CONSTANTS
@@ -11,47 +12,81 @@ const.FALCON_SIG_TO_STACK=131087
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
-#! Authenticate a transaction using the Falcon signature scheme
+#! Authenticate a transaction using the Falcon signature scheme.
+#!
+#! It first increments the nonce of the account, independent of whether the account's state has
+#! changed or not. Then it computes and signs the following message (in memory order):
+#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, final_nonce]]
+#!
+#! Including the final_nonce is necessary for replay protection.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
+#!
+#! Invocation: call
 export.auth__tx_rpo_falcon512
+    # Increment the account's nonce.
+    # ---------------------------------------------------------------------------------------------
+
+    # this has to happen before computing the delta commitment, otherwise that procedure will abort
+    exec.account::incr_nonce
+    # => [pad(16)]
+
+    # Compute the message that is signed.
+    # ---------------------------------------------------------------------------------------------
+
+    # pad capacity element of the hasher
+    padw
+    # => [CAPACITY, pad(16)]
+
+    # get the nonce of the account after the transaction
+    # TODO: It seems convenient if incr_nonce would return the new nonce so we could avoid this call, wdyt?
+    push.0.0.0 exec.account::get_nonce
+    # => [[final_nonce, 0, 0, 0], CAPACITY, pad(16)]
+
     # Get commitments to output notes
     exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, pad(16)]
+    # => [OUTPUT_NOTES_COMMITMENT, [final_nonce, 0, 0, 0], CAPACITY, pad(16)]
+
+    hperm
+    # => [RATE, RATE, PERM, pad(16)]
+
+    # drop rate words
+    dropw dropw
+    # => [PERM, pad(16)]
+
+    exec.account::compute_delta_commitment
+    # => [DELTA_COMMITMENT, PERM, pad(16)]
 
     exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, pad(16)]
+    # => [INPUT_NOTES_COMMITMENT, DELTA_COMMITMENT, PERM, pad(16)]
 
-    # Get current nonce of the account and pad
-    exec.account::get_nonce push.0.0.0
-    # => [0, 0, 0, nonce, INPUT_NOTES_HASH, OUTPUT_NOTES_COMMITMENT, pad(16)]
+    hperm
+    # => [RATE, RATE, PERM, pad(16)]
 
-    # Get current AccountID and pad
-    exec.account::get_id push.0.0
-    # => [0, 0, account_id_prefix, account_id_suffix,
-    #     0, 0, 0, nonce,
-    #     INPUT_NOTES_HASH,
-    #     OUTPUT_NOTES_COMMITMENT,
-    #     pad(16)]
-
-    # Compute the message to be signed
-    # MESSAGE = h(OUTPUT_NOTES_COMMITMENT, h(INPUT_NOTES_HASH, h(0, 0, account_id_prefix, account_id_suffix, 0, 0, 0, nonce)))
-    hmerge hmerge hmerge
+    exec.rpo::squeeze_digest
     # => [MESSAGE, pad(16)]
+
+    # Fetch public key from storage.
+    # ---------------------------------------------------------------------------------------------
 
     # Get public key from account storage at pos 0 and verify signature
     push.PUBLIC_KEY_SLOT exec.account::get_item
-    # => [PUB_KEY, MESSAGE, pad(16)]
+    # OS => [PUB_KEY, MESSAGE, pad(16)]
+    # AS => []
 
-    # Update the nonce
-    exec.account::incr_nonce
-    # => [PUB_KEY, MESSAGE, pad(16)]
+    # Fetch signature from advice provider and verify.
+    # ---------------------------------------------------------------------------------------------
+
+    # emit the signature event that pushes a signature for the message to the advice stack
+    emit.FALCON_SIG_TO_STACK
+    # OS => [PUB_KEY, MESSAGE, pad(16)]
+    # AS => [SIGNATURE]
 
     # Verify the signature against the public key and the message. The procedure gets as inputs the
-    # hash of the public key and the hash of the message via the operand stack. The signature is
-    # provided via the advice stack. The signature is valid if and only if the procedure returns.
-    emit.FALCON_SIG_TO_STACK
+    # hash of the public key and the message via the operand stack. The signature is provided via
+    # the advice stack. The signature is valid if and only if the procedure returns.
     exec.rpo_falcon512::verify
-    # => [pad(16)]
+    # OS => [pad(16)]
+    # AS => []
 end

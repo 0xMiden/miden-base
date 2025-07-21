@@ -4,12 +4,6 @@ use.miden::tx
 # CONSTANTS
 # =================================================================================================
 
-# Event to place the falcon signature of a provided message and public key on the advice stack.
-const.FALCON_SIG_TO_STACK=131087
-
-# The slot in this component's storage layout where the public key is stored.
-const.PUBLIC_KEY_SLOT=0
-
 # The slot where the number of auth trigger procedures is stored.
 const.NUM_AUTH_TRIGGER_PROCS_SLOT=1
 
