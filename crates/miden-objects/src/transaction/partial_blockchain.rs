@@ -1,4 +1,5 @@
 use alloc::{collections::BTreeMap, vec::Vec};
+use core::ops::RangeTo;
 
 use crate::{
     PartialBlockchainError,
@@ -182,20 +183,25 @@ impl PartialBlockchain {
         self.mmr.add(block_header.commitment(), track);
     }
 
-    /// Drop every block older than `cutoff_block_num` from the partial view.
+    /// Drop every block header whose number falls within 0..`to` (strictly less than `to.end`).
     ///
-    /// After the call all block headers with a number smaller than `cutoff_block_num` are gone and
-    /// their paths are no longer tracked in the inner partial MMR.
-    pub fn prune_before(&mut self, cutoff_block_num: BlockNumber) {
-        let kept = self.blocks.split_off(&cutoff_block_num);
+    /// After the call, all such headers are removed, and each pruned header’s path is `untrack`‑ed
+    /// from the internal [`PartialMmr`], eliminating local authentication data for those leaves
+    /// while leaving the MMR root commitment unchanged.
+    pub fn prune_to(&mut self, to: RangeTo<BlockNumber>) {
+        let kept = self.blocks.split_off(&to.end);
+
         for block_num in self.blocks.keys() {
             self.mmr.untrack(block_num.as_usize());
         }
-
         self.blocks = kept;
     }
 
-    /// Prunes a single block off of the [`PartialBlockchain`].
+    /// Removes a single block header and the associated authentication path from this
+    /// [`PartialBlockchain`].
+    ///
+    /// This does not change the commitment to the underlying MMR, but the current partial MMR
+    /// will no longer track the removed data.  
     pub fn remove(&mut self, block_num: BlockNumber) {
         if self.blocks.remove(&block_num).is_some() {
             self.mmr.untrack(block_num.as_usize());
