@@ -1,19 +1,19 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
     transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
-        TransactionInputs, TransactionScript,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, OutputNotes, TransactionArgs,
+        TransactionInputs, TransactionScript, TransactionSummary,
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, Process};
+use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -185,7 +185,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.exec_options,
             source_manager,
         )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -481,6 +481,93 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
     } else {
         Ok(())
     }
+}
+
+/// Remaps an execution error to a transaction executor error.
+///
+/// - If the inner error is [`TransactionKernelError::Unauthorized`], it is remapped to
+///   [`TransactionExecutorError::Unauthorized`] and the commitments are verified against the actual
+///   account delta and input/output notes.
+/// - Otherwise, the execution error is wrapped in
+///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
+fn map_execution_error(
+    exec_err: ExecutionError,
+    tx_inputs: &TransactionInputs,
+    host: &TransactionExecutorHost,
+) -> TransactionExecutorError {
+    match exec_err {
+        ExecutionError::EventError { ref error, .. } => {
+            let maybe_kernel_error: Option<&TransactionKernelError> = error.downcast_ref();
+            match maybe_kernel_error {
+                Some(TransactionKernelError::Unauthorized {
+                    account_delta_commitment,
+                    input_notes_commitment,
+                    output_notes_commitment,
+                    salt,
+                }) => {
+                    let tx_summary = match build_tx_summary(
+                        *account_delta_commitment,
+                        *input_notes_commitment,
+                        *output_notes_commitment,
+                        *salt,
+                        tx_inputs,
+                        host,
+                    ) {
+                        Ok(tx_summary) => tx_summary,
+                        Err(err) => return err,
+                    };
+
+                    TransactionExecutorError::Unauthorized(Box::new(tx_summary))
+                },
+                Some(_) => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+                None => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+            }
+        },
+        _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+    }
+}
+
+/// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
+/// host and validating them against the provided commitments.
+fn build_tx_summary(
+    account_delta_commitment: Word,
+    input_notes_commitment: Word,
+    output_notes_commitment: Word,
+    salt: Word,
+    tx_inputs: &TransactionInputs,
+    host: &TransactionExecutorHost,
+) -> Result<TransactionSummary, TransactionExecutorError> {
+    let account_delta = host.base_host().build_account_delta();
+    let input_notes = tx_inputs.input_notes().clone();
+    let output_notes = host.base_host().build_output_notes();
+    let output_notes = OutputNotes::new(output_notes)
+        .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
+
+    // Validate user-computed commitments match the actual commitments. This could
+    // mismatch if user code constructs the commitments incorrectly in which case it
+    // is a good idea to return an error.
+    let actual_account_delta_commitment = account_delta.to_commitment();
+    if actual_account_delta_commitment != account_delta_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+          "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+      ).into()));
+    }
+
+    let actual_input_notes_commitment = input_notes.commitment();
+    if actual_input_notes_commitment != input_notes_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+            "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
+        ).into()));
+    }
+
+    let actual_output_notes_commitment = output_notes.commitment();
+    if actual_output_notes_commitment != output_notes_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+            "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
+        ).into()));
+    }
+
+    Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
 }
 
 // HELPER ENUM

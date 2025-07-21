@@ -153,6 +153,17 @@ impl<'store> TransactionBaseHost<'store> {
         &self.account_delta
     }
 
+    /// Clones the inner [`AccountDeltaTracker`] and converts it into an [`AccountDelta`].
+    pub fn build_account_delta(&self) -> AccountDelta {
+        self.account_delta_tracker().clone().into_delta()
+    }
+
+    /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
+    /// are tracked by this host.
+    pub fn build_output_notes(&self) -> Vec<OutputNote> {
+        self.output_notes.values().cloned().map(|builder| builder.build()).collect()
+    }
+
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
     pub fn into_parts(self) -> (AccountDelta, Vec<OutputNote>, TransactionProgress) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
@@ -171,10 +182,8 @@ impl<'store> TransactionBaseHost<'store> {
         transaction_event: TransactionEvent,
         err_ctx: &impl ErrorContext,
     ) -> Result<(), ExecutionError> {
-        // only the `FalconSigToStack` event can be executed outside the root context
-        if process.ctx() != ContextId::root()
-            && !matches!(transaction_event, TransactionEvent::FalconSigToStack)
-        {
+        // Privileged events can only be emitted from the root context.
+        if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
             return Err(ExecutionError::event_error(
                 Box::new(TransactionEventError::NotRootContext(transaction_event as u32)),
                 err_ctx,
@@ -203,9 +212,11 @@ impl<'store> TransactionBaseHost<'store> {
             },
 
             TransactionEvent::AccountBeforeIncrementNonce => {
-                self.on_account_before_increment_nonce(process)
+                Ok(())
             },
-            TransactionEvent::AccountAfterIncrementNonce => Ok(()),
+            TransactionEvent::AccountAfterIncrementNonce => {
+                self.on_account_after_increment_nonce()
+            },
 
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_account_push_procedure_index(process)
@@ -273,6 +284,10 @@ impl<'store> TransactionBaseHost<'store> {
             TransactionEvent::LinkMapGetEvent => {
                 LinkMap::handle_get_event(process)?;
                 Ok(())
+            },
+            TransactionEvent::Unauthorized => {
+              // Note: This always returns an error to abort the transaction.
+              Err(self.on_unauthorized(process))
             }
         }
         .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
@@ -367,15 +382,13 @@ impl<'store> TransactionBaseHost<'store> {
         Ok(())
     }
 
-    /// Extracts the nonce increment from the process state and adds it to the nonce delta tracker.
-    ///
-    /// Expected stack state: [nonce_delta, ...]
-    pub fn on_account_before_increment_nonce(
-        &mut self,
-        process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
-        let value = process.get_stack_item(0);
-        self.account_delta.increment_nonce(value);
+    /// Handles the increment nonce event by incrementing the nonce delta by one.
+    pub fn on_account_after_increment_nonce(&mut self) -> Result<(), TransactionKernelError> {
+        if self.account_delta.was_nonce_incremented() {
+            return Err(TransactionKernelError::NonceCanOnlyIncrementOnce);
+        }
+
+        self.account_delta.increment_nonce();
         Ok(())
     }
 
@@ -528,6 +541,29 @@ impl<'store> TransactionBaseHost<'store> {
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
         Ok(())
+    }
+
+    /// Aborts the transaction by extracting the
+    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) from the stack and
+    /// returns it in an error.
+    ///
+    /// Expected stack state:
+    ///
+    /// ```text
+    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+    /// ```
+    fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
+        let account_delta_commitment = process.get_stack_word(0);
+        let input_notes_commitment = process.get_stack_word(1);
+        let output_notes_commitment = process.get_stack_word(2);
+        let salt = process.get_stack_word(3);
+
+        TransactionKernelError::Unauthorized {
+            account_delta_commitment,
+            input_notes_commitment,
+            output_notes_commitment,
+            salt,
+        }
     }
 
     // HELPER FUNCTIONS

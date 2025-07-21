@@ -1,10 +1,12 @@
 use.std::sys
 
 use.$kernel::account
+use.$kernel::account_delta
 use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::faucet
+use.$kernel::input_notes
 use.$kernel::memory
 use.$kernel::note
 use.$kernel::tx
@@ -115,6 +117,28 @@ export.account_compute_current_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
+#! Computes the commitment to the native account's delta.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [DELTA_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+#!
+#! Panics if:
+#! - the vault or storage delta is not empty but the nonce increment is zero.
+#!
+#! Invocation: dynexec
+export.account_compute_delta_commitment
+    # compute the account delta commitment
+    exec.account_delta::compute_commitment
+    # => [DELTA_COMMITMENT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [ACCOUNT_COMMITMENT, pad(12)]
+end
+
 #! Returns the account ID.
 #!
 #! Inputs:  [pad(16)]
@@ -153,29 +177,26 @@ export.account_get_nonce
     # => [nonce, pad(15)]
 end
 
-#! Increments the account nonce by the provided value.
+#! Increments the account nonce by one.
 #!
-#! Inputs:  [increment, pad(15)]
+#! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
-#!
-#! Where:
-#! - increment is the value to increment the nonce by.
 #!
 #! Panics if:
 #! - the invocation of this procedure does not originate from the native account.
 #! - the invocation of this procedure does not originate from the authentication procedure
 #!   of the account.
-#! - the increment is greater than 2^32 - 1.
+#! - the nonce has already been incremented.
 #!
 #! Invocation: dynexec
 export.account_incr_nonce
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
-    # => [increment, pad(15)]
+    # => [pad(16)]
 
     # assert that nonce increment originates from the authentication procedure of the account
     exec.assert_auth_procedure_origin
-    # => [increment, pad(15)]
+    # => [pad(16)]
 
     # increment the account nonce
     exec.account::incr_nonce
@@ -628,14 +649,14 @@ end
 
 ### NOTE ########################################
 
-#! Returns the number of assets and the assets commitment of the note currently being processed.
+#! Returns the information about assets in the input note with the specified index.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ASSETS_HASH, num_assets, pad(11)]
 #!
 #! Where:
 #! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_HASH is the assets commitment of the note currently being processed.
+#! - ASSETS_HASH is a sequential hash of the assets in the note currently being processed.
 #!
 #! Panics if:
 #! - a note is not being processed.
@@ -677,6 +698,32 @@ export.note_add_asset
 
     exec.tx::add_asset_to_note
     # => [note_idx, ASSET, pad(11)]
+end
+
+#! Returns the information about assets in the input note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [ASSETS_HASH, num_assets, pad(11)]
+#!
+#! Where:
+#! - note_index is the index of the input note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_HASH is a sequential hash of the assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: dynexec
+export.input_note_get_assets_info
+    # get the assets info
+    exec.input_notes::get_assets_info
+    # => [ASSETS_HASH, num_assets, pad(16)]
+
+    # truncate the stack
+    repeat.5
+        movup.5 drop
+    end
+    # => [ASSETS_HASH, num_assets, pad(11)]
 end
 
 #! Returns the serial number of the note currently being processed.
@@ -832,6 +879,44 @@ export.tx_get_output_notes_commitment
     # truncate the stack
     swapw dropw
     # => [OUTPUT_NOTES_COMMITMENT, pad(12)]
+end
+
+#! Returns the total number of input notes consumed by this transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [num_input_notes, pad(15)]
+#!
+#! Where:
+#! - num_input_notes is the total number of input notes consumed by this transaction.
+#!
+#! Invocation: dynexec
+export.tx_get_num_input_notes
+    # get the number of input notes
+    exec.tx::get_num_input_notes
+    # => [num_input_notes, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [num_input_notes, pad(15)]
+end
+
+#! Returns the current number of output notes created in this transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [num_output_notes, pad(15)]
+#!
+#! Where:
+#! - num_output_notes is the number of output notes created in this transaction so far.
+#!
+#! Invocation: dynexec
+export.tx_get_num_output_notes
+    # get the number of input notes
+    exec.tx::get_num_output_notes
+    # => [num_output_notes, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [num_output_notes, pad(15)]
 end
 
 #! Returns the block commitment of the reference block.

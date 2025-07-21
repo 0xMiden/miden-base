@@ -51,6 +51,8 @@ const EPILOGUE_END: u32 = 0x2_0019; // 131097
 const LINK_MAP_SET_EVENT: u32 = 0x2_001a; // 131098
 const LINK_MAP_GET_EVENT: u32 = 0x2_001b; // 131099
 
+const UNAUTHORIZED_EVENT: u32 = 0x2_001c; // 131100
+
 /// Events which may be emitted by a transaction kernel.
 ///
 /// The events are emitted via the `emit.<event_id>` instruction. The event ID is a 32-bit
@@ -103,11 +105,20 @@ pub enum TransactionEvent {
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
     LinkMapGetEvent = LINK_MAP_GET_EVENT,
+
+    Unauthorized = UNAUTHORIZED_EVENT,
 }
 
 impl TransactionEvent {
     /// Value of the top 16 bits of a transaction kernel event ID.
     pub const ID_PREFIX: u32 = 2;
+
+    /// Returns `true` if the event is privileged, i.e. it is only allowed to be emitted from the
+    /// root context of the VM, which is where the transaction kernel executes.
+    pub fn is_privileged(&self) -> bool {
+        let is_unprivileged = matches!(self, Self::FalconSigToStack | Self::Unauthorized);
+        !is_unprivileged
+    }
 }
 
 impl fmt::Display for TransactionEvent {
@@ -173,6 +184,8 @@ impl TryFrom<u32> for TransactionEvent {
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),
             LINK_MAP_GET_EVENT => Ok(TransactionEvent::LinkMapGetEvent),
+
+            UNAUTHORIZED_EVENT => Ok(TransactionEvent::Unauthorized),
 
             _ => Err(TransactionEventError::InvalidTransactionEvent(value)),
         }

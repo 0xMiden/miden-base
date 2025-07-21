@@ -45,7 +45,7 @@ export.auth__tx_rpo_falcon512
     # => [PUB_KEY, MESSAGE, pad(16)]
 
     # Update the nonce
-    push.1 exec.account::incr_nonce
+    exec.account::incr_nonce
     # => [PUB_KEY, MESSAGE, pad(16)]
 
     # Verify the signature against the public key and the message. The procedure gets as inputs the

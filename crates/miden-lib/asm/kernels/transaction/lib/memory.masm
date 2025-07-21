@@ -174,20 +174,16 @@ const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
 
-# The pointer at which the delta of the nonce is stored.
-# Layout: [nonce_delta, 0, 0, 0]
-const.ACCOUNT_DELTA_NONCE_PTR=532480
-
 # The link map pointer at which the delta of the fungible asset vault is stored.
-const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+4
+const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=532480
 
 # The link map pointer at which the delta of the non-fungible asset vault is stored.
-const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+8
+const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR+4
 
 # The section of link map pointers where storage map deltas are stored.
 # This section is offset by `slot index` to get the link map ptr for the storage map
 # delta at that slot index. Slot indices that are not map slots are simply unused.
-const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_PTR+12
+const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR+8
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -259,13 +255,13 @@ const.LINK_MAP_ENTRY_SIZE=16
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the number of output notes.
+#! Returns the current number of output notes created in this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_output_notes]
 #!
 #! Where:
-#! - num_output_notes is the number of output notes.
+#! - num_output_notes is the number of output notes created in this transaction so far.
 export.get_num_output_notes
     mem_load.NUM_OUTPUT_NOTES_PTR
 end
@@ -834,7 +830,9 @@ end
 export.push_ptr_to_account_stack
     # check that the account stack is not full
     mem_load.ACCOUNT_STACK_TOP_PTR dup
-    lt.MAX_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_OVERFLOW
+    # => [account_stack_top_ptr, account_stack_top_ptr, curr_account_data_ptr]
+
+    u32lt.MAX_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_OVERFLOW
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
     # check that the current account data pointer is not equal to the native account data pointer
@@ -862,7 +860,9 @@ export.pop_ptr_from_account_stack
     # check that the account stack always is at least of size 1, that is, it contains at least the
     # native account
     mem_load.ACCOUNT_STACK_TOP_PTR dup
-    gt.MIN_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
+    # => [account_stack_top_ptr, account_stack_top_ptr]
+
+    u32gt.MIN_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
     # => [account_stack_top_ptr]
 
     # move the account stack pointer one element back and store it as the top pointer
@@ -1282,31 +1282,6 @@ export.get_account_delta_storage_map_ptr
     add.ACCOUNT_DELTA_STORAGE_MAP_SECTION
 end
 
-#! Increments the delta of the account's nonce.
-#!
-#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2,
-#! then the stored nonce_delta will be 5.
-#!
-#! Inputs:  [nonce_delta]
-#! Outputs: []
-#!
-#! Where:
-#! - nonce_delta is the value by which the nonce changed.
-export.incr_account_nonce_delta
-    exec.get_account_nonce_delta add mem_store.ACCOUNT_DELTA_NONCE_PTR
-end
-
-#! Returns the delta of the account's nonce.
-#!
-#! Inputs:  []
-#! Outputs: [nonce_delta]
-#!
-#! Where:
-#! - nonce_delta is the value by which the nonce changed.
-export.get_account_nonce_delta
-    mem_load.ACCOUNT_DELTA_NONCE_PTR
-end
-
 #! Initializes the storage slots holding the initial values of each slot.
 #!
 #! Inputs:  []
@@ -1327,13 +1302,13 @@ end
 # INPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
-#! Gets the total number of input notes in the transaction.
+#! Returns the total number of input notes consumed by this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_input_notes]
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 export.get_num_input_notes
     mem_load.NUM_INPUT_NOTES_PTR
 end
@@ -1344,7 +1319,7 @@ end
 #! Outputs: []
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 export.set_num_input_notes
     mem_store.NUM_INPUT_NOTES_PTR
 end
