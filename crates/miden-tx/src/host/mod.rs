@@ -231,7 +231,7 @@ where
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process),
             TransactionEvent::NoteAfterAddAsset => Ok(()),
 
-            TransactionEvent::FalconSigToStack => self.on_signature_requested(process),
+            TransactionEvent::AuthRequest => self.on_signature_requested(process),
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());

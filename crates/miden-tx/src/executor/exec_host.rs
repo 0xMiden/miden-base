@@ -175,7 +175,7 @@ where
         match transaction_event {
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
-            TransactionEvent::FalconSigToStack => {
+            TransactionEvent::AuthRequest => {
                 self.on_signature_requested(process)
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
             },
