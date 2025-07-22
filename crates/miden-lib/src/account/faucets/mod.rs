@@ -251,7 +251,7 @@ pub fn create_basic_fungible_faucet(
     let auth_component: AuthRpoFalcon512Acl = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
             pub_key,
-            vec![],
+            vec![distribute_proc_root],
             AuthRpoFalcon512AclConfig {
                 allow_unauthorized_output_notes: false,
                 allow_unauthorized_input_notes: true,
@@ -345,16 +345,23 @@ mod tests {
         assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
 
         // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
-        // allow_unauthorized_input_notes, 0]. With 0 tracked procedures,
+        // allow_unauthorized_input_notes, 0]. With 1 tracked procedure (distribute),
         // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=true,
-        // this should be [0, 0, 1, 0].
+        // this should be [1, 0, 1, 0].
         assert_eq!(
             faucet_account.storage().get_item(2).unwrap(),
-            [Felt::ZERO, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
+            [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
         );
 
-        // The procedure root map in slot 3 should be empty since we have no tracked procedures.
-        assert_eq!(faucet_account.storage().get_map_item(3, Word::empty()).unwrap(), Word::empty());
+        // The procedure root map in slot 3 should contain the distribute procedure root.
+        let distribute_root = BasicFungibleFaucet::distribute_digest();
+        assert_eq!(
+            faucet_account
+                .storage()
+                .get_map_item(3, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into())
+                .unwrap(),
+            distribute_root
+        );
 
         // Check that faucet metadata was initialized to the given values. The faucet component is
         // added second, so its assigned storage slot for the metadata will be 2.
