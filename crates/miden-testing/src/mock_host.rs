@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
+use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::{
@@ -7,8 +7,8 @@ use miden_objects::{
 };
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
-    AdviceInputs, BaseHost, ContextId, EventError, MastForest, MastForestStore, ProcessState,
-    SyncHost,
+    AdviceInputs, AdviceMutation, BaseHost, ContextId, EventError, MastForest, MastForestStore,
+    ProcessState, SyncHost,
 };
 
 // MOCK HOST
@@ -51,11 +51,10 @@ impl MockHost {
 
     fn on_push_account_procedure_index(
         &mut self,
-        process: &mut ProcessState,
-    ) -> Result<(), EventError> {
+        process: &ProcessState,
+    ) -> Result<Vec<AdviceMutation>, EventError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process).map_err(Box::new)?;
-        process.advice_provider_mut().push_stack(Felt::from(proc_idx));
-        Ok(())
+        Ok(vec![AdviceMutation::ExtendStack { iter: vec![Felt::from(proc_idx)] }])
     }
 }
 
@@ -66,22 +65,26 @@ impl SyncHost for MockHost {
         self.mast_store.get(node_digest)
     }
 
-    fn on_event(&mut self, process: &mut ProcessState, event_id: u32) -> Result<(), EventError> {
+    fn on_event(
+        &mut self,
+        process: &ProcessState,
+        event_id: u32,
+    ) -> Result<Vec<AdviceMutation>, EventError> {
         let event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         if process.ctx() != ContextId::root() {
             return Err(Box::new(TransactionEventError::NotRootContext(event_id)));
         }
 
-        match event {
+        let advice_mutations = match event {
             TransactionEvent::AccountPushProcedureIndex => {
                 self.on_push_account_procedure_index(process)
             },
             TransactionEvent::LinkMapSetEvent => LinkMap::handle_set_event(process),
             TransactionEvent::LinkMapGetEvent => LinkMap::handle_get_event(process),
-            _ => Ok(()),
+            _ => Ok(Vec::new()),
         }?;
 
-        Ok(())
+        Ok(advice_mutations)
     }
 }

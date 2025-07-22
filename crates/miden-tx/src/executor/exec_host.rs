@@ -12,7 +12,8 @@ use miden_objects::{
     transaction::OutputNote,
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, EventError, MastForest, MastForestStore, ProcessState, SyncHost,
+    AdviceInputs, AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState,
+    SyncHost,
 };
 
 use crate::{
@@ -102,8 +103,8 @@ where
     /// authenticator.
     pub fn on_signature_requested(
         &mut self,
-        process: &mut ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+        process: &ProcessState,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
         let signature_key = Hasher::merge(&[pub_key, msg]);
@@ -127,9 +128,7 @@ where
             signature
         };
 
-        process.advice_provider_mut().extend_stack(signature);
-
-        Ok(())
+        Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -162,21 +161,23 @@ where
         self.base_host.get_mast_forest(procedure_root)
     }
 
-    fn on_event(&mut self, process: &mut ProcessState, event_id: u32) -> Result<(), EventError> {
+    fn on_event(
+        &mut self,
+        process: &ProcessState,
+        event_id: u32,
+    ) -> Result<Vec<AdviceMutation>, EventError> {
         let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
-        match transaction_event {
+        let advice_mutations = match transaction_event {
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
             TransactionEvent::AuthRequest => {
-                self.on_signature_requested(process).map_err(Box::new)?;
+                self.on_signature_requested(process).map_err(Box::new)?
             },
             // All other events are handled as in the base host.
-            _ => {
-                self.base_host.handle_event(process, transaction_event)?;
-            },
-        }
+            _ => self.base_host.handle_event(process, transaction_event)?,
+        };
 
-        Ok(())
+        Ok(advice_mutations)
     }
 }

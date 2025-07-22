@@ -7,7 +7,8 @@ use miden_objects::{
     transaction::OutputNote,
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, EventError, MastForest, MastForestStore, ProcessState, SyncHost,
+    AdviceInputs, AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState,
+    SyncHost,
 };
 
 use crate::{
@@ -78,7 +79,11 @@ where
         self.base_host.get_mast_forest(procedure_root)
     }
 
-    fn on_event(&mut self, process: &mut ProcessState, event_id: u32) -> Result<(), EventError> {
+    fn on_event(
+        &mut self,
+        process: &ProcessState,
+        event_id: u32,
+    ) -> Result<Vec<AdviceMutation>, EventError> {
         let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         self.base_host.handle_event(process, transaction_event)
