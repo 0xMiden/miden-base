@@ -1,4 +1,4 @@
-use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
     Felt, Hasher, Word, account::AuthSecretKey, crypto::SequentialCommit,
@@ -21,9 +21,8 @@ use crate::errors::AuthenticationError;
 ///   display it appropriately.
 /// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It must
 ///   be a cryptographic commitment to some data.
-#[allow(clippy::large_enum_variant)]
 pub enum SignatureData {
-    TransactionSummary(TransactionSummary),
+    TransactionSummary(Box<TransactionSummary>),
     Arbitrary(Vec<Felt>),
     Blind(Word),
 }
@@ -33,7 +32,7 @@ impl SequentialCommit for SignatureData {
 
     fn to_elements(&self) -> Vec<Felt> {
         match self {
-            SignatureData::TransactionSummary(tx_summary) => tx_summary.to_elements(),
+            SignatureData::TransactionSummary(tx_summary) => tx_summary.as_ref().to_elements(),
             SignatureData::Arbitrary(elements) => elements.clone(),
             SignatureData::Blind(word) => word.as_elements().to_vec(),
         }
@@ -42,7 +41,7 @@ impl SequentialCommit for SignatureData {
     fn to_commitment(&self) -> Self::Commitment {
         match self {
             // `TransactionSummary` knows how to derive a commitment to itself.
-            SignatureData::TransactionSummary(tx_summary) => tx_summary.to_commitment(),
+            SignatureData::TransactionSummary(tx_summary) => tx_summary.as_ref().to_commitment(),
             // use the default implementation.
             SignatureData::Arbitrary(elements) => Hasher::hash_elements(elements),
             // `Blind` is assumed to already be a commitment.
