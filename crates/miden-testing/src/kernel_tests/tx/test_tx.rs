@@ -1217,7 +1217,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = format!(
         "
-      #! Inputs:  [AUTH_ARGS, pad(16)]
+      #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
       export.auth__abort_tx
           dropw
