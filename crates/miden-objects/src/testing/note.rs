@@ -4,7 +4,7 @@ use alloc::{
 };
 
 use assembly::{
-    Assembler,
+    Assembler, SourceFile, SourceManager,
     debuginfo::{SourceLanguage, Uri},
 };
 use rand::Rng;
@@ -103,24 +103,15 @@ impl NoteBuilder {
     }
 
     pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        let source_manager = assembler.source_manager();
         // Generate a unique file name from the note's serial number, which should be unique per
         // note. Only includes two elements in the file name which should be enough for the
         // uniqueness in the testing context and does not result in overly long file names which do
         // not render well in all situations.
-        let virtual_source_file = source_manager.load(
-            SourceLanguage::Masm,
-            Uri::new(format!(
-                "note_{:x}{:x}",
-                self.serial_num[0].as_int(),
-                self.serial_num[1].as_int()
-            )),
-            self.code,
-        );
+
         let code = assembler
             .clone()
             .with_debug_mode(true)
-            .assemble_program(virtual_source_file)
+            .assemble_program(self.code.as_str())
             .unwrap();
 
         let note_script = NoteScript::new(code);
