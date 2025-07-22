@@ -20,11 +20,15 @@ const.PUBLIC_KEY_SLOT=0
 #!
 #! Including the final_nonce is necessary for replay protection.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [AUTH_ARGS, pad(12)]
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
 export.auth__tx_rpo_falcon512
+    # drop auth args
+    dropw
+    # => [pad(16)]
+
     # Increment the account's nonce.
     # ---------------------------------------------------------------------------------------------
 
