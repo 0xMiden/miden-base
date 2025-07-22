@@ -251,11 +251,9 @@ pub fn create_basic_fungible_faucet(
     let auth_component: AuthRpoFalcon512Acl = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
             pub_key,
-            vec![distribute_proc_root],
-            AuthRpoFalcon512AclConfig {
-                allow_unauthorized_output_notes: false,
-                allow_unauthorized_input_notes: true,
-            },
+            AuthRpoFalcon512AclConfig::new()
+                .with_auth_trigger_procedures(vec![distribute_proc_root])
+                .with_allow_unauthorized_input_notes(true),
         )
         .map_err(FungibleFaucetError::AccountError)?,
     };

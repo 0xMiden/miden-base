@@ -78,11 +78,10 @@ impl Auth {
 
                 let component = AuthRpoFalcon512Acl::new(
                     pub_key,
-                    auth_trigger_procedures.clone(),
-                    AuthRpoFalcon512AclConfig {
-                        allow_unauthorized_output_notes: *allow_unauthorized_output_notes,
-                        allow_unauthorized_input_notes: *allow_unauthorized_input_notes,
-                    },
+                    AuthRpoFalcon512AclConfig::new()
+                        .with_auth_trigger_procedures(auth_trigger_procedures.clone())
+                        .with_allow_unauthorized_output_notes(*allow_unauthorized_output_notes)
+                        .with_allow_unauthorized_input_notes(*allow_unauthorized_input_notes),
                 )
                 .expect("component creation failed")
                 .into();
