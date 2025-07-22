@@ -178,10 +178,14 @@ export.account_get_nonce
     # => [nonce, pad(15)]
 end
 
-#! Increments the account nonce by one.
+#! Increments the account nonce by one and returns the new nonce.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [pad(16)]
+#! Outputs: [final_nonce, pad(15)]
+#!
+#! Where:
+#! - final_nonce is the new nonce of the account. Since it cannot be incremented again, this will
+#!   also be the final nonce of the account after transaction execution.
 #!
 #! Panics if:
 #! - the invocation of this procedure does not originate from the native account.
@@ -201,7 +205,11 @@ export.account_incr_nonce
 
     # increment the account nonce
     exec.account::incr_nonce
-    # => [pad(16)]
+    # => [final_nonce, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [final_nonce, pad(15)]
 end
 
 #! Gets the account code commitment of the current account.

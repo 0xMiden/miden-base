@@ -111,6 +111,9 @@ pub const ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_ZERO_MUST_BE_WITHIN_LIMITS: MasmErro
 /// Error Message: "failed to build the fungible asset because the provided faucet id is not from a fungible faucet"
 pub const ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = MasmError::from_static_str("failed to build the fungible asset because the provided faucet id is not from a fungible faucet");
 
+/// Error Message: "requested input note index should be less than the total number of input notes"
+pub const ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested input note index should be less than the total number of input notes");
+
 /// Error Message: "provided kernel procedure offset is out of bounds"
 pub const ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided kernel procedure offset is out of bounds");
 
@@ -166,6 +169,9 @@ pub const ERR_NOTE_NETWORK_EXECUTION_DOES_NOT_TARGET_NETWORK_ACCOUNT: MasmError 
 pub const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT: MasmError = MasmError::from_static_str("number of assets in a note exceed 255");
 /// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits must be zero"
 pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the note's tag must fit into a u32 so the 32 most significant bits must be zero");
+
+/// Error Message: "requested output note index should be less than the total number of created output notes"
+pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
 
 /// Error Message: "existing accounts must have a non-zero nonce"
 pub const ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE: MasmError = MasmError::from_static_str("existing accounts must have a non-zero nonce");

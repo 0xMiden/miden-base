@@ -76,7 +76,7 @@ impl From<AccountMockComponent> for AccountComponent {
 ///
 /// The component defines an `auth__basic` procedure that always increments the nonce by 1.
 pub struct IncrNonceAuthComponent {
-    library: Library,
+    pub library: Library,
 }
 
 impl IncrNonceAuthComponent {
@@ -102,7 +102,7 @@ const INCR_NONCE_AUTH_CODE: &str = "
     use.miden::account
 
     export.auth__basic
-        exec.account::incr_nonce
+        exec.account::incr_nonce drop
     end
 ";
 
@@ -134,7 +134,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
             # Last element is the incr_nonce_flag.
             if.true
-                exec.account::incr_nonce
+                exec.account::incr_nonce drop
             end
             dropw dropw dropw dropw
         end
@@ -146,7 +146,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 ///
 /// The component defines an `auth__noop` procedure that does nothing (always succeeds).
 pub struct NoopAuthComponent {
-    library: Library,
+    pub library: Library,
 }
 
 impl NoopAuthComponent {
@@ -166,9 +166,15 @@ impl From<NoopAuthComponent> for AccountComponent {
     }
 }
 
-/// TODO: Add documentation once #1501 is ready.
+/// Creates a mock authentication [`AccountComponent`] for testing purposes.
+///
+/// The component defines an `auth__conditional` procedure that conditionally succeeds and
+/// conditionally increments the nonce based on the authentication arguments.
+///
+/// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.
+/// In case it succeeds, it conditionally increments the nonce based on the fourth argument.
 pub struct ConditionalAuthComponent {
-    library: Library,
+    pub library: Library,
 }
 
 impl ConditionalAuthComponent {
