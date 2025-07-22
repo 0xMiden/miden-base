@@ -556,10 +556,10 @@ where
     /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
     /// ```
     fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
-        let account_delta_commitment = process.get_stack_word(0);
-        let input_notes_commitment = process.get_stack_word(1);
-        let output_notes_commitment = process.get_stack_word(2);
-        let salt = process.get_stack_word(3);
+        let account_delta_commitment = process.get_stack_word(3);
+        let input_notes_commitment = process.get_stack_word(2);
+        let output_notes_commitment = process.get_stack_word(1);
+        let salt = process.get_stack_word(0);
 
         TransactionKernelError::Unauthorized {
             account_delta_commitment,
