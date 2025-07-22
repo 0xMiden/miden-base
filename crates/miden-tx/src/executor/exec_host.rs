@@ -17,7 +17,7 @@ use vm_processor::{
 };
 
 use crate::{
-    auth::{SignatureData, TransactionAuthenticator},
+    auth::{SigningInputs, TransactionAuthenticator},
     errors::TransactionHostError,
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
@@ -106,7 +106,7 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
         {
             signature.to_vec()
         } else {
-            let signature_data = SignatureData::Blind(msg);
+            let signature_data = SigningInputs::Blind(msg);
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;

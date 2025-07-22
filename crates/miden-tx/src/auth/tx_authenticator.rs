@@ -21,31 +21,31 @@ use crate::errors::AuthenticationError;
 ///   display it appropriately.
 /// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It must
 ///   be a cryptographic commitment to some data.
-pub enum SignatureData {
+pub enum SigningInputs {
     TransactionSummary(Box<TransactionSummary>),
     Arbitrary(Vec<Felt>),
     Blind(Word),
 }
 
-impl SequentialCommit for SignatureData {
+impl SequentialCommit for SigningInputs {
     type Commitment = Word;
 
     fn to_elements(&self) -> Vec<Felt> {
         match self {
-            SignatureData::TransactionSummary(tx_summary) => tx_summary.as_ref().to_elements(),
-            SignatureData::Arbitrary(elements) => elements.clone(),
-            SignatureData::Blind(word) => word.as_elements().to_vec(),
+            SigningInputs::TransactionSummary(tx_summary) => tx_summary.as_ref().to_elements(),
+            SigningInputs::Arbitrary(elements) => elements.clone(),
+            SigningInputs::Blind(word) => word.as_elements().to_vec(),
         }
     }
 
     fn to_commitment(&self) -> Self::Commitment {
         match self {
             // `TransactionSummary` knows how to derive a commitment to itself.
-            SignatureData::TransactionSummary(tx_summary) => tx_summary.as_ref().to_commitment(),
+            SigningInputs::TransactionSummary(tx_summary) => tx_summary.as_ref().to_commitment(),
             // use the default implementation.
-            SignatureData::Arbitrary(elements) => Hasher::hash_elements(elements),
+            SigningInputs::Arbitrary(elements) => Hasher::hash_elements(elements),
             // `Blind` is assumed to already be a commitment.
-            SignatureData::Blind(word) => *word,
+            SigningInputs::Blind(word) => *word,
         }
     }
 }
@@ -75,7 +75,7 @@ pub trait TransactionAuthenticator {
     fn get_signature(
         &self,
         pub_key: Word,
-        signature_data: &SignatureData,
+        signature_data: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError>;
 }
 
@@ -88,7 +88,7 @@ where
     fn get_signature(
         &self,
         pub_key: Word,
-        signature_data: &SignatureData,
+        signature_data: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         TransactionAuthenticator::get_signature(*self, pub_key, signature_data)
     }
@@ -140,7 +140,7 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
     fn get_signature(
         &self,
         pub_key: Word,
-        signature_data: &SignatureData,
+        signature_data: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         let message = signature_data.to_commitment();
 
@@ -166,7 +166,7 @@ impl TransactionAuthenticator for () {
     fn get_signature(
         &self,
         _pub_key: Word,
-        _signature_data: &SignatureData,
+        _signature_data: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         Err(AuthenticationError::RejectedSignature(
             "default authenticator cannot provide signatures".to_string(),
