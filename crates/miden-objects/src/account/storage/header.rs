@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use super::{AccountStorage, Felt, Hasher, StorageSlot, StorageSlotType, Word};
 use crate::{
     AccountError, ZERO,
+    account::storage,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
@@ -74,6 +75,14 @@ impl AccountStorageHeader {
         self.slots.iter()
     }
 
+    /// Returns an iterator over the storage header map slots.
+    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> {
+        self.slots
+            .iter()
+            .filter(|(slot_type, _)| matches!(slot_type, StorageSlotType::Map))
+            .map(|x| x.1)
+    }
+
     /// Returns the number of slots contained in the storage header.
     pub fn num_slots(&self) -> u8 {
         // SAFETY: The constructors of this type ensure this value fits in a u8.
@@ -95,6 +104,29 @@ impl AccountStorageHeader {
     /// Computes the account storage header commitment.
     pub fn compute_commitment(&self) -> Word {
         Hasher::hash_elements(&self.as_elements())
+    }
+
+    /// Returns the index of the slot whose top‑level value equals `slot_value`.
+    ///
+    /// Returns `None` when no slot matches the supplied value.
+    pub fn get_index_of(&self, slot_value: Word) -> Option<u8> {
+        for (idx, (_, storage_value)) in self.slots.iter().enumerate() {
+            if slot_value == *storage_value {
+                return Some(idx.try_into().expect("slot indices fit into a u8"));
+            }
+        }
+        None
+    }
+
+    /// Indicates whether the slot at `index` is a map slot.
+    ///
+    /// # Errors
+    /// - If `index` exceeds the slot count.
+    pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
+        match self.slot(index)?.0 {
+            StorageSlotType::Map => Ok(true),
+            StorageSlotType::Value => Ok(false),
+        }
     }
 
     /// Converts storage slots of this account storage header into a vector of field elements.

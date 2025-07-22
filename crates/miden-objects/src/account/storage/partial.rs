@@ -5,7 +5,7 @@ use alloc::{
 
 use miden_crypto::{
     Word,
-    merkle::{InnerNodeInfo, SmtLeaf},
+    merkle::{InnerNodeInfo, SmtLeaf, SmtProof},
 };
 use vm_core::utils::{Deserializable, Serializable};
 
@@ -25,7 +25,7 @@ pub struct PartialStorage {
     header: AccountStorageHeader,
     /// Storage map SMTs indexed by their root, containing a subset of the elements from the
     /// complete storage map.
-    map_smts: BTreeMap<Word, PartialStorageMap>,
+    maps: BTreeMap<Word, PartialStorageMap>,
 }
 
 impl PartialStorage {
@@ -36,30 +36,20 @@ impl PartialStorage {
     /// roots in the storage header.
     pub fn new(
         storage_header: AccountStorageHeader,
-        storage_map_smts: impl Iterator<Item = PartialStorageMap>,
+        storage_maps: impl Iterator<Item = PartialStorageMap>,
     ) -> Result<Self, String> {
-        let mut storage_map_roots = BTreeSet::new();
-        for (slot_type, value) in storage_header.slots() {
-            if let StorageSlotType::Map = slot_type {
-                storage_map_roots.insert(*value);
-            }
-        }
-
-        let mut map_smts = BTreeMap::new();
-        for smt in storage_map_smts {
+        let storage_map_roots: BTreeSet<_> = storage_header.map_slot_roots().collect();
+        let mut maps = BTreeMap::new();
+        for smt in storage_maps {
             // Check that the passed storage map partial SMT has a matching map slot root
             if storage_map_roots.contains(&smt.root()) {
                 return Err(String::from("todo"));
             }
-            map_smts.insert(smt.root(), smt);
+            maps.insert(smt.root(), smt);
         }
 
         let commitment = storage_header.compute_commitment();
-        Ok(Self {
-            commitment,
-            header: storage_header,
-            map_smts,
-        })
+        Ok(Self { commitment, header: storage_header, maps })
     }
 
     /// Returns a reference to the header of this partial storage.
@@ -80,12 +70,12 @@ impl PartialStorage {
     /// Returns an iterator over inner nodes of all storage map proofs contained in this
     /// partial storage.
     pub fn inner_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> {
-        self.map_smts.iter().flat_map(|(_, smt)| smt.partial_smt().inner_nodes())
+        self.maps.iter().flat_map(|(_, map)| map.inner_nodes())
     }
 
     /// Iterator over every [`PartialStorageMap`] in this partial storage.
     pub fn maps(&self) -> impl Iterator<Item = &PartialStorageMap> + '_ {
-        self.map_smts.values()
+        self.maps.values()
     }
 
     /// Iterator over all tracked, non‑empty leaves across every map.
@@ -110,14 +100,14 @@ impl From<&AccountStorage> for PartialStorage {
 
         let header: AccountStorageHeader = account_storage.to_header();
         let commitment = header.compute_commitment();
-        PartialStorage { header, map_smts, commitment }
+        PartialStorage { header, maps: map_smts, commitment }
     }
 }
 
 impl Serializable for PartialStorage {
     fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.header);
-        target.write(&self.map_smts);
+        target.write(&self.maps);
     }
 }
 
@@ -130,6 +120,6 @@ impl Deserializable for PartialStorage {
 
         let commitment = header.compute_commitment();
 
-        Ok(PartialStorage { header, map_smts, commitment })
+        Ok(PartialStorage { header, maps: map_smts, commitment })
     }
 }
