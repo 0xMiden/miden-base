@@ -67,7 +67,7 @@ pub trait TransactionAuthenticator {
     /// The request is initiated by the VM as a consequence of the SigToStack advice
     /// injector.
     ///
-    /// - `pub_key`: The public key used for signature generation.
+    /// - `pub_key_hash`: The hash of the public key used for signature generation.
     /// - `message`: The message to sign, usually a commitment to the transaction data.
     /// - `account_delta`: An informational parameter describing the changes made to the account up
     ///   to the point of calling `get_signature()`. This allows the authenticator to review any
