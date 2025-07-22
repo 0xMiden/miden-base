@@ -50,6 +50,19 @@ impl SequentialCommit for SigningInputs {
     }
 }
 
+/// Convenience methods for [SigningInputs].
+impl SigningInputs {
+    /// Computes the commitment to [SigningInputs].
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
+
+    /// Returns a representation of the [SigningInputs] as a sequence of field elements.
+    pub fn to_elements(&self) -> Vec<Felt> {
+        <Self as SequentialCommit>::to_elements(self)
+    }
+}
+
 // TRANSACTION AUTHENTICATOR
 // ================================================================================================
 
