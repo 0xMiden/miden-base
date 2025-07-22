@@ -114,13 +114,13 @@ where
         {
             signature.to_vec()
         } else {
-            let signature_data = SigningInputs::Blind(msg);
+            let signing_inputs = SigningInputs::Blind(msg);
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
             let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key, &signature_data)
+                .get_signature(pub_key, &signing_inputs)
                 .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
             self.generated_signatures.insert(signature_key, signature.clone());

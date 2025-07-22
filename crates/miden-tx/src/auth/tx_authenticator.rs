@@ -88,7 +88,7 @@ pub trait TransactionAuthenticator {
     fn get_signature(
         &self,
         pub_key: Word,
-        signature_data: &SigningInputs,
+        signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError>;
 }
 
@@ -101,9 +101,9 @@ where
     fn get_signature(
         &self,
         pub_key: Word,
-        signature_data: &SigningInputs,
+        signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
-        TransactionAuthenticator::get_signature(*self, pub_key, signature_data)
+        TransactionAuthenticator::get_signature(*self, pub_key, signing_inputs)
     }
 }
 
@@ -121,7 +121,7 @@ impl TransactionAuthenticator for UnreachableAuth {
     fn get_signature(
         &self,
         _pub_key: Word,
-        _signature_data: &SigningInputs,
+        _signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         unreachable!("Type `UnreachableAuth` must not be instantiated")
     }
@@ -173,9 +173,9 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
     fn get_signature(
         &self,
         pub_key: Word,
-        signature_data: &SigningInputs,
+        signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
-        let message = signature_data.to_commitment();
+        let message = signing_inputs.to_commitment();
 
         let mut rng = self.rng.write();
 
@@ -199,7 +199,7 @@ impl TransactionAuthenticator for () {
     fn get_signature(
         &self,
         _pub_key: Word,
-        _signature_data: &SigningInputs,
+        _signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         Err(AuthenticationError::RejectedSignature(
             "default authenticator cannot provide signatures".to_string(),
