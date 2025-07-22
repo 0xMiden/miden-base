@@ -18,6 +18,7 @@ use miden_objects::{
 };
 use miden_tx::{
     NoteAccountExecution, NoteConsumptionChecker, TransactionExecutor, TransactionExecutorError,
+    auth::UnreachableAuth,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -57,7 +58,8 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker.check_notes_consumability(
@@ -94,7 +96,8 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker.check_notes_consumability(
@@ -168,7 +171,8 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor: TransactionExecutor = TransactionExecutor::new(&tx_context, None).with_tracing();
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker.check_notes_consumability(

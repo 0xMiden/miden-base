@@ -31,7 +31,7 @@ const NOTE_AFTER_CREATED: u32 = 0x2_000c; // 131084
 const NOTE_BEFORE_ADD_ASSET: u32 = 0x2_000d; // 131085
 const NOTE_AFTER_ADD_ASSET: u32 = 0x2_000e; // 131086
 
-const FALCON_SIG_TO_STACK: u32 = 0x2_000f; // 131087
+const AUTH_REQUEST: u32 = 0x2_000f; // 131087
 
 const PROLOGUE_START: u32 = 0x2_0010; // 131088
 const PROLOGUE_END: u32 = 0x2_0011; // 131089
@@ -86,7 +86,7 @@ pub enum TransactionEvent {
     NoteBeforeAddAsset = NOTE_BEFORE_ADD_ASSET,
     NoteAfterAddAsset = NOTE_AFTER_ADD_ASSET,
 
-    FalconSigToStack = FALCON_SIG_TO_STACK,
+    AuthRequest = AUTH_REQUEST,
 
     PrologueStart = PROLOGUE_START,
     PrologueEnd = PROLOGUE_END,
@@ -116,7 +116,7 @@ impl TransactionEvent {
     /// Returns `true` if the event is privileged, i.e. it is only allowed to be emitted from the
     /// root context of the VM, which is where the transaction kernel executes.
     pub fn is_privileged(&self) -> bool {
-        let is_unprivileged = matches!(self, Self::FalconSigToStack | Self::Unauthorized);
+        let is_unprivileged = matches!(self, Self::AuthRequest | Self::Unauthorized);
         !is_unprivileged
     }
 }
@@ -165,7 +165,7 @@ impl TryFrom<u32> for TransactionEvent {
             NOTE_BEFORE_ADD_ASSET => Ok(TransactionEvent::NoteBeforeAddAsset),
             NOTE_AFTER_ADD_ASSET => Ok(TransactionEvent::NoteAfterAddAsset),
 
-            FALCON_SIG_TO_STACK => Ok(TransactionEvent::FalconSigToStack),
+            AUTH_REQUEST => Ok(TransactionEvent::AuthRequest),
 
             PROLOGUE_START => Ok(TransactionEvent::PrologueStart),
             PROLOGUE_END => Ok(TransactionEvent::PrologueEnd),

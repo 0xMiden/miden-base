@@ -132,8 +132,8 @@ pub const INIT_NONCE_PTR: MemoryAddress = 416;
 /// The memory address at which the transaction script mast root is store
 pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
 
-/// The memory address at which the key of the transaction script arguments is stored.
-pub const TX_SCRIPT_ARGS_KEY: MemoryAddress = 424;
+/// The memory address at which the transaction script arguments are stored.
+pub const TX_SCRIPT_ARGS: MemoryAddress = 424;
 
 /// The memory address at which the key of the auth procedure arguments is stored.
 pub const AUTH_ARGS_PTR: MemoryAddress = 428;

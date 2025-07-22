@@ -16,7 +16,7 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // account_get_nonce
     word!("0xb19ece9509e73580a93f6516ddbc62c87e70cee6e97eea4af8c46dcee5b42384"),
     // account_incr_nonce
-    word!("0x30c2c631c063e9c821ca929aa892f78ceb68a20358a35bac2865df544fe778ee"),
+    word!("0xafb13b2a0b8e8c3fd7ce33917adba49d113a268a676f3c95e05816af69cf7d7a"),
     // account_get_code_commitment
     word!("0x3dd7c93691699c00d70ee2687f568e38869d81402b1dba25f2d6c2b463b91f77"),
     // account_get_storage_commitment

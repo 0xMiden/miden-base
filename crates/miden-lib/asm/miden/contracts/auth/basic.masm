@@ -5,8 +5,8 @@ use.std::crypto::dsa::rpo_falcon512
 # CONSTANTS
 # =================================================================================================
 
-# Event to place the falcon signature of a provided message and public key on the advice stack.
-const.FALCON_SIG_TO_STACK=131087
+# The event to request an authentication signature.
+const.AUTH_REQUEST=131087
 
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
@@ -51,7 +51,7 @@ export.auth__tx_rpo_falcon512
     # Verify the signature against the public key and the message. The procedure gets as inputs the
     # hash of the public key and the hash of the message via the operand stack. The signature is
     # provided via the advice stack. The signature is valid if and only if the procedure returns.
-    emit.FALCON_SIG_TO_STACK
+    emit.AUTH_REQUEST
     exec.rpo_falcon512::verify
     # => [pad(16)]
 end
