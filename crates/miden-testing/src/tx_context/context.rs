@@ -7,7 +7,7 @@ use miden_objects::{
     account::{Account, AccountId},
     assembly::{
         Assembler, SourceManager,
-        debuginfo::{SourceLanguage, Uri},
+        debuginfo::{SourceLanguage, SourceManagerSync, Uri},
     },
     block::{BlockHeader, BlockNumber},
     note::Note,
@@ -128,16 +128,11 @@ impl TransactionContext {
         let tx_args = self.tx_args().clone();
         let authenticator = self.authenticator();
 
-        let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
+        let tx_executor = TransactionExecutor::new(&self, authenticator)
+            .with_debug_mode()
+            .with_source_manager(self.source_manager.clone());
 
-        maybe_await!(tx_executor.execute_transaction(
-            account_id,
-            block_num,
-            notes,
-            tx_args,
-            source_manager
-        ))
+        maybe_await!(tx_executor.execute_transaction(account_id, block_num, notes, tx_args,))
     }
 
     pub fn account(&self) -> &Account {
@@ -169,8 +164,8 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
-        Arc::clone(&self.source_manager)
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
+        self.source_manager.clone()
     }
 }
 

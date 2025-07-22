@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
-use assembly::debuginfo::SourceManagerSync;
+use assembly::{DefaultSourceManager, debuginfo::SourceManagerSync};
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
@@ -46,6 +46,7 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
     exec_options: ExecutionOptions,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
@@ -56,10 +57,12 @@ where
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
-    /// [TransactionAuthenticator].
+    /// Creates a new [`TransactionExecutor`] instance with the specified [`DataStore`] and
+    /// [`TransactionAuthenticator`].
     pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
+
+        let source_manager = DefaultSourceManager::default_arc_dyn();
 
         Self {
             data_store,
@@ -71,6 +74,7 @@ where
                 false,
             )
             .expect("Must not fail while max cycles is more than min trace length"),
+            source_manager,
         }
     }
 
@@ -87,7 +91,14 @@ where
         validate_num_cycles(exec_options.max_cycles())?;
         validate_num_cycles(exec_options.expected_cycles())?;
 
-        Ok(Self { data_store, authenticator, exec_options })
+        let source_manager = DefaultSourceManager::default_arc_dyn();
+
+        Ok(Self {
+            data_store,
+            authenticator,
+            exec_options,
+            source_manager,
+        })
     }
 
     /// Puts the [TransactionExecutor] into debug mode.
@@ -107,6 +118,12 @@ where
     /// stages of transaction execution take.
     pub fn with_tracing(mut self) -> Self {
         self.exec_options = self.exec_options.with_tracing();
+        self
+    }
+
+    /// Provide a custom [`SourceManager`] implementation over the default [`DefaultSourceManager`].
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
         self
     }
 
@@ -144,7 +161,6 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -177,7 +193,7 @@ where
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?
-        .with_source_manager(source_manager);
+        .with_source_manager(self.source_manager.clone());
 
         // Execute the transaction kernel
         let trace = vm_processor::execute(
@@ -224,7 +240,6 @@ where
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
@@ -254,9 +269,9 @@ where
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?
-        .with_source_manager(source_manager);
+        .with_source_manager(self.source_manager.clone());
 
-        let process = Process::new(
+        let mut process = Process::new(
             TransactionKernel::tx_script_main().kernel().clone(),
             stack_inputs,
             advice_inputs,
@@ -295,7 +310,6 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -328,7 +342,7 @@ where
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?
-        .with_source_manager(source_manager);
+        .with_source_manager(self.source_manager.clone());
 
         // execute the transaction kernel
         let result = vm_processor::execute(

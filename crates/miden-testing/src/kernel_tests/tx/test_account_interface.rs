@@ -96,17 +96,13 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None)
+        .with_tracing()
+        .with_source_manager(source_manager);
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    let execution_check_result = notes_checker.check_notes_consumability(
-        account_id,
-        block_ref,
-        input_notes,
-        tx_args,
-        source_manager,
-    )?;
+    let execution_check_result =
+        notes_checker.check_notes_consumability(account_id, block_ref, input_notes, tx_args)?;
     assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
     Ok(())
@@ -171,17 +167,13 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None)
+        .with_tracing()
+        .with_source_manager(source_manager);
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    let execution_check_result = notes_checker.check_notes_consumability(
-        account_id,
-        block_ref,
-        input_notes,
-        tx_args,
-        source_manager,
-    )?;
+    let execution_check_result =
+        notes_checker.check_notes_consumability(account_id, block_ref, input_notes, tx_args)?;
 
     assert_matches!(execution_check_result, NoteAccountExecution::Failure {
         failed_note_id,
