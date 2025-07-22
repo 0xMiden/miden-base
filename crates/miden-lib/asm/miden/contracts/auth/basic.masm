@@ -43,7 +43,7 @@ export.auth__tx_rpo_falcon512
     # ---------------------------------------------------------------------------------------------
 
     exec.create_tx_summary
-    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT, pad(16)]
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, pad(16)]
 
     # the commitment to the tx summary is the message that is signed
     exec.hash_tx_summary
@@ -77,28 +77,30 @@ end
 #! Creates the transaction summary and returns it in the order in which it is hashed.
 #!
 #! Inputs:  []
-#! Outputs: [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+#! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 proc.create_tx_summary
-    # get the commitment to the output notes
-    exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT]
-
-    push.0.0 exec.tx::get_block_number exec.account::get_nonce
-    # => [[final_nonce, ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT]
-    # => [SALT, OUTPUT_NOTES_COMMITMENT]
-
     exec.account::compute_delta_commitment
-    # => [ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+    # => [ACCOUNT_DELTA_COMMITMENT]
 
     exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+    exec.tx::get_output_notes_commitment
+    # => [OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+    push.0.0 exec.tx::get_block_number exec.account::get_nonce
+    # => [[final_nonce, ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 end
 
 #! Hashes the provided transaction summary and returns its commitment.
 #!
-#! Inputs:  [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+#! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 #! Outputs: [TX_SUMMARY_COMMITMENT]
 proc.hash_tx_summary
+    swapdw
+    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+
     # pad capacity element of the hasher
     padw movdnw.2
     # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, CAPACITY, SALT, OUTPUT_NOTES_COMMITMENT]
