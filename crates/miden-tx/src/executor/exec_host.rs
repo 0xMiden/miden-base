@@ -5,6 +5,7 @@ use alloc::{
     vec::Vec,
 };
 
+use assembly::{DefaultSourceManager, debuginfo::SourceManagerSync};
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
 use miden_objects::{
     Felt, Hasher, Word,
@@ -47,6 +48,8 @@ where
     /// transaction without having to regenerate the signature or requiring access to the
     /// authenticator that produced it.
     generated_signatures: BTreeMap<Word, Vec<Felt>>,
+
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
@@ -78,11 +81,20 @@ where
             base_host,
             authenticator,
             generated_signatures: BTreeMap::new(),
+            source_manager: DefaultSourceManager::default_arc_dyn(),
         })
+    }
+
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
+        self.source_manager.clone()
+    }
 
     /// Returns a reference to the underlying [`TransactionBaseHost`].
     pub(super) fn base_host(&self) -> &TransactionBaseHost<'store, STORE> {

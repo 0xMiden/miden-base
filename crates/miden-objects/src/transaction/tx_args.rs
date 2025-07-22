@@ -5,7 +5,7 @@ use alloc::{
 };
 
 use assembly::{Assembler, Parse};
-use miden_crypto::merkle::InnerNodeInfo;
+use miden_crypto::merkle::{InnerNodeInfo, MerkleStore};
 
 use super::{AccountInputs, Felt, Word};
 use crate::{
@@ -22,10 +22,10 @@ use crate::{
 ///
 /// - Transaction script: a program that is executed in a transaction after all input notes scripts
 ///   have been executed.
-/// - Transaction script arguments: a [`Word`], which will be pushed to the operand stack before the
-///   transaction script execution. If these arguments are not specified, the [`EMPTY_WORD`] would
-///   be used as a default value. If the [AdviceInputs] are propagated with some user defined map
-///   entries, this script arguments word could be used as a key to access the corresponding value.
+/// - Transaction script argument: a [`Word`], which will be pushed to the operand stack before the
+///   transaction script execution. If this argument is not specified, the [`EMPTY_WORD`] would be
+///   used as a default value. If the [AdviceInputs] are propagated with some user defined map
+///   entries, this script argument could be used as a key to access the corresponding value.
 /// - Note arguments: data put onto the stack right before a note script is executed. These are
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.
@@ -57,7 +57,11 @@ impl TransactionArgs {
             tx_script: None,
             tx_script_args: EMPTY_WORD,
             note_args: Default::default(),
-            advice_inputs: AdviceInputs::default().with_map(advice_map),
+            advice_inputs: AdviceInputs::default().with_map(
+                advice_map
+                    .iter()
+                    .map(|(word, felts)| (word.clone(), Vec::from_iter(felts.iter().cloned()))),
+            ),
             foreign_account_inputs,
             auth_args: EMPTY_WORD,
         }
