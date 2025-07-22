@@ -377,12 +377,11 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
 // The total number of output notes for a transaction is stored in the bookkeeping section of the
 // memory. Data section of each note is laid out like so:
 //
-// ┌─────────┬──────────┬───────────┬───────────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
-// │ NOTE ID │ METADATA │ RECIPIENT │ ASSETS COMMITMENT │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │
-// PADDING │ |         |          |           |                   | AND DIRTY FLAG |         |     |
-// |         |
-// ├─────────┼──────────┼───────────┼───────────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
-//      0          1          2               3                 4             5             5 + n
+// ┌──────┬──────────┬───────────┬────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
+// │ NOTE │ METADATA │ RECIPIENT │   ASSETS   │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │ PADDING │
+// |  ID  |          |           | COMMITMENT | AND DIRTY FLAG |         |     |         |         |
+// ├──────┼──────────┼───────────┼────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
+//    0        1           2           3              4             5             5 + n
 //
 // The NUM_ASSETS_AND_DIRTY_FLAG word has the following layout:
 // `[num_assets, assets_commitment_dirty_flag, 0, 0]`, where:
