@@ -16,7 +16,8 @@ const.PUBLIC_KEY_SLOT=0
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
 #! changed or not. Then it computes and signs the following message (in memory order):
-#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
+#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT,
+#!  OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
 #!
 #! Including the final_nonce is necessary for replay protection. The reference block number is
 #! included to commit to the transaction creator's intended reference block of the transaction
