@@ -232,12 +232,12 @@ export.compute_current_commitment
     # => [ACCOUNT_COMMITMENT]
 end
 
-#! Increments the account nonce by one.
+#! Increments the account nonce by one and returns the new nonce.
 #!
 #! Assumes that it is executed only when the current account is the native account.
 #!
 #! Inputs:  []
-#! Outputs: []
+#! Outputs: [new_nonce]
 #!
 #! Panics if:
 #! - the nonce has already been incremented.
@@ -263,10 +263,11 @@ export.incr_nonce
     add.1
     # => [new_nonce]
 
-    exec.memory::set_acct_nonce
-    # => []
+    dup exec.memory::set_acct_nonce
+    # => [new_nonce]
 
     emit.ACCOUNT_AFTER_INCREMENT_NONCE_EVENT
+    # => [new_nonce]
 end
 
 #! Returns the id of the current account.

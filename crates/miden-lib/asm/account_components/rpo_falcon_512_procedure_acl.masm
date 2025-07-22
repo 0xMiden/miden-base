@@ -63,7 +63,7 @@ export.auth__tx_rpo_falcon512_procedure_acl
     if.true
         exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     else
-        exec.account::incr_nonce
+        exec.account::incr_nonce drop
     end
 
     drop
