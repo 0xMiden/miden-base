@@ -37,7 +37,7 @@ export.auth__tx_rpo_falcon512
 
     # this has to happen before computing the delta commitment, otherwise that procedure will abort
     exec.account::incr_nonce
-    # => [pad(16)]
+    # => [final_nonce, pad(16)]
 
     # Compute the message that is signed.
     # ---------------------------------------------------------------------------------------------
@@ -76,19 +76,29 @@ end
 
 #! Creates the transaction summary and returns it in the order in which it will be hashed.
 #!
-#! Inputs:  []
+#! Inputs:  [final_nonce]
 #! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-proc.create_tx_summary
+#!
+#! Where:
+#! - SALT is used for replay protection and contains the final nonce of the account and the
+#!   block number of the transaction's reference block.
+#! - OUTPUT_NOTES_COMMITMENT is the commitment to the transaction's output notes.
+#! - INPUT_NOTES_COMMITMENT is the commitment to the transaction's inputs notes.
+#! - ACCOUNT_DELTA_COMMITMENT is the commitment to the transaction's account delta.
+export.create_tx_summary
     exec.account::compute_delta_commitment
-    # => [ACCOUNT_DELTA_COMMITMENT]
+    # => [ACCOUNT_DELTA_COMMITMENT, final_nonce]
 
     exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
 
     exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+    # => [OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
 
-    push.0.0 exec.tx::get_block_number exec.account::get_nonce
+    push.0.0 exec.tx::get_block_number
+    # => [[ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
+
+    movup.15
     # => [[final_nonce, ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 end
@@ -97,7 +107,13 @@ end
 #!
 #! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 #! Outputs: [TX_SUMMARY_COMMITMENT]
-proc.hash_tx_summary
+#!
+#! Where:
+#! - SALT is an arbitrary word used for replay protection.
+#! - OUTPUT_NOTES_COMMITMENT is the commitment to the transaction's output notes.
+#! - INPUT_NOTES_COMMITMENT is the commitment to the transaction's inputs notes.
+#! - ACCOUNT_DELTA_COMMITMENT is the commitment to the transaction's account delta.
+export.hash_tx_summary
     swapdw
     # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
 

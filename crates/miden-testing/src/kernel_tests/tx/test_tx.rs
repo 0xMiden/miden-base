@@ -1217,21 +1217,17 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = format!(
         "
-      use.miden::tx
-
+      #! Inputs:  [AUTH_ARGS, pad(12)]
+      #! Outputs: [pad(16)]
       export.auth__abort_tx
-          padw
-          # => [SALT]
+          dropw
+          # => [pad(16)]
 
-          exec.tx::get_output_notes_commitment
-          # => [OUTPUT_NOTES_COMMITMENT, SALT]
+          exec.::miden::account::incr_nonce
+          # => [final_nonce, pad(16)]
 
-          exec.tx::get_input_notes_commitment
-          # => [INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
-
-          # TODO: Replace with account_delta::compute_commitment once available in `miden` lib.
-          padw
-          # => [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+          exec.::miden::contracts::auth::basic::create_tx_summary
+          # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 
           emit.{abort_event}
       end
@@ -1269,16 +1265,22 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;
+    let ref_block_num = tx_context.tx_inputs().block_header().block_num().as_u32();
+    let final_nonce = tx_context.account().nonce().as_int() as u32 + 1;
     let input_notes = tx_context.input_notes().clone();
     let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
 
     let error = tx_context.execute().unwrap_err();
 
     assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
-        assert!(tx_summary.account_delta().is_empty());
+        assert!(tx_summary.account_delta().vault().is_empty());
+        assert!(tx_summary.account_delta().storage().is_empty());
+        assert_eq!(tx_summary.account_delta().nonce_delta().as_int(), 1);
         assert_eq!(tx_summary.input_notes(), &input_notes);
         assert_eq!(tx_summary.output_notes(), &output_notes);
-        assert_eq!(tx_summary.salt(), Word::empty());
+        assert_eq!(tx_summary.salt(), Word::from(
+          [0, 0, ref_block_num, final_nonce]
+        ));
     });
 
     Ok(())
