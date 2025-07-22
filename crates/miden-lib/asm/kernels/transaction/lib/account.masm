@@ -733,6 +733,10 @@ export.assert_auth_procedure
     push.0
     # => [index, PROC_ROOT]
 
+    # set was_called for the the auth procedure to true
+    dup exec.set_was_procedure_called
+    # => [index, PROC_ROOT]
+
     # get procedure info (PROC_ROOT, storage_offset, storage_size) from memory stored at index
     exec.get_procedure_root
     # => [MEM_PROC_ROOT, PROC_ROOT]
