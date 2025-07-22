@@ -12,6 +12,7 @@ use super::{Felt, OutputNote, TransactionKernelError, Word};
 // ================================================================================================
 
 /// Builder of an output note, provided primarily to enable adding assets to a note incrementally.
+#[derive(Debug, Clone)]
 pub struct OutputNoteBuilder {
     metadata: NoteMetadata,
     assets: NoteAssets,

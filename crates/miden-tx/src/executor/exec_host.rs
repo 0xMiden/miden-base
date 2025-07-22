@@ -29,13 +29,17 @@ use crate::{
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
 /// execution.
-pub struct TransactionExecutorHost<'store, 'auth> {
+pub struct TransactionExecutorHost<'store, 'auth, STORE, AUTH>
+where
+    STORE: MastForestStore,
+    AUTH: TransactionAuthenticator,
+{
     /// The underlying base transaction host.
-    base_host: TransactionBaseHost<'store>,
+    base_host: TransactionBaseHost<'store, STORE>,
 
     /// Serves signature generation requests from the transaction runtime for signatures which are
     /// not present in the `generated_signatures` field.
-    authenticator: Option<&'auth dyn TransactionAuthenticator>,
+    authenticator: Option<&'auth AUTH>,
 
     /// Contains generated signatures (as a message |-> signature map) required for transaction
     /// execution. Once a signature was created for a given message, it is inserted into this map.
@@ -45,7 +49,11 @@ pub struct TransactionExecutorHost<'store, 'auth> {
     generated_signatures: BTreeMap<Word, Vec<Felt>>,
 }
 
-impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
+impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
+where
+    STORE: MastForestStore,
+    AUTH: TransactionAuthenticator,
+{
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
@@ -53,9 +61,9 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
     pub fn new(
         account: &PartialAccount,
         advice_inputs: &mut AdviceInputs,
-        mast_store: &'store dyn MastForestStore,
+        mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        authenticator: Option<&'auth AUTH>,
         foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
         let base_host = TransactionBaseHost::new(
@@ -76,6 +84,11 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
+    /// Returns a reference to the underlying [`TransactionBaseHost`].
+    pub(super) fn base_host(&self) -> &TransactionBaseHost<'store, STORE> {
+        &self.base_host
+    }
+
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
         self.base_host.tx_progress()
@@ -84,7 +97,7 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
     // ADVICE INJECTOR HANDLERS
     // --------------------------------------------------------------------------------------------
 
-    /// Pushes a signature to the advice stack as a response to the `FalconSigToStack` injector.
+    /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
     /// The signature is fetched from the advice map or otherwise requested from the host's
     /// authenticator.
@@ -134,9 +147,18 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl BaseHost for TransactionExecutorHost<'_, '_> {}
+impl<STORE, AUTH> BaseHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
+where
+    STORE: MastForestStore,
+    AUTH: TransactionAuthenticator,
+{
+}
 
-impl SyncHost for TransactionExecutorHost<'_, '_> {
+impl<STORE, AUTH> SyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
+where
+    STORE: MastForestStore,
+    AUTH: TransactionAuthenticator,
+{
     fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
         self.base_host.get_mast_forest(procedure_root)
     }
@@ -153,7 +175,7 @@ impl SyncHost for TransactionExecutorHost<'_, '_> {
         match transaction_event {
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
-            TransactionEvent::FalconSigToStack => {
+            TransactionEvent::AuthRequest => {
                 self.on_signature_requested(process)
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
             },
