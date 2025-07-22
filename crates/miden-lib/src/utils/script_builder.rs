@@ -1,7 +1,7 @@
-use alloc::{string::String, sync::Arc};
+use alloc::string::String;
 
 use miden_objects::{
-    assembly::{Assembler, Library, LibraryPath, SourceManager, diagnostics::NamedSource},
+    assembly::{Assembler, Library, LibraryPath, diagnostics::NamedSource},
     note::NoteScript,
     transaction::TransactionScript,
 };
@@ -219,13 +219,14 @@ impl ScriptBuilder {
     // UTILITIES
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the assembler's source manager.
-    ///
-    /// After script building, the source manager can be fetched and passed on to the VM
-    /// processor to make the source files available to create better error messages.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
-        self.assembler.source_manager()
-    }
+    // TODO: Remove?3
+    // / Returns the assembler's source manager.
+    // /
+    // / After script building, the source manager can be fetched and passed on to the VM
+    // / processor to make the source files available to create better error messages.
+    // pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
+    //     self.assembler.source_manager()
+    // }
 
     // SCRIPT COMPILATION
     // --------------------------------------------------------------------------------------------

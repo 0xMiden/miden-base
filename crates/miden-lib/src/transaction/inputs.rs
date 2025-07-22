@@ -348,22 +348,22 @@ impl TransactionAdviceInputs {
 
     /// Extends the map of values with the given argument, replacing previously inserted items.
     fn extend_map(&mut self, iter: impl IntoIterator<Item = (Word, Vec<Felt>)>) {
-        self.0.extend_map(iter);
+        self.0.map.extend(iter);
     }
 
     fn add_map_entry(&mut self, key: Word, values: Vec<Felt>) {
-        self.0.extend_map([(key, values)]);
+        self.0.map.extend([(key, values)]);
     }
 
     /// Extends the stack with the given elements.
     fn extend_stack(&mut self, iter: impl IntoIterator<Item = Felt>) {
-        self.0.extend_stack(iter);
+        self.0.stack.extend(iter);
     }
 
     /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
-        self.0.extend_merkle_store(iter);
+        self.0.store.extend(iter);
     }
 }
 

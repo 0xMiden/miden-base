@@ -187,12 +187,13 @@ where
             source_manager,
         )
         .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
-        let (stack_outputs, advice_provider) = trace.into_outputs();
+        let (stack_outputs, _advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
-        let advice_inputs = AdviceInputs::default()
-            .with_map(advice_provider.map)
-            .with_merkle_store(advice_provider.store);
+        let advice_inputs = AdviceInputs::default();
+        // TODO:
+        // .with_map(advice_provider.map)
+        // .with_merkle_store(advice_provider.store);
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
@@ -415,7 +416,7 @@ fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
     }
 
     // introduce generated signatures into the witness inputs
-    advice_inputs.extend_map(generated_signatures);
+    advice_inputs.map.extend(generated_signatures);
 
     Ok(ExecutedTransaction::new(
         tx_inputs,

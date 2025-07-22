@@ -787,14 +787,18 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // push the hashes of the foreign procedures and account IDs to the advice stack to be able to
     // call them dynamically.
     let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.extend_stack(*second_foreign_account.code().procedures()[1].mast_root());
-    advice_inputs.extend_stack([
+    advice_inputs
+        .stack
+        .extend(*second_foreign_account.code().procedures()[1].mast_root());
+    advice_inputs.stack.extend([
         second_foreign_account.id().suffix(),
         second_foreign_account.id().prefix().as_felt(),
     ]);
 
-    advice_inputs.extend_stack(*first_foreign_account.code().procedures()[2].mast_root());
-    advice_inputs.extend_stack([
+    advice_inputs
+        .stack
+        .extend(*first_foreign_account.code().procedures()[2].mast_root());
+    advice_inputs.stack.extend([
         first_foreign_account.id().suffix(),
         first_foreign_account.id().prefix().as_felt(),
     ]);
@@ -1095,9 +1099,10 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // push the hash of the native procedure and native account IDs to the advice stack to be able
     // to call them dynamically.
     let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.extend_stack(*native_account.code().procedures()[3].mast_root());
+    advice_inputs.stack.extend(*native_account.code().procedures()[3].mast_root());
     advice_inputs
-        .extend_stack([native_account.id().suffix(), native_account.id().prefix().as_felt()]);
+        .stack
+        .extend([native_account.id().suffix(), native_account.id().prefix().as_felt()]);
 
     let code = format!(
         "

@@ -12,8 +12,7 @@ use miden_objects::{
     transaction::OutputNote,
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    AdviceInputs, BaseHost, EventError, MastForest, MastForestStore, ProcessState, SyncHost,
 };
 
 use crate::{
@@ -109,7 +108,7 @@ where
         let msg = process.get_stack_word(1);
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
-        let signature = if let Ok(signature) =
+        let signature = if let Some(signature) =
             process.advice_provider().get_mapped_values(&signature_key)
         {
             signature.to_vec()
@@ -128,7 +127,7 @@ where
             signature
         };
 
-        process.advice_provider_mut().stack.extend(signature);
+        process.advice_provider_mut().extend_stack(signature);
 
         Ok(())
     }
@@ -163,25 +162,18 @@ where
         self.base_host.get_mast_forest(procedure_root)
     }
 
-    fn on_event(
-        &mut self,
-        process: &mut ProcessState<'_>,
-        event_id: u32,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
-        let transaction_event = TransactionEvent::try_from(event_id)
-            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+    fn on_event(&mut self, process: &mut ProcessState, event_id: u32) -> Result<(), EventError> {
+        let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         match transaction_event {
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
             TransactionEvent::AuthRequest => {
-                self.on_signature_requested(process)
-                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+                self.on_signature_requested(process).map_err(Box::new)?;
             },
             // All other events are handled as in the base host.
             _ => {
-                self.base_host.handle_event(process, transaction_event, err_ctx)?;
+                self.base_host.handle_event(process, transaction_event)?;
             },
         }
 

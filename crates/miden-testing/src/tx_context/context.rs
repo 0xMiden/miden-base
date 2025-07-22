@@ -75,7 +75,11 @@ impl TransactionContext {
 
         let test_lib = TransactionKernel::kernel_as_library();
 
-        let source_manager = assembler.source_manager();
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<
+                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
+                >;
 
         // Virtual file name should be unique.
         let virtual_source_file = source_manager.load(

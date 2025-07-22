@@ -56,7 +56,7 @@ impl OutputNoteBuilder {
         let recipient_digest = Word::new([stack[8], stack[7], stack[6], stack[5]]);
 
         // This method returns an error if the mapped value is not found.
-        let recipient = if let Ok(data) = adv_provider.get_mapped_values(&recipient_digest) {
+        let recipient = if let Some(data) = adv_provider.get_mapped_values(&recipient_digest) {
             if data.len() != 13 {
                 return Err(TransactionKernelError::MalformedRecipientData(data.to_vec()));
             }
@@ -67,8 +67,8 @@ impl OutputNoteBuilder {
 
             let inputs_data = adv_provider.get_mapped_values(&inputs_commitment);
             let inputs = match inputs_data {
-                Err(_) => NoteInputs::default(),
-                Ok(inputs) => {
+                None => NoteInputs::default(),
+                Some(inputs) => {
                     let num_inputs = data[0].as_int() as usize;
 
                     // There must be at least `num_inputs` elements in the advice provider data,

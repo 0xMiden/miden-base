@@ -5,7 +5,7 @@ use alloc::{
 };
 
 use assembly::{Assembler, Parse};
-use miden_crypto::merkle::InnerNodeInfo;
+use miden_crypto::merkle::{InnerNodeInfo, MerkleStore};
 
 use super::{AccountInputs, Felt, Word};
 use crate::{
@@ -53,11 +53,14 @@ impl TransactionArgs {
     /// Returns new [TransactionArgs] instantiated with the provided transaction script, advice
     /// map and foreign account inputs.
     pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
+        let advice_inputs = AdviceInputs::default()
+            .with_map(advice_map.iter().map(|(key, value)| (*key, value.to_vec())));
+
         Self {
             tx_script: None,
             tx_script_args: EMPTY_WORD,
             note_args: Default::default(),
-            advice_inputs: AdviceInputs::default().with_map(advice_map),
+            advice_inputs,
             foreign_account_inputs,
             auth_args: EMPTY_WORD,
         }
@@ -181,7 +184,7 @@ impl TransactionArgs {
             (script.root(), script_encoded),
         ];
 
-        self.advice_inputs.extend_map(new_elements);
+        self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
     }
 
     /// Populates the advice inputs with the specified note recipient details.
@@ -203,12 +206,14 @@ impl TransactionArgs {
 
     /// Extends the internal advice inputs' map with the provided key-value pairs.
     pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
-        self.advice_inputs.extend_map(iter)
+        self.advice_inputs.extend(AdviceInputs::default().with_map(iter))
     }
 
     /// Extends the internal advice inputs' merkle store with the provided nodes.
     pub fn extend_merkle_store<I: Iterator<Item = InnerNodeInfo>>(&mut self, iter: I) {
-        self.advice_inputs.extend_merkle_store(iter)
+        // TODO: Refactor this to use the pub fields directly.
+        self.advice_inputs
+            .extend(AdviceInputs::default().with_merkle_store(MerkleStore::from_iter(iter)))
     }
 
     /// Extends the advice inputs in self with the provided ones.

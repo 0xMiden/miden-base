@@ -197,7 +197,7 @@ impl TransactionContextBuilder {
         mut self,
         map_entries: impl IntoIterator<Item = (Word, Vec<Felt>)>,
     ) -> Self {
-        self.advice_inputs.extend_map(map_entries);
+        self.advice_inputs.map.extend(map_entries);
         self
     }
 
@@ -266,7 +266,12 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let source_manager = self.assembler.source_manager();
+        // TODO: Proper fix.
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<
+                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
+                >;
 
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,

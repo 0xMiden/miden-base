@@ -1,7 +1,7 @@
 use core::cmp::Ordering;
 
 use miden_objects::{Felt, LexicographicWord, Word, ZERO};
-use vm_processor::{ContextId, ExecutionError, ProcessState};
+use vm_processor::{ContextId, EventError, ProcessState};
 
 // LINK MAP
 // ================================================================================================
@@ -40,7 +40,7 @@ impl<'process> LinkMap<'process> {
     ///
     /// Expected operand stack state before: [map_ptr, KEY, NEW_VALUE]
     /// Advice stack state after: [set_operation, entry_ptr]
-    pub fn handle_set_event(process: &mut ProcessState<'_>) -> Result<(), ExecutionError> {
+    pub fn handle_set_event(process: &mut ProcessState<'_>) -> Result<(), EventError> {
         let map_ptr = process.get_stack_item(0);
         let map_key = Word::from([
             process.get_stack_item(4),
@@ -63,7 +63,7 @@ impl<'process> LinkMap<'process> {
     ///
     /// Expected operand stack state before: [map_ptr, KEY]
     /// Advice stack state after: [get_operation, entry_ptr]
-    pub fn handle_get_event(process: &mut ProcessState<'_>) -> Result<(), ExecutionError> {
+    pub fn handle_get_event(process: &mut ProcessState<'_>) -> Result<(), EventError> {
         let map_ptr = process.get_stack_item(0);
         let map_key = Word::from([
             process.get_stack_item(4),

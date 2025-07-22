@@ -1,4 +1,6 @@
 mod account_delta_tracker;
+use core::error::Error;
+
 use account_delta_tracker::AccountDeltaTracker;
 
 mod storage_delta_tracker;
@@ -37,8 +39,8 @@ use miden_objects::{
 };
 pub use tx_progress::TransactionProgress;
 use vm_processor::{
-    AdviceInputs, ContextId, ErrorContext, ExecutionError, Felt, KvMap, MastForest,
-    MastForestStore, MemoryError, ProcessState,
+    AdviceInputs, ContextId, EventError, ExecutionError, Felt, MastForest, MastForestStore,
+    ProcessState,
 };
 
 use crate::errors::TransactionHostError;
@@ -98,7 +100,7 @@ where
         // This ensures that the advice map is available during the note script execution when it
         // calls the account's code that relies on the it's advice map data (data segments) loaded
         // into the advice provider
-        advice_inputs.extend_map(
+        advice_inputs.map.extend(
             account
                 .code()
                 .mast()
@@ -109,7 +111,7 @@ where
 
         // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
         // advice provider has all the necessary data for script execution
-        advice_inputs.extend_map(
+        advice_inputs.map.extend(
             scripts_mast_store
                 .advice_map()
                 .iter()
@@ -183,14 +185,10 @@ where
         &mut self,
         process: &mut ProcessState,
         transaction_event: TransactionEvent,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<(), EventError> {
         // Privileged events can only be emitted from the root context.
         if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
-            return Err(ExecutionError::event_error(
-                Box::new(TransactionEventError::NotRootContext(transaction_event as u32)),
-                err_ctx,
-            ));
+            return Err(Box::new(TransactionEventError::NotRootContext(transaction_event as u32)));
         }
 
         match transaction_event {
@@ -252,7 +250,7 @@ where
             },
 
             TransactionEvent::NoteExecutionStart => {
-                let note_id = Self::get_current_note_id(process,err_ctx)?.expect(
+                let note_id = Self::get_current_note_id(process)?.expect(
                     "Note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 );
                 self.tx_progress.start_note_execution(process.clk(), note_id);
@@ -293,7 +291,7 @@ where
               Err(self.on_unauthorized(process))
             }
         }
-        .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
+        .map_err(Box::new)?;
 
         Ok(())
     }
@@ -312,10 +310,10 @@ where
         let signature = process
             .advice_provider()
             .get_mapped_values(&signature_key)
-            .map_err(|_| TransactionKernelError::MissingAuthenticator)?
+            .ok_or_else(|| TransactionKernelError::MissingAuthenticator)?
             .to_vec();
 
-        process.advice_provider_mut().stack.extend(signature);
+        process.advice_provider_mut().extend_stack(signature);
 
         Ok(())
     }
@@ -578,10 +576,7 @@ where
     /// # Errors
     /// Returns an error if the address of the currently executing input note is invalid (e.g.,
     /// greater than `u32::MAX`).
-    fn get_current_note_id(
-        process: &ProcessState,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<Option<NoteId>, ExecutionError> {
+    fn get_current_note_id(process: &ProcessState) -> Result<Option<NoteId>, EventError> {
         // get the note address in `Felt` or return `None` if the address hasn't been accessed
         // previously.
         let note_address_felt = match process.get_mem_value(process.ctx(), CURRENT_INPUT_NOTE_PTR) {
@@ -589,10 +584,9 @@ where
             None => return Ok(None),
         };
         // convert note address into u32
-        let note_address: u32 = note_address_felt.try_into().map_err(|_| {
-            ExecutionError::MemoryError(MemoryError::address_out_of_bounds(
-                note_address_felt.as_int(),
-                err_ctx,
+        let note_address = u32::try_from(note_address_felt).map_err(|_| {
+            Box::<dyn Error + Send + Sync>::from(format!(
+                "failed to convert {note_address_felt} into a memory address (u32)"
             ))
         })?;
         // if `note_address` == 0 note execution has ended and there is no valid note address

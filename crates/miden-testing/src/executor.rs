@@ -46,7 +46,10 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
         let assembler = TransactionKernel::testing_assembler().with_debug_mode(true);
-        let source_manager = assembler.source_manager();
+        // TODO: Proper fix.
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<dyn miden_objects::assembly::SourceManager>;
 
         // Virtual file name should be unique.
         let virtual_source_file =
@@ -82,7 +85,7 @@ impl CodeExecutor<DefaultHost> {
         let mut host = DefaultHost::default();
 
         let test_lib = TransactionKernel::kernel_as_library();
-        host.load_mast_forest(test_lib.mast_forest().clone()).unwrap();
+        host.load_library(test_lib.mast_forest()).unwrap();
 
         CodeExecutor::new(host)
     }

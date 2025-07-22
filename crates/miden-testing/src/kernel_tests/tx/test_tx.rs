@@ -942,7 +942,8 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         .execute(&TransactionKernel::main(), &mut host)
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
         .into_diagnostic()?;
-    let advice_inputs = AdviceInputs::default().with_map(process.advice.map);
+    // TODO: adviceprovider
+    let advice_inputs = AdviceInputs::default(); //.with_map(process.advice);
 
     let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
     let tx_outputs =
@@ -1294,7 +1295,10 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
 
     let source = NamedSource::new("test::module_1", test_module_source);
     let mut assembler = TransactionKernel::assembler();
-    let source_manager = assembler.source_manager();
+    // TODO: Proper fix.
+    let source_manager =
+        alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+            as alloc::sync::Arc<dyn miden_objects::assembly::SourceManager + Send + Sync + 'static>;
     assembler
         .compile_and_statically_link(source)
         .map_err(|_| anyhow::anyhow!("adding source module"))?;
