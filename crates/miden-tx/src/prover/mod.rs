@@ -120,7 +120,6 @@ impl TransactionProver for LocalTransactionProver {
             advice_inputs.clone(),
             &mut host,
             self.proof_options.clone(),
-            source_manager
         ))
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
