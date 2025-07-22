@@ -15,6 +15,17 @@ use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 use vm_processor::ExecutionError;
 
+// CONSTANTS
+// ================================================================================================
+
+const TX_SCRIPT_NO_TRIGGER: &str = r#"
+    use.test::account
+    begin
+        call.account::account_procedure_1
+        drop
+    end
+    "#;
+
 // HELPER FUNCTIONS
 // ================================================================================================
 
@@ -119,15 +130,6 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         end
         "#;
 
-    let tx_script_no_trigger = r#"
-        use.test::account
-
-        begin
-            call.account::account_procedure_1
-            drop
-        end
-        "#;
-
     let tx_script_trigger_1 = TransactionScript::compile(
         tx_script_with_trigger_1,
         TransactionKernel::testing_assembler_with_mock_account(),
@@ -139,7 +141,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     )?;
 
     let tx_script_no_trigger = TransactionScript::compile(
-        tx_script_no_trigger,
+        TX_SCRIPT_NO_TRIGGER,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
@@ -208,17 +210,8 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
     // [2, 1, 1, 0]
     assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
 
-    let tx_script_no_trigger = r#"
-        use.test::account
-
-        begin
-            call.account::account_procedure_1
-            drop
-        end
-        "#;
-
     let tx_script_no_trigger = TransactionScript::compile(
-        tx_script_no_trigger,
+        TX_SCRIPT_NO_TRIGGER,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
@@ -253,17 +246,8 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
     // be [2, 1, 0, 0]
     assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
 
-    let tx_script_no_trigger = r#"
-        use.test::account
-
-        begin
-            call.account::account_procedure_1
-            drop
-        end
-        "#;
-
     let tx_script_no_trigger = TransactionScript::compile(
-        tx_script_no_trigger,
+        TX_SCRIPT_NO_TRIGGER,
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
