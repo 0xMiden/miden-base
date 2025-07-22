@@ -10,6 +10,12 @@ use crate::errors::MasmError;
 // NOTE SCRIPT ERRORS
 // ================================================================================================
 
+/// Error Message: "requested input note index should be less than the total number of input notes"
+pub const ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested input note index should be less than the total number of input notes");
+
+/// Error Message: "requested output note index should be less than the total number of created output notes"
+pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
+
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");
 /// Error Message: "P2IDE reclaim is disabled"

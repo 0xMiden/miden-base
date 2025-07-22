@@ -9,6 +9,7 @@ use.$kernel::faucet
 use.$kernel::input_notes
 use.$kernel::memory
 use.$kernel::note
+use.$kernel::output_notes
 use.$kernel::tx
 
 # NOTE
@@ -717,6 +718,32 @@ end
 export.input_note_get_assets_info
     # get the assets info
     exec.input_notes::get_assets_info
+    # => [ASSETS_HASH, num_assets, pad(16)]
+
+    # truncate the stack
+    repeat.5
+        movup.5 drop
+    end
+    # => [ASSETS_HASH, num_assets, pad(11)]
+end
+
+#! Returns the information about assets in the input note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [ASSETS_HASH, num_assets, pad(11)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_HASH is a sequential hash of the assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_assets_info
+    # get the assets info
+    exec.output_notes::get_assets_info
     # => [ASSETS_HASH, num_assets, pad(16)]
 
     # truncate the stack

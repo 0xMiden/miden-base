@@ -6,6 +6,7 @@ use miden_lib::{
     errors::{
         MasmError, tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT,
     },
+    note::create_p2id_note,
     transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
 };
 use miden_objects::{
@@ -24,6 +25,8 @@ use miden_objects::{
     testing::{
         account_id::{
             ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
         },
         note::NoteBuilder,
@@ -345,7 +348,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
         use.miden::input_notes
 
         begin
-            # get the assets hash and assets number from the 0'th note
+            # get the assets hash and assets number from the 0'th input note
             push.0
             exec.input_notes::get_assets_info
             # => [ASSETS_HASH_0, num_assets_0]
@@ -360,7 +363,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
             assert_eq.err="note 0 has incorrect assets number"
             # => []
 
-            # get the assets hash and assets number from the 1'st note
+            # get the assets hash and assets number from the 1'st input note
             push.1
             exec.input_notes::get_assets_info
             # => [ASSETS_HASH_1, num_assets_1]
@@ -390,6 +393,129 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
             &[],
             &[p2id_note_1, p2id_note_2],
         )?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute()?;
+
+    Ok(())
+}
+
+#[test]
+fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+
+    let account =
+        builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(2000)])?;
+
+    let mock_chain = builder.build()?;
+
+    let output_note_1 = create_p2id_note(
+        account.id(),
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into()?,
+        vec![FungibleAsset::mock(10)],
+        NoteType::Public,
+        Felt::new(0),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
+    )?;
+
+    let output_note_2 = create_p2id_note(
+        account.id(),
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
+        vec![FungibleAsset::mock(5)],
+        NoteType::Public,
+        Felt::new(0),
+        &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
+    )?;
+
+    let tx_script_src = &format!(
+        r#"
+        use.miden::tx
+        use.miden::output_notes
+        use.std::sys
+
+        begin
+            # create output notes and move assets to them
+            push.{recipient_1}
+            push.{note_execution_hint_1}
+            push.{note_type_1}
+            push.0              # aux
+            push.{tag_1}
+            call.tx::create_note
+
+            push.{asset_1}
+            call.::miden::contracts::wallets::basic::move_asset_to_note
+            dropw dropw dropw dropw
+
+            push.{recipient_2}
+            push.{note_execution_hint_2}
+            push.{note_type_2}
+            push.0              # aux
+            push.{tag_2}
+            call.tx::create_note
+
+            push.{asset_2}
+            call.::miden::contracts::wallets::basic::move_asset_to_note
+
+            # get the assets hash and assets number from the first (0'th) output note
+            push.0
+            exec.output_notes::get_assets_info
+            # => [ASSETS_HASH_1, num_assets_1]
+
+            # assert the correctness of the assets hash
+            push.{COMPUTED_ASSETS_HASH_1} 
+            assert_eqw.err="note 1 has incorrect assets hash"
+            # => [num_assets_1]
+
+            # assert the number of note assets
+            push.{assets_number_1}
+            assert_eq.err="note 1 has incorrect assets number"
+            # => []
+
+            # get the assets hash and assets number from the second (1'st) output note
+            push.1
+            exec.output_notes::get_assets_info
+            # => [ASSETS_HASH_2, num_assets_2]
+
+            # assert the correctness of the assets hash
+            push.{COMPUTED_ASSETS_HASH_2} 
+            assert_eqw.err="note 2 has incorrect assets hash"
+            # => [num_assets_2]
+
+            # assert the number of note assets
+            push.{assets_number_2}
+            assert_eq.err="note 2 has incorrect assets number"
+            # => []
+
+            # truncate the stack
+            exec.sys::truncate_stack
+        end
+        "#,
+        recipient_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
+        note_type_1 = NoteType::Public as u8,
+        tag_1 = Felt::from(output_note_1.metadata().tag()),
+        asset_1 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
+        note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
+        recipient_2 = word_to_masm_push_string(&output_note_2.recipient().digest()),
+        note_type_2 = NoteType::Public as u8,
+        tag_2 = Felt::from(output_note_2.metadata().tag()),
+        asset_2 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
+        note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint()),
+        COMPUTED_ASSETS_HASH_1 = word_to_masm_push_string(&output_note_1.assets().commitment()),
+        assets_number_1 = output_note_1.assets().num_assets(),
+        COMPUTED_ASSETS_HASH_2 = word_to_masm_push_string(&output_note_2.assets().commitment()),
+        assets_number_2 = output_note_2.assets().num_assets(),
+    );
+
+    let tx_script =
+        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+
+    let tx_context = mock_chain
+        .build_tx_context(account.id(), &[], &[])?
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(output_note_1),
+            OutputNote::Full(output_note_2),
+        ])
         .tx_script(tx_script)
         .build()?;
 

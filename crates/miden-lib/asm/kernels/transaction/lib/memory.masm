@@ -225,6 +225,7 @@ const.OUTPUT_NOTE_METADATA_OFFSET=4
 const.OUTPUT_NOTE_RECIPIENT_OFFSET=8
 const.OUTPUT_NOTE_ASSETS_HASH_OFFSET=12
 const.OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
+const.OUTPUT_NOTE_DIRTY_FLAG_OFFSET=17
 const.OUTPUT_NOTE_ASSETS_OFFSET=20
 
 # LINK MAP MEMORY
@@ -1705,6 +1706,36 @@ export.set_output_note_num_assets
     mem_store
 end
 
+#! Returns the dirty flag for the assets commitment.
+#!
+#! This binary flag specifies whether the assets commitment stored in specified note is still 
+#! relevant.
+#!
+#! Inputs:  [output_note_data_ptr]
+#! Outputs: [dirty_flag]
+#!
+#! Where:
+#! - output_note_data_ptr is the memory address at which the output note data begins.
+#! - dirty_flag is the flag indicating whether the assets commitment is still relevant.
+export.get_output_note_dirty_flag
+    add.OUTPUT_NOTE_DIRTY_FLAG_OFFSET mem_load
+end
+
+#! Sets the dirty flag for the assets commitment.
+#!
+#! This binary flag specifies whether the assets commitment stored in specified note is still 
+#! relevant.
+#!
+#! Inputs:  [output_note_data_ptr, dirty_flag]
+#! Outputs: []
+#!
+#! Where:
+#! - output_note_data_ptr is the memory address at which the output note data begins.
+#! - dirty_flag is the flag indicating whether the assets commitment is still relevant.
+export.set_output_note_dirty_flag
+    add.OUTPUT_NOTE_DIRTY_FLAG_OFFSET mem_store
+end
+
 #! Returns a pointer to the output note asset data.
 #!
 #! Inputs:  [output_note_data_ptr]
@@ -1717,7 +1748,22 @@ export.get_output_note_asset_data_ptr
     add.OUTPUT_NOTE_ASSETS_OFFSET
 end
 
-#! Sets the output note assets commitment.
+#! Returns the assets commitment for the output note located at the specified memory address.
+#!
+#! Inputs:  [output_note_data_ptr]
+#! Outputs: [ASSET_COMMITMENT]
+#!
+#! Where:
+#! - output_note_data_ptr is the memory address at which the output note data begins.
+#! - ASSET_COMMITMENT is the sequential hash of the padded assets of an output note.
+export.get_output_note_assets_commitment
+    padw
+    movup.4 add.OUTPUT_NOTE_ASSETS_HASH_OFFSET
+    mem_loadw
+end
+
+#! Sets the output note assets commitment for the output note located at the specified memory 
+#! address.
 #!
 #! Inputs:  [output_note_data_ptr, ASSET_COMMITMENT]
 #! Outputs: [ASSET_COMMITMENT]
@@ -1725,7 +1771,7 @@ end
 #! Where:
 #! - output_note_data_ptr is the memory address at which the output note data begins.
 #! - ASSET_COMMITMENT is the sequential hash of the padded assets of an output note.
-export.set_output_note_assets_hash
+export.set_output_note_assets_commitment
     add.OUTPUT_NOTE_ASSETS_HASH_OFFSET
     mem_storew
 end

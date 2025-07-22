@@ -377,13 +377,19 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
 // The total number of output notes for a transaction is stored in the bookkeeping section of the
 // memory. Data section of each note is laid out like so:
 //
-// ┌─────────┬──────────┬───────────┬─────────────┬────────────┬─────────┬─────┬─────────┬─────────┐
-// │ NOTE ID │ METADATA │ RECIPIENT │ ASSETS HASH │ NUM ASSETS │ ASSET 0 │ ... │ ASSET n │ PADDING │
-// ├─────────┼──────────┼───────────┼─────────────┼────────────┼─────────┼─────┼─────────┼─────────┤
-//      0          1          2            3            4           5             5 + n
+// ┌─────────┬──────────┬───────────┬───────────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
+// │ NOTE ID │ METADATA │ RECIPIENT │ ASSETS COMMITMENT │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │
+// PADDING │ |         |          |           |                   | AND DIRTY FLAG |         |     |
+// |         |
+// ├─────────┼──────────┼───────────┼───────────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
+//      0          1          2               3                 4             5             5 + n
 //
-// Even though NUM_ASSETS takes up a whole word, the actual value of this variable is stored in the
-// first element of the word.
+// The NUM_ASSETS_AND_DIRTY_FLAG word has the following layout:
+// `[num_assets, assets_commitment_dirty_flag, 0, 0]`, where:
+// - `num_assets` is the number of assets in this output note.
+// - `assets_commitment_dirty_flag` is the binary flag which specifies whether the assets commitment
+//   stored in this note corresponds to the currently stored assets. It holds 1 if some changes were
+//   made to the note assets since the last re-computation, and 0 otherwise.
 
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;
@@ -397,6 +403,7 @@ pub const OUTPUT_NOTE_METADATA_OFFSET: MemoryOffset = 4;
 pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
 pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
+pub const OUTPUT_NOTE_DIRTY_FLAG_OFFSET: MemoryOffset = 17;
 pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
 
 // LINK MAP

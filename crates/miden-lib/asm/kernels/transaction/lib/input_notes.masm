@@ -3,7 +3,7 @@ use.$kernel::memory
 # ERRORS
 # =================================================================================================
 
-const.ERR_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be less than the total number of input notes"
+const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be less than the total number of input notes"
 
 # INPUT NOTE PROCEDURES
 # =================================================================================================
@@ -25,7 +25,7 @@ export.get_assets_info
     dup exec.memory::get_num_input_notes 
     # => [input_notes_num, note_index, note_index]
     
-    lt assert.err=ERR_NOTE_INDEX_OUT_OF_BOUNDS
+    lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
     # => [note_index]
 
     # get the memory pointer to the requested note

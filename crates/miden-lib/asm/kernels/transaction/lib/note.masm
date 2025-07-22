@@ -172,7 +172,7 @@ end
 #! Where:
 #! - note_data_ptr is a pointer to the data section of the output note.
 #! - ASSETS_HASH is the hash of the assets of the output note located at note_data_ptr.
-proc.compute_output_note_assets_hash
+export.compute_output_note_assets_commitment
     # duplicate note pointer and fetch num_assets
     dup dup exec.memory::get_output_note_num_assets
     # => [num_assets, note_data_ptr, note_data_ptr]
@@ -219,8 +219,8 @@ proc.compute_output_note_assets_hash
     movup.4 drop
     # => [ASSETS_HASH, note_data_ptr]
 
-    # save vault hash to memory
-    movup.4 exec.memory::set_output_note_assets_hash
+    # save the assets hash to memory
+    movup.4 exec.memory::set_output_note_assets_commitment
     # => []
 end
 
@@ -246,7 +246,7 @@ proc.compute_output_note_id
     dup.4 exec.memory::get_output_note_recipient
 
     # populate the last four elements of the hasher rate with the output note's asset commitment
-    dup.8 exec.compute_output_note_assets_hash
+    dup.8 exec.compute_output_note_assets_commitment
 
     # compute output note commitment and extract digest
     hperm exec.rpo::squeeze_digest

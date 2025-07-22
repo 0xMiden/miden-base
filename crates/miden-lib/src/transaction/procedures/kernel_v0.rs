@@ -6,7 +6,7 @@ use miden_objects::{word, Word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Word; 41] = [
+pub const KERNEL0_PROCEDURES: [Word; 42] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
@@ -54,7 +54,7 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // note_get_assets_info
     word!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
     // note_add_asset
-    word!("0x18a7eb3dc20a43bae5270cd2d12e57af7863fa4796c3f2f66e2fd66b31a518ad"),
+    word!("0xb2c9c56be0d94ac3a0dd787ee12a4e5b9cc0d576f1e112ca0a6940e86f549e6f"),
     // note_get_serial_number
     word!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
@@ -65,6 +65,8 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     word!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // input_note_get_assets_info
     word!("0xbc0eb21713a5a005c53d9acc97d41cc2584bd0b36e1e5eb27c9bb5a761350a2b"),
+    // output_note_get_assets_info
+    word!("0x0a272abc2765b362c4c7b6d4677562744f491cc704847b96b216708a1ff22f76"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
