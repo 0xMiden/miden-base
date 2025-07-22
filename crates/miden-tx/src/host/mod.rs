@@ -553,7 +553,7 @@ where
     /// Expected stack state:
     ///
     /// ```text
-    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+    /// [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
     fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
         let account_delta_commitment = process.get_stack_word(3);
