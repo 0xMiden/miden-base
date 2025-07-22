@@ -74,7 +74,7 @@ export.auth__tx_rpo_falcon512
     # AS => []
 end
 
-#! Creates the transaction summary and returns it in the order in which it is hashed.
+#! Creates the transaction summary and returns it in the order in which it will be hashed.
 #!
 #! Inputs:  []
 #! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
