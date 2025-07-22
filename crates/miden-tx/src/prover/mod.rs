@@ -101,7 +101,7 @@ impl TransactionProver for LocalTransactionProver {
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host: TransactionProverHost = TransactionProverHost::new(
+        let mut host = TransactionProverHost::new(
             &account.into(),
             &mut advice_inputs,
             self.mast_store.as_ref(),

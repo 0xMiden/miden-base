@@ -41,22 +41,23 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 /// The transaction executor uses dynamic dispatch with trait objects for the [DataStore] and
 /// [TransactionAuthenticator], allowing it to be used with different backend implementations.
 /// At the moment of execution, the [DataStore] is expected to provide all required MAST nodes.
-pub struct TransactionExecutor<'store, 'auth> {
-    data_store: &'store dyn DataStore,
-    authenticator: Option<&'auth dyn TransactionAuthenticator>,
+pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
+    data_store: &'store STORE,
+    authenticator: Option<&'auth AUTH>,
     exec_options: ExecutionOptions,
 }
 
-impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
+impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
+where
+    STORE: DataStore + 'store,
+    AUTH: TransactionAuthenticator + 'auth,
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
-    pub fn new(
-        data_store: &'store dyn DataStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
-    ) -> Self {
+    pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
         Self {
@@ -78,8 +79,8 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
     /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
-        data_store: &'store dyn DataStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        data_store: &'store STORE,
+        authenticator: Option<&'auth AUTH>,
         exec_options: ExecutionOptions,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
@@ -142,7 +143,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -222,7 +223,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
@@ -373,12 +374,12 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 // ================================================================================================
 
 /// Creates a new [ExecutedTransaction] from the provided data.
-fn build_executed_transaction(
+fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
     mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
-    host: TransactionExecutorHost,
+    host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 
@@ -490,10 +491,10 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   account delta and input/output notes.
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execution_error(
+fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
     exec_err: ExecutionError,
     tx_inputs: &TransactionInputs,
-    host: &TransactionExecutorHost,
+    host: &TransactionExecutorHost<STORE, AUTH>,
 ) -> TransactionExecutorError {
     match exec_err {
         ExecutionError::EventError { ref error, .. } => {
@@ -529,13 +530,13 @@ fn map_execution_error(
 
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
-fn build_tx_summary(
+fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
     account_delta_commitment: Word,
     input_notes_commitment: Word,
     output_notes_commitment: Word,
     salt: Word,
     tx_inputs: &TransactionInputs,
-    host: &TransactionExecutorHost,
+    host: &TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<TransactionSummary, TransactionExecutorError> {
     let account_delta = host.base_host().build_account_delta();
     let input_notes = tx_inputs.input_notes().clone();

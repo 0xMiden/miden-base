@@ -56,6 +56,27 @@ where
     }
 }
 
+/// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
+/// when we do not want to provide one, but must provide the `T` in `Option<T>`.
+///
+/// Note: Asserts when `get_signature` is called.
+#[derive(Debug, Clone, Copy)]
+pub struct UnreachableAuth {
+    // ensure the type cannot be instantiated
+    _protect: core::marker::PhantomData<u8>,
+}
+
+impl TransactionAuthenticator for UnreachableAuth {
+    fn get_signature(
+        &self,
+        _pub_key: Word,
+        _message: Word,
+        _account_delta: &AccountDelta,
+    ) -> Result<Vec<Felt>, AuthenticationError> {
+        unreachable!("Type `UnreachableAuth` must not be instantiated")
+    }
+}
+
 // BASIC AUTHENTICATOR
 // ================================================================================================
 
