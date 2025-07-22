@@ -17,7 +17,8 @@ use crate::errors::AuthenticationError;
 /// It supports three modes:
 /// - `TransactionSummary`: Structured transaction summary, recommended for authenticating
 ///   transactions.
-/// - `Arbitrary`: Arbitrary payload provided by the application.
+/// - `Arbitrary`: Arbitrary payload provided by the application. It is up to the authenticator to
+///   display it appropriately.
 /// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It can
 ///   be assumed to already be a cryptographic commitment to some data.
 #[allow(clippy::large_enum_variant)]
