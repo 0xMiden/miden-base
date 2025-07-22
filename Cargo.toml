@@ -59,4 +59,5 @@ vm-processor     = { default-features = false, package = "miden-processor", git 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }
 rand           = { default-features = false, version = "0.9" }
+tokio          = { default-features = false, version = "1", features = ["sync"] }
 thiserror      = { default-features = false, version = "2.0" }

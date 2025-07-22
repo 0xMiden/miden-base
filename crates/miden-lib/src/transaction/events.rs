@@ -1,5 +1,7 @@
 use core::fmt;
 
+use vm_processor::{EventError, ProcessState};
+
 use super::TransactionEventError;
 
 // CONSTANTS
@@ -118,6 +120,10 @@ impl TransactionEvent {
     pub fn is_privileged(&self) -> bool {
         let is_unprivileged = matches!(self, Self::AuthRequest | Self::Unauthorized);
         !is_unprivileged
+    }
+
+    pub fn create(_process: &ProcessState, _event_id: u32) -> Result<Self, EventError> {
+        todo!()
     }
 }
 

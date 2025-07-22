@@ -12,8 +12,8 @@ use miden_objects::{
     transaction::OutputNote,
 };
 use vm_processor::{
-    AdviceInputs, AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState,
-    SyncHost,
+    AdviceInputs, AdviceMutation, AsyncHost, BaseHost, EventError, MastForest, MastForestStore,
+    ProcessState,
 };
 
 use crate::{
@@ -51,8 +51,8 @@ where
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore,
-    AUTH: TransactionAuthenticator,
+    STORE: MastForestStore + Sync,
+    AUTH: TransactionAuthenticator + Sync,
 {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -104,31 +104,37 @@ where
     pub fn on_signature_requested(
         &mut self,
         process: &ProcessState,
-    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+    ) -> impl Future<Output = Result<Vec<AdviceMutation>, TransactionKernelError>> + Send {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
-        let signature = if let Some(signature) =
-            process.advice_provider().get_mapped_values(&signature_key)
-        {
-            signature.to_vec()
-        } else {
-            let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
+        let signature_opt = process
+            .advice_provider()
+            .get_mapped_values(&signature_key)
+            .map(|slice| slice.to_vec());
 
-            let authenticator =
-                self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+        async move {
+            let signature = if let Some(signature) = signature_opt {
+                signature
+            } else {
+                let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
 
-            let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key, msg, &account_delta)
-                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+                let authenticator =
+                    self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
-            self.generated_signatures.insert(signature_key, signature.clone());
+                let signature: Vec<Felt> =
+                    authenticator.get_signature(pub_key, msg, &account_delta).await.map_err(
+                        |err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)),
+                    )?;
 
-            signature
-        };
+                self.generated_signatures.insert(signature_key, signature.clone());
 
-        Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
+                signature
+            };
+
+            Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
+        }
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -152,32 +158,42 @@ where
 {
 }
 
-impl<STORE, AUTH> SyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
+impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: MastForestStore,
-    AUTH: TransactionAuthenticator,
+    STORE: MastForestStore + Sync,
+    AUTH: TransactionAuthenticator + Sync,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
+    fn get_mast_forest(
+        &self,
+        procedure_root: &Word,
+    ) -> impl Future<Output = Option<Arc<MastForest>>> + Send {
+        core::future::ready(self.base_host.get_mast_forest(procedure_root))
     }
 
     fn on_event(
         &mut self,
         process: &ProcessState,
         event_id: u32,
-    ) -> Result<Vec<AdviceMutation>, EventError> {
-        let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
+    ) -> impl Future<Output = Result<Vec<AdviceMutation>, EventError>> + Send {
+        let transaction_event = TransactionEvent::create(process, event_id);
 
-        let advice_mutations = match transaction_event {
-            // Override the base host's on signature requested implementation, which would not call
-            // the authenticator.
-            TransactionEvent::AuthRequest => {
-                self.on_signature_requested(process).map_err(Box::new)?
-            },
-            // All other events are handled as in the base host.
-            _ => self.base_host.handle_event(process, transaction_event)?,
-        };
+        async move {
+            let transaction_event = transaction_event?;
+            let advice_mutations = match transaction_event {
+                // Override the base host's on signature requested implementation, which would not
+                // call the authenticator.
+                TransactionEvent::AuthRequest => {
+                    // self.on_signature_requested(process).await.map_err(Box::new)?
+                    vec![]
+                },
+                // All other events are handled as in the base host.
+                _ => {
+                    // self.base_host.handle_event(process, transaction_event)?
+                    vec![]
+                },
+            };
 
-        Ok(advice_mutations)
+            Ok(advice_mutations)
+        }
     }
 }

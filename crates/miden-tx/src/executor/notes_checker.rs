@@ -24,8 +24,8 @@ pub struct NoteConsumptionChecker<'a, STORE, AUTH>(&'a TransactionExecutor<'a, '
 
 impl<'a, STORE, AUTH> NoteConsumptionChecker<'a, STORE, AUTH>
 where
-    STORE: DataStore,
-    AUTH: TransactionAuthenticator,
+    STORE: DataStore + Sync,
+    AUTH: TransactionAuthenticator + Sync,
 {
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
     pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {

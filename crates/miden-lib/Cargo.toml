@@ -23,6 +23,7 @@ with-debug-info = ["miden-stdlib/with-debug-info"]
 [dependencies]
 miden-objects = { workspace = true }
 miden-stdlib  = { workspace = true }
+vm-processor  = { workspace = true }
 thiserror     = { workspace = true }
 
 [build-dependencies]

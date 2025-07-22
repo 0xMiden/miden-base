@@ -3,9 +3,9 @@ use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 use miden_objects::{
     Felt, Word,
     account::{AccountDelta, AuthSecretKey},
-    utils::sync::RwLock,
 };
 use rand::Rng;
+use tokio::sync::RwLock;
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
@@ -37,7 +37,7 @@ pub trait TransactionAuthenticator {
         pub_key: Word,
         message: Word,
         account_delta: &AccountDelta,
-    ) -> Result<Vec<Felt>, AuthenticationError>;
+    ) -> impl Future<Output = Result<Vec<Felt>, AuthenticationError>> + Send;
 }
 
 /// This blanket implementation is required to allow `Option<&T>` to be mapped to `Option<&dyn
@@ -51,7 +51,7 @@ where
         pub_key: Word,
         message: Word,
         account_delta: &AccountDelta,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
+    ) -> impl Future<Output = Result<Vec<Felt>, AuthenticationError>> + Send {
         TransactionAuthenticator::get_signature(*self, pub_key, message, account_delta)
     }
 }
@@ -72,8 +72,8 @@ impl TransactionAuthenticator for UnreachableAuth {
         _pub_key: Word,
         _message: Word,
         _account_delta: &AccountDelta,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
-        unreachable!("Type `UnreachableAuth` must not be instantiated")
+    ) -> impl Future<Output = Result<Vec<Felt>, AuthenticationError>> + Send {
+        async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
 
@@ -110,7 +110,7 @@ impl<R: Rng> BasicAuthenticator<R> {
     }
 }
 
-impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
+impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
     /// Gets a signature over a message, given a public key.
     /// The key should be included in the `keys` map and should be a variant of [AuthSecretKey].
     ///
@@ -125,19 +125,21 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
         pub_key: Word,
         message: Word,
         account_delta: &AccountDelta,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
+    ) -> impl Future<Output = Result<Vec<Felt>, AuthenticationError>> + Send {
         let _ = account_delta;
-        let mut rng = self.rng.write();
 
-        match self.keys.get(&pub_key) {
-            Some(key) => match key {
-                AuthSecretKey::RpoFalcon512(falcon_key) => {
-                    get_falcon_signature(falcon_key, message, &mut *rng)
+        async move {
+            let mut rng = self.rng.write().await;
+            match self.keys.get(&pub_key) {
+                Some(key) => match key {
+                    AuthSecretKey::RpoFalcon512(falcon_key) => {
+                        get_falcon_signature(falcon_key, message, &mut *rng)
+                    },
                 },
-            },
-            None => Err(AuthenticationError::UnknownPublicKey(format!(
-                "public key {pub_key} is not contained in the authenticator's keys",
-            ))),
+                None => Err(AuthenticationError::UnknownPublicKey(format!(
+                    "public key {pub_key} is not contained in the authenticator's keys",
+                ))),
+            }
         }
     }
 }
@@ -151,10 +153,12 @@ impl TransactionAuthenticator for () {
         _pub_key: Word,
         _message: Word,
         _account_delta: &AccountDelta,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
-        Err(AuthenticationError::RejectedSignature(
-            "default authenticator cannot provide signatures".to_string(),
-        ))
+    ) -> impl Future<Output = Result<Vec<Felt>, AuthenticationError>> + Send {
+        async {
+            Err(AuthenticationError::RejectedSignature(
+                "default authenticator cannot provide signatures".to_string(),
+            ))
+        }
     }
 }
 

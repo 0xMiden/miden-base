@@ -13,7 +13,7 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, ExecutionError, Process};
+use vm_processor::{AdviceInputs, ExecutionError, Process, fast::FastProcessor};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -49,8 +49,8 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
 where
-    STORE: DataStore + 'store,
-    AUTH: TransactionAuthenticator + 'auth,
+    STORE: DataStore + 'store + Sync,
+    AUTH: TransactionAuthenticator + 'auth + Sync,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -136,8 +136,8 @@ where
     /// - If the transaction arguments contain foreign account data not anchored in the reference
     ///   block.
     /// - If any input notes were created in block numbers higher than the reference block.
-    #[maybe_async]
-    pub fn execute_transaction(
+    // TODO REMOVE #[maybe_async]
+    pub async fn execute_transaction(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
@@ -178,16 +178,23 @@ where
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         // Execute the transaction kernel
-        let trace = vm_processor::execute(
-            &TransactionKernel::main(),
-            stack_inputs,
-            advice_inputs,
-            &mut host,
-            self.exec_options,
-            source_manager,
-        )
-        .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
-        let (stack_outputs, _advice_provider) = trace.into_outputs();
+        // let trace = vm_processor::execute(
+        //     &TransactionKernel::main(),
+        //     stack_inputs,
+        //     advice_inputs,
+        //     &mut host,
+        //     self.exec_options,
+        //     source_manager,
+        // )
+        // .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
+        // let (stack_outputs, _advice_provider) = trace.into_outputs();
+
+        let processor = FastProcessor::new(stack_inputs.as_slice());
+        let stack_outputs = processor
+            .execute(&TransactionKernel::main(), &mut host)
+            .await
+            .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
+        // let advice_provider = todo!("fast processor does not return advice provider?");
 
         // The stack is not necessary since it is being reconstructed when re-executing.
         let advice_inputs = AdviceInputs::default();
@@ -226,6 +233,7 @@ where
         foreign_account_inputs: Vec<AccountInputs>,
         source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
+        /*
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
@@ -267,6 +275,8 @@ where
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
         Ok(*stack_outputs)
+         */
+        Ok([Felt::new(0); 16])
     }
 
     // CHECK CONSUMABILITY
@@ -297,7 +307,7 @@ where
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
-        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
+        /*let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
         let (account, seed, ref_block, mmr) =
@@ -366,8 +376,9 @@ where
                     successful_notes: success_notes.iter().map(|(note, _)| *note).collect(),
                     error: Some(tx_execution_error),
                 })
-            },
-        }
+              },
+            }*/
+        todo!()
     }
 }
 
@@ -375,7 +386,7 @@ where
 // ================================================================================================
 
 /// Creates a new [ExecutedTransaction] from the provided data.
-fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
+fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
@@ -492,7 +503,7 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   account delta and input/output notes.
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
+fn map_execution_error<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     exec_err: ExecutionError,
     tx_inputs: &TransactionInputs,
     host: &TransactionExecutorHost<STORE, AUTH>,
@@ -531,7 +542,7 @@ fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
 
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
-fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
+fn build_tx_summary<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     account_delta_commitment: Word,
     input_notes_commitment: Word,
     output_notes_commitment: Word,

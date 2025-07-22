@@ -1322,6 +1322,7 @@ dependencies = [
  "miden-verifier",
  "rand",
  "thiserror 2.0.12",
+ "tokio",
  "winter-maybe-async 0.12.0",
 ]
 
