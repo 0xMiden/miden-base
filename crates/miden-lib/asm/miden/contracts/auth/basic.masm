@@ -16,9 +16,11 @@ const.PUBLIC_KEY_SLOT=0
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
 #! changed or not. Then it computes and signs the following message (in memory order):
-#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, 0, final_nonce]]
+#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
 #!
-#! Including the final_nonce is necessary for replay protection.
+#! Including the final_nonce is necessary for replay protection. The reference block number is
+#! included to commit to the transaction creator's intended reference block of the transaction
+#! which determines the fee parameters and therefore the fee amount that is deducted.
 #!
 #! Inputs:  [AUTH_ARGS, pad(12)]
 #! Outputs: [pad(16)]
@@ -39,36 +41,11 @@ export.auth__tx_rpo_falcon512
     # Compute the message that is signed.
     # ---------------------------------------------------------------------------------------------
 
-    # pad capacity element of the hasher
-    padw
-    # => [CAPACITY, pad(16)]
+    exec.create_tx_summary
+    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT, pad(16)]
 
-    # get the nonce of the account after the transaction
-    # TODO: It seems convenient if incr_nonce would return the new nonce so we could avoid this call, wdyt?
-    push.0.0.0 exec.account::get_nonce
-    # => [[final_nonce, 0, 0, 0], CAPACITY, pad(16)]
-
-    # Get commitments to output notes
-    exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, [final_nonce, 0, 0, 0], CAPACITY, pad(16)]
-
-    hperm
-    # => [RATE, RATE, PERM, pad(16)]
-
-    # drop rate words
-    dropw dropw
-    # => [PERM, pad(16)]
-
-    exec.account::compute_delta_commitment
-    # => [DELTA_COMMITMENT, PERM, pad(16)]
-
-    exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, DELTA_COMMITMENT, PERM, pad(16)]
-
-    hperm
-    # => [RATE, RATE, PERM, pad(16)]
-
-    exec.rpo::squeeze_digest
+    # the commitment to the tx summary is the message that is signed
+    exec.hash_tx_summary
     # => [MESSAGE, pad(16)]
 
     # Fetch public key from storage.
@@ -94,4 +71,50 @@ export.auth__tx_rpo_falcon512
     exec.rpo_falcon512::verify
     # OS => [pad(16)]
     # AS => []
+end
+
+#! Creates the transaction summary and returns it in the order in which it is hashed.
+#!
+#! Inputs:  []
+#! Outputs: [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+proc.create_tx_summary
+    # get the commitment to the output notes
+    exec.tx::get_output_notes_commitment
+    # => [OUTPUT_NOTES_COMMITMENT]
+
+    push.0.0 exec.tx::get_block_number exec.account::get_nonce
+    # => [[final_nonce, ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT]
+    # => [SALT, OUTPUT_NOTES_COMMITMENT]
+
+    exec.account::compute_delta_commitment
+    # => [ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+
+    exec.tx::get_input_notes_commitment
+    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+end
+
+#! Hashes the provided transaction summary and returns its commitment.
+#!
+#! Inputs:  [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
+#! Outputs: [TX_SUMMARY_COMMITMENT]
+proc.hash_tx_summary
+    # pad capacity element of the hasher
+    padw movdnw.2
+    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, CAPACITY, SALT, OUTPUT_NOTES_COMMITMENT]
+
+    hperm
+    # => [RATE, RATE, PERM, SALT, OUTPUT_NOTES_COMMITMENT]
+
+    # drop rate words
+    dropw dropw
+    # => [PERM, SALT, OUTPUT_NOTES_COMMITMENT]
+
+    movdnw.2
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, PERM]
+
+    hperm
+    # => [RATE, RATE, PERM]
+
+    exec.rpo::squeeze_digest
+    # => [TX_SUMMARY_COMMITMENT]
 end

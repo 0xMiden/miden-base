@@ -3,7 +3,8 @@ use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
-    account::wallets::BasicWallet,
+    AuthScheme,
+    account::{interface::AccountInterface, wallets::BasicWallet},
     errors::tx_kernel_errors::{
         ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
     },
@@ -18,7 +19,7 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    FieldElement, Word,
+    FieldElement, Hasher, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
@@ -38,7 +39,9 @@ use miden_objects::{
         constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2},
         note::DEFAULT_NOTE_CODE,
     },
-    transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript},
+    transaction::{
+        InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript, TransactionSummary,
+    },
 };
 use miden_tx::{
     ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
@@ -1277,6 +1280,56 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         assert_eq!(tx_summary.output_notes(), &output_notes);
         assert_eq!(tx_summary.salt(), Word::empty());
     });
+
+    Ok(())
+}
+
+/// Tests that a transaction consuming and creating one note with basic authentication correctly
+/// signs the transaction summary.
+#[test]
+fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
+    let mut rng = RpoRandomCoin::new(Word::empty());
+    let p2id_note = create_p2id_note(
+        account.id(),
+        account.id(),
+        vec![],
+        NoteType::Private,
+        Felt::ZERO,
+        &mut rng,
+    )?;
+    let spawn_note = builder.add_spawn_note(account.id(), [&p2id_note])?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[spawn_note.id()], &[])?
+        .build()?
+        .execute()?;
+
+    let summary = TransactionSummary::new(
+        tx.account_delta().clone(),
+        tx.input_notes().clone(),
+        tx.output_notes().clone(),
+        Word::from([
+            0,
+            0,
+            tx.block_header().block_num().as_u32(),
+            tx.final_account().nonce().as_int() as u32,
+        ]),
+    );
+    let summary_commitment = summary.to_commitment();
+
+    let account_interface = AccountInterface::from(&account);
+    let AuthScheme::RpoFalcon512 { pub_key } = account_interface.auth().first().unwrap();
+
+    // This is in an internal detail of the tx executor host, but this is the easiest way to check
+    // for the presence of the signature in the advice map.
+    let signature_key = Hasher::merge(&[Word::from(*pub_key), summary_commitment]);
+
+    // The summary commitment should have been signed as part of transaction execution and inserted
+    // into the advice map.
+    tx.advice_witness().mapped_values(&signature_key).unwrap();
 
     Ok(())
 }

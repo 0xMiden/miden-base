@@ -26,7 +26,9 @@ use rand::Rng;
 use vm_processor::crypto::RpoRandomCoin;
 
 use crate::{
-    AccountState, Auth, MockChain, mock_chain::chain::AccountCredentials, utils::create_p2any_note,
+    AccountState, Auth, MockChain,
+    mock_chain::chain::AccountCredentials,
+    utils::{create_p2any_note, create_spawn_note},
 };
 
 /// A builder for a [`MockChain`].
@@ -391,6 +393,23 @@ impl MockChainBuilder {
         self.add_note(OutputNote::Full(swap_note.clone()));
 
         Ok((swap_note, payback_note))
+    }
+
+    /// Adds a public `SPAWN` note to the list of genesis notes.
+    ///
+    /// A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
+    /// parameter.
+    pub fn add_spawn_note<'note>(
+        &mut self,
+        sender_id: AccountId,
+        output_notes: impl IntoIterator<Item = &'note Note>,
+    ) -> anyhow::Result<Note> {
+        let output_notes = output_notes.into_iter().collect();
+        let note = create_spawn_note(sender_id, output_notes)?;
+
+        self.add_note(OutputNote::Full(note.clone()));
+
+        Ok(note)
     }
 
     /// Consumes the builder, creates the genesis block of the chain and returns the [`MockChain`].
