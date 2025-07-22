@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl},
+    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -79,8 +79,10 @@ impl Auth {
                 let component = AuthRpoFalcon512Acl::new(
                     pub_key,
                     auth_trigger_procedures.clone(),
-                    *allow_unauthorized_output_notes,
-                    *allow_unauthorized_input_notes,
+                    AuthRpoFalcon512AclConfig {
+                        allow_unauthorized_output_notes: *allow_unauthorized_output_notes,
+                        allow_unauthorized_input_notes: *allow_unauthorized_input_notes,
+                    },
                 )
                 .expect("component creation failed")
                 .into();

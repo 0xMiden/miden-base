@@ -10,8 +10,8 @@ const.FALCON_SIG_TO_STACK=131087
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
-# The slot where the number of auth trigger procedures is stored.
-const.NUM_AUTH_TRIGGER_PROCS_SLOT=1
+# The slot where the authentication configuration is stored.
+const.AUTH_CONFIG_SLOT=1
 
 # The slot where the map of auth trigger procedure roots is stored.
 const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
@@ -26,14 +26,14 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #! If any of these conditions are true, standard RpoFalcon512 signature verification is performed.
 #! Otherwise, only the nonce is incremented.
 #!
-#! Inputs:  [AUTH_ARGS, pad(16)]
+#! Inputs:  [AUTH_ARGS, pad(12)]
 #! Outputs: [pad(16)]
 export.auth__tx_rpo_falcon512_procedure_acl.2
-    dropw
+    dropw padw
     # => [pad(16)]
 
-    # Get the number of trigger procedures
-    push.NUM_AUTH_TRIGGER_PROCS_SLOT exec.account::get_item
+    # Get the authentication configuration
+    push.AUTH_CONFIG_SLOT exec.account::get_item
     # => [0, num_auth_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, pad(16)]
 
     drop
@@ -94,28 +94,27 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     and
     # => [require_output_note_auth, require_acl_auth, pad(16)]
 
+    or
+    # => [auth_required, pad(16)]
+
     # ------ Check if input notes were consumed ------
 
     exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, require_output_note_auth, require_acl_auth, pad(16)]
+    # => [INPUT_NOTES_COMMITMENT, auth_required, pad(16)]
 
     padw eqw not movdn.8 dropw dropw
-    # => [were_input_notes_consumed, require_output_note_auth, require_acl_auth, pad(16)]
+    # => [were_input_notes_consumed, auth_required, pad(16)]
 
     loc_load.1 not
-    # => [!allow_unauthorized_input_notes, require_output_note_auth, require_acl_auth, pad(16)]
+    # => [!allow_unauthorized_input_notes, were_input_notes_consumed, auth_required, pad(16)]
 
     and
-    # => [require_input_note_auth, require_output_note_auth, require_acl_auth, pad(16)]
+    # => [require_input_note_auth, auth_required, pad(16)]
 
     or
-    # => [require_note_auth, require_acl_auth, pad(16)]
+    # => [auth_required, pad(16)]
 
-    # Combine note-based auth requirement with procedure-based auth requirement
-    or
-    # => [require_auth, pad(16)]
-
-    # If authentication is required (either note-based or procedure-based), perform signature verification
+    # If authentication is required, perform signature verification
     if.true
         exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     else

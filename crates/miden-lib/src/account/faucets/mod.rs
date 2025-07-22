@@ -14,7 +14,10 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{auth::AuthRpoFalcon512Acl, components::basic_fungible_faucet_library};
+use crate::account::{
+    auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
+    components::basic_fungible_faucet_library,
+};
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
@@ -246,10 +249,15 @@ pub fn create_basic_fungible_faucet(
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
     let auth_component: AuthRpoFalcon512Acl = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => {
-            AuthRpoFalcon512Acl::new(pub_key, vec![distribute_proc_root], false, false)
-                .map_err(FungibleFaucetError::AccountError)?
-        },
+        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
+            pub_key,
+            vec![],
+            AuthRpoFalcon512AclConfig {
+                allow_unauthorized_output_notes: false,
+                allow_unauthorized_input_notes: true,
+            },
+        )
+        .map_err(FungibleFaucetError::AccountError)?,
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -337,19 +345,16 @@ mod tests {
         assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
 
         // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
-        // allow_unauthorized_input_notes, 0]. With 1 tracked procedure,
-        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=false,
-        // this should be [1, 0, 0, 0].
+        // allow_unauthorized_input_notes, 0]. With 0 tracked procedures,
+        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=true,
+        // this should be [0, 0, 1, 0].
         assert_eq!(
             faucet_account.storage().get_item(2).unwrap(),
-            [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
+            [Felt::ZERO, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
         );
 
-        // The procedure root of the distribute procedure is stored in slot 3.
-        assert_eq!(
-            faucet_account.storage().get_map_item(3, Word::empty()).unwrap(),
-            BasicFungibleFaucet::distribute_digest()
-        );
+        // The procedure root map in slot 3 should be empty since we have no tracked procedures.
+        assert_eq!(faucet_account.storage().get_map_item(3, Word::empty()).unwrap(), Word::empty());
 
         // Check that faucet metadata was initialized to the given values. The faucet component is
         // added second, so its assigned storage slot for the metadata will be 2.

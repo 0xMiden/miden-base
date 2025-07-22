@@ -43,8 +43,47 @@ impl From<AuthRpoFalcon512> for AccountComponent {
     }
 }
 
-/// An [`AccountComponent`] implementing a procedure-based Access Control List (ACL) RpoFalcon512
-/// signature scheme for authentication of transactions.
+/// Configuration for [`AuthRpoFalcon512Acl`] component.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct AuthRpoFalcon512AclConfig {
+    /// When `false`, creating output notes (sending notes to other accounts) requires
+    /// authentication. When `true`, output notes can be created without authentication.
+    pub allow_unauthorized_output_notes: bool,
+    /// When `false`, consuming input notes (processing notes sent to this account) requires
+    /// authentication. When `true`, input notes can be consumed without authentication.
+    pub allow_unauthorized_input_notes: bool,
+}
+
+impl AuthRpoFalcon512AclConfig {
+    /// Creates a new configuration with both flags set to `false` (most restrictive).
+    pub fn new() -> Self {
+        Self {
+            allow_unauthorized_output_notes: false,
+            allow_unauthorized_input_notes: false,
+        }
+    }
+
+    /// Sets whether unauthorized output notes are allowed.
+    pub fn with_allow_unauthorized_output_notes(mut self, allow: bool) -> Self {
+        self.allow_unauthorized_output_notes = allow;
+        self
+    }
+
+    /// Sets whether unauthorized input notes are allowed.
+    pub fn with_allow_unauthorized_input_notes(mut self, allow: bool) -> Self {
+        self.allow_unauthorized_input_notes = allow;
+        self
+    }
+}
+
+impl Default for AuthRpoFalcon512AclConfig {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// An [`AccountComponent`] implementing a procedure-based Access Control List (ACL) using the
+/// RpoFalcon512 signature scheme for authentication of transactions.
 ///
 /// This component provides fine-grained authentication control based on three conditions:
 /// 1. **Procedure-based authentication**: Requires authentication when any of the specified trigger
@@ -88,30 +127,32 @@ impl From<AuthRpoFalcon512> for AccountComponent {
 ///   allow_unauthorized_input_notes, 0]
 /// - Slot 2(map): A map with trigger procedure roots
 ///
+/// ## Important Note on Procedure Detection
+/// The procedure-based authentication relies on the `was_procedure_called` kernel function,
+/// which only returns `true` if the procedure in question called into a kernel account API
+/// that is restricted to the account context. Procedures that don't interact with account
+/// state or kernel APIs may not be detected as "called" even if they were executed during
+/// the transaction. This is an important limitation to consider when designing trigger
+/// procedures for authentication.
+///
 /// This component supports all account types.
 pub struct AuthRpoFalcon512Acl {
     public_key: PublicKey,
     auth_trigger_procedures: Vec<Word>,
-    /// When `false`, creating output notes (sending notes to other accounts) requires
-    /// authentication. When `true`, output notes can be created without authentication.
-    allow_unauthorized_output_notes: bool,
-    /// When `false`, consuming input notes (processing notes sent to this account) requires
-    /// authentication. When `true`, input notes can be consumed without authentication.
-    allow_unauthorized_input_notes: bool,
+    config: AuthRpoFalcon512AclConfig,
 }
 
 impl AuthRpoFalcon512Acl {
     /// Creates a new [`AuthRpoFalcon512Acl`] component with the given `public_key`,
-    /// list of procedure roots that require authentication, and whether to allow unauthorized
-    /// output notes and input notes.
+    /// list of procedure roots that require authentication, and configuration for note
+    /// authorization.
     ///
     /// # Panics
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
         public_key: PublicKey,
         auth_trigger_procedures: Vec<Word>,
-        allow_unauthorized_output_notes: bool,
-        allow_unauthorized_input_notes: bool,
+        config: AuthRpoFalcon512AclConfig,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if auth_trigger_procedures.len() > max_procedures {
@@ -123,9 +164,28 @@ impl AuthRpoFalcon512Acl {
         Ok(Self {
             public_key,
             auth_trigger_procedures,
+            config,
+        })
+    }
+
+    /// Creates a new [`AuthRpoFalcon512Acl`] component with the given `public_key`,
+    /// list of procedure roots that require authentication, and boolean flags for note
+    /// authorization.
+    ///
+    /// This method is provided for backward compatibility. Consider using [`Self::new`] with
+    /// [`AuthRpoFalcon512AclConfig`] for better readability.
+    #[deprecated(since = "0.11.0", note = "Use `new` with `AuthRpoFalcon512AclConfig` instead")]
+    pub fn new_with_flags(
+        public_key: PublicKey,
+        auth_trigger_procedures: Vec<Word>,
+        allow_unauthorized_output_notes: bool,
+        allow_unauthorized_input_notes: bool,
+    ) -> Result<Self, AccountError> {
+        let config = AuthRpoFalcon512AclConfig {
             allow_unauthorized_output_notes,
             allow_unauthorized_input_notes,
-        })
+        };
+        Self::new(public_key, auth_trigger_procedures, config)
     }
 }
 
@@ -141,8 +201,8 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         let num_procs = falcon.auth_trigger_procedures.len() as u32;
         storage_slots.push(StorageSlot::Value(Word::from([
             num_procs,
-            u32::from(falcon.allow_unauthorized_output_notes),
-            u32::from(falcon.allow_unauthorized_input_notes),
+            u32::from(falcon.config.allow_unauthorized_output_notes),
+            u32::from(falcon.config.allow_unauthorized_input_notes),
             0,
         ])));
 
@@ -177,8 +237,9 @@ mod tests {
     #[test]
     fn test_rpo_falcon_512_procedure_acl_no_procedures() {
         let public_key = PublicKey::new(Word::empty());
-        let component = AuthRpoFalcon512Acl::new(public_key, vec![], false, false)
-            .expect("component creation failed");
+        let component =
+            AuthRpoFalcon512Acl::new(public_key, vec![], AuthRpoFalcon512AclConfig::new())
+                .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -221,9 +282,12 @@ mod tests {
 
         assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component =
-            AuthRpoFalcon512Acl::new(public_key, auth_trigger_procedures.clone(), false, false)
-                .expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(
+            public_key,
+            auth_trigger_procedures.clone(),
+            AuthRpoFalcon512AclConfig::new(),
+        )
+        .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -257,8 +321,12 @@ mod tests {
     #[test]
     fn test_rpo_falcon_512_procedure_acl_with_allow_unauthorized_output_notes() {
         let public_key = PublicKey::new(Word::empty());
-        let component = AuthRpoFalcon512Acl::new(public_key, vec![], true, false)
-            .expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(
+            public_key,
+            vec![],
+            AuthRpoFalcon512AclConfig::new().with_allow_unauthorized_output_notes(true),
+        )
+        .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -292,9 +360,12 @@ mod tests {
 
         assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component =
-            AuthRpoFalcon512Acl::new(public_key, auth_trigger_procedures.clone(), true, false)
-                .expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(
+            public_key,
+            auth_trigger_procedures.clone(),
+            AuthRpoFalcon512AclConfig::new().with_allow_unauthorized_output_notes(true),
+        )
+        .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -328,8 +399,12 @@ mod tests {
     #[test]
     fn test_rpo_falcon_512_procedure_acl_with_allow_unauthorized_input_notes() {
         let public_key = PublicKey::new(Word::empty());
-        let component = AuthRpoFalcon512Acl::new(public_key, vec![], false, true)
-            .expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(
+            public_key,
+            vec![],
+            AuthRpoFalcon512AclConfig::new().with_allow_unauthorized_input_notes(true),
+        )
+        .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -363,9 +438,14 @@ mod tests {
 
         assert_eq!(auth_trigger_procedures.len(), 2);
 
-        let component =
-            AuthRpoFalcon512Acl::new(public_key, auth_trigger_procedures.clone(), true, true)
-                .expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(
+            public_key,
+            auth_trigger_procedures.clone(),
+            AuthRpoFalcon512AclConfig::new()
+                .with_allow_unauthorized_output_notes(true)
+                .with_allow_unauthorized_input_notes(true),
+        )
+        .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
