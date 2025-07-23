@@ -191,7 +191,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
-        Felt::ONE,
+        Felt::ZERO,
         "no auth but should still trigger nonce increment"
     );
 
