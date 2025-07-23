@@ -76,7 +76,7 @@ pub enum WellKnownComponent {
 impl WellKnownComponent {
     /// Returns the iterator over procedure digests, containing digests of all procedures provided
     /// by the current component.
-    fn procedure_digests(&self) -> impl Iterator<Item = Word> {
+    pub fn procedure_digests(&self) -> impl Iterator<Item = Word> {
         let forest = match self {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),

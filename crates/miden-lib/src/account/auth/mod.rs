@@ -216,7 +216,7 @@ mod tests {
     use miden_objects::{Word, account::AccountBuilder};
 
     use super::*;
-    use crate::account::{components::basic_wallet_library, wallets::BasicWallet};
+    use crate::account::{components::WellKnownComponent, wallets::BasicWallet};
 
     /// Test configuration for parametrized ACL tests
     struct AclTestConfig {
@@ -233,15 +233,7 @@ mod tests {
     /// Helper function to get the basic wallet procedures for testing
     fn get_basic_wallet_procedures() -> Vec<Word> {
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
-        // TODO refactor to fetch procedure digests by name after
-        // https://github.com/0xMiden/miden-base/pull/1532
-        let procedures: Vec<Word> = basic_wallet_library()
-            .module_infos()
-            .next()
-            .expect("at least one module expected")
-            .procedures()
-            .map(|(_, proc_info)| proc_info.digest)
-            .collect();
+        let procedures: Vec<Word> = WellKnownComponent::BasicWallet.procedure_digests().collect();
 
         assert_eq!(procedures.len(), 2);
         procedures
