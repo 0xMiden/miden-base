@@ -1,7 +1,4 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    string::String,
-};
+use alloc::collections::{BTreeMap, BTreeSet};
 
 use miden_crypto::{
     Word,
@@ -10,7 +7,7 @@ use miden_crypto::{
 use vm_core::utils::{Deserializable, Serializable};
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlot};
-use crate::account::PartialStorageMap;
+use crate::{AccountError, account::PartialStorageMap};
 
 /// A partial representation of an account storage, containing only a subset of the storage data.
 ///
@@ -37,13 +34,13 @@ impl PartialStorage {
     pub fn new(
         storage_header: AccountStorageHeader,
         storage_maps: impl Iterator<Item = PartialStorageMap>,
-    ) -> Result<Self, String> {
+    ) -> Result<Self, AccountError> {
         let storage_map_roots: BTreeSet<_> = storage_header.map_slot_roots().collect();
         let mut maps = BTreeMap::new();
         for smt in storage_maps {
             // Check that the passed storage map partial SMT has a matching map slot root
             if storage_map_roots.contains(&smt.root()) {
-                return Err(String::from("todo"));
+                return Err(AccountError::StorageMapRootNotFound(smt.root()));
             }
             maps.insert(smt.root(), smt);
         }
