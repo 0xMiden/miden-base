@@ -161,14 +161,16 @@ where
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
+        let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.data_store,
             script_mast_store,
@@ -246,6 +248,7 @@ where
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            tx_inputs.input_notes().clone(),
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
@@ -312,14 +315,16 @@ where
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
+        let input_notes = tx_inputs.input_notes();
 
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,

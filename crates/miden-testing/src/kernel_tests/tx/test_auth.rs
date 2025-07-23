@@ -1,7 +1,11 @@
 use anyhow::Context;
-use miden_lib::{errors::MasmError, transaction::TransactionKernel};
+use miden_lib::{
+    account::wallets::BasicWallet,
+    errors::{MasmError, note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT},
+    transaction::TransactionKernel,
+};
 use miden_objects::{
-    account::Account,
+    account::{Account, AccountBuilder},
     testing::{
         account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG},
         account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -10,7 +14,7 @@ use miden_objects::{
 use miden_tx::TransactionExecutorError;
 
 use super::{Felt, ONE};
-use crate::{TransactionContextBuilder, assert_execution_error};
+use crate::{Auth, TransactionContextBuilder, assert_execution_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
 
@@ -77,6 +81,45 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
     };
 
     assert_execution_error!(Err::<(), _>(err), ERR_WRONG_ARGS);
+
+    Ok(())
+}
+
+/// Tests that attempting to call the auth procedure manually from user code fails.
+#[test]
+fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
+    let (auth_component, _) = Auth::IncrNonce.build_component();
+
+    let account = AccountBuilder::new([42; 32])
+        .with_auth_component(auth_component.clone())
+        .with_component(BasicWallet)
+        .build_existing()?;
+
+    // Create a transaction script that calls the auth procedure
+    let tx_script_source = "
+        begin
+            call.::auth__basic
+        end
+    ";
+
+    let tx_script = miden_objects::transaction::TransactionScript::compile(
+        tx_script_source,
+        TransactionKernel::testing_assembler()
+            .with_dynamic_library(auth_component.library())
+            .unwrap(),
+    )?;
+
+    let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
+
+    let execution_result = tx_context.execute();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) =
+        execution_result.unwrap_err()
+    else {
+        panic!("unexpected error type")
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT);
 
     Ok(())
 }

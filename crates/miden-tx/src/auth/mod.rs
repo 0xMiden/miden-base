@@ -1,4 +1,6 @@
 mod tx_authenticator;
-pub use tx_authenticator::{BasicAuthenticator, TransactionAuthenticator, UnreachableAuth};
+pub use tx_authenticator::{
+    BasicAuthenticator, SigningInputs, TransactionAuthenticator, UnreachableAuth,
+};
 
 pub mod signatures;
