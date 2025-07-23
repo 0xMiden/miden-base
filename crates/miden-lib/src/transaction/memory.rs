@@ -389,6 +389,10 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
 // - `assets_commitment_dirty_flag` is the binary flag which specifies whether the assets commitment
 //   stored in this note corresponds to the currently stored assets. It holds 1 if some changes were
 //   made to the note assets since the last re-computation, and 0 otherwise.
+//
+// Dirty flag is set to 0 after every recomputation of the assets commitment in the
+// `kernel::note::compute_output_note_assets_commitment` procedure. It is set to 1 after any change
+// in the assets data in the `kernel::tx::add_asset_to_note` procedure.
 
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;

@@ -223,7 +223,7 @@ const.OUTPUT_NOTE_SECTION_OFFSET=16777216
 const.OUTPUT_NOTE_ID_OFFSET=0
 const.OUTPUT_NOTE_METADATA_OFFSET=4
 const.OUTPUT_NOTE_RECIPIENT_OFFSET=8
-const.OUTPUT_NOTE_ASSETS_HASH_OFFSET=12
+const.OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=12
 const.OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
 const.OUTPUT_NOTE_DIRTY_FLAG_OFFSET=17
 const.OUTPUT_NOTE_ASSETS_OFFSET=20
@@ -1751,28 +1751,28 @@ end
 #! Returns the assets commitment for the output note located at the specified memory address.
 #!
 #! Inputs:  [output_note_data_ptr]
-#! Outputs: [ASSET_COMMITMENT]
+#! Outputs: [ASSETS_COMMITMENT]
 #!
 #! Where:
 #! - output_note_data_ptr is the memory address at which the output note data begins.
-#! - ASSET_COMMITMENT is the sequential hash of the padded assets of an output note.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded assets of an output note.
 export.get_output_note_assets_commitment
     padw
-    movup.4 add.OUTPUT_NOTE_ASSETS_HASH_OFFSET
+    movup.4 add.OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET
     mem_loadw
 end
 
 #! Sets the output note assets commitment for the output note located at the specified memory 
 #! address.
 #!
-#! Inputs:  [output_note_data_ptr, ASSET_COMMITMENT]
-#! Outputs: [ASSET_COMMITMENT]
+#! Inputs:  [output_note_data_ptr, ASSETS_COMMITMENT]
+#! Outputs: [ASSETS_COMMITMENT]
 #!
 #! Where:
 #! - output_note_data_ptr is the memory address at which the output note data begins.
-#! - ASSET_COMMITMENT is the sequential hash of the padded assets of an output note.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded assets of an output note.
 export.set_output_note_assets_commitment
-    add.OUTPUT_NOTE_ASSETS_HASH_OFFSET
+    add.OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET
     mem_storew
 end
 

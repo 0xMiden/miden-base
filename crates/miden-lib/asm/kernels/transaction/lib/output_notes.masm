@@ -39,22 +39,7 @@ export.get_assets_info
     dup exec.memory::get_output_note_num_assets swap
     # => [note_data_ptr, num_assets]
 
-    # get the assets commitment dirty flag and decide whether we need to recompute the commitment
-    dup exec.memory::get_output_note_dirty_flag
-    # => [dirty_flag, note_data_ptr, num_assets]
-
-    if.true
-        # we should recompute assets commitment
-        dup exec.note::compute_output_note_assets_commitment
-        # => [COMPUTED_ASSETS_HASH, note_data_ptr, num_assets]
-
-        # update the dirty flag
-        push.0 movup.5 exec.memory::set_output_note_dirty_flag
-        # => [COMPUTED_ASSETS_HASH, num_assets]
-    else
-        # get the cached assets commitment
-        exec.memory::get_output_note_assets_commitment
-        # => [ASSETS_HASH, num_assets]
-    end
+    # get the assets commitment
+    exec.note::compute_output_note_assets_commitment
     # => [ASSETS_HASH, num_assets]
 end

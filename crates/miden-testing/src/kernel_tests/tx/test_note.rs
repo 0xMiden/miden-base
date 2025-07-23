@@ -463,7 +463,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
             # => [ASSETS_HASH_1, num_assets_1]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_1} 
+            push.{COMPUTED_ASSETS_HASH_1}
             assert_eqw.err="note 1 has incorrect assets hash"
             # => [num_assets_1]
 

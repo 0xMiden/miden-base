@@ -66,7 +66,7 @@ pub const KERNEL0_PROCEDURES: [Word; 42] = [
     // input_note_get_assets_info
     word!("0xbc0eb21713a5a005c53d9acc97d41cc2584bd0b36e1e5eb27c9bb5a761350a2b"),
     // output_note_get_assets_info
-    word!("0x0a272abc2765b362c4c7b6d4677562744f491cc704847b96b216708a1ff22f76"),
+    word!("0xfc2c57596344198193bc45fc564f2c3bd7e319c9e56a294740e4d4564b13fc63"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
@@ -74,7 +74,7 @@ pub const KERNEL0_PROCEDURES: [Word; 42] = [
     // tx_get_num_input_notes
     word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
     // tx_get_output_notes_commitment
-    word!("0x0c241940512d130ad36c70c4e946285cb5841f2655c4fe12df001cb834256a29"),
+    word!("0x9c94ca576def549b2b77855ec9ee7bce460f275fbc196650040c93b34543a34d"),
     // tx_get_num_output_notes
     word!("0x0d9d5cca827893238181b973ec43af8ee4b4018dd32c8d2e85fd797d978c88c0"),
     // tx_get_block_commitment
