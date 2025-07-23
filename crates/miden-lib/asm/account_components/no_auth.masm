@@ -1,5 +1,5 @@
 use.miden::account
 
-export.auth__basic
+export.auth__none
     push.1 exec.account::incr_nonce
 end

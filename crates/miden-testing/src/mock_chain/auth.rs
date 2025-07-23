@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{RpoFalcon512, RpoFalcon512ProcedureAcl},
+    account::auth::{NoAuth, RpoFalcon512, RpoFalcon512ProcedureAcl},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -35,6 +35,11 @@ pub enum Auth {
 
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
+
+    /// Creates a NoAuth component from miden-lib that only increments the nonce.
+    /// This is the standard NoAuth component that should be used instead of IncrNonce for
+    /// production.
+    NoAuth,
 
     /// TODO update once #1501 is ready.
     Conditional,
@@ -86,6 +91,12 @@ impl Auth {
                 let component = NoopAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
             },
+
+            Auth::NoAuth => {
+                let component = NoAuth.into();
+                (component, None)
+            },
+
             Auth::Conditional => {
                 let assembler = TransactionKernel::assembler();
                 let component = ConditionalAuthComponent::new(assembler).unwrap();

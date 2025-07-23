@@ -32,13 +32,6 @@ impl RpoFalcon512 {
     pub fn new(public_key: PublicKey) -> Self {
         Self { public_key }
     }
-
-    /// Creates a NoAuth component that provides no authentication - only increments the nonce.
-    ///
-    /// This is useful for testing scenarios or accounts that don't require authentication.
-    pub fn no_auth() -> AccountComponent {
-        NoAuth.into()
-    }
 }
 
 impl From<RpoFalcon512> for AccountComponent {
@@ -130,7 +123,7 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
 
 /// An [`AccountComponent`] that provides no authentication - it only increments the nonce.
 ///
-/// This component exports the procedure `auth__basic`, which simply increments the account nonce
+/// This component exports the procedure `auth__none`, which simply increments the account nonce
 /// without performing any signature verification. This is useful for testing scenarios or accounts
 /// that don't require authentication.
 ///
@@ -230,7 +223,7 @@ mod tests {
     fn test_no_auth_component() {
         // Create an account using the NoAuth component
         let (_account, _) = AccountBuilder::new([0; 32])
-            .with_auth_component(RpoFalcon512::no_auth())
+            .with_auth_component(NoAuth)
             .with_component(BasicWallet)
             .build()
             .expect("account building failed");
