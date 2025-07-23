@@ -52,19 +52,19 @@ impl<'store, 'auth> TransactionExecutorHost<'store, 'auth> {
     /// Creates a new [`TransactionExecutorHost`] instance from the provided inputs.
     pub fn new(
         account: &PartialAccount,
+        input_notes: InputNotes<InputNote>,
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
-        input_notes: InputNotes<InputNote>,
         authenticator: Option<&'auth dyn TransactionAuthenticator>,
         foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
         let base_host = TransactionBaseHost::new(
             account,
+            input_notes,
             advice_inputs,
             mast_store,
             scripts_mast_store,
-            input_notes,
             foreign_account_code_commitments,
         )?;
 

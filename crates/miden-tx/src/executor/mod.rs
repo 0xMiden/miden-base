@@ -169,10 +169,10 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.data_store,
             script_mast_store,
-            input_notes.clone(),
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
@@ -247,10 +247,10 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            tx_inputs.input_notes().clone(),
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
-            tx_inputs.input_notes().clone(),
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
@@ -323,10 +323,10 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
-            input_notes.clone(),
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )

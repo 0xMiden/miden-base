@@ -65,12 +65,12 @@ pub struct TransactionBaseHost<'store> {
     /// account codes involved in the transaction (for native and foreign accounts alike).
     acct_procedure_index_map: AccountProcedureIndexMap,
 
+    /// Input notes consumed by the transaction.
+    input_notes: InputNotes<InputNote>,
+
     /// The list of notes created while executing a transaction stored as note_ptr |-> note_builder
     /// map.
     output_notes: BTreeMap<usize, OutputNoteBuilder>,
-
-    /// Input notes for the transaction.
-    input_notes: InputNotes<InputNote>,
 
     /// Tracks the number of cycles for each of the transaction execution stages.
     ///
@@ -85,10 +85,10 @@ impl<'store> TransactionBaseHost<'store> {
     /// Creates a new [`TransactionBaseHost`] instance from the provided inputs.
     pub fn new(
         account: &PartialAccount,
+        input_notes: InputNotes<InputNote>,
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store dyn MastForestStore,
         scripts_mast_store: ScriptMastForestStore,
-        input_notes: InputNotes<InputNote>,
         mut foreign_account_code_commitments: BTreeSet<Word>,
     ) -> Result<Self, TransactionHostError> {
         // currently, the executor/prover do not keep track of the code commitment of the native
@@ -163,7 +163,7 @@ impl<'store> TransactionBaseHost<'store> {
         self.account_delta_tracker().clone().into_delta()
     }
 
-    /// Returns the input notes of this transaction.
+    /// Returns the input notes consumed in this transaction.
     pub fn input_notes(&self) -> InputNotes<InputNote> {
         self.input_notes.clone()
     }
