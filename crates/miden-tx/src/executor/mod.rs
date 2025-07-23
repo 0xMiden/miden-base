@@ -191,7 +191,7 @@ where
             self.exec_options,
             source_manager,
         )
-        .map_err(|err| map_execution_error(err, &host.base_host()))?;
+        .map_err(|err| map_execution_error(err, host.base_host()))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
