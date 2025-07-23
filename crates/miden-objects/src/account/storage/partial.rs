@@ -5,12 +5,12 @@ use alloc::{
 
 use miden_crypto::{
     Word,
-    merkle::{InnerNodeInfo, SmtLeaf, SmtProof},
+    merkle::{InnerNodeInfo, SmtLeaf},
 };
 use vm_core::utils::{Deserializable, Serializable};
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlot};
-use crate::account::{PartialStorageMap, StorageSlotType};
+use crate::account::PartialStorageMap;
 
 /// A partial representation of an account storage, containing only a subset of the storage data.
 ///
