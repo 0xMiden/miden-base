@@ -35,7 +35,7 @@ rand_chacha        = { default-features = false, version = "0.9" }
 thiserror          = { workspace = true }
 winter-maybe-async = { version = "0.13" }
 winterfell         = { version = "0.13" }
-tokio = { workspace = true, features = ["rt", "macros"] }
+tokio = { workspace = true, features = ["rt", "rt-multi-thread", "macros"] }
 
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], version = "1.0" }
