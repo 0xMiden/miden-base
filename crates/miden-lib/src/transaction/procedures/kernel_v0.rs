@@ -64,9 +64,9 @@ pub const KERNEL0_PROCEDURES: [Word; 42] = [
     // note_get_script_root
     word!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // input_note_get_assets_info
-    word!("0xbc0eb21713a5a005c53d9acc97d41cc2584bd0b36e1e5eb27c9bb5a761350a2b"),
+    word!("0x7c84b797b1bf72c53f17b04a86e99abd79ae4556dfdd19aa705eaed3a3c7004b"),
     // output_note_get_assets_info
-    word!("0xfc2c57596344198193bc45fc564f2c3bd7e319c9e56a294740e4d4564b13fc63"),
+    word!("0xf638c9f7ef4c439e7fe81c8caeacc552a0c4e4a2d55b91546c6cbe3da7d71180"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment

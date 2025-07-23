@@ -11,12 +11,12 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 #! Returns the information about assets in the input note with the specified index.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [ASSETS_HASH, num_assets]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
 #!
 #! Where:
 #! - note_index is the index of the input note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
-#! - ASSETS_HASH is a sequential hash of the assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
@@ -25,7 +25,7 @@ export.get_assets_info
     dup exec.memory::get_num_input_notes 
     # => [input_notes_num, note_index, note_index]
     
-    lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
     # => [note_index]
 
     # get the memory pointer to the requested note
@@ -37,6 +37,6 @@ export.get_assets_info
     # => [num_assets, ptr]
 
     # get the assets commitment from the note pointer
-    swap exec.memory::get_input_note_assets_hash
-    # => [ASSETS_HASH, num_assets]
+    swap exec.memory::get_input_note_assets_commitment
+    # => [ASSETS_COMMITMENT, num_assets]
 end

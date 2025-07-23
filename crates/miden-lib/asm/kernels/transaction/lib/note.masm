@@ -53,11 +53,11 @@ end
 #! Returns the number of assets and the assets commitment of the note currently being processed.
 #!
 #! Inputs:  []
-#! Outputs: [ASSETS_HASH, num_assets]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
 #!
 #! Where:
 #! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_HASH is the vault hash of the note currently being processed.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
 #!
 #! Panics if:
 #! - the note is not being processed.
@@ -76,8 +76,8 @@ export.get_assets_info
     # => [num_assets, ptr]
 
     # get the assets commitment from the note pointer
-    swap exec.memory::get_input_note_assets_hash
-    # => [ASSETS_HASH, num_assets]
+    swap exec.memory::get_input_note_assets_commitment
+    # => [ASSETS_COMMITMENT, num_assets]
 end
 
 #! Returns the commitment to the note's inputs.
@@ -251,7 +251,7 @@ end
 #! - we define, recipient =
 #!       hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)
 #! - we then compute the output note ID as:
-#!       hash(recipient, assets_hash)
+#!       hash(recipient, assets_commitment)
 #!
 #! Inputs:  [note_data_ptr]
 #! Outputs: [NOTE_ID]
@@ -270,7 +270,7 @@ proc.compute_output_note_id
 
     # populate the last four elements of the hasher rate with the output note's asset commitment
     dup.8 exec.compute_output_note_assets_commitment
-    # => [ASSETS_HASH, RECIPIENT, EMPTY_WORD, note_data_ptr]
+    # => [ASSETS_COMMITMENT, RECIPIENT, EMPTY_WORD, note_data_ptr]
 
     # compute output note commitment (which is also note ID) and extract digest
     hperm exec.rpo::squeeze_digest

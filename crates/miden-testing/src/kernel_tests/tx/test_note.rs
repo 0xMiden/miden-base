@@ -13,7 +13,7 @@ use miden_objects::{
     EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word,
     account::{Account, AccountBuilder, AccountId},
     assembly::diagnostics::miette::{self, miette},
-    asset::FungibleAsset,
+    asset::{Asset, FungibleAsset},
     crypto::{
         dsa::rpo_falcon512::SecretKey,
         rand::{FeltRng, RpoRandomCoin},
@@ -24,9 +24,9 @@ use miden_objects::{
     },
     testing::{
         account_id::{
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
         },
         note::NoteBuilder,
@@ -345,16 +345,16 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.miden::input_notes
+        use.miden::input_note
 
         begin
             # get the assets hash and assets number from the 0'th input note
             push.0
-            exec.input_notes::get_assets_info
-            # => [ASSETS_HASH_0, num_assets_0]
+            exec.input_note::get_assets_info
+            # => [ASSETS_COMMITMENT_0, num_assets_0]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_0} 
+            push.{COMPUTED_ASSETS_COMMITMENT_0} 
             assert_eqw.err="note 0 has incorrect assets hash"
             # => [num_assets_0]
 
@@ -365,11 +365,11 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
 
             # get the assets hash and assets number from the 1'st input note
             push.1
-            exec.input_notes::get_assets_info
-            # => [ASSETS_HASH_1, num_assets_1]
+            exec.input_note::get_assets_info
+            # => [ASSETS_COMMITMENT_1, num_assets_1]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_1} 
+            push.{COMPUTED_ASSETS_COMMITMENT_1} 
             assert_eqw.err="note 0 has incorrect assets hash"
             # => [num_assets_1]
 
@@ -379,9 +379,9 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
             # => []
         end
     "#,
-        COMPUTED_ASSETS_HASH_0 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
+        COMPUTED_ASSETS_COMMITMENT_0 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
         assets_number_0 = p2id_note_1.assets().num_assets(),
-        COMPUTED_ASSETS_HASH_1 = word_to_masm_push_string(&p2id_note_2.assets().commitment()),
+        COMPUTED_ASSETS_COMMITMENT_1 = word_to_masm_push_string(&p2id_note_2.assets().commitment()),
         assets_number_1 = p2id_note_2.assets().num_assets(),
     );
 
@@ -401,19 +401,45 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// This test creates an output note and then adds some assets into it checking the assets info on
+/// each stage.
+///
+/// Namely, we invoke the `miden::output_notes::get_assets_info` procedure:
+/// - After adding the first `asset_1` to the note.
+/// - Right after the previous check to make sure it returns the same commitment from the cached
+///   data.
+/// - After adding the second `asset_2` to the note.
 #[test]
 fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
-    let account =
-        builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(2000)])?;
+    let fungible_asset_1 = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).expect("id should be valid"),
+            5,
+        )
+        .expect("asset is invalid"),
+    );
+
+    // create the second asset with the different faucet ID to increase the number of assets in the
+    // output note to 2.
+    let fungible_asset_2 = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).expect("id should be valid"),
+            5,
+        )
+        .expect("asset is invalid"),
+    );
+
+    let account = builder
+        .add_existing_wallet_with_assets(Auth::BasicAuth, [fungible_asset_1, fungible_asset_2])?;
 
     let mock_chain = builder.build()?;
 
     let output_note_1 = create_p2id_note(
         account.id(),
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2.try_into()?,
-        vec![FungibleAsset::mock(10)],
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
+        vec![fungible_asset_1],
         NoteType::Public,
         Felt::new(0),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
@@ -422,7 +448,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
     let output_note_2 = create_p2id_note(
         account.id(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
-        vec![FungibleAsset::mock(5)],
+        vec![fungible_asset_1, fungible_asset_2],
         NoteType::Public,
         Felt::new(0),
         &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
@@ -431,79 +457,86 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
     let tx_script_src = &format!(
         r#"
         use.miden::tx
-        use.miden::output_notes
+        use.miden::output_note
         use.std::sys
 
         begin
-            # create output notes and move assets to them
-            push.{recipient_1}
-            push.{note_execution_hint_1}
-            push.{note_type_1}
+            # create an output note
+            push.{recipient}
+            push.{note_execution_hint}
+            push.{note_type}
             push.0              # aux
-            push.{tag_1}
-            call.tx::create_note
+            push.{tag}
+            exec.tx::create_note
+            # => [note_idx]
 
+            # add asset_1 to the note
             push.{asset_1}
             call.::miden::contracts::wallets::basic::move_asset_to_note
-            dropw dropw dropw dropw
+            dropw
+            # => [note_idx]
 
-            push.{recipient_2}
-            push.{note_execution_hint_2}
-            push.{note_type_2}
-            push.0              # aux
-            push.{tag_2}
-            call.tx::create_note
+            # get the assets hash and assets number of the note having only asset_1
+            dup exec.output_note::get_assets_info
+            # => [ASSETS_COMMITMENT_1, num_assets_1, note_idx]
 
+            # assert the correctness of the assets hash
+            push.{COMPUTED_ASSETS_COMMITMENT_1}
+            assert_eqw.err="assets commitment of the note having only asset_1 is incorrect"
+            # => [num_assets_1, note_idx]
+
+            # assert the number of assets
+            push.{assets_number_1}
+            assert_eq.err="number of assets in the note having only asset_1 is incorrect"
+            # => [note_idx]
+
+            # get the assets info once more to get the cached data and assert that this data didn't
+            # change
+            dup exec.output_note::get_assets_info
+            push.{COMPUTED_ASSETS_COMMITMENT_1}
+            assert_eqw.err="assets commitment of the note having only asset_1 is incorrect"
+            push.{assets_number_1}
+            assert_eq.err="number of assets in the note having only asset_1 is incorrect"
+            # => [note_idx]
+
+            # add asset_2 to the note
             push.{asset_2}
             call.::miden::contracts::wallets::basic::move_asset_to_note
+            dropw
+            # => [note_idx]
 
-            # get the assets hash and assets number from the first (0'th) output note
-            push.0
-            exec.output_notes::get_assets_info
-            # => [ASSETS_HASH_1, num_assets_1]
-
-            # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_1}
-            assert_eqw.err="note 1 has incorrect assets hash"
-            # => [num_assets_1]
-
-            # assert the number of note assets
-            push.{assets_number_1}
-            assert_eq.err="note 1 has incorrect assets number"
-            # => []
-
-            # get the assets hash and assets number from the second (1'st) output note
-            push.1
-            exec.output_notes::get_assets_info
-            # => [ASSETS_HASH_2, num_assets_2]
+            # get the assets hash and assets number of the note having asset_1 and asset_2
+            dup exec.output_note::get_assets_info
+            # => [ASSETS_COMMITMENT_1, num_assets_1, note_idx]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_2} 
-            assert_eqw.err="note 2 has incorrect assets hash"
-            # => [num_assets_2]
+            push.{COMPUTED_ASSETS_COMMITMENT_2}
+            assert_eqw.err="assets commitment of the note having asset_1 and asset_2 is incorrect"
+            # => [num_assets_1, note_idx]
 
-            # assert the number of note assets
+            # assert the number of assets
             push.{assets_number_2}
-            assert_eq.err="note 2 has incorrect assets number"
-            # => []
+            assert_eq.err="number of assets in the note having asset_1 and asset_2 is incorrect"
+            # => [note_idx]
 
             # truncate the stack
             exec.sys::truncate_stack
         end
         "#,
-        recipient_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
-        note_type_1 = NoteType::Public as u8,
-        tag_1 = Felt::from(output_note_1.metadata().tag()),
-        asset_1 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
-        note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        recipient_2 = word_to_masm_push_string(&output_note_2.recipient().digest()),
-        note_type_2 = NoteType::Public as u8,
-        tag_2 = Felt::from(output_note_2.metadata().tag()),
-        asset_2 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
-        note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint()),
-        COMPUTED_ASSETS_HASH_1 = word_to_masm_push_string(&output_note_1.assets().commitment()),
+        // note data
+        recipient = word_to_masm_push_string(&output_note_2.recipient().digest()),
+        note_execution_hint = Felt::from(output_note_2.metadata().execution_hint()),
+        note_type = NoteType::Public as u8,
+        tag = Felt::from(output_note_2.metadata().tag()),
+        // first data request
+        asset_1 = word_to_masm_push_string(&fungible_asset_1.into()),
+        COMPUTED_ASSETS_COMMITMENT_1 =
+            word_to_masm_push_string(&output_note_1.assets().commitment()),
         assets_number_1 = output_note_1.assets().num_assets(),
-        COMPUTED_ASSETS_HASH_2 = word_to_masm_push_string(&output_note_2.assets().commitment()),
+        // second data request
+        asset_2 = word_to_masm_push_string(&fungible_asset_2.into()),
+        COMPUTED_ASSETS_COMMITMENT_2 =
+            word_to_masm_push_string(&output_note_2.assets().commitment()),
         assets_number_2 = output_note_2.assets().num_assets(),
     );
 
@@ -512,10 +545,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
-        .extend_expected_output_notes(vec![
-            OutputNote::Full(output_note_1),
-            OutputNote::Full(output_note_2),
-        ])
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note_2)])
         .tx_script(tx_script)
         .build()?;
 
