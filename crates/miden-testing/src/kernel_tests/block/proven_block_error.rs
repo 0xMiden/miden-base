@@ -254,7 +254,6 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let mut mock_chain = MockChain::new();
 
-    let assembler = TransactionKernel::testing_assembler();
     let auth_component: AccountComponent = NoAuth.into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
