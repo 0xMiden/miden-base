@@ -25,10 +25,13 @@ use alloc::{
 
 use miden_lib::transaction::{
     TransactionEvent, TransactionEventError, TransactionKernelError,
-    memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
+    memory::{
+        ACCT_NONCE_IDX, BLOCK_METADATA_PTR, BLOCK_NUMBER_IDX, CURRENT_INPUT_NOTE_PTR,
+        NATIVE_ACCT_ID_AND_NONCE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    },
 };
 use miden_objects::{
-    Hasher, Word,
+    Hasher, Word, ZERO,
     account::{AccountDelta, PartialAccount},
     asset::Asset,
     note::NoteId,
@@ -41,7 +44,7 @@ use vm_processor::{
     MastForestStore, MemoryError, ProcessState,
 };
 
-use crate::errors::TransactionHostError;
+use crate::{errors::TransactionHostError, executor::build_tx_summary};
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -317,8 +320,23 @@ where
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
-        let signature_key = Hasher::merge(&[pub_key, msg]);
+        let message = process.get_stack_word(1);
+
+        let final_nonce = process
+            .get_mem_value(ContextId::root(), NATIVE_ACCT_ID_AND_NONCE_PTR + ACCT_NONCE_IDX as u32)
+            .unwrap();
+        let block_number = process
+            .get_mem_value(ContextId::root(), BLOCK_METADATA_PTR + BLOCK_NUMBER_IDX as u32)
+            .unwrap();
+
+        let salt = Word::from([ZERO, ZERO, block_number, final_nonce]);
+
+        let tx_summary = build_tx_summary(self, salt)
+            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+        let tx_summary_commitment = tx_summary.to_commitment();
+        debug_assert_eq!(message, tx_summary_commitment);
+
+        let signature_key = Hasher::merge(&[pub_key, tx_summary_commitment]);
 
         let signature = process
             .advice_provider()

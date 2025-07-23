@@ -5,21 +5,29 @@ use alloc::{
     vec::Vec,
 };
 
-use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
+use miden_lib::{
+    errors::TransactionKernelError,
+    transaction::{
+        TransactionEvent,
+        memory::{
+            ACCT_NONCE_IDX, BLOCK_METADATA_PTR, BLOCK_NUMBER_IDX, NATIVE_ACCT_ID_AND_NONCE_PTR,
+        },
+    },
+};
 use miden_objects::{
     Felt, Hasher, Word,
     account::{AccountDelta, PartialAccount},
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, MastForest, MastForestStore,
+    ProcessState, SyncHost, ZERO,
 };
 
 use crate::{
     auth::{SigningInputs, TransactionAuthenticator},
     errors::TransactionHostError,
-    executor::{build_tx_summary, verify_tx_summary},
+    executor::build_tx_summary,
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
@@ -109,29 +117,23 @@ where
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
-        let account_delta_commitment = process.get_stack_word(2);
-        let input_notes_commitment = process.get_stack_word(3);
-        let output_notes_commitment = process.get_stack_word(4);
-        let salt = process.get_stack_word(5);
+        let message = process.get_stack_word(1);
+
+        let final_nonce = process
+            .get_mem_value(ContextId::root(), NATIVE_ACCT_ID_AND_NONCE_PTR + ACCT_NONCE_IDX as u32)
+            .unwrap();
+        let block_number = process
+            .get_mem_value(ContextId::root(), BLOCK_METADATA_PTR + BLOCK_NUMBER_IDX as u32)
+            .unwrap();
+
+        let salt = Word::from([ZERO, ZERO, block_number, final_nonce]);
 
         let tx_summary = build_tx_summary(self.base_host(), salt)
             .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
-
-        // TODO only in debug mode?
-        verify_tx_summary(
-            &tx_summary,
-            account_delta_commitment,
-            input_notes_commitment,
-            output_notes_commitment,
-        )
-        .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
-
         let tx_summary_commitment = tx_summary.to_commitment();
-        debug_assert_eq!(tx_summary_commitment, msg);
+        debug_assert_eq!(message, tx_summary_commitment);
 
-        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
-        let signature_key = Hasher::merge(&[pub_key, msg]);
+        let signature_key = Hasher::merge(&[pub_key, tx_summary_commitment]);
 
         let signature = if let Ok(signature) =
             process.advice_provider().get_mapped_values(&signature_key)
@@ -140,6 +142,8 @@ where
         } else {
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+
+            let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
 
             let signature: Vec<Felt> = authenticator
                 .get_signature(pub_key, &signing_inputs)
