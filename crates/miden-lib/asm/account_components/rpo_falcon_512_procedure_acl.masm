@@ -121,9 +121,4 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
         exec.account::incr_nonce
     end
     # => [pad(16)]
-
-    repeat.4
-        dropw
-    end
-    # => []
 end
