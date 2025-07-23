@@ -4,12 +4,6 @@ use.miden::tx
 # CONSTANTS
 # =================================================================================================
 
-# Event to place the falcon signature of a provided message and public key on the advice stack.
-const.FALCON_SIG_TO_STACK=131087
-
-# The slot in this component's storage layout where the public key is stored.
-const.PUBLIC_KEY_SLOT=0
-
 # The slot where the authentication configuration is stored.
 const.AUTH_CONFIG_SLOT=1
 
@@ -118,7 +112,7 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     if.true
         exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     else
-        exec.account::incr_nonce
+        exec.account::incr_nonce drop
     end
     # => [pad(16)]
 end
