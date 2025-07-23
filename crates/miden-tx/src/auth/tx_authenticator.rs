@@ -67,6 +67,7 @@ pub struct UnreachableAuth {
 }
 
 impl TransactionAuthenticator for UnreachableAuth {
+    #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
         _pub_key: Word,
@@ -148,6 +149,7 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
 // ================================================================================================
 
 impl TransactionAuthenticator for () {
+    #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
         _pub_key: Word,

@@ -19,7 +19,7 @@ use super::MidenLib;
 pub mod memory;
 
 mod events;
-pub use events::TransactionEvent;
+pub use events::{TransactionEvent, TransactionEventData, TransactionEventHandling};
 
 mod inputs;
 pub use inputs::TransactionAdviceInputs;

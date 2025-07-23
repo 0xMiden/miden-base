@@ -135,13 +135,10 @@ impl TransactionContext {
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
 
-        maybe_await!(tx_executor.execute_transaction(
-            account_id,
-            block_num,
-            notes,
-            tx_args,
-            source_manager
-        ))
+        // TODO: Make the function async, but this is easier for the POC stage.
+        tokio::runtime::Builder::new_current_thread().build().unwrap().block_on(
+            tx_executor.execute_transaction(account_id, block_num, notes, tx_args, source_manager),
+        )
     }
 
     pub fn account(&self) -> &Account {

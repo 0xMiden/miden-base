@@ -5,9 +5,12 @@ use alloc::{
     vec::Vec,
 };
 
-use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
+use miden_lib::{
+    errors::TransactionKernelError,
+    transaction::{TransactionEvent, TransactionEventData, TransactionEventHandling},
+};
 use miden_objects::{
-    Felt, Hasher, Word,
+    Felt, Word,
     account::{AccountDelta, PartialAccount},
     transaction::OutputNote,
 };
@@ -101,40 +104,32 @@ where
     ///
     /// The signature is fetched from the advice map or otherwise requested from the host's
     /// authenticator.
-    pub fn on_signature_requested(
+    async fn on_signature_requested(
         &mut self,
-        process: &ProcessState,
-    ) -> impl Future<Output = Result<Vec<AdviceMutation>, TransactionKernelError>> + Send {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
-        let signature_key = Hasher::merge(&[pub_key, msg]);
+        pub_key_hash: Word,
+        message: Word,
+        signature_key: Word,
+        signature_opt: Option<Vec<Felt>>,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let signature = if let Some(signature) = signature_opt {
+            signature
+        } else {
+            let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
 
-        let signature_opt = process
-            .advice_provider()
-            .get_mapped_values(&signature_key)
-            .map(|slice| slice.to_vec());
+            let authenticator =
+                self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
-        async move {
-            let signature = if let Some(signature) = signature_opt {
-                signature
-            } else {
-                let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
+            let signature: Vec<Felt> = authenticator
+                .get_signature(pub_key_hash, message, &account_delta)
+                .await
+                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
-                let authenticator =
-                    self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+            self.generated_signatures.insert(signature_key, signature.clone());
 
-                let signature: Vec<Felt> =
-                    authenticator.get_signature(pub_key, msg, &account_delta).await.map_err(
-                        |err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)),
-                    )?;
+            signature
+        };
 
-                self.generated_signatures.insert(signature_key, signature.clone());
-
-                signature
-            };
-
-            Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
-        }
+        Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -175,25 +170,32 @@ where
         process: &ProcessState,
         event_id: u32,
     ) -> impl Future<Output = Result<Vec<AdviceMutation>, EventError>> + Send {
-        let transaction_event = TransactionEvent::create(process, event_id);
+        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
+        // should be cleaner.
+        let event_handling_result = TransactionEvent::try_from(event_id)
+            .map_err(EventError::from)
+            .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
 
         async move {
-            let transaction_event = transaction_event?;
-            let advice_mutations = match transaction_event {
-                // Override the base host's on signature requested implementation, which would not
-                // call the authenticator.
-                TransactionEvent::AuthRequest => {
-                    // self.on_signature_requested(process).await.map_err(Box::new)?
-                    vec![]
-                },
-                // All other events are handled as in the base host.
-                _ => {
-                    // self.base_host.handle_event(process, transaction_event)?
-                    vec![]
+            let event_handling = event_handling_result?;
+            let event_data = match event_handling {
+                TransactionEventHandling::Unhandled(event) => event,
+                TransactionEventHandling::Handled(mutations) => {
+                    return Ok(mutations);
                 },
             };
 
-            Ok(advice_mutations)
+            match event_data {
+                TransactionEventData::AuthRequest {
+                    pub_key_hash,
+                    message,
+                    signature_key,
+                    signature_opt,
+                } => self
+                    .on_signature_requested(pub_key_hash, message, signature_key, signature_opt)
+                    .await
+                    .map_err(EventError::from),
+            }
         }
     }
 }

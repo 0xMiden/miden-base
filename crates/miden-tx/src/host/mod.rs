@@ -26,7 +26,8 @@ use alloc::{
 };
 
 use miden_lib::transaction::{
-    TransactionEvent, TransactionEventError, TransactionKernelError,
+    TransactionEvent, TransactionEventData, TransactionEventError, TransactionEventHandling,
+    TransactionKernelError,
     memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
 };
 use miden_objects::{
@@ -185,68 +186,79 @@ where
         &mut self,
         process: &ProcessState,
         transaction_event: TransactionEvent,
-    ) -> Result<Vec<AdviceMutation>, EventError> {
+    ) -> Result<TransactionEventHandling, EventError> {
         // Privileged events can only be emitted from the root context.
         if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
             return Err(Box::new(TransactionEventError::NotRootContext(transaction_event as u32)));
         }
 
         let advice_mutations = match transaction_event {
-            TransactionEvent::AccountVaultBeforeAddAsset => Ok(Vec::new()),
+            TransactionEvent::AccountVaultBeforeAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountVaultAfterAddAsset => {
-                self.on_account_vault_after_add_asset(process).map(|_| Vec::new())
+                self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeRemoveAsset => Ok(Vec::new()),
+            TransactionEvent::AccountVaultBeforeRemoveAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountVaultAfterRemoveAsset => {
-                self.on_account_vault_after_remove_asset(process).map(|_| Vec::new())
+                self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountStorageBeforeSetItem => Ok(Vec::new()),
+            TransactionEvent::AccountStorageBeforeSetItem => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountStorageAfterSetItem => {
-                self.on_account_storage_after_set_item(process).map(|_| Vec::new())
+                self.on_account_storage_after_set_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountStorageBeforeSetMapItem => Ok(Vec::new()),
+            TransactionEvent::AccountStorageBeforeSetMapItem => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountStorageAfterSetMapItem => {
-                self.on_account_storage_after_set_map_item(process).map(|_| Vec::new())
+                self.on_account_storage_after_set_map_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountBeforeIncrementNonce => {
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::AccountAfterIncrementNonce => {
-                self.on_account_after_increment_nonce().map(|_| Vec::new())
+                self.on_account_after_increment_nonce().map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountPushProcedureIndex => {
-                self.on_account_push_procedure_index(process)
+                self.on_account_push_procedure_index(process).map(TransactionEventHandling::Handled)
             },
 
-            TransactionEvent::NoteBeforeCreated => Ok(Vec::new()),
-            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process).map(|_| Vec::new()),
+            TransactionEvent::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| Vec::new()),
-            TransactionEvent::NoteAfterAddAsset => Ok(Vec::new()),
+            TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::AuthRequest => self.on_signature_requested(process),
+            TransactionEvent::AuthRequest => {
+                let pub_key_hash = process.get_stack_word(0);
+                let message = process.get_stack_word(1);
+                let signature_key = Hasher::merge(&[pub_key_hash, message]);
+
+                let signature_opt = process
+                    .advice_provider()
+                    .get_mapped_values(&signature_key)
+                    .map(|slice| slice.to_vec());
+
+                Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest { pub_key_hash, message, signature_key, signature_opt }))
+            },
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::PrologueEnd => {
                 self.tx_progress.end_prologue(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::NotesProcessingStart => {
                 self.tx_progress.start_notes_processing(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::NotesProcessingEnd => {
                 self.tx_progress.end_notes_processing(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::NoteExecutionStart => {
@@ -254,37 +266,37 @@ where
                     "Note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 );
                 self.tx_progress.start_note_execution(process.clk(), note_id);
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::NoteExecutionEnd => {
                 self.tx_progress.end_note_execution(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::TxScriptProcessingStart => {
                 self.tx_progress.start_tx_script_processing(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
             TransactionEvent::TxScriptProcessingEnd => {
                 self.tx_progress.end_tx_script_processing(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
 
             TransactionEvent::EpilogueStart => {
                 self.tx_progress.start_epilogue(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
             TransactionEvent::LinkMapSetEvent => {
                 LinkMap::handle_set_event(process)?;
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::LinkMapGetEvent => {
                 LinkMap::handle_get_event(process)?;
-                Ok(Vec::new())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.

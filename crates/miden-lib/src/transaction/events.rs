@@ -1,6 +1,8 @@
+use alloc::vec::Vec;
 use core::fmt;
 
-use vm_processor::{EventError, ProcessState};
+use miden_objects::{Felt, Word};
+use vm_processor::AdviceMutation;
 
 use super::TransactionEventError;
 
@@ -111,6 +113,22 @@ pub enum TransactionEvent {
     Unauthorized = UNAUTHORIZED_EVENT,
 }
 
+#[derive(Debug)]
+pub enum TransactionEventHandling {
+    Unhandled(TransactionEventData),
+    Handled(Vec<AdviceMutation>),
+}
+
+#[derive(Debug, Clone)]
+pub enum TransactionEventData {
+    AuthRequest {
+        pub_key_hash: Word,
+        message: Word,
+        signature_key: Word,
+        signature_opt: Option<Vec<Felt>>,
+    },
+}
+
 impl TransactionEvent {
     /// Value of the top 16 bits of a transaction kernel event ID.
     pub const ID_PREFIX: u32 = 2;
@@ -120,10 +138,6 @@ impl TransactionEvent {
     pub fn is_privileged(&self) -> bool {
         let is_unprivileged = matches!(self, Self::AuthRequest | Self::Unauthorized);
         !is_unprivileged
-    }
-
-    pub fn create(_process: &ProcessState, _event_id: u32) -> Result<Self, EventError> {
-        todo!()
     }
 }
 

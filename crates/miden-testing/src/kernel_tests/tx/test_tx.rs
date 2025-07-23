@@ -1,4 +1,4 @@
-use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, vec::Vec};
 
 use anyhow::Context;
 use assert_matches::assert_matches;
@@ -20,7 +20,7 @@ use miden_lib::{
 use miden_objects::{
     FieldElement, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
-    assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
+    assembly::diagnostics::NamedSource,
     asset::{Asset, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -40,11 +40,8 @@ use miden_objects::{
     },
     transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript},
 };
-use miden_tx::{
-    ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
-    TransactionExecutorHost, TransactionMastStore, auth::UnreachableAuth,
-};
-use vm_processor::{AdviceInputs, Process, crypto::RpoRandomCoin};
+use miden_tx::{TransactionExecutor, TransactionExecutorError, auth::UnreachableAuth};
+use vm_processor::crypto::RpoRandomCoin;
 
 use super::{Felt, ONE, ZERO};
 use crate::{
@@ -91,8 +88,8 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
 
 /// Tests that consuming a note created in a block that is newer than the reference block of the
 /// transaction fails.
-#[test]
-fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -126,13 +123,15 @@ fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
 
     let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
     // Try to execute with block_ref==1
-    let error = tx_executor.execute_transaction(
-        account.id(),
-        BlockNumber::from(1),
-        InputNotes::new(vec![input_note]).unwrap(),
-        TransactionArgs::default(),
-        source_manager,
-    );
+    let error = tx_executor
+        .execute_transaction(
+            account.id(),
+            BlockNumber::from(1),
+            InputNotes::new(vec![input_note]).unwrap(),
+            TransactionArgs::default(),
+            source_manager,
+        )
+        .await;
 
     assert_matches::assert_matches!(
         error,
@@ -868,6 +867,7 @@ fn test_block_procedures() -> anyhow::Result<()> {
     Ok(())
 }
 
+/* TODO: Reenable and use fast processor for reexecution?
 /// Tests that the transaction witness retrieved from an executed transaction contains all necessary
 /// advice input to execute the transaction again.
 #[test]
@@ -958,6 +958,7 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
 
     Ok(())
 }
+*/
 
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {

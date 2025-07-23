@@ -6,14 +6,14 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
-    note::{NoteId, NoteScript},
+    note::NoteId,
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, OutputNotes, TransactionArgs,
         TransactionInputs, TransactionScript, TransactionSummary,
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, ExecutionError, Process, fast::FastProcessor};
+use vm_processor::{AdviceInputs, ExecutionError, fast::FastProcessor};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -143,7 +143,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager + Send + Sync>,
+        _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -226,12 +226,12 @@ where
     #[maybe_async]
     pub fn execute_tx_view_script(
         &self,
-        account_id: AccountId,
-        block_ref: BlockNumber,
-        tx_script: TransactionScript,
-        advice_inputs: AdviceInputs,
-        foreign_account_inputs: Vec<AccountInputs>,
-        source_manager: Arc<dyn SourceManager + Send + Sync>,
+        _account_id: AccountId,
+        _block_ref: BlockNumber,
+        _tx_script: TransactionScript,
+        _advice_inputs: AdviceInputs,
+        _foreign_account_inputs: Vec<AccountInputs>,
+        _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         /*
         let ref_blocks = [block_ref].into_iter().collect();
@@ -276,7 +276,7 @@ where
 
         Ok(*stack_outputs)
          */
-        Ok([Felt::new(0); 16])
+        todo!()
     }
 
     // CHECK CONSUMABILITY
@@ -301,11 +301,11 @@ where
     #[maybe_async]
     pub(crate) fn try_execute_notes(
         &self,
-        account_id: AccountId,
-        block_ref: BlockNumber,
-        notes: InputNotes<InputNote>,
-        tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        _account_id: AccountId,
+        _block_ref: BlockNumber,
+        _notes: InputNotes<InputNote>,
+        _tx_args: TransactionArgs,
+        _source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         /*let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);

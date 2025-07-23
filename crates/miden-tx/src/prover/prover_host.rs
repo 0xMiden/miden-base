@@ -1,6 +1,6 @@
 use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::TransactionEvent;
+use miden_lib::transaction::{TransactionEvent, TransactionEventHandling};
 use miden_objects::{
     Word,
     account::{AccountDelta, PartialAccount},
@@ -86,6 +86,11 @@ where
     ) -> Result<Vec<AdviceMutation>, EventError> {
         let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
-        self.base_host.handle_event(process, transaction_event)
+        match self.base_host.handle_event(process, transaction_event)? {
+            TransactionEventHandling::Unhandled(_event_data) => {
+                self.base_host.on_signature_requested(process).map_err(EventError::from)
+            },
+            TransactionEventHandling::Handled(mutations) => Ok(mutations),
+        }
     }
 }
