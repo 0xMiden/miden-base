@@ -10,6 +10,9 @@ use crate::errors::MasmError;
 // NOTE SCRIPT ERRORS
 // ================================================================================================
 
+/// Error Message: "auth procedure had been called from outside the epilogue"
+pub const ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT: MasmError = MasmError::from_static_str("auth procedure had been called from outside the epilogue");
+
 /// Error Message: "failed to reclaim P2IDE note because the reclaiming account is not the sender"
 pub const ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER: MasmError = MasmError::from_static_str("failed to reclaim P2IDE note because the reclaiming account is not the sender");
 /// Error Message: "P2IDE reclaim is disabled"

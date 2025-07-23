@@ -103,7 +103,7 @@ impl TransactionAdviceInputs {
     ///     ACCOUNT_CODE_COMMITMENT,
     ///     number_of_input_notes,
     ///     TX_SCRIPT_ROOT,
-    ///     TX_SCRIPT_ARGS_KEY,
+    ///     TX_SCRIPT_ARGS,
     ///     AUTH_ARGS,
     /// ]
     fn build_stack(
@@ -145,12 +145,12 @@ impl TransactionAdviceInputs {
         self.extend_stack(account.storage().commitment());
         self.extend_stack(account.code().commitment());
 
-        // --- number of notes, script root and args key ----------------------
+        // --- number of notes, script root and args --------------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);
         self.extend_stack(tx_args.tx_script().map_or(Word::empty(), |script| script.root()));
         self.extend_stack(tx_args.tx_script_args());
 
-        // --- auth procedure args -------------------------------------------
+        // --- auth procedure args --------------------------------------------
         self.extend_stack(tx_args.auth_args());
     }
 

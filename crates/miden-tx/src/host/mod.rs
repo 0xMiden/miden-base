@@ -32,7 +32,7 @@ use miden_objects::{
     account::{AccountDelta, PartialAccount},
     asset::Asset,
     note::NoteId,
-    transaction::{OutputNote, TransactionMeasurements},
+    transaction::{InputNote, InputNotes, OutputNote, TransactionMeasurements},
     vm::RowIndex,
 };
 pub use tx_progress::TransactionProgress;
@@ -65,6 +65,9 @@ pub struct TransactionBaseHost<'store, STORE> {
     /// account codes involved in the transaction (for native and foreign accounts alike).
     acct_procedure_index_map: AccountProcedureIndexMap,
 
+    /// Input notes consumed by the transaction.
+    input_notes: InputNotes<InputNote>,
+
     /// The list of notes created while executing a transaction stored as note_ptr |-> note_builder
     /// map.
     output_notes: BTreeMap<usize, OutputNoteBuilder>,
@@ -85,6 +88,7 @@ where
     /// Creates a new [`TransactionBaseHost`] instance from the provided inputs.
     pub fn new(
         account: &PartialAccount,
+        input_notes: InputNotes<InputNote>,
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
@@ -128,6 +132,7 @@ where
             ),
             acct_procedure_index_map: proc_index_map,
             output_notes: BTreeMap::default(),
+            input_notes,
             tx_progress: TransactionProgress::default(),
         };
 
@@ -159,6 +164,12 @@ where
     /// Clones the inner [`AccountDeltaTracker`] and converts it into an [`AccountDelta`].
     pub fn build_account_delta(&self) -> AccountDelta {
         self.account_delta_tracker().clone().into_delta()
+    }
+
+    /// Returns the input notes consumed in this transaction.
+    #[allow(unused)]
+    pub fn input_notes(&self) -> InputNotes<InputNote> {
+        self.input_notes.clone()
     }
 
     /// Clones the inner [`OutputNoteBuilder`]s and returns the vector of created output notes that
@@ -553,13 +564,13 @@ where
     /// Expected stack state:
     ///
     /// ```text
-    /// [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT, OUTPUT_NOTES_COMMITMENT, SALT]
+    /// [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
     fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
-        let account_delta_commitment = process.get_stack_word(0);
-        let input_notes_commitment = process.get_stack_word(1);
-        let output_notes_commitment = process.get_stack_word(2);
-        let salt = process.get_stack_word(3);
+        let account_delta_commitment = process.get_stack_word(3);
+        let input_notes_commitment = process.get_stack_word(2);
+        let output_notes_commitment = process.get_stack_word(1);
+        let salt = process.get_stack_word(0);
 
         TransactionKernelError::Unauthorized {
             account_delta_commitment,
