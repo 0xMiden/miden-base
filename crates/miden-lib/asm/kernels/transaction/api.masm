@@ -735,7 +735,7 @@ export.input_note_get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 
-#! Returns the information about assets in the  output note with the specified index.
+#! Returns the information about assets in the output note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
