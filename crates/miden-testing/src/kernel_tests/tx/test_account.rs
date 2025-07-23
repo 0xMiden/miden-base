@@ -48,7 +48,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
     let account = Account::mock(
         ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
         ONE,
-        Auth::IncrNonce,
+        Auth::NoAuth,
         TransactionKernel::assembler(),
     );
 
@@ -373,7 +373,7 @@ fn test_get_item() -> miette::Result<()> {
 #[test]
 fn test_get_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::assembler(),
@@ -545,7 +545,7 @@ fn test_set_map_item() -> miette::Result<()> {
     );
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::assembler(),
@@ -701,7 +701,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     .with_supported_type(AccountType::RegularAccountUpdatableCode);
 
     let mut account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(component1)
         .with_component(component2)
         .build_existing()
@@ -782,7 +782,7 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
         let mock_chain = MockChain::new();
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
-            .with_auth_component(Auth::IncrNonce)
+            .with_auth_component(Auth::NoAuth)
             .with_component(
                 AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
                     .unwrap(),
@@ -944,7 +944,7 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
         AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
 
     let account_code = AccountCode::from_components(
-        &[Auth::IncrNonce.into(), mock_component.into()],
+        &[Auth::NoAuth.into(), mock_component.into()],
         AccountType::RegularAccountUpdatableCode,
     )
     .unwrap();
@@ -1006,7 +1006,7 @@ fn test_was_procedure_called() -> miette::Result<()> {
     )
     .unwrap();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(mock_component)
         .build_existing()
         .unwrap();

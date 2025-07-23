@@ -1,6 +1,7 @@
 use alloc::{string::ToString, vec::Vec};
 
 use miden_lib::{
+    account::auth::NoAuth,
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
         ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
@@ -20,7 +21,7 @@ use miden_objects::{
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
     testing::{
-        account_component::{AccountMockComponent, IncrNonceAuthComponent},
+        account_component::AccountMockComponent,
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -48,7 +49,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce,
+            Auth::NoAuth,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -94,8 +95,7 @@ fn test_epilogue() -> anyhow::Result<()> {
     )?;
 
     let assembler = TransactionKernel::assembler();
-    let auth_component: AccountComponent =
-        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component: AccountComponent = NoAuth.into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,
@@ -149,7 +149,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce,
+            Auth::NoAuth,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -220,7 +220,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     let account = AccountBuilder::new(Default::default())
         .with_assets(AssetVault::mock().assets())
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(mock_component)
         .build_existing()?;
 
@@ -292,7 +292,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     let account = AccountBuilder::new(Default::default())
         .with_assets(AssetVault::mock().assets())
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(mock_component)
         .build_existing()?;
 

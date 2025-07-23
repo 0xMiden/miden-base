@@ -2,17 +2,14 @@ use core::fmt;
 use std::{fs::File, io::Write, path::Path};
 
 use anyhow::Context;
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
+use miden_lib::{account::auth::NoAuth, note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt, FieldElement,
-    account::{Account, AccountId, AccountStorageMode, AccountType},
+    account::{Account, AccountComponent, AccountId, AccountStorageMode, AccountType},
     asset::{Asset, FungibleAsset},
     crypto::rand::RpoRandomCoin,
     note::NoteType,
-    testing::{
-        account_component::IncrNonceAuthComponent,
-        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    },
+    testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     transaction::{TransactionMeasurements, TransactionScript},
 };
 use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
@@ -62,7 +59,7 @@ fn main() -> anyhow::Result<()> {
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
+    let auth_component: AccountComponent = NoAuth.into();
 
     let tx_context = {
         let account = Account::mock(

@@ -63,7 +63,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce,
+            Auth::NoAuth,
             TransactionKernel::testing_assembler(),
         );
         let input_note_1 =
@@ -481,7 +481,7 @@ fn input_notes_memory_assertions(
 fn create_simple_account() -> anyhow::Result<()> {
     let (account, seed) = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?)
         .build()?;
 
@@ -545,7 +545,7 @@ pub fn create_multiple_accounts_test(
         let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
             .account_type(account_type)
             .storage_mode(storage_mode)
-            .with_auth_component(Auth::IncrNonce)
+            .with_auth_component(Auth::NoAuth)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),
@@ -665,7 +665,7 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
 
     let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(BasicWallet)
         .build()?;
 

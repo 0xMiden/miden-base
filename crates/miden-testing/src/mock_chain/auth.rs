@@ -10,9 +10,7 @@ use miden_objects::{
     Digest,
     account::{AccountComponent, AuthSecretKey},
     crypto::dsa::rpo_falcon512::SecretKey,
-    testing::account_component::{
-        ConditionalAuthComponent, IncrNonceAuthComponent, NoopAuthComponent,
-    },
+    testing::account_component::{ConditionalAuthComponent, NoopAuthComponent},
 };
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
@@ -30,15 +28,11 @@ pub enum Auth {
     /// triggered if any of the procedures specified in the list are called during execution.
     ProcedureAcl { auth_trigger_procedures: Vec<Digest> },
 
-    /// Creates a mock authentication mechanism for the account that only increments the nonce.
-    IncrNonce,
-
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
 
     /// Creates a NoAuth component from miden-lib that only increments the nonce.
-    /// This is the standard NoAuth component that should be used instead of IncrNonce for
-    /// production.
+    /// This is the standard NoAuth component that should be used for testing.
     NoAuth,
 
     /// TODO update once #1501 is ready.
@@ -80,12 +74,6 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::IncrNonce => {
-                let assembler = TransactionKernel::assembler();
-                let component = IncrNonceAuthComponent::new(assembler).unwrap();
-                (component.into(), None)
-            },
-
             Auth::Noop => {
                 let assembler = TransactionKernel::assembler();
                 let component = NoopAuthComponent::new(assembler).unwrap();

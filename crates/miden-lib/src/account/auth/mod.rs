@@ -132,7 +132,7 @@ pub struct NoAuth;
 
 impl From<NoAuth> for AccountComponent {
     fn from(_: NoAuth) -> Self {
-        AccountComponent::new(no_auth_library(), vec![StorageSlot::empty_value()])
+        AccountComponent::new(no_auth_library(), vec![])
             .expect("NoAuth component should satisfy the requirements of a valid account component")
             .with_supports_all_types()
     }

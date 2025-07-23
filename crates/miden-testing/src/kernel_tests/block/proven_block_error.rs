@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::{account::auth::NoAuth, transaction::TransactionKernel};
 use miden_objects::{
     AccountTreeError, Digest, EMPTY_WORD, Felt, FieldElement, NullifierTreeError,
     account::{
@@ -12,7 +12,7 @@ use miden_objects::{
     },
     batch::ProvenBatch,
     block::{BlockInputs, BlockNumber, ProposedBlock},
-    testing::account_component::{AccountMockComponent, IncrNonceAuthComponent},
+    testing::account_component::AccountMockComponent,
     transaction::{ProvenTransaction, ProvenTransactionBuilder},
     vm::ExecutionProof,
 };
@@ -255,8 +255,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     let mut mock_chain = MockChain::new();
 
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component: AccountComponent =
-        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component: AccountComponent = NoAuth.into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
@@ -361,7 +360,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // --------------------------------------------------------------------------------------------
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),

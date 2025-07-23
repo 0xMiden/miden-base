@@ -75,7 +75,7 @@ fn test_get_sender() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce,
+            Auth::NoAuth,
             TransactionKernel::testing_assembler(),
         );
         let input_note =
@@ -859,7 +859,7 @@ fn test_build_note_metadata() -> miette::Result<()> {
 #[test]
 pub fn test_timelock() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
+    let account = mock_chain.add_pending_existing_wallet(Auth::NoAuth, vec![]);
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(

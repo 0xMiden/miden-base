@@ -8,6 +8,7 @@ use alloc::{
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
+    account::auth::NoAuth,
     note::{create_p2id_note, create_p2ide_note},
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
@@ -25,7 +26,7 @@ use miden_objects::{
         NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
     },
     testing::{
-        account_component::{AccountMockComponent, IncrNonceAuthComponent},
+        account_component::AccountMockComponent,
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
@@ -150,7 +151,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(AccountMockComponent::new_with_slots(
             TransactionKernel::testing_assembler(),
             AccountStorage::mock_storage_slots(),
@@ -508,7 +509,7 @@ fn test_send_note_proc() -> miette::Result<()> {
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone())?;
+    let auth_component: AccountComponent = NoAuth.into();
 
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -765,7 +766,7 @@ fn prove_witness_and_verify() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce,
+            Auth::NoAuth,
             TransactionKernel::testing_assembler(),
         );
         let input_note =
@@ -942,7 +943,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
 
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
+        .with_auth_component(Auth::NoAuth)
         .with_component(account_component)
         .build_existing()
         .into_diagnostic()?;
@@ -1080,7 +1081,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::IncrNonce,
+            Auth::NoAuth,
             TransactionKernel::testing_assembler(),
         );
         let input_note =
