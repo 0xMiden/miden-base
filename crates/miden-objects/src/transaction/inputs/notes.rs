@@ -124,6 +124,24 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
     }
 }
 
+impl InputNotes<InputNote> {
+    /// Returns new [`InputNotes`] instantiated from the provided vector of [notes](Note).
+    ///
+    /// This constructor internally converts the provided notes into the
+    /// [`InputNote::Unauthenticated`], which are then used in the [`Self::new`] constructor.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The total number of notes is greater than [`MAX_INPUT_NOTES_PER_TX`].
+    /// - The vector of notes contains duplicates.
+    pub fn from_unauthenticated_notes(notes: Vec<Note>) -> Result<Self, TransactionInputError> {
+        let input_note_vec =
+            notes.into_iter().map(|note| InputNote::Unauthenticated { note }).collect();
+
+        Self::new(input_note_vec)
+    }
+}
+
 impl<T> IntoIterator for InputNotes<T> {
     type Item = T;
     type IntoIter = alloc::vec::IntoIter<Self::Item>;

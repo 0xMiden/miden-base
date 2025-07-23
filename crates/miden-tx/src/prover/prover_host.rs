@@ -4,7 +4,7 @@ use miden_lib::transaction::{TransactionEvent, TransactionEventHandling};
 use miden_objects::{
     Word,
     account::{AccountDelta, PartialAccount},
-    transaction::OutputNote,
+    transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
     AdviceInputs, AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState,
@@ -36,6 +36,7 @@ where
     /// Creates a new [`TransactionProverHost`] instance from the provided inputs.
     pub fn new(
         account: &PartialAccount,
+        input_notes: InputNotes<InputNote>,
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
@@ -43,6 +44,7 @@ where
     ) -> Result<Self, TransactionHostError> {
         let base_host = TransactionBaseHost::new(
             account,
+            input_notes,
             advice_inputs,
             mast_store,
             scripts_mast_store,

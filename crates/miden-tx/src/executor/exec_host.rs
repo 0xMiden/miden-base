@@ -12,7 +12,7 @@ use miden_lib::{
 use miden_objects::{
     Felt, Word,
     account::{AccountDelta, PartialAccount},
-    transaction::OutputNote,
+    transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
     AdviceInputs, AdviceMutation, AsyncHost, BaseHost, EventError, MastForest, MastForestStore,
@@ -20,7 +20,7 @@ use vm_processor::{
 };
 
 use crate::{
-    auth::TransactionAuthenticator,
+    auth::{SigningInputs, TransactionAuthenticator},
     errors::TransactionHostError,
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
@@ -63,6 +63,7 @@ where
     /// Creates a new [`TransactionExecutorHost`] instance from the provided inputs.
     pub fn new(
         account: &PartialAccount,
+        input_notes: InputNotes<InputNote>,
         advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
@@ -71,6 +72,7 @@ where
     ) -> Result<Self, TransactionHostError> {
         let base_host = TransactionBaseHost::new(
             account,
+            input_notes,
             advice_inputs,
             mast_store,
             scripts_mast_store,
@@ -114,13 +116,13 @@ where
         let signature = if let Some(signature) = signature_opt {
             signature
         } else {
-            let account_delta = self.base_host.account_delta_tracker().clone().into_delta();
+            let signing_inputs = SigningInputs::Blind(message);
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
             let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key_hash, message, &account_delta)
+                .get_signature(pub_key_hash, &signing_inputs)
                 .await
                 .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 

@@ -1122,8 +1122,8 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
         use.miden::account
 
         export.auth__incr_nonce_twice
-            exec.account::incr_nonce
-            exec.account::incr_nonce
+            exec.account::incr_nonce drop
+            exec.account::incr_nonce drop
         end
     ";
 
