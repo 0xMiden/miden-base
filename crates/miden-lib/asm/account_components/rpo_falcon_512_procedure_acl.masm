@@ -108,25 +108,24 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     or
     # => [auth_required, pad(16)]
 
-    # ------ Check if initial account commitment differs from current commitment ------
-
-    exec.account::get_initial_commitment
-    # => [INITIAL_COMMITMENT, auth_required, pad(16)]
-
-    exec.account::compute_current_commitment
-    # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, auth_required, pad(16)]
-
-    eqw not movdn.8 dropw dropw
-    # => [has_account_state_changed, auth_required, pad(16)]
-
-    or
-    # => [auth_required, pad(16)]
-
     # If authentication is required, perform signature verification
     if.true
         exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     else
-        exec.account::incr_nonce drop
+        # ------ Check if initial account commitment differs from current commitment ------
+
+        exec.account::get_initial_commitment
+        # => [INITIAL_COMMITMENT, pad(16)]
+
+        exec.account::compute_current_commitment
+        # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
+
+        eqw not movdn.8 dropw dropw
+        # => [has_account_state_changed, pad(16)]
+
+        if.true
+            exec.account::incr_nonce drop
+        end
     end
     # => [pad(16)]
 end
