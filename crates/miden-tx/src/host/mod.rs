@@ -164,6 +164,7 @@ impl<'store> TransactionBaseHost<'store> {
     }
 
     /// Returns the input notes consumed in this transaction.
+    #[allow(unused)]
     pub fn input_notes(&self) -> InputNotes<InputNote> {
         self.input_notes.clone()
     }
