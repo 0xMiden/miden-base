@@ -25,6 +25,7 @@ export.get_assets_info
     dup exec.memory::get_num_input_notes 
     # => [input_notes_num, note_index, note_index]
     
+    u32assert2.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
     u32lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
     # => [note_index]
 
