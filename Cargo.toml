@@ -47,14 +47,14 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly         = { default-features = false, package = "miden-assembly", version = "0.16.3" }
+assembly         = { default-features = false, package = "miden-assembly", path = "../miden-vm-bernhard-source-mngr-into-host/assembly" }
 miden-crypto     = { default-features = false, version = "0.15.5" }
-miden-prover     = { default-features = false, version = "0.16.3" }
-miden-stdlib     = { default-features = false, version = "0.16.3" }
-miden-utils-sync = { default-features = false, version = "0.16.3" }
-miden-verifier   = { default-features = false, version = "0.16.3" }
-vm-core          = { default-features = false, package = "miden-core", version = "0.16.3" }
-vm-processor     = { default-features = false, package = "miden-processor", version = "0.16.3" }
+miden-prover     = { default-features = false, path = "../miden-vm-bernhard-source-mngr-into-host/prover" }
+miden-stdlib     = { default-features = false, path = "../miden-vm-bernhard-source-mngr-into-host/stdlib" }
+miden-utils-sync = { default-features = false, path = "../miden-vm-bernhard-source-mngr-into-host/crates/utils/sync" }
+miden-verifier   = { default-features = false, path = "../miden-vm-bernhard-source-mngr-into-host/verifier" }
+vm-core          = { default-features = false, package = "miden-core", path = "../miden-vm-bernhard-source-mngr-into-host/core" }
+vm-processor     = { default-features = false, package = "miden-processor", path = "../miden-vm-bernhard-source-mngr-into-host/processor" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }

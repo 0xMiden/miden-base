@@ -46,12 +46,8 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
         let assembler = TransactionKernel::testing_assembler().with_debug_mode(true);
-        let source_manager = assembler.source_manager();
 
-        // Virtual file name should be unique.
-        let virtual_source_file =
-            source_manager.load(SourceLanguage::Masm, Uri::new("_user_code"), code.to_owned());
-        let program = assembler.assemble_program(virtual_source_file).unwrap();
+        let program = assembler.assemble_program(code).unwrap();
 
         self.execute_program(program, source_manager)
     }

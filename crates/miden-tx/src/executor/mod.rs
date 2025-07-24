@@ -1,5 +1,6 @@
 use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
+use assembly::debuginfo::SourceManagerSync;
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
@@ -143,7 +144,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager + Send + Sync>,
+        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -177,7 +178,8 @@ where
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?
+        .with_source_manager(source_manager);
 
         // Execute the transaction kernel
         let trace = vm_processor::execute(
@@ -186,7 +188,6 @@ where
             advice_inputs,
             &mut host,
             self.exec_options,
-            source_manager,
         )
         .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
@@ -255,15 +256,15 @@ where
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?
+        .with_source_manager(source_manager);
 
-        let mut process = Process::new(
+        let process = Process::new(
             TransactionKernel::tx_script_main().kernel().clone(),
             stack_inputs,
             advice_inputs,
             self.exec_options,
-        )
-        .with_source_manager(source_manager);
+        );
         let stack_outputs = process
             .execute(&TransactionKernel::tx_script_main(), &mut host)
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
@@ -297,7 +298,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -331,7 +332,8 @@ where
             self.authenticator,
             tx_args.foreign_account_code_commitments(),
         )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?
+        .with_source_manager(source_manager);
 
         // execute the transaction kernel
         let result = vm_processor::execute(
@@ -340,7 +342,6 @@ where
             advice_inputs,
             &mut host,
             self.exec_options,
-            source_manager,
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
