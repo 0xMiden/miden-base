@@ -158,6 +158,10 @@ impl<R: Rng> BasicAuthenticator<R> {
             rng: Arc::new(RwLock::new(rng)),
         }
     }
+
+    pub fn keys(&self) -> &BTreeMap<Word, AuthSecretKey> {
+        &self.keys
+    }
 }
 
 impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {

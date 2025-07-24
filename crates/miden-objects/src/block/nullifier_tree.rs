@@ -1,4 +1,8 @@
-use vm_core::EMPTY_WORD;
+use vm_core::{
+    EMPTY_WORD,
+    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
+};
+use vm_processor::DeserializationError;
 
 use crate::{
     Word,
@@ -190,6 +194,22 @@ impl NullifierTree {
 impl Default for NullifierTree {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for NullifierTree {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.smt.write_into(target);
+    }
+}
+
+impl Deserializable for NullifierTree {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let smt = Smt::read_from(source)?;
+        Ok(Self { smt })
     }
 }
 
