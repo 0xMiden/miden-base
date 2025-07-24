@@ -76,10 +76,10 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
 
     # ------ Check if output notes were created ------
 
-    exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, require_acl_auth, pad(16)]
+    exec.tx::get_num_output_notes
+    # => [num_output_notes, require_acl_auth, pad(16)]
 
-    padw eqw not movdn.8 dropw dropw
+    push.0 eq not
     # => [were_output_notes_created, require_acl_auth, pad(16)]
 
     loc_load.0 not
@@ -93,10 +93,10 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
 
     # ------ Check if input notes were consumed ------
 
-    exec.tx::get_input_notes_commitment
+    exec.tx::get_num_input_notes
     # => [INPUT_NOTES_COMMITMENT, auth_required, pad(16)]
 
-    padw eqw not movdn.8 dropw dropw
+    push.0 eq not
     # => [were_input_notes_consumed, auth_required, pad(16)]
 
     loc_load.1 not
