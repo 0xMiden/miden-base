@@ -79,7 +79,7 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     exec.tx::get_num_output_notes
     # => [num_output_notes, require_acl_auth, pad(16)]
 
-    push.0 eq not
+    neq.0
     # => [were_output_notes_created, require_acl_auth, pad(16)]
 
     loc_load.0 not
@@ -96,7 +96,7 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
     exec.tx::get_num_input_notes
     # => [INPUT_NOTES_COMMITMENT, auth_required, pad(16)]
 
-    push.0 eq not
+    neq.0
     # => [were_input_notes_consumed, auth_required, pad(16)]
 
     loc_load.1 not
