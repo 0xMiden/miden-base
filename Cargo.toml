@@ -47,14 +47,14 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly         = { default-features = false, package = "miden-assembly", git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
-miden-crypto     = { default-features = false, version = "0.15.5" }
-miden-prover     = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
-miden-stdlib     = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
-miden-utils-sync = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
-miden-verifier   = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
-vm-core          = { default-features = false, package = "miden-core", git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
-vm-processor     = { default-features = false, package = "miden-processor", git = "https://github.com/0xMiden/miden-vm.git", branch = "async-experimental" }
+assembly         = { default-features = false, package = "miden-assembly", path = "../miden-vm-bernhard-conditional-sync/assembly" }
+miden-crypto     = { default-features = false, version = "0.15.6" }
+miden-prover     = { default-features = false, path = "../miden-vm-bernhard-conditional-sync/prover" }
+miden-stdlib     = { default-features = false, path = "../miden-vm-bernhard-conditional-sync/stdlib" }
+miden-utils-sync = { default-features = false, path = "../miden-vm-bernhard-conditional-sync/crates/utils/sync" }
+miden-verifier   = { default-features = false, path = "../miden-vm-bernhard-conditional-sync/verifier" }
+vm-core          = { default-features = false, package = "miden-core", path = "../miden-vm-bernhard-conditional-sync/core" }
+vm-processor     = { default-features = false, package = "miden-processor", path = "../miden-vm-bernhard-conditional-sync/processor" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }

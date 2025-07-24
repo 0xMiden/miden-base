@@ -15,8 +15,8 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, AdviceMutation, AsyncHost, BaseHost, EventError, MastForest, MastForestStore,
-    ProcessState,
+    AdviceInputs, AdviceMutation, AsyncHost, BaseHost, ErrorContext, ErrorContextImpl, EventError,
+    ExecutionError, FutureAliasWrapper, MastForest, MastForestStore, ProcessState,
 };
 
 use crate::{
@@ -153,6 +153,15 @@ where
     STORE: MastForestStore,
     AUTH: TransactionAuthenticator,
 {
+    fn get_label_and_source_file(
+        &self,
+        location: &miden_objects::assembly::debuginfo::Location,
+    ) -> (
+        miden_objects::assembly::debuginfo::SourceSpan,
+        Option<Arc<miden_objects::assembly::debuginfo::SourceFile>>,
+    ) {
+        todo!()
+    }
 }
 
 impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
@@ -163,40 +172,36 @@ where
     fn get_mast_forest(
         &self,
         procedure_root: &Word,
-    ) -> impl Future<Output = Option<Arc<MastForest>>> + Send {
+    ) -> impl FutureAliasWrapper<Option<Arc<MastForest>>> {
         core::future::ready(self.base_host.get_mast_forest(procedure_root))
     }
 
     fn on_event(
         &mut self,
-        process: &ProcessState,
+        process: &ProcessState<'_>,
         event_id: u32,
-    ) -> impl Future<Output = Result<Vec<AdviceMutation>, EventError>> + Send {
-        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
-        // should be cleaner.
-        let event_handling_result = TransactionEvent::try_from(event_id)
-            .map_err(EventError::from)
-            .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
+    ) -> impl FutureAliasWrapper<Result<Vec<AdviceMutation>, EventError>> {
+        let err_ctx: &ErrorContextImpl = todo!(); // FIXME XXX
 
-        async move {
-            let event_handling = event_handling_result?;
-            let event_data = match event_handling {
-                TransactionEventHandling::Unhandled(event) => event,
-                TransactionEventHandling::Handled(mutations) => {
-                    return Ok(mutations);
+        async {
+            let transaction_event = TransactionEvent::try_from(event_id)
+                // FIXME XXX todo 0 is wrong
+                .map_err(|err| ExecutionError::event_error(Box::new(err), event_id,  err_ctx))?;
+            match transaction_event {
+                // Override the base host's on signature requested implementation, which would not call
+                // the authenticator.
+                TransactionEvent::AuthRequest => {
+                    return self
+                        .on_signature_requested(todo!(), todo!(), todo!(), todo!())
+                        .await
+                        .map_err(|err| Box::new(err) as EventError);
                 },
-            };
-
-            match event_data {
-                TransactionEventData::AuthRequest {
-                    pub_key_hash,
-                    message,
-                    signature_key,
-                    signature_opt,
-                } => self
-                    .on_signature_requested(pub_key_hash, message, signature_key, signature_opt)
-                    .await
-                    .map_err(EventError::from),
+                // All other events are handled as in the base host.
+                _ => self
+                    .base_host
+                    .handle_event(process, transaction_event)
+                    .map(|_x| todo!())
+                    .map_err(|_y| todo!()),
             }
         }
     }

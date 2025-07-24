@@ -1,6 +1,7 @@
 use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
+use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
     account::AccountId,
@@ -192,17 +193,17 @@ where
         // let (stack_outputs, _advice_provider) = trace.into_outputs();
 
         let processor = FastProcessor::new(stack_inputs.as_slice());
-        let stack_outputs = processor
+        let (stack_outputs, advice_provider) = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
             .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
-        // let advice_provider = todo!("fast processor does not return advice provider?");
 
         // The stack is not necessary since it is being reconstructed when re-executing.
-        let advice_inputs = AdviceInputs::default();
-        // TODO:
-        // .with_map(advice_provider.map)
-        // .with_merkle_store(advice_provider.store);
+
+        let advice_inputs = todo!();
+        // let advice_inputs = AdviceInputs::default()
+        //     .with_map(advice_provider.map.iter().map(ffs))
+        //     .with_merkle_store(advice_provider.store.iter());
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
@@ -271,8 +272,7 @@ where
             stack_inputs,
             advice_inputs,
             self.exec_options,
-        )
-        .with_source_manager(source_manager);
+        );
         let stack_outputs = process
             .execute(&TransactionKernel::tx_script_main(), &mut host)
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
@@ -351,7 +351,6 @@ where
             advice_inputs,
             &mut host,
             self.exec_options,
-            source_manager,
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
@@ -389,6 +388,14 @@ where
 
 // HELPER FUNCTIONS
 // ================================================================================================
+
+pub fn ffs<'a, I>(iter: I) -> impl IntoIterator<Item = (Word, Vec<Felt>)>
+where
+    I: IntoIterator<Item = (&'a Word, &'a Arc<[Felt]>)>,
+{
+    iter.into_iter()
+        .map(|(word, felts)| (word.clone(), Vec::from_iter(felts.iter().cloned())))
+}
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(

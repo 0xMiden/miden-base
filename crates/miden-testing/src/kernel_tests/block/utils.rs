@@ -110,7 +110,7 @@ pub fn generate_conditional_tx(
     modify_storage: bool,
 ) -> ExecutedTransaction {
     let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
-        .build(&TransactionKernel::assembler())
+        .build(&asm, source_manager)
         .expect("failed to create the noop note");
     chain.add_pending_note(OutputNote::Full(noop_note.clone()));
     chain.prove_next_block().unwrap();

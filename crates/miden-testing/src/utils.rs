@@ -35,10 +35,10 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
             code_body.push_str(
                 "
                 # add first asset
-                
+
                 padw dup.4 mem_loadw
                 padw swapw padw padw swapdw
-                call.wallet::receive_asset      
+                call.wallet::receive_asset
                 dropw movup.12
                 # => [dest_ptr, pad(12)]
                 ",
@@ -81,8 +81,9 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
     NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
         .code(code)
-        .build(&TransactionKernel::testing_assembler_with_mock_account())
-        .expect("generated note script should compile")
+        // FIXME TODO
+        .build2(|_source_manager| TransactionKernel::testing_assembler_with_mock_account())
+        .expect("generated note script should compile").0
 }
 
 /// Creates a `SPAWN` note.
@@ -94,7 +95,8 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build2(|_| TransactionKernel::testing_assembler_with_mock_account())?
+        .0;
 
     Ok(note)
 }

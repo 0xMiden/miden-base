@@ -1,7 +1,11 @@
 use alloc::string::String;
+use alloc::sync::Arc;
 
 use miden_objects::{
-    assembly::{Assembler, Library, LibraryPath, diagnostics::NamedSource},
+    assembly::{
+        Assembler, DefaultSourceManager, Library, LibraryPath, SourceManager,
+        diagnostics::NamedSource,
+    },
     note::NoteScript,
     transaction::TransactionScript,
 };
@@ -70,6 +74,7 @@ use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
 /// these libraries are linked dynamically and do not add to the size of built script.
 #[derive(Clone)]
 pub struct ScriptBuilder {
+    source_manager: Arc<DefaultSourceManager>,
     assembler: Assembler,
 }
 
@@ -84,8 +89,10 @@ impl ScriptBuilder {
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
-        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-        Self { assembler }
+        let source_manager = Arc::new(DefaultSourceManager::default());
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
+            .with_debug_mode(in_debug_mode);
+        Self { assembler, source_manager }
     }
 
     // LIBRARY MANAGEMENT
@@ -219,14 +226,13 @@ impl ScriptBuilder {
     // UTILITIES
     // --------------------------------------------------------------------------------------------
 
-    // TODO: Remove?3
-    // / Returns the assembler's source manager.
-    // /
-    // / After script building, the source manager can be fetched and passed on to the VM
-    // / processor to make the source files available to create better error messages.
-    // pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
-    //     self.assembler.source_manager()
-    // }
+    /// Returns the assembler's source manager.
+    ///
+    /// After script building, the source manager can be fetched and passed on to the VM
+    /// processor to make the source files available to create better error messages.
+    pub fn source_manager(&self) -> Arc<dyn SourceManager> {
+        self.source_manager.clone()
+    }
 
     // SCRIPT COMPILATION
     // --------------------------------------------------------------------------------------------

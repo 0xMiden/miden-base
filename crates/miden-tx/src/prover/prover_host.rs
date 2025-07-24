@@ -7,8 +7,8 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState,
-    SyncHost,
+    AdviceInputs, AdviceMutation, BaseHost, ErrorContext, ErrorContextImpl, EventError,
+    ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
 };
 
 use crate::{
@@ -71,7 +71,20 @@ where
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl<STORE> BaseHost for TransactionProverHost<'_, STORE> where STORE: MastForestStore {}
+impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
+where
+    STORE: MastForestStore,
+{
+    fn get_label_and_source_file(
+        &self,
+        location: &miden_objects::assembly::debuginfo::Location,
+    ) -> (
+        miden_objects::assembly::debuginfo::SourceSpan,
+        Option<Arc<miden_objects::assembly::SourceFile>>,
+    ) {
+        todo!()
+    }
+}
 
 impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
 where

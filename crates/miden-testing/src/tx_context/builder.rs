@@ -305,7 +305,7 @@ impl TransactionContextBuilder {
             .with_note_args(self.note_args);
 
         let mut tx_args = if let Some(tx_script) = self.tx_script {
-            tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
+            tx_args.with_tx_script_and_arg(tx_script, self.tx_script_args)
         } else {
             tx_args
         };

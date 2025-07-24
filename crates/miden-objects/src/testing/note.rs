@@ -1,10 +1,12 @@
+use std::sync::Arc;
+
 use alloc::{
     string::{String, ToString},
     vec::Vec,
 };
 
 use assembly::{
-    Assembler,
+    Assembler, DefaultSourceManager, SourceManager,
     debuginfo::{SourceLanguage, Uri},
 };
 use rand::Rng;
@@ -102,10 +104,21 @@ impl NoteBuilder {
         self
     }
 
-    pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        // TODO: Proper fix.
-        let source_manager = alloc::sync::Arc::new(crate::assembly::DefaultSourceManager::default())
-            as alloc::sync::Arc<dyn crate::assembly::SourceManager>;
+    pub fn build2(
+        self,
+        assemlber_construct_closure: impl FnOnce(Arc<dyn SourceManager>) -> Assembler,
+    ) -> Result<(Note, Arc<DefaultSourceManager>), NoteError> {
+        let source_manager = Arc::new(DefaultSourceManager::default());
+        let assembler = assemlber_construct_closure(source_manager.clone());
+        let note = self.build(&assembler, source_manager.clone())?;
+        Ok((note, source_manager))
+    }
+
+    pub fn build(
+        self,
+        assembler: &Assembler,
+        source_manager: Arc<dyn SourceManager>,
+    ) -> Result<Note, NoteError> {
         // Generate a unique file name from the note's serial number, which should be unique per
         // note. Only includes two elements in the file name which should be enough for the
         // uniqueness in the testing context and does not result in overly long file names which do

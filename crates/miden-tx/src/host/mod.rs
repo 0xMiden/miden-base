@@ -199,6 +199,8 @@ where
         transaction_event: TransactionEvent,
     ) -> Result<TransactionEventHandling, EventError> {
         // Privileged events can only be emitted from the root context.
+
+        let event_id = transaction_event.clone() as u32;
         if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
             return Err(Box::new(TransactionEventError::NotRootContext(transaction_event as u32)));
         }
@@ -311,7 +313,8 @@ where
             },
             TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
-              Err(self.on_unauthorized(process))
+              let err = self.on_unauthorized(process);
+              Err(err)
             }
         }
         .map_err(Box::new)?;
@@ -346,7 +349,7 @@ where
     fn on_note_after_created(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let stack = process.get_stack_state();
         // # => [NOTE_METADATA]
 
@@ -358,7 +361,7 @@ where
 
         self.output_notes.insert(note_idx, note_builder);
 
-        Ok(())
+        Ok(vec![])
     }
 
     /// Adds an asset at the top of the [OutputNoteBuilder] identified by the note pointer.
@@ -367,7 +370,7 @@ where
     fn on_note_before_add_asset(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let stack = process.get_stack_state();
         //# => [ASSET, note_ptr, num_of_assets, note_idx]
 
@@ -389,7 +392,7 @@ where
 
         note_builder.add_asset(asset)?;
 
-        Ok(())
+        Ok(vec![])
     }
 
     /// Loads the index of the procedure root onto the advice stack.
@@ -404,13 +407,15 @@ where
     }
 
     /// Handles the increment nonce event by incrementing the nonce delta by one.
-    pub fn on_account_after_increment_nonce(&mut self) -> Result<(), TransactionKernelError> {
+    pub fn on_account_after_increment_nonce(
+        &mut self,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         if self.account_delta.was_nonce_incremented() {
             return Err(TransactionKernelError::NonceCanOnlyIncrementOnce);
         }
 
         self.account_delta.increment_nonce();
-        Ok(())
+        Ok(vec![])
     }
 
     // ACCOUNT STORAGE UPDATE HANDLERS
@@ -423,7 +428,7 @@ where
     pub fn on_account_storage_after_set_item(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         // get slot index from the stack and make sure it is valid
         let slot_index = process.get_stack_item(0);
 
@@ -459,7 +464,7 @@ where
             new_slot_value,
         );
 
-        Ok(())
+        Ok(vec![])
     }
 
     /// Extracts information from the process state about the storage map being updated and
@@ -469,7 +474,7 @@ where
     pub fn on_account_storage_after_set_map_item(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         // get slot index from the stack and make sure it is valid
         let slot_index = process.get_stack_item(0);
 
@@ -514,7 +519,7 @@ where
             new_map_value,
         );
 
-        Ok(())
+        Ok(vec![])
     }
 
     // ACCOUNT VAULT UPDATE HANDLERS
@@ -527,7 +532,7 @@ where
     pub fn on_account_vault_after_add_asset(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
                 handler: "on_account_vault_after_add_asset",
@@ -539,7 +544,7 @@ where
             .vault_delta()
             .add_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaAddAssetFailed)?;
-        Ok(())
+        Ok(vec![])
     }
 
     /// Extracts the asset that is being removed from the account's vault from the process state
@@ -549,7 +554,7 @@ where
     pub fn on_account_vault_after_remove_asset(
         &mut self,
         process: &ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
             TransactionKernelError::MalformedAssetInEventHandler {
                 handler: "on_account_vault_after_remove_asset",
@@ -561,7 +566,7 @@ where
             .vault_delta()
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
-        Ok(())
+        Ok(vec![])
     }
 
     /// Aborts the transaction by extracting the

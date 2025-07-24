@@ -21,7 +21,10 @@ use miden_lib::{
 use miden_objects::{
     FieldElement, Hasher, Word,
     account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
-    assembly::diagnostics::NamedSource,
+    assembly::{
+        DefaultSourceManager,
+        diagnostics::{IntoDiagnostic, NamedSource, miette},
+    },
     asset::{Asset, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
@@ -156,7 +159,7 @@ fn test_create_note() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        
+
         use.$kernel::prologue
 
         begin
@@ -253,16 +256,16 @@ fn note_creation_script(tag: Felt) -> String {
         "
             use.miden::tx
             use.$kernel::prologue
-    
+
             begin
                 exec.prologue::prepare_transaction
-    
+
                 push.{recipient}
                 push.{execution_hint_always}
                 push.{PUBLIC_NOTE}
                 push.{aux}
                 push.{tag}
-    
+
                 call.tx::create_note
 
                 # clean the stack
@@ -291,7 +294,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             exec.constants::get_max_num_output_notes
             exec.memory::set_num_output_notes
             exec.prologue::prepare_transaction
-            
+
             push.{recipient}
             push.{execution_hint_always}
             push.{PUBLIC_NOTE}
@@ -427,7 +430,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             push.{asset_1}
             call.tx::add_asset_to_note
             # => [ASSET, note_idx]
-            
+
             dropw drop
             # => []
 
@@ -440,7 +443,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             call.tx::create_note
             # => [note_idx]
 
-            push.{asset_2} 
+            push.{asset_2}
             call.tx::add_asset_to_note
             # => [ASSET, note_idx]
 
@@ -696,12 +699,12 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             call.tx::create_note
             # => [note_idx, pad(15)]
 
-            push.{nft} 
+            push.{nft}
             call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
             dropw
 
-            push.{nft} 
+            push.{nft}
             call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
 
@@ -1352,10 +1355,6 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
 
     let source = NamedSource::new("test::module_1", test_module_source);
     let mut assembler = TransactionKernel::assembler();
-    // TODO: Proper fix.
-    let source_manager =
-        alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-            as alloc::sync::Arc<dyn miden_objects::assembly::SourceManager + Send + Sync + 'static>;
     assembler
         .compile_and_statically_link(source)
         .map_err(|_| anyhow::anyhow!("adding source module"))?;
@@ -1388,7 +1387,6 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
         tx_script,
         advice_inputs,
         Vec::default(),
-        source_manager,
     )?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);

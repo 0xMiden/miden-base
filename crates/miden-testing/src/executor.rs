@@ -74,6 +74,7 @@ impl<H: SyncHost> CodeExecutor<H> {
             self.advice_inputs,
         )
         .with_source_manager(source_manager);
+
         process.execute(&program, &mut self.host)?;
 
         Ok(process)

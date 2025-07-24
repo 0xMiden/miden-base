@@ -7,8 +7,8 @@ use miden_objects::{
 };
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
-    AdviceInputs, AdviceMutation, BaseHost, ContextId, EventError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    AdviceInputs, AdviceMutation, BaseHost, ContextId, ErrorContext, ErrorContextImpl, EventError,
+    ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
 };
 
 // MOCK HOST
@@ -58,7 +58,17 @@ impl MockHost {
     }
 }
 
-impl BaseHost for MockHost {}
+impl BaseHost for MockHost {
+    fn get_label_and_source_file(
+        &self,
+        location: &miden_objects::assembly::debuginfo::Location,
+    ) -> (
+        miden_objects::assembly::debuginfo::SourceSpan,
+        Option<Arc<miden_objects::assembly::SourceFile>>,
+    ) {
+        todo!()
+    }
+}
 
 impl SyncHost for MockHost {
     fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {

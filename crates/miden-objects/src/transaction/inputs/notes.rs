@@ -360,7 +360,7 @@ mod input_notes_tests {
         let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
 
         let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
-            .build(&Assembler::default())
+            .build2(Assembler::new)
             .context("failed to create mock note")?;
         let mock_note_nullifier = mock_note.nullifier();
         let mock_note_clone = mock_note.clone();

@@ -6,6 +6,7 @@ use miden_objects::{
         AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountStorageMode,
         AccountType,
     },
+    assembly::DefaultSourceManager,
     testing::{
         account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
     },
@@ -17,7 +18,8 @@ use vm_processor::ExecutionError;
 
 #[test]
 fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
-    let assembler = TransactionKernel::assembler();
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
 
     let component: AccountComponent = AccountMockComponent::new_with_slots(
         assembler.clone(),
@@ -63,7 +65,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
     let note = NoteBuilder::new(sender_id, &mut rand::rng())
-        .build(&assembler)
+        .build(&assembler, &source_manager)
         .expect("failed to create mock note");
 
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
