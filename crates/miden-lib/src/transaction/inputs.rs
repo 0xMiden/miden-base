@@ -5,6 +5,7 @@ use miden_objects::{
     account::{AccountHeader, AccountId, PartialAccount},
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
+    crypto::merkle::MerkleStore,
     transaction::{InputNote, PartialBlockchain, TransactionArgs, TransactionInputs},
     vm::AdviceInputs,
 };

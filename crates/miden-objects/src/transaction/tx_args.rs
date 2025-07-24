@@ -77,12 +77,12 @@ impl TransactionArgs {
     }
 
     /// Returns new [TransactionArgs] instantiated with the provided transaction script and its
-    /// arguments.
+    /// argument.
     ///
-    /// If the transaction script and arguments are already set, they will be overwritten with the
+    /// If the transaction script and argument are already set, they will be overwritten with the
     /// newly provided ones.
     #[must_use]
-    pub fn with_tx_script_and_args(
+    pub fn with_tx_script_and_arg(
         mut self,
         tx_script: TransactionScript,
         tx_script_args: Word,
@@ -117,10 +117,10 @@ impl TransactionArgs {
         self.tx_script.as_ref()
     }
 
-    /// Returns the transaction script arguments, or [`EMPTY_WORD`] if the arguments were not
+    /// Returns the transaction script argument, or [`EMPTY_WORD`] if the argument was not
     /// specified.
     ///
-    /// These arguments could be potentially used as a key to access the advice map during the
+    /// This argument could be potentially used as a key to access the advice map during the
     /// transaction script execution. Notice that the corresponding map entry should be provided
     /// separately during the creation with the [`TransactionArgs::new`] or using the
     /// [`TransactionArgs::extend_advice_map`] method.
@@ -206,7 +206,7 @@ impl TransactionArgs {
 
     /// Extends the internal advice inputs' map with the provided key-value pairs.
     pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
-        self.advice_inputs.extend(AdviceInputs::default().with_map(iter))
+        self.advice_inputs.extend(AdviceInputs::default().with_map(iter));
     }
 
     /// Extends the internal advice inputs' merkle store with the provided nodes.
