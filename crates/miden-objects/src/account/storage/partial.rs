@@ -20,8 +20,8 @@ pub struct PartialStorage {
     commitment: Word,
     /// Account storage header.
     header: AccountStorageHeader,
-    /// Storage map SMTs indexed by their root, containing a subset of the elements from the
-    /// complete storage map.
+    /// Storage partial storage maps indexed by their root, containing a subset of the elements
+    /// from the complete storage map.
     maps: BTreeMap<Word, PartialStorageMap>,
 }
 

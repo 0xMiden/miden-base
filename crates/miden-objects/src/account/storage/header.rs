@@ -105,18 +105,6 @@ impl AccountStorageHeader {
         Hasher::hash_elements(&self.as_elements())
     }
 
-    /// Returns the index of the slot whose top‑level value equals `slot_value`.
-    ///
-    /// Returns `None` when no slot matches the supplied value.
-    pub fn get_index_of(&self, slot_value: Word) -> Option<u8> {
-        for (idx, (_, storage_value)) in self.slots.iter().enumerate() {
-            if slot_value == *storage_value {
-                return Some(idx.try_into().expect("slot indices fit into a u8"));
-            }
-        }
-        None
-    }
-
     /// Indicates whether the slot at `index` is a map slot.
     ///
     /// # Errors

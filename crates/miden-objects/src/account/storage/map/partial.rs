@@ -55,7 +55,7 @@ impl PartialStorageMap {
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Adds an [`SmtProof`] to this [`PartialStorage`].
+    /// Adds an [`SmtProof`] to this [`PartialStorageMap`].
     pub fn add(&mut self, proof: SmtProof) -> Result<(), MerkleError> {
         self.partial_smt.add_proof(proof)
     }
