@@ -460,14 +460,17 @@ mod tests {
                 .unwrap();
         }
         let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();
+        assert_eq!(chain.num_tracked_blocks(), total_blocks as usize);
 
         chain.remove(BlockNumber::from(2));
         assert!(!chain.contains_block(2.into()));
         assert!(!chain.mmr().is_tracked(2));
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 1) as usize);
 
         assert!(chain.contains_block(3.into()));
 
         chain.prune_to(..40.into());
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 40) as usize);
 
         assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
         for block_num in remove_before..total_blocks {
