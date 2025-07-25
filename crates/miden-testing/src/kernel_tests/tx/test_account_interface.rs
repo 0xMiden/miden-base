@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use assert_matches::assert_matches;
 use miden_lib::{
     note::{create_p2id_note, create_p2ide_note},
@@ -6,6 +7,7 @@ use miden_lib::{
 use miden_objects::{
     Felt, FieldElement, Word,
     account::{Account, AccountId},
+    assembly::DefaultSourceManager,
     asset::FungibleAsset,
     note::NoteType,
     testing::{
@@ -120,19 +122,21 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
+    let source_manager = Arc::new(DefaultSourceManager::default());
+
     let failing_note_1 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.1 drop push.0 div end")
-    .build(&TransactionKernel::testing_assembler())?;
+    .build(&TransactionKernel::testing_assembler(), source_manager.clone())?;
 
     let failing_note_2 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.2 drop push.0 div end")
-    .build(&TransactionKernel::testing_assembler())?;
+    .build(&TransactionKernel::testing_assembler(), source_manager.clone())?;
 
     let successful_note_1 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),

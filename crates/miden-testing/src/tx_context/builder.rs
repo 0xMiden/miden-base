@@ -1,14 +1,14 @@
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::{collections::BTreeMap, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     EMPTY_WORD, FieldElement,
     account::Account,
-    assembly::Assembler,
+    assembly::{Assembler, DefaultSourceManager, SourceManager, debuginfo::SourceManagerSync},
     note::{Note, NoteId},
     testing::{
         account_component::{IncrNonceAuthComponent, NoopAuthComponent},
@@ -72,6 +72,7 @@ pub struct TransactionContextBuilder {
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl TransactionContextBuilder {
@@ -90,6 +91,7 @@ impl TransactionContextBuilder {
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
             auth_args: EMPTY_WORD,
+            source_manager: Arc::new(DefaultSourceManager::default()),
         }
     }
 
@@ -131,6 +133,7 @@ impl TransactionContextBuilder {
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
             auth_args: EMPTY_WORD,
+            source_manager: Arc::new(DefaultSourceManager::default()),
         }
     }
 
@@ -261,18 +264,16 @@ impl TransactionContextBuilder {
         self
     }
 
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        // TODO: Proper fix.
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
-
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
@@ -333,7 +334,7 @@ impl TransactionContextBuilder {
             mast_store,
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
-            source_manager,
+            source_manager: self.source_manager,
         })
     }
 }

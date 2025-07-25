@@ -1387,6 +1387,7 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
         tx_script,
         advice_inputs,
         Vec::default(),
+        alloc::sync::Arc::new(DefaultSourceManager::default()),
     )?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);

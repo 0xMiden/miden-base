@@ -51,8 +51,8 @@ where
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore + Sync,
-    AUTH: TransactionAuthenticator + Sync,
+    STORE: MastForestStore,
+    AUTH: TransactionAuthenticator,
 {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------

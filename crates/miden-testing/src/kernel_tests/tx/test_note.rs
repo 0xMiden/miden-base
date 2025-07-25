@@ -1,4 +1,4 @@
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::{collections::BTreeMap, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use miden_lib::{
@@ -11,7 +11,10 @@ use miden_lib::{
 use miden_objects::{
     EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word,
     account::{Account, AccountBuilder, AccountId},
-    assembly::diagnostics::miette::{self, miette},
+    assembly::{
+        DefaultSourceManager,
+        diagnostics::miette::{self, miette},
+    },
     asset::FungibleAsset,
     crypto::{
         dsa::rpo_falcon512::SecretKey,
@@ -351,7 +354,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
             # => [ASSETS_HASH_0, num_assets_0]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_0} 
+            push.{COMPUTED_ASSETS_HASH_0}
             assert_eqw.err="note 0 has incorrect assets hash"
             # => [num_assets_0]
 
@@ -366,7 +369,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
             # => [ASSETS_HASH_1, num_assets_1]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_1} 
+            push.{COMPUTED_ASSETS_HASH_1}
             assert_eqw.err="note 0 has incorrect assets hash"
             # => [num_assets_1]
 
@@ -965,6 +968,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
         TIMESTAMP_ERROR.message()
     );
 
+    let source_manager = Arc::new(DefaultSourceManager::default());
+
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
@@ -972,7 +977,10 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
         .code(code.clone())
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(
+            &TransactionKernel::testing_assembler_with_mock_account(),
+            source_manager.clone(),
+        )?;
 
     builder.add_note(OutputNote::Full(timelock_note.clone()));
 
@@ -987,6 +995,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
         mock_chain.get_transaction_inputs(account.clone(), None, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account.clone())
         .tx_inputs(tx_inputs.clone())
+        .with_source_manager(source_manager.clone())
         .build()?;
     let err = tx_context.execute().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {

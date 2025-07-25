@@ -4,6 +4,7 @@ use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt, ONE, Word, ZERO,
     account::{Account, AccountId},
+    assembly::{Assembler, DefaultSourceManager},
     asset::{Asset, FungibleAsset},
     batch::ProvenBatch,
     block::BlockNumber,
@@ -49,11 +50,12 @@ pub fn generate_untracked_note(sender: AccountId, receiver: AccountId) -> Note {
 
 /// Creates a NOP output note sent by the given sender.
 pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
+    let source_manager = alloc::sync::Arc::new(DefaultSourceManager::default());
     let mut rng = SmallRng::from_seed(seed);
     NoteBuilder::new(sender, &mut rng)
         .note_type(NoteType::Private)
         .tag(NoteTag::for_local_use_case(0, 0).unwrap().into())
-        .build(&TransactionKernel::assembler().with_debug_mode(true))
+        .build(&TransactionKernel::assembler().with_debug_mode(true), source_manager)
         .unwrap()
 }
 
@@ -109,9 +111,10 @@ pub fn generate_conditional_tx(
     input: impl Into<TxContextInput>,
     modify_storage: bool,
 ) -> ExecutedTransaction {
-    let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
-        .build(&asm, source_manager)
-        .expect("failed to create the noop note");
+    let (noop_note, _source_manager) =
+        NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
+            .build2(Assembler::new)
+            .expect("failed to create the noop note");
     chain.add_pending_note(OutputNote::Full(noop_note.clone()));
     chain.prove_next_block().unwrap();
 

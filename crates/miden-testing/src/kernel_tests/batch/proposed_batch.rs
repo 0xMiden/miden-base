@@ -7,6 +7,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     BatchAccountUpdateError, ProposedBatchError, Word,
     account::{Account, AccountId, AccountStorageMode},
+    assembly::DefaultSourceManager,
     batch::ProposedBatch,
     block::BlockNumber,
     crypto::merkle::MerkleError,
@@ -28,7 +29,10 @@ fn mock_account_id(num: u8) -> AccountId {
 pub fn mock_note(num: u8) -> Note {
     let sender = mock_account_id(num);
     NoteBuilder::new(sender, SmallRng::from_seed([num; 32]))
-        .build(&TransactionKernel::assembler().with_debug_mode(true))
+        .build(
+            &TransactionKernel::assembler().with_debug_mode(true),
+            Arc::new(DefaultSourceManager::default()),
+        )
         .unwrap()
 }
 

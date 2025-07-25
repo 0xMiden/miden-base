@@ -7,7 +7,7 @@ use miden_objects::{
     account::{Account, AccountId},
     assembly::{
         Assembler, SourceManager,
-        debuginfo::{SourceLanguage, Uri},
+        debuginfo::{SourceLanguage, SourceManagerSync, Uri},
     },
     block::{BlockHeader, BlockNumber},
     note::Note,
@@ -40,7 +40,7 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
-    pub(super) source_manager: Arc<dyn SourceManager + Send + Sync>,
+    pub(super) source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl TransactionContext {
@@ -75,14 +75,8 @@ impl TransactionContext {
 
         let test_lib = TransactionKernel::kernel_as_library();
 
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
-
         // Virtual file name should be unique.
-        let virtual_source_file = source_manager.load(
+        let virtual_source_file = self.source_manager.load(
             SourceLanguage::Masm,
             Uri::new("_tx_context_code"),
             code.to_owned(),
@@ -111,7 +105,7 @@ impl TransactionContext {
         ))
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)
-        .execute_program(program, source_manager)
+        .execute_program(program, self.source_manager.clone())
     }
 
     /// Executes arbitrary code with a testing assembler ([TransactionKernel::testing_assembler()]).
@@ -170,7 +164,7 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
         Arc::clone(&self.source_manager)
     }
 }

@@ -50,8 +50,8 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
 where
-    STORE: DataStore + 'store + Sync,
-    AUTH: TransactionAuthenticator + 'auth + Sync,
+    STORE: DataStore + 'store,
+    AUTH: TransactionAuthenticator + 'auth,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -144,7 +144,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        _source_manager: Arc<dyn SourceManager + Send + Sync>,
+        _source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -200,10 +200,9 @@ where
 
         // The stack is not necessary since it is being reconstructed when re-executing.
 
-        let advice_inputs = todo!();
-        // let advice_inputs = AdviceInputs::default()
-        //     .with_map(advice_provider.map.iter().map(ffs))
-        //     .with_merkle_store(advice_provider.store.iter());
+        let advice_inputs = AdviceInputs::default()
+            .with_map(ffs(advice_provider.map.iter()))
+            .with_merkle_store(advice_provider.store);
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
@@ -234,7 +233,7 @@ where
         _tx_script: TransactionScript,
         _advice_inputs: AdviceInputs,
         _foreign_account_inputs: Vec<AccountInputs>,
-        _source_manager: Arc<dyn SourceManager + Send + Sync>,
+        _source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         /*
         let ref_blocks = [block_ref].into_iter().collect();
@@ -393,12 +392,11 @@ pub fn ffs<'a, I>(iter: I) -> impl IntoIterator<Item = (Word, Vec<Felt>)>
 where
     I: IntoIterator<Item = (&'a Word, &'a Arc<[Felt]>)>,
 {
-    iter.into_iter()
-        .map(|(word, felts)| (word.clone(), Vec::from_iter(felts.iter().cloned())))
+    iter.into_iter().map(|(word, felts)| (word.clone(), felts.to_vec()))
 }
 
 /// Creates a new [ExecutedTransaction] from the provided data.
-fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
+fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
     mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
@@ -515,7 +513,7 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   account delta and input/output notes.
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execution_error<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
+fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
     exec_err: ExecutionError,
     tx_inputs: &TransactionInputs,
     host: &TransactionExecutorHost<STORE, AUTH>,
@@ -554,7 +552,7 @@ fn map_execution_error<STORE: DataStore + Sync, AUTH: TransactionAuthenticator +
 
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
-fn build_tx_summary<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
+fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
     account_delta_commitment: Word,
     input_notes_commitment: Word,
     output_notes_commitment: Word,

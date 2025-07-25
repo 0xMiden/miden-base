@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use assert_matches::assert_matches;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_objects::{
@@ -65,7 +66,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
     let note = NoteBuilder::new(sender_id, &mut rand::rng())
-        .build(&assembler, &source_manager)
+        .build(&assembler, source_manager.clone())
         .expect("failed to create mock note");
 
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));

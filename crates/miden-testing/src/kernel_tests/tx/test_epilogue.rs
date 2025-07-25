@@ -1,4 +1,4 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::{string::ToString, sync::Arc, vec::Vec};
 
 use miden_lib::{
     errors::tx_kernel_errors::{
@@ -14,6 +14,7 @@ use miden_lib::{
 use miden_objects::{
     FieldElement, Word,
     account::{Account, AccountComponent, AccountDelta, AccountStorageDelta, AccountVaultDelta},
+    assembly::DefaultSourceManager,
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
     testing::{
@@ -226,12 +227,17 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     )?
     .into();
 
-    let output_note_1 = NoteBuilder::new(account.id(), rng())
-        .add_assets([fungible_asset_1])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
-    let output_note_2 = NoteBuilder::new(account.id(), rng())
-        .add_assets([fungible_asset_2])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let output_note_1 =
+        NoteBuilder::new(account.id(), rng()).add_assets([fungible_asset_1]).build(
+            &TransactionKernel::testing_assembler_with_mock_account(),
+            source_manager.clone(),
+        )?;
+    let output_note_2 =
+        NoteBuilder::new(account.id(), rng()).add_assets([fungible_asset_2]).build(
+            &TransactionKernel::testing_assembler_with_mock_account(),
+            source_manager.clone(),
+        )?;
 
     let input_note = create_spawn_note(account.id(), vec![&output_note_1, &output_note_2])?;
 
@@ -241,6 +247,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
             OutputNote::Full(output_note_1),
             OutputNote::Full(output_note_2),
         ])
+        .with_source_manager(source_manager.clone())
         .build()?;
 
     let output_notes_data_procedure =
@@ -258,7 +265,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
             exec.prologue::prepare_transaction
             exec.create_mock_notes
             exec.epilogue::finalize_transaction
-            
+
             # truncate the stack
             movupw.3 dropw movupw.3 dropw movup.9 drop
         end
@@ -296,15 +303,22 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     )?
     .into();
 
-    let output_note_1 = NoteBuilder::new(account.id(), rng())
-        .add_assets([fungible_asset_1])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
-    let output_note_2 = NoteBuilder::new(account.id(), rng())
-        .add_assets([fungible_asset_2])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
-    let output_note_3 = NoteBuilder::new(account.id(), rng())
-        .add_assets([fungible_asset_3])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+    let source_manager = alloc::sync::Arc::new(DefaultSourceManager::default());
+    let output_note_1 =
+        NoteBuilder::new(account.id(), rng()).add_assets([fungible_asset_1]).build(
+            &TransactionKernel::testing_assembler_with_mock_account(),
+            source_manager.clone(),
+        )?;
+    let output_note_2 =
+        NoteBuilder::new(account.id(), rng()).add_assets([fungible_asset_2]).build(
+            &TransactionKernel::testing_assembler_with_mock_account(),
+            source_manager.clone(),
+        )?;
+    let output_note_3 =
+        NoteBuilder::new(account.id(), rng()).add_assets([fungible_asset_3]).build(
+            &TransactionKernel::testing_assembler_with_mock_account(),
+            source_manager.clone(),
+        )?;
 
     let input_note = create_spawn_note(
         ACCOUNT_ID_SENDER.try_into()?,
@@ -334,7 +348,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
             exec.prologue::prepare_transaction
             exec.create_mock_notes
             exec.epilogue::finalize_transaction
-                        
+
             # truncate the stack
             movupw.3 dropw movupw.3 dropw movup.9 drop
         end
@@ -371,7 +385,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
 
             exec.epilogue::finalize_transaction
-                        
+
             # truncate the stack
             movupw.3 dropw movupw.3 dropw movup.9 drop
         end
@@ -441,7 +455,7 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
         exec.tx::get_expiration_delta assertz
 
         exec.epilogue::finalize_transaction
-                    
+
         # truncate the stack
         movupw.3 dropw movupw.3 dropw movup.9 drop
     end
@@ -595,7 +609,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
             call.tx::create_note
             # => [note_idx, GARBAGE(15)]
 
-            # make sure that output note was created: compare the output note hash with an empty 
+            # make sure that output note was created: compare the output note hash with an empty
             # word
             exec.note::compute_output_notes_commitment
             padw eqw assertz.err="output note was created, but the output notes hash remains to be zeros"
