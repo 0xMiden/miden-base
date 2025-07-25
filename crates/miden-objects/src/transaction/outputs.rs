@@ -331,7 +331,7 @@ mod output_notes_tests {
     fn test_duplicate_output_notes() -> anyhow::Result<()> {
         let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
 
-        let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
+        let (mock_note, _source_manager) = NoteBuilder::new(mock_account_id, &mut rand::rng())
             .build2(Assembler::new)
             .context("failed to create mock note")?;
         let mock_note_id = mock_note.id();

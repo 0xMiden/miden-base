@@ -5,17 +5,14 @@ use alloc::{
     vec::Vec,
 };
 
-use miden_lib::{
-    errors::TransactionKernelError,
-    transaction::{TransactionEvent, TransactionEventData, TransactionEventHandling},
-};
+use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
 use miden_objects::{
     Felt, Word,
     account::{AccountDelta, PartialAccount},
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, AdviceMutation, AsyncHost, BaseHost, ErrorContext, ErrorContextImpl, EventError,
+    AdviceInputs, AdviceMutation, AsyncHost, BaseHost, ErrorContextImpl, EventError,
     ExecutionError, FutureAliasWrapper, MastForest, MastForestStore, ProcessState,
 };
 

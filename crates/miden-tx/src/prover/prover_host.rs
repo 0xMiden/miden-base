@@ -7,8 +7,8 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, AdviceMutation, BaseHost, ErrorContext, ErrorContextImpl, EventError,
-    ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
+    AdviceInputs, AdviceMutation, BaseHost, EventError, MastForest, MastForestStore, ProcessState,
+    SyncHost,
 };
 
 use crate::{
