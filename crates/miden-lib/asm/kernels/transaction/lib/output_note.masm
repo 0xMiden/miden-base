@@ -41,6 +41,24 @@ export.get_assets_info
     # => [note_data_ptr, num_assets]
 
     # get the assets commitment
-    exec.note::compute_output_note_assets_commitment
+    dup exec.note::compute_output_note_assets_commitment
+    # => [ASSETS_COMMITMENT, note_data_ptr, num_assets]
+
+    # get the start and the end pointers of the asset data
+    movup.4 exec.memory::get_output_note_asset_data_ptr
+    # => [assets_data_ptr, ASSETS_COMMITMENT, num_assets]
+
+    dup dup.6 mul.4 add
+    # => [assets_end_ptr, assets_start_ptr, ASSETS_COMMITMENT, num_assets]
+
+    movdn.5 movdn.4
+    # => [ASSETS_COMMITMENT, assets_start_ptr, assets_end_ptr, num_assets]
+
+    # store the assets data to the advice map using ASSETS_COMMITMENT as a key  
+    adv.insert_mem
+    # => [ASSETS_COMMITMENT, assets_start_ptr, assets_end_ptr, num_assets]
+
+    # remove asset pointers from the stack
+    movup.4 drop movup.4 drop
     # => [ASSETS_COMMITMENT, num_assets]
 end

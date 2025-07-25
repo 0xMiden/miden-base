@@ -1,4 +1,14 @@
 use.miden::kernel_proc_offsets
+use.miden::note
+use.std::mem
+
+# ERRORS
+# =================================================================================================
+
+const.ERR_OUTPUT_ASSETS_COMMITMENT_MISMATCH="computed assets commitment does not match the one obtained from assets info"
+
+# PROCEDURES
+# =================================================================================================
 
 #! Returns the information about assets in the output note with the specified index.
 #!
@@ -37,6 +47,42 @@ export.get_assets_info
         movup.5 drop
     end
     # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Writes the assets of the output note with the specified index into memory starting at the 
+#! specified address.
+#!
+#! Inputs:  [note_index, dest_ptr]
+#! Outputs: [num_assets, note_index, dest_ptr]
+#!
+#! Where:
+#! - note_index is the index of the output note whose assets info should be returned.
+#! - dest_ptr is the memory address to write the assets.
+#! - num_assets is the number of assets in the specified note.
+#!
+#! Invocation: exec
+export.get_assets
+    # get the assets commitment and assets number
+    dup exec.get_assets_info
+    # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+
+    # load the asset data from the advice map to the advice stack
+    adv.push_mapval
+    # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # prepare the stack for the `pipe_words_to_memory` procedure
+    dup.6 dup.5
+    # OS => [num_assets, dest_ptr, ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+    # AS => []
+
+    # move the assets to the destination pointer
+    exec.mem::pipe_words_to_memory
+    # OS => [C, B, A, dest_ptr', ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+
+    # clean the stack
+    dropw dropw dropw drop dropw
+    # OS => [num_assets, note_index, dest_ptr]
 end
 
 #! Returns the recipient commitment of the output note with the specified index.

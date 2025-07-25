@@ -12,6 +12,9 @@ const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs e
 
 const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note inputs does not match the actual number"
 
+# PROCEDURES
+# =================================================================================================
+
 #! Writes the data currently on the advice stack into the memory at the specified location and
 #! verifies that the hash of the written data is equal to the provided hash.
 #!
