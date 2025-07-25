@@ -735,6 +735,30 @@ export.input_note_get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 
+#! Returns the recipient commitment of the input note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [RECIPIENT_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the input note whose recipient commitment should be returned.
+#! - RECIPIENT_COMMITMENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Invocation: dynexec
+export.input_note_get_recipient
+    # get the note data pointer by the provided index
+    exec.memory::get_input_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # compute the recipient commitment
+    exec.input_note::compute_recipient_commitment
+    # => [RECIPIENT_COMMITMENT, pad(15)]
+
+    # truncate the stack
+    swapw dropw
+    # => [RECIPIENT_COMMITMENT, pad(12)]
+end
+
 #! Returns the information about assets in the output note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
@@ -759,6 +783,20 @@ export.output_note_get_assets_info
         movup.5 drop
     end
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+end
+
+#! Returns the recipient commitment of the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [RECIPIENT_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose recipient commitment should be returned.
+#! - RECIPIENT_COMMITMENT is the commitment to the output note's script, inputs, the serial number.
+#!
+#! Invocation: dynexec
+export.output_note_get_recipient
+    nop
 end
 
 #! Returns the serial number of the note currently being processed.

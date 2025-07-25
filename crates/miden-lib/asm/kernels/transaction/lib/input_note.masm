@@ -41,3 +41,25 @@ export.get_assets_info
     swap exec.memory::get_input_note_assets_commitment
     # => [ASSETS_COMMITMENT, num_assets]
 end
+
+#! Computes an input note's recipient commitment.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [RECIPIENT_COMMITMENT]
+#!
+#! Where:
+#! - note_ptr is the memory location for the input note.
+#! - RECIPIENT_COMMITMENT is the commitment to the input note's script, inputs, the serial number.
+export.compute_recipient_commitment
+    # compute SERIAL_COMMITMENT: hash(SERIAL_NUMBER || EMPTY_WORD)
+    dup exec.memory::get_input_note_serial_num padw hmerge
+    # => [SERIAL_COMMITMENT, note_ptr]
+
+    # compute MERGE_SCRIPT: hash(SERIAL_COMMITMENT || SCRIPT_ROOT)
+    dup.4 exec.memory::get_input_note_script_root hmerge
+    # => [MERGE_SCRIPT, note_ptr]
+
+    # compute RECIPIENT_COMMITMENT: hash(MERGE_SCRIPT || INPUT_COMMITMENT)
+    movup.4 exec.memory::get_input_note_inputs_commitment hmerge
+    # => [RECIPIENT_COMMITMENT]
+end

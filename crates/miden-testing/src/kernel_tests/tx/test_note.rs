@@ -321,20 +321,21 @@ fn test_get_assets() -> anyhow::Result<()> {
     );
 
     tx_context.execute_code(&code)?;
+
     Ok(())
 }
 
 #[test]
-fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
+fn test_input_note_get_asset_info() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
-    let p2id_note_1 = builder.add_p2id_note(
+    let p2id_note_0 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
         &[FungibleAsset::mock(150)],
         NoteType::Public,
     )?;
-    let p2id_note_2 = builder.add_p2id_note(
+    let p2id_note_1 = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
         &[FungibleAsset::mock(300)],
@@ -370,7 +371,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
 
             # assert the correctness of the assets hash
             push.{COMPUTED_ASSETS_COMMITMENT_1} 
-            assert_eqw.err="note 0 has incorrect assets hash"
+            assert_eqw.err="note 1 has incorrect assets hash"
             # => [num_assets_1]
 
             # assert the number of note assets
@@ -379,10 +380,10 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
             # => []
         end
     "#,
-        COMPUTED_ASSETS_COMMITMENT_0 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
-        assets_number_0 = p2id_note_1.assets().num_assets(),
-        COMPUTED_ASSETS_COMMITMENT_1 = word_to_masm_push_string(&p2id_note_2.assets().commitment()),
-        assets_number_1 = p2id_note_2.assets().num_assets(),
+        COMPUTED_ASSETS_COMMITMENT_0 = word_to_masm_push_string(&p2id_note_0.assets().commitment()),
+        assets_number_0 = p2id_note_0.assets().num_assets(),
+        COMPUTED_ASSETS_COMMITMENT_1 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
+        assets_number_1 = p2id_note_1.assets().num_assets(),
     );
 
     let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
@@ -391,7 +392,72 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
         .build_tx_context(
             TxContextInput::AccountId(account.id()),
             &[],
-            &[p2id_note_1, p2id_note_2],
+            &[p2id_note_0, p2id_note_1],
+        )?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute()?;
+
+    Ok(())
+}
+
+#[test]
+fn test_input_note_get_recipient_and_metadata() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
+    let p2id_note_0 = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(150)],
+        NoteType::Public,
+    )?;
+    let p2id_note_1 = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(300)],
+        NoteType::Public,
+    )?;
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the recipient commitment from the 0'th input note
+            push.0
+            exec.input_note::get_recipient
+            # => [RECIPIENT_0]
+
+            # assert the correctness of the recipient
+            push.{RECIPIENT_O} 
+            assert_eqw.err="note 0 has incorrect recipient"
+            # => []
+
+            # get the recipient commitment from the 1'st input note
+            push.1
+            exec.input_note::get_recipient
+            # => [RECIPIENT_1]
+
+            # assert the correctness of the recipient
+            push.{RECIPIENT_1} 
+            assert_eqw.err="note 1 has incorrect recipient"
+            # => []
+        end
+    "#,
+        RECIPIENT_O = word_to_masm_push_string(&p2id_note_0.recipient().digest()),
+        RECIPIENT_1 = word_to_masm_push_string(&p2id_note_1.recipient().digest()),
+    );
+
+    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
+
+    let tx_context = mock_chain
+        .build_tx_context(
+            TxContextInput::AccountId(account.id()),
+            &[],
+            &[p2id_note_0, p2id_note_1],
         )?
         .tx_script(tx_script)
         .build()?;
@@ -410,7 +476,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
 ///   data.
 /// - After adding the second `asset_2` to the note.
 #[test]
-fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
+fn test_output_note_get_asset_info() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let fungible_asset_1 = Asset::Fungible(
@@ -551,6 +617,11 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
 
     tx_context.execute()?;
 
+    Ok(())
+}
+
+#[test]
+fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
     Ok(())
 }
 
