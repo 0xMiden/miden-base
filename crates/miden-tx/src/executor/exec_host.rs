@@ -126,11 +126,8 @@ where
             let tx_summary = build_tx_summary(self.base_host(), salt)
                 .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
-            #[cfg(debug_assertions)]
-            {
-                let tx_summary_commitment = tx_summary.to_commitment();
-                assert_eq!(msg, tx_summary_commitment);
-            }
+            debug_assert_eq!(msg, tx_summary.to_commitment());
+
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
