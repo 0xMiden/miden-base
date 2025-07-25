@@ -1660,6 +1660,20 @@ export.set_output_note_recipient
     mem_storew
 end
 
+#! Returns the output note's metadata.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [METADATA]
+#!
+#! Where:
+#! - METADATA is the note metadata.
+#! - note_ptr is the memory address at which the output note data begins.
+export.get_output_note_metadata
+    padw
+    movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    mem_loadw
+end
+
 #! Sets the output note's metadata.
 #!
 #! Inputs:  [note_ptr, METADATA]

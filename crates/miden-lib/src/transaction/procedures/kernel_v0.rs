@@ -74,7 +74,7 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     // input_note_get_metadata
     word!("0x9ced71e631ca722d1fd09f4cd18b6f9783b674d7e9debe3d5a7719f1293d8c50"),
     // output_note_get_metadata
-    word!("0xf0db3924f3e2d677a51924b09ecef8a12416a6ceb09fadd39785bb4f685cab66"),
+    word!("0x3fc5983d820f2008e3288256bff716afeace5500e622d62c6434da6d4b89cb17"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment

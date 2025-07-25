@@ -202,6 +202,8 @@ fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
         use.std::sys
 
         begin
+            ### 0'th note
+
             # create output note 0
             push.{RECIPIENT_0}
             push.{note_execution_hint_0}
@@ -217,6 +219,28 @@ fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
             dropw drop
             # => []
 
+            # get the recipient commitment from the 0'th output note
+            push.0
+            exec.output_note::get_recipient
+            # => [RECIPIENT_0]
+
+            # assert the correctness of the recipient
+            push.{RECIPIENT_0} 
+            assert_eqw.err="note 0 has incorrect recipient"
+            # => []
+
+            # get the metadata from the 0'th output note
+            push.0
+            exec.output_note::get_metadata
+            # => [METADATA_0]
+
+            # assert the correctness of the metadata
+            push.{METADATA_0} 
+            assert_eqw.err="note 0 has incorrect metadata"
+            # => []
+
+            ### 1'st note
+
             # create output note 1
             push.{RECIPIENT_1}
             push.{note_execution_hint_1}
@@ -231,18 +255,8 @@ fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
             call.::miden::contracts::wallets::basic::move_asset_to_note
             dropw drop
             # => []
-            
-            # get the recipient commitment from the 0'th output note
-            push.0
-            exec.output_note::get_recipient
-            # => [RECIPIENT_0]
 
-            # assert the correctness of the recipient
-            push.{RECIPIENT_0} 
-            assert_eqw.err="note 0 has incorrect recipient"
-            # => []
-
-            # get the recipient commitment from the 1'st input note
+            # get the recipient commitment from the 1'st output note
             push.1
             exec.output_note::get_recipient
             # => [RECIPIENT_1]
@@ -250,6 +264,16 @@ fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
             # assert the correctness of the recipient
             push.{RECIPIENT_1} 
             assert_eqw.err="note 1 has incorrect recipient"
+            # => []
+
+            # get the metadata from the 1'st output note
+            push.1
+            exec.output_note::get_metadata
+            # => [METADATA_1]
+
+            # assert the correctness of the metadata
+            push.{METADATA_1} 
+            assert_eqw.err="note 1 has incorrect metadata"
             # => []
 
             # truncate the stack
@@ -262,12 +286,14 @@ fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
         note_type_0 = NoteType::Public as u8,
         tag_0 = Felt::from(output_note_0.metadata().tag()),
         asset_0 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
+        METADATA_0 = word_to_masm_push_string(&output_note_0.metadata().into()),
         // second note
         RECIPIENT_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
         note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
         note_type_1 = NoteType::Public as u8,
         tag_1 = Felt::from(output_note_1.metadata().tag()),
         asset_1 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
+        METADATA_1 = word_to_masm_push_string(&output_note_1.metadata().into()),
     );
 
     let tx_script =
