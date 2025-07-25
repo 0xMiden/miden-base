@@ -12,6 +12,12 @@ const.AUTH_REQUEST=131087
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
+const.SALT_PTR=0
+const.OUTPUT_NOTES_COMMITMENT_PTR=4
+const.INPUT_NOTES_COMMITMENT_PTR=8
+const.ACCOUNT_DELTA_COMMITMENT_PTR=12
+const.COMMITMENTS_END_PTR=16
+
 #! Authenticate a transaction using the Falcon signature scheme.
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
@@ -48,13 +54,16 @@ export.auth__tx_rpo_falcon512
     # the commitment to the tx summary is the message that is signed
     exec.hash_tx_summary
     # => [MESSAGE, pad(16)]
+    push.COMMITMENTS_END_PTR movdn.4 push.SALT_PTR movdn.4
+    # => [MESSAGE, SALT_PTR, COMMITMENTS_END_PTR]
+    adv.insert_mem
 
     # Fetch public key from storage.
     # ---------------------------------------------------------------------------------------------
 
     # Get public key from account storage at pos 0 and verify signature
     push.PUBLIC_KEY_SLOT exec.account::get_item
-    # OS => [PUB_KEY, MESSAGE, pad(16)]
+    # OS => [PUB_KEY, MESSAGE, SALT_PTR, COMMITMENTS_END_PTR, pad(16)]
     # AS => []
 
     # Fetch signature from advice provider and verify.
@@ -70,7 +79,8 @@ export.auth__tx_rpo_falcon512
     # hash of the public key and the message via the operand stack. The signature is provided via
     # the advice stack. The signature is valid if and only if the procedure returns.
     exec.rpo_falcon512::verify
-    # OS => [pad(16)]
+    # OS => [SALT_PTR, COMMITMENTS_END_PTR, pad(16)]
+    drop drop
     # AS => []
 end
 
@@ -88,12 +98,15 @@ end
 export.create_tx_summary
     exec.account::compute_delta_commitment
     # => [ACCOUNT_DELTA_COMMITMENT, final_nonce]
+    mem_storew.ACCOUNT_DELTA_COMMITMENT_PTR
 
     exec.tx::get_input_notes_commitment
     # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
+    mem_storew.INPUT_NOTES_COMMITMENT_PTR
 
     exec.tx::get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
+    mem_storew.OUTPUT_NOTES_COMMITMENT_PTR
 
     push.0.0 exec.tx::get_block_number
     # => [[ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
@@ -101,6 +114,7 @@ export.create_tx_summary
     movup.15
     # => [[final_nonce, ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+    mem_storew.SALT_PTR
 end
 
 #! Hashes the provided transaction summary and returns its commitment.

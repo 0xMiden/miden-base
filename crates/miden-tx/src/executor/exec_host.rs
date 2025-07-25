@@ -5,23 +5,15 @@ use alloc::{
     vec::Vec,
 };
 
-use miden_lib::{
-    errors::TransactionKernelError,
-    transaction::{
-        TransactionEvent,
-        memory::{
-            ACCT_NONCE_IDX, BLOCK_METADATA_PTR, BLOCK_NUMBER_IDX, NATIVE_ACCT_ID_AND_NONCE_PTR,
-        },
-    },
-};
+use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
 use miden_objects::{
     Felt, Hasher, Word,
     account::{AccountDelta, PartialAccount},
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost, ZERO,
+    AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
+    ProcessState, SyncHost,
 };
 
 use crate::{
@@ -119,14 +111,10 @@ where
         let pub_key = process.get_stack_word(0);
         let message = process.get_stack_word(1);
 
-        let final_nonce = process
-            .get_mem_value(ContextId::root(), NATIVE_ACCT_ID_AND_NONCE_PTR + ACCT_NONCE_IDX as u32)
+        let salt = process
+            .get_mem_word(process.ctx(), 0)
+            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?
             .unwrap();
-        let block_number = process
-            .get_mem_value(ContextId::root(), BLOCK_METADATA_PTR + BLOCK_NUMBER_IDX as u32)
-            .unwrap();
-
-        let salt = Word::from([ZERO, ZERO, block_number, final_nonce]);
 
         let tx_summary = build_tx_summary(self.base_host(), salt)
             .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
