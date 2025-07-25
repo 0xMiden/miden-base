@@ -111,23 +111,26 @@ where
         let pub_key = process.get_stack_word(0);
         let message = process.get_stack_word(1);
 
-        let salt = process
-            .get_mem_word(process.ctx(), 0)
-            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?
-            .unwrap();
-
-        let tx_summary = build_tx_summary(self.base_host(), salt)
-            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
-        let tx_summary_commitment = tx_summary.to_commitment();
-        debug_assert_eq!(message, tx_summary_commitment);
-
-        let signature_key = Hasher::merge(&[pub_key, tx_summary_commitment]);
+        let signature_key = Hasher::merge(&[pub_key, message]);
 
         let signature = if let Ok(signature) =
             process.advice_provider().get_mapped_values(&signature_key)
         {
             signature.to_vec()
         } else {
+            let salt = process
+                .get_mem_word(process.ctx(), 0)
+                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?
+                .unwrap();
+
+            let tx_summary = build_tx_summary(self.base_host(), salt)
+                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+
+            #[cfg(debug_assertions)]
+            {
+                let tx_summary_commitment = tx_summary.to_commitment();
+                assert_eq!(message, tx_summary_commitment);
+            }
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
