@@ -1,8 +1,4 @@
-
-use miden_lib::{
-    note::create_p2id_note,
-    transaction::TransactionKernel,
-};
+use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Word,
     account::AccountId,
@@ -10,16 +6,14 @@ use miden_objects::{
     crypto::rand::RpoRandomCoin,
     note::NoteType,
     testing::account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    },
     transaction::{OutputNote, TransactionScript},
 };
 
 use super::{Felt, word_to_masm_push_string};
-use crate::{
-    Auth, MockChain,
-};
+use crate::{Auth, MockChain};
 
 /// This test creates an output note and then adds some assets into it checking the assets info on
 /// each stage.

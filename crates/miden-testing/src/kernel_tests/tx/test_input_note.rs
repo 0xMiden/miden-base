@@ -1,16 +1,11 @@
-
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    asset::FungibleAsset,
-    note::NoteType,
-    testing::account_id::ACCOUNT_ID_SENDER,
+    asset::FungibleAsset, note::NoteType, testing::account_id::ACCOUNT_ID_SENDER,
     transaction::TransactionScript,
 };
 
 use super::word_to_masm_push_string;
-use crate::{
-    MockChain, TxContextInput,
-};
+use crate::{MockChain, TxContextInput};
 
 #[test]
 fn test_input_note_get_asset_info() -> anyhow::Result<()> {
@@ -113,6 +108,8 @@ fn test_input_note_get_recipient_and_metadata() -> anyhow::Result<()> {
         use.miden::input_note
 
         begin
+            ### 0'th note
+
             # get the recipient commitment from the 0'th input note
             push.0
             exec.input_note::get_recipient
@@ -123,6 +120,18 @@ fn test_input_note_get_recipient_and_metadata() -> anyhow::Result<()> {
             assert_eqw.err="note 0 has incorrect recipient"
             # => []
 
+            # get the metadata from the 0'th input note
+            push.0
+            exec.input_note::get_metadata
+            # => [METADATA_0]
+
+            # assert the correctness of the metadata
+            push.{METADATA_0} 
+            assert_eqw.err="note 0 has incorrect metadata"
+            # => []
+
+            ### 1'st note
+
             # get the recipient commitment from the 1'st input note
             push.1
             exec.input_note::get_recipient
@@ -132,10 +141,22 @@ fn test_input_note_get_recipient_and_metadata() -> anyhow::Result<()> {
             push.{RECIPIENT_1} 
             assert_eqw.err="note 1 has incorrect recipient"
             # => []
+
+            # get the metadata from the 1'st input note
+            push.1
+            exec.input_note::get_metadata
+            # => [METADATA_1]
+
+            # assert the correctness of the metadata
+            push.{METADATA_1} 
+            assert_eqw.err="note 1 has incorrect metadata"
+            # => []
         end
     "#,
         RECIPIENT_0 = word_to_masm_push_string(&p2id_note_0.recipient().digest()),
+        METADATA_0 = word_to_masm_push_string(&p2id_note_0.metadata().into()),
         RECIPIENT_1 = word_to_masm_push_string(&p2id_note_1.recipient().digest()),
+        METADATA_1 = word_to_masm_push_string(&p2id_note_1.metadata().into()),
     );
 
     let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
