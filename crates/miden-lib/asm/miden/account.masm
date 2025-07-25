@@ -109,32 +109,65 @@ export.compute_current_commitment
     # => [ACCOUNT_COMMITMENT]
 end
 
-#! Increments the account nonce by the provided value.
+#! Computes the commitment to the native account's delta.
 #!
-#! Inputs:  [value]
-#! Outputs: []
+#! Note that if the account state has changed, the nonce must be incremented before this procedure
+#! is called, otherwise it will panic. This means it can only be called from an auth procedure,
+#! since only auth procedures are allowed to increment the nonce.
+#!
+#! Inputs:  []
+#! Outputs: [DELTA_COMMITMENT]
 #!
 #! Where:
-#! - value is the value to increment the nonce by. value can be at most 2^32 - 1 otherwise this
-#!   procedure panics.
+#! - DELTA_COMMITMENT is the commitment to the account delta.
+#!
+#! Panics if:
+#! - the vault or storage delta is not empty but the nonce increment is zero.
+export.compute_delta_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_compute_delta_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [DELTA_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [DELTA_COMMITMENT]
+end
+
+#! Increments the account nonce by one and returns the new nonce.
+#!
+#! Inputs:  []
+#! Outputs: [final_nonce]
+#!
+#! Where:
+#! - final_nonce is the new nonce of the account. Since it cannot be incremented again, this will
+#!   also be the final nonce of the account after transaction execution.
+#!
+#! Panics if:
+#! - the invocation of this procedure does not originate from the native account.
+#! - the invocation of this procedure does not originate from the authentication procedure
+#!   of the account.
+#! - the nonce has already been incremented.
 #!
 #! Invocation: exec
 export.incr_nonce
-    # start padding the stack
-    push.0.0 movup.2
-    # => [value, 0, 0]
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
 
     exec.kernel_proc_offsets::account_incr_nonce_offset
-    # => [offset, value, 0, 0]
-
-    # pad the stack
-    padw swapw padw padw swapdw
-    # => [offset, value, pad(14)]
+    # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
-    # => [pad(16)]
+    # => [final_nonce, pad(15)]
 
-    dropw dropw dropw dropw
+    swap.15 dropw dropw dropw drop drop drop
+    # => [final_nonce]
 end
 
 #! Gets an item from the account storage. Panics if the index is out of bounds.

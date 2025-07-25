@@ -2,11 +2,11 @@ use.std::mem
 use.std::collections::mmr
 use.std::crypto::hashes::rpo
 
-use.kernel::account
-use.kernel::account_id
-use.kernel::asset_vault
-use.kernel::constants
-use.kernel::memory
+use.$kernel::account
+use.$kernel::account_id
+use.$kernel::asset_vault
+use.$kernel::constants
+use.$kernel::memory
 
 # CONSTS
 # =================================================================================================
@@ -50,6 +50,12 @@ const.ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH="note commitment computed fro
 const.ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO="new account must have a zero nonce"
 
 const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
+
+const.ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED="failed to authenticate note inclusion in block"
+
+const.ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH="sequential hash over kernel commitments does not match tx kernel commitment from block"
+
+const.ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH="sequential hash over kernel procedures does not match kernel commitment"
 
 # PUBLIC INPUTS
 # =================================================================================================
@@ -144,7 +150,7 @@ proc.process_kernel_data
     # AS => []
 
     # assert that sequential hash matches the precomputed kernel commitment
-    movup.4 drop assert_eqw
+    movup.4 drop assert_eqw.err=ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH
     # OS => [kernel_version]
     # AS => []
 
@@ -189,7 +195,7 @@ proc.process_kernel_data
     # AS => []
 
     # assert that the precomputed hash matches the computed one
-    movup.4 drop assert_eqw
+    movup.4 drop assert_eqw.err=ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH
     # OS => []
     # AS => []
 end
@@ -597,7 +603,7 @@ proc.authenticate_note.8
     # => [NOTE_COMMITMENT, depth, note_index, NOTE_ROOT]
 
     # verify the note commitment
-    mtree_verify
+    mtree_verify.err=ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED
     # => [NOTE_COMMITMENT, depth, note_index, NOTE_ROOT]
 
     dropw drop drop dropw
@@ -612,7 +618,7 @@ end
 #!      SERIAL_NUMBER,
 #!      SCRIPT_ROOT,
 #!      INPUTS_COMMITMENT,
-#!      ASSETS_HASH,
+#!      ASSETS_COMMITMENT,
 #!   ]
 #! Outputs:
 #!   Operand stack: [NULLIFIER]
@@ -623,8 +629,9 @@ end
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
-#! - ASSETS_HASH is the sequential hash of the padded note's assets.
-#! - NULLIFIER is the result of `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_HASH)`.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
+#! - NULLIFIER is the result of 
+#!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_COMMITMENT)`.
 proc.process_input_note_details
     exec.memory::get_input_note_core_ptr
     # => [note_data_ptr]
@@ -687,7 +694,7 @@ proc.process_note_inputs_length
     # => [inputs_len, note_ptr]
 
     # validate the input length
-    dup exec.::kernel::util::note::get_max_inputs_per_note lte
+    dup exec.::$kernel::util::note::get_max_inputs_per_note lte
     assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
     # => [inputs_len, note_ptr]
 
@@ -724,7 +731,7 @@ proc.process_note_assets
     # => [assets_count, note_ptr]
 
     # round up the number of assets, to the its padded length
-    dup push.1 u32and add
+    dup u32and.1 add
     # => [rounded_num_assets, note_ptr]
 
     # read the note's assets
@@ -775,7 +782,7 @@ proc.process_note_assets
     # => [note_ptr, ASSET_COMMITMENT_COMPUTED]
 
     # VERIFY: computed ASSET_COMMITMENT matches the provided hash
-    exec.memory::get_input_note_assets_hash
+    exec.memory::get_input_note_assets_commitment
     assert_eqw.err=ERR_PROLOGUE_PROVIDED_INPUT_ASSETS_INFO_DOES_NOT_MATCH_ITS_COMMITMENT
     # => []
 end
@@ -851,7 +858,7 @@ proc.compute_input_note_id
     # => [RECIPIENT, note_ptr]
 
     # compute NOTE_ID: hash(RECIPIENT || ASSET_COMMITMENT)
-    movup.4 exec.memory::get_input_note_assets_hash hmerge
+    movup.4 exec.memory::get_input_note_assets_commitment hmerge
     # => [NOTE_ID]
 end
 
@@ -868,7 +875,7 @@ end
 #!      SERIAL_NUMBER,
 #!      SCRIPT_ROOT,
 #!      INPUTS_COMMITMENT,
-#!      ASSETS_HASH,
+#!      ASSETS_COMMITMENT,
 #!      ARGS,
 #!      NOTE_METADATA,
 #!      assets_count,
@@ -891,7 +898,7 @@ end
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
-#! - ASSETS_HASH is the sequential hash of the padded note's assets.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
 #! - NOTE_METADATA is the note's metadata.
 #! - ARGS is the user arguments passed to the note.
 #! - assets_count is the note's assets count.
@@ -1088,15 +1095,15 @@ end
 #!
 #! Inputs:
 #!   Operand stack: []
-#!   Advice stack: [TX_SCRIPT_ROOT, TX_SCRIPT_ARGS_KEY]
+#!   Advice stack: [TX_SCRIPT_ROOT, TX_SCRIPT_ARGS]
 #! Outputs:
 #!   Operand stack: []
 #!   Advice stack: []
 #!
 #! Where:
 #! - TX_SCRIPT_ROOT is the transaction's script root.
-#! - TX_SCRIPT_ARGS_KEY is the commitment of the transaction script args used to obtain them from
-#!   the advice map.
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#!   some values associated with it from the advice map.
 proc.process_tx_script_data
     # read the transaction script root from the advice stack
     padw adv_loadw
@@ -1106,12 +1113,12 @@ proc.process_tx_script_data
     exec.memory::set_tx_script_root
     # => [TX_SCRIPT_ROOT]
 
-    # read the transaction script args key from the advice stack (overwrites TX_SCRIPT_ROOT)
+    # read the transaction script args from the advice stack (overwrites TX_SCRIPT_ROOT)
     adv_loadw
-    # => [TX_SCRIPT_ARGS_KEY]
+    # => [TX_SCRIPT_ARGS]
 
-    # store the transaction script args key in memory
-    exec.memory::set_tx_script_args_key dropw
+    # store the transaction script args in memory
+    exec.memory::set_tx_script_args dropw
     # => []
 end
 
@@ -1171,7 +1178,7 @@ end
 #!     ACCOUNT_CODE_COMMITMENT,
 #!     number_of_input_notes,
 #!     TX_SCRIPT_ROOT,
-#!     TX_SCRIPT_ARGS_KEY,
+#!     TX_SCRIPT_ARGS,
 #!     AUTH_ARGS,
 #!   ]
 #!   Advice map: {
@@ -1215,6 +1222,7 @@ end
 #! - ACCOUNT_STORAGE_SLOT_DATA is the vector of the account's storage slot data.
 #! - number_of_input_notes is the number of input notes.
 #! - TX_SCRIPT_ROOT is the transaction's script root.
+#! - TX_SCRIPT_ARGS are the arguments provided to the stack, see prologue::process_tx_script_data.
 #! - MMR_PEAKS is the MMR peak data, see process_chain_data.
 #! - NOTE_DATA is the input notes' details, for format see prologue::process_input_note.
 #!

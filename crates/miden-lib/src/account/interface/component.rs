@@ -28,17 +28,17 @@ pub enum AccountComponentInterface {
     /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
     BasicFungibleFaucet(u8),
     /// Exposes procedures from the
-    /// [`RpoFalcon512`][crate::account::auth::RpoFalcon512] module.
+    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
     ///
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
-    RpoFalcon512(u8),
+    AuthRpoFalcon512(u8),
     /// Exposes procedures from the
-    /// [`RpoFalcon512ProcedureAcl`][crate::account::auth::RpoFalcon512ProcedureAcl] module.
+    /// [`AuthRpoFalcon512Acl`][crate::account::auth::AuthRpoFalcon512Acl] module.
     ///
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
-    RpoFalcon512ProcedureAcl(u8),
+    AuthRpoFalcon512Acl(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -49,7 +49,7 @@ pub enum AccountComponentInterface {
 impl AccountComponentInterface {
     /// Returns a string line with the name of the [AccountComponentInterface] enum variant.
     ///
-    /// In case of a [AccountComponentInterface::Custom] along with the name of the enum variant  
+    /// In case of a [AccountComponentInterface::Custom] along with the name of the enum variant
     /// the vector of shortened hex representations of the used procedures is returned, e.g.
     /// `Custom([0x6d93447, 0x0bf23d8])`.
     pub fn name(&self) -> String {
@@ -58,8 +58,8 @@ impl AccountComponentInterface {
             AccountComponentInterface::BasicFungibleFaucet(_) => {
                 "Basic Fungible Faucet".to_string()
             },
-            AccountComponentInterface::RpoFalcon512(_) => "RPO Falcon512".to_string(),
-            AccountComponentInterface::RpoFalcon512ProcedureAcl(_) => {
+            AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
+            AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
                 "RPO Falcon512 Procedure ACL".to_string()
             },
             AccountComponentInterface::Custom(proc_info_vec) => {
@@ -142,7 +142,7 @@ impl AccountComponentInterface {
     ///
     /// ```masm
     ///     push.{note information}
-    ///     
+    ///
     ///     push.{asset amount}
     ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
     /// ```
@@ -198,7 +198,7 @@ impl AccountComponentInterface {
                     }
 
                     body.push_str(&format!(
-                        "push.{amount} 
+                        "push.{amount}
                         call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop\n",
                         amount = asset.unwrap_fungible().amount()
                     ));

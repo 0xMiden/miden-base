@@ -115,15 +115,12 @@ impl AccountStorageDelta {
 
     /// Returns an iterator of all the cleared storage slots.
     fn cleared_slots(&self) -> impl Iterator<Item = u8> + '_ {
-        self.values
-            .iter()
-            .filter(|&(_, value)| (value == &EMPTY_WORD))
-            .map(|(slot, _)| *slot)
+        self.values.iter().filter(|&(_, value)| value.is_empty()).map(|(slot, _)| *slot)
     }
 
     /// Returns an iterator of all the updated storage slots.
     fn updated_slots(&self) -> impl Iterator<Item = (&u8, &Word)> + '_ {
-        self.values.iter().filter(|&(_, value)| value != &EMPTY_WORD)
+        self.values.iter().filter(|&(_, value)| !value.is_empty())
     }
 
     /// Appends the storage slots delta to the given `elements` from which the delta commitment will
@@ -317,16 +314,13 @@ impl StorageMapDelta {
 
     /// Returns an iterator of all the cleared keys in the storage map.
     fn cleared_keys(&self) -> impl Iterator<Item = &Word> + '_ {
-        self.0
-            .iter()
-            .filter(|&(_, value)| value == &EMPTY_WORD)
-            .map(|(key, _)| key.inner())
+        self.0.iter().filter(|&(_, value)| value.is_empty()).map(|(key, _)| key.inner())
     }
 
     /// Returns an iterator of all the updated entries in the storage map.
     fn updated_entries(&self) -> impl Iterator<Item = (&Word, &Word)> + '_ {
         self.0.iter().filter_map(|(key, value)| {
-            if value != &EMPTY_WORD {
+            if !value.is_empty() {
                 Some((key.inner(), value))
             } else {
                 None

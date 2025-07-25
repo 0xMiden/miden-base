@@ -115,6 +115,8 @@ pub enum AccountError {
         "digest of the seed has {actual} trailing zeroes but must have at least {expected} trailing zeroes"
     )]
     SeedDigestTooFewTrailingZeros { expected: u32, actual: u32 },
+    #[error("storage map root {0} not found in the account storage")]
+    StorageMapRootNotFound(Word),
     #[error("storage slot at index {0} is not of type map")]
     StorageSlotNotMap(u8),
     #[error("storage slot at index {0} is not of type value")]
@@ -251,8 +253,8 @@ pub enum AccountDeltaError {
         account_id: AccountId,
         source: AccountError,
     },
-    #[error("zero nonce is not allowed for non-empty account deltas")]
-    ZeroNonceForNonEmptyDelta,
+    #[error("non-empty account storage or vault delta with zero nonce delta is not allowed")]
+    NonEmptyStorageOrVaultDeltaWithZeroNonceDelta,
     #[error(
         "account nonce increment {current} plus the other nonce increment {increment} overflows a felt to {new}"
     )]
@@ -418,6 +420,33 @@ pub enum NoteError {
     TooManyInputs(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
+    #[error("{error_msg}")]
+    Other {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on NoteError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl NoteError {
+    /// Creates a custom error using the [`NoteError::Other`] variant from an error message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { error_msg: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`NoteError::Other`] variant from an error message and
+    /// a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // PARTIAL BLOCKCHAIN ERROR

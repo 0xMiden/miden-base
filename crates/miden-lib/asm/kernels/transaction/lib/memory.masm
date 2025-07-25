@@ -1,5 +1,5 @@
-use.kernel::account
-use.kernel::constants
+use.$kernel::account
+use.$kernel::constants
 use.std::mem
 
 # ERRORS
@@ -78,8 +78,8 @@ const.INIT_NONCE_PTR=416
 # The memory address at which the transaction script mast root is stored.
 const.TX_SCRIPT_ROOT_PTR=420
 
-# The memory address at which the key of the transaction script arguments is stored.
-const.TX_SCRIPT_ARGS_KEY_PTR=424
+# The memory address at which the transaction script arguments are stored.
+const.TX_SCRIPT_ARGS_PTR=424
 
 # The memory address at which the auth procedure arguments are stored.
 const.AUTH_ARGS_PTR=428
@@ -174,20 +174,16 @@ const.ACCT_INITIAL_STORAGE_SLOTS_SECTION_OFFSET=4384
 # NATIVE ACCOUNT DELTA
 # -------------------------------------------------------------------------------------------------
 
-# The pointer at which the delta of the nonce is stored.
-# Layout: [nonce_delta, 0, 0, 0]
-const.ACCOUNT_DELTA_NONCE_PTR=532480
-
 # The link map pointer at which the delta of the fungible asset vault is stored.
-const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+4
+const.ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR=532480
 
 # The link map pointer at which the delta of the non-fungible asset vault is stored.
-const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_NONCE_PTR+8
+const.ACCOUNT_DELTA_NON_FUNGIBLE_ASSET_PTR=ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR+4
 
 # The section of link map pointers where storage map deltas are stored.
 # This section is offset by `slot index` to get the link map ptr for the storage map
 # delta at that slot index. Slot indices that are not map slots are simply unused.
-const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_NONCE_PTR+12
+const.ACCOUNT_DELTA_STORAGE_MAP_SECTION=ACCOUNT_DELTA_FUNGIBLE_ASSET_PTR+8
 
 # INPUT NOTES DATA
 # -------------------------------------------------------------------------------------------------
@@ -210,7 +206,7 @@ const.INPUT_NOTE_CORE_DATA_OFFSET=4
 const.INPUT_NOTE_SERIAL_NUM_OFFSET=4
 const.INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
 const.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
-const.INPUT_NOTE_ASSETS_HASH_OFFSET=16
+const.INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
 const.INPUT_NOTE_METADATA_OFFSET=20
 const.INPUT_NOTE_ARGS_OFFSET=24
 const.INPUT_NOTE_NUM_INPUTS_OFFSET=28
@@ -227,8 +223,9 @@ const.OUTPUT_NOTE_SECTION_OFFSET=16777216
 const.OUTPUT_NOTE_ID_OFFSET=0
 const.OUTPUT_NOTE_METADATA_OFFSET=4
 const.OUTPUT_NOTE_RECIPIENT_OFFSET=8
-const.OUTPUT_NOTE_ASSETS_HASH_OFFSET=12
+const.OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET=12
 const.OUTPUT_NOTE_NUM_ASSETS_OFFSET=16
+const.OUTPUT_NOTE_DIRTY_FLAG_OFFSET=17
 const.OUTPUT_NOTE_ASSETS_OFFSET=20
 
 # LINK MAP MEMORY
@@ -259,13 +256,13 @@ const.LINK_MAP_ENTRY_SIZE=16
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-#! Returns the number of output notes.
+#! Returns the current number of output notes created in this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_output_notes]
 #!
 #! Where:
-#! - num_output_notes is the number of output notes.
+#! - num_output_notes is the number of output notes created in this transaction so far.
 export.get_num_output_notes
     mem_load.NUM_OUTPUT_NOTES_PTR
 end
@@ -514,28 +511,28 @@ export.set_tx_script_root
     mem_storew.TX_SCRIPT_ROOT_PTR
 end
 
-#! Returns the transaction script arguments key.
+#! Returns the transaction script arguments.
 #!
 #! Inputs:  []
-#! Outputs: [TX_SCRIPT_ARGS_KEY]
+#! Outputs: [TX_SCRIPT_ARGS]
 #!
 #! Where:
-#! - TX_SCRIPT_ARGS_KEY is the key which could be used to obtain the transaction script arguments 
-#!   from the advice map.
-export.get_tx_script_args_key
-    padw mem_loadw.TX_SCRIPT_ARGS_KEY_PTR
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#!   some values associated with it from the advice map.
+export.get_tx_script_args
+    padw mem_loadw.TX_SCRIPT_ARGS_PTR
 end
 
-#! Sets the transaction script arguments key.
+#! Sets the transaction script arguments.
 #!
-#! Inputs:  [TX_SCRIPT_ARGS_KEY]
-#! Outputs: [TX_SCRIPT_ARGS_KEY]
+#! Inputs:  [TX_SCRIPT_ARGS]
+#! Outputs: [TX_SCRIPT_ARGS]
 #!
 #! Where:
-#! - TX_SCRIPT_ARGS_KEY is the key which could be used to obtain the transaction script arguments 
-#!   from the advice map.
-export.set_tx_script_args_key
-    mem_storew.TX_SCRIPT_ARGS_KEY_PTR
+#! - TX_SCRIPT_ARGS is the word of values which could be used directly or could be used to obtain 
+#!   some values associated with it from the advice map.
+export.set_tx_script_args
+    mem_storew.TX_SCRIPT_ARGS_PTR
 end
 
 #! Returns the auth procedure arguments.
@@ -603,8 +600,9 @@ end
 #!
 #! Where:
 #! - version is the protocol version of the transaction reference block.
+const.BLOCK_METADATA_VERSION_PTR=BLOCK_METADATA_PTR+1
 export.get_blk_version
-    padw mem_loadw.BLOCK_METADATA_PTR drop drop swap drop
+    mem_load.BLOCK_METADATA_VERSION_PTR
 end
 
 #! Returns the block timestamp of the reference block for this transaction.
@@ -614,8 +612,9 @@ end
 #!
 #! Where:
 #! - timestamp is the timestamp of the reference block for this transaction.
+const.BLOCK_METADATA_TIMESTAMP_PTR=BLOCK_METADATA_PTR+2
 export.get_blk_timestamp
-    padw mem_loadw.BLOCK_METADATA_PTR drop movdn.2 drop drop
+    mem_load.BLOCK_METADATA_TIMESTAMP_PTR
 end
 
 #! Returns the chain commitment of the transaction reference block.
@@ -831,19 +830,21 @@ end
 #! - the provided account data pointer is equal to the native account data pointer.
 export.push_ptr_to_account_stack
     # check that the account stack is not full
-    mem_load.ACCOUNT_STACK_TOP_PTR dup push.MAX_ACCOUNT_STACK_PTR
-    lt assert.err=ERR_ACCOUNT_STACK_OVERFLOW
+    mem_load.ACCOUNT_STACK_TOP_PTR dup
+    # => [account_stack_top_ptr, account_stack_top_ptr, curr_account_data_ptr]
+
+    u32lt.MAX_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_OVERFLOW
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
     # check that the current account data pointer is not equal to the native account data pointer
-    dup.1 push.NATIVE_ACCOUNT_DATA_PTR eq
+    dup.1 eq.NATIVE_ACCOUNT_DATA_PTR
     assertz.err=ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT
     # => [account_stack_top_ptr, curr_account_data_ptr]
 
     add.1 dup movdn.2 mem_store
     # => [account_stack_top_ptr+1]
 
-    push.ACCOUNT_STACK_TOP_PTR mem_store
+    mem_store.ACCOUNT_STACK_TOP_PTR
     # => []
 end
 
@@ -859,12 +860,14 @@ end
 export.pop_ptr_from_account_stack
     # check that the account stack always is at least of size 1, that is, it contains at least the
     # native account
-    mem_load.ACCOUNT_STACK_TOP_PTR dup push.MIN_ACCOUNT_STACK_PTR
-    gt assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
+    mem_load.ACCOUNT_STACK_TOP_PTR dup
+    # => [account_stack_top_ptr, account_stack_top_ptr]
+
+    u32gt.MIN_ACCOUNT_STACK_PTR assert.err=ERR_ACCOUNT_STACK_UNDERFLOW
     # => [account_stack_top_ptr]
 
     # move the account stack pointer one element back and store it as the top pointer
-    sub.1 push.ACCOUNT_STACK_TOP_PTR mem_store
+    sub.1 mem_store.ACCOUNT_STACK_TOP_PTR
     # => []
 end
 
@@ -902,7 +905,7 @@ end
 #! Where:
 #! - ptr is the memory address at which the core account data ends.
 export.get_core_acct_data_end_ptr
-    exec.get_current_account_data_ptr push.ACCT_CORE_DATA_SECTION_END_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_CORE_DATA_SECTION_END_OFFSET
 end
 
 ### ACCOUNT ID AND NONCE #################################################
@@ -916,7 +919,7 @@ end
 #! - curr_acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
 #!   accessing account.
 export.get_account_id
-    padw exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add mem_loadw
+    padw exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET mem_loadw
     # => [nonce, 0, curr_acct_id_prefix, curr_acct_id_suffix]
     drop drop
     # => [curr_acct_id_prefix, curr_acct_id_suffix]
@@ -932,7 +935,7 @@ end
 #!   account.
 #! - account_nonce is the nonce of the currently accessing account.
 export.set_acct_id_and_nonce
-    exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET
     mem_storew
 end
 
@@ -944,7 +947,7 @@ end
 #! Where:
 #! - native_acct_id_{prefix,suffix} are the prefix and suffix felts of the id of the native account.
 export.get_native_account_id
-    padw push.NATIVE_ACCOUNT_DATA_PTR push.ACCT_ID_AND_NONCE_OFFSET add mem_loadw
+    padw push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_ID_AND_NONCE_OFFSET mem_loadw
     # => [nonce, 0, native_acct_id_prefix, native_acct_id_suffix]
     drop drop
     # => [native_acct_id_prefix, native_acct_id_suffix]
@@ -957,11 +960,10 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
+const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
 export.get_acct_nonce
-    padw
-    exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add
-    mem_loadw
-    movdn.3 drop drop drop
+    exec.get_current_account_data_ptr add.ACCT_NONCE_PTR
+    mem_load
 end
 
 #! Sets the account nonce.
@@ -972,7 +974,7 @@ end
 #! Where:
 #! - acct_nonce is the account nonce.
 export.set_acct_nonce
-    exec.get_current_account_data_ptr push.ACCT_ID_AND_NONCE_OFFSET add padw
+    exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET padw
     # => [0, 0, 0, 0, acct_id_and_nonce_ptr, new_nonce]
     dup.4 mem_loadw
     # => [old_nonce, 0, old_id_prefix, old_id_suffix, acct_id_and_nonce_ptr, new_nonce]
@@ -990,7 +992,7 @@ end
 #! Where:
 #! - acct_vault_root_ptr is the memory pointer to the account asset vault root.
 export.get_acct_vault_root_ptr
-    exec.get_current_account_data_ptr push.ACCT_VAULT_ROOT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
 end
 
 #! Returns the account vault root.
@@ -1002,7 +1004,7 @@ end
 #! - ACCT_VAULT_ROOT is the account asset vault root.
 export.get_acct_vault_root
     padw
-    exec.get_current_account_data_ptr push.ACCT_VAULT_ROOT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_loadw
 end
 
@@ -1014,7 +1016,7 @@ end
 #! Where:
 #! - ACCT_VAULT_ROOT is the account vault root to be set.
 export.set_acct_vault_root
-    exec.get_current_account_data_ptr push.ACCT_VAULT_ROOT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_storew
 end
 
@@ -1029,7 +1031,7 @@ end
 #! - CODE_COMMITMENT is the code commitment of the account.
 export.get_acct_code_commitment
     padw
-    exec.get_current_account_data_ptr push.ACCT_CODE_COMMITMENT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_loadw
 end
 
@@ -1041,7 +1043,7 @@ end
 #! Where:
 #! - CODE_COMMITMENT is the code commitment to be set.
 export.set_acct_code_commitment
-    exec.get_current_account_data_ptr push.ACCT_CODE_COMMITMENT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_storew
 end
 
@@ -1097,7 +1099,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 export.get_num_account_procedures
-    exec.get_current_account_data_ptr push.NUM_ACCT_PROCEDURES_OFFSET add
+    exec.get_current_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
     mem_load
 end
 
@@ -1109,7 +1111,7 @@ end
 #! Where:
 #! - num_procedures is the number of procedures contained in the account code.
 export.set_num_account_procedures
-    exec.get_current_account_data_ptr push.NUM_ACCT_PROCEDURES_OFFSET add
+    exec.get_current_account_data_ptr add.NUM_ACCT_PROCEDURES_OFFSET
     mem_store
 end
 
@@ -1121,7 +1123,7 @@ end
 #! Where:
 #! - account_procedures_section_ptr is the memory pointer to the account procedures section.
 export.get_acct_procedures_section_ptr
-    exec.get_current_account_data_ptr push.ACCT_PROCEDURES_SECTION_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_PROCEDURES_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the account procedures call tracking section.
@@ -1132,7 +1134,7 @@ end
 #! Where:
 #! - procedures_call_tracking_ptr is the memory pointer to the procedure call tracking section.
 export.get_acct_procedures_call_tracking_ptr
-    exec.get_current_account_data_ptr push.ACCT_PROCEDURES_CALL_TRACKING_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_PROCEDURES_CALL_TRACKING_OFFSET
 end
 
 #! Returns the memory pointer to a specific account procedure.
@@ -1158,7 +1160,7 @@ end
 #! - STORAGE_COMMITMENT is the account storage commitment.
 export.get_acct_storage_commitment
     padw
-    exec.get_current_account_data_ptr push.ACCT_STORAGE_COMMITMENT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_loadw
 end
 
@@ -1170,7 +1172,7 @@ end
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
 export.set_acct_storage_commitment
-    exec.get_current_account_data_ptr push.ACCT_STORAGE_COMMITMENT_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_storew
 end
 
@@ -1182,7 +1184,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 export.get_num_storage_slots
-    exec.get_current_account_data_ptr push.NUM_ACCT_STORAGE_SLOTS_OFFSET add
+    exec.get_current_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
     mem_load
 end
 
@@ -1194,7 +1196,7 @@ end
 #! Where:
 #! - num_storage_slots is the number of storage slots contained in the account storage.
 export.set_num_storage_slots
-    exec.get_current_account_data_ptr push.NUM_ACCT_STORAGE_SLOTS_OFFSET add
+    exec.get_current_account_data_ptr add.NUM_ACCT_STORAGE_SLOTS_OFFSET
     mem_store
 end
 
@@ -1220,7 +1222,7 @@ end
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
 export.get_acct_storage_slots_section_ptr
-    exec.get_current_account_data_ptr push.ACCT_STORAGE_SLOTS_SECTION_OFFSET add
+    exec.get_current_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
 end
 
 #! Returns the memory pointer to the native account's storage slots section.
@@ -1281,31 +1283,6 @@ export.get_account_delta_storage_map_ptr
     add.ACCOUNT_DELTA_STORAGE_MAP_SECTION
 end
 
-#! Increments the delta of the account's nonce.
-#!
-#! Example: If this procedure is called with nonce_delta 3 and again with nonce_delta 2,
-#! then the stored nonce_delta will be 5.
-#!
-#! Inputs:  [nonce_delta]
-#! Outputs: []
-#!
-#! Where:
-#! - nonce_delta is the value by which the nonce changed.
-export.incr_account_nonce_delta
-    exec.get_account_nonce_delta add mem_store.ACCOUNT_DELTA_NONCE_PTR
-end
-
-#! Returns the delta of the account's nonce.
-#!
-#! Inputs:  []
-#! Outputs: [nonce_delta]
-#!
-#! Where:
-#! - nonce_delta is the value by which the nonce changed.
-export.get_account_nonce_delta
-    mem_load.ACCOUNT_DELTA_NONCE_PTR
-end
-
 #! Initializes the storage slots holding the initial values of each slot.
 #!
 #! Inputs:  []
@@ -1326,13 +1303,13 @@ end
 # INPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
-#! Gets the total number of input notes in the transaction.
+#! Returns the total number of input notes consumed by this transaction.
 #!
 #! Inputs:  []
 #! Outputs: [num_input_notes]
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 export.get_num_input_notes
     mem_load.NUM_INPUT_NOTES_PTR
 end
@@ -1343,7 +1320,7 @@ end
 #! Outputs: []
 #!
 #! Where:
-#! - num_input_notes is the total number of input notes in the transaction.
+#! - num_input_notes is the total number of input notes consumed by this transaction.
 export.set_num_input_notes
     mem_store.NUM_INPUT_NOTES_PTR
 end
@@ -1358,7 +1335,7 @@ end
 #! - idx is the index of the input note.
 #! - note_ptr is the memory address of the data segment for the input note with `idx`.
 export.get_input_note_ptr
-    exec.constants::get_note_mem_size mul push.INPUT_NOTE_DATA_SECTION_OFFSET add
+    exec.constants::get_note_mem_size mul add.INPUT_NOTE_DATA_SECTION_OFFSET
 end
 
 #! Set the note id of the input note.
@@ -1383,7 +1360,7 @@ end
 #! - idx is the index of the input note.
 #! - nullifier_ptr is the memory address of the nullifier for note idx.
 export.get_input_note_nullifier_ptr
-    mul.4 push.INPUT_NOTE_NULLIFIER_SECTION_PTR add
+    mul.4 add.INPUT_NOTE_NULLIFIER_SECTION_PTR
 end
 
 #! Returns the nullifier of an input note with `idx`.
@@ -1395,7 +1372,7 @@ end
 #! - idx is the index of the input note.
 #! - nullifier is the nullifier of the input note.
 export.get_input_note_nullifier
-    mul.4 padw movup.4 push.INPUT_NOTE_NULLIFIER_SECTION_PTR add mem_loadw
+    mul.4 padw movup.4 add.INPUT_NOTE_NULLIFIER_SECTION_PTR mem_loadw
 end
 
 #! Returns a pointer to the start of the input note core data segment for the note located at the
@@ -1408,7 +1385,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - note_data_ptr is the memory address at which the input note core data begins.
 export.get_input_note_core_ptr
-    push.INPUT_NOTE_CORE_DATA_OFFSET add
+    add.INPUT_NOTE_CORE_DATA_OFFSET
 end
 
 #! Returns the script root of an input note located at the specified memory address.
@@ -1421,7 +1398,7 @@ end
 #! - SCRIPT_ROOT is the script root of the input note.
 export.get_input_note_script_root
     padw
-    movup.4 push.INPUT_NOTE_SCRIPT_ROOT_OFFSET add
+    movup.4 add.INPUT_NOTE_SCRIPT_ROOT_OFFSET
     mem_loadw
 end
 
@@ -1434,7 +1411,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - script_root_ptr is the memory address where script root of the input note is stored.
 export.get_input_note_script_root_ptr
-    push.INPUT_NOTE_SCRIPT_ROOT_OFFSET add
+    add.INPUT_NOTE_SCRIPT_ROOT_OFFSET
 end
 
 #! Returns the inputs commitment of an input note located at the specified memory address.
@@ -1447,7 +1424,7 @@ end
 #! - INPUTS_COMMITMENT is the inputs commitment of the input note.
 export.get_input_note_inputs_commitment
     padw
-    movup.4 push.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET add
+    movup.4 add.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET
     mem_loadw
 end
 
@@ -1461,7 +1438,7 @@ end
 #! - METADATA is the metadata of the input note.
 export.get_input_note_metadata
     padw
-    movup.4 push.INPUT_NOTE_METADATA_OFFSET add
+    movup.4 add.INPUT_NOTE_METADATA_OFFSET
     mem_loadw
 end
 
@@ -1474,7 +1451,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - NOTE_METADATA is the metadata of the input note.
 export.set_input_note_metadata
-    push.INPUT_NOTE_METADATA_OFFSET add
+    add.INPUT_NOTE_METADATA_OFFSET
     mem_storew
 end
 
@@ -1488,7 +1465,7 @@ end
 #! - NOTE_ARGS are the note's args.
 export.get_input_note_args
     padw
-    movup.4 push.INPUT_NOTE_ARGS_OFFSET add
+    movup.4 add.INPUT_NOTE_ARGS_OFFSET
     mem_loadw
 end
 
@@ -1501,7 +1478,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - NOTE_ARGS are optional note args of the input note.
 export.set_input_note_args
-    push.INPUT_NOTE_ARGS_OFFSET add
+    add.INPUT_NOTE_ARGS_OFFSET
     mem_storew
 end
 
@@ -1514,7 +1491,7 @@ end
 #! - num_inputs is the number of inputs in the input note.
 export.get_input_note_num_inputs
     exec.get_current_input_note_ptr
-    push.INPUT_NOTE_NUM_INPUTS_OFFSET add
+    add.INPUT_NOTE_NUM_INPUTS_OFFSET
     mem_load
 end
 
@@ -1527,7 +1504,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - num_inputs is the number of inputs in the input note.
 export.set_input_note_num_inputs
-    push.INPUT_NOTE_NUM_INPUTS_OFFSET add
+    add.INPUT_NOTE_NUM_INPUTS_OFFSET
     mem_store
 end
 
@@ -1540,7 +1517,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - num_assets is the number of assets in the input note.
 export.get_input_note_num_assets
-    push.INPUT_NOTE_NUM_ASSETS_OFFSET add
+    add.INPUT_NOTE_NUM_ASSETS_OFFSET
     mem_load
 end
 
@@ -1553,7 +1530,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - num_assets is the number of assets in the input note.
 export.set_input_note_num_assets
-    push.INPUT_NOTE_NUM_ASSETS_OFFSET add
+    add.INPUT_NOTE_NUM_ASSETS_OFFSET
     mem_store
 end
 
@@ -1567,7 +1544,7 @@ end
 #! - note_ptr is the memory address at which the input note data begins.
 #! - assets_ptr is the memory address at which the assets segment for the input note begins.
 export.get_input_note_assets_ptr
-    push.INPUT_NOTE_ASSETS_OFFSET add
+    add.INPUT_NOTE_ASSETS_OFFSET
 end
 
 #! Returns the assets commitment for the input note located at the specified memory address.
@@ -1578,9 +1555,9 @@ end
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
 #! - ASSET_COMMITMENT is the sequential hash of the padded assets of an input note.
-export.get_input_note_assets_hash
+export.get_input_note_assets_commitment
     padw
-    movup.4 push.INPUT_NOTE_ASSETS_HASH_OFFSET add
+    movup.4 add.INPUT_NOTE_ASSETS_COMMITMENT_OFFSET
     mem_loadw
 end
 
@@ -1594,7 +1571,7 @@ end
 #! - SERIAL_NUMBER is the input note's serial number.
 export.get_input_note_serial_num
     padw
-    movup.4 push.INPUT_NOTE_SERIAL_NUM_OFFSET add
+    movup.4 add.INPUT_NOTE_SERIAL_NUM_OFFSET
     mem_loadw
 end
 
@@ -1608,7 +1585,7 @@ end
 #! - sender is the sender for the input note.
 export.get_input_note_sender
     padw
-    movup.4 push.INPUT_NOTE_METADATA_OFFSET add
+    movup.4 add.INPUT_NOTE_METADATA_OFFSET
     mem_loadw
     # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
 
@@ -1653,7 +1630,7 @@ end
 #! - i is the index of the output note.
 #! - ptr is the memory address of the data segment for output note i.
 export.get_output_note_ptr
-    exec.constants::get_note_mem_size mul push.OUTPUT_NOTE_SECTION_OFFSET add
+    exec.constants::get_note_mem_size mul add.OUTPUT_NOTE_SECTION_OFFSET
 end
 
 #! Returns the output note recipient.
@@ -1666,7 +1643,7 @@ end
 #! - RECIPIENT is the recipient of the output note.
 export.get_output_note_recipient
     padw
-    movup.4 push.OUTPUT_NOTE_RECIPIENT_OFFSET add
+    movup.4 add.OUTPUT_NOTE_RECIPIENT_OFFSET
     mem_loadw
 end
 
@@ -1679,7 +1656,7 @@ end
 #! - RECIPIENT is the recipient of the note.
 #! - note_ptr is the memory address at which the output note data begins.
 export.set_output_note_recipient
-    push.OUTPUT_NOTE_RECIPIENT_OFFSET add
+    add.OUTPUT_NOTE_RECIPIENT_OFFSET
     mem_storew
 end
 
@@ -1692,7 +1669,7 @@ end
 #! - METADATA is the note metadata.
 #! - note_ptr is the memory address at which the output note data begins.
 export.set_output_note_metadata
-    push.OUTPUT_NOTE_METADATA_OFFSET add
+    add.OUTPUT_NOTE_METADATA_OFFSET
     mem_storew
 end
 
@@ -1705,7 +1682,7 @@ end
 #! - note_ptr is a pointer to the memory address at which the output note is stored.
 #! - num_assets is the number of assets in the output note.
 export.get_output_note_num_assets
-    push.OUTPUT_NOTE_NUM_ASSETS_OFFSET add mem_load
+    add.OUTPUT_NOTE_NUM_ASSETS_OFFSET mem_load
 end
 
 #! Sets the number of assets in the output note.
@@ -1720,13 +1697,43 @@ end
 #! Panics if:
 #! - the number of assets exceeds the maximum allowed number of assets per note.
 export.set_output_note_num_assets
-    push.OUTPUT_NOTE_NUM_ASSETS_OFFSET add
+    add.OUTPUT_NOTE_NUM_ASSETS_OFFSET
     # => [note_ptr + offset, num_assets]
 
     # check note number of assets limit
     dup.1 exec.constants::get_max_assets_per_note lt assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
 
     mem_store
+end
+
+#! Returns the dirty flag for the assets commitment.
+#!
+#! This binary flag specifies whether the assets commitment stored in the specified note is
+#! outdated.
+#!
+#! Inputs:  [output_note_data_ptr]
+#! Outputs: [dirty_flag]
+#!
+#! Where:
+#! - output_note_data_ptr is the memory address at which the output note data begins.
+#! - dirty_flag is the flag indicating whether the assets commitment is outdated.
+export.get_output_note_dirty_flag
+    add.OUTPUT_NOTE_DIRTY_FLAG_OFFSET mem_load
+end
+
+#! Sets the dirty flag for the assets commitment.
+#!
+#! This binary flag specifies whether the assets commitment stored in the specified note is
+#! outdated.
+#!
+#! Inputs:  [output_note_data_ptr, dirty_flag]
+#! Outputs: []
+#!
+#! Where:
+#! - output_note_data_ptr is the memory address at which the output note data begins.
+#! - dirty_flag is the flag indicating whether the assets commitment is outdated.
+export.set_output_note_dirty_flag
+    add.OUTPUT_NOTE_DIRTY_FLAG_OFFSET mem_store
 end
 
 #! Returns a pointer to the output note asset data.
@@ -1738,19 +1745,34 @@ end
 #! - output_note_data_ptr is the memory address at which the output note data begins.
 #! - asset_data_ptr is the memory address at which the output note asset data begins.
 export.get_output_note_asset_data_ptr
-    push.OUTPUT_NOTE_ASSETS_OFFSET add
+    add.OUTPUT_NOTE_ASSETS_OFFSET
 end
 
-#! Sets the output note assets commitment.
+#! Returns the assets commitment for the output note located at the specified memory address.
 #!
-#! Inputs:  [output_note_data_ptr, ASSET_COMMITMENT]
-#! Outputs: [ASSET_COMMITMENT]
+#! Inputs:  [output_note_data_ptr]
+#! Outputs: [ASSETS_COMMITMENT]
 #!
 #! Where:
 #! - output_note_data_ptr is the memory address at which the output note data begins.
-#! - ASSET_COMMITMENT is the sequential hash of the padded assets of an output note.
-export.set_output_note_assets_hash
-    push.OUTPUT_NOTE_ASSETS_HASH_OFFSET add
+#! - ASSETS_COMMITMENT is the sequential hash of the padded assets of an output note.
+export.get_output_note_assets_commitment
+    padw
+    movup.4 add.OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET
+    mem_loadw
+end
+
+#! Sets the output note assets commitment for the output note located at the specified memory 
+#! address.
+#!
+#! Inputs:  [output_note_data_ptr, ASSETS_COMMITMENT]
+#! Outputs: [ASSETS_COMMITMENT]
+#!
+#! Where:
+#! - output_note_data_ptr is the memory address at which the output note data begins.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded assets of an output note.
+export.set_output_note_assets_commitment
+    add.OUTPUT_NOTE_ASSETS_COMMITMENT_OFFSET
     mem_storew
 end
 

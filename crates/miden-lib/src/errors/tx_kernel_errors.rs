@@ -30,10 +30,12 @@ pub const ERR_ACCOUNT_ID_UNKNOWN_VERSION: MasmError = MasmError::from_static_str
 pub const ERR_ACCOUNT_INVALID_STORAGE_OFFSET_FOR_SIZE: MasmError = MasmError::from_static_str("storage size can only be zero if storage offset is also zero");
 /// Error Message: "the current account is not native"
 pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the current account is not native");
+/// Error Message: "account nonce is already at its maximum possible value"
+pub const ERR_ACCOUNT_NONCE_AT_MAX: MasmError = MasmError::from_static_str("account nonce is already at its maximum possible value");
+/// Error Message: "account nonce can only be incremented once"
+pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
 /// Error Message: "account nonce did not increase after a state changing transaction"
 pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = MasmError::from_static_str("account nonce did not increase after a state changing transaction");
-/// Error Message: "account nonce cannot be increased by a greater than u32 value"
-pub const ERR_ACCOUNT_NONCE_INCREASE_MUST_BE_U32: MasmError = MasmError::from_static_str("account nonce cannot be increased by a greater than u32 value");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure"
@@ -109,6 +111,9 @@ pub const ERR_FUNGIBLE_ASSET_FORMAT_ELEMENT_ZERO_MUST_BE_WITHIN_LIMITS: MasmErro
 /// Error Message: "failed to build the fungible asset because the provided faucet id is not from a fungible faucet"
 pub const ERR_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = MasmError::from_static_str("failed to build the fungible asset because the provided faucet id is not from a fungible faucet");
 
+/// Error Message: "requested input note index should be less than the total number of input notes"
+pub const ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested input note index should be less than the total number of input notes");
+
 /// Error Message: "provided kernel procedure offset is out of bounds"
 pub const ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided kernel procedure offset is out of bounds");
 
@@ -165,6 +170,9 @@ pub const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT: MasmError = MasmError::from_stati
 /// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits must be zero"
 pub const ERR_NOTE_TAG_MUST_BE_U32: MasmError = MasmError::from_static_str("the note's tag must fit into a u32 so the 32 most significant bits must be zero");
 
+/// Error Message: "requested output note index should be less than the total number of created output notes"
+pub const ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("requested output note index should be less than the total number of created output notes");
+
 /// Error Message: "existing accounts must have a non-zero nonce"
 pub const ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE: MasmError = MasmError::from_static_str("existing accounts must have a non-zero nonce");
 /// Error Message: "the provided global inputs do not match the block commitment"
@@ -173,6 +181,10 @@ pub const ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_COMMITMENT: Mas
 pub const ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_NUMBER_COMMITMENT: MasmError = MasmError::from_static_str("the provided global inputs do not match the block number commitment");
 /// Error Message: "note commitment computed from the input note data does not match given note commitment"
 pub const ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("note commitment computed from the input note data does not match given note commitment");
+/// Error Message: "sequential hash over kernel commitments does not match tx kernel commitment from block"
+pub const ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel commitments does not match tx kernel commitment from block");
+/// Error Message: "sequential hash over kernel procedures does not match kernel commitment"
+pub const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel procedures does not match kernel commitment");
 /// Error Message: "account IDs provided via global inputs and advice provider do not match"
 pub const ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER: MasmError = MasmError::from_static_str("account IDs provided via global inputs and advice provider do not match");
 /// Error Message: "reference block MMR and note's authentication MMR must match"
@@ -189,6 +201,8 @@ pub const ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY: MasmErro
 pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE: MasmError = MasmError::from_static_str("reserved slot for new non-fungible faucet has an invalid type");
 /// Error Message: "reserved slot for non-fungible faucet is not a valid empty SMT"
 pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT: MasmError = MasmError::from_static_str("reserved slot for non-fungible faucet is not a valid empty SMT");
+/// Error Message: "failed to authenticate note inclusion in block"
+pub const ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED: MasmError = MasmError::from_static_str("failed to authenticate note inclusion in block");
 /// Error Message: "number of input notes exceeds the kernel's maximum limit of 1024"
 pub const ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of input notes exceeds the kernel's maximum limit of 1024");
 /// Error Message: "number of note assets exceeds the maximum limit of 256"

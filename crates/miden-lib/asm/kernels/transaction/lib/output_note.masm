@@ -1,0 +1,46 @@
+use.$kernel::memory
+use.$kernel::note
+
+# ERRORS
+# =================================================================================================
+
+const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
+
+# INPUT NOTE PROCEDURES
+# =================================================================================================
+
+#! Returns the information about assets in the output note with the specified index.
+#!
+#! This information can then be used to retrieve the actual assets from the advice map.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
+#!
+#! Where:
+#! - note_index is the index of the output note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the overall number of output notes.
+export.get_assets_info
+    # assert that the provided note index is less than the total number of notes
+    dup exec.memory::get_num_output_notes 
+    # => [output_notes_num, note_index, note_index]
+    
+    u32assert2.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    # => [note_index]
+
+    # get the note data pointer based on the index of the requested note
+    exec.memory::get_output_note_ptr
+    # => [note_data_ptr]
+
+    # get the number of assets in the note
+    dup exec.memory::get_output_note_num_assets swap
+    # => [note_data_ptr, num_assets]
+
+    # get the assets commitment
+    exec.note::compute_output_note_assets_commitment
+    # => [ASSETS_COMMITMENT, num_assets]
+end

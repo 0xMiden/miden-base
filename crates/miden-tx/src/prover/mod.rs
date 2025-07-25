@@ -101,8 +101,9 @@ impl TransactionProver for LocalTransactionProver {
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host: TransactionProverHost = TransactionProverHost::new(
+        let mut host = TransactionProverHost::new(
             &account.into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.mast_store.as_ref(),
             script_mast_store,
@@ -132,7 +133,7 @@ impl TransactionProver for LocalTransactionProver {
 
         // erase private note information (convert private full notes to just headers)
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
-        let account_delta_commitment = account_delta.commitment();
+        let account_delta_commitment = account_delta.to_commitment();
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),

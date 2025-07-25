@@ -1,1 +1,3 @@
+# increase the size so that an error with 4 Words doesn't trigger this lint
+large-error-threshold        = 160
 too-many-arguments-threshold = 8

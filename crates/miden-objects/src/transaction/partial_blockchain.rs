@@ -1,4 +1,5 @@
 use alloc::{collections::BTreeMap, vec::Vec};
+use core::ops::RangeTo;
 
 use crate::{
     PartialBlockchainError,
@@ -147,6 +148,11 @@ impl PartialBlockchain {
         )
     }
 
+    /// Returns the number of blocks tracked by this partial blockchain.
+    pub fn num_tracked_blocks(&self) -> usize {
+        self.blocks.len()
+    }
+
     /// Returns `true` if a block with the given number is present in this partial blockchain.
     ///
     /// Note that this only checks whether an entry with the block's number exists in the MMR.
@@ -180,6 +186,31 @@ impl PartialBlockchain {
     pub fn add_block(&mut self, block_header: BlockHeader, track: bool) {
         assert_eq!(block_header.block_num(), self.chain_length());
         self.mmr.add(block_header.commitment(), track);
+    }
+
+    /// Drop every block header whose number is strictly less than `to.end`.
+    ///
+    /// After the call, all such headers are removed, and each pruned header’s path is `untrack`‑ed
+    /// from the internal [`PartialMmr`], eliminating local authentication data for those leaves
+    /// while leaving the MMR root commitment unchanged.
+    pub fn prune_to(&mut self, to: RangeTo<BlockNumber>) {
+        let kept = self.blocks.split_off(&to.end);
+
+        for block_num in self.blocks.keys() {
+            self.mmr.untrack(block_num.as_usize());
+        }
+        self.blocks = kept;
+    }
+
+    /// Removes a single block header and the associated authentication path from this
+    /// [`PartialBlockchain`].
+    ///
+    /// This does not change the commitment to the underlying MMR, but the current partial MMR
+    /// will no longer track the removed data.
+    pub fn remove(&mut self, block_num: BlockNumber) {
+        if self.blocks.remove(&block_num).is_some() {
+            self.mmr.untrack(block_num.as_usize());
+        }
     }
 
     // ITERATORS
@@ -407,5 +438,48 @@ mod tests {
             Word::empty(),
             0,
         )
+    }
+
+    #[test]
+    fn prune_before_and_remove() {
+        let total_blocks = 128;
+        let remove_before = 40;
+
+        let mut full_mmr = Mmr::default();
+        let mut headers = Vec::new();
+        for i in 0..total_blocks {
+            let h = int_to_block_header(i);
+            full_mmr.add(h.commitment());
+            headers.push(h);
+        }
+        let mut partial_mmr: PartialMmr = full_mmr.peaks().into();
+        for i in 0..total_blocks {
+            let i: usize = i as usize;
+            partial_mmr
+                .track(i, full_mmr.get(i).unwrap(), &full_mmr.open(i).unwrap().merkle_path)
+                .unwrap();
+        }
+        let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();
+        assert_eq!(chain.num_tracked_blocks(), total_blocks as usize);
+
+        chain.remove(BlockNumber::from(2));
+        assert!(!chain.contains_block(2.into()));
+        assert!(!chain.mmr().is_tracked(2));
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 1) as usize);
+
+        assert!(chain.contains_block(3.into()));
+
+        chain.prune_to(..40.into());
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 40) as usize);
+
+        assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
+        for block_num in remove_before..total_blocks {
+            assert!(chain.contains_block(block_num.into()));
+            assert!(chain.mmr().is_tracked(block_num as usize));
+        }
+        for block_num in 0u32..remove_before {
+            assert!(!chain.contains_block(block_num.into()));
+            assert!(!chain.mmr().is_tracked(block_num as usize));
+        }
     }
 }

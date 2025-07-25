@@ -1,5 +1,5 @@
 use.std::collections::smt
-use.kernel::memory
+use.$kernel::memory
 
 # A link map is a map data structure based on a sorted linked list.
 #

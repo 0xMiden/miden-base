@@ -1,12 +1,16 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
+use assert_matches::assert_matches;
 use miden_lib::{
+    AuthScheme,
+    account::{interface::AccountInterface, wallets::BasicWallet},
     errors::tx_kernel_errors::{
         ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
     },
+    note::create_p2id_note,
     transaction::{
-        TransactionKernel,
+        TransactionEvent, TransactionKernel,
         memory::{
             NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
             OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
@@ -15,8 +19,8 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    FieldElement, Word,
-    account::{Account, AccountId},
+    FieldElement, Hasher, Word,
+    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
     assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
     asset::{Asset, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
@@ -35,39 +39,48 @@ use miden_objects::{
         constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2},
         note::DEFAULT_NOTE_CODE,
     },
-    transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript},
+    transaction::{
+        InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript, TransactionSummary,
+    },
 };
 use miden_tx::{
     ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
-    TransactionExecutorHost, TransactionMastStore,
+    TransactionExecutorHost, TransactionMastStore, auth::UnreachableAuth,
 };
-use vm_processor::{AdviceInputs, Process};
+use vm_processor::{AdviceInputs, Process, crypto::RpoRandomCoin};
 
 use super::{Felt, ONE, ZERO};
 use crate::{
     Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt, utils::create_p2any_note,
+    kernel_tests::tx::ProcessMemoryExt,
+    utils::{create_p2any_note, create_spawn_note},
 };
 
+/// Tests that executing a transaction with a foreign account whose inputs are stale fails.
 #[test]
-fn test_fpi_anchoring_validations() -> anyhow::Result<()> {
+fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
     // Create a chain with an account
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
-    mock_chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    let native_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let foreign_account = builder.add_existing_wallet(Auth::IncrNonce)?;
+    let new_account = builder.create_new_wallet(Auth::IncrNonce)?;
+
+    let mut mock_chain = builder.build()?;
 
     // Retrieve inputs which will become stale
     let inputs = mock_chain
-        .get_foreign_account_inputs(account.id())
+        .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
 
-    // Add account to modify account tree
-    let new_account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    // Create a new unrelated account to modify the account tree.
+    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute()?;
+    mock_chain.add_pending_executed_transaction(&tx)?;
     mock_chain.prove_next_block()?;
 
-    // Attempt to execute with older foreign account inputs
+    // Attempt to execute with older foreign account inputs. The AccountWitness in the foreign
+    // account's inputs have become stale and so this should fail.
     let transaction = mock_chain
-        .build_tx_context(new_account.id(), &[], &[])?
+        .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts(vec![inputs])
         .build()?
         .execute();
@@ -79,15 +92,17 @@ fn test_fpi_anchoring_validations() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[allow(clippy::arc_with_non_send_sync)]
+/// Tests that consuming a note created in a block that is newer than the reference block of the
+/// transaction fails.
 #[test]
-fn test_future_input_note_fails() -> anyhow::Result<()> {
+fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::BasicAuth, vec![]);
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
-    // Create note that will land on a future block
+    // Create a note that will be contained in block 11.
     let note = mock_chain
         .add_pending_p2id_note(
             account.id(),
@@ -96,21 +111,23 @@ fn test_future_input_note_fails() -> anyhow::Result<()> {
             NoteType::Private,
         )
         .unwrap();
+    // Create block 11.
     mock_chain.prove_next_block()?;
 
     // Get as input note, and assert that the note was created after block 1 (which we'll
     // use as reference)
     let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
-    assert!(input_note.location().unwrap().block_num() > 1.into());
+    assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
     mock_chain.prove_next_block()?;
     mock_chain.prove_next_block()?;
 
-    // Attempt to execute with a note created in the future
+    // Attempt to execute a transaction against reference block 1 with the note created in block 11
+    // - which should fail.
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
     let source_manager = tx_context.source_manager();
 
-    let tx_executor = TransactionExecutor::new(&tx_context, None);
+    let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
     // Try to execute with block_ref==1
     let error = tx_executor.execute_transaction(
         account.id(),
@@ -141,7 +158,7 @@ fn test_create_note() -> anyhow::Result<()> {
         "
         use.miden::tx
         
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -236,7 +253,7 @@ fn note_creation_script(tag: Felt) -> String {
     format!(
         "
             use.miden::tx
-            use.kernel::prologue
+            use.$kernel::prologue
     
             begin
                 exec.prologue::prepare_transaction
@@ -267,9 +284,9 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        use.kernel::constants
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::constants
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             exec.constants::get_max_num_output_notes
@@ -391,7 +408,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
 
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -502,7 +519,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         "
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -577,7 +594,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         "
         use.miden::tx
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -662,7 +679,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
         use.miden::tx
 
@@ -739,7 +756,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        use.kernel::prologue
+        use.$kernel::prologue
 
         proc.build_recipient_hash
             exec.tx::build_recipient_hash
@@ -813,7 +830,7 @@ fn test_block_procedures() -> anyhow::Result<()> {
 
     let code = "
         use.miden::tx
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -861,17 +878,19 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
 -> miette::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note = mock_chain
-            .add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder
+            .add_existing_wallet(Auth::BasicAuth)
+            .map_err(|err| miette::miette!(err))?;
+        let p2id_note = builder
+            .add_p2id_note(
                 ACCOUNT_ID_SENDER.try_into().unwrap(),
                 account.id(),
                 &[FungibleAsset::mock(100)],
                 NoteType::Public,
             )
-            .unwrap();
-        mock_chain.prove_next_block().unwrap();
+            .map_err(|err| miette::miette!(err))?;
+        let mock_chain = builder.build().map_err(|err| miette::miette!(err))?;
 
         mock_chain
             .build_tx_context(account.id(), &[], &[p2id_note])
@@ -904,8 +923,9 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
     let mast_store = Arc::new(TransactionMastStore::new());
     mast_store.load_account_code(tx_inputs.account().code());
 
-    let mut host = TransactionExecutorHost::new(
+    let mut host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
         &tx_inputs.account().into(),
+        tx_inputs.input_notes().clone(),
         &mut advice_inputs,
         mast_store.as_ref(),
         scripts_mast_store,
@@ -1192,8 +1212,132 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that a transaction consuming and creating one note can emit an abort event in its auth
+/// component to result in a [`TransactionExecutorError::Unauthorized`] error.
+#[test]
+fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
+    let source_code = format!(
+        "
+      #! Inputs:  [AUTH_ARGS, pad(12)]
+      #! Outputs: [pad(16)]
+      export.auth__abort_tx
+          dropw
+          # => [pad(16)]
+
+          exec.::miden::account::incr_nonce
+          # => [final_nonce, pad(16)]
+
+          exec.::miden::contracts::auth::basic::create_tx_summary
+          # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+          emit.{abort_event}
+      end
+    ",
+        abort_event = TransactionEvent::Unauthorized as u32
+    );
+
+    let auth_component =
+        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])
+            .context("failed to compile auth component")?
+            .with_supports_all_types();
+
+    let account = AccountBuilder::new([42; 32])
+        .storage_mode(AccountStorageMode::Private)
+        .with_auth_component(auth_component)
+        .with_component(BasicWallet)
+        .build_existing()
+        .context("failed to build account")?;
+
+    // Consume and create a note so the input and outputs notes commitment is not the empty word.
+    let mut rng = RpoRandomCoin::new(Word::empty());
+    let output_note = create_p2id_note(
+        account.id(),
+        account.id(),
+        vec![],
+        NoteType::Private,
+        Felt::ZERO,
+        &mut rng,
+    )?;
+    let input_note = create_spawn_note(account.id(), vec![&output_note])?;
+
+    let mut mock_chain = MockChain::new();
+
+    mock_chain.add_pending_note(OutputNote::Full(input_note.clone()));
+    mock_chain.prove_next_block()?;
+
+    let tx_context = mock_chain.build_tx_context(account, &[input_note.id()], &[])?.build()?;
+    let ref_block_num = tx_context.tx_inputs().block_header().block_num().as_u32();
+    let final_nonce = tx_context.account().nonce().as_int() as u32 + 1;
+    let input_notes = tx_context.input_notes().clone();
+    let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
+
+    let error = tx_context.execute().unwrap_err();
+
+    assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
+        assert!(tx_summary.account_delta().vault().is_empty());
+        assert!(tx_summary.account_delta().storage().is_empty());
+        assert_eq!(tx_summary.account_delta().nonce_delta().as_int(), 1);
+        assert_eq!(tx_summary.input_notes(), &input_notes);
+        assert_eq!(tx_summary.output_notes(), &output_notes);
+        assert_eq!(tx_summary.salt(), Word::from(
+          [0, 0, ref_block_num, final_nonce]
+        ));
+    });
+
+    Ok(())
+}
+
+/// Tests that a transaction consuming and creating one note with basic authentication correctly
+/// signs the transaction summary.
+#[test]
+fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::BasicAuth)?;
+    let mut rng = RpoRandomCoin::new(Word::empty());
+    let p2id_note = create_p2id_note(
+        account.id(),
+        account.id(),
+        vec![],
+        NoteType::Private,
+        Felt::ZERO,
+        &mut rng,
+    )?;
+    let spawn_note = builder.add_spawn_note(account.id(), [&p2id_note])?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account.id(), &[spawn_note.id()], &[])?
+        .build()?
+        .execute()?;
+
+    let summary = TransactionSummary::new(
+        tx.account_delta().clone(),
+        tx.input_notes().clone(),
+        tx.output_notes().clone(),
+        Word::from([
+            0,
+            0,
+            tx.block_header().block_num().as_u32(),
+            tx.final_account().nonce().as_int() as u32,
+        ]),
+    );
+    let summary_commitment = summary.to_commitment();
+
+    let account_interface = AccountInterface::from(&account);
+    let AuthScheme::RpoFalcon512 { pub_key } = account_interface.auth().first().unwrap();
+
+    // This is in an internal detail of the tx executor host, but this is the easiest way to check
+    // for the presence of the signature in the advice map.
+    let signature_key = Hasher::merge(&[Word::from(*pub_key), summary_commitment]);
+
+    // The summary commitment should have been signed as part of transaction execution and inserted
+    // into the advice map.
+    tx.advice_witness().mapped_values(&signature_key).unwrap();
+
+    Ok(())
+}
+
 /// Tests that execute_tx_view_script returns the expected stack outputs.
-#[allow(clippy::arc_with_non_send_sync)]
 #[test]
 fn execute_tx_view_script() -> anyhow::Result<()> {
     let test_module_source = "
@@ -1231,7 +1375,7 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let advice_inputs = tx_context.tx_args().advice_inputs().clone();
 
-    let executor = TransactionExecutor::new(&tx_context, None);
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
 
     let stack_outputs = executor.execute_tx_view_script(
         account_id,
@@ -1296,18 +1440,18 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         use.miden::account
 
         begin
-            # => [TX_SCRIPT_ARG]
-            # `TX_SCRIPT_ARG` value is a user provided word, which could be used during the
+            # => [TX_SCRIPT_ARGS]
+            # `TX_SCRIPT_ARGS` value is a user provided word, which could be used during the
             # transaction execution. In this example it is a `[1, 2, 3, 4]` word.
 
             # assert the correctness of the argument
-            dupw push.1.2.3.4 assert_eqw.err="provided transaction argument doesn't match the expected one"
-            # => [TX_SCRIPT_ARG]
+            dupw push.1.2.3.4 assert_eqw.err="provided transaction arguments don't match the expected ones"
+            # => [TX_SCRIPT_ARGS]
 
-            # since we provided an advice map entry with the transaction script argument as a key,
+            # since we provided an advice map entry with the transaction script arguments as a key,
             # we can obtain the value of this entry
             adv.push_mapval adv_push.4
-            # => [[map_entry_values], TX_SCRIPT_ARG]
+            # => [[map_entry_values], TX_SCRIPT_ARGS]
 
             # assert the correctness of the map entry values
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"

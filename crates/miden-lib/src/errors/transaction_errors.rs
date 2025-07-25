@@ -65,6 +65,17 @@ pub enum TransactionKernelError {
     UnknownCodeCommitment(Word),
     #[error("account storage slots number is missing in memory at address {0}")]
     AccountStorageSlotsNumMissing(u32),
+    #[error("account nonce can only be incremented once")]
+    NonceCanOnlyIncrementOnce,
+    /// This variant signals that a signature over the contained commitments is required, but
+    /// missing.
+    #[error("transaction requires a signature")]
+    Unauthorized {
+        account_delta_commitment: Word,
+        input_notes_commitment: Word,
+        output_notes_commitment: Word,
+        salt: Word,
+    },
 }
 
 // TRANSACTION EVENT PARSING ERROR

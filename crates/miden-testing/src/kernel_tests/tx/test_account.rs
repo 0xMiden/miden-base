@@ -6,12 +6,14 @@ use miden_lib::{
         ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
         ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+        ERR_ACCOUNT_NONCE_AT_MAX, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
+    StarkField,
     account::{
         Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
         AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
@@ -137,8 +139,8 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 pub fn test_get_code() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
     let code = "
-        use.kernel::prologue
-        use.kernel::account
+        use.$kernel::prologue
+        use.$kernel::account
         begin
             exec.prologue::prepare_transaction
             exec.account::get_code_commitment
@@ -184,7 +186,7 @@ pub fn test_account_type() -> miette::Result<()> {
 
             let code = format!(
                 "
-                use.kernel::account_id
+                use.$kernel::account_id
 
                 begin
                     exec.account_id::{procedure}
@@ -255,7 +257,7 @@ pub fn test_account_validate_id() -> miette::Result<()> {
         let suffix = Felt::try_from((account_id % (1u128 << 64)) as u64).unwrap();
 
         let code = "
-            use.kernel::account_id
+            use.$kernel::account_id
 
             begin
                 exec.account_id::validate
@@ -307,7 +309,7 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account_id
+            use.$kernel::account_id
 
             begin
                 push.{prefix}
@@ -346,8 +348,8 @@ fn test_get_item() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
-            use.kernel::prologue
+            use.$kernel::account
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -390,7 +392,7 @@ fn test_get_map_item() -> miette::Result<()> {
     for (key, value) in STORAGE_LEAVES_2 {
         let code = format!(
             "
-            use.kernel::prologue
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -451,8 +453,8 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
-            use.kernel::prologue
+            use.$kernel::account
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -494,8 +496,8 @@ fn test_set_item() -> miette::Result<()> {
 
     let code = format!(
         "
-        use.kernel::account
-        use.kernel::prologue
+        use.$kernel::account
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -549,7 +551,7 @@ fn test_set_map_item() -> miette::Result<()> {
         use.std::sys
 
         use.test::account
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -748,16 +750,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 /// Tests that we can successfully create regular and faucet accounts with empty storage.
 #[test]
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
-    // transaction code which only increases the nonce to make the transaction non-empty
-    let default_tx_code = "
-        use.kernel::account 
-        
-        begin 
-            push.1 exec.account::incr_nonce 
-        end";
-
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
-        let mock_chain = MockChain::new();
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
             .with_auth_component(Auth::IncrNonce)
@@ -768,12 +761,10 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
             .build()
             .context("failed to build account")?;
 
-        let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
-        let tx_context = TransactionContextBuilder::new(account)
+        TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
-            .tx_inputs(tx_inputs)
-            .build()?;
-        tx_context.execute_code(default_tx_code)?;
+            .build()?
+            .execute()?;
     }
 
     Ok(())
@@ -895,7 +886,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::account
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -939,8 +930,8 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 
         let code = format!(
             "
-            use.kernel::account
-            use.kernel::prologue
+            use.$kernel::account
+            use.$kernel::prologue
 
             begin
                 exec.prologue::prepare_transaction
@@ -1121,5 +1112,68 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         *executed_tx.account_delta().storage().values(),
         BTreeMap::from([(0, Word::from([2, 3, 4, 5u32]))]),
     );
+    Ok(())
+}
+
+/// Tests that incrementing the account nonce twice fails.
+#[test]
+fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
+    let source_code = "
+        use.miden::account
+
+        export.auth__incr_nonce_twice
+            exec.account::incr_nonce drop
+            exec.account::incr_nonce drop
+        end
+    ";
+
+    let faulty_auth_component =
+        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
+            .with_supports_all_types();
+    let (account, seed) = AccountBuilder::new([5; 32])
+        .with_auth_component(faulty_auth_component)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        )
+        .build()
+        .context("failed to build account")?;
+
+    let err = TransactionContextBuilder::new(account)
+        .account_seed(Some(seed))
+        .build()?
+        .execute()
+        .unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+
+    Ok(())
+}
+
+/// Tests that incrementing the account nonce fails if it would overflow the field.
+#[test]
+fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
+    let mut account = AccountBuilder::new([42; 32])
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        )
+        .build_existing()
+        .context("failed to build account")?;
+    // Increment the nonce to the maximum felt value. The nonce is already 1, so we increment by
+    // modulus - 2.
+    account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
+
+    let err = TransactionContextBuilder::new(account).build()?.execute().unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
+    };
+
+    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_AT_MAX);
+
     Ok(())
 }

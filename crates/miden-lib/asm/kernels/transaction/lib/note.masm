@@ -1,7 +1,7 @@
 use.std::crypto::hashes::rpo
 
-use.kernel::constants
-use.kernel::memory
+use.$kernel::constants
+use.$kernel::memory
 
 # ERRORS
 # =================================================================================================
@@ -21,7 +21,7 @@ const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255
 # generating the output notes commitment. Must be NOTE_MEM_SIZE - 8;
 const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 
-# INPUT NOTE PROCEDURES
+# CURRENTLY EXECUTING NOTE PROCEDURES
 # =================================================================================================
 
 #! Returns the sender of the note currently being processed.
@@ -53,11 +53,11 @@ end
 #! Returns the number of assets and the assets commitment of the note currently being processed.
 #!
 #! Inputs:  []
-#! Outputs: [ASSETS_HASH, num_assets]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
 #!
 #! Where:
 #! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_HASH is the vault hash of the note currently being processed.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
 #!
 #! Panics if:
 #! - the note is not being processed.
@@ -76,8 +76,8 @@ export.get_assets_info
     # => [num_assets, ptr]
 
     # get the assets commitment from the note pointer
-    swap exec.memory::get_input_note_assets_hash
-    # => [ASSETS_HASH, num_assets]
+    swap exec.memory::get_input_note_assets_commitment
+    # => [ASSETS_COMMITMENT, num_assets]
 end
 
 #! Returns the commitment to the note's inputs.
@@ -166,62 +166,83 @@ end
 #! odd number of assets, then for the final hashing permutation we pad the last word of the hasher
 #! rate with zeros. If the note contains no assets, ASSET_COMMITMENT is set to EMPTY_WORD.
 #!
+#! Recomputation of the assets commitment is performed only if the assets commitment dirty flag is 
+#! set to 1. Otherwise the commitment stored in the output note data memory segment is returned.
+#!
 #! Inputs:  [note_data_ptr]
-#! Outputs: [ASSETS_HASH]
+#! Outputs: [ASSETS_COMMITMENT]
 #!
 #! Where:
 #! - note_data_ptr is a pointer to the data section of the output note.
-#! - ASSETS_HASH is the hash of the assets of the output note located at note_data_ptr.
-proc.compute_output_note_assets_hash
-    # duplicate note pointer and fetch num_assets
-    dup dup exec.memory::get_output_note_num_assets
-    # => [num_assets, note_data_ptr, note_data_ptr]
+#! - ASSETS_COMMITMENT is the commitment of the assets of the output note located at note_data_ptr.
+export.compute_output_note_assets_commitment
+    # get the assets commitment dirty flag and decide whether we need to recompute the commitment
+    dup exec.memory::get_output_note_dirty_flag
+    # => [dirty_flag, note_data_ptr]
 
-    # calculate the number of pairs of assets (takes ceiling if we have an odd number)
-    add.1
-    u32assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
-    u32div.2
-    # => [num_asset_pairs, note_data_ptr, note_data_ptr]
+    if.true
+        # we should recompute assets commitment
+        # => [note_data_ptr]
 
-    # initiate counter for assets
-    push.0
-    # => [asset_counter, num_asset_pairs, note_data_ptr, note_data_ptr]
+        # duplicate note pointer and fetch num_assets
+        dup dup exec.memory::get_output_note_num_assets
+        # => [num_assets, note_data_ptr, note_data_ptr]
 
-    # prepare address and stack for reading assets
-    movup.2 exec.memory::get_output_note_asset_data_ptr padw padw padw
-    # => [PAD, PAD, PAD, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
+        # calculate the number of pairs of assets (takes ceiling if we have an odd number)
+        add.1
+        u32assert.err=ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT
+        u32div.2
+        # => [num_asset_pairs, note_data_ptr, note_data_ptr]
 
-    # check if we should loop
-    dup.14 dup.14 neq
-    # => [should_loop, PAD, PAD, PAD, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
+        # initiate counter for assets
+        push.0
+        # => [asset_counter, num_asset_pairs, note_data_ptr, note_data_ptr]
 
-    # loop and read assets from memory
-    while.true
-        # read assets from memory.
-        # if this is the last permutation of the loop and we have an odd number of assets then we
-        # implicitly pad the last word of the hasher rate with zeros by reading from empty memory.
-        mem_stream hperm
-        # => [PERM, PERM, PERM, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
+        # prepare address and stack for reading assets
+        movup.2 exec.memory::get_output_note_asset_data_ptr padw padw padw
+        # => [PAD, PAD, PAD, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
 
-        # check if we should loop again
-        movup.13 add.1 dup movdn.14 dup.15 neq
-        # => [should_loop, PERM, PERM, PERM, asset_data_ptr, asset_counter, num_asset_pairs,
-        #     note_data_ptr]
+        # check if we should loop
+        dup.14 dup.14 neq
+        # => [should_loop, PAD, PAD, PAD, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
+
+        # loop and read assets from memory
+        while.true
+            # read assets from memory.
+            # if this is the last permutation of the loop and we have an odd number of assets then we
+            # implicitly pad the last word of the hasher rate with zeros by reading from empty memory.
+            mem_stream hperm
+            # => [PERM, PERM, PERM, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
+
+            # check if we should loop again
+            movup.13 add.1 dup movdn.14 dup.15 neq
+            # => [should_loop, PERM, PERM, PERM, asset_data_ptr, asset_counter, num_asset_pairs,
+            #     note_data_ptr]
+        end
+
+        # extract digest
+        exec.rpo::squeeze_digest
+        # => [ASSETS_COMMITMENT, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
+
+        # drop accessory variables from stack
+        movup.4 drop
+        movup.4 drop
+        movup.4 drop
+        # => [ASSETS_COMMITMENT, note_data_ptr]
+
+        # save the assets hash to memory
+        dup.4 exec.memory::set_output_note_assets_commitment
+        # => [ASSETS_COMMITMENT, note_data_ptr]
+
+        # update the dirty flag
+        push.0 movup.5 exec.memory::set_output_note_dirty_flag
+        # => [ASSETS_COMMITMENT]
+    else
+        # get the cached assets commitment
+        exec.memory::get_output_note_assets_commitment
+        # => [ASSETS_COMMITMENT]
     end
-
-    # extract digest
-    exec.rpo::squeeze_digest
-    # => [ASSETS_HASH, asset_data_ptr, asset_counter, num_asset_pairs, note_data_ptr]
-
-    # drop accessory variables from stack
-    movup.4 drop
-    movup.4 drop
-    movup.4 drop
-    # => [ASSETS_HASH, note_data_ptr]
-
-    # save vault hash to memory
-    movup.4 exec.memory::set_output_note_assets_hash
-    # => []
+    # => [ASSETS_COMMITMENT]
 end
 
 #! Computes the ID of an output note located at the specified memory address.
@@ -230,7 +251,7 @@ end
 #! - we define, recipient =
 #!       hash(hash(hash(serial_num, [0; 4]), script_root), input_commitment)
 #! - we then compute the output note ID as:
-#!       hash(recipient, assets_hash)
+#!       hash(recipient, assets_commitment)
 #!
 #! Inputs:  [note_data_ptr]
 #! Outputs: [NOTE_ID]
@@ -241,18 +262,23 @@ end
 proc.compute_output_note_id
     # pad capacity elements of hasher
     padw
+    # => [EMPTY_WORD, note_data_ptr]
 
     # insert output note recipient into the first four elements of the hasher rate
     dup.4 exec.memory::get_output_note_recipient
+    # => [RECIPIENT, EMPTY_WORD, note_data_ptr]
 
     # populate the last four elements of the hasher rate with the output note's asset commitment
-    dup.8 exec.compute_output_note_assets_hash
+    dup.8 exec.compute_output_note_assets_commitment
+    # => [ASSETS_COMMITMENT, RECIPIENT, EMPTY_WORD, note_data_ptr]
 
-    # compute output note commitment and extract digest
+    # compute output note commitment (which is also note ID) and extract digest
     hperm exec.rpo::squeeze_digest
+    # => [NOTE_ID, note_data_ptr]
 
-    # save the output notes commitment to memory
+    # save the output note commitment (note ID) to memory
     movup.4 mem_storew
+    # => [NOTE_ID]
 end
 
 #! Computes a commitment to the output notes. This is computed as a sequential hash of
@@ -299,7 +325,7 @@ export.compute_output_notes_commitment
         # => [PERM, PERM, PERM, note_ptr + 8, end_ptr, ...]
 
         # increment output note pointer
-        movup.12 push.OUTPUT_NOTE_HASHING_MEM_DIFF add
+        movup.12 add.OUTPUT_NOTE_HASHING_MEM_DIFF
         # => [note_ptr + 2048, PERM, PERM, PERM, end_ptr, ...]
 
         # check if we should loop again

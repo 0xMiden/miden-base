@@ -1,10 +1,10 @@
-use.kernel::account
-use.kernel::account_delta
-use.kernel::asset_vault
-use.kernel::constants
-use.kernel::memory
-use.kernel::note
-use.kernel::tx
+use.$kernel::account
+use.$kernel::account_delta
+use.$kernel::asset_vault
+use.$kernel::constants
+use.$kernel::memory
+use.$kernel::note
+use.$kernel::tx
 
 use.std::crypto::hashes::rpo
 
@@ -16,6 +16,8 @@ const.ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE="account nonce did n
 const.ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME="total number of assets in the account and all involved notes must stay the same"
 
 const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither changed the account state, nor consumed any notes"
+
+const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been called from outside the epilogue"
 
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
@@ -175,6 +177,14 @@ proc.execute_auth_procedure
     # auth procedure is at index 0 within the account procedures section.
     push.0 exec.memory::get_acct_procedure_ptr
     # => [auth_procedure_ptr, AUTH_ARGS, pad(12)]
+
+    padw dup.4 mem_loadw
+    # => [AUTH_PROC_ROOT, auth_procedure_ptr, AUTH_ARGS, pad(12)]
+
+    # if auth procedure was called already, it must have been called by a user, which is disallowed
+    exec.account::was_procedure_called
+    # => [was_auth_called, auth_procedure_ptr, AUTH_ARGS, pad(12)]
+    assertz.err=ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
 
     # execute the auth procedure
     dyncall

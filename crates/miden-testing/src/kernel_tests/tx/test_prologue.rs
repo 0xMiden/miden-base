@@ -13,7 +13,7 @@ use miden_lib::{
         memory::{
             ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_METADATA_PTR,
             BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, INIT_ACCT_COMMITMENT_PTR, INIT_NONCE_PTR,
-            INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_HASH_OFFSET, INPUT_NOTE_ASSETS_OFFSET,
+            INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET, INPUT_NOTE_ASSETS_OFFSET,
             INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET, INPUT_NOTE_METADATA_OFFSET,
             INPUT_NOTE_NULLIFIER_SECTION_PTR, INPUT_NOTE_NUM_ASSETS_OFFSET,
             INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR, INPUT_NOTE_SERIAL_NUM_OFFSET,
@@ -78,7 +78,7 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.kernel::prologue
+        use.$kernel::prologue
 
         begin
             exec.prologue::prepare_transaction
@@ -414,7 +414,7 @@ fn input_notes_memory_assertions(
         );
 
         assert_eq!(
-            read_note_element(process, note_idx, INPUT_NOTE_ASSETS_HASH_OFFSET),
+            read_note_element(process, note_idx, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET),
             note.assets().commitment(),
             "note asset commitment should be stored at the correct offset"
         );
@@ -477,7 +477,7 @@ fn create_simple_account() -> anyhow::Result<()> {
     assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
     // account commitment should not be the empty word
-    assert_ne!(tx.account_delta().commitment(), EMPTY_WORD);
+    assert_ne!(tx.account_delta().to_commitment(), EMPTY_WORD);
 
     Ok(())
 }
@@ -500,7 +500,7 @@ pub fn create_account_test(
         .unwrap();
 
     let code = "
-  use.kernel::prologue
+  use.$kernel::prologue
 
   begin
       exec.prologue::prepare_transaction
@@ -665,7 +665,7 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         .build()?;
 
     let code = "
-      use.kernel::prologue
+      use.$kernel::prologue
 
       begin
           exec.prologue::prepare_transaction
@@ -683,8 +683,8 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
 fn test_get_blk_version() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.kernel::memory
-    use.kernel::prologue
+    use.$kernel::memory
+    use.$kernel::prologue
 
     begin
         exec.prologue::prepare_transaction
@@ -706,8 +706,8 @@ fn test_get_blk_version() -> anyhow::Result<()> {
 fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     let code = "
-    use.kernel::memory
-    use.kernel::prologue
+    use.$kernel::memory
+    use.$kernel::prologue
 
     begin
         exec.prologue::prepare_transaction

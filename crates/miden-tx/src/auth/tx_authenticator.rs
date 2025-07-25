@@ -1,14 +1,67 @@
-use alloc::{collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Felt, Word,
-    account::{AccountDelta, AuthSecretKey},
-    utils::sync::RwLock,
+    Felt, Hasher, Word, account::AuthSecretKey, crypto::SequentialCommit,
+    transaction::TransactionSummary, utils::sync::RwLock,
 };
 use rand::Rng;
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
+
+// SIGNATURE DATA
+// ================================================================================================
+
+/// Data types on which a signature can be requested.
+///
+/// It supports three modes:
+/// - `TransactionSummary`: Structured transaction summary, recommended for authenticating
+///   transactions.
+/// - `Arbitrary`: Arbitrary payload provided by the application. It is up to the authenticator to
+///   display it appropriately.
+/// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It must
+///   be a cryptographic commitment to some data.
+pub enum SigningInputs {
+    TransactionSummary(Box<TransactionSummary>),
+    Arbitrary(Vec<Felt>),
+    Blind(Word),
+}
+
+impl SequentialCommit for SigningInputs {
+    type Commitment = Word;
+
+    fn to_elements(&self) -> Vec<Felt> {
+        match self {
+            SigningInputs::TransactionSummary(tx_summary) => tx_summary.as_ref().to_elements(),
+            SigningInputs::Arbitrary(elements) => elements.clone(),
+            SigningInputs::Blind(word) => word.as_elements().to_vec(),
+        }
+    }
+
+    fn to_commitment(&self) -> Self::Commitment {
+        match self {
+            // `TransactionSummary` knows how to derive a commitment to itself.
+            SigningInputs::TransactionSummary(tx_summary) => tx_summary.as_ref().to_commitment(),
+            // use the default implementation.
+            SigningInputs::Arbitrary(elements) => Hasher::hash_elements(elements),
+            // `Blind` is assumed to already be a commitment.
+            SigningInputs::Blind(word) => *word,
+        }
+    }
+}
+
+/// Convenience methods for [SigningInputs].
+impl SigningInputs {
+    /// Computes the commitment to [SigningInputs].
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
+
+    /// Returns a representation of the [SigningInputs] as a sequence of field elements.
+    pub fn to_elements(&self) -> Vec<Felt> {
+        <Self as SequentialCommit>::to_elements(self)
+    }
+}
 
 // TRANSACTION AUTHENTICATOR
 // ================================================================================================
@@ -26,7 +79,7 @@ pub trait TransactionAuthenticator {
     /// The request is initiated by the VM as a consequence of the SigToStack advice
     /// injector.
     ///
-    /// - `pub_key`: The public key used for signature generation.
+    /// - `pub_key_hash`: The hash of the public key used for signature generation.
     /// - `message`: The message to sign, usually a commitment to the transaction data.
     /// - `account_delta`: An informational parameter describing the changes made to the account up
     ///   to the point of calling `get_signature()`. This allows the authenticator to review any
@@ -35,8 +88,7 @@ pub trait TransactionAuthenticator {
     fn get_signature(
         &self,
         pub_key: Word,
-        message: Word,
-        account_delta: &AccountDelta,
+        signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError>;
 }
 
@@ -49,18 +101,37 @@ where
     fn get_signature(
         &self,
         pub_key: Word,
-        message: Word,
-        account_delta: &AccountDelta,
+        signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
-        TransactionAuthenticator::get_signature(*self, pub_key, message, account_delta)
+        TransactionAuthenticator::get_signature(*self, pub_key, signing_inputs)
+    }
+}
+
+/// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
+/// when we do not want to provide one, but must provide the `T` in `Option<T>`.
+///
+/// Note: Asserts when `get_signature` is called.
+#[derive(Debug, Clone, Copy)]
+pub struct UnreachableAuth {
+    // ensure the type cannot be instantiated
+    _protect: core::marker::PhantomData<u8>,
+}
+
+impl TransactionAuthenticator for UnreachableAuth {
+    fn get_signature(
+        &self,
+        _pub_key: Word,
+        _signing_inputs: &SigningInputs,
+    ) -> Result<Vec<Felt>, AuthenticationError> {
+        unreachable!("Type `UnreachableAuth` must not be instantiated")
     }
 }
 
 // BASIC AUTHENTICATOR
 // ================================================================================================
 
-#[derive(Clone, Debug)]
 /// Represents a signer for [AuthSecretKey] keys.
+#[derive(Clone, Debug)]
 pub struct BasicAuthenticator<R> {
     /// pub_key |-> secret_key mapping
     keys: BTreeMap<Word, AuthSecretKey>,
@@ -102,10 +173,10 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
     fn get_signature(
         &self,
         pub_key: Word,
-        message: Word,
-        account_delta: &AccountDelta,
+        signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
-        let _ = account_delta;
+        let message = signing_inputs.to_commitment();
+
         let mut rng = self.rng.write();
 
         match self.keys.get(&pub_key) {
@@ -128,8 +199,7 @@ impl TransactionAuthenticator for () {
     fn get_signature(
         &self,
         _pub_key: Word,
-        _message: Word,
-        _account_delta: &AccountDelta,
+        _signing_inputs: &SigningInputs,
     ) -> Result<Vec<Felt>, AuthenticationError> {
         Err(AuthenticationError::RejectedSignature(
             "default authenticator cannot provide signatures".to_string(),

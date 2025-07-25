@@ -13,17 +13,22 @@ use miden_objects::{
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{NoteAccountExecution, TransactionExecutor, TransactionExecutorError};
+use crate::{DataStore, auth::TransactionAuthenticator};
 
 /// This struct performs input notes check against provided target account.
 ///
 /// The check is performed using the [NoteConsumptionChecker::check_notes_consumability] procedure.
 /// Essentially runs the transaction to make sure that provided input notes could be consumed by the
 /// account.
-pub struct NoteConsumptionChecker<'a>(&'a TransactionExecutor<'a, 'a>);
+pub struct NoteConsumptionChecker<'a, STORE, AUTH>(&'a TransactionExecutor<'a, 'a, STORE, AUTH>);
 
-impl<'a> NoteConsumptionChecker<'a> {
+impl<'a, STORE, AUTH> NoteConsumptionChecker<'a, STORE, AUTH>
+where
+    STORE: DataStore,
+    AUTH: TransactionAuthenticator,
+{
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
-    pub fn new(tx_executor: &'a TransactionExecutor) -> Self {
+    pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {
         NoteConsumptionChecker(tx_executor)
     }
 

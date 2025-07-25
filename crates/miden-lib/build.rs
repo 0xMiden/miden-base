@@ -43,7 +43,7 @@ const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
 const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
 
-const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
+const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 14] = [
     TxKernelErrorCategory::Kernel,
     TxKernelErrorCategory::Prologue,
     TxKernelErrorCategory::Epilogue,
@@ -56,6 +56,8 @@ const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
     TxKernelErrorCategory::NonFungibleAsset,
     TxKernelErrorCategory::Vault,
     TxKernelErrorCategory::LinkMap,
+    TxKernelErrorCategory::InputNote,
+    TxKernelErrorCategory::OutputNote,
 ];
 
 // PRE-PROCESSING
@@ -139,20 +141,15 @@ fn main() -> Result<()> {
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
     let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
-    let kernel_namespace = LibraryNamespace::new("kernel").expect("namespace should be valid");
+    let kernel_namespace = LibraryNamespace::Kernel;
 
     let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the kernel::util namespace
     assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
-    // Add the lib/ directory manually so we can set our custom kernel namespace, whereas
-    // assemble_kernel_from_dir always picks the $kernel namespace.
-    assembler
-        .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
-
     // assemble the kernel library and write it to the "tx_kernel.masl" file
-    let kernel_lib =
-        assembler.assemble_kernel_from_dir(source_dir.join("api.masm"), None::<&str>)?;
+    let kernel_lib = assembler
+        .assemble_kernel_from_dir(source_dir.join("api.masm"), Some(source_dir.join("lib")))?;
 
     // generate `kernel_v0.rs` file
     generate_kernel_proc_hash_file(kernel_lib.clone())?;
@@ -458,7 +455,7 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) -> Result<()> 
 /// This is required to include the shared modules as APIs of the `kernel` and `miden` libraries.
 ///
 /// This is done to make it possible to import the modules in the `shared_modules` folder directly,
-/// i.e. "use.kernel::account_id".
+/// i.e. "use.$kernel::account_id".
 fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
     // source is expected to be an `OUT_DIR/asm` folder
     let shared_modules_dir = source_dir.as_ref().join(SHARED_MODULES_DIR);
@@ -762,6 +759,8 @@ enum TxKernelErrorCategory {
     NonFungibleAsset,
     Vault,
     LinkMap,
+    InputNote,
+    OutputNote,
 }
 
 impl TxKernelErrorCategory {
@@ -779,6 +778,8 @@ impl TxKernelErrorCategory {
             TxKernelErrorCategory::NonFungibleAsset => "NON_FUNGIBLE_ASSET",
             TxKernelErrorCategory::Vault => "VAULT",
             TxKernelErrorCategory::LinkMap => "LINK_MAP",
+            TxKernelErrorCategory::InputNote => "INPUT_NOTE",
+            TxKernelErrorCategory::OutputNote => "OUTPUT_NOTE",
         }
     }
 }

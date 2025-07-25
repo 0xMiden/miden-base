@@ -45,7 +45,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 ///
 /// let code = "
-/// use.kernel::prologue
+/// use.$kernel::prologue
 /// use.test::account
 ///
 /// begin
@@ -225,7 +225,7 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Set the transaction script argument
+    /// Set the transaction script arguments
     pub fn tx_script_args(mut self, tx_script_args: Word) -> Self {
         self.tx_script_args = tx_script_args;
         self
@@ -300,7 +300,7 @@ impl TransactionContextBuilder {
             .with_note_args(self.note_args);
 
         let mut tx_args = if let Some(tx_script) = self.tx_script {
-            tx_args.with_tx_script_and_arg(tx_script, self.tx_script_args)
+            tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
         } else {
             tx_args
         };

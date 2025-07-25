@@ -13,14 +13,11 @@ use miden_lib::{
 };
 use miden_objects::{
     FieldElement, Word,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountDelta, AccountStorageDelta,
-        AccountStorageMode, AccountVaultDelta,
-    },
+    account::{Account, AccountComponent, AccountDelta, AccountStorageDelta, AccountVaultDelta},
     asset::{Asset, AssetVault, FungibleAsset},
     note::{NoteTag, NoteType},
     testing::{
-        account_component::{AccountMockComponent, IncrNonceAuthComponent},
+        account_component::IncrNonceAuthComponent,
         account_id::{
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -69,9 +66,9 @@ fn test_epilogue() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
-        use.kernel::account
-        use.kernel::epilogue
+        use.$kernel::prologue
+        use.$kernel::account
+        use.$kernel::epilogue
 
         {output_notes_data_procedure}
 
@@ -118,7 +115,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         AccountVaultDelta::default(),
         ONE,
     )?
-    .commitment();
+    .to_commitment();
 
     let account_update_commitment =
         miden_objects::Hasher::merge(&[final_account.commitment(), account_delta_commitment]);
@@ -171,8 +168,8 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
     for (note, i) in tx_context.expected_output_notes().iter().zip(0u32..) {
         let code = format!(
             "
-            use.kernel::prologue
-            use.kernel::epilogue
+            use.$kernel::prologue
+            use.$kernel::epilogue
 
             {output_notes_data_procedure}
 
@@ -213,17 +210,10 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
 
 #[test]
 fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<()> {
-    let mock_component =
-        AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())?;
-
-    let account = AccountBuilder::new(Default::default())
-        .with_assets(AssetVault::mock().assets())
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(mock_component)
-        .build_existing()?;
-
-    let mock_chain = MockChain::with_accounts(&[account.clone()])?;
+    let mut builder = MockChain::builder();
+    let account = builder
+        .add_existing_mock_account_with_assets(Auth::IncrNonce, AssetVault::mock().assets())?;
+    let mock_chain = builder.build()?;
 
     let fungible_asset_1: Asset = FungibleAsset::new(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
@@ -258,9 +248,9 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
-        use.kernel::epilogue
+        use.$kernel::epilogue
 
         {output_notes_data_procedure}
 
@@ -285,17 +275,10 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
 
 #[test]
 fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyhow::Result<()> {
-    let mock_component =
-        AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())?;
-
-    let account = AccountBuilder::new(Default::default())
-        .with_assets(AssetVault::mock().assets())
-        .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(mock_component)
-        .build_existing()?;
-
-    let mock_chain = MockChain::with_accounts(&[account.clone()])?;
+    let mut builder = MockChain::builder();
+    let account = builder
+        .add_existing_mock_account_with_assets(Auth::IncrNonce, AssetVault::mock().assets())?;
+    let mock_chain = builder.build()?;
 
     let fungible_asset_1: Asset = FungibleAsset::new(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1.try_into()?,
@@ -341,9 +324,9 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
-        use.kernel::epilogue
+        use.$kernel::epilogue
 
         {output_notes_data_procedure}
 
@@ -373,10 +356,10 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
 
     let test_pairs: [(u64, u64); 3] = [(9, 12), (18, 3), (20, 20)];
     let code_template = "
-        use.kernel::prologue
-        use.kernel::tx
-        use.kernel::epilogue
-        use.kernel::account
+        use.$kernel::prologue
+        use.$kernel::tx
+        use.$kernel::epilogue
+        use.$kernel::account
 
         begin
             exec.prologue::prepare_transaction
@@ -421,7 +404,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     let test_values = [0u64, u16::MAX as u64 + 1, u32::MAX as u64];
     let code_template = "
-        use.kernel::tx
+        use.$kernel::tx
 
         begin
             push.{value_1}
@@ -447,10 +430,10 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code_template = "
-    use.kernel::prologue
-    use.kernel::epilogue
-    use.kernel::tx
-    use.kernel::account
+    use.$kernel::prologue
+    use.$kernel::epilogue
+    use.$kernel::tx
+    use.$kernel::account
 
     begin
         exec.prologue::prepare_transaction
@@ -483,10 +466,10 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
-        use.kernel::epilogue
-        use.kernel::memory
+        use.$kernel::epilogue
+        use.$kernel::memory
 
         begin
             exec.prologue::prepare_transaction
@@ -531,9 +514,9 @@ fn test_epilogue_increment_nonce_violation() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
-        use.kernel::epilogue
+        use.$kernel::epilogue
 
         {output_notes_data_procedure}
 
@@ -589,9 +572,9 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
     let tx_script_source = format!(
         r#"
         use.miden::tx
-        use.kernel::prologue
-        use.kernel::epilogue
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::epilogue
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction

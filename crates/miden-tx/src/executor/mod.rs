@@ -1,19 +1,19 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
     transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
-        TransactionInputs, TransactionScript,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, OutputNotes, TransactionArgs,
+        TransactionInputs, TransactionScript, TransactionSummary,
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, Process};
+use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
@@ -41,22 +41,23 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 /// The transaction executor uses dynamic dispatch with trait objects for the [DataStore] and
 /// [TransactionAuthenticator], allowing it to be used with different backend implementations.
 /// At the moment of execution, the [DataStore] is expected to provide all required MAST nodes.
-pub struct TransactionExecutor<'store, 'auth> {
-    data_store: &'store dyn DataStore,
-    authenticator: Option<&'auth dyn TransactionAuthenticator>,
+pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
+    data_store: &'store STORE,
+    authenticator: Option<&'auth AUTH>,
     exec_options: ExecutionOptions,
 }
 
-impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
+impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
+where
+    STORE: DataStore + 'store,
+    AUTH: TransactionAuthenticator + 'auth,
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
-    pub fn new(
-        data_store: &'store dyn DataStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
-    ) -> Self {
+    pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
         Self {
@@ -78,8 +79,8 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
     /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
-        data_store: &'store dyn DataStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        data_store: &'store STORE,
+        authenticator: Option<&'auth AUTH>,
         exec_options: ExecutionOptions,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
@@ -142,7 +143,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -160,14 +161,16 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
+        let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.data_store,
             script_mast_store,
@@ -185,7 +188,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             self.exec_options,
             source_manager,
         )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -222,7 +225,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
@@ -245,6 +248,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            tx_inputs.input_notes().clone(),
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
@@ -311,14 +315,16 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
+        let input_notes = tx_inputs.input_notes();
 
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
+            input_notes.clone(),
             &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
@@ -373,12 +379,12 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 // ================================================================================================
 
 /// Creates a new [ExecutedTransaction] from the provided data.
-fn build_executed_transaction(
+fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
     mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
-    host: TransactionExecutorHost,
+    host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 
@@ -389,7 +395,7 @@ fn build_executed_transaction(
     let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
 
-    let host_delta_commitment = account_delta.commitment();
+    let host_delta_commitment = account_delta.to_commitment();
     if tx_outputs.account_delta_commitment != host_delta_commitment {
         return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
             in_kernel_commitment: tx_outputs.account_delta_commitment,
@@ -481,6 +487,93 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
     } else {
         Ok(())
     }
+}
+
+/// Remaps an execution error to a transaction executor error.
+///
+/// - If the inner error is [`TransactionKernelError::Unauthorized`], it is remapped to
+///   [`TransactionExecutorError::Unauthorized`] and the commitments are verified against the actual
+///   account delta and input/output notes.
+/// - Otherwise, the execution error is wrapped in
+///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
+fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
+    exec_err: ExecutionError,
+    tx_inputs: &TransactionInputs,
+    host: &TransactionExecutorHost<STORE, AUTH>,
+) -> TransactionExecutorError {
+    match exec_err {
+        ExecutionError::EventError { ref error, .. } => {
+            let maybe_kernel_error: Option<&TransactionKernelError> = error.downcast_ref();
+            match maybe_kernel_error {
+                Some(TransactionKernelError::Unauthorized {
+                    account_delta_commitment,
+                    input_notes_commitment,
+                    output_notes_commitment,
+                    salt,
+                }) => {
+                    let tx_summary = match build_tx_summary(
+                        *account_delta_commitment,
+                        *input_notes_commitment,
+                        *output_notes_commitment,
+                        *salt,
+                        tx_inputs,
+                        host,
+                    ) {
+                        Ok(tx_summary) => tx_summary,
+                        Err(err) => return err,
+                    };
+
+                    TransactionExecutorError::Unauthorized(Box::new(tx_summary))
+                },
+                Some(_) => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+                None => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+            }
+        },
+        _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+    }
+}
+
+/// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
+/// host and validating them against the provided commitments.
+fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
+    account_delta_commitment: Word,
+    input_notes_commitment: Word,
+    output_notes_commitment: Word,
+    salt: Word,
+    tx_inputs: &TransactionInputs,
+    host: &TransactionExecutorHost<STORE, AUTH>,
+) -> Result<TransactionSummary, TransactionExecutorError> {
+    let account_delta = host.base_host().build_account_delta();
+    let input_notes = tx_inputs.input_notes().clone();
+    let output_notes = host.base_host().build_output_notes();
+    let output_notes = OutputNotes::new(output_notes)
+        .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
+
+    // Validate user-computed commitments match the actual commitments. This could
+    // mismatch if user code constructs the commitments incorrectly in which case it
+    // is a good idea to return an error.
+    let actual_account_delta_commitment = account_delta.to_commitment();
+    if actual_account_delta_commitment != account_delta_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+          "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+      ).into()));
+    }
+
+    let actual_input_notes_commitment = input_notes.commitment();
+    if actual_input_notes_commitment != input_notes_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+            "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
+        ).into()));
+    }
+
+    let actual_output_notes_commitment = output_notes.commitment();
+    if actual_output_notes_commitment != output_notes_commitment {
+        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
+            "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
+        ).into()));
+    }
+
+    Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
 }
 
 // HELPER ENUM

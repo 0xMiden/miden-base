@@ -19,7 +19,7 @@ use miden_objects::{
 use rand::{Rng, SeedableRng, rngs::SmallRng};
 
 use super::proven_tx_builder::MockProvenTxBuilder;
-use crate::{AccountState, Auth, MockChain};
+use crate::{AccountState, Auth, MockChain, MockChainBuilder};
 
 fn mock_account_id(num: u8) -> AccountId {
     AccountIdBuilder::new().build_with_rng(&mut SmallRng::from_seed([num; 32]))
@@ -43,22 +43,23 @@ struct TestSetup {
 }
 
 fn setup_chain() -> TestSetup {
-    let mut chain = MockChain::new();
-    let account1 = generate_account(&mut chain);
-    let account2 = generate_account(&mut chain);
+    let mut builder = MockChain::builder();
+    let account1 = generate_account(&mut builder);
+    let account2 = generate_account(&mut builder);
+    let mut chain = builder.build().expect("genesis should be valid");
     chain.prove_next_block().expect("valid setup");
 
     TestSetup { chain, account1, account2 }
 }
 
-fn generate_account(chain: &mut MockChain) -> Account {
+fn generate_account(chain: &mut MockChainBuilder) -> Account {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Private)
         .with_component(
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
     chain
-        .add_pending_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
+        .add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")
 }
 

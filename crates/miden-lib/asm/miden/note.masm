@@ -60,23 +60,23 @@ export.get_assets
     # => [offset, pad(15), dest_ptr]
 
     syscall.exec_kernel_proc
-    # => [ASSETS_HASH, num_assets, pad(11), dest_ptr]
+    # => [ASSETS_COMMITMENT, num_assets, pad(11), dest_ptr]
 
     # clean the stack
     swapdw dropw dropw movup.7 movup.7 movup.7 drop drop drop
-    # => [ASSETS_HASH, num_assets, dest_ptr]
+    # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
 
     # load the asset data from the advice map to the advice stack
     adv.push_mapval
-    # => [ASSETS_HASH, num_assets, dest_ptr]
+    # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
 
     # calculate number of assets rounded up to an even number
     dup.4 dup is_odd add
-    # => [even_num_assets, ASSETS_HASH, num_assets, dest_ptr]
+    # => [even_num_assets, ASSETS_COMMITMENT, num_assets, dest_ptr]
 
     # calculate the start and end pointer for reading to memory
     mul.4 dup.6 add dup.6
-    # => [start_ptr, end_ptr, ASSETS_HASH, num_assets, dest_ptr]
+    # => [start_ptr, end_ptr, ASSETS_COMMITMENT, num_assets, dest_ptr]
 
     # write the data from the advice stack into memory
     exec.write_advice_data_to_memory
@@ -234,7 +234,8 @@ end
 #! Invocation: exec
 export.compute_inputs_commitment
     # check that number of inputs is less than 128
-    dup.1 push.128 u32assert2 u32lte assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
+    dup.1 push.128 u32assert2.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
+    u32lte assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
     # => [inputs_ptr, num_inputs]
 
     # push 1 as the pad_inputs flag: we should pad the stack while computing the note inputs
