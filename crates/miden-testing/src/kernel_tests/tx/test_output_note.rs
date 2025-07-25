@@ -24,7 +24,7 @@ use crate::{Auth, MockChain};
 ///   data.
 /// - After adding the second `asset_1` to the note.
 #[test]
-fn test_output_note_get_asset_info() -> anyhow::Result<()> {
+fn test_get_asset_info() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let fungible_asset_0 = Asset::Fungible(
@@ -169,7 +169,7 @@ fn test_output_note_get_asset_info() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_output_note_get_recipient_and_metadata() -> anyhow::Result<()> {
+fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
 
     let account =

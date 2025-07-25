@@ -19,7 +19,7 @@ const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note input
 #! Outputs: []
 #!
 #! Invocation: exec
-proc.write_advice_data_to_memory
+export.write_advice_data_to_memory
     # prepare the stack for reading from the advice stack
     padw padw padw
     # => [PAD, PAD, PAD, start_ptr, end_ptr, HASH]
