@@ -109,9 +109,9 @@ where
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
-        let message = process.get_stack_word(1);
+        let msg = process.get_stack_word(1);
 
-        let signature_key = Hasher::merge(&[pub_key, message]);
+        let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature = if let Ok(signature) =
             process.advice_provider().get_mapped_values(&signature_key)
@@ -129,7 +129,7 @@ where
             #[cfg(debug_assertions)]
             {
                 let tx_summary_commitment = tx_summary.to_commitment();
-                assert_eq!(message, tx_summary_commitment);
+                assert_eq!(msg, tx_summary_commitment);
             }
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
