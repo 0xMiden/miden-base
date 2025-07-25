@@ -118,10 +118,15 @@ where
         {
             signature.to_vec()
         } else {
-            let salt = process
-                .get_mem_word(process.ctx(), 0)
-                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?
-                .unwrap();
+            let commitments = process
+                .advice_provider()
+                .get_mapped_values(&msg)
+                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+
+            let salt = Word::from(
+                &<[Felt; 4]>::try_from(&commitments[0..4])
+                    .expect("salt not found in advice providers"),
+            );
 
             let tx_summary = build_tx_summary(self.base_host(), salt)
                 .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
