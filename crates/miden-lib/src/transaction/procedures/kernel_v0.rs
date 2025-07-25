@@ -70,7 +70,7 @@ pub const KERNEL0_PROCEDURES: [Word; 44] = [
     // input_note_get_recipient
     word!("0xa2af440ef92d6b889abd1ac3f73a4a3766c352dcfcf8dc15ae6c4161654396cc"),
     // output_note_get_recipient
-    word!("0xf0db3924f3e2d677a51924b09ecef8a12416a6ceb09fadd39785bb4f685cab66"),
+    word!("0xefcb9f20043ccfac81a2b95f7df7ab9da628293092ee22672f1c832c1b3ca32c"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment

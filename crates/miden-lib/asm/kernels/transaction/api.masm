@@ -796,7 +796,17 @@ end
 #!
 #! Invocation: dynexec
 export.output_note_get_recipient
-    nop
+    # get the note data pointer by the provided index
+    exec.memory::get_output_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the recipient commitment
+    exec.memory::get_output_note_recipient
+    # => [RECIPIENT_COMMITMENT, pad(15)]
+
+    # truncate the stack
+    swapw dropw
+    # => [RECIPIENT_COMMITMENT, pad(12)]
 end
 
 #! Returns the serial number of the note currently being processed.

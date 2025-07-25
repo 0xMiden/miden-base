@@ -38,3 +38,33 @@ export.get_assets_info
     end
     # => [ASSETS_COMMITMENT, num_assets]
 end
+
+#! Returns the recipient commitment of the output note with the specified index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [RECIPIENT_COMMITMENT]
+#!
+#! Where:
+#! - note_index is the index of the output note whose recipient commitment should be returned.
+#! - RECIPIENT_COMMITMENT is the commitment to the note note's script, inputs, the serial number.
+#!
+#! Invocation: exec
+export.get_recipient
+    # start padding the stack
+    push.0.0 movup.2
+    # => [note_index, 0, 0]
+
+    exec.kernel_proc_offsets::output_note_get_recipient_offset
+    # => [offset, note_index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, note_index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [RECIPIENT_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [RECIPIENT_COMMITMENT]
+end

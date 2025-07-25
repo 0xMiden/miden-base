@@ -22,8 +22,10 @@ mod test_auth;
 mod test_epilogue;
 mod test_faucet;
 mod test_fpi;
+mod test_input_note;
 mod test_link_map;
 mod test_note;
+mod test_output_note;
 mod test_prologue;
 mod test_tx;
 
