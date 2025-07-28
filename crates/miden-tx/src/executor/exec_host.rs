@@ -118,10 +118,16 @@ where
         {
             signature.to_vec()
         } else {
-            let commitments = process
-                .advice_provider()
-                .get_mapped_values(&msg)
-                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+            // Retrieve transaction summary commitments from the advice provider.
+            // The commitments are stored as a contiguous array of field elements with the following
+            // layout:
+            // - commitments[0..4]:  SALT
+            // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
+            // - commitments[8..12]: INPUT_NOTES_COMMITMENT
+            // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
+            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
+                TransactionKernelError::TransactionSummaryCommitmentsNotFound(Box::new(err))
+            })?;
 
             let salt = Word::from(
                 &<[Felt; 4]>::try_from(&commitments[0..4])
