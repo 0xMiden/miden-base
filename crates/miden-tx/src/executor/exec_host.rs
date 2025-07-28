@@ -158,11 +158,11 @@ where
             )
             .map_err(|err| TransactionKernelError::TransactionSummaryError(Box::new(err)))?;
 
-            debug_assert_eq!(
-                msg,
-                tx_summary.to_commitment(),
-                "transaction summary doesn't commit to the expected message"
-            );
+            if msg != tx_summary.to_commitment() {
+                return Err(TransactionKernelError::TransactionSummaryError(
+                    "transaction summary doesn't commit to the expected message".into(),
+                ));
+            }
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
