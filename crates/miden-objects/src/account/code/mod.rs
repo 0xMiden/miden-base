@@ -86,7 +86,7 @@ impl AccountCode {
         let mut components_iter = components.iter();
 
         let first_component =
-            components_iter.next().ok_or(AccountError::AccountCodeNoAuthComponent)?;
+            components_iter.next().ok_or(AccountError::AccountCodeAuthNoneComponent)?;
         builder.add_auth_component(first_component)?;
 
         for component in components_iter {
@@ -351,7 +351,7 @@ impl ProcedureInfoBuilder {
         }
 
         if auth_proc_count == 0 {
-            return Err(AccountError::AccountCodeNoAuthComponent);
+            return Err(AccountError::AccountCodeAuthNoneComponent);
         } else if auth_proc_count > 1 {
             return Err(AccountError::AccountComponentMultipleAuthProcedures);
         }
@@ -527,7 +527,7 @@ mod tests {
             AccountCode::from_components(&[component], AccountType::RegularAccountUpdatableCode)
                 .unwrap_err();
 
-        assert_matches!(err, AccountError::AccountCodeNoAuthComponent);
+        assert_matches!(err, AccountError::AccountCodeAuthNoneComponent);
     }
 
     #[test]

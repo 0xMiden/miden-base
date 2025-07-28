@@ -29,7 +29,7 @@ pub fn generate_account(chain: &mut MockChain) -> Account {
             AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
         );
     chain
-        .add_pending_account_from_builder(Auth::NoAuth, account_builder, AccountState::Exists)
+        .add_pending_account_from_builder(Auth::AuthNone, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")
 }
 

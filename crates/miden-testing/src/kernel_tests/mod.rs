@@ -151,7 +151,7 @@ fn executed_transaction_account_delta_new() -> anyhow::Result<()> {
     let account_assets = AssetVault::mock().assets().collect::<Vec<Asset>>();
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::NoAuth)
+        .with_auth_component(Auth::AuthNone)
         .with_component(AccountMockComponent::new_with_slots(
             TransactionKernel::testing_assembler(),
             AccountStorage::mock_storage_slots(),
@@ -766,7 +766,7 @@ fn prove_witness_and_verify() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::NoAuth,
+            Auth::AuthNone,
             TransactionKernel::testing_assembler(),
         );
         let input_note =
@@ -943,7 +943,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
 
     // Build an existing account with nonce 1.
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::NoAuth)
+        .with_auth_component(Auth::AuthNone)
         .with_component(account_component)
         .build_existing()
         .into_diagnostic()?;
@@ -1081,7 +1081,7 @@ fn test_check_note_consumability() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::NoAuth,
+            Auth::AuthNone,
             TransactionKernel::testing_assembler(),
         );
         let input_note =

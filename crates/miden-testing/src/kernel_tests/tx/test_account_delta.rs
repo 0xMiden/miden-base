@@ -68,7 +68,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Tests that a noop transaction with [`Auth::NoAuth`] results in a nonce delta of 1.
+/// Tests that a noop transaction with [`Auth::AuthNone`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
     let TestSetup { mock_chain, account_id } = setup_storage_test(vec![]);
@@ -567,7 +567,7 @@ struct TestSetup {
 fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
     let account = AccountBuilder::new([8; 32])
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::NoAuth)
+        .with_auth_component(Auth::AuthNone)
         .with_component(
             AccountMockComponent::new_with_slots(
                 TransactionKernel::testing_assembler(),
@@ -587,7 +587,7 @@ fn setup_storage_test(storage_slots: Vec<StorageSlot>) -> TestSetup {
 fn setup_asset_test(assets: impl IntoIterator<Item = Asset>) -> TestSetup {
     let account = AccountBuilder::new([3; 32])
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::NoAuth)
+        .with_auth_component(Auth::AuthNone)
         .with_component(
             AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
                 .unwrap(),

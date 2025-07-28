@@ -49,7 +49,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::NoAuth,
+            Auth::AuthNone,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -149,7 +149,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            Auth::NoAuth,
+            Auth::AuthNone,
             TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
@@ -220,7 +220,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     let account = AccountBuilder::new(Default::default())
         .with_assets(AssetVault::mock().assets())
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::NoAuth)
+        .with_auth_component(Auth::AuthNone)
         .with_component(mock_component)
         .build_existing()?;
 
@@ -292,7 +292,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     let account = AccountBuilder::new(Default::default())
         .with_assets(AssetVault::mock().assets())
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::NoAuth)
+        .with_auth_component(Auth::AuthNone)
         .with_component(mock_component)
         .build_existing()?;
 

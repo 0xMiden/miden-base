@@ -34,7 +34,7 @@ pub enum Auth {
 
     /// Creates an AuthNone component from miden-lib that only increments the nonce.
     /// This is the standard AuthNone component that should be used for testing.
-    NoAuth,
+    AuthNone,
 
     /// TODO update once #1501 is ready.
     Conditional,
@@ -81,7 +81,7 @@ impl Auth {
                 (component.into(), None)
             },
 
-            Auth::NoAuth => {
+            Auth::AuthNone => {
                 let component = AuthNone.into();
                 (component, None)
             },

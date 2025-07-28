@@ -120,7 +120,7 @@ use crate::{
 /// let receiver = mock_chain.add_pending_new_wallet(Auth::BasicAuth);
 ///
 /// // Add a wallet with assets.
-/// let sender = mock_chain.add_pending_existing_wallet(Auth::NoAuth, vec![]);
+/// let sender = mock_chain.add_pending_existing_wallet(Auth::AuthNone, vec![]);
 /// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
 ///
 /// // Add a pending P2ID note to the chain.
@@ -1528,7 +1528,7 @@ mod tests {
     fn with_accounts() -> anyhow::Result<()> {
         let account = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Public)
-            .with_auth_component(Auth::NoAuth)
+            .with_auth_component(Auth::AuthNone)
             .with_component(
                 AccountMockComponent::new_with_slots(
                     TransactionKernel::testing_assembler(),

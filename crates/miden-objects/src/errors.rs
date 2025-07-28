@@ -74,7 +74,7 @@ pub enum AccountError {
     #[error("failed to deserialize account code")]
     AccountCodeDeserializationError(#[source] DeserializationError),
     #[error("account code does not contain an auth component")]
-    AccountCodeNoAuthComponent,
+    AccountCodeAuthNoneComponent,
     #[error("account code contains multiple auth components")]
     AccountCodeMultipleAuthComponents,
     #[error("account code must contain at least one non-auth procedure")]
