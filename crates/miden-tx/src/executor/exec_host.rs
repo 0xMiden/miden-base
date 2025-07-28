@@ -125,17 +125,38 @@ where
             // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
             // - commitments[8..12]: INPUT_NOTES_COMMITMENT
             // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-                TransactionKernelError::TransactionSummaryCommitmentsNotFound(Box::new(err))
-            })?;
+            let commitments = process
+                .advice_provider()
+                .get_mapped_values(&msg)
+                .map_err(|err| TransactionKernelError::TransactionSummaryError(Box::new(err)))?;
 
-            let salt = Word::from(
-                &<[Felt; 4]>::try_from(&commitments[0..4])
-                    .expect("salt not found in advice providers"),
-            );
+            if commitments.len() != 16 {
+                return Err(TransactionKernelError::TransactionSummaryError(
+                    "Expected 4 words for transaction summary commitments".into(),
+                ));
+            }
 
-            let tx_summary = build_tx_summary(self.base_host(), salt)
-                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+            let extract_word = |start: usize| -> Word {
+                Word::from([
+                    commitments[start],
+                    commitments[start + 1],
+                    commitments[start + 2],
+                    commitments[start + 3],
+                ])
+            };
+
+            let salt = extract_word(0);
+            let output_notes_commitment = extract_word(4);
+            let input_notes_commitment = extract_word(8);
+            let account_delta_commitment = extract_word(12);
+            let tx_summary = build_tx_summary(
+                self.base_host(),
+                salt,
+                output_notes_commitment,
+                input_notes_commitment,
+                account_delta_commitment,
+            )
+            .map_err(|err| TransactionKernelError::TransactionSummaryError(Box::new(err)))?;
 
             debug_assert_eq!(
                 msg,

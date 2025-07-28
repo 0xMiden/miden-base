@@ -27,8 +27,8 @@ pub enum TransactionKernelError {
     MissingAuthenticator,
     #[error("failed to generate signature")]
     SignatureGenerationFailed(#[source] Box<dyn Error + Send + Sync + 'static>),
-    #[error("transaction summary commitments not found in advice provider")]
-    TransactionSummaryCommitmentsNotFound(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("transaction summary commitments malformed")]
+    TransactionSummaryError(#[source] Box<dyn Error + Send + Sync + 'static>),
     #[error("asset data extracted from the stack by event handler `{handler}` is not well formed")]
     MalformedAssetInEventHandler {
         handler: &'static str,
