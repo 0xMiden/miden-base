@@ -5,7 +5,7 @@ use alloc::{
 };
 
 use assembly::{Assembler, Parse};
-use miden_crypto::merkle::{InnerNodeInfo, MerkleStore};
+use miden_crypto::merkle::InnerNodeInfo;
 
 use super::{AccountInputs, Felt, Word};
 use crate::{
@@ -206,14 +206,12 @@ impl TransactionArgs {
 
     /// Extends the internal advice inputs' map with the provided key-value pairs.
     pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
-        self.advice_inputs.extend(AdviceInputs::default().with_map(iter))
+        self.advice_inputs.map.extend(iter);
     }
 
     /// Extends the internal advice inputs' merkle store with the provided nodes.
     pub fn extend_merkle_store<I: Iterator<Item = InnerNodeInfo>>(&mut self, iter: I) {
-        // TODO: Refactor this to use the pub fields directly.
-        self.advice_inputs
-            .extend(AdviceInputs::default().with_merkle_store(MerkleStore::from_iter(iter)))
+        self.advice_inputs.store.extend(iter);
     }
 
     /// Extends the advice inputs in self with the provided ones.
