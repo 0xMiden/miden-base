@@ -7,10 +7,7 @@ use alloc::{
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::{
-    account::auth,
-    note::{create_p2id_note, create_p2ide_note},
-};
+use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
     account::{Account, AccountId, AuthSecretKey, StorageSlot, delta::AccountUpdateDetails},

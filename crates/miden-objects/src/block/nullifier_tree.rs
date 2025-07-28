@@ -1,3 +1,5 @@
+use alloc::{string::ToString, vec::Vec};
+
 use vm_core::{
     EMPTY_WORD,
     utils::{ByteReader, ByteWriter, Deserializable, Serializable},
@@ -202,14 +204,15 @@ impl Default for NullifierTree {
 
 impl Serializable for NullifierTree {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.smt.write_into(target);
+        self.entries().collect::<Vec<_>>().write_into(target);
     }
 }
 
 impl Deserializable for NullifierTree {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let smt = Smt::read_from(source)?;
-        Ok(Self { smt })
+        let entries = Vec::<(Nullifier, BlockNumber)>::read_from(source)?;
+        Self::with_entries(entries)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 

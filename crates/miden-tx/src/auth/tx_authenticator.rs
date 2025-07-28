@@ -159,6 +159,8 @@ impl<R: Rng> BasicAuthenticator<R> {
         }
     }
 
+    /// Returns a reference to the keys map. Map keys represent the public keys, and values
+    /// represent the secret keys that the authenticator would use to sign messages.
     pub fn keys(&self) -> &BTreeMap<Word, AuthSecretKey> {
         &self.keys
     }
