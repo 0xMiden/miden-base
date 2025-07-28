@@ -529,10 +529,41 @@ where
     /// [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
     fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
-        let account_delta_commitment = process.get_stack_word(3);
-        let input_notes_commitment = process.get_stack_word(2);
-        let output_notes_commitment = process.get_stack_word(1);
-        let salt = process.get_stack_word(0);
+        let msg = process.get_stack_word(1);
+
+        // Retrieve transaction summary commitments from the advice provider.
+        // The commitments are stored as a contiguous array of field elements with the following
+        // layout:
+        // - commitments[0..4]:  SALT
+        // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
+        // - commitments[8..12]: INPUT_NOTES_COMMITMENT
+        // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
+        let commitments = match process.advice_provider().get_mapped_values(&msg) {
+            Ok(commitments) => commitments,
+            Err(err) => {
+                return TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err));
+            },
+        };
+
+        if commitments.len() != 16 {
+            return TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected 4 words for transaction summary commitments".into(),
+            );
+        }
+
+        let extract_word = |start: usize| -> Word {
+            Word::from([
+                commitments[start],
+                commitments[start + 1],
+                commitments[start + 2],
+                commitments[start + 3],
+            ])
+        };
+
+        let salt = extract_word(0);
+        let output_notes_commitment = extract_word(4);
+        let input_notes_commitment = extract_word(8);
+        let account_delta_commitment = extract_word(12);
 
         TransactionKernelError::Unauthorized {
             account_delta_commitment,
