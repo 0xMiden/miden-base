@@ -7,7 +7,10 @@ use alloc::{
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::note::{create_p2id_note, create_p2ide_note};
+use miden_lib::{
+    account::auth,
+    note::{create_p2id_note, create_p2ide_note},
+};
 use miden_objects::{
     MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
     account::{Account, AccountId, AuthSecretKey, StorageSlot, delta::AccountUpdateDetails},
@@ -1255,6 +1258,19 @@ impl AccountCredentials {
     }
 }
 
+impl PartialEq for AccountCredentials {
+    fn eq(&self, other: &Self) -> bool {
+        let authenticator_eq = match (&self.authenticator, &other.authenticator) {
+            (Some(a), Some(b)) => {
+                a.keys().keys().zip(b.keys().keys()).all(|(a_key, b_key)| a_key == b_key)
+            },
+            (None, None) => true,
+            _ => false,
+        };
+        authenticator_eq && self.seed == other.seed
+    }
+}
+
 // SERIALIZATION
 // ================================================================================================
 
@@ -1332,7 +1348,10 @@ mod tests {
     use miden_objects::{
         account::{AccountBuilder, AccountStorageMode},
         asset::FungibleAsset,
-        testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
+        testing::account_id::{
+            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+            ACCOUNT_ID_SENDER,
+        },
     };
 
     use super::*;
@@ -1390,5 +1409,63 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn mock_chain_serialization() {
+        let mut builder = MockChain::builder();
+
+        let mut notes = vec![];
+        for i in 0..10 {
+            let account = builder
+                .add_account_from_builder(
+                    Auth::BasicAuth,
+                    AccountBuilder::new([i; 32]).with_component(BasicWallet),
+                    AccountState::New,
+                )
+                .unwrap();
+            let note = builder
+                .add_p2id_note(
+                    ACCOUNT_ID_SENDER.try_into().unwrap(),
+                    account.id(),
+                    &[Asset::Fungible(
+                        FungibleAsset::new(
+                            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET.try_into().unwrap(),
+                            1000u64,
+                        )
+                        .unwrap(),
+                    )],
+                    NoteType::Private,
+                )
+                .unwrap();
+            notes.push((account, note));
+        }
+
+        let mut chain = builder.build().unwrap();
+        for (account, note) in notes {
+            let tx = chain
+                .build_tx_context(TxContextInput::Account(account), &[], &[note])
+                .unwrap()
+                .build()
+                .unwrap()
+                .execute()
+                .unwrap();
+            chain.add_pending_executed_transaction(&tx).unwrap();
+            chain.prove_next_block().unwrap();
+        }
+
+        let bytes = chain.to_bytes();
+
+        let deserialized = MockChain::read_from_bytes(&bytes).unwrap();
+
+        assert_eq!(chain.chain.as_mmr().peaks(), deserialized.chain.as_mmr().peaks());
+        assert_eq!(chain.blocks, deserialized.blocks);
+        assert_eq!(chain.nullifier_tree, deserialized.nullifier_tree);
+        assert_eq!(chain.account_tree, deserialized.account_tree);
+        assert_eq!(chain.pending_output_notes, deserialized.pending_output_notes);
+        assert_eq!(chain.pending_transactions, deserialized.pending_transactions);
+        assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
+        assert_eq!(chain.committed_notes, deserialized.committed_notes);
+        assert_eq!(chain.account_credentials, deserialized.account_credentials);
     }
 }

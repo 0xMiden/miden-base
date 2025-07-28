@@ -11,7 +11,7 @@ use winterfell::ByteWriter;
 
 /// Represents a note that is stored in the mock chain.
 #[allow(clippy::large_enum_variant)]
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum MockChainNote {
     /// Details for a private note only include its [`NoteMetadata`] and [`NoteInclusionProof`].
     /// Other details needed to consume the note are expected to be stored locally, off-chain.
