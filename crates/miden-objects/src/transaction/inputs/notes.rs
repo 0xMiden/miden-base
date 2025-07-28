@@ -6,6 +6,7 @@ use crate::{
     note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
+use crate::transaction::serde_utils::{read_vec_with_len, write_vec_with_len};
 
 // TO INPUT NOTE COMMITMENT
 // ================================================================================================
@@ -97,28 +98,16 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
             .expect("by construction, number of notes fits into u16")
     }
 
-    /// Returns true if this [InputNotes] does not contain any notes.
-    pub fn is_empty(&self) -> bool {
-        self.notes.is_empty()
-    }
+    // Getter helpers (`is_empty`, `get_note`, `iter`) are provided by a shared macro below.
+}
 
-    /// Returns a reference to the note located at the specified index.
-    pub fn get_note(&self, idx: usize) -> &T {
-        &self.notes[idx]
-    }
+// Implement common getter helpers for the generic `InputNotes<T>` collection.
+crate::impl_note_collection_getters!(InputNotes<T>);
 
-    // ITERATORS
-    // --------------------------------------------------------------------------------------------
+// Additional conversion helpers ---------------------------------------------------------------
 
-    /// Returns an iterator over notes in this [InputNotes].
-    pub fn iter(&self) -> impl Iterator<Item = &T> {
-        self.notes.iter()
-    }
-
-    // CONVERSIONS
-    // --------------------------------------------------------------------------------------------
-
-    /// Converts self into a vector of input notes.
+impl<T> InputNotes<T> {
+    /// Converts self into the underlying vector of input notes, consuming `self`.
     pub fn into_vec(self) -> Vec<T> {
         self.notes
     }
@@ -182,17 +171,13 @@ impl<T: ToInputNoteCommitments> Default for InputNotes<T> {
 
 impl<T: Serializable> Serializable for InputNotes<T> {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        // assert is OK here because we enforce max number of notes in the constructor
-        assert!(self.notes.len() <= u16::MAX.into());
-        target.write_u16(self.notes.len() as u16);
-        target.write_many(&self.notes);
+        write_vec_with_len(&self.notes, target);
     }
 }
 
 impl<T: Deserializable + ToInputNoteCommitments> Deserializable for InputNotes<T> {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let num_notes = source.read_u16()?;
-        let notes = source.read_many::<T>(num_notes.into())?;
+        let notes = read_vec_with_len(source)?;
         Self::new(notes).map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }

@@ -12,6 +12,8 @@ use crate::{
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
+use super::serde_utils::{read_vec_with_len, write_vec_with_len};
+
 // TRANSACTION OUTPUTS
 // ================================================================================================
 
@@ -105,41 +107,24 @@ impl OutputNotes {
         self.notes.len()
     }
 
-    /// Returns true if this [OutputNotes] does not contain any notes.
-    pub fn is_empty(&self) -> bool {
-        self.notes.is_empty()
-    }
-
-    /// Returns a reference to the note located at the specified index.
-    pub fn get_note(&self, idx: usize) -> &OutputNote {
-        &self.notes[idx]
-    }
-
-    // ITERATORS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns an iterator over notes in this [OutputNotes].
-    pub fn iter(&self) -> impl Iterator<Item = &OutputNote> {
-        self.notes.iter()
-    }
+    // Getter helpers (`is_empty`, `get_note`, `iter`) are provided by a shared macro below.
 }
+
+// Implement common getter helpers using the shared macro.
+crate::impl_note_collection_getters!(OutputNotes, OutputNote);
 
 // SERIALIZATION
 // ------------------------------------------------------------------------------------------------
 
 impl Serializable for OutputNotes {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        // assert is OK here because we enforce max number of notes in the constructor
-        assert!(self.notes.len() <= u16::MAX.into());
-        target.write_u16(self.notes.len() as u16);
-        target.write_many(&self.notes);
+        write_vec_with_len(&self.notes, target);
     }
 }
 
 impl Deserializable for OutputNotes {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let num_notes = source.read_u16()?;
-        let notes = source.read_many::<OutputNote>(num_notes.into())?;
+        let notes = read_vec_with_len(source)?;
         Self::new(notes).map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }

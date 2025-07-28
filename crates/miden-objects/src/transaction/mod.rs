@@ -10,6 +10,7 @@ mod executed_tx;
 mod inputs;
 mod ordered_transactions;
 mod outputs;
+mod serde_utils;
 mod partial_blockchain;
 mod proven_tx;
 mod transaction_id;
