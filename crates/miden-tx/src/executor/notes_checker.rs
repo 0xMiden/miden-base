@@ -10,7 +10,6 @@ use miden_objects::{
     note::NoteId,
     transaction::{InputNote, InputNotes, TransactionArgs},
 };
-use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{NoteAccountExecution, TransactionExecutor, TransactionExecutorError};
 use crate::{DataStore, auth::TransactionAuthenticator};
@@ -43,8 +42,7 @@ where
     ///     associated with `Failure` variant contains the ID of the failed note, a vector of IDs of
     ///     the notes, which were successfully executed, and the [TransactionExecutorError] if the
     ///     check failed during the execution stage.
-    #[maybe_async]
-    pub fn check_notes_consumability(
+    pub async fn check_notes_consumability(
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
@@ -101,13 +99,9 @@ where
 
         // Execute transaction
         // ----------------------------------------------------------------------------------------
-        maybe_await!(self.0.try_execute_notes(
-            target_account_id,
-            block_ref,
-            input_notes,
-            tx_args,
-            source_manager
-        ))
+        self.0
+            .try_execute_notes(target_account_id, block_ref, input_notes, tx_args, source_manager)
+            .await
     }
 }
 

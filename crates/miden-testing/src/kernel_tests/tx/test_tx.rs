@@ -1340,8 +1340,8 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
 }
 
 /// Tests that execute_tx_view_script returns the expected stack outputs.
-#[test]
-fn execute_tx_view_script() -> anyhow::Result<()> {
+#[tokio::test]
+async fn execute_tx_view_script() -> anyhow::Result<()> {
     let test_module_source = "
         export.foo
             push.3.4
@@ -1382,14 +1382,16 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
 
     let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
 
-    let stack_outputs = executor.execute_tx_view_script(
-        account_id,
-        block_ref,
-        tx_script,
-        advice_inputs,
-        Vec::default(),
-        source_manager,
-    )?;
+    let stack_outputs = executor
+        .execute_tx_view_script(
+            account_id,
+            block_ref,
+            tx_script,
+            advice_inputs,
+            Vec::default(),
+            source_manager,
+        )
+        .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
 

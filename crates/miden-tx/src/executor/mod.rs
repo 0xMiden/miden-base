@@ -6,7 +6,7 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
-    note::NoteId,
+    note::{NoteId, NoteScript},
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, OutputNotes, TransactionArgs,
         TransactionInputs, TransactionScript, TransactionSummary,
@@ -15,7 +15,7 @@ use miden_objects::{
 };
 use vm_processor::{AdviceInputs, ExecutionError, fast::FastProcessor};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
-use winter_maybe_async::{maybe_async, maybe_await};
+use winter_maybe_async::maybe_await;
 
 use super::TransactionExecutorError;
 use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
@@ -136,13 +136,13 @@ where
     /// - If the transaction arguments contain foreign account data not anchored in the reference
     ///   block.
     /// - If any input notes were created in block numbers higher than the reference block.
-    // TODO REMOVE #[maybe_async]
     pub async fn execute_transaction(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
+        // TODO: Pass source manager to host once refactored.
         _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -179,7 +179,8 @@ where
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
-        let processor = FastProcessor::new(stack_inputs.as_slice());
+        let processor =
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
         let (stack_outputs, advice_provider) = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
@@ -212,17 +213,16 @@ where
     /// - If required data can not be fetched from the [DataStore].
     /// - If the transaction host can not be created from the provided values.
     /// - If the execution of the provided program fails.
-    #[maybe_async]
-    pub fn execute_tx_view_script(
+    pub async fn execute_tx_view_script(
         &self,
-        _account_id: AccountId,
-        _block_ref: BlockNumber,
-        _tx_script: TransactionScript,
-        _advice_inputs: AdviceInputs,
-        _foreign_account_inputs: Vec<AccountInputs>,
+        account_id: AccountId,
+        block_ref: BlockNumber,
+        tx_script: TransactionScript,
+        advice_inputs: AdviceInputs,
+        foreign_account_inputs: Vec<AccountInputs>,
+        // TODO: Pass source manager to host once refactored.
         _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
-        /*
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
@@ -253,20 +253,14 @@ where
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
-        let mut process = Process::new(
-            TransactionKernel::tx_script_main().kernel().clone(),
-            stack_inputs,
-            advice_inputs,
-            self.exec_options,
-        )
-        .with_source_manager(source_manager);
-        let stack_outputs = process
+        let processor =
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let (stack_outputs, _advice_provider) = processor
             .execute(&TransactionKernel::tx_script_main(), &mut host)
+            .await
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
         Ok(*stack_outputs)
-         */
-        todo!()
     }
 
     // CHECK CONSUMABILITY
@@ -288,16 +282,16 @@ where
     /// - If required data can not be fetched from the [DataStore].
     /// - If the transaction host can not be created from the provided values.
     /// - If the execution of the provided program fails on the stage other than note execution.
-    #[maybe_async]
-    pub(crate) fn try_execute_notes(
+    pub(crate) async fn try_execute_notes(
         &self,
-        _account_id: AccountId,
-        _block_ref: BlockNumber,
-        _notes: InputNotes<InputNote>,
-        _tx_args: TransactionArgs,
+        account_id: AccountId,
+        block_ref: BlockNumber,
+        notes: InputNotes<InputNote>,
+        tx_args: TransactionArgs,
+        // TODO: Pass source manager to host once refactored.
         _source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
-        /*let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
+        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
         let (account, seed, ref_block, mmr) =
@@ -331,16 +325,12 @@ where
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
-        // execute the transaction kernel
-        let result = vm_processor::execute(
-            &TransactionKernel::main(),
-            stack_inputs,
-            advice_inputs,
-            &mut host,
-            self.exec_options,
-            source_manager,
-        )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
+        let processor =
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let result = processor
+            .execute(&TransactionKernel::main(), &mut host)
+            .await
+            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
             Ok(_) => Ok(NoteAccountExecution::Success),
@@ -368,9 +358,8 @@ where
                     successful_notes: success_notes.iter().map(|(note, _)| *note).collect(),
                     error: Some(tx_execution_error),
                 })
-              },
-            }*/
-        todo!()
+            },
+        }
     }
 }
 
