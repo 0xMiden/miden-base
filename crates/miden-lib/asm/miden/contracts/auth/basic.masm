@@ -55,7 +55,7 @@ export.auth__tx_rpo_falcon512
     exec.hash_tx_summary
     # => [MESSAGE, pad(16)]
     push.COMMITMENTS_END_PTR movdn.4 push.SALT_PTR movdn.4
-    # => [MESSAGE, SALT_PTR, COMMITMENTS_END_PTR]
+    # => [MESSAGE, salt_ptr, commitments_end_ptr]
     adv.insert_mem
 
     # Fetch public key from storage.
