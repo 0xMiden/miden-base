@@ -25,7 +25,7 @@ type ErrorCategoryMap = BTreeMap<ErrorCategory, Vec<NamedError>>;
 /// Defines whether the build script should generate files in `/src`.
 /// The docs.rs build pipeline has a read-only filesystem, so we have to avoid writing to `src`,
 /// otherwise the docs will fail to build there. Note that writing to `OUT_DIR` is fine.
-const BUILD_GENERATED_FILES_IN_SRC: bool = true; // option_env!("BUILD_GENERATED_FILES_IN_SRC").is_some();
+const BUILD_GENERATED_FILES_IN_SRC: bool = option_env!("BUILD_GENERATED_FILES_IN_SRC").is_some();
 
 const ASSETS_DIR: &str = "assets";
 const ASM_DIR: &str = "asm";
@@ -403,7 +403,7 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
     kernel
         .map(|kernel| Assembler::with_kernel(Arc::new(DefaultSourceManager::default()), kernel))
         .unwrap_or_default()
-        .with_debug_mode(true)
+        .with_debug_mode(cfg!(feature = "with-debug-info"))
         .with_dynamic_library(miden_stdlib::StdLibrary::default())
 }
 
