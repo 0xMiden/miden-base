@@ -13,7 +13,7 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, ExecutionError, fast::FastProcessor};
+use vm_processor::{AdviceInputs, ExecutionError, StackInputs, fast::FastProcessor};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::maybe_await;
 
@@ -159,6 +159,9 @@ where
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
+        // this but the new processor expects the reverse of that.
+        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
         let input_notes = tx_inputs.input_notes();
@@ -179,8 +182,7 @@ where
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
-        let processor =
-            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let (stack_outputs, advice_provider) = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
@@ -237,6 +239,10 @@ where
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
+        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
+        // this but the new processor expects the reverse of that.
+        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
+
         let mut advice_inputs = advice_inputs.into_advice_inputs();
 
         let scripts_mast_store =
@@ -305,6 +311,9 @@ where
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
+        // this but the new processor expects the reverse of that.
+        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let mut advice_inputs = advice_inputs.into_advice_inputs();
         let input_notes = tx_inputs.input_notes();
