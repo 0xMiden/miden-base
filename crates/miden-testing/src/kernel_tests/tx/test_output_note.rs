@@ -91,47 +91,47 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             dropw
             # => [note_idx]
 
-            # get the assets hash and assets number of the note having only asset_1
+            # get the assets hash and assets number of the note having only asset_0
             dup exec.output_note::get_assets_info
-            # => [ASSETS_COMMITMENT_1, num_assets_1, note_idx]
+            # => [ASSETS_COMMITMENT_0, num_assets_0, note_idx]
 
             # assert the correctness of the assets hash
             push.{COMPUTED_ASSETS_COMMITMENT_0}
-            assert_eqw.err="assets commitment of the note having only asset_1 is incorrect"
-            # => [num_assets_1, note_idx]
+            assert_eqw.err="assets commitment of the note having only asset_0 is incorrect"
+            # => [num_assets_0, note_idx]
 
             # assert the number of assets
             push.{assets_number_0}
-            assert_eq.err="number of assets in the note having only asset_1 is incorrect"
+            assert_eq.err="number of assets in the note having only asset_0 is incorrect"
             # => [note_idx]
 
             # get the assets info once more to get the cached data and assert that this data didn't
             # change
             dup exec.output_note::get_assets_info
             push.{COMPUTED_ASSETS_COMMITMENT_0}
-            assert_eqw.err="assets commitment of the note having only asset_1 is incorrect"
+            assert_eqw.err="assets commitment of the note having only asset_0 is incorrect"
             push.{assets_number_0}
-            assert_eq.err="number of assets in the note having only asset_1 is incorrect"
+            assert_eq.err="number of assets in the note having only asset_0 is incorrect"
             # => [note_idx]
 
-            # add asset_2 to the note
+            # add asset_1 to the note
             push.{asset_1}
             call.::miden::contracts::wallets::basic::move_asset_to_note
             dropw
             # => [note_idx]
 
-            # get the assets hash and assets number of the note having asset_1 and asset_2
+            # get the assets hash and assets number of the note having asset_0 and asset_1
             dup exec.output_note::get_assets_info
             # => [ASSETS_COMMITMENT_1, num_assets_1, note_idx]
 
             # assert the correctness of the assets hash
             push.{COMPUTED_ASSETS_COMMITMENT_1}
-            assert_eqw.err="assets commitment of the note having asset_1 and asset_2 is incorrect"
+            assert_eqw.err="assets commitment of the note having asset_0 and asset_1 is incorrect"
             # => [num_assets_1, note_idx]
 
             # assert the number of assets
             push.{assets_number_1}
-            assert_eq.err="number of assets in the note having asset_1 and asset_2 is incorrect"
+            assert_eq.err="number of assets in the note having asset_0 and asset_1 is incorrect"
             # => [note_idx]
 
             # truncate the stack
