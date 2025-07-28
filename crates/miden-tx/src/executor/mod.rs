@@ -179,30 +179,17 @@ where
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
-        // Execute the transaction kernel
-        // let trace = vm_processor::execute(
-        //     &TransactionKernel::main(),
-        //     stack_inputs,
-        //     advice_inputs,
-        //     &mut host,
-        //     self.exec_options,
-        //     source_manager,
-        // )
-        // .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
-        // let (stack_outputs, _advice_provider) = trace.into_outputs();
-
         let processor = FastProcessor::new(stack_inputs.as_slice());
-        let stack_outputs = processor
+        let (stack_outputs, advice_provider) = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
             .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
-        // let advice_provider = todo!("fast processor does not return advice provider?");
 
         // The stack is not necessary since it is being reconstructed when re-executing.
-        let advice_inputs = AdviceInputs::default();
-        // TODO:
-        // .with_map(advice_provider.map)
-        // .with_merkle_store(advice_provider.store);
+        let (_stack, advice_map, merkle_store) = advice_provider.into_parts();
+        let advice_inputs = AdviceInputs::default()
+            .with_map(advice_map.iter().map(|(key, value)| (*key, value.to_vec())))
+            .with_merkle_store(merkle_store);
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }

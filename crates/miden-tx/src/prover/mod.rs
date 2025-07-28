@@ -5,7 +5,6 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     account::delta::AccountUpdateDetails,
-    assembly::DefaultSourceManager,
     transaction::{OutputNote, ProvenTransaction, ProvenTransactionBuilder, TransactionWitness},
 };
 pub use miden_prover::ProvingOptions;
@@ -111,17 +110,12 @@ impl TransactionProver for LocalTransactionProver {
         )
         .map_err(TransactionProverError::TransactionHostCreationFailed)?;
 
-        // For the prover, we assume that the transaction witness was successfully executed and so
-        // there is no need to provide the actual source manager, as it is only used to improve
-        // error quality. So we simply pass an empty one.
-        let source_manager = Arc::new(DefaultSourceManager::default());
         let (stack_outputs, proof) = maybe_await!(prove(
             &TransactionKernel::main(),
             stack_inputs,
             advice_inputs.clone(),
             &mut host,
             self.proof_options.clone(),
-            source_manager
         ))
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 

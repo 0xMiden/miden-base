@@ -12,6 +12,10 @@ use miden_lib::{
 use miden_objects::{
     Felt, Word,
     account::{AccountDelta, PartialAccount},
+    assembly::{
+        DefaultSourceManager, SourceManager,
+        debuginfo::{Location, SourceFile, SourceSpan},
+    },
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
@@ -153,6 +157,16 @@ where
     STORE: MastForestStore,
     AUTH: TransactionAuthenticator,
 {
+    fn get_label_and_source_file(
+        &self,
+        location: &Location,
+    ) -> (SourceSpan, Option<Arc<SourceFile>>) {
+        // TODO: Replace with proper call to source manager once the host owns it.
+        let stub_source_manager = DefaultSourceManager::default();
+        let maybe_file = stub_source_manager.get_by_uri(location.uri());
+        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        (span, maybe_file)
+    }
 }
 
 impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>

@@ -4,6 +4,10 @@ use miden_lib::transaction::{TransactionEvent, TransactionEventHandling};
 use miden_objects::{
     Word,
     account::{AccountDelta, PartialAccount},
+    assembly::{
+        SourceFile,
+        debuginfo::{Location, SourceSpan},
+    },
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
@@ -71,7 +75,20 @@ where
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl<STORE> BaseHost for TransactionProverHost<'_, STORE> where STORE: MastForestStore {}
+impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
+where
+    STORE: MastForestStore,
+{
+    fn get_label_and_source_file(
+        &self,
+        _location: &Location,
+    ) -> (SourceSpan, Option<Arc<SourceFile>>) {
+        // For the prover, we assume that the transaction witness is a successfully executed
+        // transaction and so there should be no need to provide the actual source manager, as it
+        // is only used to improve error message quality which we shouldn't run into here.
+        (SourceSpan::UNKNOWN, None)
+    }
+}
 
 impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
 where

@@ -4,6 +4,7 @@ use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::{
     Felt, Word,
     account::{AccountHeader, AccountVaultDelta},
+    assembly::SourceManager,
 };
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
@@ -58,7 +59,21 @@ impl MockHost {
     }
 }
 
-impl BaseHost for MockHost {}
+impl BaseHost for MockHost {
+    fn get_label_and_source_file(
+        &self,
+        location: &miden_objects::assembly::debuginfo::Location,
+    ) -> (
+        miden_objects::assembly::debuginfo::SourceSpan,
+        Option<Arc<miden_objects::assembly::SourceFile>>,
+    ) {
+        // TODO: Replace with proper call to source manager once the host owns it.
+        let stub_source_manager = miden_objects::assembly::DefaultSourceManager::default();
+        let maybe_file = stub_source_manager.get_by_uri(location.uri());
+        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        (span, maybe_file)
+    }
+}
 
 impl SyncHost for MockHost {
     fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {

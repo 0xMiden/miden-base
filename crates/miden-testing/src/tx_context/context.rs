@@ -81,6 +81,7 @@ impl TransactionContext {
                     dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
                 >;
 
+        // TODO: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file = source_manager.load(
             SourceLanguage::Masm,
@@ -111,7 +112,7 @@ impl TransactionContext {
         ))
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)
-        .execute_program(program, source_manager)
+        .execute_program(program)
     }
 
     /// Executes arbitrary code with a testing assembler ([TransactionKernel::testing_assembler()]).
