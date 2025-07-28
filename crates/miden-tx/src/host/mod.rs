@@ -302,12 +302,10 @@ where
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
             TransactionEvent::LinkMapSetEvent => {
-                LinkMap::handle_set_event(process)?;
-                Ok(TransactionEventHandling::Handled(Vec::new()))
+                return LinkMap::handle_set_event(process).map(TransactionEventHandling::Handled);
             },
             TransactionEvent::LinkMapGetEvent => {
-                LinkMap::handle_get_event(process)?;
-                Ok(TransactionEventHandling::Handled(Vec::new()))
+                return LinkMap::handle_get_event(process).map(TransactionEventHandling::Handled);
             },
             TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
