@@ -67,22 +67,44 @@ export.get_assets
     # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
 
     # load the asset data from the advice map to the advice stack
-    adv.push_mapval
-    # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+    adv.push_mapval dropw
+    # OS => [num_assets, note_index, dest_ptr]
     # AS => [[ASSETS_DATA]]
 
-    # prepare the stack for the `pipe_words_to_memory` procedure
-    dup.6 dup.5
-    # OS => [num_assets, dest_ptr, ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
-    # AS => []
+    # move the assets from the advice stack to the memory
 
-    # move the assets to the destination pointer
-    exec.mem::pipe_words_to_memory
-    # OS => [C, B, A, dest_ptr', ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+    # compute the loop flag and prepare the stack for the loop
+    dup dup neq.0 padw movup.4
+    # OS => [loop_flag, WORD, assets_left, num_assets, note_index, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # loop until we move all the assets to the memory
+    while.true
+        # load the asset to the operand stack
+        adv_loadw
+        # OS => [ASSET, assets_left, num_assets, note_index, dest_ptr]
+        # AS => [[ASSETS_DATA]]
+        
+        # store the asset in memory
+        dup.7 mem_storew
+        # OS => [ASSET, assets_left, num_assets, note_index, dest_ptr]
+        # AS => [[ASSETS_DATA]]
+
+        # decrease the number of remaining assets
+        movup.4 sub.1
+        # OS => [assets_left-1, ASSET, num_assets, note_index, dest_ptr]
+        # AS => [[ASSETS_DATA]]
+
+        # prepare the loop flag
+        dup movdn.5 neq.0
+        # OS => [loop_flag, ASSET, assets_left-1, num_assets, note_index, dest_ptr]
+        # AS => [[ASSETS_DATA]]
+    end
 
     # clean the stack
-    dropw dropw dropw drop dropw
+    dropw drop
     # OS => [num_assets, note_index, dest_ptr]
+    # AS => []
 end
 
 #! Returns the recipient commitment of the output note with the specified index.
