@@ -4,7 +4,7 @@ use alloc::{
     vec::Vec,
 };
 
-use assembly::{Assembler, Parse};
+use assembly::Assembler;
 use miden_crypto::merkle::InnerNodeInfo;
 
 use super::{AccountInputs, Felt, Word};
@@ -280,11 +280,19 @@ impl TransactionScript {
     /// # Errors
     /// Returns an error if the compilation of the provided source code fails.
     pub fn compile(
-        source_code: impl Parse,
+        source_code: impl AsRef<str>,
         assembler: Assembler,
     ) -> Result<Self, TransactionScriptError> {
+        // Check for empty or whitespace-only script
+        let src_str = source_code.as_ref();
+        if src_str.trim().is_empty() {
+            use assembly::diagnostics::Report;
+            return Err(TransactionScriptError::AssemblyError(Report::msg(
+                "error: empty transaction script",
+            )));
+        }
         let program = assembler
-            .assemble_program(source_code)
+            .assemble_program(src_str)
             .map_err(TransactionScriptError::AssemblyError)?;
         Ok(Self::new(program))
     }
