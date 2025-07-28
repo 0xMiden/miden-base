@@ -54,7 +54,7 @@ impl MockHost {
         process: &ProcessState,
     ) -> Result<Vec<AdviceMutation>, EventError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process).map_err(Box::new)?;
-        Ok(vec![AdviceMutation::ExtendStack { iter: vec![Felt::from(proc_idx)] }])
+        Ok(vec![AdviceMutation::extend_stack(vec![Felt::from(proc_idx)])])
     }
 }
 

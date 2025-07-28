@@ -144,7 +144,6 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        _source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -179,18 +178,6 @@ where
             tx_args.foreign_account_code_commitments(),
         )
         .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
-
-        // Execute the transaction kernel
-        // let trace = vm_processor::execute(
-        //     &TransactionKernel::main(),
-        //     stack_inputs,
-        //     advice_inputs,
-        //     &mut host,
-        //     self.exec_options,
-        //     source_manager,
-        // )
-        // .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
-        // let (stack_outputs, _advice_provider) = trace.into_outputs();
 
         let processor = FastProcessor::new(stack_inputs.as_slice());
         let (stack_outputs, advice_provider) = processor

@@ -128,7 +128,7 @@ where
             signature
         };
 
-        Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
+        Ok(vec![AdviceMutation::extend_stack(signature)])
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
