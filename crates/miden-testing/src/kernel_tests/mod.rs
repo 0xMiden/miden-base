@@ -8,7 +8,7 @@ use alloc::{
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::{
-    account::auth::NoAuth,
+    account::auth::AuthNone,
     note::{create_p2id_note, create_p2ide_note},
     transaction::TransactionKernel,
     utils::word_to_masm_push_string,
@@ -509,7 +509,7 @@ fn test_send_note_proc() -> miette::Result<()> {
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component: AccountComponent = NoAuth.into();
+    let auth_component: AccountComponent = AuthNone.into();
 
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,

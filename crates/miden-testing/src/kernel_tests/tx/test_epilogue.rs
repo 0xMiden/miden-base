@@ -1,7 +1,7 @@
 use alloc::{string::ToString, vec::Vec};
 
 use miden_lib::{
-    account::auth::NoAuth,
+    account::auth::AuthNone,
     errors::tx_kernel_errors::{
         ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
         ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
@@ -95,7 +95,7 @@ fn test_epilogue() -> anyhow::Result<()> {
     )?;
 
     let assembler = TransactionKernel::assembler();
-    let auth_component: AccountComponent = NoAuth.into();
+    let auth_component: AccountComponent = AuthNone.into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,

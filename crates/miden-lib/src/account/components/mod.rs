@@ -36,10 +36,10 @@ static RPO_FALCON_512_PROCEDURE_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|
         .expect("Shipped Rpo Falcon 512 Procedure ACL library is well-formed")
 });
 
-// Initialize the NoAuth library only once.
+// Initialize the AuthNone library only once.
 static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/no_auth.masl"));
-    Library::read_from_bytes(bytes).expect("Shipped NoAuth library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped AuthNone library is well-formed")
 });
 
 /// Returns the Basic Wallet Library.
@@ -62,7 +62,7 @@ pub fn rpo_falcon_512_procedure_acl_library() -> Library {
     RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.clone()
 }
 
-/// Returns the NoAuth Library.
+/// Returns the AuthNone Library.
 pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
 }

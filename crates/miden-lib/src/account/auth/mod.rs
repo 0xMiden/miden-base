@@ -128,12 +128,14 @@ impl From<RpoFalcon512ProcedureAcl> for AccountComponent {
 /// that don't require authentication.
 ///
 /// This component supports all account types.
-pub struct NoAuth;
+pub struct AuthNone;
 
-impl From<NoAuth> for AccountComponent {
-    fn from(_: NoAuth) -> Self {
+impl From<AuthNone> for AccountComponent {
+    fn from(_: AuthNone) -> Self {
         AccountComponent::new(no_auth_library(), vec![])
-            .expect("NoAuth component should satisfy the requirements of a valid account component")
+            .expect(
+                "AuthNone component should satisfy the requirements of a valid account component",
+            )
             .with_supports_all_types()
     }
 }
@@ -220,10 +222,10 @@ mod tests {
     }
 
     #[test]
-    fn test_no_auth_component() {
-        // Create an account using the NoAuth component
+    fn test_auth_none_component() {
+        // Create an account using the AuthNone component
         let (_account, _) = AccountBuilder::new([0; 32])
-            .with_auth_component(NoAuth)
+            .with_auth_component(AuthNone)
             .with_component(BasicWallet)
             .build()
             .expect("account building failed");

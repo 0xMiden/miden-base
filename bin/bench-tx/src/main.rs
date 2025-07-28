@@ -2,7 +2,7 @@ use core::fmt;
 use std::{fs::File, io::Write, path::Path};
 
 use anyhow::Context;
-use miden_lib::{account::auth::NoAuth, note::create_p2id_note, transaction::TransactionKernel};
+use miden_lib::{account::auth::AuthNone, note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt, FieldElement,
     account::{Account, AccountComponent, AccountId, AccountStorageMode, AccountType},
@@ -59,7 +59,7 @@ fn main() -> anyhow::Result<()> {
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component: AccountComponent = NoAuth.into();
+    let auth_component: AccountComponent = AuthNone.into();
 
     let tx_context = {
         let account = Account::mock(

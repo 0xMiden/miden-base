@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::{account::auth::NoAuth, transaction::TransactionKernel};
+use miden_lib::{account::auth::AuthNone, transaction::TransactionKernel};
 use miden_objects::{
     AccountTreeError, Digest, EMPTY_WORD, Felt, FieldElement, NullifierTreeError,
     account::{
@@ -253,8 +253,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // --------------------------------------------------------------------------------------------
 
     let mut mock_chain = MockChain::new();
-
-    let auth_component: AccountComponent = NoAuth.into();
+    let auth_component: AccountComponent = AuthNone.into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())

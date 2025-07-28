@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{NoAuth, RpoFalcon512, RpoFalcon512ProcedureAcl},
+    account::auth::{AuthNone, RpoFalcon512, RpoFalcon512ProcedureAcl},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -20,19 +20,20 @@ use rand_chacha::ChaCha20Rng;
 #[derive(Debug, Clone)]
 pub enum Auth {
     /// Creates a [SecretKey] for the account and creates a [BasicAuthenticator] used to
-    /// authenticate the account with [RpoFalcon512].
+    /// authenticate the account with [RpoFalcon512] from miden-lib.
     BasicAuth,
 
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
-    /// authenticate the account with [RpoFalcon512ProcedureAcl]. Authentication will only be
-    /// triggered if any of the procedures specified in the list are called during execution.
+    /// authenticate the account with [RpoFalcon512ProcedureAcl] from miden-lib. Authentication will
+    /// only be triggered if any of the procedures specified in the list are called during
+    /// execution.
     ProcedureAcl { auth_trigger_procedures: Vec<Digest> },
 
     /// Creates a mock authentication mechanism for the account that does nothing.
     Noop,
 
-    /// Creates a NoAuth component from miden-lib that only increments the nonce.
-    /// This is the standard NoAuth component that should be used for testing.
+    /// Creates an AuthNone component from miden-lib that only increments the nonce.
+    /// This is the standard AuthNone component that should be used for testing.
     NoAuth,
 
     /// TODO update once #1501 is ready.
@@ -81,7 +82,7 @@ impl Auth {
             },
 
             Auth::NoAuth => {
-                let component = NoAuth.into();
+                let component = AuthNone.into();
                 (component, None)
             },
 

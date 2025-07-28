@@ -4,7 +4,7 @@
 use alloc::{collections::BTreeMap, vec::Vec};
 
 use anyhow::Context;
-use miden_lib::{account::auth::NoAuth, transaction::TransactionKernel};
+use miden_lib::{account::auth::AuthNone, transaction::TransactionKernel};
 use miden_objects::{
     EMPTY_WORD, FieldElement,
     account::{Account, AccountComponent},
@@ -103,7 +103,7 @@ impl TransactionContextBuilder {
     pub fn with_existing_mock_account() -> Self {
         // Build standard account with normal assembler because the testing one already contains it
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component: AccountComponent = NoAuth.into();
+        let auth_component: AccountComponent = AuthNone.into();
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
