@@ -3,8 +3,8 @@ use alloc::string::String;
 use miden_lib::{
     transaction::memory::{
         NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
-        OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_NUM_ASSETS_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET,
-        OUTPUT_NOTE_SECTION_OFFSET,
+        OUTPUT_NOTE_DIRTY_FLAG_OFFSET, OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_NUM_ASSETS_OFFSET,
+        OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
     },
     utils::word_to_masm_push_string,
 };
@@ -121,6 +121,9 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
     
                 push.{num_assets}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_NUM_ASSETS_OFFSET} add add mem_store
+
+                push.1 # dirty flag should be `1` by default
+                push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_DIRTY_FLAG_OFFSET} add add mem_store
     
                 push.{first_asset}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_ASSETS_OFFSET} add add mem_storew dropw

@@ -322,16 +322,16 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // Each nullifier occupies a single word. A data section for each note consists of exactly 512
 // words and is laid out like so:
 //
-// ┌──────┬────────┬────────┬────────┬────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
-// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │ ASSETS │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
-// │  ID  │  NUM   │  ROOT  │  HASH  │  HASH  │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
-// ├──────┼────────┼────────┼────────┼────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
-// 0      4        8        12       16       20     24      28       32       36 + 4n
+// ┌──────┬────────┬────────┬────────┬────────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
+// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
+// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
+// ├──────┼────────┼────────┼────────┼────────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
+// 0      4        8        12       16           20     24      28       32       36 + 4n
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
 // - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
-// - ASSETS_HASH is the key to look up note assets in the advice map.
+// - ASSETS_COMMITMENT is the key to look up note assets in the advice map.
 //
 // Notice that note input values are not loaded to the memory, only their length. In order to obtain
 // the input values the advice map should be used: they are stored there as 
@@ -357,7 +357,7 @@ pub const INPUT_NOTE_ID_OFFSET: MemoryOffset = 0;
 pub const INPUT_NOTE_SERIAL_NUM_OFFSET: MemoryOffset = 4;
 pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
 pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
-pub const INPUT_NOTE_ASSETS_HASH_OFFSET: MemoryOffset = 16;
+pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
 pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 20;
 pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 24;
 pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 28;
@@ -377,13 +377,22 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
 // The total number of output notes for a transaction is stored in the bookkeeping section of the
 // memory. Data section of each note is laid out like so:
 //
-// ┌─────────┬──────────┬───────────┬─────────────┬────────────┬─────────┬─────┬─────────┬─────────┐
-// │ NOTE ID │ METADATA │ RECIPIENT │ ASSETS HASH │ NUM ASSETS │ ASSET 0 │ ... │ ASSET n │ PADDING │
-// ├─────────┼──────────┼───────────┼─────────────┼────────────┼─────────┼─────┼─────────┼─────────┤
-//      0          1          2            3            4           5             5 + n
+// ┌──────┬──────────┬───────────┬────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
+// │ NOTE │ METADATA │ RECIPIENT │   ASSETS   │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │ PADDING │
+// |  ID  |          |           | COMMITMENT | AND DIRTY FLAG |         |     |         |         |
+// ├──────┼──────────┼───────────┼────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
+//    0        1           2           3              4             5             5 + n
 //
-// Even though NUM_ASSETS takes up a whole word, the actual value of this variable is stored in the
-// first element of the word.
+// The NUM_ASSETS_AND_DIRTY_FLAG word has the following layout:
+// `[num_assets, assets_commitment_dirty_flag, 0, 0]`, where:
+// - `num_assets` is the number of assets in this output note.
+// - `assets_commitment_dirty_flag` is the binary flag which specifies whether the assets commitment
+//   stored in this note is outdated. It holds 1 if some changes were made to the note assets since
+//   the last re-computation, and 0 otherwise.
+//
+// Dirty flag is set to 0 after every recomputation of the assets commitment in the
+// `kernel::note::compute_output_note_assets_commitment` procedure. It is set to 1 in the
+// `kernel::tx::add_asset_to_note` procedure after any change was made to the assets data .
 
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;
@@ -397,6 +406,7 @@ pub const OUTPUT_NOTE_METADATA_OFFSET: MemoryOffset = 4;
 pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
 pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
+pub const OUTPUT_NOTE_DIRTY_FLAG_OFFSET: MemoryOffset = 17;
 pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
 
 // LINK MAP

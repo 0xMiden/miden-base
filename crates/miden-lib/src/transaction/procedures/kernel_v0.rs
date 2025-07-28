@@ -6,7 +6,7 @@ use miden_objects::{word, Word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Word; 41] = [
+pub const KERNEL0_PROCEDURES: [Word; 42] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
@@ -54,7 +54,7 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // note_get_assets_info
     word!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
     // note_add_asset
-    word!("0x18a7eb3dc20a43bae5270cd2d12e57af7863fa4796c3f2f66e2fd66b31a518ad"),
+    word!("0xb2c9c56be0d94ac3a0dd787ee12a4e5b9cc0d576f1e112ca0a6940e86f549e6f"),
     // note_get_serial_number
     word!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
@@ -64,7 +64,9 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // note_get_script_root
     word!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // input_note_get_assets_info
-    word!("0xbc0eb21713a5a005c53d9acc97d41cc2584bd0b36e1e5eb27c9bb5a761350a2b"),
+    word!("0xe900a33c3dee3196cfd09c6375981fe77b0651b1bd786c792900534196e17663"),
+    // output_note_get_assets_info
+    word!("0xe3f2430bb2c109b187f3722b4f7776f9d59dde0bb073dc24c27e4e0eca7683a0"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
@@ -72,7 +74,7 @@ pub const KERNEL0_PROCEDURES: [Word; 41] = [
     // tx_get_num_input_notes
     word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
     // tx_get_output_notes_commitment
-    word!("0x0c241940512d130ad36c70c4e946285cb5841f2655c4fe12df001cb834256a29"),
+    word!("0x9c94ca576def549b2b77855ec9ee7bce460f275fbc196650040c93b34543a34d"),
     // tx_get_num_output_notes
     word!("0x0d9d5cca827893238181b973ec43af8ee4b4018dd32c8d2e85fd797d978c88c0"),
     // tx_get_block_commitment

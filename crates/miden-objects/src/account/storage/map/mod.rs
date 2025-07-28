@@ -11,6 +11,9 @@ use crate::{
     errors::StorageMapError,
 };
 
+mod partial;
+pub use partial::PartialStorageMap;
+
 // ACCOUNT STORAGE MAP
 // ================================================================================================
 

@@ -3,7 +3,7 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl},
+    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
     transaction::TransactionKernel,
 };
 use miden_objects::{
@@ -28,7 +28,11 @@ pub enum Auth {
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
-    ProcedureAcl { auth_trigger_procedures: Vec<Word> },
+    ProcedureAcl {
+        auth_trigger_procedures: Vec<Word>,
+        allow_unauthorized_output_notes: bool,
+        allow_unauthorized_input_notes: bool,
+    },
 
     /// Creates a mock authentication mechanism for the account that only increments the nonce.
     IncrNonce,
@@ -63,14 +67,24 @@ impl Auth {
 
                 (component, Some(authenticator))
             },
-            Auth::ProcedureAcl { auth_trigger_procedures } => {
+            Auth::ProcedureAcl {
+                auth_trigger_procedures,
+                allow_unauthorized_output_notes,
+                allow_unauthorized_input_notes,
+            } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
                 let pub_key = sec_key.public_key();
 
-                let component = AuthRpoFalcon512Acl::new(pub_key, auth_trigger_procedures.clone())
-                    .expect("component creation failed")
-                    .into();
+                let component = AuthRpoFalcon512Acl::new(
+                    pub_key,
+                    AuthRpoFalcon512AclConfig::new()
+                        .with_auth_trigger_procedures(auth_trigger_procedures.clone())
+                        .with_allow_unauthorized_output_notes(*allow_unauthorized_output_notes)
+                        .with_allow_unauthorized_input_notes(*allow_unauthorized_input_notes),
+                )
+                .expect("component creation failed")
+                .into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
                     &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,
