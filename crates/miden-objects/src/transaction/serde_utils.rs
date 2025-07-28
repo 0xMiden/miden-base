@@ -31,60 +31,49 @@ where
 }
 
 // ------------------------------------------------------------------------------------------------
-// MACROS
+// NOTE COLLECTION TRAIT
 // ------------------------------------------------------------------------------------------------
 
-/// Implements common getter/helper methods (`is_empty`, `get_note`, and `iter`) for note
-/// collection structs that internally store a `Vec` named `notes`.
+/// Common behaviour for collections of notes used as transaction inputs / outputs.
 ///
-/// The macro supports both generic and non-generic structs:
+/// The trait is intentionally minimal: a single required `notes()` accessor, with all helper
+/// methods (`num_notes`, `is_empty`, `get_note`, `iter`) provided via default implementations.
 ///
-/// ```ignore
-/// // Non-generic collection
-/// impl_note_collection_getters!(OutputNotes, OutputNote);
-///
-/// // Generic collection
-/// impl_note_collection_getters!(InputNotes<T>);
-/// ```
-#[macro_export]
-macro_rules! impl_note_collection_getters {
-    // Non-generic struct – the item type must be supplied explicitly so the macro can use it in
-    // method signatures.
-    ($struct:ident, $item:ty) => {
-        impl $struct {
-            #[inline]
-            pub fn is_empty(&self) -> bool {
-                self.notes.is_empty()
-            }
+/// This allows different note collection structs to expose consistent APIs without having to
+/// repeat the boiler-plate code, while still giving each struct the freedom to provide additional
+/// inherent methods (like `num_notes` returning a specific integer type).
+pub trait NoteCollection {
+    /// The concrete note type held by the collection.
+    type Note;
 
-            #[inline]
-            pub fn get_note(&self, idx: usize) -> &$item {
-                &self.notes[idx]
-            }
+    /// Borrow the underlying slice of notes.
+    fn notes(&self) -> &[Self::Note];
 
-            #[inline]
-            pub fn iter(&self) -> core::slice::Iter<'_, $item> {
-                self.notes.iter()
-            }
-        }
-    };
+    /// Returns total number of notes (as `usize`).
+    #[inline]
+    fn num_notes_usize(&self) -> usize {
+        self.notes().len()
+    }
 
-    // Generic struct – the item type is the generic parameter itself.
-    ($struct:ident < $generic:ident >) => {
-        impl<$generic> $struct<$generic> {
-            #[inline]
-            pub fn is_empty(&self) -> bool {
-                self.notes.is_empty()
-            }
+    /// Returns `true` if the collection is empty.
+    #[inline]
+    fn is_empty(&self) -> bool {
+        self.notes().is_empty()
+    }
 
-            #[inline]
-            pub fn get_note(&self, idx: usize) -> &$generic {
-                &self.notes[idx]
-            }
-            #[inline]
-            pub fn iter(&self) -> core::slice::Iter<'_, $generic> {
-                self.notes.iter()
-            }
-        }
-    };
+    /// Returns a reference to the note at the given index.
+    #[inline]
+    fn get_note(&self, idx: usize) -> &Self::Note {
+        &self.notes()[idx]
+    }
+
+    /// Returns an iterator over the notes.
+    #[inline]
+    fn iter(&self) -> core::slice::Iter<'_, Self::Note> {
+        self.notes().iter()
+    }
 }
+
+// ------------------------------------------------------------------------------------------------
+// (Previously there was a macro for generating helpers; now superseded by `NoteCollection` trait)
+// ------------------------------------------------------------------------------------------------

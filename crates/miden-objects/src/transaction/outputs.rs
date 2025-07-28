@@ -13,6 +13,36 @@ use crate::{
 };
 
 use super::serde_utils::{read_vec_with_len, write_vec_with_len};
+use super::serde_utils::NoteCollection;
+
+// Implement the shared `NoteCollection` trait for `OutputNotes`.
+impl NoteCollection for OutputNotes {
+    type Note = OutputNote;
+
+    #[inline]
+    fn notes(&self) -> &[Self::Note] {
+        &self.notes
+    }
+}
+
+// Re-expose convenient inherent methods delegating to the trait, so existing code doesn't have to
+// bring the trait into scope.
+impl OutputNotes {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        NoteCollection::is_empty(self)
+    }
+
+    #[inline]
+    pub fn get_note(&self, idx: usize) -> &OutputNote {
+        NoteCollection::get_note(self, idx)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> core::slice::Iter<'_, OutputNote> {
+        NoteCollection::iter(self)
+    }
+}
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -107,11 +137,8 @@ impl OutputNotes {
         self.notes.len()
     }
 
-    // Getter helpers (`is_empty`, `get_note`, `iter`) are provided by a shared macro below.
+    // Getter helpers (`is_empty`, `get_note`, `iter`) are provided via the `NoteCollection` trait.
 }
-
-// Implement common getter helpers using the shared macro.
-crate::impl_note_collection_getters!(OutputNotes, OutputNote);
 
 // SERIALIZATION
 // ------------------------------------------------------------------------------------------------

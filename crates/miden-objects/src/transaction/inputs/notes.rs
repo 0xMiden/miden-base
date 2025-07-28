@@ -6,7 +6,7 @@ use crate::{
     note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
-use crate::transaction::serde_utils::{read_vec_with_len, write_vec_with_len};
+use crate::transaction::serde_utils::{read_vec_with_len, write_vec_with_len, NoteCollection};
 
 // TO INPUT NOTE COMMITMENT
 // ================================================================================================
@@ -98,11 +98,36 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
             .expect("by construction, number of notes fits into u16")
     }
 
-    // Getter helpers (`is_empty`, `get_note`, `iter`) are provided by a shared macro below.
+    // Getter helpers (`is_empty`, `get_note`, `iter`) are provided via the `NoteCollection` trait.
 }
 
-// Implement common getter helpers for the generic `InputNotes<T>` collection.
-crate::impl_note_collection_getters!(InputNotes<T>);
+// Implement the shared `NoteCollection` trait for `InputNotes<T>`.
+impl<T> NoteCollection for InputNotes<T> {
+    type Note = T;
+
+    #[inline]
+    fn notes(&self) -> &[Self::Note] {
+        &self.notes
+    }
+}
+
+// Provide inherent delegations for backwards-compatibility.
+impl<T> InputNotes<T> {
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        NoteCollection::is_empty(self)
+    }
+
+    #[inline]
+    pub fn get_note(&self, idx: usize) -> &T {
+        NoteCollection::get_note(self, idx)
+    }
+
+    #[inline]
+    pub fn iter(&self) -> core::slice::Iter<'_, T> {
+        NoteCollection::iter(self)
+    }
+}
 
 // Additional conversion helpers ---------------------------------------------------------------
 
