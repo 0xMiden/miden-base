@@ -48,7 +48,7 @@ miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batc
 
 # Miden dependencies
 assembly         = { default-features = false, package = "miden-assembly", version = "0.16.3" }
-miden-crypto     = { default-features = false, version = "0.15.5" }
+miden-crypto     = { default-features = false, version = "0.15.6" }
 miden-prover     = { default-features = false, version = "0.16.3" }
 miden-stdlib     = { default-features = false, version = "0.16.3" }
 miden-utils-sync = { default-features = false, version = "0.16.3" }

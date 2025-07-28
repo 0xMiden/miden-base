@@ -583,9 +583,12 @@ export.add_asset_to_note
     end
     # => [note_ptr, note_idx]
 
+    # update the assets commitment dirty flag to signal that the current assets commitment is not 
+    # valid anymore
+    push.1 swap exec.memory::set_output_note_dirty_flag
+    # => [note_idx]
+
     # emit event to signal that a new asset was added to the note.
     emit.NOTE_AFTER_ADD_ASSET_EVENT
-
-    drop
     # => [note_idx]
 end

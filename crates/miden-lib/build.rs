@@ -43,7 +43,7 @@ const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
 const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
 
-const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
+const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 14] = [
     TxKernelErrorCategory::Kernel,
     TxKernelErrorCategory::Prologue,
     TxKernelErrorCategory::Epilogue,
@@ -56,6 +56,8 @@ const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
     TxKernelErrorCategory::NonFungibleAsset,
     TxKernelErrorCategory::Vault,
     TxKernelErrorCategory::LinkMap,
+    TxKernelErrorCategory::InputNote,
+    TxKernelErrorCategory::OutputNote,
 ];
 
 // PRE-PROCESSING
@@ -757,6 +759,8 @@ enum TxKernelErrorCategory {
     NonFungibleAsset,
     Vault,
     LinkMap,
+    InputNote,
+    OutputNote,
 }
 
 impl TxKernelErrorCategory {
@@ -774,6 +778,8 @@ impl TxKernelErrorCategory {
             TxKernelErrorCategory::NonFungibleAsset => "NON_FUNGIBLE_ASSET",
             TxKernelErrorCategory::Vault => "VAULT",
             TxKernelErrorCategory::LinkMap => "LINK_MAP",
+            TxKernelErrorCategory::InputNote => "INPUT_NOTE",
+            TxKernelErrorCategory::OutputNote => "OUTPUT_NOTE",
         }
     }
 }

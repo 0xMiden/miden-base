@@ -4,67 +4,128 @@ use.miden::tx
 # CONSTANTS
 # =================================================================================================
 
-# The slot where the number of auth trigger procedures is stored.
-const.NUM_AUTH_TRIGGER_PROCS_SLOT=1
+# The slot where the authentication configuration is stored.
+const.AUTH_CONFIG_SLOT=1
 
 # The slot where the map of auth trigger procedure roots is stored.
 const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 
-#! Authenticate a transaction using the Falcon signature scheme only if specified auth trigger
-#! procedures were called.
+#! Authenticate a transaction using the Falcon signature scheme based on procedure calls and note usage.
 #!
-#! This authentication procedure checks if any of the trigger procedures were called during the
-#! transaction. If none were called, authentication is skipped. If at least one was called,
-#! the standard RpoFalcon512 signature verification is performed.
-#! Nonce is incremented in both cases.
+#! This authentication procedure checks:
+#! 1. If any of the trigger procedures were called during the transaction
+#! 2. If input notes were consumed and allow_unauthorized_input_notes is false
+#! 3. If output notes were created and allow_unauthorized_output_notes is false
 #!
-#! Inputs:  [pad(16)]
+#! If any of these conditions are true, standard RpoFalcon512 signature verification is performed.
+#! Otherwise, only the nonce is incremented.
+#!
+#! Inputs:  [AUTH_ARGS, pad(12)]
 #! Outputs: [pad(16)]
-export.auth__tx_rpo_falcon512_procedure_acl
-    # Get the number of trigger procedures
-    push.NUM_AUTH_TRIGGER_PROCS_SLOT exec.account::get_item drop drop drop
+export.auth__tx_rpo_falcon512_procedure_acl.2
+    dropw
+    # => [pad(16)]
+
+    # Get the authentication configuration
+    push.AUTH_CONFIG_SLOT exec.account::get_item
+    # => [0, num_auth_trigger_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes, pad(16)]
+
+    drop
+    # => [allow_unauthorized_input_notes, allow_unauthorized_output_notes, num_auth_trigger_procs, pad(16)]
+
+    loc_store.1 loc_store.0
     # => [num_auth_trigger_procs, pad(16)]
 
-    # Check if any trigger procedure was called
-    # Counter `i` starts at `num_auth_trigger_procs` and flag `was_any_called` starts at 0
+    # ------ Check if any trigger procedure was called ------
+
+    # Counter `i` starts at `num_auth_trigger_procs` and flag `require_acl_auth` starts at 0
+    # `require_acl_auth` is true if any ACL procedures were called
     push.0
-    # => [was_any_called, i, pad(16)]
+    # => [require_acl_auth, i, pad(16)]
 
     # Loop through trigger procedures
     dup.1 neq.0
     while.true
-        # => [was_any_called, i, pad(16)]
+        # => [require_acl_auth, i, pad(16)]
 
         # Get the procedure root from storage
         dup.1 sub.1 push.0.0.0 push.AUTH_TRIGGER_PROCS_MAP_SLOT
-        # => [AUTH_TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], was_any_called, i, pad(16)]
+        # => [AUTH_TRIGGER_PROCS_MAP_SLOT, [0, 0, 0, i-1], require_acl_auth, i, pad(16)]
 
         exec.account::get_map_item
-        # => [AUTH_TRIGGER_PROC_ROOT, was_any_called, i, pad(16)]
+        # => [AUTH_TRIGGER_PROC_ROOT, require_acl_auth, i, pad(16)]
 
         exec.account::was_procedure_called
-        # => [was_called, was_any_called, i, pad(16)]
+        # => [was_called, require_acl_auth, i, pad(16)]
 
-        # Update was_any_called
+        # Update require_acl_auth
         or
-        # => [was_any_called', i, pad(16)]
+        # => [require_acl_auth', i, pad(16)]
 
         swap sub.1 swap
-        # => [was_any_called', i-1, pad(16)]
+        # => [require_acl_auth', i-1, pad(16)]
 
         # Check if we should continue looping
         dup.1 neq.0
-        # => [should_continue, was_any_called', i-1, pad(16)]
+        # => [should_continue, require_acl_auth', i-1, pad(16)]
     end
+    # => [require_acl_auth, i-1, pad(16)]
 
-    # => [was_any_called, i-1, pad(16)]
+    swap drop
+    # => [require_acl_auth, pad(16)]
 
-    # If any trigger procedure was called, perform signature verification
+    # ------ Check if output notes were created ------
+
+    exec.tx::get_num_output_notes
+    # => [num_output_notes, require_acl_auth, pad(16)]
+
+    neq.0
+    # => [were_output_notes_created, require_acl_auth, pad(16)]
+
+    loc_load.0 not
+    # => [!allow_unauthorized_output_notes, were_output_notes_created, require_acl_auth, pad(16)]
+
+    and
+    # => [require_output_note_auth, require_acl_auth, pad(16)]
+
+    or
+    # => [auth_required, pad(16)]
+
+    # ------ Check if input notes were consumed ------
+
+    exec.tx::get_num_input_notes
+    # => [INPUT_NOTES_COMMITMENT, auth_required, pad(16)]
+
+    neq.0
+    # => [were_input_notes_consumed, auth_required, pad(16)]
+
+    loc_load.1 not
+    # => [!allow_unauthorized_input_notes, were_input_notes_consumed, auth_required, pad(16)]
+
+    and
+    # => [require_input_note_auth, auth_required, pad(16)]
+
+    or
+    # => [auth_required, pad(16)]
+
+    # If authentication is required, perform signature verification
     if.true
         exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
     else
-        exec.account::incr_nonce drop
-    end
+        # ------ Check if initial account commitment differs from current commitment ------
 
-    drop
+        exec.account::get_initial_commitment
+        # => [INITIAL_COMMITMENT, pad(16)]
+
+        exec.account::compute_current_commitment
+        # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
+
+        eqw not movdn.8 dropw dropw
+        # => [has_account_state_changed, pad(16)]
+
+        if.true
+            exec.account::incr_nonce drop
+        end
+    end
+    # => [pad(16)]
 end

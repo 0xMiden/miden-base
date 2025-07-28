@@ -148,6 +148,11 @@ impl PartialBlockchain {
         )
     }
 
+    /// Returns the number of blocks tracked by this partial blockchain.
+    pub fn num_tracked_blocks(&self) -> usize {
+        self.blocks.len()
+    }
+
     /// Returns `true` if a block with the given number is present in this partial blockchain.
     ///
     /// Note that this only checks whether an entry with the block's number exists in the MMR.
@@ -201,7 +206,7 @@ impl PartialBlockchain {
     /// [`PartialBlockchain`].
     ///
     /// This does not change the commitment to the underlying MMR, but the current partial MMR
-    /// will no longer track the removed data.  
+    /// will no longer track the removed data.
     pub fn remove(&mut self, block_num: BlockNumber) {
         if self.blocks.remove(&block_num).is_some() {
             self.mmr.untrack(block_num.as_usize());
@@ -455,14 +460,17 @@ mod tests {
                 .unwrap();
         }
         let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();
+        assert_eq!(chain.num_tracked_blocks(), total_blocks as usize);
 
         chain.remove(BlockNumber::from(2));
         assert!(!chain.contains_block(2.into()));
         assert!(!chain.mmr().is_tracked(2));
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 1) as usize);
 
         assert!(chain.contains_block(3.into()));
 
         chain.prune_to(..40.into());
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 40) as usize);
 
         assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
         for block_num in remove_before..total_blocks {

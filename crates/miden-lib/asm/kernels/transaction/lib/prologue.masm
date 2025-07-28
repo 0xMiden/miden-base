@@ -618,7 +618,7 @@ end
 #!      SERIAL_NUMBER,
 #!      SCRIPT_ROOT,
 #!      INPUTS_COMMITMENT,
-#!      ASSETS_HASH,
+#!      ASSETS_COMMITMENT,
 #!   ]
 #! Outputs:
 #!   Operand stack: [NULLIFIER]
@@ -629,8 +629,9 @@ end
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
-#! - ASSETS_HASH is the sequential hash of the padded note's assets.
-#! - NULLIFIER is the result of `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_HASH)`.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
+#! - NULLIFIER is the result of 
+#!   `hash(SERIAL_NUMBER || SCRIPT_ROOT || INPUTS_COMMITMENT || ASSETS_COMMITMENT)`.
 proc.process_input_note_details
     exec.memory::get_input_note_core_ptr
     # => [note_data_ptr]
@@ -781,7 +782,7 @@ proc.process_note_assets
     # => [note_ptr, ASSET_COMMITMENT_COMPUTED]
 
     # VERIFY: computed ASSET_COMMITMENT matches the provided hash
-    exec.memory::get_input_note_assets_hash
+    exec.memory::get_input_note_assets_commitment
     assert_eqw.err=ERR_PROLOGUE_PROVIDED_INPUT_ASSETS_INFO_DOES_NOT_MATCH_ITS_COMMITMENT
     # => []
 end
@@ -857,7 +858,7 @@ proc.compute_input_note_id
     # => [RECIPIENT, note_ptr]
 
     # compute NOTE_ID: hash(RECIPIENT || ASSET_COMMITMENT)
-    movup.4 exec.memory::get_input_note_assets_hash hmerge
+    movup.4 exec.memory::get_input_note_assets_commitment hmerge
     # => [NOTE_ID]
 end
 
@@ -874,7 +875,7 @@ end
 #!      SERIAL_NUMBER,
 #!      SCRIPT_ROOT,
 #!      INPUTS_COMMITMENT,
-#!      ASSETS_HASH,
+#!      ASSETS_COMMITMENT,
 #!      ARGS,
 #!      NOTE_METADATA,
 #!      assets_count,
@@ -897,7 +898,7 @@ end
 #! - SERIAL_NUMBER is the note's serial.
 #! - SCRIPT_ROOT is the note's script root.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
-#! - ASSETS_HASH is the sequential hash of the padded note's assets.
+#! - ASSETS_COMMITMENT is the sequential hash of the padded note's assets.
 #! - NOTE_METADATA is the note's metadata.
 #! - ARGS is the user arguments passed to the note.
 #! - assets_count is the note's assets count.

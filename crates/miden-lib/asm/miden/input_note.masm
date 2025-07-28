@@ -5,12 +5,12 @@ use.miden::kernel_proc_offsets
 #! This information can then be used to retrieve the actual assets from the advice map.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [ASSETS_HASH, num_assets]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
 #!
 #! Where:
 #! - note_index is the index of the input note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
-#! - ASSETS_HASH is a sequential hash of the assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
@@ -29,12 +29,12 @@ export.get_assets_info
     # => [offset, note_index, pad(14)]
 
     syscall.exec_kernel_proc
-    # => [ASSETS_HASH, num_assets, pad(11)]
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 
     # clean the stack
     swapdw dropw dropw 
     repeat.3
         movup.5 drop
     end
-    # => [ASSETS_HASH, num_assets]
+    # => [ASSETS_COMMITMENT, num_assets]
 end
