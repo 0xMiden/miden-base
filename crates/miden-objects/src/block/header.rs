@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use crate::{
     Felt, Hasher, Word, ZERO,
+    account::AccountId,
     block::BlockNumber,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -272,6 +273,66 @@ impl Deserializable for BlockHeader {
         ))
     }
 }
+
+// FEE PARAMETERS
+// ================================================================================================
+
+/// The fee-related parameters of a block.
+///
+/// This defines how to compute the fees of a transaction and which asset fees can be paid in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeeParameters {
+    /// The [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    native_asset_id: AccountId,
+    /// The base fee capturing the cost for the verification of a transaction.
+    verification_base_fee: u32,
+}
+
+impl FeeParameters {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`BlockFeeParameters`] from the provided inputs.
+    pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Self {
+        Self { native_asset_id, verification_base_fee }
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    pub fn native_asset_id(&self) -> AccountId {
+        self.native_asset_id
+    }
+
+    /// Returns the base fee capturing the cost for the verification of a transaction.
+    pub fn verification_base_fee(&self) -> u32 {
+        self.verification_base_fee
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for FeeParameters {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.native_asset_id.write_into(target);
+        self.verification_base_fee.write_into(target);
+    }
+}
+
+impl Deserializable for FeeParameters {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let native_asset_id = source.read()?;
+        let verification_base_fee = source.read()?;
+
+        Ok(Self::new(native_asset_id, verification_base_fee))
+    }
+}
+// TESTS
+// ================================================================================================
 
 #[cfg(test)]
 mod tests {
