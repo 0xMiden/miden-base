@@ -18,7 +18,7 @@ pub type StorageSlot = u8;
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
 // | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                             |
 // | Global inputs      | 400 (100)                             | 431 (107)                           |                                             |
-// | Block header       | 800 (200)                             | 835 (208)                           |                                             |
+// | Block header       | 800 (200)                             | 843 (210)                           |                                             |
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
