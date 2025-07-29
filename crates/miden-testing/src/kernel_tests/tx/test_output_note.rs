@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 use anyhow::Context;
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
@@ -5,7 +7,7 @@ use miden_objects::{
     account::AccountId,
     asset::{Asset, FungibleAsset},
     crypto::rand::RpoRandomCoin,
-    note::NoteType,
+    note::{NoteExecutionHint, NoteTag, NoteType},
     testing::account_id::{
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -76,19 +78,8 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         use.std::sys
 
         begin
-            # create an output note
-            push.{recipient}
-            push.{note_execution_hint}
-            push.{note_type}
-            push.0              # aux
-            push.{tag}
-            exec.tx::create_note
-            # => [note_idx]
-
-            # add asset_0 to the note
-            push.{asset_0}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
-            dropw
+            # create an output note with fungible asset 0
+            {output_note}
             # => [note_idx]
 
             # get the assets hash and assets number of the note having only asset_0
@@ -138,13 +129,15 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        // note data
-        recipient = word_to_masm_push_string(&output_note_1.recipient().digest()),
-        note_execution_hint = Felt::from(output_note_1.metadata().execution_hint()),
-        note_type = NoteType::Public as u8,
-        tag = Felt::from(output_note_1.metadata().tag()),
+        // output note
+        output_note = create_output_note_with_asset(
+            &output_note_1.recipient().digest(),
+            output_note_1.metadata().execution_hint(),
+            NoteType::Public,
+            output_note_1.metadata().tag(),
+            &fungible_asset_0.into()
+        ),
         // first data request
-        asset_0 = word_to_masm_push_string(&fungible_asset_0.into()),
         COMPUTED_ASSETS_COMMITMENT_0 =
             word_to_masm_push_string(&output_note_0.assets().commitment()),
         assets_number_0 = output_note_0.assets().num_assets(),
@@ -205,19 +198,8 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         begin
             ### 0'th note
 
-            # create output note 0
-            push.{RECIPIENT_0}
-            push.{note_execution_hint_0}
-            push.{note_type_0}
-            push.0              # aux
-            push.{tag_0}
-            call.tx::create_note
-            # => [note_idx_0]
-
-            # move asset_0 to the note 0
-            push.{asset_0}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
-            dropw drop
+            # create output note 0 with asset 0
+            {output_note_0} drop
             # => []
 
             # get the recipient commitment from the 0'th output note
@@ -242,19 +224,8 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
             ### 1'st note
 
-            # create output note 1
-            push.{RECIPIENT_1}
-            push.{note_execution_hint_1}
-            push.{note_type_1}
-            push.0              # aux
-            push.{tag_1}
-            call.tx::create_note
-            # => [note_idx_1]
-
-            # move asset_1 to the note 1
-            push.{asset_1}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
-            dropw drop
+            # create output note 1 with asset 1
+            {output_note_1} drop
             # => []
 
             # get the recipient commitment from the 1'st output note
@@ -282,18 +253,24 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         end
         "#,
         // first note
+        output_note_0 = create_output_note_with_asset(
+            &output_note_0.recipient().digest(),
+            output_note_0.metadata().execution_hint(),
+            NoteType::Public,
+            output_note_0.metadata().tag(),
+            &FungibleAsset::mock(10).into()
+        ),
         RECIPIENT_0 = word_to_masm_push_string(&output_note_0.recipient().digest()),
-        note_execution_hint_0 = Felt::from(output_note_0.metadata().execution_hint()),
-        note_type_0 = NoteType::Public as u8,
-        tag_0 = Felt::from(output_note_0.metadata().tag()),
-        asset_0 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
         METADATA_0 = word_to_masm_push_string(&output_note_0.metadata().into()),
         // second note
+        output_note_1 = create_output_note_with_asset(
+            &output_note_1.recipient().digest(),
+            output_note_1.metadata().execution_hint(),
+            NoteType::Public,
+            output_note_1.metadata().tag(),
+            &FungibleAsset::mock(5).into()
+        ),
         RECIPIENT_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
-        note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        note_type_1 = NoteType::Public as u8,
-        tag_1 = Felt::from(output_note_1.metadata().tag()),
-        asset_1 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
         METADATA_1 = word_to_masm_push_string(&output_note_1.metadata().into()),
     );
 
@@ -360,19 +337,8 @@ fn test_get_assets() -> anyhow::Result<()> {
         begin
             ### 0'th note
 
-            # create output note 0
-            push.{RECIPIENT_0}
-            push.{note_execution_hint_0}
-            push.{note_type_0}
-            push.0              # aux
-            push.{tag_0}
-            call.tx::create_note
-            # => [note_idx_0]
-
-            # move asset_0 to the note 0
-            push.{asset_0}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
-            dropw drop
+            # create output note 0 with asset 0
+            {output_note_0} drop
             # => []
 
             # push the note index and memory pointer
@@ -399,19 +365,8 @@ fn test_get_assets() -> anyhow::Result<()> {
 
             ### 1'st note
 
-            # create output note 1
-            push.{RECIPIENT_1}
-            push.{note_execution_hint_1}
-            push.{note_type_1}
-            push.0              # aux
-            push.{tag_1}
-            call.tx::create_note
-            # => [note_idx_1]
-
-            # move asset_1 to the note 1
-            push.{asset_1}
-            call.::miden::contracts::wallets::basic::move_asset_to_note
-            dropw drop
+            # create output note 1 with asset 1
+            {output_note_1} drop
             # => []
 
             # push the note index and memory pointer
@@ -441,19 +396,23 @@ fn test_get_assets() -> anyhow::Result<()> {
         end
         "#,
         // first note
-        RECIPIENT_0 = word_to_masm_push_string(&output_note_0.recipient().digest()),
-        note_execution_hint_0 = Felt::from(output_note_0.metadata().execution_hint()),
-        note_type_0 = NoteType::Public as u8,
-        tag_0 = Felt::from(output_note_0.metadata().tag()),
-        asset_0 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
+        output_note_0 = create_output_note_with_asset(
+            &output_note_0.recipient().digest(),
+            output_note_0.metadata().execution_hint(),
+            NoteType::Public,
+            output_note_0.metadata().tag(),
+            &FungibleAsset::mock(10).into()
+        ),
         assets_number_0 = output_note_0.assets().num_assets(),
         NOTE_0_ASSET = word_to_masm_push_string(&note_0_asset.into()),
         // second note
-        RECIPIENT_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
-        note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        note_type_1 = NoteType::Public as u8,
-        tag_1 = Felt::from(output_note_1.metadata().tag()),
-        asset_1 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
+        output_note_1 = create_output_note_with_asset(
+            &output_note_1.recipient().digest(),
+            output_note_1.metadata().execution_hint(),
+            NoteType::Public,
+            output_note_1.metadata().tag(),
+            &FungibleAsset::mock(5).into()
+        ),
         assets_number_1 = output_note_1.assets().num_assets(),
         NOTE_1_ASSET = word_to_masm_push_string(&note_1_asset.into()),
     );
@@ -473,4 +432,39 @@ fn test_get_assets() -> anyhow::Result<()> {
     tx_context.execute()?;
 
     Ok(())
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+fn create_output_note_with_asset(
+    recipient: &Word,
+    execution_hint: NoteExecutionHint,
+    note_type: NoteType,
+    tag: NoteTag,
+    asset: &Word,
+) -> String {
+    format!(
+        "
+        # create an output note
+        push.{RECIPIENT}
+        push.{note_execution_hint}
+        push.{note_type}
+        push.0              # aux
+        push.{tag}
+        call.tx::create_note
+        # => [note_idx]
+
+        # move the asset to the note
+        push.{asset}
+        call.::miden::contracts::wallets::basic::move_asset_to_note
+        dropw
+        # => [note_idx]
+    ",
+        RECIPIENT = word_to_masm_push_string(recipient),
+        note_execution_hint = Felt::from(execution_hint),
+        note_type = note_type as u8,
+        tag = Felt::from(tag),
+        asset = word_to_masm_push_string(asset),
+    )
 }
