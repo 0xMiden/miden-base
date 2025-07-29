@@ -315,10 +315,12 @@ impl FeeParameters {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`BlockFeeParameters`] from the provided inputs.
+    /// Creates a new [`FeeParameters`] from the provided inputs.
     pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Result<Self, FeeError> {
         if !matches!(native_asset_id.account_type(), AccountType::FungibleFaucet) {
-            return Err(FeeError::NativeAssetIdNotFungible { account_type: native_asset_id.account_type() });
+            return Err(FeeError::NativeAssetIdNotFungible {
+                account_type: native_asset_id.account_type(),
+            });
         }
 
         Ok(Self { native_asset_id, verification_base_fee })
