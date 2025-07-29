@@ -11,21 +11,22 @@ use miden_lib::{
     transaction::{
         TransactionKernel,
         memory::{
-            ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_METADATA_PTR,
-            BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, INIT_ACCT_COMMITMENT_PTR, INIT_NONCE_PTR,
-            INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET, INPUT_NOTE_ASSETS_OFFSET,
-            INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET, INPUT_NOTE_METADATA_OFFSET,
-            INPUT_NOTE_NULLIFIER_SECTION_PTR, INPUT_NOTE_NUM_ASSETS_OFFSET,
-            INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR, INPUT_NOTE_SERIAL_NUM_OFFSET,
-            INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR, MemoryOffset,
-            NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
+            ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_FEE_PARAMETERS_PTR,
+            BLOCK_METADATA_PTR, BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, INIT_ACCT_COMMITMENT_PTR,
+            INIT_NONCE_PTR, INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
+            INPUT_NOTE_ASSETS_OFFSET, INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
+            INPUT_NOTE_METADATA_OFFSET, INPUT_NOTE_NULLIFIER_SECTION_PTR,
+            INPUT_NOTE_NUM_ASSETS_OFFSET, INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR,
+            INPUT_NOTE_SERIAL_NUM_OFFSET, INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR,
+            MemoryOffset, NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
             NATIVE_ACCT_PROCEDURES_SECTION_PTR, NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
             NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR, NATIVE_ACCT_VAULT_ROOT_PTR,
-            NATIVE_NUM_ACCT_PROCEDURES_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR,
-            NULLIFIER_DB_ROOT_PTR, NUM_KERNEL_PROCEDURES_PTR, PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
+            NATIVE_ASSET_ID_PREFIX_IDX, NATIVE_ASSET_ID_SUFFIX_IDX, NATIVE_NUM_ACCT_PROCEDURES_PTR,
+            NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR, NULLIFIER_DB_ROOT_PTR,
+            NUM_KERNEL_PROCEDURES_PTR, PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
             PARTIAL_BLOCKCHAIN_PEAKS_PTR, PREV_BLOCK_COMMITMENT_PTR, PROOF_COMMITMENT_PTR,
             PROTOCOL_VERSION_IDX, TIMESTAMP_IDX, TX_COMMITMENT_PTR, TX_KERNEL_COMMITMENT_PTR,
-            TX_SCRIPT_ROOT_PTR,
+            TX_SCRIPT_ROOT_PTR, VERIFICATION_BASE_FEE_IDX,
         },
     },
 };
@@ -233,6 +234,35 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
         process.get_kernel_mem_word(BLOCK_METADATA_PTR)[TIMESTAMP_IDX],
         inputs.tx_inputs().block_header().timestamp().into(),
         "The timestamp should be stored at BLOCK_METADATA_PTR[TIMESTAMP_IDX]"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(BLOCK_FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_SUFFIX_IDX],
+        inputs.tx_inputs().block_header().fee_parameters().native_asset_id().suffix(),
+        "The native asset ID suffix should be stored at BLOCK_FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_SUFFIX_IDX]"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(BLOCK_FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_PREFIX_IDX],
+        inputs
+            .tx_inputs()
+            .block_header()
+            .fee_parameters()
+            .native_asset_id()
+            .prefix()
+            .as_felt(),
+        "The native asset ID prefix should be stored at BLOCK_FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_PREFIX_IDX]"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(BLOCK_FEE_PARAMETERS_PTR)[VERIFICATION_BASE_FEE_IDX],
+        inputs
+            .tx_inputs()
+            .block_header()
+            .fee_parameters()
+            .verification_base_fee()
+            .into(),
+        "The verification base fee should be stored at BLOCK_FEE_PARAMETERS_PTR[VERIFICATION_BASE_FEE_IDX]"
     );
 
     assert_eq!(

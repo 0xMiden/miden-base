@@ -1,5 +1,4 @@
-use alloc::vec::Vec;
-use std::string::ToString;
+use alloc::{string::ToString, vec::Vec};
 
 use crate::{
     FeeError, Felt, Hasher, Word, ZERO,
@@ -233,16 +232,11 @@ impl BlockHeader {
         elements.extend_from_slice(tx_commitment.as_elements());
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
         elements.extend_from_slice(proof_commitment.as_elements());
-        elements.extend([
-            block_num.into(),
-            version.into(),
-            timestamp.into(),
-            fee_parameters.native_asset_id().prefix().as_felt(),
-        ]);
+        elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
         elements.extend([
             fee_parameters.native_asset_id().suffix(),
+            fee_parameters.native_asset_id().prefix().as_felt(),
             fee_parameters.verification_base_fee().into(),
-            ZERO,
             ZERO,
         ]);
         elements.extend([ZERO, ZERO, ZERO, ZERO]);

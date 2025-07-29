@@ -114,8 +114,13 @@ const.PROOF_COMMITMENT_PTR=824
 # The memory address at which the block metadata is stored [block_number, version, timestamp, 0]
 const.BLOCK_METADATA_PTR=828
 
+# The memory address at which the fee parameters are stored. These occupy a double word.
+# [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
+# [0, 0, 0, 0]
+const.BLOCK_FEE_PARAMETERS_PTR=832
+
 # The memory address at which the note root is stored
-const.NOTE_ROOT_PTR=832
+const.NOTE_ROOT_PTR=840
 
 # PARTIAL BLOCKCHAIN
 # -------------------------------------------------------------------------------------------------

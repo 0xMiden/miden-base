@@ -128,6 +128,13 @@ impl TransactionAdviceInputs {
             header.timestamp().into(),
             ZERO,
         ]);
+        self.extend_stack([
+            header.fee_parameters().native_asset_id().suffix(),
+            header.fee_parameters().native_asset_id().prefix().as_felt(),
+            header.fee_parameters().verification_base_fee().into(),
+            ZERO,
+        ]);
+        self.extend_stack([ZERO, ZERO, ZERO, ZERO]);
         self.extend_stack(header.note_root());
 
         // --- kernel version (keep in sync with process_kernel_data) ---------

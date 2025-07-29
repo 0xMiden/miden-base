@@ -177,8 +177,20 @@ pub const PROTOCOL_VERSION_IDX: DataIndex = 1;
 /// The index of the timestamp within the block metadata
 pub const TIMESTAMP_IDX: DataIndex = 2;
 
+/// The memory address at which the fee parameters are stored. These occupy a double word.
+pub const BLOCK_FEE_PARAMETERS_PTR: MemoryAddress = 832;
+
+/// The index of the native asset ID suffix within the block fee parameters.
+pub const NATIVE_ASSET_ID_SUFFIX_IDX: DataIndex = 0;
+
+/// The index of the native asset ID prefix within the block fee parameters.
+pub const NATIVE_ASSET_ID_PREFIX_IDX: DataIndex = 1;
+
+/// The index of the verification base fee within the block fee parameters.
+pub const VERIFICATION_BASE_FEE_IDX: DataIndex = 2;
+
 /// The memory address at which the note root is stored
-pub const NOTE_ROOT_PTR: MemoryAddress = 832;
+pub const NOTE_ROOT_PTR: MemoryAddress = 840;
 
 // CHAIN DATA
 // ------------------------------------------------------------------------------------------------
