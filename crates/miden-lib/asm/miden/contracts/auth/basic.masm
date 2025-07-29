@@ -78,7 +78,7 @@ end
 
 #! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 #! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-proc.adv_insert_hqword.16
+export.adv_insert_hqword.16
     loc_storew.0
     movdnw.3
     loc_storew.4

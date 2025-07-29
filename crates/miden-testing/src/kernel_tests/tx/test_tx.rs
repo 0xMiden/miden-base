@@ -1240,15 +1240,13 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           exec.::miden::contracts::auth::basic::create_tx_summary
           # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 
+          exec.::miden::contracts::auth::basic::adv_insert_hqword
+
           exec.::miden::contracts::auth::basic::hash_tx_summary
           # => [MESSAGE, pad(16)]
 
-          push.16 movdn.4 push.0 movdn.4
-          # => [MESSAGE, salt_ptr, commitment_end_ptr]
-          adv.insert_mem
-
           push.0.0.0.0
-          # => [EMPTY_WORD, MESSAGE, salt_ptr, commitment_end_ptr, pad(16)]
+          # => [EMPTY_WORD, MESSAGE, pad(16)]
 
           emit.{abort_event}
       end
