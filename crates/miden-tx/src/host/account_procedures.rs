@@ -1,10 +1,13 @@
 use alloc::string::ToString;
 
 use miden_lib::transaction::{
-    TransactionKernelError,
+    TransactionAdviceInputs, TransactionKernelError,
     memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT_OFFSET},
 };
-use miden_objects::account::{AccountCode, AccountProcedureInfo};
+use miden_objects::{
+    account::{AccountCode, AccountProcedureInfo},
+    transaction::{TransactionArgs, TransactionInputs},
+};
 use vm_processor::AdviceInputs;
 
 use super::{BTreeMap, Felt, ProcessState, Word};
@@ -36,6 +39,22 @@ impl AccountProcedureIndexMap {
         }
 
         Ok(Self(result))
+    }
+
+    /// Builds an [`AccountProcedureIndexMap`] for the specified transaction inputs and arguments.
+    ///
+    /// The resulting instance will map all account code commmitments to a mapping of
+    /// `proc_root |-> proc_index` for any account that is expected to be involved in the
+    /// transaction, enabling easy procedure index lookups on runtime.
+    pub fn from_transaction_params(
+        tx_inputs: &TransactionInputs,
+        tx_args: &TransactionArgs,
+        tx_advice_inputs: &TransactionAdviceInputs,
+    ) -> Result<Self, TransactionHostError> {
+        let mut account_code_commitments = tx_args.to_foreign_account_code_commitments();
+        account_code_commitments.insert(tx_inputs.account().code().commitment());
+
+        Self::new(account_code_commitments, tx_advice_inputs.as_advice_inputs())
     }
 
     /// Returns index of the procedure whose root is currently at the top of the operand stack in

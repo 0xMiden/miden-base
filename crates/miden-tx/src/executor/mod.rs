@@ -20,7 +20,7 @@ use winter_maybe_async::{maybe_async, maybe_await};
 use super::TransactionExecutorError;
 use crate::{
     auth::TransactionAuthenticator,
-    host::{ScriptMastForestStore, TransactionBaseHost},
+    host::{AccountProcedureIndexMap, ScriptMastForestStore, TransactionBaseHost},
 };
 
 mod exec_host;
@@ -161,9 +161,9 @@ where
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
         let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
@@ -171,16 +171,20 @@ where
             input_notes.iter().map(|n| n.note().script()),
         );
 
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             input_notes.clone(),
-            &mut advice_inputs,
             self.data_store,
             script_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // Execute the transaction kernel
         let trace = vm_processor::execute(
@@ -243,22 +247,26 @@ where
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             tx_inputs.input_notes().clone(),
-            &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         let mut process = Process::new(
             TransactionKernel::tx_script_main().kernel().clone(),
@@ -315,9 +323,9 @@ where
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
         let input_notes = tx_inputs.input_notes();
 
         let scripts_mast_store = ScriptMastForestStore::new(
@@ -325,16 +333,20 @@ where
             input_notes.iter().map(|n| n.note().script()),
         );
 
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             input_notes.clone(),
-            &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // execute the transaction kernel
         let result = vm_processor::execute(
@@ -555,8 +567,8 @@ fn build_tx_summary<STORE: MastForestStore>(
     let actual_account_delta_commitment = account_delta.to_commitment();
     if actual_account_delta_commitment != account_delta_commitment {
         return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-          "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
-      ).into()));
+            "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+        ).into()));
     }
 
     let actual_input_notes_commitment = input_notes.commitment();
