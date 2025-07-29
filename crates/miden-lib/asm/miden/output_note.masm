@@ -67,44 +67,21 @@ export.get_assets
     # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
 
     # load the asset data from the advice map to the advice stack
-    adv.push_mapval dropw
-    # OS => [num_assets, note_index, dest_ptr]
+    adv.push_mapval
+    # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
     # AS => [[ASSETS_DATA]]
 
-    # move the assets from the advice stack to the memory
+    # calculate number of assets rounded up to an even number
+    dup.4 dup is_odd add
+    # => [even_num_assets, ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
 
-    # compute the loop flag and prepare the stack for the loop
-    dup dup neq.0 padw movup.4
-    # OS => [loop_flag, WORD, assets_left, num_assets, note_index, dest_ptr]
-    # AS => [[ASSETS_DATA]]
+    # calculate the start and end pointer for reading to memory
+    mul.4 dup.7 add dup.7
+    # => [start_ptr, end_ptr, ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
 
-    # loop until we move all the assets to the memory
-    while.true
-        # load the asset to the operand stack
-        adv_loadw
-        # OS => [ASSET, assets_left, num_assets, note_index, dest_ptr]
-        # AS => [[ASSETS_DATA]]
-        
-        # store the asset in memory
-        dup.7 mem_storew
-        # OS => [ASSET, assets_left, num_assets, note_index, dest_ptr]
-        # AS => [[ASSETS_DATA]]
-
-        # decrease the number of remaining assets
-        movup.4 sub.1
-        # OS => [assets_left-1, ASSET, num_assets, note_index, dest_ptr]
-        # AS => [[ASSETS_DATA]]
-
-        # prepare the loop flag
-        dup movdn.5 neq.0
-        # OS => [loop_flag, ASSET, assets_left-1, num_assets, note_index, dest_ptr]
-        # AS => [[ASSETS_DATA]]
-    end
-
-    # clean the stack
-    dropw drop
-    # OS => [num_assets, note_index, dest_ptr]
-    # AS => []
+    # write the data from the advice stack into memory
+    exec.note::write_advice_data_to_memory
+    # => [num_assets, note_index, dest_ptr]
 end
 
 #! Returns the recipient commitment of the output note with the specified index.

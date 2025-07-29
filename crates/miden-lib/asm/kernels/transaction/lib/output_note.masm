@@ -44,11 +44,21 @@ export.get_assets_info
     dup exec.note::compute_output_note_assets_commitment
     # => [ASSETS_COMMITMENT, note_data_ptr, num_assets]
 
+    # next we should store the assets in the advice map using the computed assets commitment to be
+    # able to get the assets later (in the `miden::output_note::get_assets` procedure)
+
     # get the start and the end pointers of the asset data
+    # 
+    # notice that if the number of assets is odd, the asset data end pointer will be shifted one 
+    # word further to make the assets number even (the same way it is done in the 
+    # `note::compute_output_note_assets_commitment` procedure)
     movup.4 exec.memory::get_output_note_asset_data_ptr
     # => [assets_data_ptr, ASSETS_COMMITMENT, num_assets]
 
-    dup dup.6 mul.4 add
+    dup dup.6 dup is_odd add
+    # => [padded_num_assets, assets_data_ptr, assets_data_ptr, ASSETS_COMMITMENT, num_assets]
+    
+    mul.4 add
     # => [assets_end_ptr, assets_start_ptr, ASSETS_COMMITMENT, num_assets]
 
     movdn.5 movdn.4
