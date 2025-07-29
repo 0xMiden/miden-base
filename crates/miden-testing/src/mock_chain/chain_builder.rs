@@ -16,10 +16,12 @@ use miden_objects::{
     asset::{Asset, TokenSymbol},
     block::{
         AccountTree, BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain,
-        NullifierTree, OutputNoteBatch, ProvenBlock,
+        FeeParameters, NullifierTree, OutputNoteBatch, ProvenBlock,
     },
     note::{Note, NoteDetails, NoteType},
-    testing::account_component::AccountMockComponent,
+    testing::{
+        account_component::AccountMockComponent, account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    },
     transaction::{OrderedTransactionHeaders, OutputNote},
 };
 use rand::Rng;
@@ -37,6 +39,7 @@ pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
     account_credentials: BTreeMap<AccountId, AccountCredentials>,
     notes: Vec<OutputNote>,
+    native_asset_id: AccountId,
     rng: RpoRandomCoin,
 }
 
@@ -45,11 +48,17 @@ impl MockChainBuilder {
     // ----------------------------------------------------------------------------------------
 
     /// Initializes a new mock chain builder with an empty state.
+    ///
+    /// By default, the `native_asset_id` is set to [`ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET`] and can be
+    /// overwritten using [`Self::native_asset_id`].
     pub fn new() -> Self {
         Self {
             accounts: BTreeMap::new(),
             account_credentials: BTreeMap::new(),
             notes: Vec::new(),
+            native_asset_id: ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET
+                .try_into()
+                .expect("account ID should be valid"),
             rng: RpoRandomCoin::new(Default::default()),
         }
     }
@@ -70,6 +79,18 @@ impl MockChainBuilder {
         }
 
         Ok(builder)
+    }
+
+    // BUILDER METHODS
+    // ----------------------------------------------------------------------------------------
+
+    /// Sets the native asset ID of the chain.
+    ///
+    /// This must be a fungible faucet [`AccountId`] and is the asset in which fees will be accepted
+    /// by the transaction kernel.
+    pub fn native_asset_id(mut self, native_asset_id: AccountId) -> Self {
+        self.native_asset_id = native_asset_id;
+        self
     }
 
     // ACCOUNT METHODS
@@ -415,7 +436,7 @@ impl MockChainBuilder {
     /// Consumes the builder, creates the genesis block of the chain and returns the [`MockChain`].
     pub fn build(self) -> anyhow::Result<MockChain> {
         let (genesis_block, account_tree) =
-            create_genesis_state(self.accounts.into_values(), self.notes)
+            create_genesis_state(self.accounts.into_values(), self.notes, self.native_asset_id)
                 .context("failed to create genesis block")?;
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_credentials)
@@ -428,11 +449,12 @@ impl Default for MockChainBuilder {
     }
 }
 
-/// Creates the genesis state, consisting of a block containing the provided account updates and an
-/// account tree with those accounts.
+/// Creates the genesis block, consisting of the provided accounts and notes. The native asset of
+/// the chain will be set to the provided account ID.
 fn create_genesis_state(
     accounts: impl IntoIterator<Item = Account>,
     notes: impl IntoIterator<Item = OutputNote>,
+    native_asset_id: AccountId,
 ) -> anyhow::Result<(ProvenBlock, AccountTree)> {
     let block_account_updates: Vec<BlockAccountUpdate> = accounts
         .into_iter()
@@ -475,6 +497,9 @@ fn create_genesis_state(
     let tx_kernel_commitment = TransactionKernel::kernel_commitment();
     let proof_commitment = Word::empty();
     let timestamp = MockChain::TIMESTAMP_START_SECS;
+    let verification_base_fee = 500;
+    let fee_parameters = FeeParameters::new(native_asset_id, verification_base_fee)
+        .context("failed to construct fee parameters")?;
 
     let header = BlockHeader::new(
         version,
@@ -488,6 +513,7 @@ fn create_genesis_state(
         tx_kernel_commitment,
         proof_commitment,
         timestamp,
+        fee_parameters,
     );
 
     Ok((

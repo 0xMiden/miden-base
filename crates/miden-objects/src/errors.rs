@@ -871,6 +871,15 @@ pub enum ProposedBlockError {
     },
 }
 
+// PROPOSED BLOCK ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum FeeError {
+    #[error("native asset of the chain must be a fungible faucet but was {account_id}")]
+    NativeAssetIdNotFungible { account_id: AccountId },
+}
+
 // NULLIFIER TREE ERROR
 // ================================================================================================
 

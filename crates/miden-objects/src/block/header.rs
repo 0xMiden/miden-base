@@ -1,8 +1,9 @@
 use alloc::vec::Vec;
+use std::string::ToString;
 
 use crate::{
-    Felt, Hasher, Word, ZERO,
-    account::AccountId,
+    FeeError, Felt, Hasher, Word, ZERO,
+    account::{AccountId, AccountType},
     block::BlockNumber,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -28,6 +29,8 @@ use crate::{
 ///   representation is sufficient to represent time up to year 2106.
 /// - `sub_commitment` is a sequential hash of all fields except the note_root.
 /// - `commitment` is a 2-to-1 hash of the sub_commitment and the note_root.
+/// - `fee_parameters` are the parameters defining the base fees and the native asset, see
+///   [`FeeParameters`] for more details.
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BlockHeader {
     version: u32,
@@ -43,6 +46,7 @@ pub struct BlockHeader {
     timestamp: u32,
     sub_commitment: Word,
     commitment: Word,
+    fee_parameters: FeeParameters,
 }
 
 impl BlockHeader {
@@ -60,6 +64,7 @@ impl BlockHeader {
         tx_kernel_commitment: Word,
         proof_commitment: Word,
         timestamp: u32,
+        fee_parameters: FeeParameters,
     ) -> Self {
         // compute block sub commitment
         let sub_commitment = Self::compute_sub_commitment(
@@ -73,6 +78,7 @@ impl BlockHeader {
             proof_commitment,
             timestamp,
             block_num,
+            &fee_parameters,
         );
 
         // The sub commitment is merged with the note_root - hash(sub_commitment, note_root) to
@@ -95,6 +101,7 @@ impl BlockHeader {
             timestamp,
             sub_commitment,
             commitment,
+            fee_parameters,
         }
     }
 
@@ -185,6 +192,11 @@ impl BlockHeader {
         self.timestamp
     }
 
+    /// Returns a reference to the [`FeeParameters`] in this header.
+    pub fn fee_parameters(&self) -> &FeeParameters {
+        &self.fee_parameters
+    }
+
     /// Returns the block number of the epoch block to which this block belongs.
     pub fn epoch_block_num(&self) -> BlockNumber {
         BlockNumber::from_epoch(self.block_epoch())
@@ -198,7 +210,7 @@ impl BlockHeader {
     /// The sub commitment is computed as a sequential hash of the following fields:
     /// `prev_block_commitment`, `chain_commitment`, `account_root`, `nullifier_root`, `note_root`,
     /// `tx_commitment`, `tx_kernel_commitment`, `proof_commitment`, `version`, `timestamp`,
-    /// `block_num` (all fields except the `note_root`).
+    /// `block_num`, `native_asset_id`, `verification_base_fee` (all fields except the `note_root`).
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
         version: u32,
@@ -211,8 +223,9 @@ impl BlockHeader {
         proof_commitment: Word,
         timestamp: u32,
         block_num: BlockNumber,
+        fee_parameters: &FeeParameters,
     ) -> Word {
-        let mut elements: Vec<Felt> = Vec::with_capacity(32);
+        let mut elements: Vec<Felt> = Vec::with_capacity(40);
         elements.extend_from_slice(prev_block_commitment.as_elements());
         elements.extend_from_slice(chain_commitment.as_elements());
         elements.extend_from_slice(account_root.as_elements());
@@ -220,7 +233,19 @@ impl BlockHeader {
         elements.extend_from_slice(tx_commitment.as_elements());
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
         elements.extend_from_slice(proof_commitment.as_elements());
-        elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
+        elements.extend([
+            block_num.into(),
+            version.into(),
+            timestamp.into(),
+            fee_parameters.native_asset_id().prefix().as_felt(),
+        ]);
+        elements.extend([
+            fee_parameters.native_asset_id().suffix(),
+            fee_parameters.verification_base_fee().into(),
+            ZERO,
+            ZERO,
+        ]);
+        elements.extend([ZERO, ZERO, ZERO, ZERO]);
         Hasher::hash_elements(&elements)
     }
 }
@@ -241,6 +266,7 @@ impl Serializable for BlockHeader {
         self.tx_kernel_commitment.write_into(target);
         self.proof_commitment.write_into(target);
         self.timestamp.write_into(target);
+        self.fee_parameters.write_into(target);
     }
 }
 
@@ -257,6 +283,7 @@ impl Deserializable for BlockHeader {
         let tx_kernel_commitment = source.read()?;
         let proof_commitment = source.read()?;
         let timestamp = source.read()?;
+        let fee_parameters = source.read()?;
 
         Ok(Self::new(
             version,
@@ -270,6 +297,7 @@ impl Deserializable for BlockHeader {
             tx_kernel_commitment,
             proof_commitment,
             timestamp,
+            fee_parameters,
         ))
     }
 }
@@ -282,7 +310,7 @@ impl Deserializable for BlockHeader {
 /// This defines how to compute the fees of a transaction and which asset fees can be paid in.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct FeeParameters {
-    /// The [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// The [`AccountId`] of the fungible faucet whose assets are accepted for fee payments in the
     /// transaction kernel, or in other words, the native asset of the blockchain.
     native_asset_id: AccountId,
     /// The base fee capturing the cost for the verification of a transaction.
@@ -294,8 +322,12 @@ impl FeeParameters {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`BlockFeeParameters`] from the provided inputs.
-    pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Self {
-        Self { native_asset_id, verification_base_fee }
+    pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Result<Self, FeeError> {
+        if !matches!(native_asset_id.account_type(), AccountType::FungibleFaucet) {
+            return Err(FeeError::NativeAssetIdNotFungible { account_id: native_asset_id });
+        }
+
+        Ok(Self { native_asset_id, verification_base_fee })
     }
 
     // PUBLIC ACCESSORS
@@ -328,7 +360,8 @@ impl Deserializable for FeeParameters {
         let native_asset_id = source.read()?;
         let verification_base_fee = source.read()?;
 
-        Ok(Self::new(native_asset_id, verification_base_fee))
+        Self::new(native_asset_id, verification_base_fee)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 // TESTS
@@ -336,10 +369,12 @@ impl Deserializable for FeeParameters {
 
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use vm_core::Word;
     use winter_rand_utils::rand_value;
 
     use super::*;
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET;
 
     #[test]
     fn test_serde() {
@@ -357,5 +392,16 @@ mod tests {
         let deserialized = BlockHeader::read_from_bytes(&serialized).unwrap();
 
         assert_eq!(deserialized, header);
+    }
+
+    /// Tests that the fee parameters constructor fails when the provided account ID is not a
+    /// fungible faucet.
+    #[test]
+    fn fee_parameters_fail_when_native_asset_is_not_fungible() {
+        assert_matches!(
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET.try_into().unwrap(), 0)
+                .unwrap_err(),
+            FeeError::NativeAssetIdNotFungible { .. }
+        );
     }
 }

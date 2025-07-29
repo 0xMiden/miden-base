@@ -91,6 +91,10 @@ impl LocalBlockProver {
         ) = proposed_block.into_parts();
 
         let prev_block_commitment = prev_block_header.commitment();
+        // For now we copy the parameters of the previous header, which means the parameters set on
+        // the genesis block will be passed through. Eventually, the contained base fees will be
+        // updated based on the demand in the currently proposed block.
+        let fee_parameters = prev_block_header.fee_parameters().clone();
 
         // Compute the root of the block note tree.
         // --------------------------------------------------------------------------------------------
@@ -163,6 +167,7 @@ impl LocalBlockProver {
             tx_kernel_commitment,
             proof_commitment,
             timestamp,
+            fee_parameters,
         );
 
         // Construct the new proven block.
