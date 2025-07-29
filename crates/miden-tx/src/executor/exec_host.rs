@@ -131,7 +131,7 @@ where
 
             if commitments.len() != 16 {
                 return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                    "Expected 4 words for transaction summary commitments".into(),
+                    "expected 4 words for transaction summary commitments".into(),
                 ));
             }
 
