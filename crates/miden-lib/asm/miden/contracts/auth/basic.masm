@@ -12,12 +12,6 @@ const.AUTH_REQUEST=131087
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
 
-const.SALT_PTR=0
-const.OUTPUT_NOTES_COMMITMENT_PTR=4
-const.INPUT_NOTES_COMMITMENT_PTR=8
-const.ACCOUNT_DELTA_COMMITMENT_PTR=12
-const.COMMITMENTS_END_PTR=16
-
 #! Authenticate a transaction using the Falcon signature scheme.
 #!
 #! It first increments the nonce of the account, independent of whether the account's state has
@@ -55,15 +49,13 @@ export.auth__tx_rpo_falcon512
     # the commitment to the tx summary is the message that is signed
     exec.hash_tx_summary
     # => [MESSAGE, pad(16)]
-    push.COMMITMENTS_END_PTR movdn.4 push.SALT_PTR movdn.4
-    # => [MESSAGE, salt_ptr, commitments_end_ptr]
 
     # Fetch public key from storage.
     # ---------------------------------------------------------------------------------------------
 
     # Get public key from account storage at pos 0 and verify signature
     push.PUBLIC_KEY_SLOT exec.account::get_item
-    # OS => [PUB_KEY, MESSAGE, salt_ptr, commitments_end_ptr, pad(16)]
+    # OS => [PUB_KEY, MESSAGE, pad(16)]
     # AS => []
 
     # Fetch signature from advice provider and verify.
@@ -72,15 +64,14 @@ export.auth__tx_rpo_falcon512
     # emit the authentication request event that pushes a signature for the message to the advice
     # stack
     emit.AUTH_REQUEST
-    # OS => [PUB_KEY, MESSAGE, salt_ptr, commitments_end_ptr, pad(16)]
+    # OS => [PUB_KEY, MESSAGE, pad(16)]
     # AS => [SIGNATURE]
 
     # Verify the signature against the public key and the message. The procedure gets as inputs the
     # hash of the public key and the message via the operand stack. The signature is provided via
     # the advice stack. The signature is valid if and only if the procedure returns.
     exec.rpo_falcon512::verify
-    # OS => [salt_ptr, commitments_end_ptr, pad(16)]
-    drop drop
+    # OS => [pad(16)]
     # AS => []
 end
 
