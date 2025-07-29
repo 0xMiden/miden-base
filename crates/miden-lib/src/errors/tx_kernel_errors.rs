@@ -215,6 +215,8 @@ pub const ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT: MasmError = MasmErr
 pub const ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT: MasmError = MasmError::from_static_str("account data provided does not match the commitment recorded on-chain");
 /// Error Message: "provided info about assets of an input does not match its commitment"
 pub const ERR_PROLOGUE_PROVIDED_INPUT_ASSETS_INFO_DOES_NOT_MATCH_ITS_COMMITMENT: MasmError = MasmError::from_static_str("provided info about assets of an input does not match its commitment");
+/// Error Message: "verification base fee must fit into a u32"
+pub const ERR_PROLOGUE_VERIFICATION_BASE_FEE_MUST_BE_U32: MasmError = MasmError::from_static_str("verification base fee must fit into a u32");
 
 /// Error Message: "transaction expiration block delta must be within 0x1 and 0xFFFF"
 pub const ERR_TX_INVALID_EXPIRATION_DELTA: MasmError = MasmError::from_static_str("transaction expiration block delta must be within 0x1 and 0xFFFF");

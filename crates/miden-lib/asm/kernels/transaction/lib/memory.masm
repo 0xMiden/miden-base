@@ -119,6 +119,9 @@ const.BLOCK_METADATA_PTR=828
 # [0, 0, 0, 0]
 const.FEE_PARAMETERS_PTR=832
 
+# The memory address at which the verificaion base fee is stored.
+const.VERIFICATION_BASE_FEE_PTR=FEE_PARAMETERS_PTR+2
+
 # The memory address at which the note root is stored
 const.NOTE_ROOT_PTR=840
 
@@ -633,6 +636,18 @@ end
 export.get_native_asset_id
     padw mem_loadw.FEE_PARAMETERS_PTR drop drop
     # => [native_asset_id_prefix, native_asset_id_suffix]
+end
+
+#! Returns the verification base fee from the transaction's reference block.
+#!
+#! Inputs:  []
+#! Outputs: [verification_base_fee]
+#!
+#! Where:
+#! - verification_base_fee is the base fee capturing the cost for the verification of a
+#!   transaction.
+export.get_verification_base_fee
+    mem_load.VERIFICATION_BASE_FEE_PTR
 end
 
 #! Returns the chain commitment of the transaction reference block.
