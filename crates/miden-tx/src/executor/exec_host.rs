@@ -29,7 +29,7 @@ use crate::{
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
-/// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
+/// The transaction executor host is responsible for handling [`AsyncHost`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests
 /// by forwarding the request to the contained [`TransactionAuthenticator`].
 ///
