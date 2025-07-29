@@ -312,7 +312,7 @@ where
               Err(self.on_unauthorized(process))
             }
         }
-        .map_err(Box::new)?;
+        .map_err(EventError::from)?;
 
         Ok(advice_mutations)
     }

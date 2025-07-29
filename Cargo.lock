@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-core",
  "thiserror 2.0.12",
@@ -1034,7 +1034,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "log",
  "miden-assembly-syntax",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -1090,7 +1090,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1125,7 +1125,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1165,7 +1165,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1247,7 +1247,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -1262,7 +1262,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-air",
  "miden-debug-types",
@@ -1275,7 +1275,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "env_logger",
  "miden-assembly",
@@ -1338,7 +1338,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1350,7 +1350,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "lock_api",
  "loom",
@@ -1360,7 +1360,7 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#ebd850378dee4dffe8636ee938f214a9ede7549d"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -1793,9 +1793,9 @@ dependencies = [
 
 [[package]]
 name = "redox_syscall"
-version = "0.5.16"
+version = "0.5.17"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7251471db004e509f4e75a62cca9435365b5ec7bcdff530d612ac7c87c44a792"
+checksum = "5407465600fb0548f1442edf71dd20683c6ed326200ace4b1ef0763521bb3b77"
 dependencies = [
  "bitflags 2.9.1",
 ]
@@ -2355,9 +2355,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.9.2"
+version = "0.9.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ed0aee96c12fa71097902e0bb061a5e1ebd766a6636bb605ba401c45c1650eac"
+checksum = "e06723639aaded957e5a80be250c1f82f274b9d23ebb4d94163668470623461c"
 dependencies = [
  "indexmap",
  "serde",
@@ -2495,7 +2495,7 @@ dependencies = [
  "serde_json",
  "target-triple",
  "termcolor",
- "toml 0.9.2",
+ "toml 0.9.3",
 ]
 
 [[package]]
@@ -2821,7 +2821,7 @@ version = "0.60.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f2f500e4d28234f72040990ec9d39e3a6b950f9f22d3dba18416c35882612bcb"
 dependencies = [
- "windows-targets 0.53.2",
+ "windows-targets 0.53.3",
 ]
 
 [[package]]
@@ -2857,10 +2857,11 @@ dependencies = [
 
 [[package]]
 name = "windows-targets"
-version = "0.53.2"
+version = "0.53.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c66f69fcc9ce11da9966ddb31a40968cad001c5bedeb5c2b82ede4253ab48aef"
+checksum = "d5fe6031c4041849d7c496a8ded650796e7b6ecc19df1a431c1a363342e5dc91"
 dependencies = [
+ "windows-link",
  "windows_aarch64_gnullvm 0.53.0",
  "windows_aarch64_msvc 0.53.0",
  "windows_i686_gnu 0.53.0",
