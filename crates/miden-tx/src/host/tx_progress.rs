@@ -7,16 +7,32 @@ use super::{NoteId, RowIndex, TransactionMeasurements};
 
 /// Contains the information about the number of cycles for each of the transaction execution
 /// stages.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct TransactionProgress {
     prologue: CycleInterval,
     notes_processing: CycleInterval,
     note_execution: Vec<(NoteId, CycleInterval)>,
     tx_script_processing: CycleInterval,
     epilogue: CycleInterval,
+    epilogue_after_compute_fee_procedure: RowIndex,
 }
 
 impl TransactionProgress {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Initializes a new [`TransactionProgress`] with all values set to their defaults.
+    pub fn new() -> Self {
+        Self {
+            prologue: CycleInterval::default(),
+            notes_processing: CycleInterval::default(),
+            note_execution: Vec::new(),
+            tx_script_processing: CycleInterval::default(),
+            epilogue: CycleInterval::default(),
+            epilogue_after_compute_fee_procedure: RowIndex::from(0u32),
+        }
+    }
+
     // STATE ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -81,8 +97,18 @@ impl TransactionProgress {
         self.epilogue.set_start(cycle);
     }
 
+    pub fn epilogue_after_compute_fee_procedure(&mut self, cycle: RowIndex) {
+        self.epilogue_after_compute_fee_procedure = cycle;
+    }
+
     pub fn end_epilogue(&mut self, cycle: RowIndex) {
         self.epilogue.set_end(cycle);
+    }
+}
+
+impl Default for TransactionProgress {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -102,12 +128,17 @@ impl From<TransactionProgress> for TransactionMeasurements {
 
         let epilogue = tx_progress.epilogue().len();
 
+        let after_compute_fee_cycles =
+            tx_progress.epilogue().end().expect("epilogue end should be set")
+                - tx_progress.epilogue_after_compute_fee_procedure;
+
         Self {
             prologue,
             notes_processing,
             note_execution,
             tx_script_processing,
             epilogue,
+            after_compute_fee_cycles,
         }
     }
 }

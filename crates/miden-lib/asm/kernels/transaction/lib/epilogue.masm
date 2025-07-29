@@ -19,6 +19,18 @@ const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither c
 
 const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been called from outside the epilogue"
 
+# CONSTANTS
+# =================================================================================================
+
+# Event emitted to signal that the compute free procedure has finished executing.
+const.EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE=131101
+
+# The number of cycles the epilogue is estimated to take after compute_fee has been executed.
+# This is _estimated_ using the transaction measurements on ExecutedTransaction.
+# This should be replaced with a way to _calculate_ the number of cycles that the epilogue will incur
+# after compute_fee.
+const.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES=1200
+
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
 
@@ -204,8 +216,13 @@ end
 proc.compute_fee
     # get the number of cycles the transaction has taken to execute up this point
     clk
-    # TODO: Add epilogue estimation
     # => [num_current_cycles]
+
+    emit.EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE
+
+    # estimate the number of cycles the transaction will take
+    add.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES
+    # => [num_tx_cycles]
 
     ilog2
     # => [num_estimated_verification_cycles]
@@ -242,6 +259,11 @@ export.finalize_transaction
 
     # execute the account authentication procedure
     exec.execute_auth_procedure
+    # => []
+
+    # compute the fee the tx needs to pay
+    # ignored for now
+    exec.compute_fee drop
     # => []
 
     # get the initial account commitment

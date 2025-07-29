@@ -250,6 +250,10 @@ where
                 self.tx_progress.start_epilogue(process.clk());
                 Ok(())
             }
+            TransactionEvent::EpilogueAfterComputeFeeProcedure => {
+                self.tx_progress.epilogue_after_compute_fee_procedure(process.clk());
+                Ok(())
+            }
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(())

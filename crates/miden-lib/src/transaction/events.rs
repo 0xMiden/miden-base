@@ -53,6 +53,9 @@ const LINK_MAP_GET_EVENT: u32 = 0x2_001b; // 131099
 
 const UNAUTHORIZED_EVENT: u32 = 0x2_001c; // 131100
 
+// TODO: Move between epilogue start/end.
+const EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE: u32 = 0x2001d; // 131101
+
 /// Events which may be emitted by a transaction kernel.
 ///
 /// The events are emitted via the `emit.<event_id>` instruction. The event ID is a 32-bit
@@ -101,6 +104,7 @@ pub enum TransactionEvent {
     TxScriptProcessingEnd = TX_SCRIPT_PROCESSING_END,
 
     EpilogueStart = EPILOGUE_START,
+    EpilogueAfterComputeFeeProcedure = EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE,
     EpilogueEnd = EPILOGUE_END,
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
@@ -180,6 +184,7 @@ impl TryFrom<u32> for TransactionEvent {
             TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
+            EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE => Ok(TransactionEvent::EpilogueAfterComputeFeeProcedure),
             EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),
