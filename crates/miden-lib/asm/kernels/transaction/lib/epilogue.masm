@@ -194,6 +194,29 @@ proc.execute_auth_procedure
     dropw dropw dropw dropw
 end
 
+# FEE PROCEDURES
+# =================================================================================================
+
+#! Computes the fee required for the current transaction.
+#!
+#! Inputs:  []
+#! Outputs: [fee_amount]
+proc.compute_fee
+    # get the number of cycles the transaction has taken to execute up this point
+    clk
+    # TODO: Add epilogue estimation
+    # => [num_current_cycles]
+
+    ilog2
+    # => [num_estimated_verification_cycles]
+
+    exec.memory::get_verification_base_fee
+    # => [verification_base_fee, num_estimated_verification_cycles]
+
+    mul
+    # => [verification_cost]
+end
+
 # TRANSACTION EPILOGUE PROCEDURE
 # =================================================================================================
 
