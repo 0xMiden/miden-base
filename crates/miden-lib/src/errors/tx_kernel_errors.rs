@@ -189,6 +189,8 @@ pub const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH: MasmError = MasmErr
 pub const ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER: MasmError = MasmError::from_static_str("account IDs provided via global inputs and advice provider do not match");
 /// Error Message: "reference block MMR and note's authentication MMR must match"
 pub const ERR_PROLOGUE_MISMATCH_OF_REFERENCE_BLOCK_MMR_AND_NOTE_AUTHENTICATION_MMR: MasmError = MasmError::from_static_str("reference block MMR and note's authentication MMR must match");
+/// Error Message: "native asset account ID in reference block is not of type fungible faucet"
+pub const ERR_PROLOGUE_NATIVE_ASSET_ID_IS_NOT_FUNGIBLE: MasmError = MasmError::from_static_str("native asset account ID in reference block is not of type fungible faucet");
 /// Error Message: "new account must have a zero nonce"
 pub const ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO: MasmError = MasmError::from_static_str("new account must have a zero nonce");
 /// Error Message: "new account must have an empty vault"

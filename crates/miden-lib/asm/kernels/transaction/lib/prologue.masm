@@ -21,6 +21,8 @@ const.ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_COMMITMENT="the pro
 
 const.ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_NUMBER_COMMITMENT="the provided global inputs do not match the block number commitment"
 
+const.ERR_PROLOGUE_NATIVE_ASSET_ID_IS_NOT_FUNGIBLE="native asset account ID in reference block is not of type fungible faucet"
+
 const.ERR_PROLOGUE_NEW_ACCOUNT_VAULT_MUST_BE_EMPTY="new account must have an empty vault"
 
 const.ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY="reserved slot for new fungible faucet is not empty"
@@ -269,11 +271,23 @@ proc.process_block_data
     assert_eqw.err=ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_COMMITMENT
     # => [block_data_ptr', block_num]
 
+    # validate block number from global inputs matches block number from block data
     drop
     # => [block_num]
 
     exec.memory::get_blk_num
     assert_eq.err=ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_NUMBER_COMMITMENT
+    # => []
+
+    # validate native asset ID is a fungible faucet
+    exec.memory::get_native_asset_id
+    # => [native_asset_id_prefix, native_asset_id_suffix]
+
+    exec.account_id::is_fungible_faucet assert.err=ERR_PROLOGUE_NATIVE_ASSET_ID_IS_NOT_FUNGIBLE
+    # => [native_asset_id_suffix]
+
+    drop
+    # => []
 end
 
 # CHAIN DATA

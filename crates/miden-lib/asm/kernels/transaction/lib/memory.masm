@@ -622,6 +622,19 @@ export.get_blk_timestamp
     mem_load.BLOCK_METADATA_TIMESTAMP_PTR
 end
 
+#! Returns the faucet ID of the native asset as defined in the transaction's reference block.
+#!
+#! Inputs:  []
+#! Outputs: [native_asset_id_prefix, native_asset_id_suffix]
+#!
+#! Where:
+#! - native_asset_id_{prefix,suffix} are the prefix and suffix felts of the faucet ID that defines
+#!   the native asset.
+export.get_native_asset_id
+    padw mem_loadw.FEE_PARAMETERS_PTR drop drop
+    # => [native_asset_id_prefix, native_asset_id_suffix]
+end
+
 #! Returns the chain commitment of the transaction reference block.
 #!
 #! Inputs:  []
