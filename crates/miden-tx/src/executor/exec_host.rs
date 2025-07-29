@@ -127,10 +127,10 @@ where
                 ));
             }
 
-            let salt = extract_word(&commitments, 0);
-            let output_notes_commitment = extract_word(&commitments, 4);
-            let input_notes_commitment = extract_word(&commitments, 8);
-            let account_delta_commitment = extract_word(&commitments, 12);
+            let salt = extract_word(commitments, 0);
+            let output_notes_commitment = extract_word(commitments, 4);
+            let input_notes_commitment = extract_word(commitments, 8);
+            let account_delta_commitment = extract_word(commitments, 12);
             let tx_summary = build_tx_summary(
                 self.base_host(),
                 salt,
