@@ -22,7 +22,7 @@ const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been call
 # CONSTANTS
 # =================================================================================================
 
-# Event emitted to signal that the compute free procedure has finished executing.
+# Event emitted to signal that the compute_fee procedure has obtained the current number of cycles.
 const.EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE=131101
 
 # The number of cycles the epilogue is estimated to take after compute_fee has been executed.
