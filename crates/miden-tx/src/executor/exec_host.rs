@@ -14,7 +14,7 @@ use crate::{
     AccountProcedureIndexMap,
     auth::{SigningInputs, TransactionAuthenticator},
     executor::build_tx_summary,
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
+    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress, extract_word},
 };
 
 /// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
@@ -221,17 +221,4 @@ where
 
         Ok(())
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Extracts a word from a slice of field elements.
-fn extract_word(commitments: &[Felt], start: usize) -> Word {
-    Word::from([
-        commitments[start],
-        commitments[start + 1],
-        commitments[start + 2],
-        commitments[start + 3],
-    ])
 }

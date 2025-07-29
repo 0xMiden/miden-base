@@ -551,19 +551,10 @@ where
             );
         }
 
-        let extract_word = |start: usize| -> Word {
-            Word::from([
-                commitments[start],
-                commitments[start + 1],
-                commitments[start + 2],
-                commitments[start + 3],
-            ])
-        };
-
-        let salt = extract_word(0);
-        let output_notes_commitment = extract_word(4);
-        let input_notes_commitment = extract_word(8);
-        let account_delta_commitment = extract_word(12);
+        let salt = extract_word(commitments, 0);
+        let output_notes_commitment = extract_word(commitments, 4);
+        let input_notes_commitment = extract_word(commitments, 8);
+        let account_delta_commitment = extract_word(commitments, 12);
 
         TransactionKernelError::Unauthorized {
             account_delta_commitment,
@@ -624,4 +615,14 @@ where
 
         Ok(num_storage_slots_felt.as_int())
     }
+}
+
+/// Extracts a word from a slice of field elements.
+pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
+    Word::from([
+        commitments[start],
+        commitments[start + 1],
+        commitments[start + 2],
+        commitments[start + 3],
+    ])
 }
