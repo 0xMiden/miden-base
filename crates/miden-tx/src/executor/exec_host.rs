@@ -125,13 +125,12 @@ where
             // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
             // - commitments[8..12]: INPUT_NOTES_COMMITMENT
             // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-            let commitments = process
-                .advice_provider()
-                .get_mapped_values(&msg)
-                .map_err(|err| TransactionKernelError::TransactionSummaryError(Box::new(err)))?;
+            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
+                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+            })?;
 
             if commitments.len() != 16 {
-                return Err(TransactionKernelError::TransactionSummaryError(
+                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
                     "Expected 4 words for transaction summary commitments".into(),
                 ));
             }
@@ -156,10 +155,12 @@ where
                 input_notes_commitment,
                 account_delta_commitment,
             )
-            .map_err(|err| TransactionKernelError::TransactionSummaryError(Box::new(err)))?;
+            .map_err(|err| {
+                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+            })?;
 
             if msg != tx_summary.to_commitment() {
-                return Err(TransactionKernelError::TransactionSummaryError(
+                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
                     "transaction summary doesn't commit to the expected message".into(),
                 ));
             }
