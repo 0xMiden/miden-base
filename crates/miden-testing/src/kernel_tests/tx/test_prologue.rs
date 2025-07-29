@@ -11,8 +11,8 @@ use miden_lib::{
     transaction::{
         TransactionKernel,
         memory::{
-            ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_FEE_PARAMETERS_PTR,
-            BLOCK_METADATA_PTR, BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, INIT_ACCT_COMMITMENT_PTR,
+            ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_METADATA_PTR,
+            BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, FEE_PARAMETERS_PTR, INIT_ACCT_COMMITMENT_PTR,
             INIT_NONCE_PTR, INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
             INPUT_NOTE_ASSETS_OFFSET, INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
             INPUT_NOTE_METADATA_OFFSET, INPUT_NOTE_NULLIFIER_SECTION_PTR,
@@ -237,13 +237,13 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(BLOCK_FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_SUFFIX_IDX],
+        process.get_kernel_mem_word(FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_SUFFIX_IDX],
         inputs.tx_inputs().block_header().fee_parameters().native_asset_id().suffix(),
-        "The native asset ID suffix should be stored at BLOCK_FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_SUFFIX_IDX]"
+        "The native asset ID suffix should be stored at FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_SUFFIX_IDX]"
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(BLOCK_FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_PREFIX_IDX],
+        process.get_kernel_mem_word(FEE_PARAMETERS_PTR)[NATIVE_ASSET_ID_PREFIX_IDX],
         inputs
             .tx_inputs()
             .block_header()
@@ -251,18 +251,18 @@ fn block_data_memory_assertions(process: &Process, inputs: &TransactionContext) 
             .native_asset_id()
             .prefix()
             .as_felt(),
-        "The native asset ID prefix should be stored at BLOCK_FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_PREFIX_IDX]"
+        "The native asset ID prefix should be stored at FEE_PARAMETERS_PTR[NATIVE_ASSET_ID_PREFIX_IDX]"
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(BLOCK_FEE_PARAMETERS_PTR)[VERIFICATION_BASE_FEE_IDX],
+        process.get_kernel_mem_word(FEE_PARAMETERS_PTR)[VERIFICATION_BASE_FEE_IDX],
         inputs
             .tx_inputs()
             .block_header()
             .fee_parameters()
             .verification_base_fee()
             .into(),
-        "The verification base fee should be stored at BLOCK_FEE_PARAMETERS_PTR[VERIFICATION_BASE_FEE_IDX]"
+        "The verification base fee should be stored at FEE_PARAMETERS_PTR[VERIFICATION_BASE_FEE_IDX]"
     );
 
     assert_eq!(

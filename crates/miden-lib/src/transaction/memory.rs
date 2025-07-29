@@ -178,7 +178,7 @@ pub const PROTOCOL_VERSION_IDX: DataIndex = 1;
 pub const TIMESTAMP_IDX: DataIndex = 2;
 
 /// The memory address at which the fee parameters are stored. These occupy a double word.
-pub const BLOCK_FEE_PARAMETERS_PTR: MemoryAddress = 832;
+pub const FEE_PARAMETERS_PTR: MemoryAddress = 832;
 
 /// The index of the native asset ID suffix within the block fee parameters.
 pub const NATIVE_ASSET_ID_SUFFIX_IDX: DataIndex = 0;
