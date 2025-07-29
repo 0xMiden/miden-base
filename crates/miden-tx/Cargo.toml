@@ -33,7 +33,7 @@ vm-processor   = { workspace = true }
 async-trait        = "0.1"
 rand               = { workspace = true }
 thiserror          = { workspace = true }
-tokio = { workspace = true }
+tokio              = { workspace = true }
 winter-maybe-async = { version = "0.12" }
 
 [dev-dependencies]
