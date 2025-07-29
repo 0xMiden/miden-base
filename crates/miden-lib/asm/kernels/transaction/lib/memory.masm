@@ -119,7 +119,7 @@ const.BLOCK_METADATA_PTR=828
 # [0, 0, 0, 0]
 const.FEE_PARAMETERS_PTR=832
 
-# The memory address at which the verificaion base fee is stored.
+# The memory address at which the verification base fee is stored.
 const.VERIFICATION_BASE_FEE_PTR=FEE_PARAMETERS_PTR+2
 
 # The memory address at which the note root is stored
