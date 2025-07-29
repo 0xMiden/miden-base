@@ -871,7 +871,7 @@ pub enum ProposedBlockError {
     },
 }
 
-// PROPOSED BLOCK ERROR
+// FEE ERROR
 // ================================================================================================
 
 #[derive(Debug, Error)]
