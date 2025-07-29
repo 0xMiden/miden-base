@@ -184,7 +184,9 @@ impl TryFrom<u32> for TransactionEvent {
             TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
-            EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE => Ok(TransactionEvent::EpilogueAfterComputeFeeProcedure),
+            EPILOGUE_AFTER_COMPUTE_FEE_PROCEDURE => {
+                Ok(TransactionEvent::EpilogueAfterComputeFeeProcedure)
+            },
             EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),
