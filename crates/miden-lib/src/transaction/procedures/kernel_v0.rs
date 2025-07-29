@@ -52,27 +52,27 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     // faucet_is_non_fungible_asset_issued
     word!("0x06e173cb23204c57a0ff0f604cd3b492c5c75c06e6c5d68f3ae4ccfb436a990b"),
     // note_get_assets_info
-    word!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
+    word!("0xe191daee1d69fd3928353fb9802e1aa8b8a6efc217b4d64dad1eaddbdf2b50ba"),
     // note_add_asset
     word!("0xb2c9c56be0d94ac3a0dd787ee12a4e5b9cc0d576f1e112ca0a6940e86f549e6f"),
     // note_get_serial_number
     word!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
-    word!("0x8597b07c458fe3b3cdab1a2a01ca05476501442f3c559c2de7080403bb4398fd"),
+    word!("0x88004b9cd9571618c397637dc55a9fdf5a80421b1bbc1c964bf505b4796f410f"),
     // note_get_sender
-    word!("0x01172024b89517e5da80121cedfa6c19dd2ace0fe4d09a8cde6605103fe62952"),
+    word!("0xf45bb5a348b67c886cb1577f78abf6c5100ebe953790882518849d29fbf7e5fb"),
     // note_get_script_root
     word!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // input_note_get_assets_info
-    word!("0xe900a33c3dee3196cfd09c6375981fe77b0651b1bd786c792900534196e17663"),
+    word!("0x0816c7215676487f3ce03d372bf5512afb528ab62466074921829d7d2974147c"),
     // output_note_get_assets_info
     word!("0xeddfc27d9b59bde6b55d28694cbe7a8bbf1d9766f41503cfe1eae2cc1c1c1a05"),
     // input_note_get_recipient
-    word!("0xa2af440ef92d6b889abd1ac3f73a4a3766c352dcfcf8dc15ae6c4161654396cc"),
+    word!("0x9ced71e631ca722d1fd09f4cd18b6f9783b674d7e9debe3d5a7719f1293d8c50"),
     // output_note_get_recipient
     word!("0xefcb9f20043ccfac81a2b95f7df7ab9da628293092ee22672f1c832c1b3ca32c"),
     // input_note_get_metadata
-    word!("0x9ced71e631ca722d1fd09f4cd18b6f9783b674d7e9debe3d5a7719f1293d8c50"),
+    word!("0x69c112c341f9a70c141eef53d2df9608e7634a6a8e3bc602b0080106b099cbdf"),
     // output_note_get_metadata
     word!("0x3fc5983d820f2008e3288256bff716afeace5500e622d62c6434da6d4b89cb17"),
     // tx_create_note

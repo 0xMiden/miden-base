@@ -750,8 +750,8 @@ export.input_note_get_recipient
     exec.memory::get_input_note_ptr
     # => [note_ptr, pad(15)]
 
-    # compute the recipient commitment
-    exec.input_note::compute_recipient_commitment
+    # get the recipient commitment
+    exec.memory::get_input_note_recipient
     # => [RECIPIENT_COMMITMENT, pad(15)]
 
     # truncate the stack
