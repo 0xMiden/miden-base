@@ -38,15 +38,7 @@ The nonce ensures that an account has a unique _commitment_ (or "hash") after ev
 
 Note that a transaction does not always change the state of an account. For instance, a transaction in which two SWAP notes are matched together does not necessarily change anything about the account state. Consequently, the nonce does not have to be incremented.
 
-## Account lifecycle
-
-Throughout its lifetime, an `Account` progresses through various phases:
-
-- **Creation and Deployment:** Initialization of the `Account` on the network.  
-- **Active Operation:** Continuous state updates via `Account` functions that modify the storage, nonce, and vault.
-- **Termination or Deactivation:** Optional, depending on the contract's design and governance model. Note however, that there is no functionality in the protocol to delete an account.
-
-### Account creation
+## Account creation
 
 For an `Account` to be recognized by the network, it must exist in the [account database](../state.md#account-database) maintained by Miden node(s).
 
@@ -54,8 +46,8 @@ However, a user can locally create a new `Account` ID before it's recognized net
 
 1. Alice generates a new `Account` ID locally (according to the desired `Account` type) using the Miden client.
 2. The Miden client checks with a Miden node to ensure the ID does not already exist.
-3. Alice shares the new ID with Bob (for example, to receive assets).
+3. Alice shares the new ID with Bob to receive an asset.
 4. Bob executes a transaction against his account, creating a note with assets for Alice.
-5. Alice consumes Bob's note in a transaction against her account to claim the asset. This
+5. Alice consumes Bob's note in a transaction against her new account to claim the asset. This
 transaction is the first transaction against Alice's account and so it will register the account
 ID in the account database.
