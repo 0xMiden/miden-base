@@ -42,7 +42,7 @@ end
 #! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 #!
 #! Where:
-#! - SALT is a user provided randomizer.
+#! - SALT is a user-defined input recommended to use as replay protection.
 #! - OUTPUT_NOTES_COMMITMENT is the commitment to the transaction's output notes.
 #! - INPUT_NOTES_COMMITMENT is the commitment to the transaction's inputs notes.
 #! - ACCOUNT_DELTA_COMMITMENT is the commitment to the transaction's account delta.
