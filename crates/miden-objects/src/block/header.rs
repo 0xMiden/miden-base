@@ -24,12 +24,12 @@ use crate::{
 /// - `tx_kernel_commitment` a commitment to all transaction kernels supported by this block.
 /// - `proof_commitment` is the commitment of the block's STARK proof attesting to the correct state
 ///   transition.
+/// - `fee_parameters` are the parameters defining the base fees and the native asset, see
+///   [`FeeParameters`] for more details.
 /// - `timestamp` is the time when the block was created, in seconds since UNIX epoch. Current
 ///   representation is sufficient to represent time up to year 2106.
 /// - `sub_commitment` is a sequential hash of all fields except the note_root.
 /// - `commitment` is a 2-to-1 hash of the sub_commitment and the note_root.
-/// - `fee_parameters` are the parameters defining the base fees and the native asset, see
-///   [`FeeParameters`] for more details.
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BlockHeader {
     version: u32,
@@ -42,10 +42,10 @@ pub struct BlockHeader {
     tx_commitment: Word,
     tx_kernel_commitment: Word,
     proof_commitment: Word,
+    fee_parameters: FeeParameters,
     timestamp: u32,
     sub_commitment: Word,
     commitment: Word,
-    fee_parameters: FeeParameters,
 }
 
 impl BlockHeader {
@@ -62,8 +62,8 @@ impl BlockHeader {
         tx_commitment: Word,
         tx_kernel_commitment: Word,
         proof_commitment: Word,
-        timestamp: u32,
         fee_parameters: FeeParameters,
+        timestamp: u32,
     ) -> Self {
         // compute block sub commitment
         let sub_commitment = Self::compute_sub_commitment(
@@ -75,9 +75,9 @@ impl BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            &fee_parameters,
             timestamp,
             block_num,
-            &fee_parameters,
         );
 
         // The sub commitment is merged with the note_root - hash(sub_commitment, note_root) to
@@ -97,10 +97,10 @@ impl BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            fee_parameters,
             timestamp,
             sub_commitment,
             commitment,
-            fee_parameters,
         }
     }
 
@@ -186,14 +186,14 @@ impl BlockHeader {
         self.proof_commitment
     }
 
-    /// Returns the timestamp at which the block was created, in seconds since UNIX epoch.
-    pub fn timestamp(&self) -> u32 {
-        self.timestamp
-    }
-
     /// Returns a reference to the [`FeeParameters`] in this header.
     pub fn fee_parameters(&self) -> &FeeParameters {
         &self.fee_parameters
+    }
+
+    /// Returns the timestamp at which the block was created, in seconds since UNIX epoch.
+    pub fn timestamp(&self) -> u32 {
+        self.timestamp
     }
 
     /// Returns the block number of the epoch block to which this block belongs.
@@ -220,9 +220,9 @@ impl BlockHeader {
         tx_commitment: Word,
         tx_kernel_commitment: Word,
         proof_commitment: Word,
+        fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
-        fee_parameters: &FeeParameters,
     ) -> Word {
         let mut elements: Vec<Felt> = Vec::with_capacity(40);
         elements.extend_from_slice(prev_block_commitment.as_elements());
@@ -259,8 +259,8 @@ impl Serializable for BlockHeader {
         self.tx_commitment.write_into(target);
         self.tx_kernel_commitment.write_into(target);
         self.proof_commitment.write_into(target);
-        self.timestamp.write_into(target);
         self.fee_parameters.write_into(target);
+        self.timestamp.write_into(target);
     }
 }
 
@@ -276,8 +276,8 @@ impl Deserializable for BlockHeader {
         let tx_commitment = source.read()?;
         let tx_kernel_commitment = source.read()?;
         let proof_commitment = source.read()?;
-        let timestamp = source.read()?;
         let fee_parameters = source.read()?;
+        let timestamp = source.read()?;
 
         Ok(Self::new(
             version,
@@ -290,8 +290,8 @@ impl Deserializable for BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
-            timestamp,
             fee_parameters,
+            timestamp,
         ))
     }
 }
@@ -307,7 +307,7 @@ pub struct FeeParameters {
     /// The [`AccountId`] of the fungible faucet whose assets are accepted for fee payments in the
     /// transaction kernel, or in other words, the native asset of the blockchain.
     native_asset_id: AccountId,
-    /// The base fee capturing the cost for the verification of a transaction.
+    /// The base fee (in base units) capturing the cost for the verification of a transaction.
     verification_base_fee: u32,
 }
 

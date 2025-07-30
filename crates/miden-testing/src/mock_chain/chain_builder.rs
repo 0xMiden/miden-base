@@ -512,8 +512,8 @@ fn create_genesis_state(
         tx_commitment,
         tx_kernel_commitment,
         proof_commitment,
-        timestamp,
         fee_parameters,
+        timestamp,
     );
 
     Ok((

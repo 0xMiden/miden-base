@@ -166,8 +166,8 @@ impl LocalBlockProver {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
-            timestamp,
             fee_parameters,
+            timestamp,
         );
 
         // Construct the new proven block.

@@ -91,8 +91,8 @@ impl BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
-            timestamp,
             fee_parameters,
+            timestamp,
         )
     }
 }
