@@ -14,7 +14,8 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceMutation, AsyncHost, AsyncHostFuture, BaseHost, EventError, MastForest, MastForestStore, ProcessState
+    AdviceMutation, AsyncHost, AsyncHostFuture, BaseHost, EventError, MastForest, MastForestStore,
+    ProcessState,
 };
 
 use crate::{
