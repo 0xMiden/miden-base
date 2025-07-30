@@ -211,6 +211,10 @@ end
 
 #! Computes the fee required for the current transaction.
 #!
+#! The number of cycles a transaction will take to verify depends logarithmically on the number of
+#! cycles that were proven. We estimate this by taking log2 of the estimated number of cycles the
+#! transaction will take to execute, rounded up to the next power of two.
+#!
 #! Inputs:  []
 #! Outputs: [fee_amount]
 proc.compute_fee
@@ -224,7 +228,12 @@ proc.compute_fee
     add.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES
     # => [num_tx_cycles]
 
-    ilog2
+    # take log2 which is proportional
+    # ilog2 will round down, but we need to round up, so we add 1.
+    # technically we don't need to do this if num_tx_cycles is already a power of two, but
+    # because we're estimating part of the cycle count anyway, this is not a correctness
+    # concern currently.
+    ilog2 add.1
     # => [num_estimated_verification_cycles]
 
     exec.memory::get_verification_base_fee
