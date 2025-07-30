@@ -216,7 +216,8 @@ pub struct TransactionMeasurements {
     pub note_execution: Vec<(NoteId, usize)>,
     pub tx_script_processing: usize,
     pub epilogue: usize,
-    /// The number of cycles the epilogue took to execute after compute_fee was called.
+    /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
+    /// count.
     ///
     /// This is used to estimate the total number of cycles the transaction takes for use in
     /// compute_fee itself.

@@ -14,7 +14,12 @@ pub struct TransactionProgress {
     note_execution: Vec<(NoteId, CycleInterval)>,
     tx_script_processing: CycleInterval,
     epilogue: CycleInterval,
-    epilogue_after_compute_fee_procedure: RowIndex,
+    /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
+    /// count.
+    ///
+    /// This is used to estimate the total number of cycles the transaction takes for use in
+    /// compute_fee itself.
+    epilogue_after_compute_fee_procedure: Option<RowIndex>,
 }
 
 impl TransactionProgress {
@@ -29,7 +34,7 @@ impl TransactionProgress {
             note_execution: Vec::new(),
             tx_script_processing: CycleInterval::default(),
             epilogue: CycleInterval::default(),
-            epilogue_after_compute_fee_procedure: RowIndex::from(0u32),
+            epilogue_after_compute_fee_procedure: None,
         }
     }
 
@@ -98,7 +103,7 @@ impl TransactionProgress {
     }
 
     pub fn epilogue_after_compute_fee_procedure(&mut self, cycle: RowIndex) {
-        self.epilogue_after_compute_fee_procedure = cycle;
+        self.epilogue_after_compute_fee_procedure = Some(cycle);
     }
 
     pub fn end_epilogue(&mut self, cycle: RowIndex) {
@@ -128,9 +133,14 @@ impl From<TransactionProgress> for TransactionMeasurements {
 
         let epilogue = tx_progress.epilogue().len();
 
-        let after_compute_fee_cycles =
+        let after_compute_fee_cycles = if let Some(after_compute_fee_procedure) =
+            tx_progress.epilogue_after_compute_fee_procedure
+        {
             tx_progress.epilogue().end().expect("epilogue end should be set")
-                - tx_progress.epilogue_after_compute_fee_procedure;
+                - after_compute_fee_procedure
+        } else {
+            0
+        };
 
         Self {
             prologue,
