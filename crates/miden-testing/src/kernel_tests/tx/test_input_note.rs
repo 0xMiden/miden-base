@@ -7,7 +7,7 @@ use super::{TestSetup, setup_test, word_to_masm_push_string};
 use crate::TxContextInput;
 
 /// Check that the assets number and assets commitment obtained from the
-/// `input_note::get_assets_info` procedure is correct for each note with one, two and three
+/// `input_note::get_assets_info` procedure is correct for each note with zero, one and two
 /// different assets.
 #[test]
 fn test_get_asset_info() -> anyhow::Result<()> {
@@ -147,7 +147,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 }
 
 /// Check that the assets number and assets data obtained from the `input_note::get_assets`
-/// procedure is correct for each note with one, two and three different assets.
+/// procedure is correct for each note with zero, one and two different assets.
 #[test]
 fn test_get_assets() -> anyhow::Result<()> {
     let TestSetup {

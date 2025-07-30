@@ -170,6 +170,8 @@ fn test_get_asset_info() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Check that recipient and metadata of a note with one asset obtained from the
+/// `output_note::get_recipient` procedure is correct.
 #[test]
 fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -243,6 +245,8 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Check that the assets number and assets data obtained from the `output_note::get_assets`
+/// procedure is correct for each note with zero, one and two different assets.
 #[test]
 fn test_get_assets() -> anyhow::Result<()> {
     let TestSetup {
