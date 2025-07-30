@@ -314,18 +314,18 @@ dependencies = [
 
 [[package]]
 name = "clap"
-version = "4.5.41"
+version = "4.5.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be92d32e80243a54711e5d7ce823c35c41c9d929dc4ab58e1276f625841aadf9"
+checksum = "ed87a9d530bb41a67537289bafcac159cb3ee28460e0a4571123d2a778a6a882"
 dependencies = [
  "clap_builder",
 ]
 
 [[package]]
 name = "clap_builder"
-version = "4.5.41"
+version = "4.5.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "707eab41e9622f9139419d573eca0900137718000c517d47da73045f54331c3d"
+checksum = "64f4f3f3c77c94aff3c7e9aac9a2ca1974a5adf392a8bb751e827d6d127ab966"
 dependencies = [
  "anstyle",
  "clap_lex",
@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-core",
  "thiserror 2.0.12",
@@ -1034,7 +1034,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "log",
  "miden-assembly-syntax",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -1090,7 +1090,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1125,7 +1125,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1165,7 +1165,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1247,7 +1247,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -1262,7 +1262,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-air",
  "miden-debug-types",
@@ -1275,7 +1275,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "env_logger",
  "miden-assembly",
@@ -1338,7 +1338,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1350,7 +1350,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "lock_api",
  "loom",
@@ -1360,7 +1360,7 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#e53a507754a22533f3c1c7c0270cbf656e88fd27"
+source = "git+https://github.com/0xMiden/miden-vm.git?rev=e53a5077#e53a507754a22533f3c1c7c0270cbf656e88fd27"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -2355,9 +2355,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.9.3"
+version = "0.9.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e06723639aaded957e5a80be250c1f82f274b9d23ebb4d94163668470623461c"
+checksum = "41ae868b5a0f67631c14589f7e250c1ea2c574ee5ba21c6c8dd4b1485705a5a1"
 dependencies = [
  "indexmap",
  "serde",
@@ -2484,9 +2484,9 @@ dependencies = [
 
 [[package]]
 name = "trybuild"
-version = "1.0.106"
+version = "1.0.108"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "65af40ad689f2527aebbd37a0a816aea88ff5f774ceabe99de5be02f2f91dae2"
+checksum = "e087ef3afcfc5301c6a67d03db4ffaaf70b2fc4b753d3b42558d8a5a7e770f43"
 dependencies = [
  "dissimilar",
  "glob",
@@ -2495,7 +2495,7 @@ dependencies = [
  "serde_json",
  "target-triple",
  "termcolor",
- "toml 0.9.3",
+ "toml 0.9.4",
 ]
 
 [[package]]

@@ -1,6 +1,8 @@
 use alloc::collections::BTreeSet;
 
 use miden_crypto::merkle::{Forest, Mmr, MmrError, MmrPeaks, MmrProof, PartialMmr};
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_processor::DeserializationError;
 
 use crate::{Word, block::BlockNumber};
 
@@ -164,5 +166,21 @@ impl Blockchain {
 impl Default for Blockchain {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for Blockchain {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.mmr.write_into(target);
+    }
+}
+
+impl Deserializable for Blockchain {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let chain = Mmr::read_from(source)?;
+        Ok(Self::from_mmr_unchecked(chain))
     }
 }

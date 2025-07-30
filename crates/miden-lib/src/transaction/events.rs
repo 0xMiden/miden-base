@@ -126,6 +126,7 @@ pub enum TransactionEventData {
         message: Word,
         signature_key: Word,
         signature_opt: Option<Vec<Felt>>,
+        commitments_opt: Option<Vec<Felt>>,
     },
 }
 

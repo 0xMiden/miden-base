@@ -18,12 +18,7 @@ mod script_mast_forest_store;
 pub use script_mast_forest_store::ScriptMastForestStore;
 
 mod tx_progress;
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::{
     TransactionEvent, TransactionEventData, TransactionEventError, TransactionEventHandling,
@@ -40,11 +35,9 @@ use miden_objects::{
 };
 pub use tx_progress::TransactionProgress;
 use vm_processor::{
-    AdviceInputs, AdviceMutation, ContextId, EventError, ExecutionError, Felt, MastForest,
-    MastForestStore, ProcessState,
+    AdviceMutation, ContextId, EventError, ExecutionError, Felt, MastForest, MastForestStore,
+    ProcessState,
 };
-
-use crate::errors::TransactionHostError;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -92,54 +85,22 @@ where
     pub fn new(
         account: &PartialAccount,
         input_notes: InputNotes<InputNote>,
-        advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
-        mut foreign_account_code_commitments: BTreeSet<Word>,
-    ) -> Result<Self, TransactionHostError> {
-        // currently, the executor/prover do not keep track of the code commitment of the native
-        // account, so we add it to the set here
-        foreign_account_code_commitments.insert(account.code().commitment());
-
-        // Insert the account advice map into the advice recorder.
-        // This ensures that the advice map is available during the note script execution when it
-        // calls the account's code that relies on the it's advice map data (data segments) loaded
-        // into the advice provider
-        advice_inputs.map.extend(
-            account
-                .code()
-                .mast()
-                .advice_map()
-                .iter()
-                .map(|(key, values)| (*key, values.clone())),
-        );
-
-        // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
-        // advice provider has all the necessary data for script execution
-        advice_inputs.map.extend(
-            scripts_mast_store
-                .advice_map()
-                .iter()
-                .map(|(key, values)| (*key, values.clone())),
-        );
-
-        let proc_index_map =
-            AccountProcedureIndexMap::new(foreign_account_code_commitments, advice_inputs)?;
-
-        let base = Self {
+        acct_procedure_index_map: AccountProcedureIndexMap,
+    ) -> Self {
+        Self {
             mast_store,
             scripts_mast_store,
             account_delta: AccountDeltaTracker::new(
                 account.id(),
                 account.storage().header().clone(),
             ),
-            acct_procedure_index_map: proc_index_map,
+            acct_procedure_index_map,
             output_notes: BTreeMap::default(),
             input_notes,
             tx_progress: TransactionProgress::default(),
-        };
-
-        Ok(base)
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -250,8 +211,10 @@ where
                     .advice_provider()
                     .get_mapped_values(&signature_key)
                     .map(|slice| slice.to_vec());
+                let commitments_opt = process.advice_provider().get_mapped_values(&message).map(|slice| slice.to_vec());
 
-                Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest { pub_key_hash, message, signature_key, signature_opt }))
+
+                Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest { pub_key_hash, message, signature_key, signature_opt, commitments_opt }))
             },
 
             TransactionEvent::PrologueStart => {
@@ -326,6 +289,7 @@ where
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
+
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature = process
