@@ -1,5 +1,6 @@
 use alloc::string::String;
 
+use anyhow::Context;
 use miden_lib::{
     transaction::memory::{
         NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
@@ -9,9 +10,22 @@ use miden_lib::{
     utils::word_to_masm_push_string,
 };
 use miden_objects::{
-    Felt, Hasher, ONE, Word, ZERO, note::Note, testing::storage::prepare_assets, vm::StackInputs,
+    Felt, Hasher, ONE, Word, ZERO,
+    account::{Account, AccountId},
+    asset::{Asset, FungibleAsset},
+    note::{Note, NoteType},
+    testing::{
+        account_id::{
+            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+            ACCOUNT_ID_SENDER,
+        },
+        storage::prepare_assets,
+    },
+    vm::StackInputs,
 };
 use vm_processor::{ContextId, Process};
+
+use crate::MockChain;
 
 mod test_account;
 mod test_account_delta;
@@ -147,4 +161,82 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
     ));
 
     script
+}
+
+// HELPER STRUCTURE
+// ================================================================================================
+
+/// Helper struct which holds the data required for the `input_note` and `output_note` tests.
+struct TestSetup {
+    mock_chain: MockChain,
+    account: Account,
+    p2id_note_0_assets: Note,
+    p2id_note_1_asset: Note,
+    p2id_note_2_assets: Note,
+}
+
+/// Return a [`TestSetup`], whose notes contain 0, 1 and 2 assets respectively.
+fn setup_test() -> anyhow::Result<TestSetup> {
+    let mut builder = MockChain::builder();
+
+    // asset for the account
+    let fungible_asset_0_double_amount = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?,
+            10,
+        )
+        .context("fungible_asset_0 is invalid")?,
+    );
+
+    // assets for the P2ID notes
+    let fungible_asset_0 = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?,
+            5,
+        )
+        .context("fungible_asset_0 is invalid")?,
+    );
+    let fungible_asset_1 = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)
+                .context("id should be valid")?,
+            10,
+        )
+        .context("fungible_asset_1 is invalid")?,
+    );
+
+    let account = builder.add_existing_wallet_with_assets(
+        crate::Auth::BasicAuth,
+        [fungible_asset_0_double_amount, fungible_asset_1],
+    )?;
+
+    // Notes
+    let p2id_note_0_assets = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[],
+        NoteType::Public,
+    )?;
+    let p2id_note_1_asset = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[fungible_asset_0],
+        NoteType::Public,
+    )?;
+    let p2id_note_2_assets = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[fungible_asset_0, fungible_asset_1],
+        NoteType::Public,
+    )?;
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
+
+    anyhow::Ok(TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets,
+        p2id_note_1_asset,
+        p2id_note_2_assets,
+    })
 }

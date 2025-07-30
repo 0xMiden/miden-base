@@ -1,13 +1,12 @@
 use alloc::string::String;
 
-use anyhow::Context;
 use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Word,
     account::AccountId,
     asset::{Asset, FungibleAsset},
     crypto::rand::RpoRandomCoin,
-    note::{NoteExecutionHint, NoteTag, NoteType},
+    note::{Note, NoteType},
     testing::account_id::{
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -15,7 +14,7 @@ use miden_objects::{
     transaction::{OutputNote, TransactionScript},
 };
 
-use super::{Felt, word_to_masm_push_string};
+use super::{Felt, TestSetup, setup_test, word_to_masm_push_string};
 use crate::{Auth, MockChain};
 
 /// This test creates an output note and then adds some assets into it checking the assets info on
@@ -79,7 +78,18 @@ fn test_get_asset_info() -> anyhow::Result<()> {
 
         begin
             # create an output note with fungible asset 0
-            {output_note}
+            push.{RECIPIENT}
+            push.{note_execution_hint}
+            push.{note_type}
+            push.0              # aux
+            push.{tag}
+            call.tx::create_note
+            # => [note_idx]
+
+            # move the asset 0 to the note
+            push.{asset_0}
+            call.::miden::contracts::wallets::basic::move_asset_to_note
+            dropw
             # => [note_idx]
 
             # get the assets hash and assets number of the note having only asset_0
@@ -130,13 +140,11 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         end
         "#,
         // output note
-        output_note = create_output_note_with_asset(
-            &output_note_1.recipient().digest(),
-            output_note_1.metadata().execution_hint(),
-            NoteType::Public,
-            output_note_1.metadata().tag(),
-            &fungible_asset_0.into()
-        ),
+        RECIPIENT = word_to_masm_push_string(&output_note_1.recipient().digest()),
+        note_execution_hint = Felt::from(output_note_1.metadata().execution_hint()),
+        note_type = NoteType::Public as u8,
+        tag = output_note_1.metadata().tag(),
+        asset_0 = word_to_masm_push_string(&fungible_asset_0.into()),
         // first data request
         COMPUTED_ASSETS_COMMITMENT_0 =
             word_to_masm_push_string(&output_note_0.assets().commitment()),
@@ -171,22 +179,13 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let mock_chain = builder.build()?;
 
-    let output_note_0 = create_p2id_note(
-        account.id(),
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
-        vec![FungibleAsset::mock(10)],
-        NoteType::Public,
-        Felt::new(0),
-        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
-    )?;
-
-    let output_note_1 = create_p2id_note(
+    let output_note = create_p2id_note(
         account.id(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
         vec![FungibleAsset::mock(5)],
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
 
     let tx_script_src = &format!(
@@ -196,56 +195,28 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         use.std::sys
 
         begin
-            ### 0'th note
-
-            # create output note 0 with asset 0
-            {output_note_0} drop
+            # create an output note with one asset
+            {output_note} drop
             # => []
 
-            # get the recipient from the 0'th output note
+            # get the recipient (the only existing note has 0'th index)
             push.0
             exec.output_note::get_recipient
-            # => [RECIPIENT_0]
+            # => [RECIPIENT]
 
             # assert the correctness of the recipient
-            push.{RECIPIENT_0} 
-            assert_eqw.err="note 0 has incorrect recipient"
+            push.{RECIPIENT} 
+            assert_eqw.err="requested note has incorrect recipient"
             # => []
 
-            # get the metadata from the 0'th output note
+            # get the metadata (the only existing note has 0'th index)
             push.0
             exec.output_note::get_metadata
-            # => [METADATA_0]
+            # => [METADATA]
 
             # assert the correctness of the metadata
-            push.{METADATA_0} 
-            assert_eqw.err="note 0 has incorrect metadata"
-            # => []
-
-            ### 1'st note
-
-            # create output note 1 with asset 1
-            {output_note_1} drop
-            # => []
-
-            # get the recipient from the 1'st output note
-            push.1
-            exec.output_note::get_recipient
-            # => [RECIPIENT_1]
-
-            # assert the correctness of the recipient
-            push.{RECIPIENT_1} 
-            assert_eqw.err="note 1 has incorrect recipient"
-            # => []
-
-            # get the metadata from the 1'st output note
-            push.1
-            exec.output_note::get_metadata
-            # => [METADATA_1]
-
-            # assert the correctness of the metadata
-            push.{METADATA_1} 
-            assert_eqw.err="note 1 has incorrect metadata"
+            push.{METADATA} 
+            assert_eqw.err="requested note has incorrect metadata"
             # => []
 
             # truncate the stack
@@ -253,25 +224,9 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         end
         "#,
         // first note
-        output_note_0 = create_output_note_with_asset(
-            &output_note_0.recipient().digest(),
-            output_note_0.metadata().execution_hint(),
-            NoteType::Public,
-            output_note_0.metadata().tag(),
-            &FungibleAsset::mock(10).into()
-        ),
-        RECIPIENT_0 = word_to_masm_push_string(&output_note_0.recipient().digest()),
-        METADATA_0 = word_to_masm_push_string(&output_note_0.metadata().into()),
-        // second note
-        output_note_1 = create_output_note_with_asset(
-            &output_note_1.recipient().digest(),
-            output_note_1.metadata().execution_hint(),
-            NoteType::Public,
-            output_note_1.metadata().tag(),
-            &FungibleAsset::mock(5).into()
-        ),
-        RECIPIENT_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
-        METADATA_1 = word_to_masm_push_string(&output_note_1.metadata().into()),
+        output_note = create_output_note(&output_note),
+        RECIPIENT = word_to_masm_push_string(&output_note.recipient().digest()),
+        METADATA = word_to_masm_push_string(&output_note.metadata().into()),
     );
 
     let tx_script =
@@ -279,10 +234,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
-        .extend_expected_output_notes(vec![
-            OutputNote::Full(output_note_0),
-            OutputNote::Full(output_note_1),
-        ])
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
         .tx_script(tx_script)
         .build()?;
 
@@ -293,128 +245,91 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
 #[test]
 fn test_get_assets() -> anyhow::Result<()> {
-    let mut builder = MockChain::builder();
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets,
+        p2id_note_1_asset,
+        p2id_note_2_assets,
+    } = setup_test()?;
 
-    let account =
-        builder.add_existing_wallet_with_assets(Auth::BasicAuth, [FungibleAsset::mock(2000)])?;
+    fn check_assets_code(note_index: u8, dest_ptr: u8, note: &Note) -> String {
+        let mut check_assets_code = format!(
+            r#"
+            # push the note index and memory destination pointer
+            push.{dest_ptr}.{note_idx}
+            # => [note_index, dest_ptr]
 
-    let mock_chain = builder.build()?;
+            # write the assets to the memory
+            exec.output_note::get_assets
+            # => [num_assets, note_index, dest_ptr]
 
-    let output_note_0 = create_p2id_note(
-        account.id(),
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
-        vec![FungibleAsset::mock(10)],
-        NoteType::Public,
-        Felt::new(0),
-        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
-    )?;
-    let note_0_asset = output_note_0
-        .assets()
-        .iter()
-        .next()
-        .context("output_note_0 should have at least one asset")?;
+            # assert the number of note assets
+            push.{assets_number}
+            assert_eq.err="note {note_index} has incorrect assets number"
+            drop
+            # => [dest_ptr]
+        "#,
+            note_idx = note_index,
+            dest_ptr = dest_ptr,
+            assets_number = note.assets().num_assets(),
+        );
 
-    let output_note_1 = create_p2id_note(
-        account.id(),
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into()?,
-        vec![FungibleAsset::mock(5)],
-        NoteType::Public,
-        Felt::new(0),
-        &mut RpoRandomCoin::new(Word::from([4, 3, 2, 1u32])),
-    )?;
-    let note_1_asset = output_note_1
-        .assets()
-        .iter()
-        .next()
-        .context("output_note_1 should have at least one asset")?;
+        // check each asset in the note
+        for (asset_index, asset) in note.assets().iter().enumerate() {
+            check_assets_code.push_str(&format!(
+                r#"
+                    # load the asset stored in memory
+                    padw dup.4 mem_loadw
+                    # => [STORED_ASSET, dest_ptr]
+
+                    # assert the asset
+                    push.{NOTE_ASSET}
+                    assert_eqw.err="asset {asset_index} of the note {note_index} is incorrect"
+                    # => [dest_ptr]
+
+                    # move the pointer
+                    add.4
+                    # => [dest_ptr+4]
+                "#,
+                NOTE_ASSET = word_to_masm_push_string(&asset.into()),
+                asset_index = asset_index,
+                note_index = note_index,
+            ));
+        }
+
+        // drop the final `dest_ptr` from the stack
+        check_assets_code.push_str("\ndrop");
+
+        check_assets_code
+    }
 
     let tx_script_src = &format!(
-        r#"
+        "
         use.miden::tx
         use.miden::output_note
         use.std::sys
 
         begin
-            ### 0'th note
+            {create_note_0}
+            {check_note_0}
+            
+            {create_note_1}
+            {check_note_1}
 
-            # create output note 0 with asset 0
-            {output_note_0} drop
-            # => []
-
-            # push the note index and memory pointer
-            push.0.0
-            # => [note_index, dest_ptr]
-
-            # write the assets to the memory
-            exec.output_note::get_assets
-            # => [num_assets, note_index, dest_ptr]
-
-            # assert the number of note assets
-            push.{assets_number_0}
-            assert_eq.err="note 0 has incorrect assets number"
-            # => [note_index, dest_ptr]
-
-            # assert the asset stored in memory
-            drop mem_loadw
-            # => [STORED_ASSET_0]
-
-            # assert the asset
-            push.{NOTE_0_ASSET}
-            assert_eqw.err="note 0 has incorrect asset"
-            # => []
-
-            ### 1'st note
-
-            # create output note 1 with asset 1
-            {output_note_1} drop
-            # => []
-
-            # push the note index and memory pointer
-            push.4.1
-            # => [note_index, dest_ptr]
-
-            # write the assets to the memory
-            exec.output_note::get_assets
-            # => [num_assets, note_index, dest_ptr]
-
-            # assert the number of note assets
-            push.{assets_number_1}
-            assert_eq.err="note 1 has incorrect assets number"
-            # => [note_index, dest_ptr]
-
-            # assert the asset stored in memory
-            drop mem_loadw
-            # => [STORED_ASSET_1]
-
-            # assert the asset
-            push.{NOTE_1_ASSET}
-            assert_eqw.err="note 1 has incorrect asset"
-            # => []
+            {create_note_2}
+            {check_note_2}
 
             # truncate the stack
             exec.sys::truncate_stack
         end
-        "#,
-        // first note
-        output_note_0 = create_output_note_with_asset(
-            &output_note_0.recipient().digest(),
-            output_note_0.metadata().execution_hint(),
-            NoteType::Public,
-            output_note_0.metadata().tag(),
-            &FungibleAsset::mock(10).into()
-        ),
-        assets_number_0 = output_note_0.assets().num_assets(),
-        NOTE_0_ASSET = word_to_masm_push_string(&note_0_asset.into()),
-        // second note
-        output_note_1 = create_output_note_with_asset(
-            &output_note_1.recipient().digest(),
-            output_note_1.metadata().execution_hint(),
-            NoteType::Public,
-            output_note_1.metadata().tag(),
-            &FungibleAsset::mock(5).into()
-        ),
-        assets_number_1 = output_note_1.assets().num_assets(),
-        NOTE_1_ASSET = word_to_masm_push_string(&note_1_asset.into()),
+        ",
+        create_note_0 = create_output_note(&p2id_note_0_assets),
+        check_note_0 = check_assets_code(0, 0, &p2id_note_0_assets),
+        create_note_1 = create_output_note(&p2id_note_1_asset),
+        check_note_1 = check_assets_code(1, 4, &p2id_note_1_asset),
+        create_note_2 = create_output_note(&p2id_note_2_assets),
+        check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
     let tx_script =
@@ -423,8 +338,9 @@ fn test_get_assets() -> anyhow::Result<()> {
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
         .extend_expected_output_notes(vec![
-            OutputNote::Full(output_note_0),
-            OutputNote::Full(output_note_1),
+            OutputNote::Full(p2id_note_0_assets),
+            OutputNote::Full(p2id_note_1_asset),
+            OutputNote::Full(p2id_note_2_assets),
         ])
         .tx_script(tx_script)
         .build()?;
@@ -437,14 +353,8 @@ fn test_get_assets() -> anyhow::Result<()> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
-fn create_output_note_with_asset(
-    recipient: &Word,
-    execution_hint: NoteExecutionHint,
-    note_type: NoteType,
-    tag: NoteTag,
-    asset: &Word,
-) -> String {
-    format!(
+fn create_output_note(note: &Note) -> String {
+    let mut create_note_code = format!(
         "
         # create an output note
         push.{RECIPIENT}
@@ -454,17 +364,25 @@ fn create_output_note_with_asset(
         push.{tag}
         call.tx::create_note
         # => [note_idx]
-
-        # move the asset to the note
-        push.{asset}
-        call.::miden::contracts::wallets::basic::move_asset_to_note
-        dropw
-        # => [note_idx]
     ",
-        RECIPIENT = word_to_masm_push_string(recipient),
-        note_execution_hint = Felt::from(execution_hint),
-        note_type = note_type as u8,
-        tag = Felt::from(tag),
-        asset = word_to_masm_push_string(asset),
-    )
+        RECIPIENT = word_to_masm_push_string(&note.recipient().digest()),
+        note_execution_hint = Felt::from(note.metadata().execution_hint()),
+        note_type = note.metadata().note_type() as u8,
+        tag = Felt::from(note.metadata().tag()),
+    );
+
+    for asset in note.assets().iter() {
+        create_note_code.push_str(&format!(
+            "
+            # move the asset to the note
+            push.{asset}
+            call.::miden::contracts::wallets::basic::move_asset_to_note
+            dropw
+            # => [note_idx]
+        ",
+            asset = word_to_masm_push_string(&asset.into())
+        ));
+    }
+
+    create_note_code
 }
