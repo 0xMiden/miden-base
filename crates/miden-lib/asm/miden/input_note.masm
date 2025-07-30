@@ -55,23 +55,10 @@ end
 export.get_assets
     # get the assets commitment and assets number
     dup exec.get_assets_info
-    # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+    # => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
 
-    # load the asset data from the advice map to the advice stack
-    adv.push_mapval
-    # OS => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
-    # AS => [[ASSETS_DATA]]
-
-    # calculate number of assets rounded up to an even number
-    dup.4 dup is_odd add
-    # => [even_num_assets, ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
-
-    # calculate the start and end pointer for reading to memory
-    mul.4 dup.7 add dup.7
-    # => [start_ptr, end_ptr, ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
-
-    # write the data from the advice stack into memory
-    exec.note::write_advice_data_to_memory
+    # write the assets stored in the advice map to the specified memory pointer
+    exec.note::write_assets_to_memory
     # => [num_assets, note_index, dest_ptr]
 end
 
