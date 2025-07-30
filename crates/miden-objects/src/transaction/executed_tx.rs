@@ -221,7 +221,7 @@ pub struct TransactionMeasurements {
     ///
     /// This is used to estimate the total number of cycles the transaction takes for use in
     /// compute_fee itself.
-    pub after_compute_fee_cycles: usize,
+    pub after_tx_fee_computed_cycles: usize,
 }
 
 impl TransactionMeasurements {
@@ -245,7 +245,7 @@ impl Serializable for TransactionMeasurements {
         self.note_execution.write_into(target);
         self.tx_script_processing.write_into(target);
         self.epilogue.write_into(target);
-        self.after_compute_fee_cycles.write_into(target);
+        self.after_tx_fee_computed_cycles.write_into(target);
     }
 }
 
@@ -256,7 +256,7 @@ impl Deserializable for TransactionMeasurements {
         let note_execution = Vec::<(NoteId, usize)>::read_from(source)?;
         let tx_script_processing = usize::read_from(source)?;
         let epilogue = usize::read_from(source)?;
-        let after_compute_fee_cycles = usize::read_from(source)?;
+        let after_tx_fee_computed_cycles = usize::read_from(source)?;
 
         Ok(Self {
             prologue,
@@ -264,7 +264,7 @@ impl Deserializable for TransactionMeasurements {
             note_execution,
             tx_script_processing,
             epilogue,
-            after_compute_fee_cycles,
+            after_tx_fee_computed_cycles,
         })
     }
 }
