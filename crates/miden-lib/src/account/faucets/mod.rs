@@ -14,9 +14,12 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{
-    auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
-    components::basic_fungible_faucet_library,
+use crate::{
+    account::{
+        auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
+        components::basic_fungible_faucet_library,
+    },
+    transaction::memory::FAUCET_STORAGE_DATA_SLOT,
 };
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
@@ -219,6 +222,24 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 
 // FUNGIBLE FAUCET
 // ================================================================================================
+
+pub struct FungibleFaucet;
+
+impl FungibleFaucet {
+    const ISSUANCE_ELEMENT_INDEX: usize = 3;
+
+    pub fn get_issuance_from_slot(slot: &Word) -> Felt {
+        slot[Self::ISSUANCE_ELEMENT_INDEX]
+    }
+
+    pub fn get_issuance_from_account(account: &Account) -> Result<Felt, FungibleFaucetError> {
+        let slot = account
+            .storage()
+            .get_item(FAUCET_STORAGE_DATA_SLOT)
+            .map_err(|_| FungibleFaucetError::InvalidStorageOffset(FAUCET_STORAGE_DATA_SLOT))?;
+        Ok(Self::get_issuance_from_slot(&slot))
+    }
+}
 
 /// Creates a new faucet account with basic fungible faucet interface,
 /// account storage type, specified authentication scheme, and provided meta data (token symbol,
