@@ -228,8 +228,7 @@ proc.compute_fee
     add.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES
     # => [num_tx_cycles]
 
-    # take log2 which is proportional
-    # ilog2 will round down, but we need to round up, so we add 1.
+    # ilog2 will round down, but we need to round up, so we add 1 afterwards.
     # technically we don't need to do this if num_tx_cycles is already a power of two, but
     # because we're estimating part of the cycle count anyway, this is not a correctness
     # concern currently.
