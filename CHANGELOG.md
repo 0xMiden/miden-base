@@ -17,6 +17,7 @@
 - Added `input_notes::get_assets` and `output_notes::get_assets` procedures to `miden` library ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
 - Added issuance accessor for fungible faucet accounts. ([#1660](https://github.com/0xMiden/miden-base/pull/1660)).
 - Add `FeeParameters` to `BlockHeader` and implement `compute_fee` ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654)).
+- Add `FeeParameters` to `BlockHeader`, implement `compute_fee` and output `FEE_ASSET` on the transaction stack ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659)).
 
 ### Changes
 
