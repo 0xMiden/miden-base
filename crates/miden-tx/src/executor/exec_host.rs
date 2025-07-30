@@ -169,7 +169,7 @@ where
             signature
         };
 
-        Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
+        Ok(vec![AdviceMutation::ExtendStack { values: signature }])
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -208,11 +208,8 @@ where
     STORE: MastForestStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
-    fn get_mast_forest(
-        &self,
-        procedure_root: &Word,
-    ) -> impl Future<Output = Option<Arc<MastForest>>> + Send {
-        core::future::ready(self.base_host.get_mast_forest(procedure_root))
+    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
+        self.base_host.get_mast_forest(procedure_root)
     }
 
     fn on_event(

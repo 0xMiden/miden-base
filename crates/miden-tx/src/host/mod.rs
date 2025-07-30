@@ -298,7 +298,7 @@ where
             .ok_or_else(|| TransactionKernelError::MissingAuthenticator)?
             .to_vec();
 
-        Ok(vec![AdviceMutation::ExtendStack { iter: signature }])
+        Ok(vec![AdviceMutation::ExtendStack { values: signature }])
     }
 
     /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
@@ -362,7 +362,7 @@ where
         process: &ProcessState,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process)?;
-        Ok(vec![AdviceMutation::ExtendStack { iter: vec![Felt::from(proc_idx)] }])
+        Ok(vec![AdviceMutation::ExtendStack { values: vec![Felt::from(proc_idx)] }])
     }
 
     /// Handles the increment nonce event by incrementing the nonce delta by one.
