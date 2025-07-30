@@ -2,11 +2,6 @@ use.miden::kernel_proc_offsets
 use.miden::note
 use.std::mem
 
-# ERRORS
-# =================================================================================================
-
-const.ERR_OUTPUT_ASSETS_COMMITMENT_MISMATCH="computed assets commitment does not match the one obtained from assets info"
-
 # PROCEDURES
 # =================================================================================================
 
@@ -51,6 +46,14 @@ end
 
 #! Writes the assets of the output note with the specified index into memory starting at the 
 #! specified address.
+#!
+#! Attention: memory starting from the `dest_ptr` should have enough space to store all the assets 
+#! in specified note. Make sure that at least `4 * assets_num` memory elements are available.
+#!
+#! The memory layout after the execution of this procedure will look like so:
+#! [ASSET_0, ASSET_1, ..., ASSET_N], where each asset occupies one word. For more detailed
+#! information about the layout of each asset see the description of the `Asset` enum in 
+#! `miden-objects/src/asset/mod.rs` file.
 #!
 #! Inputs:  [note_index, dest_ptr]
 #! Outputs: [num_assets, note_index, dest_ptr]

@@ -1555,7 +1555,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.get_input_note_recipient
     padw
     movup.4 add.INPUT_NOTE_RECIPIENT_OFFSET
@@ -1569,7 +1569,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the recipient of the note.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.set_input_note_recipient
     add.INPUT_NOTE_RECIPIENT_OFFSET
     mem_storew
@@ -1668,7 +1668,7 @@ end
 #!
 #! Where:
 #! - note_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the recipient of the output note.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.get_output_note_recipient
     padw
     movup.4 add.OUTPUT_NOTE_RECIPIENT_OFFSET
@@ -1681,8 +1681,8 @@ end
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - RECIPIENT is the recipient of the note.
 #! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.set_output_note_recipient
     add.OUTPUT_NOTE_RECIPIENT_OFFSET
     mem_storew

@@ -6,7 +6,7 @@ use.$kernel::note
 
 const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
 
-# INPUT NOTE PROCEDURES
+# OUTPUT NOTE PROCEDURES
 # =================================================================================================
 
 #! Returns the information about assets in the output note with the specified index.
