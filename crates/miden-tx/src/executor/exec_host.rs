@@ -13,8 +13,7 @@ use vm_processor::{
 use crate::{
     AccountProcedureIndexMap,
     auth::{SigningInputs, TransactionAuthenticator},
-    executor::build_tx_summary,
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress, extract_word},
+    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
 /// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
@@ -79,11 +78,6 @@ where
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the underlying [`TransactionBaseHost`].
-    pub(super) fn base_host(&self) -> &TransactionBaseHost<'store, STORE> {
-        &self.base_host
-    }
-
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
         self.base_host.tx_progress()
@@ -110,37 +104,7 @@ where
         {
             signature.to_vec()
         } else {
-            // Retrieve transaction summary commitments from the advice provider.
-            // The commitments are stored as a contiguous array of field elements with the following
-            // layout:
-            // - commitments[0..4]:  SALT
-            // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
-            // - commitments[8..12]: INPUT_NOTES_COMMITMENT
-            // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-            })?;
-
-            if commitments.len() != 16 {
-                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                    "expected 4 words for transaction summary commitments".into(),
-                ));
-            }
-
-            let salt = extract_word(commitments, 0);
-            let output_notes_commitment = extract_word(commitments, 4);
-            let input_notes_commitment = extract_word(commitments, 8);
-            let account_delta_commitment = extract_word(commitments, 12);
-            let tx_summary = build_tx_summary(
-                self.base_host(),
-                salt,
-                output_notes_commitment,
-                input_notes_commitment,
-                account_delta_commitment,
-            )
-            .map_err(|err| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-            })?;
+            let tx_summary = self.base_host.build_tx_summary(process, msg)?;
 
             if msg != tx_summary.to_commitment() {
                 return Err(TransactionKernelError::TransactionSummaryConstructionFailed(

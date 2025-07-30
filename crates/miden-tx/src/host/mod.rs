@@ -27,7 +27,9 @@ use miden_objects::{
     account::{AccountDelta, PartialAccount},
     asset::Asset,
     note::NoteId,
-    transaction::{InputNote, InputNotes, OutputNote, TransactionMeasurements},
+    transaction::{
+        InputNote, InputNotes, OutputNote, OutputNotes, TransactionMeasurements, TransactionSummary,
+    },
     vm::RowIndex,
 };
 pub use tx_progress::TransactionProgress;
@@ -519,49 +521,102 @@ where
         Ok(())
     }
 
-    /// Aborts the transaction by extracting the
-    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) from the stack and
-    /// returns it in an error.
+    // TRANSACTION SUMMARY HELPER
+    // --------------------------------------------------------------------------------------------
+
+    /// Builds a [TransactionSummary] by extracting data from the advice provider and validating
+    /// commitments against the host's state.
+    pub(crate) fn build_tx_summary(
+        &self,
+        process: &ProcessState,
+        msg: Word,
+    ) -> Result<TransactionSummary, TransactionKernelError> {
+        let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
+            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+        })?;
+
+        if commitments.len() != 16 {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected 4 words for transaction summary commitments".into(),
+            ));
+        }
+
+        let salt = extract_word(&commitments, 0);
+        let output_notes_commitment = extract_word(&commitments, 4);
+        let input_notes_commitment = extract_word(&commitments, 8);
+        let account_delta_commitment = extract_word(&commitments, 12);
+
+        let account_delta = self.build_account_delta();
+        let input_notes = self.input_notes();
+        let output_notes_vec = self.build_output_notes();
+        let output_notes = OutputNotes::new(output_notes_vec).map_err(|err| {
+            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+        })?;
+
+        // Validate commitments
+        let actual_account_delta_commitment = account_delta.to_commitment();
+        if actual_account_delta_commitment != account_delta_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        let actual_input_notes_commitment = input_notes.commitment();
+        if actual_input_notes_commitment != input_notes_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        let actual_output_notes_commitment = output_notes.commitment();
+        if actual_output_notes_commitment != output_notes_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
+    }
+
+    /// Aborts the transaction by building the
+    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) based on elements on
+    /// the operand stack and advice map.
     ///
     /// Expected stack state:
     ///
     /// ```text
-    /// [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+    /// [<word>, MESSAGE]
+    /// ```
+    ///
+    /// Expected advice map state:
+    ///
+    /// ```text
+    /// MESSAGE -> [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
     fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
         let msg = process.get_stack_word(1);
 
-        // Retrieve transaction summary commitments from the advice provider.
-        // The commitments are stored as a contiguous array of field elements with the following
-        // layout:
-        // - commitments[0..4]:  SALT
-        // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
-        // - commitments[8..12]: INPUT_NOTES_COMMITMENT
-        // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-        let commitments = match process.advice_provider().get_mapped_values(&msg) {
-            Ok(commitments) => commitments,
-            Err(err) => {
-                return TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err));
-            },
+        let tx_summary = match self.build_tx_summary(process, msg) {
+            Ok(s) => s,
+            Err(err) => return err,
         };
 
-        if commitments.len() != 16 {
+        if msg != tx_summary.to_commitment() {
             return TransactionKernelError::TransactionSummaryConstructionFailed(
-                "Expected 4 words for transaction summary commitments".into(),
+                "transaction summary doesn't commit to the expected message".into(),
             );
         }
 
-        let salt = extract_word(commitments, 0);
-        let output_notes_commitment = extract_word(commitments, 4);
-        let input_notes_commitment = extract_word(commitments, 8);
-        let account_delta_commitment = extract_word(commitments, 12);
-
-        TransactionKernelError::Unauthorized {
-            account_delta_commitment,
-            input_notes_commitment,
-            output_notes_commitment,
-            salt,
-        }
+        TransactionKernelError::Unauthorized(Box::new(tx_summary))
     }
 
     // HELPER FUNCTIONS
