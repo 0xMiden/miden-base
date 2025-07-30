@@ -541,10 +541,10 @@ where
             ));
         }
 
-        let salt = extract_word(&commitments, 0);
-        let output_notes_commitment = extract_word(&commitments, 4);
-        let input_notes_commitment = extract_word(&commitments, 8);
-        let account_delta_commitment = extract_word(&commitments, 12);
+        let salt = extract_word(commitments, 0);
+        let output_notes_commitment = extract_word(commitments, 4);
+        let input_notes_commitment = extract_word(commitments, 8);
+        let account_delta_commitment = extract_word(commitments, 12);
 
         let account_delta = self.build_account_delta();
         let input_notes = self.input_notes();
