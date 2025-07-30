@@ -47,14 +47,14 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly         = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly", rev = "e53a5077" }
+assembly         = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly", rev = "e53a5077" }
 miden-crypto     = { default-features = false, version = "0.15.6" }
-miden-prover     = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
-miden-stdlib     = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
-miden-utils-sync = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
-miden-verifier   = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
-vm-core          = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core", rev = "e53a5077" }
-vm-processor     = {  default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor", rev = "e53a5077" }
+miden-prover     = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
+miden-stdlib     = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
+miden-utils-sync = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
+miden-verifier   = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", rev = "e53a5077" }
+vm-core          = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core", rev = "e53a5077" }
+vm-processor     = { default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor", rev = "e53a5077" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }
