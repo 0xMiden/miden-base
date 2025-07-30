@@ -724,6 +724,10 @@ end
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
+    # assert that the provided note index is less than the total number of input notes
+    exec.input_note::assert_note_index
+    # => [note_index, pad(15)]
+
     # get the assets info
     exec.input_note::get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(16)]
@@ -735,28 +739,32 @@ export.input_note_get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 
-#! Returns the recipient commitment of the input note with the specified index.
+#! Returns the recipient of the input note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
-#! Outputs: [RECIPIENT_COMMITMENT, pad(12)]
+#! Outputs: [RECIPIENT, pad(12)]
 #!
 #! Where:
-#! - note_index is the index of the input note whose recipient commitment should be returned.
-#! - RECIPIENT_COMMITMENT is the commitment to the input note's script, inputs, the serial number.
+#! - note_index is the index of the input note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
 #!
 #! Invocation: dynexec
 export.input_note_get_recipient
+    # assert that the provided note index is less than the total number of input notes
+    exec.input_note::assert_note_index
+    # => [note_index, pad(15)]
+
     # get the note data pointer by the provided index
     exec.memory::get_input_note_ptr
     # => [note_ptr, pad(15)]
 
-    # get the recipient commitment
+    # get the recipient
     exec.memory::get_input_note_recipient
-    # => [RECIPIENT_COMMITMENT, pad(15)]
+    # => [RECIPIENT, pad(15)]
 
     # truncate the stack
     swapw dropw
-    # => [RECIPIENT_COMMITMENT, pad(12)]
+    # => [RECIPIENT, pad(12)]
 end
 
 #! Returns the metadata of the input note with the specified index.
@@ -770,6 +778,10 @@ end
 #!
 #! Invocation: dynexec
 export.input_note_get_metadata
+    # assert that the provided note index is less than the total number of input notes
+    exec.input_note::assert_note_index
+    # => [note_index, pad(15)]
+
     # get the note data pointer by the provided index
     exec.memory::get_input_note_ptr
     # => [note_ptr, pad(15)]
@@ -798,6 +810,10 @@ end
 #!
 #! Invocation: dynexec
 export.output_note_get_assets_info
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index
+    # => [note_index, pad(15)]
+
     # get the assets info
     exec.output_note::get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(16)]
@@ -809,28 +825,32 @@ export.output_note_get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 
-#! Returns the recipient commitment of the output note with the specified index.
+#! Returns the recipient of the output note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
-#! Outputs: [RECIPIENT_COMMITMENT, pad(12)]
+#! Outputs: [RECIPIENT, pad(12)]
 #!
 #! Where:
-#! - note_index is the index of the output note whose recipient commitment should be returned.
-#! - RECIPIENT_COMMITMENT is the commitment to the output note's script, inputs, the serial number.
+#! - note_index is the index of the output note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the output note's script, inputs, the serial number.
 #!
 #! Invocation: dynexec
 export.output_note_get_recipient
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index
+    # => [note_index, pad(15)]
+
     # get the note data pointer by the provided index
     exec.memory::get_output_note_ptr
     # => [note_ptr, pad(15)]
 
-    # get the recipient commitment
+    # get the recipient
     exec.memory::get_output_note_recipient
-    # => [RECIPIENT_COMMITMENT, pad(15)]
+    # => [RECIPIENT, pad(15)]
 
     # truncate the stack
     swapw dropw
-    # => [RECIPIENT_COMMITMENT, pad(12)]
+    # => [RECIPIENT, pad(12)]
 end
 
 #! Returns the metadata of the output note with the specified index.
@@ -844,6 +864,10 @@ end
 #!
 #! Invocation: dynexec
 export.output_note_get_metadata
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index
+    # => [note_index, pad(15)]
+    
     # get the note data pointer by the provided index
     exec.memory::get_output_note_ptr
     # => [note_ptr, pad(15)]

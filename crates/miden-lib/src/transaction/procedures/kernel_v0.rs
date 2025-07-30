@@ -66,15 +66,15 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     // input_note_get_assets_info
     word!("0x0816c7215676487f3ce03d372bf5512afb528ab62466074921829d7d2974147c"),
     // output_note_get_assets_info
-    word!("0xeddfc27d9b59bde6b55d28694cbe7a8bbf1d9766f41503cfe1eae2cc1c1c1a05"),
+    word!("0x590e307c82e221f8145b6293ae990994194ce03cbcc324e64e11bd79dc8d35b2"),
     // input_note_get_recipient
-    word!("0x9ced71e631ca722d1fd09f4cd18b6f9783b674d7e9debe3d5a7719f1293d8c50"),
+    word!("0x00d27d426d13ca3b3247ff92e2ed3e65a59f0d3c61a5f734a412d4b6498e3cf5"),
     // output_note_get_recipient
-    word!("0xefcb9f20043ccfac81a2b95f7df7ab9da628293092ee22672f1c832c1b3ca32c"),
+    word!("0x5166ca84ca133e95af6178e27620be0b3db2e0e7b909a434e4cc9183aad81cce"),
     // input_note_get_metadata
-    word!("0x69c112c341f9a70c141eef53d2df9608e7634a6a8e3bc602b0080106b099cbdf"),
+    word!("0x96d61c48e7415876dfcf43c163402bb37566e5eb3a94332800b0d8edb77d3985"),
     // output_note_get_metadata
-    word!("0x3fc5983d820f2008e3288256bff716afeace5500e622d62c6434da6d4b89cb17"),
+    word!("0x80fac9ef79a414b571e0f8f1cea059242b750c183d6404fc7ce45d28397bfc06"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment

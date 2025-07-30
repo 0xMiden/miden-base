@@ -21,14 +21,6 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
 export.get_assets_info
-    # assert that the provided note index is less than the total number of notes
-    dup exec.memory::get_num_input_notes 
-    # => [input_notes_num, note_index, note_index]
-    
-    u32assert2.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
-    u32lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
-    # => [note_index]
-
     # get the memory pointer to the requested note
     exec.memory::get_input_note_ptr
     # => [ptr]
@@ -40,4 +32,18 @@ export.get_assets_info
     # get the assets commitment from the note pointer
     swap exec.memory::get_input_note_assets_commitment
     # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Assert that the provided note index is less than the total number of input notes.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [note_index]
+export.assert_note_index
+    # assert that the provided note index is less than the total number of notes
+    dup exec.memory::get_num_input_notes 
+    # => [input_notes_num, note_index, note_index]
+    
+    u32assert2.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    # => [note_index]
 end

@@ -24,14 +24,6 @@ const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be
 #! Panics if:
 #! - the note index is greater or equal to the overall number of output notes.
 export.get_assets_info
-    # assert that the provided note index is less than the total number of notes
-    dup exec.memory::get_num_output_notes 
-    # => [output_notes_num, note_index, note_index]
-    
-    u32assert2.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
-    u32lt assert.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
-    # => [note_index]
-
     # get the note data pointer based on the index of the requested note
     exec.memory::get_output_note_ptr
     # => [note_data_ptr]
@@ -71,4 +63,18 @@ export.get_assets_info
     # remove asset pointers from the stack
     movup.4 drop movup.4 drop
     # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Assert that the provided note index is less than the total number of output notes.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [note_index]
+export.assert_note_index
+    # assert that the provided note index is less than the total number of notes
+    dup exec.memory::get_num_output_notes 
+    # => [output_notes_num, note_index, note_index]
+    
+    u32assert2.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    # => [note_index]
 end

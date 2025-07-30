@@ -202,7 +202,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             {output_note_0} drop
             # => []
 
-            # get the recipient commitment from the 0'th output note
+            # get the recipient from the 0'th output note
             push.0
             exec.output_note::get_recipient
             # => [RECIPIENT_0]
@@ -228,7 +228,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             {output_note_1} drop
             # => []
 
-            # get the recipient commitment from the 1'st output note
+            # get the recipient from the 1'st output note
             push.1
             exec.output_note::get_recipient
             # => [RECIPIENT_1]

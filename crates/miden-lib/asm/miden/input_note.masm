@@ -62,14 +62,14 @@ export.get_assets
     # => [num_assets, note_index, dest_ptr]
 end
 
-#! Returns the recipient commitment of the input note with the specified index.
+#! Returns the recipient of the input note with the specified index.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [RECIPIENT_COMMITMENT]
+#! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - note_index is the index of the input note whose recipient commitment should be returned.
-#! - RECIPIENT_COMMITMENT is the commitment to the input note's script, inputs, the serial number.
+#! - note_index is the index of the input note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
 #!
 #! Invocation: exec
 export.get_recipient
@@ -85,11 +85,11 @@ export.get_recipient
     # => [offset, note_index, pad(14)]
 
     syscall.exec_kernel_proc
-    # => [RECIPIENT_COMMITMENT, pad(12)]
+    # => [RECIPIENT, pad(12)]
 
     # clean the stack
     swapdw dropw dropw swapw dropw
-    # => [RECIPIENT_COMMITMENT]
+    # => [RECIPIENT]
 end
 
 #! Returns the metadata of the input note with the specified index.
