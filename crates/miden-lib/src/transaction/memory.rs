@@ -14,18 +14,19 @@ pub type StorageSlot = u8;
 //
 // Here the "end address" is the last memory address occupied by the current data
 //
-// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                        |
-// | ------------------ | :-----------------------------------: | :---------------------------------: | ---------------------------------------------- |
-// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                                |
-// | Global inputs      | 400 (100)                             | 431 (107)                           |                                                |
-// | Block header       | 800 (200)                             | 835 (208)                           |                                                |
-// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                                |
-// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each        |
-// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each            |
-// | Account delta      | 532_480 (133_120)                     | 532_742 (133_185)                   |                                                |
-// | Input notes        | 4_194_304 (1_048_576)                 | 6_356_991 (1_589_247)               | 1024 input notes max + nullifiers data segment |
-// | Output notes       | 16_777_216 (4_194_304)                | 18_874_367 (4_718_591)              | 1024 output notes max                          |
-// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)             | Enough for 2_097_151 key-value pairs           |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                    |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
+// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
+// | Global inputs      | 400 (100)                             | 431 (107)                           |                                            |
+// | Block header       | 800 (200)                             | 835 (208)                           |                                            |
+// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
+// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each    |
+// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each        |
+// | Account delta      | 532_480 (133_120)                     | 532_742 (133_185)                   |                                            |
+// | Input notes        | 4_194_304 (1_048_576)                 | 6_356_991 (1_589_247)               | nullifiers data segment + 1024 input notes |
+// |                    |                                       |                                     | max, 2048 elements each                    |
+// | Output notes       | 16_777_216 (4_194_304)                | 18_874_367 (4_718_591)              | 1024 output notes max, 2048 elements each  |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)             | Enough for 2_097_151 key-value pairs       |
 
 // Relative layout of one account
 //
