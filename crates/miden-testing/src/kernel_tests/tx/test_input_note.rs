@@ -1,72 +1,89 @@
+use alloc::string::String;
+
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    asset::FungibleAsset, note::NoteType, testing::account_id::ACCOUNT_ID_SENDER,
+    Word,
+    account::{Account, AccountId},
+    asset::{Asset, FungibleAsset},
+    note::{Note, NoteType},
+    testing::account_id::{
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_SENDER,
+    },
     transaction::TransactionScript,
 };
 
 use super::word_to_masm_push_string;
 use crate::{MockChain, TxContextInput};
 
+/// Check that the assets number and assets commitment obtained from the
+/// `input_note::get_assets_info` procedure is correct for each note with one, two and three
+/// different assets.
 #[test]
 fn test_get_asset_info() -> anyhow::Result<()> {
-    let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
-    let p2id_note_0 = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(150)],
-        NoteType::Public,
-    )?;
-    let p2id_note_1 = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(300)],
-        NoteType::Public,
-    )?;
-    let mut mock_chain = builder.build()?;
-    mock_chain.prove_next_block()?;
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets,
+        p2id_note_1_asset,
+        p2id_note_2_assets,
+    } = setup_test()?;
+
+    fn check_asset_info_code(
+        note_index: u8,
+        assets_commitment: Word,
+        assets_number: usize,
+    ) -> String {
+        format!(
+            r#"
+            # get the assets hash and assets number from the requested input note
+            push.{note_index}
+            exec.input_note::get_assets_info
+            # => [ASSETS_COMMITMENT, num_assets]
+
+            # assert the correctness of the assets hash
+            push.{COMPUTED_ASSETS_COMMITMENT} 
+            assert_eqw.err="note {note_index} has incorrect assets hash"
+            # => [num_assets]
+
+            # assert the number of note assets
+            push.{assets_number}
+            assert_eq.err="note {note_index} has incorrect assets number"
+            # => []
+        "#,
+            note_index = note_index,
+            COMPUTED_ASSETS_COMMITMENT = word_to_masm_push_string(&assets_commitment),
+            assets_number = assets_number,
+        )
+    }
 
     let code = format!(
         r#"
         use.miden::input_note
 
         begin
-            # get the assets hash and assets number from the 0'th input note
-            push.0
-            exec.input_note::get_assets_info
-            # => [ASSETS_COMMITMENT_0, num_assets_0]
+            {check_note_0}
 
-            # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_COMMITMENT_0} 
-            assert_eqw.err="note 0 has incorrect assets hash"
-            # => [num_assets_0]
+            {check_note_1}
 
-            # assert the number of note assets
-            push.{assets_number_0}
-            assert_eq.err="note 0 has incorrect assets number"
-            # => []
-
-            # get the assets hash and assets number from the 1'st input note
-            push.1
-            exec.input_note::get_assets_info
-            # => [ASSETS_COMMITMENT_1, num_assets_1]
-
-            # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_COMMITMENT_1} 
-            assert_eqw.err="note 1 has incorrect assets hash"
-            # => [num_assets_1]
-
-            # assert the number of note assets
-            push.{assets_number_1}
-            assert_eq.err="note 1 has incorrect assets number"
-            # => []
+            {check_note_2}
         end
     "#,
-        COMPUTED_ASSETS_COMMITMENT_0 = word_to_masm_push_string(&p2id_note_0.assets().commitment()),
-        assets_number_0 = p2id_note_0.assets().num_assets(),
-        COMPUTED_ASSETS_COMMITMENT_1 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
-        assets_number_1 = p2id_note_1.assets().num_assets(),
+        check_note_0 = check_asset_info_code(
+            0,
+            p2id_note_0_assets.assets().commitment(),
+            p2id_note_0_assets.assets().num_assets()
+        ),
+        check_note_1 = check_asset_info_code(
+            1,
+            p2id_note_1_asset.assets().commitment(),
+            p2id_note_1_asset.assets().num_assets()
+        ),
+        check_note_2 = check_asset_info_code(
+            2,
+            p2id_note_2_assets.assets().commitment(),
+            p2id_note_2_assets.assets().num_assets()
+        ),
     );
 
     let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
@@ -75,7 +92,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         .build_tx_context(
             TxContextInput::AccountId(account.id()),
             &[],
-            &[p2id_note_0, p2id_note_1],
+            &[p2id_note_0_assets, p2id_note_1_asset, p2id_note_2_assets],
         )?
         .tx_script(tx_script)
         .build()?;
@@ -85,79 +102,138 @@ fn test_get_asset_info() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Check that recipient and metadata of a note with one asset obtained from the
+/// `input_note::get_recipient` procedure is correct.
 #[test]
 fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
-    let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
-    let p2id_note_0 = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(150)],
-        NoteType::Public,
-    )?;
-    let p2id_note_1 = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(300)],
-        NoteType::Public,
-    )?;
-    let mut mock_chain = builder.build()?;
-    mock_chain.prove_next_block()?;
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
 
     let code = format!(
         r#"
         use.miden::input_note
 
         begin
-            ### 0'th note
-
-            # get the recipient from the 0'th input note
+            # get the recipient from the input note
             push.0
             exec.input_note::get_recipient
-            # => [RECIPIENT_0]
+            # => [RECIPIENT]
 
             # assert the correctness of the recipient
-            push.{RECIPIENT_0} 
+            push.{RECIPIENT} 
             assert_eqw.err="note 0 has incorrect recipient"
             # => []
 
-            # get the metadata from the 0'th input note
+            # get the metadata from the requested input note
             push.0
             exec.input_note::get_metadata
-            # => [METADATA_0]
+            # => [METADATA]
 
             # assert the correctness of the metadata
-            push.{METADATA_0} 
+            push.{METADATA} 
             assert_eqw.err="note 0 has incorrect metadata"
-            # => []
-
-            ### 1'st note
-
-            # get the recipient from the 1'st input note
-            push.1
-            exec.input_note::get_recipient
-            # => [RECIPIENT_1]
-
-            # assert the correctness of the recipient
-            push.{RECIPIENT_1} 
-            assert_eqw.err="note 1 has incorrect recipient"
-            # => []
-
-            # get the metadata from the 1'st input note
-            push.1
-            exec.input_note::get_metadata
-            # => [METADATA_1]
-
-            # assert the correctness of the metadata
-            push.{METADATA_1} 
-            assert_eqw.err="note 1 has incorrect metadata"
             # => []
         end
     "#,
-        RECIPIENT_0 = word_to_masm_push_string(&p2id_note_0.recipient().digest()),
-        METADATA_0 = word_to_masm_push_string(&p2id_note_0.metadata().into()),
-        RECIPIENT_1 = word_to_masm_push_string(&p2id_note_1.recipient().digest()),
-        METADATA_1 = word_to_masm_push_string(&p2id_note_1.metadata().into()),
+        RECIPIENT = word_to_masm_push_string(&p2id_note_1_asset.recipient().digest()),
+        METADATA = word_to_masm_push_string(&p2id_note_1_asset.metadata().into()),
+    );
+
+    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute()?;
+
+    Ok(())
+}
+
+/// Check that the assets number and assets data obtained from the `input_note::get_assets`
+/// procedure is correct for each note with one, two and three different assets.
+#[test]
+fn test_get_assets() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets,
+        p2id_note_1_asset,
+        p2id_note_2_assets,
+    } = setup_test()?;
+
+    fn check_assets_code(note_index: u8, dest_ptr: u8, note: &Note) -> String {
+        let mut check_assets_code = format!(
+            r#"
+            # push the note index and memory destination pointer
+            push.{dest_ptr}.{note_idx}
+            # => [note_index, dest_ptr]
+
+            # write the assets to the memory
+            exec.input_note::get_assets
+            # => [num_assets, note_index, dest_ptr]
+
+            # assert the number of note assets
+            push.{assets_number}
+            assert_eq.err="note {note_index} has incorrect assets number"
+            drop
+            # => [dest_ptr]
+        "#,
+            note_idx = note_index,
+            dest_ptr = dest_ptr,
+            assets_number = note.assets().num_assets(),
+        );
+
+        // check each asset in the note
+        for (asset_index, asset) in note.assets().iter().enumerate() {
+            check_assets_code.push_str(&format!(
+                r#"
+                    # load the asset stored in memory
+                    padw dup.4 mem_loadw
+                    # => [STORED_ASSET, dest_ptr]
+
+                    # assert the asset
+                    push.{NOTE_ASSET}
+                    assert_eqw.err="asset {asset_index} of the note {note_index} is incorrect"
+                    # => [dest_ptr]
+
+                    # move the pointer
+                    add.4
+                    # => [dest_ptr+4]
+                "#,
+                NOTE_ASSET = word_to_masm_push_string(&asset.into()),
+                asset_index = asset_index,
+                note_index = note_index,
+            ));
+        }
+
+        // drop the final `dest_ptr` from the stack
+        check_assets_code.push_str("\ndrop");
+
+        check_assets_code
+    }
+
+    let code = format!(
+        "
+        use.miden::input_note
+
+        begin
+            {check_note_0}
+            
+            {check_note_1}
+
+            {check_note_2}
+        end
+    ",
+        check_note_0 = check_assets_code(0, 0, &p2id_note_0_assets),
+        check_note_1 = check_assets_code(1, 4, &p2id_note_1_asset),
+        check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
     let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
@@ -166,7 +242,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         .build_tx_context(
             TxContextInput::AccountId(account.id()),
             &[],
-            &[p2id_note_0, p2id_note_1],
+            &[p2id_note_0_assets, p2id_note_1_asset, p2id_note_2_assets],
         )?
         .tx_script(tx_script)
         .build()?;
@@ -176,110 +252,67 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_assets() -> anyhow::Result<()> {
+// HELPER STRUCTURE
+// ================================================================================================
+
+/// Helper struct which holds the data required for the `input_note` tests.
+struct TestSetup {
+    mock_chain: MockChain,
+    account: Account,
+    p2id_note_0_assets: Note,
+    p2id_note_1_asset: Note,
+    p2id_note_2_assets: Note,
+}
+
+/// Return a [`TestSetup`], whose notes contain 0, 1 and 2 assets respectively.
+fn setup_test() -> anyhow::Result<TestSetup> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
 
-    let p2id_note_0 = builder.add_p2id_note(
+    // Assets
+    let fungible_asset_0 = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?,
+            5,
+        )
+        .context("fungible_asset_0 is invalid")?,
+    );
+    let fungible_asset_1 = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)
+                .context("id should be valid")?,
+            10,
+        )
+        .context("fungible_asset_1 is invalid")?,
+    );
+
+    // Notes
+    let p2id_note_0_assets = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
-        &[FungibleAsset::mock(150)],
+        &[],
         NoteType::Public,
     )?;
-    let note_0_asset = p2id_note_0
-        .assets()
-        .iter()
-        .next()
-        .context("p2id_note_0 should have at least one asset")?;
-
-    let p2id_note_1 = builder.add_p2id_note(
+    let p2id_note_1_asset = builder.add_p2id_note(
         ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
-        &[FungibleAsset::mock(300)],
+        &[fungible_asset_0],
         NoteType::Public,
     )?;
-    let note_1_asset = p2id_note_1
-        .assets()
-        .iter()
-        .next()
-        .context("p2id_note_1 should have at least one asset")?;
-
+    let p2id_note_2_assets = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[fungible_asset_0, fungible_asset_1],
+        NoteType::Public,
+    )?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_next_block()?;
 
-    let code = format!(
-        r#"
-        use.miden::input_note
-
-        begin
-            ### write the assets of the 0'th note to the memory starting at address 0
-
-            # push the note index and memory pointer
-            push.0.0
-            # => [note_index, dest_ptr]
-
-            # write the assets to the memory
-            exec.input_note::get_assets
-            # => [num_assets, note_index, dest_ptr]
-
-            # assert the number of note assets
-            push.{assets_number_0}
-            assert_eq.err="note 0 has incorrect assets number"
-            # => [note_index, dest_ptr]
-
-            # assert the asset stored in memory
-            drop mem_loadw
-            # => [STORED_ASSET_0]
-
-            # assert the asset
-            push.{NOTE_0_ASSET}
-            assert_eqw.err="note 0 has incorrect asset"
-            # => []
-
-            ### write the assets of the 1'st note to the memory starting at address 4
-
-            # push the note index and memory pointer
-            push.4.1
-            # => [note_index, dest_ptr]
-
-            # write the assets to the memory
-            exec.input_note::get_assets
-            # => [num_assets, note_index, dest_ptr]
-
-            # assert the number of note assets
-            push.{assets_number_1}
-            assert_eq.err="note 1 has incorrect assets number"
-            # => [note_index, dest_ptr]
-
-            # assert the asset stored in memory
-            drop mem_loadw
-            # => [STORED_ASSET_1]
-
-            # assert the asset
-            push.{NOTE_1_ASSET}
-            assert_eqw.err="note 1 has incorrect asset"
-            # => []
-        end
-    "#,
-        assets_number_0 = p2id_note_0.assets().num_assets(),
-        NOTE_0_ASSET = word_to_masm_push_string(&note_0_asset.into()),
-        assets_number_1 = p2id_note_1.assets().num_assets(),
-        NOTE_1_ASSET = word_to_masm_push_string(&note_1_asset.into()),
-    );
-
-    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
-
-    let tx_context = mock_chain
-        .build_tx_context(
-            TxContextInput::AccountId(account.id()),
-            &[],
-            &[p2id_note_0, p2id_note_1],
-        )?
-        .tx_script(tx_script)
-        .build()?;
-
-    tx_context.execute()?;
-
-    Ok(())
+    anyhow::Ok(TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets,
+        p2id_note_1_asset,
+        p2id_note_2_assets,
+    })
 }
