@@ -52,9 +52,9 @@ const.EPILOGUE_END=131098
 #!   BLOCK_COMMITMENT,
 #!   INITIAL_ACCOUNT_COMMITMENT,
 #!   INPUT_NOTES_COMMITMENT,
-#!   account_id_prefix, account_id_suffix, block_num,
+#!   account_id_prefix, account_id_suffix, block_num, pad(1)
 #! ]
-#! Outputs: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+#! Outputs: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num, pad(3)]
 #!
 #! Where:
 #! - BLOCK_COMMITMENT is the reference block for the transaction execution.
@@ -65,6 +65,7 @@ const.EPILOGUE_END=131098
 #! - OUTPUT_NOTES_COMMITMENT is the commitment to the notes created by the transaction.
 #! - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
 #!   delta commitment.
+#! - FEE_ASSET is the fee asset that pays the fees of the transaction.
 proc.main.1
     # Prologue
     # ---------------------------------------------------------------------------------------------
@@ -72,7 +73,7 @@ proc.main.1
     emit.PROLOGUE_START
 
     exec.prologue::prepare_transaction
-    # => []
+    # => [pad(16)]
 
     emit.PROLOGUE_END
 
@@ -82,42 +83,42 @@ proc.main.1
     emit.NOTES_PROCESSING_START
 
     exec.memory::get_num_input_notes
-    # => [num_input_notes]
+    # => [num_input_notes, pad(16)]
 
     # compute the memory location after all input notes, i.e. the exit condition
     dup exec.memory::get_input_note_ptr loc_store.0
-    # => [num_input_notes]
+    # => [num_input_notes, pad(16)]
 
-    eq.0 not
-    # => [should_loop]
+    neq.0
+    # => [should_loop, pad(16)]
 
     while.true
         emit.NOTE_EXECUTION_START
         # => []
 
         exec.note::prepare_note
-        # => [note_script_root_ptr, NOTE_ARGS]
+        # => [note_script_root_ptr, NOTE_ARGS, pad(11), pad(16)]
 
         # run note's script
         dyncall
-        # => [X, X, X, X]
+        # => [X, X, X, X, pad(16)]
 
         # Clear the stack, the note can leave up to 4 words on the stack due to the dyncall
         dropw dropw dropw dropw
-        # => []
+        # => [pad(16)]
 
         exec.note::increment_current_input_note_ptr
-        # => [current_input_note_ptr]
+        # => [current_input_note_ptr, pad(16)]
 
         # loop condition, exit when the memory ptr is after all input notes
         loc_load.0 neq
-        # => [should_loop]
+        # => [should_loop, pad(16)]
 
         emit.NOTE_EXECUTION_END
     end
 
     exec.note::note_processing_teardown
-    # => []
+    # => [pad(16)]
 
     emit.NOTES_PROCESSING_END
 
@@ -129,27 +130,31 @@ proc.main.1
     # get the memory address of the transaction script root and load it to the stack
     exec.memory::get_tx_script_root_ptr
     padw dup.4 mem_loadw
-    # => [TX_SCRIPT_ROOT, tx_script_root_ptr]
+    # => [TX_SCRIPT_ROOT, tx_script_root_ptr, pad(16)]
 
     exec.utils::is_empty_word not movdn.4 dropw
-    # => [has_tx_script, tx_script_root_ptr]
+    # => [has_tx_script, tx_script_root_ptr, pad(16)]
 
     if.true
         # load the transaction script arguments onto the stack
         exec.memory::get_tx_script_args movup.4
-        # => [tx_script_root_ptr, TX_SCRIPT_ARGS]
+        # => [tx_script_root_ptr, TX_SCRIPT_ARGS, pad(16)]
+
+        # pad the stack
+        repeat.11 push.0 movdn.5 end
+        # => [tx_script_root_ptr, TX_SCRIPT_ARGS, pad(11), pad(16)]
 
         # execute the transaction script
         dyncall
-        # => [OUTPUT_3, OUTPUT_2, OUTPUT_1, OUTPUT_0]
+        # => [OUTPUT_3, OUTPUT_2, OUTPUT_1, OUTPUT_0, pad(16)]
 
         # clean up transaction script outputs
         dropw dropw dropw dropw
-        # => []
+        # => [pad(16)]
     else
         # drop the pointer to the empty transaction script root
         drop
-        # => []
+        # => [pad(16)]
     end
 
     emit.TX_SCRIPT_PROCESSING_END
@@ -161,13 +166,13 @@ proc.main.1
 
     # execute the transaction epilogue
     exec.epilogue::finalize_transaction
-    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num, pad(16)]
 
-    # truncate the stack
-    movupw.3 dropw movupw.3 dropw movup.9 drop
+    # truncate the stack to contain 16 elements in total
+    repeat.13 movup.13 drop end
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num, pad(3)]
 
     emit.EPILOGUE_END
-    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
 end
 
 begin

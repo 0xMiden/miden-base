@@ -4,6 +4,7 @@ use super::{InputNote, ToInputNoteCommitments};
 use crate::{
     ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word,
     account::delta::AccountUpdateDetails,
+    asset::FungibleAsset,
     block::BlockNumber,
     note::NoteHeader,
     transaction::{AccountId, InputNotes, Nullifier, OutputNote, OutputNotes, TransactionId},
@@ -43,6 +44,9 @@ pub struct ProvenTransaction {
 
     /// The block commitment of the transaction's reference block.
     ref_block_commitment: Word,
+
+    /// The fee asset that pays the fees of the transaction.
+    fee_asset: FungibleAsset,
 
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
@@ -90,6 +94,11 @@ impl ProvenTransaction {
     /// Returns the commitment of the block transaction was executed against.
     pub fn ref_block_commitment(&self) -> Word {
         self.ref_block_commitment
+    }
+
+    /// Returns the fee asset that pays the fees of the transaction.
+    pub fn fee_asset(&self) -> FungibleAsset {
+        self.fee_asset
     }
 
     /// Returns an iterator of the headers of unauthenticated input notes in this transaction.
@@ -197,6 +206,7 @@ impl Serializable for ProvenTransaction {
         self.output_notes.write_into(target);
         self.ref_block_num.write_into(target);
         self.ref_block_commitment.write_into(target);
+        self.fee_asset.write_into(target);
         self.expiration_block_num.write_into(target);
         self.proof.write_into(target);
     }
@@ -211,6 +221,7 @@ impl Deserializable for ProvenTransaction {
 
         let ref_block_num = BlockNumber::read_from(source)?;
         let ref_block_commitment = Word::read_from(source)?;
+        let fee_asset = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
         let proof = ExecutionProof::read_from(source)?;
 
@@ -228,6 +239,7 @@ impl Deserializable for ProvenTransaction {
             output_notes,
             ref_block_num,
             ref_block_commitment,
+            fee_asset,
             expiration_block_num,
             proof,
         };
@@ -271,6 +283,9 @@ pub struct ProvenTransactionBuilder {
     /// Block digest of the transaction's reference block.
     ref_block_commitment: Word,
 
+    /// The fee asset that pays the fees of the transaction.
+    fee_asset: FungibleAsset,
+
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
 
@@ -283,6 +298,7 @@ impl ProvenTransactionBuilder {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a [ProvenTransactionBuilder] used to build a [ProvenTransaction].
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         account_id: AccountId,
         initial_account_commitment: Word,
@@ -290,6 +306,7 @@ impl ProvenTransactionBuilder {
         account_delta_commitment: Word,
         ref_block_num: BlockNumber,
         ref_block_commitment: Word,
+        fee_asset: FungibleAsset,
         expiration_block_num: BlockNumber,
         proof: ExecutionProof,
     ) -> Self {
@@ -303,6 +320,7 @@ impl ProvenTransactionBuilder {
             output_notes: Vec::new(),
             ref_block_num,
             ref_block_commitment,
+            fee_asset,
             expiration_block_num,
             proof,
         }
@@ -388,6 +406,7 @@ impl ProvenTransactionBuilder {
             output_notes,
             ref_block_num: self.ref_block_num,
             ref_block_commitment: self.ref_block_commitment,
+            fee_asset: self.fee_asset,
             expiration_block_num: self.expiration_block_num,
             proof: self.proof,
         };
@@ -625,6 +644,7 @@ mod tests {
             AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
             AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
         },
+        asset::FungibleAsset,
         block::BlockNumber,
         testing::account_id::{
             ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -734,6 +754,7 @@ mod tests {
             account_delta_commitment,
             ref_block_num,
             ref_block_commitment,
+            FungibleAsset::mock(42).unwrap_fungible(),
             expiration_block_num,
             proof,
         )

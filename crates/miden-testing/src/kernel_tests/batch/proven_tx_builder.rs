@@ -4,6 +4,7 @@ use anyhow::Context;
 use miden_objects::{
     Word,
     account::AccountId,
+    asset::FungibleAsset,
     block::BlockNumber,
     crypto::merkle::SparseMerklePath,
     note::{Note, NoteInclusionProof, Nullifier},
@@ -18,6 +19,7 @@ pub struct MockProvenTxBuilder {
     initial_account_commitment: Word,
     final_account_commitment: Word,
     ref_block_commitment: Option<Word>,
+    fee_asset: FungibleAsset,
     expiration_block_num: BlockNumber,
     output_notes: Option<Vec<OutputNote>>,
     input_notes: Option<Vec<InputNote>>,
@@ -37,6 +39,7 @@ impl MockProvenTxBuilder {
             initial_account_commitment,
             final_account_commitment,
             ref_block_commitment: None,
+            fee_asset: FungibleAsset::mock(50).unwrap_fungible(),
             expiration_block_num: BlockNumber::from(u32::MAX),
             output_notes: None,
             input_notes: None,
@@ -104,6 +107,7 @@ impl MockProvenTxBuilder {
             Word::empty(),
             BlockNumber::from(0),
             self.ref_block_commitment.unwrap_or_default(),
+            self.fee_asset,
             self.expiration_block_num,
             ExecutionProof::new(Proof::new_dummy(), Default::default()),
         )

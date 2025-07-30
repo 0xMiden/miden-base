@@ -546,6 +546,8 @@ pub enum TransactionOutputError {
     DuplicateOutputNote(NoteId),
     #[error("final account commitment is not in the advice map")]
     FinalAccountCommitmentMissingInAdviceMap,
+    #[error("fee asset is not a fungible asset")]
+    FeeAssetNotFungibleAsset(#[source] AssetError),
     #[error("failed to parse final account header")]
     FinalAccountHeaderParseFailure(#[source] AccountError),
     #[error(

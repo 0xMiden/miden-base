@@ -148,6 +148,7 @@ impl TransactionProver for LocalTransactionProver {
             account_delta_commitment,
             ref_block_num,
             ref_block_commitment,
+            tx_outputs.fee_asset,
             tx_outputs.expiration_block_num,
             proof,
         )
