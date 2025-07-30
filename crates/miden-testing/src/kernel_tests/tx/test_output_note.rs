@@ -225,7 +225,6 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
         "#,
-        // first note
         output_note = create_output_note(&output_note),
         RECIPIENT = word_to_masm_push_string(&output_note.recipient().digest()),
         METADATA = word_to_masm_push_string(&output_note.metadata().into()),
@@ -357,6 +356,9 @@ fn test_get_assets() -> anyhow::Result<()> {
 // HELPER FUNCTIONS
 // ================================================================================================
 
+/// Returns a `masm` code which creates an output note and adds some assets to it.
+///
+/// Data for the created output note and moved assets is obtained from the provided note.
 fn create_output_note(note: &Note) -> String {
     let mut create_note_code = format!(
         "
