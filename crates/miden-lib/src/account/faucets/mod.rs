@@ -13,7 +13,7 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{auth::RpoFalcon512ProcedureAcl, components::basic_fungible_faucet_library};
+use crate::account::{auth::{NoAuth, RpoFalcon512ProcedureAcl}, components::basic_fungible_faucet_library};
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
@@ -231,11 +231,13 @@ pub fn create_basic_fungible_faucet(
 ) -> Result<(Account, Word), FungibleFaucetError> {
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
-    let auth_component: RpoFalcon512ProcedureAcl = match auth_scheme {
+    let auth_component: AccountComponent = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => {
             RpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root])
                 .map_err(FungibleFaucetError::AccountError)?
+                .into()
         },
+        AuthScheme::NoAuth => NoAuth::new().into(),
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)

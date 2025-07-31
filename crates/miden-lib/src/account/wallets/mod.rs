@@ -6,7 +6,7 @@ use miden_objects::{
 };
 
 use super::AuthScheme;
-use crate::account::{auth::RpoFalcon512, components::basic_wallet_library};
+use crate::account::{auth::{NoAuth, RpoFalcon512}, components::basic_wallet_library};
 
 // BASIC WALLET
 // ================================================================================================
@@ -59,8 +59,9 @@ pub fn create_basic_wallet(
         ));
     }
 
-    let auth_component: RpoFalcon512 = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key),
+    let auth_component: AccountComponent = match auth_scheme {
+        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key).into(),
+        AuthScheme::NoAuth => NoAuth::new().into(),
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)

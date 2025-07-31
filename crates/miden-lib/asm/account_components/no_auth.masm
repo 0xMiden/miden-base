@@ -1,0 +1,30 @@
+use.miden::account
+
+#! Increment the nonce only if the account commitment has changed
+#!
+#! This authentication procedure provides minimal authentication by checking if the account
+#! state has actually changed during transaction execution. It compares the initial account
+#! commitment with the current commitment and only increments the nonce if they differ.
+#! This avoids unnecessary nonce increments for transactions that don't modify
+#! the account state.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [pad(16)]
+export.auth__no_auth
+    # check if the account state has changed by comparing initial and final commitments
+
+    exec.account::get_initial_commitment
+    # => [INITIAL_COMMITMENT, pad(16)]
+
+    exec.account::compute_current_commitment
+    # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
+
+    # TODO: use std::word::eq when it becomes available
+    eqw not movdn.8 dropw dropw
+    # => [has_account_state_changed, pad(16)]
+    
+    # if the account has been updated, increment the nonce
+    if.true
+        push.1 exec.account::incr_nonce drop
+    end
+end
