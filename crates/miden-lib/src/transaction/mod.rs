@@ -240,8 +240,14 @@ impl TransactionKernel {
     ///
     /// The data on the stack is expected to be arranged as follows:
     ///
-    /// Stack: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET,
-    /// tx_expiration_block_num]
+    /// ```text
+    /// [
+    ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
+    ///     expiration_block_num,
+    /// ]
+    /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
@@ -307,8 +313,14 @@ impl TransactionKernel {
     ///
     /// The output stack is expected to be arrange as follows:
     ///
-    /// Stack: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET,
-    /// tx_expiration_block_num]
+    /// ```text
+    /// [
+    ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
+    ///     expiration_block_num,
+    /// ]
+    /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
