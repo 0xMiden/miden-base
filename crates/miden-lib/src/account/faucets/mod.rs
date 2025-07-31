@@ -233,16 +233,16 @@ pub trait FungibleFaucetExt {
     ///
     /// # Errors
     /// Returns an error if the account is not a fungible faucet account.
-    fn get_issuance(&self) -> Result<Felt, FungibleFaucetError>;
+    fn get_token_issuance(&self) -> Result<Felt, FungibleFaucetError>;
 }
 
 impl FungibleFaucetExt for Account {
     const ISSUANCE_ELEMENT_INDEX: usize = 3;
     const ISSUANCE_STORAGE_SLOT: u8 = FAUCET_STORAGE_DATA_SLOT;
 
-    fn get_issuance(&self) -> Result<Felt, FungibleFaucetError> {
+    fn get_token_issuance(&self) -> Result<Felt, FungibleFaucetError> {
         if self.account_type() != AccountType::FungibleFaucet {
-            return Err(FungibleFaucetError::NonFungigleFaucetAccount);
+            return Err(FungibleFaucetError::NotAFungibleFaucetAccount);
         }
 
         let slot = self
@@ -322,8 +322,8 @@ pub enum FungibleFaucetError {
     InvalidTokenSymbol(#[source] TokenSymbolError),
     #[error("account creation failed")]
     AccountError(#[source] AccountError),
-    #[error("account is not a fungible faucet")]
-    NonFungigleFaucetAccount,
+    #[error("account is not a fungible faucet account")]
+    NotAFungibleFaucetAccount,
 }
 
 // TESTS

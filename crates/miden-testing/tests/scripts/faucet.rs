@@ -166,7 +166,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
-    assert_eq!(faucet.get_issuance().unwrap(), Felt::new(100));
+    assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(100));
 
     // need to create a note with the fungible asset to be burned
     let note_script = "
