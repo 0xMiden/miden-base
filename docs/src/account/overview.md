@@ -4,7 +4,7 @@ An `Account` represents the primary entity in Miden. It is capable of holding as
 
 ## What is the purpose of an account?
 
-In Miden's hybrid UTXO- and account-based model, accounts enable the creation of expressive smart contracts via a Turing-complete language. As examples, an account with a wallet interface can hold the assets of a user while a DEX account could have an interface to trade assets.
+In Miden's hybrid UTXO- and account-based model, accounts enable the creation of expressive smart contracts via a Turing-complete language. For example, an account with a wallet interface can hold the assets of a user while a DEX account could have an interface to trade assets.
 
 ## Account composition
 

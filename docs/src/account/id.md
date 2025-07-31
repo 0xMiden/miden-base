@@ -55,9 +55,9 @@ An `Account` ID can be encoded in different formats:
      - Separator: `1`
      - Data part with integrated checksum
 
-> **Info**
-> - We strongly recommend encoding account IDs using Bech32 for all user-facing applications.
- 
 2. **Hexadecimal** (debugging):
    - Example: `0x808c96748fe8d0901d6788f6aa4f42`
    - Frequently used encoding for blockchain addresses
+
+> **Info**
+> - We strongly recommend encoding account IDs using Bech32 for all user-facing applications.
