@@ -260,18 +260,17 @@ fn test_get_assets() -> anyhow::Result<()> {
         let mut check_assets_code = format!(
             r#"
             # push the note index and memory destination pointer
-            push.{dest_ptr}.{note_idx}
-            # => [note_index, dest_ptr]
+            push.{note_idx}.{dest_ptr}
+            # => [dest_ptr, note_index]
 
             # write the assets to the memory
             exec.output_note::get_assets
-            # => [num_assets, note_index, dest_ptr]
+            # => [num_assets, dest_ptr, note_index]
 
             # assert the number of note assets
             push.{assets_number}
             assert_eq.err="note {note_index} has incorrect assets number"
-            drop
-            # => [dest_ptr]
+            # => [dest_ptr, note_index]
         "#,
             note_idx = note_index,
             dest_ptr = dest_ptr,
@@ -284,16 +283,16 @@ fn test_get_assets() -> anyhow::Result<()> {
                 r#"
                     # load the asset stored in memory
                     padw dup.4 mem_loadw
-                    # => [STORED_ASSET, dest_ptr]
+                    # => [STORED_ASSET, dest_ptr, note_index]
 
                     # assert the asset
                     push.{NOTE_ASSET}
                     assert_eqw.err="asset {asset_index} of the note {note_index} is incorrect"
-                    # => [dest_ptr]
+                    # => [dest_ptr, note_index]
 
                     # move the pointer
                     add.4
-                    # => [dest_ptr+4]
+                    # => [dest_ptr+4, note_index]
                 "#,
                 NOTE_ASSET = word_to_masm_push_string(&asset.into()),
                 asset_index = asset_index,
@@ -301,8 +300,8 @@ fn test_get_assets() -> anyhow::Result<()> {
             ));
         }
 
-        // drop the final `dest_ptr` from the stack
-        check_assets_code.push_str("\ndrop");
+        // drop the final `dest_ptr` and `note_index` from the stack
+        check_assets_code.push_str("\ndrop drop");
 
         check_assets_code
     }

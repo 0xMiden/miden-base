@@ -54,23 +54,23 @@ end
 #! information about the layout of each asset see the description of the `Asset` enum in 
 #! `miden-objects/src/asset/mod.rs` file.
 #!
-#! Inputs:  [note_index, dest_ptr]
-#! Outputs: [num_assets, note_index, dest_ptr]
+#! Inputs:  [dest_ptr, note_index]
+#! Outputs: [num_assets, dest_ptr, note_index]
 #!
 #! Where:
-#! - note_index is the index of the input note whose assets info should be returned.
 #! - dest_ptr is the memory address to write the assets.
+#! - note_index is the index of the input note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
 #!
 #! Invocation: exec
 export.get_assets
     # get the assets commitment and assets number
-    dup exec.get_assets_info
-    # => [ASSETS_COMMITMENT, num_assets, note_index, dest_ptr]
+    dup.1 exec.get_assets_info
+    # => [ASSETS_COMMITMENT, num_assets, dest_ptr, note_index]
 
     # write the assets stored in the advice map to the specified memory pointer
     exec.note::write_assets_to_memory
-    # => [num_assets, note_index, dest_ptr]
+    # => [num_assets, dest_ptr, note_index]
 end
 
 #! Returns the recipient of the input note with the specified index.
