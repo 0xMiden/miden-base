@@ -18,7 +18,10 @@ pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutorError;
-use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
+use crate::{
+    auth::TransactionAuthenticator,
+    host::{AccountProcedureIndexMap, ScriptMastForestStore, TransactionBaseHost},
+};
 
 mod exec_host;
 pub use exec_host::TransactionExecutorHost;
@@ -158,9 +161,9 @@ where
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
         let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
@@ -168,16 +171,20 @@ where
             input_notes.iter().map(|n| n.note().script()),
         );
 
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             input_notes.clone(),
-            &mut advice_inputs,
             self.data_store,
             script_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // Execute the transaction kernel
         let trace = vm_processor::execute(
@@ -188,7 +195,7 @@ where
             self.exec_options,
             source_manager,
         )
-        .map_err(|err| map_execution_error(err, &tx_inputs, &host))?;
+        .map_err(|err| map_execution_error(err, host.base_host()))?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -240,22 +247,26 @@ where
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             tx_inputs.input_notes().clone(),
-            &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         let mut process = Process::new(
             TransactionKernel::tx_script_main().kernel().clone(),
@@ -312,9 +323,9 @@ where
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
         let input_notes = tx_inputs.input_notes();
 
         let scripts_mast_store = ScriptMastForestStore::new(
@@ -322,16 +333,20 @@ where
             input_notes.iter().map(|n| n.note().script()),
         );
 
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             input_notes.clone(),
-            &mut advice_inputs,
             self.data_store,
             scripts_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // execute the transaction kernel
         let result = vm_processor::execute(
@@ -496,10 +511,9 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   account delta and input/output notes.
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
+fn map_execution_error<STORE: DataStore>(
     exec_err: ExecutionError,
-    tx_inputs: &TransactionInputs,
-    host: &TransactionExecutorHost<STORE, AUTH>,
+    host: &TransactionBaseHost<STORE>,
 ) -> TransactionExecutorError {
     match exec_err {
         ExecutionError::EventError { ref error, .. } => {
@@ -512,12 +526,11 @@ fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
                     salt,
                 }) => {
                     let tx_summary = match build_tx_summary(
-                        *account_delta_commitment,
-                        *input_notes_commitment,
-                        *output_notes_commitment,
-                        *salt,
-                        tx_inputs,
                         host,
+                        *salt,
+                        *output_notes_commitment,
+                        *input_notes_commitment,
+                        *account_delta_commitment,
                     ) {
                         Ok(tx_summary) => tx_summary,
                         Err(err) => return err,
@@ -535,17 +548,16 @@ fn map_execution_error<STORE: DataStore, AUTH: TransactionAuthenticator>(
 
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
-fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
-    account_delta_commitment: Word,
-    input_notes_commitment: Word,
-    output_notes_commitment: Word,
+fn build_tx_summary<STORE: MastForestStore>(
+    host: &TransactionBaseHost<STORE>,
     salt: Word,
-    tx_inputs: &TransactionInputs,
-    host: &TransactionExecutorHost<STORE, AUTH>,
+    output_notes_commitment: Word,
+    input_notes_commitment: Word,
+    account_delta_commitment: Word,
 ) -> Result<TransactionSummary, TransactionExecutorError> {
-    let account_delta = host.base_host().build_account_delta();
-    let input_notes = tx_inputs.input_notes().clone();
-    let output_notes = host.base_host().build_output_notes();
+    let account_delta = host.build_account_delta();
+    let input_notes = host.input_notes();
+    let output_notes = host.build_output_notes();
     let output_notes = OutputNotes::new(output_notes)
         .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
@@ -555,8 +567,8 @@ fn build_tx_summary<STORE: DataStore, AUTH: TransactionAuthenticator>(
     let actual_account_delta_commitment = account_delta.to_commitment();
     if actual_account_delta_commitment != account_delta_commitment {
         return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-          "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
-      ).into()));
+            "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+        ).into()));
     }
 
     let actual_input_notes_commitment = input_notes.commitment();

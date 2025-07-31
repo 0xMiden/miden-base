@@ -1,4 +1,4 @@
-use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
+use alloc::{string::String, sync::Arc, vec::Vec};
 
 use anyhow::Context;
 use assert_matches::assert_matches;
@@ -20,9 +20,12 @@ use miden_lib::{
 };
 use miden_objects::{
     FieldElement, Hasher, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
+    account::{
+        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountStorage,
+        AccountStorageMode, AccountType, StorageSlot,
+    },
     assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
+    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
@@ -44,8 +47,8 @@ use miden_objects::{
     },
 };
 use miden_tx::{
-    ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
-    TransactionExecutorHost, TransactionMastStore, auth::UnreachableAuth,
+    AccountProcedureIndexMap, ExecutionOptions, ScriptMastForestStore, TransactionExecutor,
+    TransactionExecutorError, TransactionExecutorHost, TransactionMastStore, auth::UnreachableAuth,
 };
 use vm_processor::{AdviceInputs, Process, crypto::RpoRandomCoin};
 
@@ -915,24 +918,28 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         tx_inputs,
         tx_args,
         Some(executed_transaction.advice_witness().clone()),
-    );
-
-    let mut advice_inputs = advice_inputs.into_advice_inputs();
+    )
+    .into_diagnostic()?;
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
     mast_store.load_account_code(tx_inputs.account().code());
 
-    let mut host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
-        &tx_inputs.account().into(),
-        tx_inputs.input_notes().clone(),
-        &mut advice_inputs,
-        mast_store.as_ref(),
-        scripts_mast_store,
-        None,
-        BTreeSet::new(),
-    )
-    .unwrap();
+    let mut host = {
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(tx_inputs, tx_args, &advice_inputs)
+                .unwrap();
+
+        TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
+            &tx_inputs.account().into(),
+            tx_inputs.input_notes().clone(),
+            mast_store.as_ref(),
+            scripts_mast_store,
+            acct_procedure_index_map,
+            None,
+        )
+    };
+    let advice_inputs = advice_inputs.into_advice_inputs();
 
     let mut process = Process::new(
         TransactionKernel::main().kernel().clone(),
@@ -1473,6 +1480,78 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         .build()?;
 
     tx_context.execute()?;
+
+    Ok(())
+}
+
+// Tests that advice map from the account code and transaction script gets correctly passed as
+// part of the transaction advice inputs
+#[test]
+fn inputs_created_correctly() -> anyhow::Result<()> {
+    let account_code_script = r#"
+            adv_map.A([6,7,8,9])=[10,11,12,13]
+
+            export.assert_adv_map
+                # test tx script advice map
+                push.[1,2,3,4]
+                adv.push_mapval adv_loadw
+                push.[5,6,7,8]
+                assert_eqw.err="script adv map not found"
+            end
+        "#;
+
+    let component = AccountComponent::compile(
+        account_code_script,
+        TransactionKernel::assembler(),
+        vec![StorageSlot::Value(Word::default())],
+    )?
+    .with_supports_all_types();
+
+    let auth_component = IncrNonceAuthComponent::new(TransactionKernel::assembler())?.into();
+    let account_code = AccountCode::from_components(
+        &[auth_component, component.clone()],
+        AccountType::RegularAccountUpdatableCode,
+    )?;
+
+    let script = format!(
+        r#"
+            use.miden::account  
+            
+            adv_map.A([1,2,3,4])=[5,6,7,8]
+
+            begin
+                # test account code advice map
+                push.[6,7,8,9]
+                adv.push_mapval adv_loadw
+                push.[10,11,12,13]
+                assert_eqw.err="account code adv map not found"
+
+                call.{assert_adv_map_proc_root}
+            end
+        "#,
+        assert_adv_map_proc_root =
+            component.library().get_procedure_root_by_name("$anon::assert_adv_map").unwrap()
+    );
+    let tx_script = TransactionScript::compile(script, TransactionKernel::assembler())?;
+
+    assert!(tx_script.mast().advice_map().get(&Word::try_from([1u64, 2, 3, 4])?).is_some());
+    assert!(
+        account_code
+            .mast()
+            .advice_map()
+            .get(&Word::try_from([6u64, 7, 8, 9])?)
+            .is_some()
+    );
+
+    let account = Account::from_parts(
+        ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
+        AssetVault::mock(),
+        AccountStorage::mock(),
+        account_code,
+        Felt::new(1u64),
+    );
+    let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
+    _ = tx_context.execute()?;
 
     Ok(())
 }

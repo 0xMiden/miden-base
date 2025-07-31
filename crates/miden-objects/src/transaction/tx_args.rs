@@ -141,7 +141,7 @@ impl TransactionArgs {
     }
 
     /// Collects and returns a set containing all code commitments from foreign accounts.
-    pub fn foreign_account_code_commitments(&self) -> BTreeSet<Word> {
+    pub fn to_foreign_account_code_commitments(&self) -> BTreeSet<Word> {
         self.foreign_account_inputs()
             .iter()
             .map(|acc| acc.code().commitment())

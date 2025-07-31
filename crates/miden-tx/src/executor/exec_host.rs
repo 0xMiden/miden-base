@@ -1,9 +1,4 @@
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
 use miden_objects::{
@@ -12,13 +7,13 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
 };
 
 use crate::{
+    AccountProcedureIndexMap,
     auth::{SigningInputs, TransactionAuthenticator},
-    errors::TransactionHostError,
+    executor::build_tx_summary,
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
@@ -61,26 +56,24 @@ where
     pub fn new(
         account: &PartialAccount,
         input_notes: InputNotes<InputNote>,
-        advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
+        acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
-        foreign_account_code_commitments: BTreeSet<Word>,
-    ) -> Result<Self, TransactionHostError> {
+    ) -> Self {
         let base_host = TransactionBaseHost::new(
             account,
             input_notes,
-            advice_inputs,
             mast_store,
             scripts_mast_store,
-            foreign_account_code_commitments,
-        )?;
+            acct_procedure_index_map,
+        );
 
-        Ok(Self {
+        Self {
             base_host,
             authenticator,
             generated_signatures: BTreeMap::new(),
-        })
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -109,6 +102,7 @@ where
     ) -> Result<(), TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
+
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature = if let Ok(signature) =
@@ -116,10 +110,48 @@ where
         {
             signature.to_vec()
         } else {
-            let signing_inputs = SigningInputs::Blind(msg);
+            // Retrieve transaction summary commitments from the advice provider.
+            // The commitments are stored as a contiguous array of field elements with the following
+            // layout:
+            // - commitments[0..4]:  SALT
+            // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
+            // - commitments[8..12]: INPUT_NOTES_COMMITMENT
+            // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
+            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
+                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+            })?;
+
+            if commitments.len() != 16 {
+                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                    "expected 4 words for transaction summary commitments".into(),
+                ));
+            }
+
+            let salt = extract_word(commitments, 0);
+            let output_notes_commitment = extract_word(commitments, 4);
+            let input_notes_commitment = extract_word(commitments, 8);
+            let account_delta_commitment = extract_word(commitments, 12);
+            let tx_summary = build_tx_summary(
+                self.base_host(),
+                salt,
+                output_notes_commitment,
+                input_notes_commitment,
+                account_delta_commitment,
+            )
+            .map_err(|err| {
+                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+            })?;
+
+            if msg != tx_summary.to_commitment() {
+                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                    "transaction summary doesn't commit to the expected message".into(),
+                ));
+            }
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+
+            let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
 
             let signature: Vec<Felt> = authenticator
                 .get_signature(pub_key, &signing_inputs)
@@ -189,4 +221,17 @@ where
 
         Ok(())
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Extracts a word from a slice of field elements.
+fn extract_word(commitments: &[Felt], start: usize) -> Word {
+    Word::from([
+        commitments[start],
+        commitments[start + 1],
+        commitments[start + 2],
+        commitments[start + 3],
+    ])
 }
