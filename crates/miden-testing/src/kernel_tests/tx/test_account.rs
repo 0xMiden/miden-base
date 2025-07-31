@@ -127,7 +127,10 @@ pub fn compute_current_commitment() -> miette::Result<()> {
         .build()
         .map_err(|err| miette::miette!("{err}"))?;
 
-    tx_context.execute().into_diagnostic().wrap_err("failed to execute code")?;
+    tx_context
+        .execute_blocking()
+        .into_diagnostic()
+        .wrap_err("failed to execute code")?;
 
     Ok(())
 }
@@ -736,7 +739,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
         .unwrap();
 
     // execute code in context
-    let tx = tx_context.execute().into_diagnostic()?;
+    let tx = tx_context.execute_blocking().into_diagnostic()?;
     account.apply_delta(tx.account_delta()).unwrap();
 
     // assert that elements have been set at the correct locations in storage
@@ -764,7 +767,7 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
         TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
             .build()?
-            .execute()?;
+            .execute_blocking()?;
     }
 
     Ok(())
@@ -813,7 +816,7 @@ fn create_procedure_metadata_test_account(
         .tx_inputs(tx_inputs)
         .build()?;
 
-    let result = tx_context.execute().map_err(|err| {
+    let result = tx_context.execute_blocking().map_err(|err| {
         let TransactionExecutorError::TransactionProgramExecutionFailed(exec_err) = err else {
             panic!("should have received an execution error");
         };
@@ -1024,7 +1027,7 @@ fn test_was_procedure_called() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
 
     tx_context
-        .execute()
+        .execute_blocking()
         .into_diagnostic()
         .wrap_err("Failed to execute transaction")?;
 
@@ -1102,7 +1105,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         .build()
         .unwrap();
 
-    let executed_tx = tx_context.execute().into_diagnostic()?;
+    let executed_tx = tx_context.execute_blocking().into_diagnostic()?;
 
     // Account's initial nonce of 1 should have been incremented by 1.
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
@@ -1141,7 +1144,7 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let err = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .build()?
-        .execute()
+        .execute_blocking()
         .unwrap_err();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -1167,7 +1170,7 @@ fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     // modulus - 2.
     account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
 
-    let err = TransactionContextBuilder::new(account).build()?.execute().unwrap_err();
+    let err = TransactionContextBuilder::new(account).build()?.execute_blocking().unwrap_err();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
         anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");

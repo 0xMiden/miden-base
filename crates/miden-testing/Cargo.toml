@@ -33,6 +33,7 @@ itertools          = { default-features = false, features = ["use_alloc"], versi
 rand               = { features = ["os_rng", "small_rng"], workspace = true }
 rand_chacha        = { default-features = false, version = "0.9" }
 thiserror          = { workspace = true }
+tokio              = { features = ["macros", "rt"], workspace = true }
 winter-maybe-async = { version = "0.13" }
 winterfell         = { version = "0.13" }
 

@@ -76,8 +76,13 @@ impl TransactionContext {
 
         let test_lib = TransactionKernel::kernel_as_library();
 
-        let source_manager = assembler.source_manager();
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<
+                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
+                >;
 
+        // TODO: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file = source_manager.load(
             SourceLanguage::Masm,
@@ -108,7 +113,7 @@ impl TransactionContext {
         ))
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)
-        .execute_program(program, source_manager)
+        .execute_program(program)
     }
 
     /// Executes arbitrary code with a testing assembler ([TransactionKernel::testing_assembler()]).
@@ -120,9 +125,7 @@ impl TransactionContext {
     }
 
     /// Executes the transaction through a [TransactionExecutor]
-    #[allow(clippy::arc_with_non_send_sync)]
-    #[maybe_async]
-    pub fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
+    pub async fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let account_id = self.account().id();
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
@@ -132,13 +135,21 @@ impl TransactionContext {
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
 
-        maybe_await!(tx_executor.execute_transaction(
-            account_id,
-            block_num,
-            notes,
-            tx_args,
-            source_manager
-        ))
+        tx_executor
+            .execute_transaction(account_id, block_num, notes, tx_args, source_manager)
+            .await
+    }
+
+    /// Executes the transaction through a [TransactionExecutor]
+    ///
+    /// TODO: This is a temporary workaround to avoid having to update each test to use tokio::test.
+    /// Eventually we should get rid of this method and use tokio::test + execute, but for the POC
+    /// stage this is easier.
+    pub fn execute_blocking(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(self.execute())
     }
 
     pub fn account(&self) -> &Account {

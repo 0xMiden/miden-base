@@ -87,7 +87,7 @@ pub fn generate_executed_tx_with_authenticated_notes(
         .expect("failed to build tx context")
         .build()
         .unwrap();
-    tx_context.execute().unwrap()
+    tx_context.execute_blocking().unwrap()
 }
 
 pub fn generate_tx_with_authenticated_notes(
@@ -129,7 +129,7 @@ pub fn generate_conditional_tx(
         .auth_args(auth_args.into())
         .build()
         .unwrap();
-    tx_context.execute().unwrap()
+    tx_context.execute_blocking().unwrap()
 }
 
 /// Generates a transaction that expires at the given block number.
@@ -148,7 +148,7 @@ pub fn generate_tx_with_expiration(
         .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
         .build()
         .unwrap();
-    let executed_tx = tx_context.execute().unwrap();
+    let executed_tx = tx_context.execute_blocking().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
@@ -162,7 +162,7 @@ pub fn generate_tx_with_unauthenticated_notes(
         .expect("failed to build tx context")
         .build()
         .unwrap();
-    let executed_tx = tx_context.execute().unwrap();
+    let executed_tx = tx_context.execute_blocking().unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 

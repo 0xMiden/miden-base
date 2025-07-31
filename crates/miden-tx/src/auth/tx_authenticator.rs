@@ -2,9 +2,11 @@ use alloc::{boxed::Box, collections::BTreeMap, string::ToString, sync::Arc, vec:
 
 use miden_objects::{
     Felt, Hasher, Word, account::AuthSecretKey, crypto::SequentialCommit,
-    transaction::TransactionSummary, utils::sync::RwLock,
+    transaction::TransactionSummary,
 };
 use rand::Rng;
+use tokio::sync::RwLock;
+use vm_processor::AsyncHostFuture;
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
@@ -89,22 +91,7 @@ pub trait TransactionAuthenticator {
         &self,
         pub_key: Word,
         signing_inputs: &SigningInputs,
-    ) -> Result<Vec<Felt>, AuthenticationError>;
-}
-
-/// This blanket implementation is required to allow `Option<&T>` to be mapped to `Option<&dyn
-/// TransactionAuthenticator`>.
-impl<T> TransactionAuthenticator for &T
-where
-    T: TransactionAuthenticator + ?Sized,
-{
-    fn get_signature(
-        &self,
-        pub_key: Word,
-        signing_inputs: &SigningInputs,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
-        TransactionAuthenticator::get_signature(*self, pub_key, signing_inputs)
-    }
+    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -118,12 +105,13 @@ pub struct UnreachableAuth {
 }
 
 impl TransactionAuthenticator for UnreachableAuth {
+    #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
         _pub_key: Word,
         _signing_inputs: &SigningInputs,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
-        unreachable!("Type `UnreachableAuth` must not be instantiated")
+    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>> {
+        async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
 
@@ -166,7 +154,7 @@ impl<R: Rng> BasicAuthenticator<R> {
     }
 }
 
-impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
+impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
     /// Gets a signature over a message, given a public key.
     /// The key should be included in the `keys` map and should be a variant of [AuthSecretKey].
     ///
@@ -180,20 +168,21 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
         &self,
         pub_key: Word,
         signing_inputs: &SigningInputs,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
+    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>> {
         let message = signing_inputs.to_commitment();
 
-        let mut rng = self.rng.write();
-
-        match self.keys.get(&pub_key) {
-            Some(key) => match key {
-                AuthSecretKey::RpoFalcon512(falcon_key) => {
-                    get_falcon_signature(falcon_key, message, &mut *rng)
+        async move {
+            let mut rng = self.rng.write().await;
+            match self.keys.get(&pub_key) {
+                Some(key) => match key {
+                    AuthSecretKey::RpoFalcon512(falcon_key) => {
+                        get_falcon_signature(falcon_key, message, &mut *rng)
+                    },
                 },
-            },
-            None => Err(AuthenticationError::UnknownPublicKey(format!(
-                "public key {pub_key} is not contained in the authenticator's keys",
-            ))),
+                None => Err(AuthenticationError::UnknownPublicKey(format!(
+                    "public key {pub_key} is not contained in the authenticator's keys",
+                ))),
+            }
         }
     }
 }
@@ -202,14 +191,17 @@ impl<R: Rng> TransactionAuthenticator for BasicAuthenticator<R> {
 // ================================================================================================
 
 impl TransactionAuthenticator for () {
+    #[allow(clippy::manual_async_fn)]
     fn get_signature(
         &self,
         _pub_key: Word,
         _signing_inputs: &SigningInputs,
-    ) -> Result<Vec<Felt>, AuthenticationError> {
-        Err(AuthenticationError::RejectedSignature(
-            "default authenticator cannot provide signatures".to_string(),
-        ))
+    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>> {
+        async {
+            Err(AuthenticationError::RejectedSignature(
+                "default authenticator cannot provide signatures".to_string(),
+            ))
+        }
     }
 }
 

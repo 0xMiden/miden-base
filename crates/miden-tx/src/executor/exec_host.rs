@@ -1,13 +1,21 @@
 use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
 
-use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
+use miden_lib::{
+    errors::TransactionKernelError,
+    transaction::{TransactionEvent, TransactionEventData, TransactionEventHandling},
+};
 use miden_objects::{
-    Felt, Hasher, Word,
+    Felt, Word,
     account::{AccountDelta, PartialAccount},
+    assembly::{
+        DefaultSourceManager, SourceManager,
+        debuginfo::{Location, SourceFile, SourceSpan},
+    },
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
+    AdviceMutation, AsyncHost, AsyncHostFuture, BaseHost, EventError, MastForest, MastForestStore,
+    ProcessState,
 };
 
 use crate::{
@@ -17,7 +25,7 @@ use crate::{
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
-/// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
+/// The transaction executor host is responsible for handling [`AsyncHost`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests
 /// by forwarding the request to the contained [`TransactionAuthenticator`].
 ///
@@ -46,8 +54,8 @@ where
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore,
-    AUTH: TransactionAuthenticator,
+    STORE: MastForestStore + Sync,
+    AUTH: TransactionAuthenticator + Sync,
 {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -96,18 +104,15 @@ where
     ///
     /// The signature is fetched from the advice map or otherwise requested from the host's
     /// authenticator.
-    pub fn on_signature_requested(
+    async fn on_signature_requested(
         &mut self,
-        process: &mut ProcessState,
-    ) -> Result<(), TransactionKernelError> {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
-
-        let signature_key = Hasher::merge(&[pub_key, msg]);
-
-        let signature = if let Ok(signature) =
-            process.advice_provider().get_mapped_values(&signature_key)
-        {
+        pub_key_hash: Word,
+        message: Word,
+        signature_key: Word,
+        signature_opt: Option<Vec<Felt>>,
+        commitments_opt: Option<Vec<Felt>>,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let signature = if let Some(signature) = signature_opt {
             signature.to_vec()
         } else {
             // Retrieve transaction summary commitments from the advice provider.
@@ -117,8 +122,10 @@ where
             // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
             // - commitments[8..12]: INPUT_NOTES_COMMITMENT
             // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+            let commitments = commitments_opt.ok_or_else(|| {
+                TransactionKernelError::TransactionSummaryConstructionFailed(Box::from(
+                    "expected commitments to be present in advice provider",
+                ))
             })?;
 
             if commitments.len() != 16 {
@@ -127,10 +134,10 @@ where
                 ));
             }
 
-            let salt = extract_word(commitments, 0);
-            let output_notes_commitment = extract_word(commitments, 4);
-            let input_notes_commitment = extract_word(commitments, 8);
-            let account_delta_commitment = extract_word(commitments, 12);
+            let salt = extract_word(&commitments, 0);
+            let output_notes_commitment = extract_word(&commitments, 4);
+            let input_notes_commitment = extract_word(&commitments, 8);
+            let account_delta_commitment = extract_word(&commitments, 12);
             let tx_summary = build_tx_summary(
                 self.base_host(),
                 salt,
@@ -142,7 +149,7 @@ where
                 TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
             })?;
 
-            if msg != tx_summary.to_commitment() {
+            if message != tx_summary.to_commitment() {
                 return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
                     "transaction summary doesn't commit to the expected message".into(),
                 ));
@@ -154,7 +161,8 @@ where
             let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
 
             let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key, &signing_inputs)
+                .get_signature(pub_key_hash, &signing_inputs)
+                .await
                 .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
             self.generated_signatures.insert(signature_key, signature.clone());
@@ -162,9 +170,7 @@ where
             signature
         };
 
-        process.advice_provider_mut().stack.extend(signature);
-
-        Ok(())
+        Ok(vec![AdviceMutation::ExtendStack { values: signature }])
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -186,12 +192,22 @@ where
     STORE: MastForestStore,
     AUTH: TransactionAuthenticator,
 {
+    fn get_label_and_source_file(
+        &self,
+        location: &Location,
+    ) -> (SourceSpan, Option<Arc<SourceFile>>) {
+        // TODO: Replace with proper call to source manager once the host owns it.
+        let stub_source_manager = DefaultSourceManager::default();
+        let maybe_file = stub_source_manager.get_by_uri(location.uri());
+        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        (span, maybe_file)
+    }
 }
 
-impl<STORE, AUTH> SyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
+impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: MastForestStore,
-    AUTH: TransactionAuthenticator,
+    STORE: MastForestStore + Sync,
+    AUTH: TransactionAuthenticator + Sync,
 {
     fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
         self.base_host.get_mast_forest(procedure_root)
@@ -199,27 +215,43 @@ where
 
     fn on_event(
         &mut self,
-        process: &mut ProcessState<'_>,
+        process: &ProcessState,
         event_id: u32,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
-        let transaction_event = TransactionEvent::try_from(event_id)
-            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+    ) -> impl AsyncHostFuture<Result<Vec<AdviceMutation>, EventError>> {
+        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
+        // should be cleaner.
+        let event_handling_result = TransactionEvent::try_from(event_id)
+            .map_err(EventError::from)
+            .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
 
-        match transaction_event {
-            // Override the base host's on signature requested implementation, which would not call
-            // the authenticator.
-            TransactionEvent::AuthRequest => {
-                self.on_signature_requested(process)
-                    .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-            },
-            // All other events are handled as in the base host.
-            _ => {
-                self.base_host.handle_event(process, transaction_event, err_ctx)?;
-            },
+        async move {
+            let event_handling = event_handling_result?;
+            let event_data = match event_handling {
+                TransactionEventHandling::Unhandled(event) => event,
+                TransactionEventHandling::Handled(mutations) => {
+                    return Ok(mutations);
+                },
+            };
+
+            match event_data {
+                TransactionEventData::AuthRequest {
+                    pub_key_hash,
+                    message,
+                    signature_key,
+                    signature_opt,
+                    commitments_opt,
+                } => self
+                    .on_signature_requested(
+                        pub_key_hash,
+                        message,
+                        signature_key,
+                        signature_opt,
+                        commitments_opt,
+                    )
+                    .await
+                    .map_err(EventError::from),
+            }
         }
-
-        Ok(())
     }
 }
 

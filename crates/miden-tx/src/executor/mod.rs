@@ -13,9 +13,9 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, ExecutionError, Process};
+use vm_processor::{AdviceInputs, ExecutionError, StackInputs, fast::FastProcessor};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
-use winter_maybe_async::{maybe_async, maybe_await};
+use winter_maybe_async::maybe_await;
 
 use super::TransactionExecutorError;
 use crate::{
@@ -52,8 +52,8 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
 where
-    STORE: DataStore + 'store,
-    AUTH: TransactionAuthenticator + 'auth,
+    STORE: DataStore + 'store + Sync,
+    AUTH: TransactionAuthenticator + 'auth + Sync,
 {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -139,14 +139,14 @@ where
     /// - If the transaction arguments contain foreign account data not anchored in the reference
     ///   block.
     /// - If any input notes were created in block numbers higher than the reference block.
-    #[maybe_async]
-    pub fn execute_transaction(
+    pub async fn execute_transaction(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager + Send + Sync>,
+        // TODO: Pass source manager to host once refactored.
+        _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -163,6 +163,9 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
+        // this but the new processor expects the reverse of that.
+        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let input_notes = tx_inputs.input_notes();
 
@@ -186,22 +189,17 @@ where
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        // Execute the transaction kernel
-        let trace = vm_processor::execute(
-            &TransactionKernel::main(),
-            stack_inputs,
-            advice_inputs,
-            &mut host,
-            self.exec_options,
-            source_manager,
-        )
-        .map_err(|err| map_execution_error(err, host.base_host()))?;
-        let (stack_outputs, advice_provider) = trace.into_outputs();
+        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+        let (stack_outputs, advice_provider) = processor
+            .execute(&TransactionKernel::main(), &mut host)
+            .await
+            .map_err(|err| map_execution_error(err, host.base_host()))?;
 
         // The stack is not necessary since it is being reconstructed when re-executing.
+        let (_stack, advice_map, merkle_store) = advice_provider.into_parts();
         let advice_inputs = AdviceInputs::default()
-            .with_map(advice_provider.map)
-            .with_merkle_store(advice_provider.store);
+            .with_map(advice_map.iter().map(|(key, value)| (*key, value.to_vec())))
+            .with_merkle_store(merkle_store);
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
@@ -224,15 +222,15 @@ where
     /// - If required data can not be fetched from the [DataStore].
     /// - If the transaction host can not be created from the provided values.
     /// - If the execution of the provided program fails.
-    #[maybe_async]
-    pub fn execute_tx_view_script(
+    pub async fn execute_tx_view_script(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        source_manager: Arc<dyn SourceManager + Send + Sync>,
+        // TODO: Pass source manager to host once refactored.
+        _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
@@ -249,6 +247,9 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
+        // this but the new processor expects the reverse of that.
+        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
@@ -268,15 +269,11 @@ where
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        let mut process = Process::new(
-            TransactionKernel::tx_script_main().kernel().clone(),
-            stack_inputs,
-            advice_inputs,
-            self.exec_options,
-        )
-        .with_source_manager(source_manager);
-        let stack_outputs = process
+        let processor =
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let (stack_outputs, _advice_provider) = processor
             .execute(&TransactionKernel::tx_script_main(), &mut host)
+            .await
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
 
         Ok(*stack_outputs)
@@ -301,14 +298,14 @@ where
     /// - If required data can not be fetched from the [DataStore].
     /// - If the transaction host can not be created from the provided values.
     /// - If the execution of the provided program fails on the stage other than note execution.
-    #[maybe_async]
-    pub(crate) fn try_execute_notes(
+    pub(crate) async fn try_execute_notes(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        // TODO: Pass source manager to host once refactored.
+        _source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -325,6 +322,9 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
+        // this but the new processor expects the reverse of that.
+        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let input_notes = tx_inputs.input_notes();
 
@@ -348,16 +348,12 @@ where
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        // execute the transaction kernel
-        let result = vm_processor::execute(
-            &TransactionKernel::main(),
-            stack_inputs,
-            advice_inputs,
-            &mut host,
-            self.exec_options,
-            source_manager,
-        )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
+        let processor =
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let result = processor
+            .execute(&TransactionKernel::main(), &mut host)
+            .await
+            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
             Ok(_) => Ok(NoteAccountExecution::Success),
@@ -394,7 +390,7 @@ where
 // ================================================================================================
 
 /// Creates a new [ExecutedTransaction] from the provided data.
-fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
+fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
     mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
@@ -435,7 +431,7 @@ fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
     }
 
     // introduce generated signatures into the witness inputs
-    advice_inputs.extend_map(generated_signatures);
+    advice_inputs.map.extend(generated_signatures);
 
     Ok(ExecutedTransaction::new(
         tx_inputs,
@@ -511,7 +507,7 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 ///   account delta and input/output notes.
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execution_error<STORE: DataStore>(
+fn map_execution_error<STORE: DataStore + Sync>(
     exec_err: ExecutionError,
     host: &TransactionBaseHost<STORE>,
 ) -> TransactionExecutorError {
@@ -548,7 +544,7 @@ fn map_execution_error<STORE: DataStore>(
 
 /// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
 /// host and validating them against the provided commitments.
-fn build_tx_summary<STORE: MastForestStore>(
+fn build_tx_summary<STORE: MastForestStore + Sync>(
     host: &TransactionBaseHost<STORE>,
     salt: Word,
     output_notes_commitment: Word,

@@ -396,7 +396,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -549,7 +549,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -1144,7 +1144,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::new(account.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let err = tx_context.execute().unwrap_err();
+    let err = tx_context.execute_blocking().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
         panic!("unexpected error")
     };
@@ -1159,7 +1159,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_inputs =
         mock_chain.get_transaction_inputs(account.clone(), None, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -1213,6 +1213,6 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .authenticator(authenticator)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
     Ok(())
 }
