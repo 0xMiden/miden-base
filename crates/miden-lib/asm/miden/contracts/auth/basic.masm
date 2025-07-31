@@ -64,7 +64,9 @@ export.auth__tx_rpo_falcon512
 
     # emit the authentication request event that pushes a signature for the message to the advice
     # stack
+    swapw
     emit.AUTH_REQUEST
+    swapw
     # OS => [PUB_KEY, MESSAGE, pad(16)]
     # AS => [SIGNATURE]
 

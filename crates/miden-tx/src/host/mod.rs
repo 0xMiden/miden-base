@@ -279,8 +279,8 @@ where
         &mut self,
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
+        let msg = process.get_stack_word(0);
+        let pub_key = process.get_stack_word(1);
 
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
