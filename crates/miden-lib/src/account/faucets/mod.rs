@@ -223,21 +223,28 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 // FUNGIBLE FAUCET
 // ================================================================================================
 
-pub struct FungibleFaucet;
+/// Extension trait for fungible faucet accounts. Provides methods to access the fungible faucet account's reserved storage slots.
+pub trait FungibleFaucetExt {
+    const ISSUANCE_ELEMENT_INDEX: usize;
+    const ISSUANCE_STORAGE_SLOT: u8;
 
-impl FungibleFaucet {
+    /// Returns the issuance of the fungible faucet account.
+    ///
+    /// # Errors
+    /// Returns an error if the account is not a fungible faucet account.
+    fn get_faucet_issuance(&self) -> Result<Felt, AccountError>;
+}
+
+impl FungibleFaucetExt for Account {
     const ISSUANCE_ELEMENT_INDEX: usize = 3;
+    const ISSUANCE_STORAGE_SLOT: u8 = FAUCET_STORAGE_DATA_SLOT;
 
-    pub fn get_issuance_from_slot(slot: &Word) -> Felt {
-        slot[Self::ISSUANCE_ELEMENT_INDEX]
-    }
+    fn get_faucet_issuance(&self) -> Result<Felt, AccountError> {
+        if self.account_type() != AccountType::FungibleFaucet {
+            return Err(AccountError::NonFungigleFaucetAccount);
+        }
 
-    pub fn get_issuance_from_account(account: &Account) -> Result<Felt, FungibleFaucetError> {
-        let slot = account
-            .storage()
-            .get_item(FAUCET_STORAGE_DATA_SLOT)
-            .map_err(|_| FungibleFaucetError::InvalidStorageOffset(FAUCET_STORAGE_DATA_SLOT))?;
-        Ok(Self::get_issuance_from_slot(&slot))
+        Ok(self.storage().get_item(Self::ISSUANCE_STORAGE_SLOT)?[Self::ISSUANCE_ELEMENT_INDEX])
     }
 }
 

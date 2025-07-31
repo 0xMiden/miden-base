@@ -144,6 +144,8 @@ pub enum AccountError {
     /// this error type.
     #[error("assumption violated: {0}")]
     AssumptionViolated(String),
+    #[error("account is not a fungible faucet")]
+    NonFungigleFaucetAccount,
 }
 
 // ACCOUNT ID ERROR
