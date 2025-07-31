@@ -54,7 +54,8 @@ use vm_processor::{AdviceInputs, ExecutionError, Process, Word};
 
 use super::{Felt, ZERO};
 use crate::{
-    Auth, MockChain, TransactionContext, TransactionContextBuilder, assert_execution_error,
+    AccountState, Auth, MockChain, TransactionContext, TransactionContextBuilder,
+    assert_execution_error,
     kernel_tests::tx::ProcessMemoryExt,
     utils::{create_p2any_note, input_note_data_ptr},
 };
@@ -496,22 +497,35 @@ fn input_notes_memory_assertions(
 /// [`TransactionContext::execute_code`]).
 #[test]
 fn create_simple_account() -> anyhow::Result<()> {
-    let (account, seed) = AccountBuilder::new([6; 32])
+    let account_builder = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?)
-        .build()?;
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?,
+        );
 
-    let tx = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
+    let amount = 1000;
+    let mut builder = MockChain::builder();
+    let account =
+        builder.add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::New)?;
+    let fee_note = builder.add_p2id_note_with_fee(account.id(), amount)?;
+    let chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account, &[fee_note.id()], &[])?
         .build()?
         .execute()
         .context("failed to execute account-creating transaction")?;
 
+    // We expect that the account now contains the amount minus the paid fee.
+    let mut added_asset = FungibleAsset::mock_fee(amount);
+    added_asset.sub(tx.fee().amount())?;
+
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
     // except for the nonce, the delta should be empty
     assert!(tx.account_delta().storage().is_empty());
-    assert!(tx.account_delta().vault().is_empty());
+    assert_eq!(tx.account_delta().vault().added_assets().count(), 1);
+    assert_eq!(tx.account_delta().vault().removed_assets().count(), 0);
+    assert_eq!(tx.account_delta().vault().added_assets().next().unwrap(), added_asset.into());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
     // account commitment should not be the empty word
     assert_ne!(tx.account_delta().to_commitment(), EMPTY_WORD);

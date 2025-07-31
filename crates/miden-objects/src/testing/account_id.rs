@@ -58,6 +58,8 @@ pub const ACCOUNT_ID_REGULAR_NETWORK_ACCOUNT_IMMUTABLE_CODE: u128 = account_id(
 pub const ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET: u128 =
     account_id(AccountType::FungibleFaucet, AccountStorageMode::Private, 0xfabb_cddd);
 // FUNGIBLE TOKENS - PUBLIC
+pub const ACCOUNT_ID_NATIVE_ASSET_FAUCET: u128 =
+    account_id(AccountType::FungibleFaucet, AccountStorageMode::Public, 0xabcd_acde);
 pub const ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET: u128 =
     account_id(AccountType::FungibleFaucet, AccountStorageMode::Public, 0xaabc_bcde);
 pub const ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1: u128 =

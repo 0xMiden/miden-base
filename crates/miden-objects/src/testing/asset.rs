@@ -5,7 +5,8 @@ use crate::{
     account::{AccountId, AccountIdPrefix, AccountType},
     asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
     testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_NATIVE_ASSET_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     },
 };
 
@@ -121,5 +122,20 @@ impl FungibleAsset {
     /// Returns a mocked asset account ID ([ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET]).
     pub fn mock_issuer() -> AccountId {
         AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap()
+    }
+
+    /// Returns a fungible asset of the given `amount`, issued by
+    /// [`ACCOUNT_ID_NATIVE_ASSET_FAUCET`].
+    pub fn mock_fee(amount: u64) -> FungibleAsset {
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET).expect("id should be valid"),
+            amount,
+        )
+        .expect("asset is valid")
+    }
+
+    /// Returns the faucet ID of the asset returned by [`FungibleAsset::mock_fee`].
+    pub fn mock_fee_issuer() -> AccountId {
+        AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET).expect("id should be valid")
     }
 }

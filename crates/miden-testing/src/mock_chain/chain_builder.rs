@@ -13,14 +13,14 @@ use miden_objects::{
         Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
         delta::AccountUpdateDetails,
     },
-    asset::{Asset, TokenSymbol},
+    asset::{Asset, FungibleAsset, TokenSymbol},
     block::{
         AccountTree, BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain,
         FeeParameters, NullifierTree, OutputNoteBatch, ProvenBlock,
     },
     note::{Note, NoteDetails, NoteType},
     testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        account_component::AccountMockComponent, account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET,
     },
     transaction::{OrderedTransactionHeaders, OutputNote},
 };
@@ -49,14 +49,14 @@ impl MockChainBuilder {
 
     /// Initializes a new mock chain builder with an empty state.
     ///
-    /// By default, the `native_asset_id` is set to [`ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET`] and can be
+    /// By default, the `native_asset_id` is set to [`ACCOUNT_ID_NATIVE_ASSET_FAUCET`] and can be
     /// overwritten using [`Self::native_asset_id`].
     pub fn new() -> Self {
         Self {
             accounts: BTreeMap::new(),
             account_credentials: BTreeMap::new(),
             notes: Vec::new(),
-            native_asset_id: ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET
+            native_asset_id: ACCOUNT_ID_NATIVE_ASSET_FAUCET
                 .try_into()
                 .expect("account ID should be valid"),
             rng: RpoRandomCoin::new(Default::default()),
@@ -91,6 +91,15 @@ impl MockChainBuilder {
     pub fn native_asset_id(mut self, native_asset_id: AccountId) -> Self {
         self.native_asset_id = native_asset_id;
         self
+    }
+
+    /// Consumes the builder, creates the genesis block of the chain and returns the [`MockChain`].
+    pub fn build(self) -> anyhow::Result<MockChain> {
+        let (genesis_block, account_tree) =
+            create_genesis_state(self.accounts.into_values(), self.notes, self.native_asset_id)
+                .context("failed to create genesis block")?;
+
+        MockChain::from_genesis_block(genesis_block, account_tree, self.account_credentials)
     }
 
     // ACCOUNT METHODS
@@ -433,13 +442,27 @@ impl MockChainBuilder {
         Ok(note)
     }
 
-    /// Consumes the builder, creates the genesis block of the chain and returns the [`MockChain`].
-    pub fn build(self) -> anyhow::Result<MockChain> {
-        let (genesis_block, account_tree) =
-            create_genesis_state(self.accounts.into_values(), self.notes, self.native_asset_id)
-                .context("failed to create genesis block")?;
+    /// Creates a new P2ID note with the provided amount of the native fee asset of the chain.
+    ///
+    /// By default, this is set to [`ACCOUNT_ID_NATIVE_ASSET_FAUCET`] and can be overwritten using
+    /// [`Self::native_asset_id`]. The note is added to the list of genesis notes.
+    ///
+    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`.
+    pub fn add_p2id_note_with_fee(
+        &mut self,
+        target_account_id: AccountId,
+        amount: u64,
+    ) -> anyhow::Result<Note> {
+        let fee_asset = FungibleAsset::new(self.native_asset_id, amount)
+            .context("failed to create fee asset")?;
+        let note = self.add_p2id_note(
+            self.native_asset_id,
+            target_account_id,
+            &[Asset::from(fee_asset)],
+            NoteType::Public,
+        )?;
 
-        MockChain::from_genesis_block(genesis_block, account_tree, self.account_credentials)
+        Ok(note)
     }
 }
 
@@ -497,7 +520,7 @@ fn create_genesis_state(
     let tx_kernel_commitment = TransactionKernel::kernel_commitment();
     let proof_commitment = Word::empty();
     let timestamp = MockChain::TIMESTAMP_START_SECS;
-    let verification_base_fee = 500;
+    let verification_base_fee = 50;
     let fee_parameters = FeeParameters::new(native_asset_id, verification_base_fee)
         .context("failed to construct fee parameters")?;
 
