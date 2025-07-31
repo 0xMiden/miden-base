@@ -95,6 +95,8 @@ impl TransactionAdviceInputs {
     ///     TX_KERNEL_COMMITMENT
     ///     PROOF_COMMITMENT,
     ///     [block_num, version, timestamp, 0],
+    ///     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
+    ///     [0, 0, 0, 0]
     ///     NOTE_ROOT,
     ///     kernel_version
     ///     [account_id, 0, 0, account_nonce],
