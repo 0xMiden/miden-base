@@ -521,72 +521,6 @@ where
         Ok(())
     }
 
-    // TRANSACTION SUMMARY HELPER
-    // --------------------------------------------------------------------------------------------
-
-    /// Builds a [TransactionSummary] by extracting data from the advice provider and validating
-    /// commitments against the host's state.
-    pub(crate) fn build_tx_summary(
-        &self,
-        process: &ProcessState,
-        msg: Word,
-    ) -> Result<TransactionSummary, TransactionKernelError> {
-        let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-        })?;
-
-        if commitments.len() != 16 {
-            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                "Expected 4 words for transaction summary commitments".into(),
-            ));
-        }
-
-        let salt = extract_word(commitments, 0);
-        let output_notes_commitment = extract_word(commitments, 4);
-        let input_notes_commitment = extract_word(commitments, 8);
-        let account_delta_commitment = extract_word(commitments, 12);
-
-        let account_delta = self.build_account_delta();
-        let input_notes = self.input_notes();
-        let output_notes_vec = self.build_output_notes();
-        let output_notes = OutputNotes::new(output_notes_vec).map_err(|err| {
-            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-        })?;
-
-        // Validate commitments
-        let actual_account_delta_commitment = account_delta.to_commitment();
-        if actual_account_delta_commitment != account_delta_commitment {
-            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
-                format!(
-                    "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
-                )
-                .into(),
-            ));
-        }
-
-        let actual_input_notes_commitment = input_notes.commitment();
-        if actual_input_notes_commitment != input_notes_commitment {
-            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
-                format!(
-                    "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
-                )
-                .into(),
-            ));
-        }
-
-        let actual_output_notes_commitment = output_notes.commitment();
-        if actual_output_notes_commitment != output_notes_commitment {
-            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
-                format!(
-                    "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
-                )
-                .into(),
-            ));
-        }
-
-        Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
-    }
-
     /// Aborts the transaction by building the
     /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) based on elements on
     /// the operand stack and advice map.
@@ -669,6 +603,69 @@ where
             ))?;
 
         Ok(num_storage_slots_felt.as_int())
+    }
+
+    /// Builds a [TransactionSummary] by extracting data from the advice provider and validating
+    /// commitments against the host's state.
+    pub(crate) fn build_tx_summary(
+        &self,
+        process: &ProcessState,
+        msg: Word,
+    ) -> Result<TransactionSummary, TransactionKernelError> {
+        let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
+            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+        })?;
+
+        if commitments.len() != 16 {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected 4 words for transaction summary commitments".into(),
+            ));
+        }
+
+        let salt = extract_word(commitments, 0);
+        let output_notes_commitment = extract_word(commitments, 4);
+        let input_notes_commitment = extract_word(commitments, 8);
+        let account_delta_commitment = extract_word(commitments, 12);
+
+        let account_delta = self.build_account_delta();
+        let input_notes = self.input_notes();
+        let output_notes_vec = self.build_output_notes();
+        let output_notes = OutputNotes::new(output_notes_vec).map_err(|err| {
+            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+        })?;
+
+        // Validate commitments
+        let actual_account_delta_commitment = account_delta.to_commitment();
+        if actual_account_delta_commitment != account_delta_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        let actual_input_notes_commitment = input_notes.commitment();
+        if actual_input_notes_commitment != input_notes_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        let actual_output_notes_commitment = output_notes.commitment();
+        if actual_output_notes_commitment != output_notes_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
     }
 }
 
