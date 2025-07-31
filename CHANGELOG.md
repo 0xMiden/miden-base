@@ -12,6 +12,7 @@
 - [BREAKING] Refactor `TransactionAuthenticator` to support arbitrary data signing ([#1616](https://github.com/0xMiden/miden-base/pull/1616)).
 - Pass the full `TransactionSummary` to `TransactionAuthenticator` ([#1618](https://github.com/0xMiden/miden-base/pull/1618)).
 - Add `PartialBlockchain::num_tracked_blocks()` ([#1643](https://github.com/0xMiden/miden-base/pull/1643)).
+- Add `get_initial_code_commitment`, `get_initial_storage_commitment` and `get_initial_vault_root` procedures to `miden::account` module ([#1667](https://github.com/0xMiden/miden-base/pull/1667)).
 
 ### Changes
 

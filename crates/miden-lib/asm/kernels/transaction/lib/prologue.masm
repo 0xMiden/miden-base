@@ -469,7 +469,7 @@ proc.process_account_data
     exec.memory::set_init_account_vault_root
     # => [ACCOUNT_VAULT_ROOT, ID_AND_NONCE, EMPTY_WORD, acct_data_ptr']
     
-    # perform the permutation 
+    # perform the permutation and load storage and code commitments onto the operand stack 
     hperm adv_pipe
     # => [ACCOUNT_CODE_COMMITMENT, ACCOUNT_STORAGE_COMMITMENT, HASH, acct_data_ptr'']
 
