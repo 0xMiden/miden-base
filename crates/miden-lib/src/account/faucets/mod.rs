@@ -223,7 +223,8 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 // FUNGIBLE FAUCET
 // ================================================================================================
 
-/// Extension trait for fungible faucet accounts. Provides methods to access the fungible faucet account's reserved storage slots.
+/// Extension trait for fungible faucet accounts. Provides methods to access the fungible faucet
+/// account's reserved storage slot.
 pub trait FungibleFaucetExt {
     const ISSUANCE_ELEMENT_INDEX: usize;
     const ISSUANCE_STORAGE_SLOT: u8;
