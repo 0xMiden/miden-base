@@ -629,7 +629,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let _executed_transaction = tx_context.execute()?;
+    let _executed_transaction = tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -853,7 +853,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let _executed_transaction = tx_context.execute()?;
+    let _executed_transaction = tx_context.execute_blocking()?;
     Ok(())
 }
 
@@ -1024,7 +1024,7 @@ fn test_nested_fpi_stack_overflow() {
                 .tx_script(tx_script)
                 .build().unwrap();
 
-            let err = tx_context.execute()
+            let err = tx_context.execute_blocking()
                 .unwrap_err();
 
             let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -1146,7 +1146,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let err = tx_context.execute().unwrap_err();
+    let err = tx_context.execute_blocking().unwrap_err();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
         panic!("unexpected error: {err}")

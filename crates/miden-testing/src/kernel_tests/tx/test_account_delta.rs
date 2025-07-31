@@ -54,7 +54,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[p2any_note.id()], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
@@ -73,7 +73,7 @@ fn delta_nonce() -> anyhow::Result<()> {
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
@@ -167,7 +167,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .expect("failed to build tx context")
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     let storage_values_delta = executed_tx
@@ -317,7 +317,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         .build_tx_context(account_id, &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
     let maps_delta = executed_tx.account_delta().storage().maps();
 
@@ -424,7 +424,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -531,7 +531,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -730,7 +730,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     // expected delta
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     // nonce delta
     // --------------------------------------------------------------------------------------------

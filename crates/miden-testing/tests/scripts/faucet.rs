@@ -73,7 +73,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     prove_and_verify_transaction(executed_transaction.clone())?;
 
@@ -137,7 +137,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute();
+        .execute_blocking();
 
     // Execute the transaction and get the witness
     assert_transaction_executor_error!(
@@ -199,7 +199,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(faucet.id(), &[note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // Prove, serialize/deserialize and verify the transaction
     prove_and_verify_transaction(executed_transaction.clone())?;

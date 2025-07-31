@@ -551,7 +551,7 @@ fn test_epilogue_increment_nonce_violation() -> anyhow::Result<()> {
 fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build()?;
 
-    let err = tx_context.execute().expect_err("Expected execution to fail");
+    let err = tx_context.execute_blocking().expect_err("Expected execution to fail");
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
         panic!("unexpected error")
     };

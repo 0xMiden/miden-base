@@ -311,7 +311,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .build()?;
-    let tx = tx_context.execute().context("failed to execute account creating tx")?;
+    let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
     let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
 
     let batch = generate_batch(&mut mock_chain, vec![tx]);

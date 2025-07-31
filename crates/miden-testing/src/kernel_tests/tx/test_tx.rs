@@ -73,7 +73,7 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
         .expect("failed to get foreign account inputs");
 
     // Create a new unrelated account to modify the account tree.
-    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute()?;
+    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute_blocking()?;
     mock_chain.add_pending_executed_transaction(&tx)?;
     mock_chain.prove_next_block()?;
 
@@ -83,7 +83,7 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts(vec![inputs])
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_matches::assert_matches!(
         transaction,
@@ -1170,7 +1170,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         ])
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     // output notes
     // --------------------------------------------------------------------------------------------
@@ -1280,7 +1280,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let input_notes = tx_context.input_notes().clone();
     let output_notes = OutputNotes::new(vec![OutputNote::Partial(output_note.into())])?;
 
-    let error = tx_context.execute().unwrap_err();
+    let error = tx_context.execute_blocking().unwrap_err();
 
     assert_matches!(error, TransactionExecutorError::Unauthorized(tx_summary) => {
         assert!(tx_summary.account_delta().vault().is_empty());
@@ -1317,7 +1317,7 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let tx = chain
         .build_tx_context(account.id(), &[spawn_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let summary = TransactionSummary::new(
         tx.account_delta().clone(),
@@ -1440,7 +1440,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
         .extend_advice_map([(tx_script_input_key, tx_script_input_value.to_vec())])
         .build()?;
 
-    tx_context.execute().context("failed to execute transaction")?;
+    tx_context.execute_blocking().context("failed to execute transaction")?;
 
     Ok(())
 }
@@ -1486,7 +1486,7 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         .tx_script_args(tx_script_args)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -1558,7 +1558,7 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
         Felt::new(1u64),
     );
     let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
-    _ = tx_context.execute()?;
+    _ = tx_context.execute_blocking()?;
 
     Ok(())
 }
