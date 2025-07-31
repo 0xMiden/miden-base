@@ -1,6 +1,6 @@
 use.miden::account
-use.miden::tx
 use.miden::auth
+use.miden::tx
 use.std::crypto::dsa::rpo_falcon512
 
 # CONSTANTS
