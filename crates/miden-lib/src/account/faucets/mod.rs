@@ -229,23 +229,27 @@ pub trait FungibleFaucetExt {
     const ISSUANCE_ELEMENT_INDEX: usize;
     const ISSUANCE_STORAGE_SLOT: u8;
 
-    /// Returns the issuance of the fungible faucet account.
+    /// Returns the amount of tokens (in base units) issued from this fungible faucet.
     ///
     /// # Errors
     /// Returns an error if the account is not a fungible faucet account.
-    fn get_faucet_issuance(&self) -> Result<Felt, AccountError>;
+    fn get_faucet_issuance(&self) -> Result<Felt, FungibleFaucetError>;
 }
 
 impl FungibleFaucetExt for Account {
     const ISSUANCE_ELEMENT_INDEX: usize = 3;
     const ISSUANCE_STORAGE_SLOT: u8 = FAUCET_STORAGE_DATA_SLOT;
 
-    fn get_faucet_issuance(&self) -> Result<Felt, AccountError> {
+    fn get_faucet_issuance(&self) -> Result<Felt, FungibleFaucetError> {
         if self.account_type() != AccountType::FungibleFaucet {
-            return Err(AccountError::NonFungigleFaucetAccount);
+            return Err(FungibleFaucetError::NonFungigleFaucetAccount);
         }
 
-        Ok(self.storage().get_item(Self::ISSUANCE_STORAGE_SLOT)?[Self::ISSUANCE_ELEMENT_INDEX])
+        let slot = self
+            .storage()
+            .get_item(Self::ISSUANCE_STORAGE_SLOT)
+            .map_err(|_| FungibleFaucetError::InvalidStorageOffset(Self::ISSUANCE_STORAGE_SLOT))?;
+        Ok(slot[Self::ISSUANCE_ELEMENT_INDEX])
     }
 }
 
@@ -318,6 +322,8 @@ pub enum FungibleFaucetError {
     InvalidTokenSymbol(#[source] TokenSymbolError),
     #[error("account creation failed")]
     AccountError(#[source] AccountError),
+    #[error("account is not a fungible faucet")]
+    NonFungigleFaucetAccount,
 }
 
 // TESTS
