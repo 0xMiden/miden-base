@@ -252,6 +252,7 @@ proc.build_native_fee_asset
     # => [native_asset_id_prefix, native_asset_id_suffix, fee_amount]
 
     push.0 movdn.2
+    # => [native_asset_id_prefix, native_asset_id_suffix, 0, fee_amount]
     # => [FEE_ASSET]
 end
 
@@ -273,7 +274,7 @@ end
 #! - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
 #! - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
 #!   delta commitment.
-#! - FEE_ASSET is the fee asset that pays the fees of the transaction.
+#! - FEE_ASSET is the fungible asset used as the transaction fee.
 #! - tx_expiration_block_num is the transaction expiration block number.
 export.finalize_transaction
     # make sure that the context was switched back to the native account

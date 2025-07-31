@@ -107,9 +107,9 @@ impl ExecutedTransaction {
         &self.tx_outputs.output_notes
     }
 
-    /// Returns the fee asset that pays the fees of the transaction.
-    pub fn fee_asset(&self) -> FungibleAsset {
-        self.tx_outputs.fee_asset
+    /// Returns the fee of the transaction.
+    pub fn fee(&self) -> FungibleAsset {
+        self.tx_outputs.fee
     }
 
     /// Returns the block number at which the transaction will expire.

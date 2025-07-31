@@ -45,8 +45,8 @@ pub struct ProvenTransaction {
     /// The block commitment of the transaction's reference block.
     ref_block_commitment: Word,
 
-    /// The fee asset that pays the fees of the transaction.
-    fee_asset: FungibleAsset,
+    /// The fee of the transaction.
+    fee: FungibleAsset,
 
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
@@ -96,9 +96,9 @@ impl ProvenTransaction {
         self.ref_block_commitment
     }
 
-    /// Returns the fee asset that pays the fees of the transaction.
-    pub fn fee_asset(&self) -> FungibleAsset {
-        self.fee_asset
+    /// Returns the fee of the transaction.
+    pub fn fee(&self) -> FungibleAsset {
+        self.fee
     }
 
     /// Returns an iterator of the headers of unauthenticated input notes in this transaction.
@@ -206,7 +206,7 @@ impl Serializable for ProvenTransaction {
         self.output_notes.write_into(target);
         self.ref_block_num.write_into(target);
         self.ref_block_commitment.write_into(target);
-        self.fee_asset.write_into(target);
+        self.fee.write_into(target);
         self.expiration_block_num.write_into(target);
         self.proof.write_into(target);
     }
@@ -221,7 +221,7 @@ impl Deserializable for ProvenTransaction {
 
         let ref_block_num = BlockNumber::read_from(source)?;
         let ref_block_commitment = Word::read_from(source)?;
-        let fee_asset = FungibleAsset::read_from(source)?;
+        let fee = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
         let proof = ExecutionProof::read_from(source)?;
 
@@ -239,7 +239,7 @@ impl Deserializable for ProvenTransaction {
             output_notes,
             ref_block_num,
             ref_block_commitment,
-            fee_asset,
+            fee,
             expiration_block_num,
             proof,
         };
@@ -283,8 +283,8 @@ pub struct ProvenTransactionBuilder {
     /// Block digest of the transaction's reference block.
     ref_block_commitment: Word,
 
-    /// The fee asset that pays the fees of the transaction.
-    fee_asset: FungibleAsset,
+    /// The fee of the transaction.
+    fee: FungibleAsset,
 
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
@@ -306,7 +306,7 @@ impl ProvenTransactionBuilder {
         account_delta_commitment: Word,
         ref_block_num: BlockNumber,
         ref_block_commitment: Word,
-        fee_asset: FungibleAsset,
+        fee: FungibleAsset,
         expiration_block_num: BlockNumber,
         proof: ExecutionProof,
     ) -> Self {
@@ -320,7 +320,7 @@ impl ProvenTransactionBuilder {
             output_notes: Vec::new(),
             ref_block_num,
             ref_block_commitment,
-            fee_asset,
+            fee,
             expiration_block_num,
             proof,
         }
@@ -406,7 +406,7 @@ impl ProvenTransactionBuilder {
             output_notes,
             ref_block_num: self.ref_block_num,
             ref_block_commitment: self.ref_block_commitment,
-            fee_asset: self.fee_asset,
+            fee: self.fee,
             expiration_block_num: self.expiration_block_num,
             proof: self.proof,
         };

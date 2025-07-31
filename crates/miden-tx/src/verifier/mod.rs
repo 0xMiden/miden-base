@@ -43,7 +43,7 @@ impl TransactionVerifier {
             transaction.account_update().final_state_commitment(),
             transaction.account_update().account_delta_commitment(),
             transaction.output_notes().commitment(),
-            transaction.fee_asset(),
+            transaction.fee(),
             transaction.expiration_block_num(),
         );
 

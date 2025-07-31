@@ -214,20 +214,20 @@ impl TransactionKernel {
     /// - OUTPUT_NOTES_COMMITMENT is a commitment to the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
     ///   delta commitment.
-    /// - FEE_ASSET is the fee asset that pays the fees of the transaction.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - expiration_block_num is the block number at which the transaction will expire.
     pub fn build_output_stack(
         final_account_commitment: Word,
         account_delta_commitment: Word,
         output_notes_commitment: Word,
-        fee_asset: FungibleAsset,
+        fee: FungibleAsset,
         expiration_block_num: BlockNumber,
     ) -> StackOutputs {
         let account_update_commitment =
             Hasher::merge(&[final_account_commitment, account_delta_commitment]);
         let mut outputs: Vec<Felt> = Vec::with_capacity(9);
         outputs.push(Felt::from(expiration_block_num));
-        outputs.extend(Word::from(fee_asset));
+        outputs.extend(Word::from(fee));
         outputs.extend(account_update_commitment);
         outputs.extend(output_notes_commitment);
         outputs.reverse();
@@ -247,7 +247,7 @@ impl TransactionKernel {
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
     ///   delta commitment.
-    /// - FEE_ASSET is the fee asset that pays the fees of the transaction.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -268,7 +268,7 @@ impl TransactionKernel {
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
             .expect("account_update_commitment (second word) missing");
 
-        let fee_asset = stack
+        let fee = stack
             .get_stack_word(FEE_ASSET_WORD_IDX * 4)
             .expect("fee_asset (third word) missing");
 
@@ -294,15 +294,10 @@ impl TransactionKernel {
             ));
         }
 
-        let fee_asset = FungibleAsset::try_from(fee_asset)
+        let fee = FungibleAsset::try_from(fee)
             .map_err(TransactionOutputError::FeeAssetNotFungibleAsset)?;
 
-        Ok((
-            output_notes_commitment,
-            account_update_commitment,
-            fee_asset,
-            expiration_block_num,
-        ))
+        Ok((output_notes_commitment, account_update_commitment, fee, expiration_block_num))
     }
 
     // TRANSACTION OUTPUT PARSER
@@ -319,7 +314,7 @@ impl TransactionKernel {
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the final account commitment and the account
     ///   delta commitment of the account that the transaction is being executed against.
-    /// - FEE_ASSET is the fee asset that pays the fees of the transaction.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -333,7 +328,7 @@ impl TransactionKernel {
         advice_inputs: &AdviceInputs,
         output_notes: Vec<OutputNote>,
     ) -> Result<TransactionOutputs, TransactionOutputError> {
-        let (output_notes_commitment, account_update_commitment, fee_asset, expiration_block_num) =
+        let (output_notes_commitment, account_update_commitment, fee, expiration_block_num) =
             Self::parse_output_stack(stack)?;
 
         let (final_account_commitment, account_delta_commitment) =
@@ -360,7 +355,7 @@ impl TransactionKernel {
             account,
             account_delta_commitment,
             output_notes,
-            fee_asset,
+            fee,
             expiration_block_num,
         })
     }

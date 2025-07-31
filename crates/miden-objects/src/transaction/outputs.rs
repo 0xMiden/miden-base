@@ -25,8 +25,8 @@ pub struct TransactionOutputs {
     pub account_delta_commitment: Word,
     /// Set of output notes created by the transaction.
     pub output_notes: OutputNotes,
-    /// The fee asset that pays the fees of the transaction.
-    pub fee_asset: FungibleAsset,
+    /// The fee of the transaction.
+    pub fee: FungibleAsset,
     /// Defines up to which block the transaction is considered valid.
     pub expiration_block_num: BlockNumber,
 }
@@ -36,7 +36,7 @@ impl Serializable for TransactionOutputs {
         self.account.write_into(target);
         self.account_delta_commitment.write_into(target);
         self.output_notes.write_into(target);
-        self.fee_asset.write_into(target);
+        self.fee.write_into(target);
         self.expiration_block_num.write_into(target);
     }
 }
@@ -46,14 +46,14 @@ impl Deserializable for TransactionOutputs {
         let account = AccountHeader::read_from(source)?;
         let account_delta_commitment = Word::read_from(source)?;
         let output_notes = OutputNotes::read_from(source)?;
-        let fee_asset = FungibleAsset::read_from(source)?;
+        let fee = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
 
         Ok(Self {
             account,
             account_delta_commitment,
             output_notes,
-            fee_asset,
+            fee,
             expiration_block_num,
         })
     }
