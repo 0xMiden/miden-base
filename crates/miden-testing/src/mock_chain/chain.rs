@@ -247,6 +247,12 @@ impl MockChain {
     // PUBLIC ACCESSORS
     // ----------------------------------------------------------------------------------------
 
+    /// Returns the [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    pub fn native_asset_id(&self) -> AccountId {
+        self.block_header(0).fee_parameters().native_asset_id()
+    }
+
     /// Returns a reference to the current [`Blockchain`].
     pub fn blockchain(&self) -> &Blockchain {
         &self.chain

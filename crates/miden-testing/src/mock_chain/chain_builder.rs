@@ -40,6 +40,7 @@ pub struct MockChainBuilder {
     account_credentials: BTreeMap<AccountId, AccountCredentials>,
     notes: Vec<OutputNote>,
     native_asset_id: AccountId,
+    native_asset_amount: u64,
     rng: RpoRandomCoin,
 }
 
@@ -59,6 +60,7 @@ impl MockChainBuilder {
             native_asset_id: ACCOUNT_ID_NATIVE_ASSET_FAUCET
                 .try_into()
                 .expect("account ID should be valid"),
+            native_asset_amount: 1_000_000,
             rng: RpoRandomCoin::new(Default::default()),
         }
     }
@@ -250,6 +252,8 @@ impl MockChainBuilder {
         slots: impl IntoIterator<Item = StorageSlot>,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Account> {
+        let fee_asset = self.native_fee_asset(self.native_asset_amount)?;
+        let assets = assets.into_iter().chain([fee_asset.into()]);
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
             .with_component(
@@ -453,8 +457,7 @@ impl MockChainBuilder {
         target_account_id: AccountId,
         amount: u64,
     ) -> anyhow::Result<Note> {
-        let fee_asset = FungibleAsset::new(self.native_asset_id, amount)
-            .context("failed to create fee asset")?;
+        let fee_asset = self.native_fee_asset(amount)?;
         let note = self.add_p2id_note(
             self.native_asset_id,
             target_account_id,
@@ -463,6 +466,14 @@ impl MockChainBuilder {
         )?;
 
         Ok(note)
+    }
+
+    // HELPER FUNCTIONS
+    // ----------------------------------------------------------------------------------------
+
+    /// Constructs a fungible asset based on the native asset ID and the provided amount.
+    fn native_fee_asset(&self, amount: u64) -> anyhow::Result<FungibleAsset> {
+        FungibleAsset::new(self.native_asset_id, amount).context("failed to create fee asset")
     }
 }
 

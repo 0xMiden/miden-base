@@ -113,7 +113,7 @@ impl Account {
 }
 
 impl AssetVault {
-    /// Creates an [AssetVault] with 4 default assets.
+    /// Creates an [AssetVault] with 5 default assets.
     ///
     /// The ids of the assets added to the vault are defined by the following constants:
     ///
@@ -121,6 +121,7 @@ impl AssetVault {
     /// - ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1
     /// - ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2
     /// - ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET
+    /// - ACCOUNT_ID_NATIVE_ASSET_FAUCET
     pub fn mock() -> Self {
         let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
         let fungible_asset =
@@ -134,8 +135,16 @@ impl AssetVault {
         let fungible_asset_2 =
             Asset::Fungible(FungibleAsset::new(faucet_id_2, FUNGIBLE_ASSET_AMOUNT).unwrap());
 
+        let fungible_fee_asset = FungibleAsset::mock_fee(1_000_000);
+
         let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
-        AssetVault::new(&[fungible_asset, fungible_asset_1, fungible_asset_2, non_fungible_asset])
-            .unwrap()
+        AssetVault::new(&[
+            fungible_asset,
+            fungible_asset_1,
+            fungible_asset_2,
+            fungible_fee_asset.into(),
+            non_fungible_asset,
+        ])
+        .unwrap()
     }
 }
