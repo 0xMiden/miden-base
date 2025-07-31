@@ -528,7 +528,7 @@ where
     /// Expected stack state:
     ///
     /// ```text
-    /// [<word>, MESSAGE]
+    /// [MESSAGE]
     /// ```
     ///
     /// Expected advice map state:
@@ -537,7 +537,7 @@ where
     /// MESSAGE -> [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
     fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
-        let msg = process.get_stack_word(1);
+        let msg = process.get_stack_word(0);
 
         let tx_summary = match self.build_tx_summary(process, msg) {
             Ok(s) => s,

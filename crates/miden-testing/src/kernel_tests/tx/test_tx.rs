@@ -1246,9 +1246,6 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
           exec.auth::hash_tx_summary
           # => [MESSAGE, pad(16)]
 
-          push.0.0.0.0
-          # => [EMPTY_WORD, MESSAGE, pad(16)]
-
           emit.{abort_event}
       end
     ",
