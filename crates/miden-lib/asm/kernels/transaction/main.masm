@@ -136,12 +136,12 @@ proc.main.1
     # => [has_tx_script, tx_script_root_ptr, pad(16)]
 
     if.true
+        # pad the stack
+        padw padw swapdw push.0 swap push.0 swap push.0 swap
+        # => [tx_script_root_ptr, pad(11), pad(16)]
+
         # load the transaction script arguments onto the stack
         exec.memory::get_tx_script_args movup.4
-        # => [tx_script_root_ptr, TX_SCRIPT_ARGS, pad(16)]
-
-        # pad the stack
-        repeat.11 push.0 movdn.5 end
         # => [tx_script_root_ptr, TX_SCRIPT_ARGS, pad(11), pad(16)]
 
         # execute the transaction script
