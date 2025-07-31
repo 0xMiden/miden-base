@@ -66,7 +66,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         note_execution_hint = Felt::from(note_execution_hint)
     );
 
-    let tx_script = ScriptBuilder::new(true).compile_tx_script(tx_script_code).unwrap();
+    let tx_script = ScriptBuilder::new(false).compile_tx_script(tx_script_code).unwrap();
     let tx_context = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
@@ -130,7 +130,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         recipient = word_to_masm_push_string(&recipient),
     );
 
-    let tx_script = ScriptBuilder::new(true).compile_tx_script(tx_script_code)?;
+    let tx_script = ScriptBuilder::new(false).compile_tx_script(tx_script_code)?;
     let tx = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)

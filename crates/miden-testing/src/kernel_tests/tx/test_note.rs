@@ -386,7 +386,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
         assets_number_1 = p2id_note_2.assets().num_assets(),
     );
 
-    let tx_script = ScriptBuilder::new(true).compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::new(false).compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -541,7 +541,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
         assets_number_2 = output_note_2.assets().num_assets(),
     );
 
-    let tx_script = ScriptBuilder::new(true).compile_tx_script(tx_script_src)?;
+    let tx_script = ScriptBuilder::new(false).compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -1204,7 +1204,7 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = ScriptBuilder::new(true).compile_note_script("begin nop end")?;
+    let note_script = ScriptBuilder::new(false).compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);

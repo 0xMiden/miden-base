@@ -81,7 +81,7 @@ pub fn get_note_with_fungible_asset_and_script(
 ) -> Note {
     use miden_objects::note::NoteExecutionHint;
 
-    let note_script = ScriptBuilder::new(true).compile_note_script(note_script).unwrap();
+    let note_script = ScriptBuilder::new(false).compile_note_script(note_script).unwrap();
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
