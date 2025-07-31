@@ -152,7 +152,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1.clone())
         .build()?;
 
-    tx_context_with_auth_1.execute_blocking().expect("trigger 1 with auth should succeed");
+    tx_context_with_auth_1
+        .execute_blocking()
+        .expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
@@ -161,7 +163,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_2)
         .build()?;
 
-    tx_context_with_auth_2.execute_blocking().expect("trigger 2 with auth should succeed");
+    tx_context_with_auth_2
+        .execute_blocking()
+        .expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
@@ -188,7 +192,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed = tx_context_no_trigger.execute_blocking().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger
+        .execute_blocking()
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,
@@ -224,7 +230,9 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed = tx_context_no_trigger.execute_blocking().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger
+        .execute_blocking()
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,

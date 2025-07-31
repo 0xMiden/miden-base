@@ -73,7 +73,10 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
         .expect("failed to get foreign account inputs");
 
     // Create a new unrelated account to modify the account tree.
-    let tx = mock_chain.build_tx_context(new_account, &[], &[])?.build()?.execute_blocking()?;
+    let tx = mock_chain
+        .build_tx_context(new_account, &[], &[])?
+        .build()?
+        .execute_blocking()?;
     mock_chain.add_pending_executed_transaction(&tx)?;
     mock_chain.prove_next_block()?;
 
