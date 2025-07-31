@@ -10,6 +10,8 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 
 #! Returns the information about assets in the input note with the specified index.
 #!
+#! The provided input note index is expected to be less than the total number of input notes.
+#!
 #! Inputs:  [note_index]
 #! Outputs: [ASSETS_COMMITMENT, num_assets]
 #!
@@ -17,9 +19,6 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 #! - note_index is the index of the input note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of input notes.
 export.get_assets_info
     # get the memory pointer to the requested note
     exec.memory::get_input_note_ptr
@@ -38,7 +37,7 @@ end
 #!
 #! Inputs:  [note_index]
 #! Outputs: [note_index]
-export.assert_note_index
+export.assert_note_index_in_bounds
     # assert that the provided note index is less than the total number of notes
     dup exec.memory::get_num_input_notes 
     # => [input_notes_num, note_index, note_index]

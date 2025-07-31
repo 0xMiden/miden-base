@@ -11,7 +11,7 @@ const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be
 
 #! Returns the information about assets in the output note with the specified index.
 #!
-#! This information can then be used to retrieve the actual assets from the advice map.
+#! The provided output note index is expected to be less than the total number of output notes.
 #!
 #! Inputs:  [note_index]
 #! Outputs: [ASSETS_COMMITMENT, num_assets]
@@ -20,9 +20,6 @@ const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be
 #! - note_index is the index of the output note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the overall number of output notes.
 export.get_assets_info
     # get the note data pointer based on the index of the requested note
     exec.memory::get_output_note_ptr
@@ -69,7 +66,7 @@ end
 #!
 #! Inputs:  [note_index]
 #! Outputs: [note_index]
-export.assert_note_index
+export.assert_note_index_in_bounds
     # assert that the provided note index is less than the total number of notes
     dup exec.memory::get_num_output_notes 
     # => [output_notes_num, note_index, note_index]

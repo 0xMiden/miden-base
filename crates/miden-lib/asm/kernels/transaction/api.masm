@@ -725,7 +725,7 @@ end
 #! Invocation: dynexec
 export.input_note_get_assets_info
     # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index
+    exec.input_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
 
     # get the assets info
@@ -748,10 +748,13 @@ end
 #! - note_index is the index of the input note whose recipient should be returned.
 #! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
 #!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
 #! Invocation: dynexec
 export.input_note_get_recipient
     # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index
+    exec.input_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
 
     # get the note data pointer by the provided index
@@ -776,10 +779,13 @@ end
 #! - note_index is the index of the input note whose metadata should be returned.
 #! - METADATA is the metadata of the input note.
 #!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
 #! Invocation: dynexec
 export.input_note_get_metadata
     # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index
+    exec.input_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
 
     # get the note data pointer by the provided index
@@ -811,7 +817,7 @@ end
 #! Invocation: dynexec
 export.output_note_get_assets_info
     # assert that the provided note index is less than the total number of output notes
-    exec.output_note::assert_note_index
+    exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
 
     # get the assets info
@@ -834,10 +840,13 @@ end
 #! - note_index is the index of the output note whose recipient should be returned.
 #! - RECIPIENT is the commitment to the output note's script, inputs, the serial number.
 #!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
 #! Invocation: dynexec
 export.output_note_get_recipient
     # assert that the provided note index is less than the total number of output notes
-    exec.output_note::assert_note_index
+    exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
 
     # get the note data pointer by the provided index
@@ -862,10 +871,13 @@ end
 #! - note_index is the index of the output note whose metadata should be returned.
 #! - METADATA is the metadata of the output note.
 #!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
 #! Invocation: dynexec
 export.output_note_get_metadata
     # assert that the provided note index is less than the total number of output notes
-    exec.output_note::assert_note_index
+    exec.output_note::assert_note_index_in_bounds
     # => [note_index, pad(15)]
     
     # get the note data pointer by the provided index

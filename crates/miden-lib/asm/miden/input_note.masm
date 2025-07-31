@@ -46,13 +46,13 @@ end
 #! Writes the assets of the input note with the specified index into memory starting at the 
 #! specified address.
 #!
-#! Attention: memory starting from the `dest_ptr` should have enough space to store all the assets 
-#! in specified note. Make sure that at least `4 * assets_num` memory elements are available.
+#! Attention: memory starting from the `dest_ptr` should have enough space to store all the assets
+#! in the specified note. Make sure that at least `4 * num_assets` memory elements are available,
+#! or if the number of assets is not yet known, at least `4 * MAX_ASSETS_PER_NOTE`.
 #!
 #! The memory layout after the execution of this procedure will look like so:
 #! [ASSET_0, ASSET_1, ..., ASSET_N], where each asset occupies one word. For more detailed
-#! information about the layout of each asset see the description of the `Asset` enum in 
-#! `miden-objects/src/asset/mod.rs` file.
+#! information about the layout of each asset see the description of the `Asset` Rust type.
 #!
 #! Inputs:  [dest_ptr, note_index]
 #! Outputs: [num_assets, dest_ptr, note_index]
@@ -61,6 +61,9 @@ end
 #! - dest_ptr is the memory address to write the assets.
 #! - note_index is the index of the input note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
 export.get_assets
@@ -81,6 +84,9 @@ end
 #! Where:
 #! - note_index is the index of the input note whose recipient should be returned.
 #! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
 export.get_recipient
@@ -111,6 +117,9 @@ end
 #! Where:
 #! - note_index is the index of the input note whose metadata should be returned.
 #! - METADATA is the metadata of the input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
 export.get_metadata
