@@ -14,6 +14,7 @@
 - Added procedure `was_procedure_called` to `miden::account` library module ([#1521](https://github.com/0xMiden/miden-base/pull/1521)).
 - Enabled loading MASM source files into `TransactionKernel::assembler` for better errors ([#1527]((https://github.com/0xMiden/miden-base/pull/1527))).
 - Added `NoAuth` component to the set of standard components ([#1620]([(https://github.com/0xMiden/miden-base/pull/1527](https://github.com/0xMiden/miden-base/pull/1620)))). 
+- Refactor account documentation into multiple sections ([#1523](https://github.com/0xMiden/miden-base/pull/1523)).
 
 ### Changes
 
