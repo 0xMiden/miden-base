@@ -123,20 +123,29 @@ pub const ACCT_ID_PTR: MemoryAddress = 404;
 /// The memory address at which the initial account commitment is stored.
 pub const INIT_ACCT_COMMITMENT_PTR: MemoryAddress = 408;
 
-/// The memory address at which the input notes commitment is stored.
-pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 412;
-
 /// The memory address at which the initial nonce is stored.
-pub const INIT_NONCE_PTR: MemoryAddress = 416;
+pub const INIT_NONCE_PTR: MemoryAddress = 412;
+
+/// The memory address at which the initial account vault root is stored.
+pub const INIT_ACCT_VAULT_ROOT_PTR: MemoryAddress = 416;
+
+/// The memory address at which the initial account storage commitment is stored.
+pub const INIT_ACCT_STORAGE_COMMITMENT_PTR: MemoryAddress = 420;
+
+/// The memory address at which the initial account code commitment is stored.
+pub const INIT_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = 424;
+
+/// The memory address at which the input notes commitment is stored.
+pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 428;
 
 /// The memory address at which the transaction script mast root is store
-pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
+pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 432;
 
 /// The memory address at which the transaction script arguments are stored.
-pub const TX_SCRIPT_ARGS: MemoryAddress = 424;
+pub const TX_SCRIPT_ARGS: MemoryAddress = 436;
 
 /// The memory address at which the key of the auth procedure arguments is stored.
-pub const AUTH_ARGS_PTR: MemoryAddress = 428;
+pub const AUTH_ARGS_PTR: MemoryAddress = 440;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------

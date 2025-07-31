@@ -69,20 +69,29 @@ const.ACCT_ID_PTR=404
 # The memory address at which the initial account commitment is stored.
 const.INIT_ACCOUNT_COMMITMENT_PTR=408
 
-# The memory address at which the input notes commitment is stored.
-const.INPUT_NOTES_COMMITMENT_PTR=412
-
 # The memory address at which the initial nonce is stored.
-const.INIT_NONCE_PTR=416
+const.INIT_NONCE_PTR=412
+
+# The memory address at which the initial account vault root is stored.
+const.INIT_ACCOUNT_VAULT_ROOT_PTR=416
+
+# The memory address at which the initial account storage commitment is stored.
+const.INIT_ACCOUNT_STORAGE_COMMITMENT_PTR=420
+
+# The memory address at which the initial account code commitment is stored.
+const.INIT_ACCOUNT_CODE_COMMITMENT_PTR=424
+
+# The memory address at which the input notes commitment is stored.
+const.INPUT_NOTES_COMMITMENT_PTR=428
 
 # The memory address at which the transaction script mast root is stored.
-const.TX_SCRIPT_ROOT_PTR=420
+const.TX_SCRIPT_ROOT_PTR=432
 
 # The memory address at which the transaction script arguments are stored.
-const.TX_SCRIPT_ARGS_PTR=424
+const.TX_SCRIPT_ARGS_PTR=436
 
 # The memory address at which the auth procedure arguments are stored.
-const.AUTH_ARGS_PTR=428
+const.AUTH_ARGS_PTR=440
 
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
@@ -443,6 +452,94 @@ export.get_init_account_commitment
     padw mem_loadw.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
+#! Sets the initial account nonce.
+#!
+#! Inputs:  [init_nonce]
+#! Outputs: []
+#!
+#! Where:
+#! - init_nonce is the initial account nonce.
+export.set_init_nonce
+    mem_store.INIT_NONCE_PTR
+end
+
+#! Returns the initial account nonce.
+#!
+#! Inputs:  []
+#! Outputs: [init_nonce]
+#!
+#! Where:
+#! - init_nonce is the initial account nonce.
+export.get_init_nonce
+    mem_load.INIT_NONCE_PTR
+end
+
+#! Sets the initial account vault root.
+#!
+#! Inputs:  [INIT_ACCOUNT_VAULT_ROOT]
+#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+export.set_init_account_vault_root
+    mem_storew.INIT_ACCOUNT_VAULT_ROOT_PTR
+end
+
+#! Returns the initial account vault root.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+export.get_init_account_vault_root
+    padw mem_loadw.INIT_ACCOUNT_VAULT_ROOT_PTR
+end
+
+#! Sets the initial account storage commitment.
+#!
+#! Inputs:  [INIT_ACCOUNT_STORAGE_COMMITMENT]
+#! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
+export.set_init_account_storage_commitment
+    mem_storew.INIT_ACCOUNT_STORAGE_COMMITMENT_PTR
+end
+
+#! Returns the initial account storage commitment.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
+export.get_init_account_storage_commitment
+    padw mem_loadw.INIT_ACCOUNT_STORAGE_COMMITMENT_PTR
+end
+
+#! Sets the initial account code commitment.
+#!
+#! Inputs:  [INIT_ACCOUNT_CODE_COMMITMENT]
+#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
+export.set_init_account_code_commitment
+    mem_storew.INIT_ACCOUNT_CODE_COMMITMENT_PTR
+end
+
+#! Returns the initial account code commitment.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
+export.get_init_account_code_commitment
+    padw mem_loadw.INIT_ACCOUNT_CODE_COMMITMENT_PTR
+end
+
 #! Returns the input notes commitment.
 #!
 #! See `transaction::api::get_input_notes_commitment` for details.
@@ -465,28 +562,6 @@ end
 #! - INPUT_NOTES_COMMITMENT is the notes' commitment.
 export.set_nullifier_commitment
     mem_storew.INPUT_NOTES_COMMITMENT_PTR
-end
-
-#! Returns the initial account nonce.
-#!
-#! Inputs:  []
-#! Outputs: [init_nonce]
-#!
-#! Where:
-#! - init_nonce is the initial account nonce.
-export.get_init_nonce
-    mem_load.INIT_NONCE_PTR
-end
-
-#! Sets the initial account nonce.
-#!
-#! Inputs:  [init_nonce]
-#! Outputs: []
-#!
-#! Where:
-#! - init_nonce is the initial account nonce.
-export.set_init_nonce
-    mem_store.INIT_NONCE_PTR
 end
 
 #! Returns a memory address of the transaction script root.

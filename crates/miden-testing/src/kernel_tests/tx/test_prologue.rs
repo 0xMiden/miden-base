@@ -12,13 +12,14 @@ use miden_lib::{
         TransactionKernel,
         memory::{
             ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_METADATA_PTR,
-            BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, INIT_ACCT_COMMITMENT_PTR, INIT_NONCE_PTR,
-            INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET, INPUT_NOTE_ASSETS_OFFSET,
-            INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET, INPUT_NOTE_METADATA_OFFSET,
-            INPUT_NOTE_NULLIFIER_SECTION_PTR, INPUT_NOTE_NUM_ASSETS_OFFSET,
-            INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR, INPUT_NOTE_SERIAL_NUM_OFFSET,
-            INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR, MemoryOffset,
-            NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
+            BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, INIT_ACCT_CODE_COMMITMENT_PTR,
+            INIT_ACCT_COMMITMENT_PTR, INIT_ACCT_STORAGE_COMMITMENT_PTR, INIT_ACCT_VAULT_ROOT_PTR,
+            INIT_NONCE_PTR, INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
+            INPUT_NOTE_ASSETS_OFFSET, INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
+            INPUT_NOTE_METADATA_OFFSET, INPUT_NOTE_NULLIFIER_SECTION_PTR,
+            INPUT_NOTE_NUM_ASSETS_OFFSET, INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR,
+            INPUT_NOTE_SERIAL_NUM_OFFSET, INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR,
+            MemoryOffset, NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
             NATIVE_ACCT_PROCEDURES_SECTION_PTR, NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
             NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR, NATIVE_ACCT_VAULT_ROOT_PTR,
             NATIVE_NUM_ACCT_PROCEDURES_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR,
@@ -147,6 +148,24 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
         process.get_kernel_mem_word(INIT_ACCT_COMMITMENT_PTR),
         inputs.account().commitment(),
         "The account commitment should be stored at the INIT_ACCT_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_ACCT_VAULT_ROOT_PTR),
+        inputs.account().vault().root(),
+        "The account vault root should be stored at the INIT_ACCT_VAULT_ROOT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_ACCT_STORAGE_COMMITMENT_PTR),
+        inputs.account().storage().commitment(),
+        "The account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_ACCT_CODE_COMMITMENT_PTR),
+        inputs.account().code().commitment(),
+        "The account code commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
     );
 
     assert_eq!(
