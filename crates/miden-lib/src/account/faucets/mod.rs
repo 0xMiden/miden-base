@@ -13,7 +13,10 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{auth::{NoAuth, RpoFalcon512ProcedureAcl}, components::basic_fungible_faucet_library};
+use crate::account::{
+    auth::{NoAuth, RpoFalcon512ProcedureAcl},
+    components::basic_fungible_faucet_library,
+};
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================

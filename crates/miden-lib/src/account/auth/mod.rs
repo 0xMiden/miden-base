@@ -6,7 +6,9 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::PublicKey,
 };
 
-use crate::account::components::{no_auth_library, rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library};
+use crate::account::components::{
+    no_auth_library, rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library,
+};
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
 /// transactions.
@@ -246,5 +248,4 @@ mod tests {
             .build()
             .expect("account building failed");
     }
-
 }
