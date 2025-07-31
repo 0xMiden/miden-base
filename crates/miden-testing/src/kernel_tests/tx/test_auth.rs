@@ -3,6 +3,7 @@ use miden_lib::{
     account::wallets::BasicWallet,
     errors::{MasmError, note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT},
     transaction::TransactionKernel,
+    utils::ScriptBuilder,
 };
 use miden_objects::{
     account::{Account, AccountBuilder},
@@ -102,12 +103,10 @@ fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
         end
     ";
 
-    let tx_script = miden_objects::transaction::TransactionScript::compile(
-        tx_script_source,
-        TransactionKernel::testing_assembler()
-            .with_dynamic_library(auth_component.library())
-            .unwrap(),
-    )?;
+    let tx_script = ScriptBuilder::new(false)
+        .with_dynamically_linked_library(auth_component.library())
+        .unwrap()
+        .compile_tx_script(tx_script_source)?;
 
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
 

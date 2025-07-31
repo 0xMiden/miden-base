@@ -8,6 +8,7 @@ use miden_lib::{
     },
     note::create_p2id_note,
     transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
+    utils::ScriptBuilder,
 };
 use miden_objects::{
     EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word,
@@ -20,7 +21,7 @@ use miden_objects::{
     },
     note::{
         Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
+        NoteRecipient, NoteTag, NoteType,
     },
     testing::{
         account_id::{
@@ -31,7 +32,7 @@ use miden_objects::{
         },
         note::NoteBuilder,
     },
-    transaction::{AccountInputs, OutputNote, TransactionArgs, TransactionScript},
+    transaction::{AccountInputs, OutputNote, TransactionArgs},
 };
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
@@ -385,7 +386,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
         assets_number_1 = p2id_note_2.assets().num_assets(),
     );
 
-    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::new(true).compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -540,8 +541,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
         assets_number_2 = output_note_2.assets().num_assets(),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::new(true).compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -665,7 +665,8 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     )
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler())
+    let note_script = ScriptBuilder::new(false)
+        .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
@@ -1203,7 +1204,7 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::testing_assembler())?;
+    let note_script = ScriptBuilder::new(true).compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);

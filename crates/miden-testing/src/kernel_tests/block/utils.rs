@@ -1,6 +1,6 @@
 use std::{collections::BTreeMap, vec, vec::Vec};
 
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
+use miden_lib::{note::create_p2id_note, transaction::TransactionKernel, utils::ScriptBuilder};
 use miden_objects::{
     Felt, ONE, Word, ZERO,
     account::{Account, AccountId},
@@ -178,8 +178,7 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         "
     );
 
-    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
-        .unwrap()
+    ScriptBuilder::new(false).compile_tx_script(code).unwrap()
 }
 
 pub fn generate_batch(chain: &mut MockChain, txs: Vec<ProvenTransaction>) -> ProvenBatch {

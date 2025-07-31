@@ -2,7 +2,7 @@ use core::fmt;
 use std::{fs::File, io::Write, path::Path};
 
 use anyhow::Context;
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
+use miden_lib::{note::create_p2id_note, transaction::TransactionKernel, utils::ScriptBuilder};
 use miden_objects::{
     Felt, FieldElement, Word,
     account::{Account, AccountId, AccountStorageMode, AccountType},
@@ -13,7 +13,7 @@ use miden_objects::{
         account_component::IncrNonceAuthComponent,
         account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     },
-    transaction::{TransactionMeasurements, TransactionScript},
+    transaction::TransactionMeasurements,
 };
 use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
 
@@ -118,7 +118,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
     .unwrap();
 
     let tx_script_target =
-        TransactionScript::compile(DEFAULT_AUTH_SCRIPT, TransactionKernel::assembler()).unwrap();
+        ScriptBuilder::new(false).compile_tx_script(DEFAULT_AUTH_SCRIPT).unwrap();
 
     let tx_context = TransactionContextBuilder::new(target_account.clone())
         .extend_input_notes(vec![note])

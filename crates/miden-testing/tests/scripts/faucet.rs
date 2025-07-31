@@ -2,13 +2,13 @@ extern crate alloc;
 
 use miden_lib::{
     errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
-    transaction::{TransactionKernel, memory::FAUCET_STORAGE_DATA_SLOT},
+    transaction::memory::FAUCET_STORAGE_DATA_SLOT, utils::ScriptBuilder,
 };
 use miden_objects::{
     Felt, Word,
     asset::{Asset, FungibleAsset},
     note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
-    transaction::{OutputNote, TransactionScript},
+    transaction::OutputNote,
 };
 use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
@@ -66,8 +66,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         note_execution_hint = Felt::from(note_execution_hint)
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
+    let tx_script = ScriptBuilder::new(true).compile_tx_script(tx_script_code).unwrap();
     let tx_context = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
@@ -131,8 +130,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         recipient = word_to_masm_push_string(&recipient),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::new(true).compile_tx_script(tx_script_code)?;
     let tx = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)

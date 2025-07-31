@@ -246,9 +246,10 @@ impl ScriptBuilder {
     ) -> Result<TransactionScript, ScriptBuilderError> {
         let assembler = self.assembler;
 
-        TransactionScript::compile(tx_script.as_ref(), assembler).map_err(|err| {
-            ScriptBuilderError::build_error_with_source("failed to compile transaction script", err)
-        })
+        let program = assembler.assemble_program(tx_script.as_ref()).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to compile transaction script", err)
+        })?;
+        Ok(TransactionScript::new(program))
     }
 
     /// Compiles a note script with the provided program code.
@@ -267,9 +268,10 @@ impl ScriptBuilder {
     ) -> Result<NoteScript, ScriptBuilderError> {
         let assembler = self.assembler;
 
-        NoteScript::compile(program.as_ref(), assembler).map_err(|err| {
-            ScriptBuilderError::build_error_with_source("failed to compile note script", err)
-        })
+        let program = assembler.assemble_program(program.as_ref()).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to compile note script", err)
+        })?;
+        Ok(NoteScript::new(program))
     }
 }
 
