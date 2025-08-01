@@ -1122,6 +1122,7 @@ impl MockChain {
             block_header.tx_commitment(),
             block_header.tx_kernel_commitment(),
             block_header.proof_commitment(),
+            block_header.fee_parameters().clone(),
             block_header.timestamp(),
         );
         proven_block.set_block_header(updated_header);

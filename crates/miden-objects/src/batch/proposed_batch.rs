@@ -432,6 +432,7 @@ mod tests {
     use crate::{
         Word,
         account::{AccountIdVersion, AccountStorageMode, AccountType},
+        asset::FungibleAsset,
         transaction::ProvenTransactionBuilder,
     };
 
@@ -481,6 +482,7 @@ mod tests {
             account_delta_commitment,
             block_num,
             block_ref,
+            FungibleAsset::mock(100).unwrap_fungible(),
             expiration_block_num,
             proof,
         )

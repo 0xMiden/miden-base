@@ -546,6 +546,8 @@ pub enum TransactionOutputError {
     DuplicateOutputNote(NoteId),
     #[error("final account commitment is not in the advice map")]
     FinalAccountCommitmentMissingInAdviceMap,
+    #[error("fee asset is not a fungible asset")]
+    FeeAssetNotFungibleAsset(#[source] AssetError),
     #[error("failed to parse final account header")]
     FinalAccountHeaderParseFailure(#[source] AccountError),
     #[error(
@@ -869,6 +871,15 @@ pub enum ProposedBlockError {
         account_id: AccountId,
         source: Box<AccountDeltaError>,
     },
+}
+
+// FEE ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum FeeError {
+    #[error("native asset of the chain must be a fungible faucet but was of type {account_type}")]
+    NativeAssetIdNotFungible { account_type: AccountType },
 }
 
 // NULLIFIER TREE ERROR
