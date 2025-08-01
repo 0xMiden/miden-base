@@ -277,14 +277,6 @@ proc.build_native_fee_asset
     # => [FEE_ASSET]
 end
 
-#! Removes the provided fee asset from the native account's vault.
-#!
-#! Inputs:  [FEE_ASSET]
-#! Outputs: [FEE_ASSET]
-proc.remove_fee_from_account_vault
-    exec.account::remove_asset_from_vault
-end
-
 # TRANSACTION EPILOGUE PROCEDURE
 # =================================================================================================
 
@@ -321,7 +313,8 @@ export.finalize_transaction.4
     exec.build_native_fee_asset
     # => [FEE_ASSET]
 
-    exec.remove_fee_from_account_vault
+    # remove the fee from the native account's vault
+    exec.account::remove_asset_from_vault
     # => [FEE_ASSET]
 
     # store the fee asset for later
