@@ -13,7 +13,6 @@ rust-version.workspace = true
 version                = "0.11.0"
 
 [features]
-async      = ["miden-prover/async", "winter-maybe-async/async"]
 concurrent = ["miden-prover/concurrent", "std"]
 default    = ["std"]
 std        = ["miden-lib/std", "miden-objects/std", "miden-prover/std", "miden-verifier/std", "vm-processor/std"]
@@ -30,18 +29,13 @@ miden-verifier = { workspace = true }
 vm-processor   = { workspace = true }
 
 # External dependencies
-async-trait        = "0.1"
-rand               = { workspace = true }
-thiserror          = { workspace = true }
-tokio              = { workspace = true }
-winter-maybe-async = { version = "0.12" }
+async-trait = "0.1"
+rand        = { workspace = true }
+thiserror   = { workspace = true }
+tokio       = { features = ["rt"], workspace = true }
 
 [dev-dependencies]
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
 assembly       = { workspace = true }
 assert_matches = { workspace = true }
 miden-tx       = { features = ["testing"], path = "." }
-
-[package.metadata.cargo-machete]
-# cargo machete flags async-trait as unused but it is used by winter-maybe-async with the async feature
-ignored = ["async-trait"]

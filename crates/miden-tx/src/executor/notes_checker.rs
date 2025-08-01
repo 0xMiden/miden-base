@@ -48,7 +48,7 @@ where
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         // Check input notes
         // ----------------------------------------------------------------------------------------

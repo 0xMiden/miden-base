@@ -19,8 +19,7 @@ pub use host::{AccountProcedureIndexMap, LinkMap, ScriptMastForestStore};
 
 mod prover;
 pub use prover::{
-    LocalTransactionProver, ProvingOptions, TransactionMastStore, TransactionProver,
-    TransactionProverHost,
+    LocalTransactionProver, ProvingOptions, TransactionMastStore, TransactionProverHost,
 };
 
 mod verifier;
