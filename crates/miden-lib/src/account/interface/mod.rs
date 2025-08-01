@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    TransactionScriptError, Word,
+    Word,
     account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
     assembly::mast::{MastForest, MastNode, MastNodeId},
     crypto::dsa::rpo_falcon512,
@@ -16,8 +16,9 @@ use crate::{
         basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library,
         rpo_falcon_512_procedure_acl_library,
     },
+    errors::ScriptBuilderError,
     note::well_known_note::WellKnownNote,
-    transaction::TransactionKernel,
+    utils::ScriptBuilder,
 };
 
 #[cfg(test)]
@@ -213,8 +214,8 @@ impl AccountInterface {
             note_creation_source,
         );
 
-        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-        let tx_script = TransactionScript::compile(script, assembler)
+        let tx_script = ScriptBuilder::new(in_debug_mode)
+            .compile_tx_script(script)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)
@@ -397,7 +398,7 @@ pub enum AccountInterfaceError {
     #[error("note created by the basic fungible faucet doesn't contain exactly one asset")]
     FaucetNoteWithoutAsset,
     #[error("invalid transaction script")]
-    InvalidTransactionScript(#[source] TransactionScriptError),
+    InvalidTransactionScript(#[source] ScriptBuilderError),
     #[error("invalid sender account: {0}")]
     InvalidSenderAccount(AccountId),
     #[error("{} interface does not support the generation of the standard send_note script", interface.name())]
