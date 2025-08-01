@@ -21,6 +21,9 @@ fn create_account_with_fees() -> anyhow::Result<()> {
         .execute()
         .context("failed to execute account-creating transaction")?;
 
+    let expected_fee = tx.compute_fee();
+    assert_eq!(expected_fee, tx.fee().amount());
+
     // We expect that the new account contains the amount minus the paid fee.
     let mut added_asset = FungibleAsset::new(chain.native_asset_id(), amount)?;
     added_asset.sub(tx.fee().amount())?;
