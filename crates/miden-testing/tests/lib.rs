@@ -15,8 +15,7 @@ use miden_objects::{
     transaction::{ExecutedTransaction, ProvenTransaction},
 };
 use miden_tx::{
-    LocalTransactionProver, ProvingOptions, TransactionProver, TransactionVerifier,
-    TransactionVerifierError,
+    LocalTransactionProver, ProvingOptions, TransactionVerifier, TransactionVerifierError,
 };
 use vm_processor::utils::Deserializable;
 
@@ -60,7 +59,8 @@ pub fn prove_and_verify_transaction(
 
     let proof_options = ProvingOptions::default();
     let prover = LocalTransactionProver::new(proof_options);
-    let proven_transaction = prover.prove(executed_transaction.into()).unwrap();
+    let rt = tokio::runtime::Builder::new_current_thread().build().unwrap();
+    let proven_transaction = rt.block_on(prover.prove(executed_transaction.into())).unwrap();
 
     assert_eq!(proven_transaction.id(), executed_transaction_id);
 
