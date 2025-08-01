@@ -29,7 +29,7 @@ fn create_account_with_fees() -> anyhow::Result<()> {
     added_asset.sub(tx.fee().amount())?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
-    // except for the nonce, the delta should be empty
+    // except for the nonce, the storage delta should be empty
     assert!(tx.account_delta().storage().is_empty());
     assert_eq!(tx.account_delta().vault().added_assets().count(), 1);
     assert_eq!(tx.account_delta().vault().removed_assets().count(), 0);
