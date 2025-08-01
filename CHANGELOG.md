@@ -13,6 +13,9 @@
 - Pass the full `TransactionSummary` to `TransactionAuthenticator` ([#1618](https://github.com/0xMiden/miden-base/pull/1618)).
 - Add `PartialBlockchain::num_tracked_blocks()` ([#1643](https://github.com/0xMiden/miden-base/pull/1643)).
 - Refactored to remove `TransactionScript::compile` & `NoteScript::compile` methods where possible to instead use `ScriptBuilder` ([#1665](https://github.com/0xMiden/miden-base/pull/1665)).
+- Added `input_note_get_recipient`, `output_note_get_recipient`, `input_note_get_metadata`, `output_note_get_metadata` procedures to the transaction kernel ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
+- Added `input_notes::get_assets` and `output_notes::get_assets` procedures to `miden` library ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
+- Added issuance accessor for fungible faucet accounts. ([#1660](https://github.com/0xMiden/miden-base/pull/1660)).
 
 ### Changes
 
@@ -28,7 +31,7 @@
 - [BREAKING] Split `TransactionHost` into `TransactionProverHost` and `TransactionExecutorHost` ([#1581](https://github.com/0xMiden/miden-base/pull/1581)).
 - [BREAKING] Remove pending account APIs on `MockChain` and introduce `MockChainBuilder` to simplify mock chain creation ([#1557](https://github.com/0xMiden/miden-base/pull/1557)).
 - [BREAKING] Renamed authentication components to include "auth" prefix for clarity ([#1575](https://github.com/0xMiden/miden-base/issues/1575)).
-- Add `TransactionEvent::Unauthorized` to enable aborting the transaction execution to get its transaction summary for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596), [#1634](https://github.com/0xMiden/miden-base/pull/1634)).
+- Add `TransactionEvent::Unauthorized` to enable aborting the transaction execution to get its transaction summary for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596), [#1634](https://github.com/0xMiden/miden-base/pull/1634), [#1651](https://github.com/0xMiden/miden-base/pull/1651)).
 - [BREAKING] Implemented `SequentialCommit` for `AccountDelta` and renamed `AccountDelta::commitment()` to `AccountDelta::to_commitment()` ([#1603](https://github.com/0xMiden/miden-base/pull/1603)).
 - Add robustness check to `create_swap_note`: error if `requested_asset` != `offered_asset` ([#1604](https://github.com/0xMiden/miden-base/pull/1604)).
 - [BREAKING] Change `account::incr_nonce` to always increment the nonce by one, disallow incrementing more than once and return the new nonce after incrementing ([#1608](https://github.com/0xMiden/miden-base/pull/1608), [#1633](https://github.com/0xMiden/miden-base/pull/1633)).

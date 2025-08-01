@@ -1,15 +1,15 @@
-use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES, Word,
+    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
     note::{NoteId, NoteScript},
     transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, OutputNotes, TransactionArgs,
-        TransactionInputs, TransactionScript, TransactionSummary,
+        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
+        TransactionInputs, TransactionScript,
     },
     vm::StackOutputs,
 };
@@ -20,7 +20,7 @@ use winter_maybe_async::{maybe_async, maybe_await};
 use super::TransactionExecutorError;
 use crate::{
     auth::TransactionAuthenticator,
-    host::{AccountProcedureIndexMap, ScriptMastForestStore, TransactionBaseHost},
+    host::{AccountProcedureIndexMap, ScriptMastForestStore},
 };
 
 mod exec_host;
@@ -195,7 +195,7 @@ where
             self.exec_options,
             source_manager,
         )
-        .map_err(|err| map_execution_error(err, host.base_host()))?;
+        .map_err(map_execution_error)?;
         let (stack_outputs, advice_provider) = trace.into_outputs();
 
         // The stack is not necessary since it is being reconstructed when re-executing.
@@ -507,85 +507,21 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
 /// Remaps an execution error to a transaction executor error.
 ///
 /// - If the inner error is [`TransactionKernelError::Unauthorized`], it is remapped to
-///   [`TransactionExecutorError::Unauthorized`] and the commitments are verified against the actual
-///   account delta and input/output notes.
+///   [`TransactionExecutorError::Unauthorized`].
 /// - Otherwise, the execution error is wrapped in
 ///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
-fn map_execution_error<STORE: DataStore>(
-    exec_err: ExecutionError,
-    host: &TransactionBaseHost<STORE>,
-) -> TransactionExecutorError {
+fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
     match exec_err {
         ExecutionError::EventError { ref error, .. } => {
-            let maybe_kernel_error: Option<&TransactionKernelError> = error.downcast_ref();
-            match maybe_kernel_error {
-                Some(TransactionKernelError::Unauthorized {
-                    account_delta_commitment,
-                    input_notes_commitment,
-                    output_notes_commitment,
-                    salt,
-                }) => {
-                    let tx_summary = match build_tx_summary(
-                        host,
-                        *salt,
-                        *output_notes_commitment,
-                        *input_notes_commitment,
-                        *account_delta_commitment,
-                    ) {
-                        Ok(tx_summary) => tx_summary,
-                        Err(err) => return err,
-                    };
-
-                    TransactionExecutorError::Unauthorized(Box::new(tx_summary))
+            match error.downcast_ref::<TransactionKernelError>() {
+                Some(TransactionKernelError::Unauthorized(summary)) => {
+                    TransactionExecutorError::Unauthorized(summary.clone())
                 },
-                Some(_) => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
-                None => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+                _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
             }
         },
         _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
     }
-}
-
-/// Builds a [`TransactionSummary`] by extracting the account delta and input/output notes from the
-/// host and validating them against the provided commitments.
-fn build_tx_summary<STORE: MastForestStore>(
-    host: &TransactionBaseHost<STORE>,
-    salt: Word,
-    output_notes_commitment: Word,
-    input_notes_commitment: Word,
-    account_delta_commitment: Word,
-) -> Result<TransactionSummary, TransactionExecutorError> {
-    let account_delta = host.build_account_delta();
-    let input_notes = host.input_notes();
-    let output_notes = host.build_output_notes();
-    let output_notes = OutputNotes::new(output_notes)
-        .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
-
-    // Validate user-computed commitments match the actual commitments. This could
-    // mismatch if user code constructs the commitments incorrectly in which case it
-    // is a good idea to return an error.
-    let actual_account_delta_commitment = account_delta.to_commitment();
-    if actual_account_delta_commitment != account_delta_commitment {
-        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-            "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
-        ).into()));
-    }
-
-    let actual_input_notes_commitment = input_notes.commitment();
-    if actual_input_notes_commitment != input_notes_commitment {
-        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-            "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
-        ).into()));
-    }
-
-    let actual_output_notes_commitment = output_notes.commitment();
-    if actual_output_notes_commitment != output_notes_commitment {
-        return Err(TransactionExecutorError::TransactionSummaryCommitmentMismatch(format!(
-            "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
-        ).into()));
-    }
-
-    Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
 }
 
 // HELPER ENUM

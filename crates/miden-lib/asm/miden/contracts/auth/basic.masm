@@ -1,6 +1,6 @@
 use.miden::account
+use.miden::auth
 use.miden::tx
-use.std::crypto::hashes::rpo
 use.std::crypto::dsa::rpo_falcon512
 
 # CONSTANTS
@@ -32,30 +32,30 @@ export.auth__tx_rpo_falcon512
     dropw
     # => [pad(16)]
 
-    # Increment the account's nonce.
-    # ---------------------------------------------------------------------------------------------
-
-    # this has to happen before computing the delta commitment, otherwise that procedure will abort
-    exec.account::incr_nonce
-    # => [final_nonce, pad(16)]
-
-    # Compute the message that is signed.
-    # ---------------------------------------------------------------------------------------------
-
-    exec.create_tx_summary
-    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, pad(16)]
-    exec.adv_insert_hqword
-
-    # the commitment to the tx summary is the message that is signed
-    exec.hash_tx_summary
-    # => [MESSAGE, pad(16)]
-
     # Fetch public key from storage.
     # ---------------------------------------------------------------------------------------------
 
     # Get public key from account storage at pos 0 and verify signature
     push.PUBLIC_KEY_SLOT exec.account::get_item
-    # OS => [PUB_KEY, MESSAGE, pad(16)]
+
+    # Increment the account's nonce.
+    # ---------------------------------------------------------------------------------------------
+
+    # this has to happen before computing the delta commitment, otherwise that procedure will abort
+    push.0.0 exec.tx::get_block_number
+    exec.account::incr_nonce
+    # => [[final_nonce, ref_block_num, 0, 0],  PUB_KEY, pad(16)]
+
+    # Compute the message that is signed.
+    # ---------------------------------------------------------------------------------------------
+
+    exec.auth::create_tx_summary
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, PUB_KEY, pad(16)]
+    exec.auth::adv_insert_hqword
+
+    # the commitment to the tx summary is the message that is signed
+    exec.auth::hash_tx_summary
+    # OS => [MESSAGE, PUB_KEY, pad(16)]
     # AS => []
 
     # Fetch signature from advice provider and verify.
@@ -64,6 +64,7 @@ export.auth__tx_rpo_falcon512
     # emit the authentication request event that pushes a signature for the message to the advice
     # stack
     emit.AUTH_REQUEST
+    swapw
     # OS => [PUB_KEY, MESSAGE, pad(16)]
     # AS => [SIGNATURE]
 
@@ -73,102 +74,4 @@ export.auth__tx_rpo_falcon512
     exec.rpo_falcon512::verify
     # OS => [pad(16)]
     # AS => []
-end
-
-#! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-#! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-proc.adv_insert_hqword.16
-    loc_storew.0
-    movdnw.3
-    loc_storew.4
-    movdnw.3
-    loc_storew.8
-    movdnw.3
-    loc_storew.12
-    movdnw.3
-    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-
-    exec.hash_tx_summary
-    # => [MESSAGE]
-
-    locaddr.0
-    dup add.16
-    # => [mem_addr_end, mem_addr_start, MESSAGE]
-
-    movdn.5 movdn.4
-    # => [MESSAGE, mem_addr_start, mem_addr_end]
-
-    adv.insert_mem
-    drop drop
-    # => [<4 stack elements>]
-
-    loc_loadw.12
-    padw loc_loadw.8
-    padw loc_loadw.4
-    padw loc_loadw.0
-    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-end
-
-#! Creates the transaction summary and returns it in the order in which it will be hashed.
-#!
-#! Inputs:  [final_nonce]
-#! Outputs: [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-#!
-#! Where:
-#! - SALT is used for replay protection and contains the final nonce of the account and the
-#!   block number of the transaction's reference block.
-#! - OUTPUT_NOTES_COMMITMENT is the commitment to the transaction's output notes.
-#! - INPUT_NOTES_COMMITMENT is the commitment to the transaction's inputs notes.
-#! - ACCOUNT_DELTA_COMMITMENT is the commitment to the transaction's account delta.
-export.create_tx_summary
-    exec.account::compute_delta_commitment
-    # => [ACCOUNT_DELTA_COMMITMENT, final_nonce]
-
-    exec.tx::get_input_notes_commitment
-    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
-
-    exec.tx::get_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
-
-    push.0.0 exec.tx::get_block_number
-    # => [[ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, final_nonce]
-
-    movup.15
-    # => [[final_nonce, ref_block_num, 0, 0], OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-end
-
-#! Hashes the provided transaction summary and returns its commitment.
-#!
-#! Inputs:  [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-#! Outputs: [TX_SUMMARY_COMMITMENT]
-#!
-#! Where:
-#! - SALT is an arbitrary word used for replay protection.
-#! - OUTPUT_NOTES_COMMITMENT is the commitment to the transaction's output notes.
-#! - INPUT_NOTES_COMMITMENT is the commitment to the transaction's inputs notes.
-#! - ACCOUNT_DELTA_COMMITMENT is the commitment to the transaction's account delta.
-export.hash_tx_summary
-    swapdw
-    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, SALT, OUTPUT_NOTES_COMMITMENT]
-
-    # pad capacity element of the hasher
-    padw movdnw.2
-    # => [INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, CAPACITY, SALT, OUTPUT_NOTES_COMMITMENT]
-
-    hperm
-    # => [RATE, RATE, PERM, SALT, OUTPUT_NOTES_COMMITMENT]
-
-    # drop rate words
-    dropw dropw
-    # => [PERM, SALT, OUTPUT_NOTES_COMMITMENT]
-
-    movdnw.2
-    # => [SALT, OUTPUT_NOTES_COMMITMENT, PERM]
-
-    hperm
-    # => [RATE, RATE, PERM]
-
-    exec.rpo::squeeze_digest
-    # => [TX_SUMMARY_COMMITMENT]
 end

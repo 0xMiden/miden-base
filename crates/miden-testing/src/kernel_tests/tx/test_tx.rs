@@ -1218,17 +1218,26 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = format!(
         "
+      use.miden::auth
+      use.miden::tx
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
       export.auth__abort_tx
           dropw
           # => [pad(16)]
 
+          push.0.0 exec.tx::get_block_number
           exec.::miden::account::incr_nonce
-          # => [final_nonce, pad(16)]
+          # => [[final_nonce, block_num, 0, 0], pad(16)]
+          # => [SALT, pad(16)]
 
-          exec.::miden::contracts::auth::basic::create_tx_summary
+          exec.auth::create_tx_summary
           # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+          exec.auth::adv_insert_hqword
+
+          exec.auth::hash_tx_summary
+          # => [MESSAGE, pad(16)]
 
           emit.{abort_event}
       end

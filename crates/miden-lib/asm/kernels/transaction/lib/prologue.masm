@@ -6,6 +6,7 @@ use.$kernel::account
 use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
+use.$kernel::input_note
 use.$kernel::memory
 
 # CONSTS
@@ -845,16 +846,20 @@ end
 #! - note_ptr is the memory location for the input note.
 #! - NOTE_ID is the note's id, i.e. `hash(RECIPIENT || ASSET_COMMITMENT)`.
 proc.compute_input_note_id
-    # compute SERIAL_HASH: hash(SERIAL_NUMBER || EMPTY_WORD)
+    # compute SERIAL_COMMITMENT: hash(SERIAL_NUMBER || EMPTY_WORD)
     dup exec.memory::get_input_note_serial_num padw hmerge
-    # => [SERIAL_HASH, note_ptr]
+    # => [SERIAL_COMMITMENT, note_ptr]
 
-    # compute MERGE_SCRIPT: hash(SERIAL_HASH || SCRIPT_ROOT)
+    # compute MERGE_SCRIPT: hash(SERIAL_COMMITMENT || SCRIPT_ROOT)
     dup.4 exec.memory::get_input_note_script_root hmerge
     # => [MERGE_SCRIPT, note_ptr]
 
     # compute RECIPIENT: hash(MERGE_SCRIPT || INPUT_COMMITMENT)
     dup.4 exec.memory::get_input_note_inputs_commitment hmerge
+    # => [RECIPIENT, note_ptr]
+
+    # store the recipient in memory
+    dup.4 exec.memory::set_input_note_recipient
     # => [RECIPIENT, note_ptr]
 
     # compute NOTE_ID: hash(RECIPIENT || ASSET_COMMITMENT)
