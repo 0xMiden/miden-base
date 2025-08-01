@@ -765,7 +765,6 @@ export.input_note_get_recipient
     exec.memory::get_input_note_recipient
     # => [RECIPIENT, pad(15)]
 
-
     # truncate the stack
     swapw drop drop drop movdn.4
     # => [RECIPIENT, pad(12)]
@@ -796,8 +795,6 @@ export.input_note_get_metadata
     # get the metadata
     exec.memory::get_input_note_metadata
     # => [METADATA, pad(15)]
-
-    swapw drop drop drop movdn.4
 
     # truncate the stack
     swapw drop drop drop movdn.4
@@ -860,8 +857,6 @@ export.output_note_get_recipient
     exec.memory::get_output_note_recipient
     # => [RECIPIENT, pad(15)]
 
-    swapw drop drop drop movdn.4
-
     # truncate the stack
     swapw drop drop drop movdn.4
     # => [RECIPIENT, pad(12)]
@@ -892,8 +887,6 @@ export.output_note_get_metadata
     # get the metadata
     exec.memory::get_output_note_metadata
     # => [METADATA, pad(15)]
-
-    swapw drop drop drop movdn.4
 
     # truncate the stack
     swapw drop drop drop movdn.4
