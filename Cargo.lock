@@ -1268,7 +1268,7 @@ dependencies = [
  "miden-debug-types",
  "miden-processor",
  "tracing",
- "winter-maybe-async 0.13.1",
+ "winter-maybe-async",
  "winter-prover",
 ]
 
@@ -1302,7 +1302,6 @@ dependencies = [
  "rand_chacha",
  "thiserror 2.0.12",
  "tokio",
- "winter-maybe-async 0.13.1",
  "winter-rand-utils",
  "winterfell",
 ]
@@ -1324,7 +1323,6 @@ dependencies = [
  "rand",
  "thiserror 2.0.12",
  "tokio",
- "winter-maybe-async 0.12.0",
 ]
 
 [[package]]
@@ -3075,16 +3073,6 @@ dependencies = [
 
 [[package]]
 name = "winter-maybe-async"
-version = "0.12.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "eaa132be74e602b707f1dab5a69c38496445e54ee940e7c281c02b15007241bd"
-dependencies = [
- "quote",
- "syn",
-]
-
-[[package]]
-name = "winter-maybe-async"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6d31a19dae58475d019850e25b0170e94b16d382fbf6afee9c0e80fdc935e73e"
@@ -3104,7 +3092,7 @@ dependencies = [
  "winter-crypto",
  "winter-fri",
  "winter-math",
- "winter-maybe-async 0.13.1",
+ "winter-maybe-async",
  "winter-utils",
 ]
 

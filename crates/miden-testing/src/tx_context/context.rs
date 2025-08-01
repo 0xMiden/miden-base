@@ -1,5 +1,3 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
