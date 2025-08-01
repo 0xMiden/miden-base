@@ -3,13 +3,15 @@
 use alloc::vec::Vec;
 
 use miden_lib::{
-    account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
+    account::auth::{
+        AuthMultisigRpoFalcon512, AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig,
+    },
     transaction::TransactionKernel,
 };
 use miden_objects::{
     Word,
     account::{AccountComponent, AuthSecretKey},
-    crypto::dsa::rpo_falcon512::SecretKey,
+    crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     testing::account_component::{
         ConditionalAuthComponent, IncrNonceAuthComponent, NoopAuthComponent,
     },
@@ -24,6 +26,9 @@ pub enum Auth {
     /// Creates a [SecretKey] for the account and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512].
     BasicAuth,
+
+    /// Multisig
+    Multisig { threshold: u32, approvers: Vec<Word> },
 
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
@@ -66,6 +71,15 @@ impl Auth {
                 );
 
                 (component, Some(authenticator))
+            },
+            Auth::Multisig { threshold, approvers } => {
+                let pub_keys: Vec<_> = approvers.iter().map(|word| PublicKey::new(*word)).collect();
+
+                let component = AuthMultisigRpoFalcon512::new(*threshold, pub_keys)
+                    .expect("multisig component creation failed")
+                    .into();
+
+                (component, None)
             },
             Auth::ProcedureAcl {
                 auth_trigger_procedures,
