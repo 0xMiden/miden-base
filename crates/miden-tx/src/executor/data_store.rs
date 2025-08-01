@@ -1,5 +1,3 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 
 use miden_objects::{

@@ -13,7 +13,7 @@ rust-version.workspace = true
 version                = "0.11.0"
 
 [features]
-async = ["miden-tx/async", "winter-maybe-async/async"]
+async = ["winter-maybe-async/async"]
 std   = ["miden-lib/std"]
 
 [dependencies]

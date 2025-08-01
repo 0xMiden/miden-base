@@ -1,6 +1,4 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
-use alloc::{sync::Arc, vec::Vec};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
@@ -156,7 +154,8 @@ impl LocalTransactionProver {
 
             builder.build().map_err(TransactionProverError::ProvenTransactionBuildFailed)
         });
-        let y = jh.await.unwrap(); // FIXME
-        y
+        jh.await.map_err(|e| {
+            TransactionProverError::other_with_source("tokio task join failed", Box::new(e))
+        })?
     }
 }
