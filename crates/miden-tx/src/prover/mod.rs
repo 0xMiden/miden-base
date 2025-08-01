@@ -21,8 +21,6 @@ pub use mast_store::TransactionMastStore;
 // ------------------------------------------------------------------------------------------------
 
 /// Local Transaction prover is a stateless component which is responsible for proving transactions.
-///
-/// Local Transaction Prover implements the [TransactionProver] trait.
 pub struct LocalTransactionProver {
     mast_store: Arc<TransactionMastStore>,
     proof_options: ProvingOptions,
