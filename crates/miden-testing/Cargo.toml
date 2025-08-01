@@ -13,7 +13,7 @@ rust-version.workspace = true
 version                = "0.11.0"
 
 [features]
-std   = ["miden-lib/std"]
+std = ["miden-lib/std"]
 
 [dependencies]
 # Workspace dependencies
@@ -26,14 +26,14 @@ miden-tx           = { features = ["testing"], workspace = true }
 vm-processor = { workspace = true }
 
 # External dependencies
-anyhow             = { default-features = false, version = "1.0" }
-async-trait        = "0.1"
-itertools          = { default-features = false, features = ["use_alloc"], version = "0.14" }
-rand               = { features = ["os_rng", "small_rng"], workspace = true }
-rand_chacha        = { default-features = false, version = "0.9" }
-thiserror          = { workspace = true }
-tokio              = { features = ["macros", "rt"], workspace = true }
-winterfell         = { version = "0.13" }
+anyhow      = { default-features = false, version = "1.0" }
+async-trait = "0.1"
+itertools   = { default-features = false, features = ["use_alloc"], version = "0.14" }
+rand        = { features = ["os_rng", "small_rng"], workspace = true }
+rand_chacha = { default-features = false, version = "0.9" }
+thiserror   = { workspace = true }
+tokio       = { features = ["macros", "rt"], workspace = true }
+winterfell  = { version = "0.13" }
 
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], version = "1.0" }
