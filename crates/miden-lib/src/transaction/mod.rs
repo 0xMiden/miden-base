@@ -280,7 +280,7 @@ impl TransactionKernel {
 
         let expiration_block_num = stack
             .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)
-            .expect("element on index 12 missing");
+            .expect("tx_expiration_block_num (element on index 12) missing");
 
         let expiration_block_num = u32::try_from(expiration_block_num.as_int())
             .map_err(|_| {
