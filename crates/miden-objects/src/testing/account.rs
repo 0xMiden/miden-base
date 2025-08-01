@@ -113,7 +113,7 @@ impl Account {
 }
 
 impl AssetVault {
-    /// Creates an [AssetVault] with 5 default assets.
+    /// Creates an [AssetVault] with 4 default assets.
     ///
     /// The ids of the assets added to the vault are defined by the following constants:
     ///

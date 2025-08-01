@@ -28,7 +28,6 @@ use vm_processor::{ContextId, Process};
 use crate::MockChain;
 
 mod test_account;
-mod test_fee;
 mod test_account_delta;
 mod test_account_interface;
 mod test_asset;
@@ -36,6 +35,7 @@ mod test_asset_vault;
 mod test_auth;
 mod test_epilogue;
 mod test_faucet;
+mod test_fee;
 mod test_fpi;
 mod test_input_note;
 mod test_link_map;

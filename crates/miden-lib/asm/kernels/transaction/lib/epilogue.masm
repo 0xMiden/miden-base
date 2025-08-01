@@ -105,6 +105,8 @@ proc.build_output_vault
     exec.memory::get_output_vault_root_ptr movdn.4
     # => [FEE_ASSET, output_vault_root_ptr]
 
+    # avoid modifying the output vault if the fee amount is zero
+    # this is a temporary measure until #1668 lands
     dup.3 neq.0
     # => [is_amount_non_zero, FEE_ASSET, output_vault_root_ptr]
 
