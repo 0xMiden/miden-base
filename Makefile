@@ -7,7 +7,7 @@ help:
 # -- variables --------------------------------------------------------------------------------------
 
 WARNINGS=RUSTDOCFLAGS="-D warnings"
-ALL_FEATURES_BUT_ASYNC=--features concurrent,testing
+ALL_FEATURES=--features concurrent,testing
 # Enable file generation in the `src` directory.
 # This is used in the build scripts of miden-lib.
 BUILD_GENERATED_FILES_IN_SRC=BUILD_GENERATED_FILES_IN_SRC=1
@@ -19,7 +19,7 @@ BACKTRACE=RUST_BACKTRACE=1
 
 .PHONY: clippy
 clippy: ## Runs Clippy with configs
-	cargo clippy --workspace --all-targets $(ALL_FEATURES_BUT_ASYNC) -- -D warnings
+	cargo clippy --workspace --all-targets $(ALL_FEATURES) -- -D warnings
 
 
 .PHONY: clippy-no-std
@@ -29,7 +29,7 @@ clippy-no-std: ## Runs Clippy with configs
 
 .PHONY: fix
 fix: ## Runs Fix with configs
-	cargo fix --workspace --allow-staged --allow-dirty --all-targets $(ALL_FEATURES_BUT_ASYNC)
+	cargo fix --workspace --allow-staged --allow-dirty --all-targets $(ALL_FEATURES)
 
 
 .PHONY: format
@@ -94,14 +94,14 @@ test-dev: ## Run default tests excluding slow prove tests in debug mode intended
 
 .PHONY: test-docs
 test-docs: ## Run documentation tests
-	$(WARNINGS) cargo test --doc $(ALL_FEATURES_BUT_ASYNC)
+	$(WARNINGS) cargo test --doc $(ALL_FEATURES)
 
 
 # --- checking ------------------------------------------------------------------------------------
 
 .PHONY: check
 check: ## Check all targets and features for errors without code generation
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --all-targets $(ALL_FEATURES_BUT_ASYNC)
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --all-targets $(ALL_FEATURES)
 
 
 .PHONY: check-no-std
@@ -123,11 +123,6 @@ build-no-std: ## Build without the standard library
 .PHONY: build-no-std-testing
 build-no-std-testing: ## Build without the standard library. Includes the `testing` feature
 	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing --exclude bench-prover
-
-
-.PHONY: build-async
-build-async: ## Build with the `async` feature enabled (only libraries)
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --lib --release --features async --workspace --exclude bench-prover
 
 # --- benchmarking --------------------------------------------------------------------------------
 
