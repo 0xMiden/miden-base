@@ -32,7 +32,7 @@ vm-processor   = { workspace = true }
 async-trait        = "0.1"
 rand               = { workspace = true }
 thiserror          = { workspace = true }
-tokio              = { workspace = true }
+tokio              = { workspace = true, features = ["rt"] }
 
 [dev-dependencies]
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
