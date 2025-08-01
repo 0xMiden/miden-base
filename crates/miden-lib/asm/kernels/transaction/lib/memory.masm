@@ -215,11 +215,12 @@ const.INPUT_NOTE_SERIAL_NUM_OFFSET=4
 const.INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
 const.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
 const.INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
-const.INPUT_NOTE_METADATA_OFFSET=20
-const.INPUT_NOTE_ARGS_OFFSET=24
-const.INPUT_NOTE_NUM_INPUTS_OFFSET=28
-const.INPUT_NOTE_NUM_ASSETS_OFFSET=32
-const.INPUT_NOTE_ASSETS_OFFSET=36
+const.INPUT_NOTE_RECIPIENT_OFFSET=20
+const.INPUT_NOTE_METADATA_OFFSET=24
+const.INPUT_NOTE_ARGS_OFFSET=28
+const.INPUT_NOTE_NUM_INPUTS_OFFSET=32
+const.INPUT_NOTE_NUM_ASSETS_OFFSET=36
+const.INPUT_NOTE_ASSETS_OFFSET=40
 
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
@@ -1580,6 +1581,33 @@ export.get_input_note_assets_ptr
     add.INPUT_NOTE_ASSETS_OFFSET
 end
 
+#! Returns the input note recipient.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the input note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+export.get_input_note_recipient
+    padw
+    movup.4 add.INPUT_NOTE_RECIPIENT_OFFSET
+    mem_loadw
+end
+
+#! Sets the input note's recipient.
+#!
+#! Inputs:  [note_ptr, RECIPIENT]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+export.set_input_note_recipient
+    add.INPUT_NOTE_RECIPIENT_OFFSET
+    mem_storew
+end
+
 #! Returns the assets commitment for the input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
@@ -1668,12 +1696,12 @@ end
 
 #! Returns the output note recipient.
 #!
-#! Inputs:  [output_note_data_ptr]
+#! Inputs:  [note_ptr]
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - output_note_data_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the recipient of the output note.
+#! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.get_output_note_recipient
     padw
     movup.4 add.OUTPUT_NOTE_RECIPIENT_OFFSET
@@ -1686,11 +1714,25 @@ end
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - RECIPIENT is the recipient of the note.
 #! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.set_output_note_recipient
     add.OUTPUT_NOTE_RECIPIENT_OFFSET
     mem_storew
+end
+
+#! Returns the output note's metadata.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [METADATA]
+#!
+#! Where:
+#! - METADATA is the note metadata.
+#! - note_ptr is the memory address at which the output note data begins.
+export.get_output_note_metadata
+    padw
+    movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    mem_loadw
 end
 
 #! Sets the output note's metadata.

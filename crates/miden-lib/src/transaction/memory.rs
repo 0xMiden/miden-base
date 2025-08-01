@@ -14,18 +14,19 @@ pub type StorageSlot = u8;
 //
 // Here the "end address" is the last memory address occupied by the current data
 //
-// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
-// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
-// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                             |
-// | Global inputs      | 400 (100)                             | 431 (107)                           |                                             |
-// | Block header       | 800 (200)                             | 843 (210)                           |                                             |
-// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
-// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
-// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
-// | Account delta      | 532_480 (133_120)                     | 532_742 (133_185)                   |                                             |
-// | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
-// | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
-// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)               | Enough for 2_097_151 key-value pairs        |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                    |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
+// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
+// | Global inputs      | 400 (100)                             | 431 (107)                           |                                            |
+// | Block header       | 800 (200)                             | 843 (210)                           |                                            |
+// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
+// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each    |
+// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each        |
+// | Account delta      | 532_480 (133_120)                     | 532_742 (133_185)                   |                                            |
+// | Input notes        | 4_194_304 (1_048_576)                 | 6_356_991 (1_589_247)               | nullifiers data segment + 1024 input notes |
+// |                    |                                       |                                     | max, 2048 elements each                    |
+// | Output notes       | 16_777_216 (4_194_304)                | 18_874_367 (4_718_591)              | 1024 output notes max, 2048 elements each  |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)             | Enough for 2_097_151 key-value pairs       |
 
 // Relative layout of one account
 //
@@ -329,16 +330,18 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // │   NUM   │  NOTE 0   │  NOTE 1   │ ... │  NOTE n   │ PADDING │ NOTE 0 │ NOTE 1 │  ...  │ NOTE n │
 // │  NOTES  │ NULLIFIER │ NULLIFIER │     │ NULLIFIER │         │  DATA  │  DATA  │       │  DATA  │
 // └─────────┴───────────┴───────────┴─────┴───────────┴─────────┴────────┴────────┴───────┴────────┘
-//  4_194_304  4_194_308  4_194_312    4_194_304+4(n+1)      4_259_840  +2048    +4096  +2048(n+1)
+//  4_194_304 4_194_308   4_194_312         4_194_304+4(n+1)  4_259_840   +2048    +4096   +2048n
+//
+// Here `n` represents number of input notes.
 //
 // Each nullifier occupies a single word. A data section for each note consists of exactly 512
 // words and is laid out like so:
 //
-// ┌──────┬────────┬────────┬────────┬────────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
-// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
-// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
-// ├──────┼────────┼────────┼────────┼────────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
-// 0      4        8        12       16           20     24      28       32       36 + 4n
+// ┌──────┬────────┬────────┬────────┬────────────┬───────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
+// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   | RECIPIENT │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
+// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT |           │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
+// ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
+// 0      4        8        12       16           20          24     28      32       36       40 + 4n
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
@@ -370,11 +373,12 @@ pub const INPUT_NOTE_SERIAL_NUM_OFFSET: MemoryOffset = 4;
 pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
 pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
-pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 20;
-pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 24;
-pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 28;
-pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 32;
-pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
+pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 24;
+pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 28;
+pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 
 // OUTPUT NOTES DATA
 // ------------------------------------------------------------------------------------------------

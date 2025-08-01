@@ -35,6 +35,17 @@ use crate::{
 ///   account's nonce to `1`.
 /// - Add assets to the account's vault, however this will only succeed when using
 ///   [`AccountBuilder::build_existing`].
+///
+/// **Storage Slot Order**
+///
+/// Note that the components are merged together in the same order as `with_component` is called,
+/// except for the auth component. It is always moved to the first position, due to the requirement
+/// that the auth procedure must be at procedure index 0 within an [`AccountCode`]. That also
+/// affects the storage slot order and means the auth component's storage comes first, if it has any
+/// storage.
+///
+/// Faucet accounts have a protocol-reserved storage slot which is at index 0. This means
+/// user-defined storage slots start at index 1.
 #[derive(Debug, Clone)]
 pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]

@@ -71,7 +71,8 @@ impl TransactionContext {
             &self.tx_inputs,
             &self.tx_args,
             Some(self.advice_inputs.clone()),
-        );
+        )
+        .expect("error initializing transaction inputs");
 
         let test_lib = TransactionKernel::kernel_as_library();
 
@@ -103,7 +104,7 @@ impl TransactionContext {
             self.tx_inputs.account().into(),
             &advice_inputs,
             mast_store,
-            self.tx_args.foreign_account_code_commitments(),
+            self.tx_args.to_foreign_account_code_commitments(),
         ))
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)

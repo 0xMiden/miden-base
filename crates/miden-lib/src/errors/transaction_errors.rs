@@ -1,7 +1,10 @@
 use alloc::{boxed::Box, vec::Vec};
 use core::error::Error;
 
-use miden_objects::{AccountDeltaError, AssetError, Felt, NoteError, Word, note::NoteMetadata};
+use miden_objects::{
+    AccountDeltaError, AssetError, Felt, NoteError, Word, note::NoteMetadata,
+    transaction::TransactionSummary,
+};
 use thiserror::Error;
 
 // TRANSACTION KERNEL ERROR
@@ -27,6 +30,10 @@ pub enum TransactionKernelError {
     MissingAuthenticator,
     #[error("failed to generate signature")]
     SignatureGenerationFailed(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("transaction returned unauthorized event but a commitment did not match: {0}")]
+    TransactionSummaryCommitmentMismatch(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("failed to construct transaction summary")]
+    TransactionSummaryConstructionFailed(#[source] Box<dyn Error + Send + Sync + 'static>),
     #[error("asset data extracted from the stack by event handler `{handler}` is not well formed")]
     MalformedAssetInEventHandler {
         handler: &'static str,
@@ -70,12 +77,7 @@ pub enum TransactionKernelError {
     /// This variant signals that a signature over the contained commitments is required, but
     /// missing.
     #[error("transaction requires a signature")]
-    Unauthorized {
-        account_delta_commitment: Word,
-        input_notes_commitment: Word,
-        output_notes_commitment: Word,
-        salt: Word,
-    },
+    Unauthorized(Box<TransactionSummary>),
 }
 
 // TRANSACTION EVENT PARSING ERROR
