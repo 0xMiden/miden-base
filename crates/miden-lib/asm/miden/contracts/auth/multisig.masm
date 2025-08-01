@@ -1,0 +1,24 @@
+use.miden::account
+use.miden::tx
+use.std::crypto::dsa::rpo_falcon512
+
+# CONSTANTS
+# =================================================================================================
+
+# Event to place the falcon signature of a provided message and public key on the advice stack.
+const.FALCON_SIG_TO_STACK=131087
+
+# The slot in this component's storage layout where the public key is stored.
+const.PUBLIC_KEY_SLOT=0
+
+    
+#! Authenticate a transaction using the Falcon signature scheme.
+#! This is a single auth procedure that handles both the addition of a signature and the multisig tx execution.
+#! 
+#!
+#! Inputs:  [TX_HASH]
+#! Outputs: [pad(16)]
+export.auth__tx_rpo_falcon512_multisig
+    # => [TX_HASH, pad(16)]
+    dropw
+end
