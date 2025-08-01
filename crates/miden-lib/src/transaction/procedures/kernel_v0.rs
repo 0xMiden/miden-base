@@ -70,11 +70,11 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     // input_note_get_recipient
     word!("0x1e612cf8aa3cca674363d9e1fb15c666a0cf2febc80bf9d7800920941133a3f4"),
     // output_note_get_recipient
-    word!("0xd53bc0619223d96c64ad5c7ce849a6c140603b12a79bd12d240d3aec6698e3dd"),
+    word!("0x46b39f143100c86135a7a4b0759d3db9348cd1e085965ae2878df9c539a67b83"),
     // input_note_get_metadata
-    word!("0x65d79d54513179c00af4bde1b43737ac008120c0fffb567ca2ba8f00b7e29033"),
+    word!("0x4b0c2a8560a007abadd55013c3b3c620b2de2189c08109500ba46a4222b37d89"),
     // output_note_get_metadata
-    word!("0x9bb2a275bc137c2fd9e1139156c28ab1c90d78fcd87b67b356d26246c8bbbad0"),
+    word!("0xe0c67058b91fafee772f915f74f99b3d9d9856580eabc4660f6c6a00cffba466"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
