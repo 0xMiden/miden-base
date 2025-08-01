@@ -193,17 +193,17 @@ export.add_fungible_asset
 
     # pad empty word for insertion
     padw
-    # => [EMPTY_WORD, ASSET', vault_root_ptr]
+    # => [EMPTY_WORD, ASSET', ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
 
     # check if amount of new asset is zero
     # if it is zero, insert EMPTY_WORD to keep the merkle tree sparse
     dup.7 eq.0
-    # => [is_amount_zero, EMPTY_WORD, ASSET', vault_root_ptr]
+    # => [is_amount_zero, EMPTY_WORD, ASSET', ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
 
     # If is_amount_zero EMPTY_WORD remains.
     # If !is_amount_zero ASSET' remains.
     cdropw
-    # => [EMPTY_WORD_OR_ASSET', vault_root_ptr]
+    # => [EMPTY_WORD_OR_ASSET, ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
 
     # update asset in vault and assert the old value is equivalent to the value provided via the
     # decorator
