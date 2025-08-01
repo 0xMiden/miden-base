@@ -1,11 +1,12 @@
 use miden_objects::{
-    AccountError, Digest, Felt, FieldElement, TokenSymbolError, Word,
+    AccountError, Felt, FieldElement, TokenSymbolError, Word,
     account::{
         Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
         StorageSlot,
     },
-    assembly::ProcedureName,
+    assembly::{ProcedureName, QualifiedProcedureName},
     asset::{FungibleAsset, TokenSymbol},
+    utils::sync::LazyLock,
 };
 use thiserror::Error;
 
@@ -13,10 +14,40 @@ use super::{
     AuthScheme,
     interface::{AccountComponentInterface, AccountInterface},
 };
-use crate::account::{auth::RpoFalcon512ProcedureAcl, components::basic_fungible_faucet_library};
+use crate::{
+    account::{
+        auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
+        components::basic_fungible_faucet_library,
+    },
+    transaction::memory::FAUCET_STORAGE_DATA_SLOT,
+};
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
+
+// Initialize the digest of the `distribute` procedure of the Basic Fungible Faucet only once.
+static BASIC_FUNGIBLE_FAUCET_DISTRIBUTE: LazyLock<Word> = LazyLock::new(|| {
+    let distribute_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicFungibleFaucet::DISTRIBUTE_PROC_NAME)
+            .expect("failed to create name for 'distribute' procedure"),
+    );
+    basic_fungible_faucet_library()
+        .get_procedure_root_by_name(distribute_proc_name)
+        .expect("Basic Fungible Faucet should contain 'distribute' procedure")
+});
+
+// Initialize the digest of the `burn` procedure of the Basic Fungible Faucet only once.
+static BASIC_FUNGIBLE_FAUCET_BURN: LazyLock<Word> = LazyLock::new(|| {
+    let burn_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicFungibleFaucet::BURN_PROC_NAME)
+            .expect("failed to create name for 'burn' procedure"),
+    );
+    basic_fungible_faucet_library()
+        .get_procedure_root_by_name(burn_proc_name)
+        .expect("Basic Fungible Faucet should contain 'burn' procedure")
+});
 
 /// An [`AccountComponent`] implementing a basic fungible faucet.
 ///
@@ -142,29 +173,13 @@ impl BasicFungibleFaucet {
     }
 
     /// Returns the digest of the `distribute` account procedure.
-    pub fn distribute_digest() -> Digest {
-        Self::get_procedure_digest_by_name(Self::DISTRIBUTE_PROC_NAME)
+    pub fn distribute_digest() -> Word {
+        *BASIC_FUNGIBLE_FAUCET_DISTRIBUTE
     }
 
     /// Returns the digest of the `burn` account procedure.
-    pub fn burn_digest() -> Digest {
-        Self::get_procedure_digest_by_name(Self::BURN_PROC_NAME)
-    }
-
-    // HELPER FUNCTIONS
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the digest of the basic faucet procedure with the specified name.
-    /// TODO: Potentially remove once https://github.com/0xMiden/miden-base/pull/1532 is ready
-    fn get_procedure_digest_by_name(procedure_name: &str) -> Digest {
-        let proc_name = ProcedureName::new(procedure_name).expect("procedure name should be valid");
-        let module = basic_fungible_faucet_library()
-            .module_infos()
-            .next()
-            .expect("basic_fungible_faucet_library should have exactly one module");
-        module.get_procedure_digest_by_name(&proc_name).unwrap_or_else(|| {
-            panic!("basic_fungible_faucet_library should contain the '{proc_name}' procedure")
-        })
+    pub fn burn_digest() -> Word {
+        *BASIC_FUNGIBLE_FAUCET_BURN
     }
 }
 
@@ -172,8 +187,12 @@ impl From<BasicFungibleFaucet> for AccountComponent {
     fn from(faucet: BasicFungibleFaucet) -> Self {
         // Note: data is stored as [a0, a1, a2, a3] but loaded onto the stack as
         // [a3, a2, a1, a0, ...]
-        let metadata =
-            [faucet.max_supply, Felt::from(faucet.decimals), faucet.symbol.into(), Felt::ZERO];
+        let metadata = Word::new([
+            faucet.max_supply,
+            Felt::from(faucet.decimals),
+            faucet.symbol.into(),
+            Felt::ZERO,
+        ]);
 
         AccountComponent::new(basic_fungible_faucet_library(), vec![StorageSlot::Value(metadata)])
             .expect("basic fungible faucet component should satisfy the requirements of a valid account component")
@@ -204,6 +223,36 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 // FUNGIBLE FAUCET
 // ================================================================================================
 
+/// Extension trait for fungible faucet accounts. Provides methods to access the fungible faucet
+/// account's reserved storage slot.
+pub trait FungibleFaucetExt {
+    const ISSUANCE_ELEMENT_INDEX: usize;
+    const ISSUANCE_STORAGE_SLOT: u8;
+
+    /// Returns the amount of tokens (in base units) issued from this fungible faucet.
+    ///
+    /// # Errors
+    /// Returns an error if the account is not a fungible faucet account.
+    fn get_token_issuance(&self) -> Result<Felt, FungibleFaucetError>;
+}
+
+impl FungibleFaucetExt for Account {
+    const ISSUANCE_ELEMENT_INDEX: usize = 3;
+    const ISSUANCE_STORAGE_SLOT: u8 = FAUCET_STORAGE_DATA_SLOT;
+
+    fn get_token_issuance(&self) -> Result<Felt, FungibleFaucetError> {
+        if self.account_type() != AccountType::FungibleFaucet {
+            return Err(FungibleFaucetError::NotAFungibleFaucetAccount);
+        }
+
+        let slot = self
+            .storage()
+            .get_item(Self::ISSUANCE_STORAGE_SLOT)
+            .map_err(|_| FungibleFaucetError::InvalidStorageOffset(Self::ISSUANCE_STORAGE_SLOT))?;
+        Ok(slot[Self::ISSUANCE_ELEMENT_INDEX])
+    }
+}
+
 /// Creates a new faucet account with basic fungible faucet interface,
 /// account storage type, specified authentication scheme, and provided meta data (token symbol,
 /// decimals, max supply).
@@ -218,7 +267,8 @@ impl TryFrom<&Account> for BasicFungibleFaucet {
 /// The storage layout of the faucet account is:
 /// - Slot 0: Reserved slot for faucets.
 /// - Slot 1: Public Key of the authentication component.
-/// - Slot 2: Number of tracked procedures.
+/// - Slot 2: [num_tracked_procs, allow_unauthorized_output_notes, allow_unauthorized_input_notes,
+///   0].
 /// - Slot 3: A map with tracked procedure roots.
 /// - Slot 4: Token metadata of the faucet.
 pub fn create_basic_fungible_faucet(
@@ -231,11 +281,14 @@ pub fn create_basic_fungible_faucet(
 ) -> Result<(Account, Word), FungibleFaucetError> {
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
-    let auth_component: RpoFalcon512ProcedureAcl = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => {
-            RpoFalcon512ProcedureAcl::new(pub_key, vec![distribute_proc_root])
-                .map_err(FungibleFaucetError::AccountError)?
-        },
+    let auth_component: AuthRpoFalcon512Acl = match auth_scheme {
+        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
+            pub_key,
+            AuthRpoFalcon512AclConfig::new()
+                .with_auth_trigger_procedures(vec![distribute_proc_root])
+                .with_allow_unauthorized_input_notes(true),
+        )
+        .map_err(FungibleFaucetError::AccountError)?,
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -269,6 +322,8 @@ pub enum FungibleFaucetError {
     InvalidTokenSymbol(#[source] TokenSymbolError),
     #[error("account creation failed")]
     AccountError(#[source] AccountError),
+    #[error("account is not a fungible faucet account")]
+    NotAFungibleFaucetAccount,
 }
 
 // TESTS
@@ -278,7 +333,7 @@ pub enum FungibleFaucetError {
 mod tests {
     use assert_matches::assert_matches;
     use miden_objects::{
-        Digest, FieldElement, ONE, Word, ZERO,
+        FieldElement, ONE, Word,
         crypto::dsa::rpo_falcon512::{self, PublicKey},
     };
 
@@ -286,11 +341,11 @@ mod tests {
         AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
         FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
     };
-    use crate::account::{auth::RpoFalcon512, wallets::BasicWallet};
+    use crate::account::{auth::AuthRpoFalcon512, wallets::BasicWallet};
 
     #[test]
     fn faucet_contract_creation() {
-        let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
+        let pub_key = rpo_falcon512::PublicKey::new(Word::new([ONE; 4]));
         let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key };
 
         // we need to use an initial seed to create the wallet account
@@ -316,25 +371,29 @@ mod tests {
         .unwrap();
 
         // The reserved faucet slot should be initialized to an empty word.
-        assert_eq!(faucet_account.storage().get_item(0).unwrap(), Word::default().into());
+        assert_eq!(faucet_account.storage().get_item(0).unwrap(), Word::empty());
 
         // The falcon auth component is added first so its assigned storage slot for the public key
         // will be 1.
-        assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key).into());
+        assert_eq!(faucet_account.storage().get_item(1).unwrap(), Word::from(pub_key));
 
-        // The number of tracked procedures is stored in slot 2.
+        // Slot 2 stores [num_tracked_procs, allow_unauthorized_output_notes,
+        // allow_unauthorized_input_notes, 0]. With 1 tracked procedure (distribute),
+        // allow_unauthorized_output_notes=false, and allow_unauthorized_input_notes=true,
+        // this should be [1, 0, 1, 0].
         assert_eq!(
             faucet_account.storage().get_item(2).unwrap(),
-            [Felt::ONE, Felt::ZERO, Felt::ZERO, Felt::ZERO].into()
+            [Felt::ONE, Felt::ZERO, Felt::ONE, Felt::ZERO].into()
         );
 
-        // The procedure root of the distribute procedure is stored in slot 3.
+        // The procedure root map in slot 3 should contain the distribute procedure root.
+        let distribute_root = BasicFungibleFaucet::distribute_digest();
         assert_eq!(
             faucet_account
                 .storage()
-                .get_map_item(3, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+                .get_map_item(3, [Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO].into())
                 .unwrap(),
-            Word::from(BasicFungibleFaucet::distribute_digest())
+            distribute_root
         );
 
         // Check that faucet metadata was initialized to the given values. The faucet component is
@@ -350,8 +409,8 @@ mod tests {
     #[test]
     fn faucet_create_from_account() {
         // prepare the test data
-        let mock_public_key = PublicKey::new([ZERO, ONE, Felt::new(2), Felt::new(3)]);
-        let mock_seed = Digest::from([ZERO, ONE, Felt::new(2), Felt::new(3)]).as_bytes();
+        let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
+        let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
 
         // valid account
         let token_symbol = TokenSymbol::new("POL").expect("invalid token symbol");
@@ -361,7 +420,7 @@ mod tests {
                 BasicFungibleFaucet::new(token_symbol, 10, Felt::new(100))
                     .expect("failed to create a fungible faucet component"),
             )
-            .with_auth_component(RpoFalcon512::new(mock_public_key))
+            .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
             .build_existing()
             .expect("failed to create wallet account");
 
@@ -374,7 +433,7 @@ mod tests {
         // invalid account: basic fungible faucet component is missing
         let invalid_faucet_account = AccountBuilder::new(mock_seed)
             .account_type(AccountType::FungibleFaucet)
-            .with_auth_component(RpoFalcon512::new(mock_public_key))
+            .with_auth_component(AuthRpoFalcon512::new(mock_public_key))
             // we need to add some other component so the builder doesn't fail
             .with_component(BasicWallet)
             .build_existing()
@@ -384,5 +443,12 @@ mod tests {
             .err()
             .expect("basic fungible faucet creation should fail");
         assert_matches!(err, FungibleFaucetError::NoAvailableInterface);
+    }
+
+    /// Check that the obtaining of the basic fungible faucet procedure digests does not panic.
+    #[test]
+    fn get_faucet_procedures() {
+        let _distribute_digest = BasicFungibleFaucet::distribute_digest();
+        let _burn_digest = BasicFungibleFaucet::burn_digest();
     }
 }

@@ -1,6 +1,6 @@
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
@@ -10,11 +10,13 @@ use miden_objects::{
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
-use vm_processor::{Digest, MemAdviceProvider};
 use winter_maybe_async::*;
 
-use super::{TransactionHost, TransactionProverError};
-use crate::host::ScriptMastForestStore;
+use super::TransactionProverError;
+use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
+
+mod prover_host;
+pub use prover_host::TransactionProverHost;
 
 mod mast_store;
 pub use mast_store::TransactionMastStore;
@@ -85,28 +87,35 @@ impl TransactionProver for LocalTransactionProver {
 
         // execute and prove
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness));
-        let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
+                .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());
-
-        let account_code_commitments: BTreeSet<Digest> = tx_args.foreign_account_code_commitments();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host: TransactionHost<_> = TransactionHost::new(
-            &account.into(),
-            advice_provider,
-            self.mast_store.as_ref(),
-            script_mast_store,
-            None,
-            account_code_commitments,
-        )
-        .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+        let mut host = {
+            let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
+                &tx_inputs,
+                &tx_args,
+                &advice_inputs,
+            )
+            .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+
+            TransactionProverHost::new(
+                &account.into(),
+                input_notes.clone(),
+                self.mast_store.as_ref(),
+                script_mast_store,
+                acct_procedure_index_map,
+            )
+        };
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // For the prover, we assume that the transaction witness was successfully executed and so
         // there is no need to provide the actual source manager, as it is only used to improve
@@ -115,6 +124,7 @@ impl TransactionProver for LocalTransactionProver {
         let (stack_outputs, proof) = maybe_await!(prove(
             &TransactionKernel::main(),
             stack_inputs,
+            advice_inputs.clone(),
             &mut host,
             self.proof_options.clone(),
             source_manager
@@ -122,16 +132,14 @@ impl TransactionProver for LocalTransactionProver {
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         // extract transaction outputs and process transaction data
-        let (advice_provider, account_delta, output_notes, _signatures, _tx_progress) =
-            host.into_parts();
-        let (_, map, _) = advice_provider.into_parts();
+        let (account_delta, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs =
-            TransactionKernel::from_transaction_parts(&stack_outputs, &map.into(), output_notes)
+            TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
 
         // erase private note information (convert private full notes to just headers)
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
-        let account_delta_commitment = account_delta.commitment();
+        let account_delta_commitment = account_delta.to_commitment();
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),
@@ -140,6 +148,7 @@ impl TransactionProver for LocalTransactionProver {
             account_delta_commitment,
             ref_block_num,
             ref_block_commitment,
+            tx_outputs.fee,
             tx_outputs.expiration_block_num,
             proof,
         )

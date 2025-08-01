@@ -1,7 +1,6 @@
 use miden_objects::{
-    Digest, Felt,
+    Felt, Word,
     account::AccountId,
-    assembly::{ProcedureName, QualifiedProcedureName},
     block::BlockNumber,
     note::{Note, NoteScript},
     utils::{Deserializable, sync::LazyLock},
@@ -9,8 +8,8 @@ use miden_objects::{
 };
 
 use crate::account::{
-    components::basic_wallet_library,
     interface::{AccountComponentInterface, AccountInterface, NoteAccountCompatibility},
+    wallets::BasicWallet,
 };
 
 // WELL KNOWN NOTE SCRIPTS
@@ -43,7 +42,7 @@ fn p2id() -> NoteScript {
 }
 
 /// Returns the P2ID (Pay-to-ID) note script root.
-fn p2id_root() -> Digest {
+fn p2id_root() -> Word {
     P2ID_SCRIPT.root()
 }
 
@@ -53,7 +52,7 @@ fn p2ide() -> NoteScript {
 }
 
 /// Returns the P2IDE (Pay-to-ID with optional reclaim & timelock) note script root.
-fn p2ide_root() -> Digest {
+fn p2ide_root() -> Word {
     P2IDE_SCRIPT.root()
 }
 
@@ -63,7 +62,7 @@ fn swap() -> NoteScript {
 }
 
 /// Returns the SWAP (Swap note) note script root.
-fn swap_root() -> Digest {
+fn swap_root() -> Word {
     SWAP_SCRIPT.root()
 }
 
@@ -133,7 +132,7 @@ impl WellKnownNote {
     }
 
     /// Returns the script root of the current [WellKnownNote] instance.
-    pub fn script_root(&self) -> Digest {
+    pub fn script_root(&self) -> Word {
         match self {
             Self::P2ID => p2id_root(),
             Self::P2IDE => p2ide_root(),
@@ -151,26 +150,15 @@ impl WellKnownNote {
         let interface_proc_digests = account_interface.get_procedure_digests();
         match self {
             Self::P2ID | &Self::P2IDE => {
-                // Get the hash of the "receive_asset" procedure and check that this procedure is
-                // presented in the provided account interfaces. P2ID and P2IDE notes requires only
-                // this procedure to be consumed by the account.
-                let receive_asset_proc_name = QualifiedProcedureName::new(
-                    Default::default(),
-                    ProcedureName::new("receive_asset").unwrap(),
-                );
-                let node_id = basic_wallet_library().get_export_node_id(&receive_asset_proc_name);
-                let receive_asset_digest = basic_wallet_library().mast_forest()[node_id].digest();
-
-                interface_proc_digests.contains(&receive_asset_digest)
+                // To consume P2ID and P2IDE notes, the `receive_asset` procedure must be present in
+                // the provided account interface.
+                interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
             },
             Self::SWAP => {
-                // Make sure that all procedures from the basic wallet library are presented in the
-                // provided account interfaces. SWAP note requires the whole basic wallet interface
-                // to be consumed by the account.
-                basic_wallet_library()
-                    .mast_forest()
-                    .procedure_digests()
-                    .all(|proc_digest| interface_proc_digests.contains(&proc_digest))
+                // To consume SWAP note, the `receive_asset` and `move_asset_to_note` procedures
+                // must be present in the provided account interface.
+                interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
+                    && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
         }
     }

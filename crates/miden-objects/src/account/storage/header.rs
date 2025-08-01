@@ -1,7 +1,5 @@
 use alloc::vec::Vec;
 
-use vm_processor::Digest;
-
 use super::{AccountStorage, Felt, Hasher, StorageSlot, StorageSlotType, Word};
 use crate::{
     AccountError, ZERO,
@@ -33,8 +31,8 @@ impl StorageSlotHeader {
     /// ```
     pub fn as_elements(&self) -> [Felt; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT] {
         let mut elements = [ZERO; StorageSlot::NUM_ELEMENTS_PER_STORAGE_SLOT];
-        elements[0..4].copy_from_slice(&self.1);
-        elements[4..8].copy_from_slice(&self.0.as_word());
+        elements[0..4].copy_from_slice(self.1.as_elements());
+        elements[4..8].copy_from_slice(self.0.as_word().as_elements());
         elements
     }
 }
@@ -76,6 +74,14 @@ impl AccountStorageHeader {
         self.slots.iter()
     }
 
+    /// Returns an iterator over the storage header map slots.
+    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> {
+        self.slots
+            .iter()
+            .filter(|(slot_type, _)| matches!(slot_type, StorageSlotType::Map))
+            .map(|x| x.1)
+    }
+
     /// Returns the number of slots contained in the storage header.
     pub fn num_slots(&self) -> u8 {
         // SAFETY: The constructors of this type ensure this value fits in a u8.
@@ -95,8 +101,19 @@ impl AccountStorageHeader {
 
     // NOTE: The way of computing the commitment should be kept in sync with `AccountStorage`
     /// Computes the account storage header commitment.
-    pub fn compute_commitment(&self) -> Digest {
+    pub fn compute_commitment(&self) -> Word {
         Hasher::hash_elements(&self.as_elements())
+    }
+
+    /// Indicates whether the slot at `index` is a map slot.
+    ///
+    /// # Errors
+    /// - If `index` exceeds the slot count.
+    pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
+        match self.slot(index)?.0 {
+            StorageSlotType::Map => Ok(true),
+            StorageSlotType::Value => Ok(false),
+        }
     }
 
     /// Converts storage slots of this account storage header into a vector of field elements.
@@ -151,7 +168,10 @@ mod tests {
     };
 
     use super::AccountStorageHeader;
-    use crate::account::{AccountStorage, StorageSlotType};
+    use crate::{
+        Word,
+        account::{AccountStorage, StorageSlotType},
+    };
 
     #[test]
     fn test_from_account_storage() {
@@ -159,9 +179,12 @@ mod tests {
 
         // create new storage header from AccountStorage
         let slots = vec![
-            (StorageSlotType::Value, [Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
-            (StorageSlotType::Value, [Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
-            (StorageSlotType::Map, storage_map.root().into()),
+            (StorageSlotType::Value, Word::from([1, 2, 3, 4u32])),
+            (
+                StorageSlotType::Value,
+                Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]),
+            ),
+            (StorageSlotType::Map, storage_map.root()),
         ];
 
         let expected_header = AccountStorageHeader { slots };

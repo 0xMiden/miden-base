@@ -2,8 +2,9 @@ use alloc::{collections::BTreeSet, string::ToString, vec::Vec};
 use core::fmt::Debug;
 
 use crate::{
-    Digest, Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word,
+    Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word,
     account::AccountHeader,
+    asset::FungibleAsset,
     block::BlockNumber,
     note::{
         Note, NoteAssets, NoteHeader, NoteId, NoteMetadata, NoteRecipient, PartialNote,
@@ -21,9 +22,11 @@ pub struct TransactionOutputs {
     /// Information related to the account's final state.
     pub account: AccountHeader,
     /// The commitment to the delta computed by the transaction kernel.
-    pub account_delta_commitment: Digest,
+    pub account_delta_commitment: Word,
     /// Set of output notes created by the transaction.
     pub output_notes: OutputNotes,
+    /// The fee of the transaction.
+    pub fee: FungibleAsset,
     /// Defines up to which block the transaction is considered valid.
     pub expiration_block_num: BlockNumber,
 }
@@ -33,6 +36,7 @@ impl Serializable for TransactionOutputs {
         self.account.write_into(target);
         self.account_delta_commitment.write_into(target);
         self.output_notes.write_into(target);
+        self.fee.write_into(target);
         self.expiration_block_num.write_into(target);
     }
 }
@@ -40,14 +44,16 @@ impl Serializable for TransactionOutputs {
 impl Deserializable for TransactionOutputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let account = AccountHeader::read_from(source)?;
-        let account_delta_commitment = Digest::read_from(source)?;
+        let account_delta_commitment = Word::read_from(source)?;
         let output_notes = OutputNotes::read_from(source)?;
+        let fee = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
 
         Ok(Self {
             account,
             account_delta_commitment,
             output_notes,
+            fee,
             expiration_block_num,
         })
     }
@@ -61,7 +67,7 @@ impl Deserializable for TransactionOutputs {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct OutputNotes {
     notes: Vec<OutputNote>,
-    commitment: Digest,
+    commitment: Word,
 }
 
 impl OutputNotes {
@@ -97,7 +103,7 @@ impl OutputNotes {
     ///
     /// The commitment is computed as a sequential hash of (hash, metadata) tuples for the notes
     /// created in a transaction.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.commitment
     }
     /// Returns total number of output notes.
@@ -180,8 +186,8 @@ impl OutputNote {
         }
     }
 
-    /// Returns the recipient of the precessed [`Full`](OutputNote::Full) output note. Returns
-    /// [`None`] if the note type is not [`Full`](OutputNote::Full).
+    /// Returns the recipient of the processed [`Full`](OutputNote::Full) output note, [`None`] if
+    /// the note type is not [`Full`](OutputNote::Full).
     ///
     /// See [crate::note::NoteRecipient] for more details.
     pub fn recipient(&self) -> Option<&NoteRecipient> {
@@ -197,7 +203,7 @@ impl OutputNote {
     /// [`Header`](OutputNote::Header).
     ///
     /// See [crate::note::NoteRecipient] for more details.
-    pub fn recipient_digest(&self) -> Option<Digest> {
+    pub fn recipient_digest(&self) -> Option<Word> {
         match self {
             OutputNote::Full(note) => Some(note.recipient().digest()),
             OutputNote::Partial(note) => Some(note.recipient_digest()),
@@ -232,7 +238,7 @@ impl OutputNote {
     /// Returns a commitment to the note and its metadata.
     ///
     /// > hash(NOTE_ID || NOTE_METADATA)
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         compute_note_commitment(self.id(), self.metadata())
     }
 }
@@ -296,15 +302,15 @@ impl Deserializable for OutputNote {
 ///
 /// For a non-empty list of notes, this is a sequential hash of (note_id, metadata) tuples for the
 /// notes created in a transaction. For an empty list, [EMPTY_WORD] is returned.
-fn build_output_notes_commitment(notes: &[OutputNote]) -> Digest {
+fn build_output_notes_commitment(notes: &[OutputNote]) -> Word {
     if notes.is_empty() {
-        return Digest::default();
+        return Word::empty();
     }
 
     let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 8);
     for note in notes.iter() {
         elements.extend_from_slice(note.id().as_elements());
-        elements.extend_from_slice(&Word::from(note.metadata()));
+        elements.extend_from_slice(Word::from(note.metadata()).as_elements());
     }
 
     Hasher::hash_elements(&elements)

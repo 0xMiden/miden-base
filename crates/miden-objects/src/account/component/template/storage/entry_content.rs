@@ -6,17 +6,15 @@ use alloc::{
 };
 use core::iter;
 
-use vm_core::{
-    Felt, FieldElement, Word,
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
-};
-use vm_processor::{DeserializationError, Digest};
-
 use super::{
     FieldIdentifier, InitStorageData, MapEntry, StorageValueName, TemplateRequirementsIter,
     placeholder::{PlaceholderTypeRequirement, TEMPLATE_REGISTRY, TemplateType},
 };
-use crate::account::{StorageMap, component::template::AccountComponentTemplateError};
+use crate::{
+    Felt, FieldElement, Word,
+    account::{StorageMap, component::template::AccountComponentTemplateError},
+    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+};
 
 // WORDS
 // ================================================================================================
@@ -189,7 +187,7 @@ impl WordRepresentation {
                     result[index] = felt_repr.try_build_felt(init_storage_data, placeholder)?;
                 }
                 // SAFETY: result is guaranteed to have all its 4 indices rewritten
-                Ok(result)
+                Ok(Word::from(result))
             },
         }
     }
@@ -548,9 +546,9 @@ impl MapRepresentation {
                 let value = map_entry
                     .value()
                     .try_build_word(init_storage_data, self.identifier.name.clone())?;
-                Ok((key.into(), value))
+                Ok((key, value))
             })
-            .collect::<Result<Vec<(Digest, Word)>, _>>()?;
+            .collect::<Result<Vec<(Word, Word)>, _>>()?;
 
         StorageMap::with_entries(entries)
             .map_err(|err| AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::new(err)))
@@ -569,7 +567,6 @@ impl MapRepresentation {
                 .key()
                 .try_build_word(&InitStorageData::default(), StorageValueName::empty())
             {
-                let key: Digest = key.into();
                 if !seen_keys.insert(key) {
                     return Err(AccountComponentTemplateError::StorageMapHasDuplicateKeys(
                         Box::from(format!("key `{key}` is duplicated")),

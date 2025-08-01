@@ -5,7 +5,10 @@ use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec}
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
     account::{Account, AccountId},
-    assembly::{Assembler, SourceManager},
+    assembly::{
+        Assembler, SourceManager,
+        debuginfo::{SourceLanguage, Uri},
+    },
     block::{BlockHeader, BlockNumber},
     note::Note,
     transaction::{
@@ -15,12 +18,10 @@ use miden_objects::{
 };
 use miden_tx::{
     DataStore, DataStoreError, TransactionExecutor, TransactionExecutorError, TransactionMastStore,
-    auth::{BasicAuthenticator, TransactionAuthenticator},
+    auth::BasicAuthenticator,
 };
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{
-    AdviceInputs, Digest, ExecutionError, MastForest, MastForestStore, Process, Word,
-};
+use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
 use winter_maybe_async::*;
 
 use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
@@ -39,7 +40,7 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
-    pub(super) source_manager: Arc<dyn SourceManager>,
+    pub(super) source_manager: Arc<dyn SourceManager + Send + Sync>,
 }
 
 impl TransactionContext {
@@ -70,14 +71,19 @@ impl TransactionContext {
             &self.tx_inputs,
             &self.tx_args,
             Some(self.advice_inputs.clone()),
-        );
+        )
+        .expect("error initializing transaction inputs");
 
         let test_lib = TransactionKernel::kernel_as_library();
 
         let source_manager = assembler.source_manager();
 
         // Virtual file name should be unique.
-        let virtual_source_file = source_manager.load("_tx_context_code", code.to_owned());
+        let virtual_source_file = source_manager.load(
+            SourceLanguage::Masm,
+            Uri::new("_tx_context_code"),
+            code.to_owned(),
+        );
 
         let program = assembler
             .with_debug_mode(true)
@@ -93,13 +99,15 @@ impl TransactionContext {
             mast_store.load_account_code(acc_inputs.code());
         }
 
+        let advice_inputs = advice_inputs.into_advice_inputs();
         CodeExecutor::new(MockHost::new(
             self.tx_inputs.account().into(),
-            advice_inputs,
+            &advice_inputs,
             mast_store,
-            self.tx_args.foreign_account_code_commitments(),
+            self.tx_args.to_foreign_account_code_commitments(),
         ))
         .stack_inputs(stack_inputs)
+        .extend_advice_inputs(advice_inputs)
         .execute_program(program, source_manager)
     }
 
@@ -119,7 +127,7 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-        let authenticator = self.authenticator().map(|x| x as &dyn TransactionAuthenticator);
+        let authenticator = self.authenticator();
 
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
@@ -162,7 +170,7 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
         Arc::clone(&self.source_manager)
     }
 }
@@ -183,7 +191,7 @@ impl DataStore for TransactionContext {
 }
 
 impl MastForestStore for TransactionContext {
-    fn get(&self, procedure_hash: &Digest) -> Option<Arc<MastForest>> {
+    fn get(&self, procedure_hash: &Word) -> Option<Arc<MastForest>> {
         self.mast_store.get(procedure_hash)
     }
 }

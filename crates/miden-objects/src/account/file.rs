@@ -135,7 +135,7 @@ mod tests {
         let storage = AccountStorage::new(vec![]).unwrap();
         let nonce = Felt::new(0);
         let account = Account::from_parts(id, vault, storage, code, nonce);
-        let account_seed = Some(Word::default());
+        let account_seed = Some(Word::empty());
         let auth_secret_key = AuthSecretKey::RpoFalcon512(SecretKey::new());
         let auth_secret_key_2 = AuthSecretKey::RpoFalcon512(SecretKey::new());
 

@@ -1,8 +1,8 @@
 use.std::collections::smt
 
-use.kernel::account_id
-use.kernel::asset
-use.kernel::memory
+use.$kernel::account_id
+use.$kernel::asset
+use.$kernel::memory
 
 # ERRORS
 # =================================================================================================
@@ -437,7 +437,7 @@ export.build_non_fungible_asset_vault_key
     # => [hash0_lo', hash0_hi, hash2, hash1 faucet_id_prefix]
 
     # reassemble hash0 felt by multiplying the high part with 2^32 and adding the lo part
-    swap push.0x0100000000 mul add
+    swap mul.0x0100000000 add
     # => [ASSET_KEY]
 end
 

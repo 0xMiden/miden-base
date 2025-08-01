@@ -1,5 +1,5 @@
 use crate::{
-    Digest,
+    Word,
     account::{AccountCode, AccountId, PartialAccount, PartialStorage},
     asset::PartialVault,
     block::AccountWitness,
@@ -66,7 +66,7 @@ impl AccountInputs {
 
     /// Computes the account root based on the account witness.
     /// This root should be equal to the account root in the reference block header.
-    pub fn compute_account_root(&self) -> Result<Digest, SmtProofError> {
+    pub fn compute_account_root(&self) -> Result<Word, SmtProofError> {
         let smt_merkle_path = self.witness.path().clone();
         let smt_leaf = self.witness.leaf();
         let root = SmtProof::new(smt_merkle_path, smt_leaf)?.compute_root();

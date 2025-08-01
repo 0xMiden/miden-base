@@ -1,12 +1,16 @@
 use alloc::string::ToString;
 
 use miden_lib::transaction::{
-    TransactionKernelError,
+    TransactionAdviceInputs, TransactionKernelError,
     memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT_OFFSET},
 };
-use miden_objects::account::{AccountCode, AccountProcedureInfo};
+use miden_objects::{
+    account::{AccountCode, AccountProcedureInfo},
+    transaction::{TransactionArgs, TransactionInputs},
+};
+use vm_processor::AdviceInputs;
 
-use super::{AdviceProvider, BTreeMap, Digest, Felt, ProcessState};
+use super::{BTreeMap, Felt, ProcessState, Word};
 use crate::errors::TransactionHostError;
 
 // ACCOUNT PROCEDURE INDEX MAP
@@ -15,7 +19,7 @@ use crate::errors::TransactionHostError;
 /// A map of maps { acct_code_commitment |-> { proc_root |-> proc_index } } for all known
 /// procedures of account interfaces for all accounts expected to be invoked during transaction
 /// execution.
-pub struct AccountProcedureIndexMap(BTreeMap<Digest, BTreeMap<Digest, u8>>);
+pub struct AccountProcedureIndexMap(BTreeMap<Word, BTreeMap<Word, u8>>);
 
 impl AccountProcedureIndexMap {
     /// Returns a new [AccountProcedureIndexMap] instantiated with account procedures present in
@@ -24,8 +28,8 @@ impl AccountProcedureIndexMap {
     /// Note: `account_code_commitments` iterator should include both native account code and
     /// foreign account codes commitments
     pub fn new(
-        account_code_commitments: impl IntoIterator<Item = Digest>,
-        adv_provider: &impl AdviceProvider,
+        account_code_commitments: impl IntoIterator<Item = Word>,
+        adv_provider: &AdviceInputs,
     ) -> Result<Self, TransactionHostError> {
         let mut result = BTreeMap::new();
 
@@ -35,6 +39,22 @@ impl AccountProcedureIndexMap {
         }
 
         Ok(Self(result))
+    }
+
+    /// Builds an [`AccountProcedureIndexMap`] for the specified transaction inputs and arguments.
+    ///
+    /// The resulting instance will map all account code commmitments to a mapping of
+    /// `proc_root |-> proc_index` for any account that is expected to be involved in the
+    /// transaction, enabling easy procedure index lookups on runtime.
+    pub fn from_transaction_params(
+        tx_inputs: &TransactionInputs,
+        tx_args: &TransactionArgs,
+        tx_advice_inputs: &TransactionAdviceInputs,
+    ) -> Result<Self, TransactionHostError> {
+        let mut account_code_commitments = tx_args.to_foreign_account_code_commitments();
+        account_code_commitments.insert(tx_inputs.account().code().commitment());
+
+        Self::new(account_code_commitments, tx_advice_inputs.as_advice_inputs())
     }
 
     /// Returns index of the procedure whose root is currently at the top of the operand stack in
@@ -65,11 +85,11 @@ impl AccountProcedureIndexMap {
                 .expect("current account code commitment was not initialized")
         };
 
-        let proc_root = process.get_stack_word(0).into();
+        let proc_root = process.get_stack_word(0);
 
         self.0
-            .get(&code_commitment.into())
-            .ok_or(TransactionKernelError::UnknownCodeCommitment(code_commitment.into()))?
+            .get(&code_commitment)
+            .ok_or(TransactionKernelError::UnknownCodeCommitment(code_commitment))?
             .get(&proc_root)
             .cloned()
             .ok_or(TransactionKernelError::UnknownAccountProcedure(proc_root))
@@ -80,11 +100,11 @@ impl AccountProcedureIndexMap {
 // ================================================================================================
 
 fn build_account_procedure_map(
-    code_commitment: Digest,
-    adv_provider: &impl AdviceProvider,
-) -> Result<BTreeMap<Digest, u8>, TransactionHostError> {
+    code_commitment: Word,
+    adv_provider: &AdviceInputs,
+) -> Result<BTreeMap<Word, u8>, TransactionHostError> {
     // get the account procedures from the advice_map
-    let proc_data = adv_provider.get_mapped_values(&code_commitment).ok_or_else(|| {
+    let proc_data = adv_provider.mapped_values(&code_commitment).ok_or_else(|| {
         TransactionHostError::AccountProcedureIndexMapError(
             "failed to read account procedure data from the advice provider".to_string(),
         )

@@ -1,7 +1,7 @@
 use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    Digest, TransactionScriptError,
+    TransactionScriptError, Word,
     account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
     assembly::mast::{MastForest, MastNode, MastNodeId},
     crypto::dsa::rpo_falcon512,
@@ -14,6 +14,7 @@ use crate::{
     AuthScheme,
     account::components::{
         basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library,
+        rpo_falcon_512_procedure_acl_library,
     },
     note::well_known_note::WellKnownNote,
     transaction::TransactionKernel,
@@ -123,7 +124,7 @@ impl AccountInterface {
     }
 
     /// Returns a digests set of all procedures from all account component interfaces.
-    pub(crate) fn get_procedure_digests(&self) -> BTreeSet<Digest> {
+    pub(crate) fn get_procedure_digests(&self) -> BTreeSet<Word> {
         let mut component_proc_digests = BTreeSet::new();
         for component in self.components.iter() {
             match component {
@@ -135,9 +136,14 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::RpoFalcon512(_) => {
+                AccountComponentInterface::AuthRpoFalcon512(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
+                    component_proc_digests.extend(
+                        rpo_falcon_512_procedure_acl_library().mast_forest().procedure_digests(),
+                    );
                 },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
@@ -256,15 +262,20 @@ impl From<&Account> for AccountInterface {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
-            if let AccountComponentInterface::RpoFalcon512(storage_index) = interface {
-                auth.push(AuthScheme::RpoFalcon512 {
-                    pub_key: rpo_falcon512::PublicKey::new(
-                        *account
-                            .storage()
-                            .get_item(*storage_index)
-                            .expect("invalid storage index of the public key"),
-                    ),
-                })
+            match interface {
+                // RpoFalcon512 and RpoFalcon512ProcedureAcl use the same RpoFalcon512 auth scheme
+                AccountComponentInterface::AuthRpoFalcon512(storage_index)
+                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
+                    auth.push(AuthScheme::RpoFalcon512 {
+                        pub_key: rpo_falcon512::PublicKey::new(
+                            account
+                                .storage()
+                                .get_item(*storage_index)
+                                .expect("invalid storage index of the public key"),
+                        ),
+                    })
+                },
+                _ => {},
             }
         });
 
@@ -295,7 +306,7 @@ pub enum NoteAccountCompatibility {
 }
 
 // HELPER FUNCTIONS
-// ================================================================================================
+// ------------------------------------------------------------------------------------------------
 
 /// Verifies that the provided note script is compatible with the target account interfaces.
 ///
@@ -306,7 +317,7 @@ pub enum NoteAccountCompatibility {
 /// from note scripts, while kernel procedures are `sycall`ed.
 fn verify_note_script_compatibility(
     note_script: &NoteScript,
-    account_procedures: BTreeSet<Digest>,
+    account_procedures: BTreeSet<Word>,
 ) -> NoteAccountCompatibility {
     // collect call branches of the note script
     let branches = collect_call_branches(note_script);
@@ -321,7 +332,7 @@ fn verify_note_script_compatibility(
 
 /// Collect call branches by recursively traversing through program execution branches and
 /// accumulating call targets.
-fn collect_call_branches(note_script: &NoteScript) -> Vec<BTreeSet<Digest>> {
+fn collect_call_branches(note_script: &NoteScript) -> Vec<BTreeSet<Word>> {
     let mut branches = vec![BTreeSet::new()];
 
     let entry_node = note_script.entrypoint();
@@ -332,7 +343,7 @@ fn collect_call_branches(note_script: &NoteScript) -> Vec<BTreeSet<Digest>> {
 /// Generates a list of calls invoked in each execution branch of the provided code block.
 fn recursively_collect_call_branches(
     mast_node_id: MastNodeId,
-    branches: &mut Vec<BTreeSet<Digest>>,
+    branches: &mut Vec<BTreeSet<Word>>,
     note_script_forest: &Arc<MastForest>,
 ) {
     let mast_node = &note_script_forest[mast_node_id];

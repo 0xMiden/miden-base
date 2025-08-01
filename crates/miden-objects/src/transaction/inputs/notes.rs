@@ -2,7 +2,7 @@ use alloc::{collections::BTreeSet, vec::Vec};
 
 use super::TransactionInputError;
 use crate::{
-    Digest, Felt, Hasher, MAX_INPUT_NOTES_PER_TX, Word,
+    Felt, Hasher, MAX_INPUT_NOTES_PER_TX, Word,
     note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier},
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -18,7 +18,7 @@ use crate::{
 /// - an optional note commitment, which allows for delayed note authentication.
 pub trait ToInputNoteCommitments {
     fn nullifier(&self) -> Nullifier;
-    fn note_commitment(&self) -> Option<Digest>;
+    fn note_commitment(&self) -> Option<Word>;
 }
 
 // INPUT NOTES
@@ -32,7 +32,7 @@ pub trait ToInputNoteCommitments {
 #[derive(Debug, Clone)]
 pub struct InputNotes<T> {
     notes: Vec<T>,
-    commitment: Digest,
+    commitment: Word,
 }
 
 impl<T: ToInputNoteCommitments> InputNotes<T> {
@@ -51,7 +51,7 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
 
         let mut seen_notes = BTreeSet::new();
         for note in notes.iter() {
-            if !seen_notes.insert(note.nullifier().inner()) {
+            if !seen_notes.insert(note.nullifier().as_word()) {
                 return Err(TransactionInputError::DuplicateInputNote(note.nullifier()));
             }
         }
@@ -85,7 +85,7 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
     /// > || noteidn_or_zero)
     ///
     /// Otherwise defined as ZERO for empty lists.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.commitment
     }
 
@@ -121,6 +121,24 @@ impl<T: ToInputNoteCommitments> InputNotes<T> {
     /// Converts self into a vector of input notes.
     pub fn into_vec(self) -> Vec<T> {
         self.notes
+    }
+}
+
+impl InputNotes<InputNote> {
+    /// Returns new [`InputNotes`] instantiated from the provided vector of [notes](Note).
+    ///
+    /// This constructor internally converts the provided notes into the
+    /// [`InputNote::Unauthenticated`], which are then used in the [`Self::new`] constructor.
+    ///
+    /// # Errors
+    /// Returns an error if:
+    /// - The total number of notes is greater than [`MAX_INPUT_NOTES_PER_TX`].
+    /// - The vector of notes contains duplicates.
+    pub fn from_unauthenticated_notes(notes: Vec<Note>) -> Result<Self, TransactionInputError> {
+        let input_note_vec =
+            notes.into_iter().map(|note| InputNote::Unauthenticated { note }).collect();
+
+        Self::new(input_note_vec)
     }
 }
 
@@ -182,21 +200,20 @@ impl<T: Deserializable + ToInputNoteCommitments> Deserializable for InputNotes<T
 // HELPER FUNCTIONS
 // ------------------------------------------------------------------------------------------------
 
-fn build_input_note_commitment<T: ToInputNoteCommitments>(notes: &[T]) -> Digest {
+fn build_input_note_commitment<T: ToInputNoteCommitments>(notes: &[T]) -> Word {
     // Note: This implementation must be kept in sync with the kernel's `process_input_notes_data`
     if notes.is_empty() {
-        return Digest::default();
+        return Word::empty();
     }
 
     let mut elements: Vec<Felt> = Vec::with_capacity(notes.len() * 2);
     for commitment_data in notes {
         let nullifier = commitment_data.nullifier();
-        let empty_word_or_note_commitment = &commitment_data
-            .note_commitment()
-            .map_or(Word::default(), |note_id| note_id.into());
+        let empty_word_or_note_commitment =
+            &commitment_data.note_commitment().map_or(Word::empty(), |note_id| note_id);
 
         elements.extend_from_slice(nullifier.as_elements());
-        elements.extend_from_slice(empty_word_or_note_commitment);
+        elements.extend_from_slice(empty_word_or_note_commitment.as_elements());
     }
     Hasher::hash_elements(&elements)
 }
@@ -267,7 +284,7 @@ impl ToInputNoteCommitments for InputNote {
         self.note().nullifier()
     }
 
-    fn note_commitment(&self) -> Option<Digest> {
+    fn note_commitment(&self) -> Option<Word> {
         match self {
             InputNote::Authenticated { .. } => None,
             InputNote::Unauthenticated { note } => Some(note.commitment()),
@@ -280,7 +297,7 @@ impl ToInputNoteCommitments for &InputNote {
         (*self).nullifier()
     }
 
-    fn note_commitment(&self) -> Option<Digest> {
+    fn note_commitment(&self) -> Option<Word> {
         (*self).note_commitment()
     }
 }

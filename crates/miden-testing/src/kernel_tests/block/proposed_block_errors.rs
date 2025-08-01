@@ -5,13 +5,15 @@ use miden_objects::{
     MAX_BATCHES_PER_BLOCK, ProposedBlockError,
     account::AccountId,
     block::{BlockInputs, BlockNumber, ProposedBlock},
+    crypto::merkle::SparseMerklePath,
     note::NoteInclusionProof,
     testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     transaction::{OutputNote, ProvenTransaction},
 };
+use vm_processor::crypto::MerklePath;
 
 use super::utils::{
-    TestSetup, generate_account, generate_batch, generate_executed_tx_with_authenticated_notes,
+    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
     generate_fungible_asset, generate_output_note, generate_tracked_note,
     generate_tracked_note_with_asset, generate_tx_with_authenticated_notes,
     generate_tx_with_expiration, generate_tx_with_unauthenticated_notes, generate_untracked_note,
@@ -22,20 +24,11 @@ use crate::{ProvenTransactionExt, utils::create_spawn_note};
 /// Tests that too many batches produce an error.
 #[test]
 fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
-    let count = MAX_BATCHES_PER_BLOCK;
-    let TestSetup { mut chain, accounts, mut txs, .. } = setup_chain(count);
-
-    // At this time, MockChain won't let us build more than 64 transactions before sealing a block,
-    // so we add one more tx manually.
-    let account0 = accounts.get(&0).unwrap();
-    let accountx = generate_account(&mut chain);
-    let notex = generate_tracked_note(&mut chain, account0.id(), accountx.id());
-    chain.prove_next_block()?;
-    let tx = generate_tx_with_authenticated_notes(&mut chain, accountx.id(), &[notex.id()]);
-    txs.insert(count, tx);
+    let count = MAX_BATCHES_PER_BLOCK + 1;
+    let TestSetup { mut chain, mut txs, .. } = setup_chain(count);
 
     let mut batches = Vec::with_capacity(count);
-    for i in 0..(count + 1) {
+    for i in 0..count {
         batches.push(generate_batch(&mut chain, vec![txs.remove(&i).unwrap()]));
     }
 
@@ -365,9 +358,10 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
         .get(&note0.id())
         .expect("note proof should have been fetched")
         .clone();
-    let mut invalid_note_path = original_note_proof.note_path().clone();
+    let mut original_merkle_path = MerklePath::from(original_note_proof.note_path().clone());
+    original_merkle_path.push(block2.commitment());
     // Add a random hash to the path to make it invalid.
-    invalid_note_path.push(block2.commitment());
+    let invalid_note_path = SparseMerklePath::try_from(original_merkle_path).unwrap();
     let invalid_note_proof = NoteInclusionProof::new(
         original_note_proof.location().block_num(),
         original_note_proof.location().node_index_in_block(),

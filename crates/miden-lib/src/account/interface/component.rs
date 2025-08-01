@@ -11,10 +11,7 @@ use miden_objects::{
     utils::word_to_masm_push_string,
 };
 
-use crate::account::{
-    components::{basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library},
-    interface::AccountInterfaceError,
-};
+use crate::account::{components::WellKnownComponent, interface::AccountInterfaceError};
 
 // ACCOUNT COMPONENT INTERFACE
 // ================================================================================================
@@ -31,11 +28,17 @@ pub enum AccountComponentInterface {
     /// slot has a format of `[max_supply, faucet_decimals, token_symbol, 0]`.
     BasicFungibleFaucet(u8),
     /// Exposes procedures from the
-    /// [`RpoFalcon512`][crate::account::auth::RpoFalcon512] module.
+    /// [`AuthRpoFalcon512`][crate::account::auth::AuthRpoFalcon512] module.
     ///
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
-    RpoFalcon512(u8),
+    AuthRpoFalcon512(u8),
+    /// Exposes procedures from the
+    /// [`AuthRpoFalcon512Acl`][crate::account::auth::AuthRpoFalcon512Acl] module.
+    ///
+    /// Internal value holds the storage slot index where the public key for the RpoFalcon512
+    /// authentication scheme is stored.
+    AuthRpoFalcon512Acl(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -46,7 +49,7 @@ pub enum AccountComponentInterface {
 impl AccountComponentInterface {
     /// Returns a string line with the name of the [AccountComponentInterface] enum variant.
     ///
-    /// In case of a [AccountComponentInterface::Custom] along with the name of the enum variant  
+    /// In case of a [AccountComponentInterface::Custom] along with the name of the enum variant
     /// the vector of shortened hex representations of the used procedures is returned, e.g.
     /// `Custom([0x6d93447, 0x0bf23d8])`.
     pub fn name(&self) -> String {
@@ -55,7 +58,10 @@ impl AccountComponentInterface {
             AccountComponentInterface::BasicFungibleFaucet(_) => {
                 "Basic Fungible Faucet".to_string()
             },
-            AccountComponentInterface::RpoFalcon512(_) => "RPO Falcon512".to_string(),
+            AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
+            AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
+                "RPO Falcon512 Procedure ACL".to_string()
+            },
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()
@@ -77,60 +83,18 @@ impl AccountComponentInterface {
             .map(|procedure_info| (*procedure_info.mast_root(), procedure_info))
             .collect();
 
-        // Basic Wallet
-        // ------------------------------------------------------------------------------------------------
+        // Well known component interfaces
+        // ----------------------------------------------------------------------------------------
 
-        if basic_wallet_library()
-            .mast_forest()
-            .procedure_digests()
-            .all(|proc_digest| procedures.contains_key(&proc_digest))
-        {
-            basic_wallet_library().mast_forest().procedure_digests().for_each(
-                |component_procedure| {
-                    procedures.remove(&component_procedure);
-                },
-            );
+        // Get all available well known components which could be constructed from the `procedures`
+        // map and push them to the `component_interface_vec`
+        WellKnownComponent::extract_well_known_components(
+            &mut procedures,
+            &mut component_interface_vec,
+        );
 
-            component_interface_vec.push(AccountComponentInterface::BasicWallet);
-        }
-
-        // Basic Fungible Faucet
-        // ------------------------------------------------------------------------------------------------
-
-        if basic_fungible_faucet_library()
-            .mast_forest()
-            .procedure_digests()
-            .all(|proc_digest| procedures.contains_key(&proc_digest))
-        {
-            let mut storage_offset = Default::default();
-            basic_fungible_faucet_library().mast_forest().procedure_digests().for_each(
-                |component_procedure| {
-                    if let Some(proc_info) = procedures.remove(&component_procedure) {
-                        storage_offset = proc_info.storage_offset();
-                    }
-                },
-            );
-
-            component_interface_vec
-                .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset));
-        }
-
-        // RPO Falcon 512
-        // ------------------------------------------------------------------------------------------------
-
-        let rpo_falcon_proc = rpo_falcon_512_library()
-            .mast_forest()
-            .procedure_digests()
-            .next()
-            .expect("rpo falcon 512 component should export exactly one procedure");
-
-        if let Some(proc_info) = procedures.remove(&rpo_falcon_proc) {
-            component_interface_vec
-                .push(AccountComponentInterface::RpoFalcon512(proc_info.storage_offset()));
-        }
-
-        // Custom interfaces
-        // ------------------------------------------------------------------------------------------------
+        // Custom component interfaces
+        // ----------------------------------------------------------------------------------------
 
         let mut custom_interface_procs_map = BTreeMap::<u8, Vec<AccountProcedureInfo>>::new();
         procedures.into_iter().for_each(|(_, proc_info)| {
@@ -178,7 +142,7 @@ impl AccountComponentInterface {
     ///
     /// ```masm
     ///     push.{note information}
-    ///     
+    ///
     ///     push.{asset amount}
     ///     call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop
     /// ```
@@ -234,7 +198,7 @@ impl AccountComponentInterface {
                     }
 
                     body.push_str(&format!(
-                        "push.{amount} 
+                        "push.{amount}
                         call.::miden::contracts::faucets::basic_fungible::distribute dropw dropw drop\n",
                         amount = asset.unwrap_fungible().amount()
                     ));

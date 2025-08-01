@@ -9,7 +9,6 @@ use miden_objects::{
         },
     },
 };
-use vm_processor::ProcessState;
 
 use super::{Felt, Hasher, ONE, Word};
 use crate::TransactionContextBuilder;
@@ -25,7 +24,7 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::asset
 
         begin
@@ -42,11 +41,10 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
     );
 
     let process = &tx_context.execute_code(&code)?;
-    let process_state: ProcessState = process.into();
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     assert_eq!(
-        process_state.get_stack_word(0),
+        process.stack.get_word(0),
         Word::from([
             Felt::new(FUNGIBLE_ASSET_AMOUNT),
             Felt::new(0),
@@ -70,7 +68,7 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::asset
 
         begin
@@ -89,9 +87,8 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     );
 
     let process = &tx_context.execute_code(&code)?;
-    let process_state: ProcessState = process.into();
 
-    assert_eq!(process_state.get_stack_word(0), Word::from(non_fungible_asset));
+    assert_eq!(process.stack.get_word(0), Word::from(non_fungible_asset));
     Ok(())
 }
 
@@ -109,7 +106,7 @@ fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::asset
+        use.$kernel::asset
 
         begin
             push.{asset} 
@@ -123,8 +120,7 @@ fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
     );
 
     let process = &tx_context.execute_code(&code)?;
-    let process_state: ProcessState = process.into();
 
-    assert_eq!(process_state.get_stack_word(0), encoded);
+    assert_eq!(process.stack.get_word(0), encoded);
     Ok(())
 }

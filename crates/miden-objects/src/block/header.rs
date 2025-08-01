@@ -1,7 +1,8 @@
-use alloc::vec::Vec;
+use alloc::{string::ToString, vec::Vec};
 
 use crate::{
-    Digest, Felt, Hasher, ZERO,
+    FeeError, Felt, Hasher, Word, ZERO,
+    account::{AccountId, AccountType},
     block::BlockNumber,
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
@@ -23,6 +24,8 @@ use crate::{
 /// - `tx_kernel_commitment` a commitment to all transaction kernels supported by this block.
 /// - `proof_commitment` is the commitment of the block's STARK proof attesting to the correct state
 ///   transition.
+/// - `fee_parameters` are the parameters defining the base fees and the native asset, see
+///   [`FeeParameters`] for more details.
 /// - `timestamp` is the time when the block was created, in seconds since UNIX epoch. Current
 ///   representation is sufficient to represent time up to year 2106.
 /// - `sub_commitment` is a sequential hash of all fields except the note_root.
@@ -30,18 +33,19 @@ use crate::{
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct BlockHeader {
     version: u32,
-    prev_block_commitment: Digest,
+    prev_block_commitment: Word,
     block_num: BlockNumber,
-    chain_commitment: Digest,
-    account_root: Digest,
-    nullifier_root: Digest,
-    note_root: Digest,
-    tx_commitment: Digest,
-    tx_kernel_commitment: Digest,
-    proof_commitment: Digest,
+    chain_commitment: Word,
+    account_root: Word,
+    nullifier_root: Word,
+    note_root: Word,
+    tx_commitment: Word,
+    tx_kernel_commitment: Word,
+    proof_commitment: Word,
+    fee_parameters: FeeParameters,
     timestamp: u32,
-    sub_commitment: Digest,
-    commitment: Digest,
+    sub_commitment: Word,
+    commitment: Word,
 }
 
 impl BlockHeader {
@@ -49,15 +53,16 @@ impl BlockHeader {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         version: u32,
-        prev_block_commitment: Digest,
+        prev_block_commitment: Word,
         block_num: BlockNumber,
-        chain_commitment: Digest,
-        account_root: Digest,
-        nullifier_root: Digest,
-        note_root: Digest,
-        tx_commitment: Digest,
-        tx_kernel_commitment: Digest,
-        proof_commitment: Digest,
+        chain_commitment: Word,
+        account_root: Word,
+        nullifier_root: Word,
+        note_root: Word,
+        tx_commitment: Word,
+        tx_kernel_commitment: Word,
+        proof_commitment: Word,
+        fee_parameters: FeeParameters,
         timestamp: u32,
     ) -> Self {
         // compute block sub commitment
@@ -70,6 +75,7 @@ impl BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            &fee_parameters,
             timestamp,
             block_num,
         );
@@ -91,6 +97,7 @@ impl BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            fee_parameters,
             timestamp,
             sub_commitment,
             commitment,
@@ -106,7 +113,7 @@ impl BlockHeader {
     }
 
     /// Returns the commitment of the block header.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.commitment
     }
 
@@ -116,12 +123,12 @@ impl BlockHeader {
     /// This is used in the block commitment computation which is a 2-to-1 hash of the sub
     /// commitment and the note root [hash(sub_commitment, note_root)]. This procedure is used to
     /// make the note root easily accessible without having to unhash the entire header.
-    pub fn sub_commitment(&self) -> Digest {
+    pub fn sub_commitment(&self) -> Word {
         self.sub_commitment
     }
 
     /// Returns the commitment to the previous block header.
-    pub fn prev_block_commitment(&self) -> Digest {
+    pub fn prev_block_commitment(&self) -> Word {
         self.prev_block_commitment
     }
 
@@ -138,22 +145,22 @@ impl BlockHeader {
     }
 
     /// Returns the chain commitment.
-    pub fn chain_commitment(&self) -> Digest {
+    pub fn chain_commitment(&self) -> Word {
         self.chain_commitment
     }
 
     /// Returns the account database root.
-    pub fn account_root(&self) -> Digest {
+    pub fn account_root(&self) -> Word {
         self.account_root
     }
 
     /// Returns the nullifier database root.
-    pub fn nullifier_root(&self) -> Digest {
+    pub fn nullifier_root(&self) -> Word {
         self.nullifier_root
     }
 
     /// Returns the note root.
-    pub fn note_root(&self) -> Digest {
+    pub fn note_root(&self) -> Word {
         self.note_root
     }
 
@@ -162,7 +169,7 @@ impl BlockHeader {
     /// The commitment is computed as sequential hash of (`transaction_id`, `account_id`) tuples.
     /// This makes it possible for the verifier to link transaction IDs to the accounts which
     /// they were executed against.
-    pub fn tx_commitment(&self) -> Digest {
+    pub fn tx_commitment(&self) -> Word {
         self.tx_commitment
     }
 
@@ -170,13 +177,18 @@ impl BlockHeader {
     ///
     /// The transaction kernel commitment is computed as a sequential hash of all transaction kernel
     /// hashes.
-    pub fn tx_kernel_commitment(&self) -> Digest {
+    pub fn tx_kernel_commitment(&self) -> Word {
         self.tx_kernel_commitment
     }
 
     /// Returns the proof commitment.
-    pub fn proof_commitment(&self) -> Digest {
+    pub fn proof_commitment(&self) -> Word {
         self.proof_commitment
+    }
+
+    /// Returns a reference to the [`FeeParameters`] in this header.
+    pub fn fee_parameters(&self) -> &FeeParameters {
+        &self.fee_parameters
     }
 
     /// Returns the timestamp at which the block was created, in seconds since UNIX epoch.
@@ -197,21 +209,22 @@ impl BlockHeader {
     /// The sub commitment is computed as a sequential hash of the following fields:
     /// `prev_block_commitment`, `chain_commitment`, `account_root`, `nullifier_root`, `note_root`,
     /// `tx_commitment`, `tx_kernel_commitment`, `proof_commitment`, `version`, `timestamp`,
-    /// `block_num` (all fields except the `note_root`).
+    /// `block_num`, `native_asset_id`, `verification_base_fee` (all fields except the `note_root`).
     #[allow(clippy::too_many_arguments)]
     fn compute_sub_commitment(
         version: u32,
-        prev_block_commitment: Digest,
-        chain_commitment: Digest,
-        account_root: Digest,
-        nullifier_root: Digest,
-        tx_commitment: Digest,
-        tx_kernel_commitment: Digest,
-        proof_commitment: Digest,
+        prev_block_commitment: Word,
+        chain_commitment: Word,
+        account_root: Word,
+        nullifier_root: Word,
+        tx_commitment: Word,
+        tx_kernel_commitment: Word,
+        proof_commitment: Word,
+        fee_parameters: &FeeParameters,
         timestamp: u32,
         block_num: BlockNumber,
-    ) -> Digest {
-        let mut elements: Vec<Felt> = Vec::with_capacity(32);
+    ) -> Word {
+        let mut elements: Vec<Felt> = Vec::with_capacity(40);
         elements.extend_from_slice(prev_block_commitment.as_elements());
         elements.extend_from_slice(chain_commitment.as_elements());
         elements.extend_from_slice(account_root.as_elements());
@@ -220,6 +233,13 @@ impl BlockHeader {
         elements.extend_from_slice(tx_kernel_commitment.as_elements());
         elements.extend_from_slice(proof_commitment.as_elements());
         elements.extend([block_num.into(), version.into(), timestamp.into(), ZERO]);
+        elements.extend([
+            fee_parameters.native_asset_id().suffix(),
+            fee_parameters.native_asset_id().prefix().as_felt(),
+            fee_parameters.verification_base_fee().into(),
+            ZERO,
+        ]);
+        elements.extend([ZERO, ZERO, ZERO, ZERO]);
         Hasher::hash_elements(&elements)
     }
 }
@@ -239,6 +259,7 @@ impl Serializable for BlockHeader {
         self.tx_commitment.write_into(target);
         self.tx_kernel_commitment.write_into(target);
         self.proof_commitment.write_into(target);
+        self.fee_parameters.write_into(target);
         self.timestamp.write_into(target);
     }
 }
@@ -255,6 +276,7 @@ impl Deserializable for BlockHeader {
         let tx_commitment = source.read()?;
         let tx_kernel_commitment = source.read()?;
         let proof_commitment = source.read()?;
+        let fee_parameters = source.read()?;
         let timestamp = source.read()?;
 
         Ok(Self::new(
@@ -268,33 +290,114 @@ impl Deserializable for BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            fee_parameters,
             timestamp,
         ))
     }
 }
 
+// FEE PARAMETERS
+// ================================================================================================
+
+/// The fee-related parameters of a block.
+///
+/// This defines how to compute the fees of a transaction and which asset fees can be paid in.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FeeParameters {
+    /// The [`AccountId`] of the fungible faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    native_asset_id: AccountId,
+    /// The base fee (in base units) capturing the cost for the verification of a transaction.
+    verification_base_fee: u32,
+}
+
+impl FeeParameters {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`FeeParameters`] from the provided inputs.
+    pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Result<Self, FeeError> {
+        if !matches!(native_asset_id.account_type(), AccountType::FungibleFaucet) {
+            return Err(FeeError::NativeAssetIdNotFungible {
+                account_type: native_asset_id.account_type(),
+            });
+        }
+
+        Ok(Self { native_asset_id, verification_base_fee })
+    }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    pub fn native_asset_id(&self) -> AccountId {
+        self.native_asset_id
+    }
+
+    /// Returns the base fee capturing the cost for the verification of a transaction.
+    pub fn verification_base_fee(&self) -> u32 {
+        self.verification_base_fee
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for FeeParameters {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.native_asset_id.write_into(target);
+        self.verification_base_fee.write_into(target);
+    }
+}
+
+impl Deserializable for FeeParameters {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let native_asset_id = source.read()?;
+        let verification_base_fee = source.read()?;
+
+        Self::new(native_asset_id, verification_base_fee)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+// TESTS
+// ================================================================================================
+
 #[cfg(test)]
 mod tests {
+    use assert_matches::assert_matches;
     use vm_core::Word;
-    use winter_rand_utils::rand_array;
+    use winter_rand_utils::rand_value;
 
     use super::*;
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET;
 
     #[test]
     fn test_serde() {
-        let chain_commitment: Word = rand_array();
-        let note_root: Word = rand_array();
-        let tx_kernel_commitment: Word = rand_array();
+        let chain_commitment = rand_value::<Word>();
+        let note_root = rand_value::<Word>();
+        let tx_kernel_commitment = rand_value::<Word>();
         let header = BlockHeader::mock(
             0,
-            Some(chain_commitment.into()),
-            Some(note_root.into()),
+            Some(chain_commitment),
+            Some(note_root),
             &[],
-            tx_kernel_commitment.into(),
+            tx_kernel_commitment,
         );
         let serialized = header.to_bytes();
         let deserialized = BlockHeader::read_from_bytes(&serialized).unwrap();
 
         assert_eq!(deserialized, header);
+    }
+
+    /// Tests that the fee parameters constructor fails when the provided account ID is not a
+    /// fungible faucet.
+    #[test]
+    fn fee_parameters_fail_when_native_asset_is_not_fungible() {
+        assert_matches!(
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET.try_into().unwrap(), 0)
+                .unwrap_err(),
+            FeeError::NativeAssetIdNotFungible { .. }
+        );
     }
 }

@@ -1,5 +1,5 @@
 use miden_objects::{
-    AccountError, Felt, WORD_SIZE, Word,
+    AccountError, Felt, WORD_SIZE, Word, WordError,
     account::{AccountHeader, AccountId},
 };
 
@@ -18,8 +18,11 @@ pub const OUTPUT_NOTES_COMMITMENT_WORD_IDX: usize = 0;
 /// The index of the word at which the account update commitment is stored on the output stack.
 pub const ACCOUNT_UPDATE_COMMITMENT_WORD_IDX: usize = 1;
 
+/// The index of the word at which the fee asset is stored on the output stack.
+pub const FEE_ASSET_WORD_IDX: usize = 2;
+
 /// The index of the item at which the expiration block height is stored on the output stack.
-pub const EXPIRATION_BLOCK_ELEMENT_IDX: usize = 8;
+pub const EXPIRATION_BLOCK_ELEMENT_IDX: usize = 12;
 
 // ACCOUNT HEADER EXTRACTOR
 // ================================================================================================
@@ -41,14 +44,11 @@ pub fn parse_final_account_header(elements: &[Felt]) -> Result<AccountHeader, Ac
     .map_err(AccountError::FinalAccountHeaderIdParsingFailed)?;
     let nonce = elements[ACCT_ID_AND_NONCE_OFFSET as usize + ACCT_NONCE_IDX];
     let vault_root = parse_word(elements, ACCT_VAULT_ROOT_OFFSET)
-        .expect("we should have sliced off exactly 4 bytes")
-        .into();
+        .expect("we should have sliced off exactly 4 bytes");
     let storage_commitment = parse_word(elements, ACCT_STORAGE_COMMITMENT_OFFSET)
-        .expect("we should have sliced off exactly 4 bytes")
-        .into();
+        .expect("we should have sliced off exactly 4 bytes");
     let code_commitment = parse_word(elements, ACCT_CODE_COMMITMENT_OFFSET)
-        .expect("we should have sliced off exactly 4 bytes")
-        .into();
+        .expect("we should have sliced off exactly 4 bytes");
 
     Ok(AccountHeader::new(id, nonce, vault_root, storage_commitment, code_commitment))
 }
@@ -57,6 +57,6 @@ pub fn parse_final_account_header(elements: &[Felt]) -> Result<AccountHeader, Ac
 // ================================================================================================
 
 /// Creates a new `Word` instance from the slice of `Felt`s using provided offset.
-fn parse_word(data: &[Felt], offset: MemoryOffset) -> Option<Word> {
-    TryInto::<[Felt; 4]>::try_into(&data[offset as usize..offset as usize + WORD_SIZE]).ok()
+fn parse_word(data: &[Felt], offset: MemoryOffset) -> Result<Word, WordError> {
+    Word::try_from(&data[offset as usize..offset as usize + WORD_SIZE])
 }

@@ -1,6 +1,6 @@
 use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
     Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
     account::AccountId,
@@ -11,14 +11,20 @@ use miden_objects::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
     },
-    vm::{AdviceMap, StackOutputs},
+    vm::StackOutputs,
 };
-use vm_processor::{AdviceInputs, MemAdviceProvider, Process, RecAdviceProvider};
+use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
-use super::{TransactionExecutorError, TransactionHost};
-use crate::{auth::TransactionAuthenticator, host::ScriptMastForestStore};
+use super::TransactionExecutorError;
+use crate::{
+    auth::TransactionAuthenticator,
+    host::{AccountProcedureIndexMap, ScriptMastForestStore},
+};
+
+mod exec_host;
+pub use exec_host::TransactionExecutorHost;
 
 mod data_store;
 pub use data_store::DataStore;
@@ -38,22 +44,23 @@ pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
 /// The transaction executor uses dynamic dispatch with trait objects for the [DataStore] and
 /// [TransactionAuthenticator], allowing it to be used with different backend implementations.
 /// At the moment of execution, the [DataStore] is expected to provide all required MAST nodes.
-pub struct TransactionExecutor<'store, 'auth> {
-    data_store: &'store dyn DataStore,
-    authenticator: Option<&'auth dyn TransactionAuthenticator>,
+pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
+    data_store: &'store STORE,
+    authenticator: Option<&'auth AUTH>,
     exec_options: ExecutionOptions,
 }
 
-impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
+impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
+where
+    STORE: DataStore + 'store,
+    AUTH: TransactionAuthenticator + 'auth,
+{
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
-    pub fn new(
-        data_store: &'store dyn DataStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
-    ) -> Self {
+    pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
         Self {
@@ -75,8 +82,8 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
     /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
     /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
-        data_store: &'store dyn DataStore,
-        authenticator: Option<&'auth dyn TransactionAuthenticator>,
+        data_store: &'store STORE,
+        authenticator: Option<&'auth AUTH>,
         exec_options: ExecutionOptions,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
@@ -139,7 +146,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -154,36 +161,49 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
-        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
+        let input_notes = tx_inputs.input_notes();
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host = TransactionHost::new(
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
+        let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
-            advice_recorder,
+            input_notes.clone(),
             self.data_store,
             script_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // Execute the transaction kernel
         let trace = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
+            advice_inputs,
             &mut host,
             self.exec_options,
             source_manager,
         )
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)?;
+        .map_err(map_execution_error)?;
+        let (stack_outputs, advice_provider) = trace.into_outputs();
 
-        build_executed_transaction(tx_args, tx_inputs, trace.stack_outputs().clone(), host)
+        // The stack is not necessary since it is being reconstructed when re-executing.
+        let advice_inputs = AdviceInputs::default()
+            .with_map(advice_provider.map)
+            .with_merkle_store(advice_provider.store);
+
+        build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }
 
     // SCRIPT EXECUTION
@@ -212,7 +232,7 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        source_manager: Arc<dyn SourceManager>,
+        source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) =
@@ -227,25 +247,31 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs));
-        let advice_recorder = RecAdviceProvider::from(advice_inputs.into_inner());
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         let scripts_mast_store =
             ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
 
-        let mut host = TransactionHost::new(
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
+        let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
-            advice_recorder,
+            tx_inputs.input_notes().clone(),
             self.data_store,
             scripts_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         let mut process = Process::new(
             TransactionKernel::tx_script_main().kernel().clone(),
             stack_inputs,
+            advice_inputs,
             self.exec_options,
         )
         .with_source_manager(source_manager);
@@ -297,29 +323,36 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None);
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
-        let advice_provider = MemAdviceProvider::from(advice_inputs.into_inner());
+        let input_notes = tx_inputs.input_notes();
 
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            tx_inputs.input_notes().iter().map(|n| n.note().script()),
+            input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host = TransactionHost::new(
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+
+        let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
-            advice_provider,
+            input_notes.clone(),
             self.data_store,
             scripts_mast_store,
+            acct_procedure_index_map,
             self.authenticator,
-            tx_args.foreign_account_code_commitments(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        );
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         // execute the transaction kernel
         let result = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
+            advice_inputs,
             &mut host,
             self.exec_options,
             source_manager,
@@ -361,26 +394,23 @@ impl<'store, 'auth> TransactionExecutor<'store, 'auth> {
 // ================================================================================================
 
 /// Creates a new [ExecutedTransaction] from the provided data.
-fn build_executed_transaction(
+fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
+    mut advice_inputs: AdviceInputs,
     tx_args: TransactionArgs,
     tx_inputs: TransactionInputs,
     stack_outputs: StackOutputs,
-    host: TransactionHost<RecAdviceProvider>,
+    host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (advice_recorder, account_delta, output_notes, generated_signatures, tx_progress) =
-        host.into_parts();
+    let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 
-    let (mut advice_witness, _, map, _store) = advice_recorder.finalize();
-
-    let advice_map = AdviceMap::from(map);
     let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_map, output_notes)
+        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
     let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
 
-    let host_delta_commitment = account_delta.commitment();
+    let host_delta_commitment = account_delta.to_commitment();
     if tx_outputs.account_delta_commitment != host_delta_commitment {
         return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
             in_kernel_commitment: tx_outputs.account_delta_commitment,
@@ -405,14 +435,14 @@ fn build_executed_transaction(
     }
 
     // introduce generated signatures into the witness inputs
-    advice_witness.extend_map(generated_signatures);
+    advice_inputs.extend_map(generated_signatures);
 
     Ok(ExecutedTransaction::new(
         tx_inputs,
         tx_outputs,
         account_delta,
         tx_args,
-        advice_witness,
+        advice_inputs,
         tx_progress.into(),
     ))
 }
@@ -471,6 +501,26 @@ fn validate_num_cycles(num_cycles: u32) -> Result<(), TransactionExecutorError> 
         })
     } else {
         Ok(())
+    }
+}
+
+/// Remaps an execution error to a transaction executor error.
+///
+/// - If the inner error is [`TransactionKernelError::Unauthorized`], it is remapped to
+///   [`TransactionExecutorError::Unauthorized`].
+/// - Otherwise, the execution error is wrapped in
+///   [`TransactionExecutorError::TransactionProgramExecutionFailed`].
+fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
+    match exec_err {
+        ExecutionError::EventError { ref error, .. } => {
+            match error.downcast_ref::<TransactionKernelError>() {
+                Some(TransactionKernelError::Unauthorized(summary)) => {
+                    TransactionExecutorError::Unauthorized(summary.clone())
+                },
+                _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+            }
+        },
+        _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
     }
 }
 

@@ -4,6 +4,7 @@ pub mod account_component;
 pub mod account_id;
 pub mod asset;
 pub mod block;
+pub mod block_note_tree;
 pub mod constants;
 pub mod note;
 pub mod partial_blockchain;

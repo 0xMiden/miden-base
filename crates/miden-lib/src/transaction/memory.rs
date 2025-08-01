@@ -14,18 +14,19 @@ pub type StorageSlot = u8;
 //
 // Here the "end address" is the last memory address occupied by the current data
 //
-// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                     |
-// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------- |
-// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                             |
-// | Global inputs      | 400 (100)                             | 427 (106)                           |                                             |
-// | Block header       | 800 (200)                             | 835 (208)                           |                                             |
-// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                             |
-// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each     |
-// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each         |
-// | Account delta      | 532_480 (133_120)                     | 532_746 (133_186)                   |                                             |
-// | Input notes        | 4_194_304 (1_048_576)                 | ?                                   |                                             |
-// | Output notes       | 16_777_216 (4_194_304)                | ?                                   |                                             |
-// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)               | Enough for 2_097_151 key-value pairs        |
+// | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                    |
+// | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
+// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
+// | Global inputs      | 400 (100)                             | 431 (107)                           |                                            |
+// | Block header       | 800 (200)                             | 843 (210)                           |                                            |
+// | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
+// | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each    |
+// | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each        |
+// | Account delta      | 532_480 (133_120)                     | 532_742 (133_185)                   |                                            |
+// | Input notes        | 4_194_304 (1_048_576)                 | 6_356_991 (1_589_247)               | nullifiers data segment + 1024 input notes |
+// |                    |                                       |                                     | max, 2048 elements each                    |
+// | Output notes       | 16_777_216 (4_194_304)                | 18_874_367 (4_718_591)              | 1024 output notes max, 2048 elements each  |
+// | Link Map Memory    | 33_554_432 (8_388_608)                | 67_108_863 (16_777_215)             | Enough for 2_097_151 key-value pairs       |
 
 // Relative layout of one account
 //
@@ -55,10 +56,9 @@ pub type StorageSlot = u8;
 //
 // | Section                      | Start address (word pointer) | End address (word pointer) | Comment                             |
 // | ---------------------------- | :--------------------------: | :------------------------: | ----------------------------------- |
-// | Nonce                        | 0 (0)                        | 3 (0)                      |                                     |
-// | Fungible Asset Delta Ptr     | 4 (1)                        | 7 (1)                      |                                     |
-// | Non-Fungible Asset Delta Ptr | 8 (2)                        | 11 (2)                     |                                     |
-// | Storage Map Delta Ptrs       | 12 (3)                       | 267 (66)                   | Max 255 storage map deltas          |
+// | Fungible Asset Delta Ptr     | 0 (0)                        | 3 (0)                      |                                     |
+// | Non-Fungible Asset Delta Ptr | 4 (1)                        | 7 (1)                      |                                     |
+// | Storage Map Delta Ptrs       | 8 (2)                        | 263 (65)                   | Max 255 storage map deltas          |
 
 // RESERVED ACCOUNT STORAGE SLOTS
 // ------------------------------------------------------------------------------------------------
@@ -133,8 +133,11 @@ pub const INIT_NONCE_PTR: MemoryAddress = 416;
 /// The memory address at which the transaction script mast root is store
 pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 420;
 
-/// The memory address at which the key of the transaction script arguments is stored.
-pub const TX_SCRIPT_ARGS_KEY: MemoryAddress = 424;
+/// The memory address at which the transaction script arguments are stored.
+pub const TX_SCRIPT_ARGS: MemoryAddress = 424;
+
+/// The memory address at which the key of the auth procedure arguments is stored.
+pub const AUTH_ARGS_PTR: MemoryAddress = 428;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------
@@ -175,8 +178,20 @@ pub const PROTOCOL_VERSION_IDX: DataIndex = 1;
 /// The index of the timestamp within the block metadata
 pub const TIMESTAMP_IDX: DataIndex = 2;
 
+/// The memory address at which the fee parameters are stored. These occupy a double word.
+pub const FEE_PARAMETERS_PTR: MemoryAddress = 832;
+
+/// The index of the native asset ID suffix within the block fee parameters.
+pub const NATIVE_ASSET_ID_SUFFIX_IDX: DataIndex = 0;
+
+/// The index of the native asset ID prefix within the block fee parameters.
+pub const NATIVE_ASSET_ID_PREFIX_IDX: DataIndex = 1;
+
+/// The index of the verification base fee within the block fee parameters.
+pub const VERIFICATION_BASE_FEE_IDX: DataIndex = 2;
+
 /// The memory address at which the note root is stored
-pub const NOTE_ROOT_PTR: MemoryAddress = 832;
+pub const NOTE_ROOT_PTR: MemoryAddress = 840;
 
 // CHAIN DATA
 // ------------------------------------------------------------------------------------------------
@@ -297,12 +312,6 @@ pub const ACCT_STORAGE_SLOT_NUM_ELEMENTS: u8 = 8;
 pub const NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR: MemoryAddress =
     NATIVE_ACCOUNT_DATA_PTR + ACCT_STORAGE_SLOTS_SECTION_OFFSET;
 
-// ACCOUNT DELTA
-// ------------------------------------------------------------------------------------------------
-
-/// The memory address at which the nonce delta is stored.
-pub const ACCOUNT_DELTA_NONCE_PTR: MemoryAddress = 532_480;
-
 // NOTES DATA
 // ================================================================================================
 
@@ -321,21 +330,23 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 // │   NUM   │  NOTE 0   │  NOTE 1   │ ... │  NOTE n   │ PADDING │ NOTE 0 │ NOTE 1 │  ...  │ NOTE n │
 // │  NOTES  │ NULLIFIER │ NULLIFIER │     │ NULLIFIER │         │  DATA  │  DATA  │       │  DATA  │
 // └─────────┴───────────┴───────────┴─────┴───────────┴─────────┴────────┴────────┴───────┴────────┘
-//  4_194_304  4_194_308  4_194_312    4_194_304+4(n+1)      4_259_840  +2048    +4096  +2048(n+1)
+//  4_194_304 4_194_308   4_194_312         4_194_304+4(n+1)  4_259_840   +2048    +4096   +2048n
+//
+// Here `n` represents number of input notes.
 //
 // Each nullifier occupies a single word. A data section for each note consists of exactly 512
 // words and is laid out like so:
 //
-// ┌──────┬────────┬────────┬────────┬────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
-// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │ ASSETS │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
-// │  ID  │  NUM   │  ROOT  │  HASH  │  HASH  │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
-// ├──────┼────────┼────────┼────────┼────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
-// 0      4        8        12       16       20     24      28       32       36 + 4n
+// ┌──────┬────────┬────────┬────────┬────────────┬───────────┬──────┬───────┬────────┬────────┬───────┬─────┬───────┬─────────┬
+// │ NOTE │ SERIAL │ SCRIPT │ INPUTS │   ASSETS   | RECIPIENT │ META │ NOTE  │  NUM   │  NUM   │ ASSET │ ... │ ASSET │ PADDING │
+// │  ID  │  NUM   │  ROOT  │  HASH  │ COMMITMENT |           │ DATA │ ARGS  │ INPUTS │ ASSETS │   0   │     │   n   │         │
+// ├──────┼────────┼────────┼────────┼────────────┼───────────┼──────┼───────┼────────┼────────┼───────┼─────┼───────┼─────────┤
+// 0      4        8        12       16           20          24     28      32       36       40 + 4n
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
 // - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
-// - ASSETS_HASH is the key to look up note assets in the advice map.
+// - ASSETS_COMMITMENT is the key to look up note assets in the advice map.
 //
 // Notice that note input values are not loaded to the memory, only their length. In order to obtain
 // the input values the advice map should be used: they are stored there as 
@@ -361,12 +372,13 @@ pub const INPUT_NOTE_ID_OFFSET: MemoryOffset = 0;
 pub const INPUT_NOTE_SERIAL_NUM_OFFSET: MemoryOffset = 4;
 pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
 pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
-pub const INPUT_NOTE_ASSETS_HASH_OFFSET: MemoryOffset = 16;
-pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 20;
-pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 24;
-pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 28;
-pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 32;
-pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
+pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
+pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 24;
+pub const INPUT_NOTE_ARGS_OFFSET: MemoryOffset = 28;
+pub const INPUT_NOTE_NUM_INPUTS_OFFSET: MemoryOffset = 32;
+pub const INPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 36;
+pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 
 // OUTPUT NOTES DATA
 // ------------------------------------------------------------------------------------------------
@@ -381,13 +393,22 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 36;
 // The total number of output notes for a transaction is stored in the bookkeeping section of the
 // memory. Data section of each note is laid out like so:
 //
-// ┌─────────┬──────────┬───────────┬─────────────┬────────────┬─────────┬─────┬─────────┬─────────┐
-// │ NOTE ID │ METADATA │ RECIPIENT │ ASSETS HASH │ NUM ASSETS │ ASSET 0 │ ... │ ASSET n │ PADDING │
-// ├─────────┼──────────┼───────────┼─────────────┼────────────┼─────────┼─────┼─────────┼─────────┤
-//      0          1          2            3            4           5             5 + n
+// ┌──────┬──────────┬───────────┬────────────┬────────────────┬─────────┬─────┬─────────┬─────────┐
+// │ NOTE │ METADATA │ RECIPIENT │   ASSETS   │   NUM ASSETS   │ ASSET 0 │ ... │ ASSET n │ PADDING │
+// |  ID  |          |           | COMMITMENT | AND DIRTY FLAG |         |     |         |         |
+// ├──────┼──────────┼───────────┼────────────┼────────────────┼─────────┼─────┼─────────┼─────────┤
+//    0        1           2           3              4             5             5 + n
 //
-// Even though NUM_ASSETS takes up a whole word, the actual value of this variable is stored in the
-// first element of the word.
+// The NUM_ASSETS_AND_DIRTY_FLAG word has the following layout:
+// `[num_assets, assets_commitment_dirty_flag, 0, 0]`, where:
+// - `num_assets` is the number of assets in this output note.
+// - `assets_commitment_dirty_flag` is the binary flag which specifies whether the assets commitment
+//   stored in this note is outdated. It holds 1 if some changes were made to the note assets since
+//   the last re-computation, and 0 otherwise.
+//
+// Dirty flag is set to 0 after every recomputation of the assets commitment in the
+// `kernel::note::compute_output_note_assets_commitment` procedure. It is set to 1 in the
+// `kernel::tx::add_asset_to_note` procedure after any change was made to the assets data .
 
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;
@@ -401,6 +422,7 @@ pub const OUTPUT_NOTE_METADATA_OFFSET: MemoryOffset = 4;
 pub const OUTPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 8;
 pub const OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const OUTPUT_NOTE_NUM_ASSETS_OFFSET: MemoryOffset = 16;
+pub const OUTPUT_NOTE_DIRTY_FLAG_OFFSET: MemoryOffset = 17;
 pub const OUTPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 20;
 
 // LINK MAP

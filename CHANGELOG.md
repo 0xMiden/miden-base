@@ -1,5 +1,53 @@
 # Changelog
 
+## 0.11.0 (TBD)
+
+### Features
+
+- Added arguments to the auth procedure ([#1501](https://github.com/0xMiden/miden-base/pull/1501)).
+- [BREAKING] Refactored `SWAP` note & added option to select the visibility of the associated payback note ([#1539](https://github.com/0xMiden/miden-base/pull/1539)).
+- Added `account_compute_delta_commitment`, `input_note_get_assets_info`, `tx_get_num_input_notes`, and `tx_get_num_output_notes` procedures to the transaction kernel ([#1609](https://github.com/0xMiden/miden-base/pull/1609)).
+- Added `output_note_get_assets_info` procedure to the transaction kernel ([#1638](https://github.com/0xMiden/miden-base/pull/1638)).
+- Implemented new `from_unauthenticated_notes` constructor for `InputNotes` ([#1629](https://github.com/0xMiden/miden-base/pull/1629)).
+- [BREAKING] Refactor `TransactionAuthenticator` to support arbitrary data signing ([#1616](https://github.com/0xMiden/miden-base/pull/1616)).
+- Pass the full `TransactionSummary` to `TransactionAuthenticator` ([#1618](https://github.com/0xMiden/miden-base/pull/1618)).
+- Add `PartialBlockchain::num_tracked_blocks()` ([#1643](https://github.com/0xMiden/miden-base/pull/1643)).
+- Add `FeeParameters` to `BlockHeader` ([#1652](https://github.com/0xMiden/miden-base/pull/1652)).
+- Added `input_note_get_recipient`, `output_note_get_recipient`, `input_note_get_metadata`, `output_note_get_metadata` procedures to the transaction kernel ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
+- Added `input_notes::get_assets` and `output_notes::get_assets` procedures to `miden` library ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
+- Added issuance accessor for fungible faucet accounts. ([#1660](https://github.com/0xMiden/miden-base/pull/1660)).
+- Add `FeeParameters` to `BlockHeader` and implement `compute_fee` ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654)).
+- Add `FeeParameters` to `BlockHeader`, implement `compute_fee` and output `FEE_ASSET` on the transaction stack ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659)).
+
+### Changes
+
+- [BREAKING] Incremented MSRV to 1.88.
+- Refactor account documentation into multiple sections ([#1523](https://github.com/0xMiden/miden-base/pull/1523)).
+- Implemented `WellKnownComponents` enum ([#1532](https://github.com/0xMiden/miden-base/pull/1532)).
+- Made `ExecutedTransaction` implement `Send` for easier consumption ([#1560](https://github.com/0xMiden/miden-base/pull/1560)).
+- [BREAKING] `Digest` was removed in favor of `Word` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
+- [BREAKING] Upgraded Miden VM to `0.16`, `miden-crypto` to `0.15` and `winterfell` crates to `0.13` ([#1564](https://github.com/0xMiden/miden-base/pull/1564), [#1594](https://github.com/0xMiden/miden-base/pull/1594)).
+- [BREAKING] Renamed `{NoteInclusionProof, AccountWitness}::inner_nodes` to `authenticated_nodes` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
+- [BREAKING] Renamed `{TransactionId, NoteId, Nullifier}::inner` -> `as_word` ([#1571](https://github.com/0xMiden/miden-base/pull/1571)).
+- Replaced `MerklePath` with `SparseMerklePath` in `NoteInclusionProof` ([#1572](https://github.com/0xMiden/miden-base/pull/1572)) .
+- [BREAKING] Split `TransactionHost` into `TransactionProverHost` and `TransactionExecutorHost` ([#1581](https://github.com/0xMiden/miden-base/pull/1581)).
+- [BREAKING] Remove pending account APIs on `MockChain` and introduce `MockChainBuilder` to simplify mock chain creation ([#1557](https://github.com/0xMiden/miden-base/pull/1557)).
+- [BREAKING] Renamed authentication components to include "auth" prefix for clarity ([#1575](https://github.com/0xMiden/miden-base/issues/1575)).
+- Add `TransactionEvent::Unauthorized` to enable aborting the transaction execution to get its transaction summary for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596), [#1634](https://github.com/0xMiden/miden-base/pull/1634), [#1651](https://github.com/0xMiden/miden-base/pull/1651)).
+- [BREAKING] Implemented `SequentialCommit` for `AccountDelta` and renamed `AccountDelta::commitment()` to `AccountDelta::to_commitment()` ([#1603](https://github.com/0xMiden/miden-base/pull/1603)).
+- Add robustness check to `create_swap_note`: error if `requested_asset` != `offered_asset` ([#1604](https://github.com/0xMiden/miden-base/pull/1604)).
+- [BREAKING] Change `account::incr_nonce` to always increment the nonce by one, disallow incrementing more than once and return the new nonce after incrementing ([#1608](https://github.com/0xMiden/miden-base/pull/1608), [#1633](https://github.com/0xMiden/miden-base/pull/1633)).
+- Added `AccountTree::contains_account_id_prefix()` and `AccountTree::id_prefix_to_smt_key()` ([#1610](https://github.com/0xMiden/miden-base/pull/1610)).
+- Added functions for pruning `PartialBlockchain` (#[1619](https://github.com/0xMiden/miden-base/pull/1619)).
+- [BREAKING] Disallow calling the auth procedure explicitly (from outside the epilogue) ([#1622](https://github.com/0xMiden/miden-base/pull/1622)).
+- [BREAKING] Include account delta commitment in signing message for the `RpoFalcon512` family of account components ([#1624](https://github.com/0xMiden/miden-base/pull/1624)).
+- [BREAKING] Rename `TransactionEvent::FalconSigToStack` to `TransactionEvent::AuthRequest` ([#1626](https://github.com/0xMiden/miden-base/pull/1626)).
+- [BREAKING] Make the naming of the transaction script arguments consistent ([#1632](https://github.com/0xMiden/miden-base/pull/1632)).
+- [BREAKING] Move `TransactionProverHost` and `TransactionExecutorHost` from dynamic dispatch to generics ([#1037](https://github.com/0xMiden/miden-node/issues/1037))
+- [BREAKING] Changed `PartialStorage` and `PartialVault` to use `PartialSmt` instead of separate merkle proofs ([#1590](https://github.com/0xMiden/miden-base/pull/1590)).
+- [BREAKING] Move transaction inputs insertion out of transaction hosts ([#1639](https://github.com/0xMiden/miden-node/issues/1639))
+- Implemented serialization for `MockChain` ([#1642](https://github.com/0xMiden/miden-base/pull/1642)).
+
 ## 0.10.0 (2025-07-08)
 
 ### Features
@@ -12,8 +60,7 @@
 - Add `with_auth_component` to `AccountBuilder` ([#1480](https://github.com/0xMiden/miden-base/pull/1480)).
 - Added `ScriptBuilder` to streamline building note & transaction scripts ([#1507](https://github.com/0xMiden/miden-base/pull/1507)).
 - Added procedure `was_procedure_called` to `miden::account` library module ([#1521](https://github.com/0xMiden/miden-base/pull/1521)).
-- Enabled loading MASM source files into `TransactionKernel::assembler` for better errors ([#1527]((https://github.com/0xMiden/miden-base/pull/1527))).
-- Refactor account documentation into multiple sections ([#1523](https://github.com/0xMiden/miden-base/pull/1523)).
+- Enabled loading MASM source files into `TransactionKernel::assembler` for better errors ([#1527](https://github.com/0xMiden/miden-base/pull/1527)).
 
 ### Changes
 
@@ -53,14 +100,13 @@
 - Defined the commitment to an empty account delta as `EMPTY_WORD` ([#1528](https://github.com/0xMiden/miden-base/pull/1528)).
 - [BREAKING] Renamed `account_get_current_commitment` to `account_compute_current_commitment` and include the latest storage commitment in the returned commitment ([#1529](https://github.com/0xMiden/miden-base/pull/1529)).
 - [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` ([#1525](https://github.com/0xMiden/miden-base/pull/1525)).
-- [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` (#1525).
 - Add a new auth component `RpoFalcon512ProcedureAcl` (#1531).
 - [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureAcl` for authentication (#1531).
+- Introduce `MockChain` methods for executing at an older block (#1541).
 
 ### Fixes
 
 - [BREAKING] Forbid the execution of the empty transactions ([#1459](https://github.com/0xMiden/miden-base/pull/1459)).
-
 
 ## 0.9.5 (2025-06-20) - `miden-lib` crate only
 

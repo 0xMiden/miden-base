@@ -11,7 +11,7 @@ mod entry_content;
 pub use entry_content::*;
 
 use super::AccountComponentTemplateError;
-use crate::account::StorageSlot;
+use crate::{Word, account::StorageSlot};
 
 mod placeholder;
 pub use placeholder::{
@@ -223,7 +223,7 @@ impl StorageEntry {
                                     )?;
                                 }
                                 // SAFETY: result is guaranteed to have all its 4 indices rewritten
-                                Ok(StorageSlot::Value(result))
+                                Ok(StorageSlot::Value(Word::from(result)))
                             })
                             .collect::<Result<Vec<StorageSlot>, _>>()?)
                     },
@@ -374,7 +374,7 @@ mod tests {
     use assembly::Assembler;
     use semver::Version;
     use vm_core::{
-        Felt, FieldElement, Word,
+        EMPTY_WORD, Felt, Word,
         utils::{Deserializable, Serializable},
     };
 
@@ -391,9 +391,9 @@ mod tests {
                 },
             },
         },
-        digest,
         errors::AccountComponentTemplateError,
         testing::account_code::CODE,
+        word,
     };
 
     #[test]
@@ -409,7 +409,7 @@ mod tests {
             .with_description("dummy description"),
         ];
 
-        let test_word: Word = digest!("0x000001").into();
+        let test_word: Word = word!("0x000001");
         let test_word = test_word.map(FeltRepresentation::from);
 
         let map_representation = MapRepresentation::new(
@@ -615,7 +615,7 @@ mod tests {
         let value_entry = component.storage_slots().get(2).unwrap();
         match value_entry {
             StorageSlot::Value(v) => {
-                assert_eq!(v, &[Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::ZERO])
+                assert_eq!(v, &EMPTY_WORD)
             },
             _ => panic!("should be value"),
         }

@@ -30,10 +30,7 @@ use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, Felt};
 
 use super::{Process, Word, ZERO};
-use crate::{
-    Auth, MockChain, assert_execution_error,
-    kernel_tests::tx::{read_root_mem_word, try_read_root_mem_word},
-};
+use crate::{Auth, MockChainBuilder, assert_execution_error, kernel_tests::tx::ProcessMemoryExt};
 
 // SIMPLE FPI TESTS
 // ================================================================================================
@@ -92,7 +89,8 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block()?;
     let fpi_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -113,7 +111,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         "
         use.std::sys
         
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -163,7 +161,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -219,7 +217,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -278,10 +276,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
     // Foreign account:   [16384; 24575] <- initialized during first FPI
     // Next account slot: [24576; 32767] <- should not be initialized
     assert_eq!(
-        try_read_root_mem_word(
-            &process.into(),
-            NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2
-        ),
+        process.try_get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
         None,
         "Memory starting from 24576 should stay uninitialized"
     );
@@ -353,11 +348,12 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
-    let mut mock_chain = MockChain::with_accounts(&[
+    let mut mock_chain = MockChainBuilder::with_accounts([
         native_account.clone(),
         foreign_account_1.clone(),
         foreign_account_2.clone(),
-    ])?;
+    ])?
+    .build()?;
     mock_chain.prove_next_block()?;
     let foreign_account_inputs_1 = mock_chain
         .get_foreign_account_inputs(foreign_account_1.id())
@@ -383,7 +379,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::tx
 
         begin
@@ -468,35 +464,29 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     // check that the first word of the first foreign account slot is correct
     assert_eq!(
-        read_root_mem_word(&process.into(), NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32),
-        [
+        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32),
+        Word::new([
             foreign_account_1.id().suffix(),
             foreign_account_1.id().prefix().as_felt(),
             ZERO,
             foreign_account_1.nonce()
-        ]
+        ])
     );
 
     // check that the first word of the second foreign account slot is correct
     assert_eq!(
-        read_root_mem_word(
-            &process.into(),
-            NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2
-        ),
-        [
+        process.get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 2),
+        Word::new([
             foreign_account_2.id().suffix(),
             foreign_account_2.id().prefix().as_felt(),
             ZERO,
             foreign_account_2.nonce()
-        ]
+        ])
     );
 
     // check that the first word of the third foreign account slot was not initialized
     assert_eq!(
-        try_read_root_mem_word(
-            &process.into(),
-            NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 3
-        ),
+        process.try_get_kernel_mem_word(NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32 * 3),
         None,
         "Memory starting from 32768 should stay uninitialized"
     );
@@ -557,7 +547,8 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block()?;
 
     let code = format!(
@@ -777,11 +768,12 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
-    let mut mock_chain = MockChain::with_accounts(&[
+    let mut mock_chain = MockChainBuilder::with_accounts([
         native_account.clone(),
         first_foreign_account.clone(),
         second_foreign_account.clone(),
-    ])?;
+    ])?
+    .build()?;
     mock_chain.prove_next_block()?;
     let foreign_account_inputs = vec![
         mock_chain
@@ -973,9 +965,9 @@ fn test_nested_fpi_stack_overflow() {
                 .build_existing()
                 .unwrap();
 
-            let mut mock_chain = MockChain::with_accounts(
-                &[vec![native_account.clone()], foreign_accounts.clone()].concat(),
-            ).unwrap();
+            let mut mock_chain = MockChainBuilder::with_accounts(
+                [vec![native_account.clone()], foreign_accounts.clone()].concat(),
+            ).unwrap().build().unwrap();
 
             mock_chain.prove_next_block().unwrap();
 
@@ -1093,7 +1085,8 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()]).unwrap();
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block().unwrap();
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -1197,7 +1190,8 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         .build_existing()?;
 
     let mut mock_chain =
-        MockChain::with_accounts(&[native_account.clone(), foreign_account.clone()])?;
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
     mock_chain.prove_next_block()?;
 
     // Make the foreign account invalid.
@@ -1244,7 +1238,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         "
       use.std::sys
 
-      use.kernel::prologue
+      use.$kernel::prologue
       use.miden::tx
 
       begin
@@ -1281,44 +1275,33 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
     let foreign_account_data_ptr = NATIVE_ACCOUNT_DATA_PTR + ACCOUNT_DATA_LENGTH as u32;
 
     assert_eq!(
-        read_root_mem_word(&process.into(), foreign_account_data_ptr + ACCT_ID_AND_NONCE_OFFSET),
-        [
+        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_ID_AND_NONCE_OFFSET),
+        Word::new([
             foreign_account.id().suffix(),
             foreign_account.id().prefix().as_felt(),
             ZERO,
             foreign_account.nonce()
-        ],
+        ]),
     );
 
     assert_eq!(
-        read_root_mem_word(&process.into(), foreign_account_data_ptr + ACCT_VAULT_ROOT_OFFSET),
-        foreign_account.vault().root().as_elements(),
+        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_VAULT_ROOT_OFFSET),
+        foreign_account.vault().root(),
     );
 
     assert_eq!(
-        read_root_mem_word(
-            &process.into(),
-            foreign_account_data_ptr + ACCT_STORAGE_COMMITMENT_OFFSET
-        ),
-        Word::from(foreign_account.storage().commitment()),
+        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_STORAGE_COMMITMENT_OFFSET),
+        foreign_account.storage().commitment(),
     );
 
     assert_eq!(
-        read_root_mem_word(&process.into(), foreign_account_data_ptr + ACCT_CODE_COMMITMENT_OFFSET),
-        foreign_account.code().commitment().as_elements(),
+        process.get_kernel_mem_word(foreign_account_data_ptr + ACCT_CODE_COMMITMENT_OFFSET),
+        foreign_account.code().commitment(),
     );
 
     assert_eq!(
-        read_root_mem_word(
-            &process.into(),
-            foreign_account_data_ptr + NUM_ACCT_STORAGE_SLOTS_OFFSET
-        ),
-        [
-            u16::try_from(foreign_account.storage().slots().len()).unwrap().into(),
-            ZERO,
-            ZERO,
-            ZERO
-        ],
+        process.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_STORAGE_SLOTS_OFFSET),
+        Word::from([u16::try_from(foreign_account.storage().slots().len()).unwrap(), 0, 0, 0]),
     );
 
     for (i, elements) in foreign_account
@@ -1328,8 +1311,7 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         .enumerate()
     {
         assert_eq!(
-            read_root_mem_word(
-                &process.into(),
+            process.get_kernel_mem_word(
                 foreign_account_data_ptr + ACCT_STORAGE_SLOTS_SECTION_OFFSET + (i as u32) * 4
             ),
             Word::try_from(elements).unwrap(),
@@ -1337,13 +1319,8 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
     }
 
     assert_eq!(
-        read_root_mem_word(&process.into(), foreign_account_data_ptr + NUM_ACCT_PROCEDURES_OFFSET),
-        [
-            u16::try_from(foreign_account.code().num_procedures()).unwrap().into(),
-            ZERO,
-            ZERO,
-            ZERO
-        ],
+        process.get_kernel_mem_word(foreign_account_data_ptr + NUM_ACCT_PROCEDURES_OFFSET),
+        Word::from([u16::try_from(foreign_account.code().num_procedures()).unwrap(), 0, 0, 0]),
     );
 
     for (i, elements) in foreign_account
@@ -1353,8 +1330,7 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         .enumerate()
     {
         assert_eq!(
-            read_root_mem_word(
-                &process.into(),
+            process.get_kernel_mem_word(
                 foreign_account_data_ptr + ACCT_PROCEDURES_SECTION_OFFSET + (i as u32) * 4
             ),
             Word::try_from(elements).unwrap(),

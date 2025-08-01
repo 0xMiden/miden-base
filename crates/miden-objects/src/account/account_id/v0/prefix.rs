@@ -1,10 +1,9 @@
 use alloc::string::{String, ToString};
 use core::{fmt, hash::Hash};
 
-use miden_crypto::utils::ByteWriter;
 use vm_core::{
     Felt,
-    utils::{ByteReader, Deserializable, Serializable},
+    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
 };
 use vm_processor::DeserializationError;
 

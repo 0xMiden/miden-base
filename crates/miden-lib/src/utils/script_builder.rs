@@ -1,10 +1,7 @@
 use alloc::{string::String, sync::Arc};
 
 use miden_objects::{
-    assembly::{
-        Assembler, Library, LibraryPath,
-        diagnostics::{NamedSource, SourceManager},
-    },
+    assembly::{Assembler, Library, LibraryPath, SourceManager, diagnostics::NamedSource},
     note::NoteScript,
     transaction::TransactionScript,
 };
@@ -123,7 +120,7 @@ impl ScriptBuilder {
 
         let module = NamedSource::new(format!("{lib_path}"), String::from(module_code.as_ref()));
 
-        self.assembler.add_module(module).map_err(|err| {
+        self.assembler.compile_and_statically_link(module).map_err(|err| {
             ScriptBuilderError::build_error_with_report("failed to assemble module", err)
         })?;
 
@@ -142,7 +139,7 @@ impl ScriptBuilder {
     /// Returns an error if:
     /// - adding the library to the assembler failed
     pub fn link_static_library(&mut self, library: &Library) -> Result<(), ScriptBuilderError> {
-        self.assembler.add_vendored_library(library).map_err(|err| {
+        self.assembler.link_static_library(library).map_err(|err| {
             ScriptBuilderError::build_error_with_report("failed to add static library", err)
         })
     }
@@ -161,7 +158,7 @@ impl ScriptBuilder {
     /// # Errors
     /// Returns an error if the library cannot be added to the assembler
     pub fn link_dynamic_library(&mut self, library: &Library) -> Result<(), ScriptBuilderError> {
-        self.assembler.add_library(library).map_err(|err| {
+        self.assembler.link_dynamic_library(library).map_err(|err| {
             ScriptBuilderError::build_error_with_report("failed to add dynamic library", err)
         })
     }

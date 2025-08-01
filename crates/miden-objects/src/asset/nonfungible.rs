@@ -3,7 +3,7 @@ use core::fmt;
 
 use super::{AccountIdPrefix, AccountType, Asset, AssetError, Felt, Hasher, Word};
 use crate::{
-    Digest, FieldElement, WORD_SIZE,
+    FieldElement, WORD_SIZE,
     utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
@@ -36,7 +36,7 @@ impl PartialOrd for NonFungibleAsset {
 
 impl Ord for NonFungibleAsset {
     fn cmp(&self, other: &Self) -> core::cmp::Ordering {
-        Digest::from(self.0).cmp(&Digest::from(other.0))
+        self.0.cmp(&other.0)
     }
 }
 
@@ -58,7 +58,7 @@ impl NonFungibleAsset {
     /// Returns an error if the provided faucet ID is not for a non-fungible asset faucet.
     pub fn new(details: &NonFungibleAssetDetails) -> Result<Self, AssetError> {
         let data_hash = Hasher::hash(details.asset_data());
-        Self::from_parts(details.faucet_id(), data_hash.into())
+        Self::from_parts(details.faucet_id(), data_hash)
     }
 
     /// Return a non-fungible asset created from the specified faucet and using the provided
@@ -213,8 +213,11 @@ impl NonFungibleAsset {
 
         // The last felt in the data_hash will be replaced by the faucet id, so we can set it to
         // zero here.
-        NonFungibleAsset::from_parts(faucet_id_prefix, [hash_0, hash_1, hash_2, Felt::ZERO])
-            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+        NonFungibleAsset::from_parts(
+            faucet_id_prefix,
+            Word::from([hash_0, hash_1, hash_2, Felt::ZERO]),
+        )
+        .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 

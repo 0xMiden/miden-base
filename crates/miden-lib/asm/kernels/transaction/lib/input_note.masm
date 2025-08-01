@@ -1,0 +1,48 @@
+use.$kernel::memory
+
+# ERRORS
+# =================================================================================================
+
+const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be less than the total number of input notes"
+
+# INPUT NOTE PROCEDURES
+# =================================================================================================
+
+#! Returns the information about assets in the input note with the specified index.
+#!
+#! The provided input note index is expected to be less than the total number of input notes.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
+#!
+#! Where:
+#! - note_index is the index of the input note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+export.get_assets_info
+    # get the memory pointer to the requested note
+    exec.memory::get_input_note_ptr
+    # => [ptr]
+
+    # get the number of assets in the note
+    dup exec.memory::get_input_note_num_assets
+    # => [num_assets, ptr]
+
+    # get the assets commitment from the note pointer
+    swap exec.memory::get_input_note_assets_commitment
+    # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Assert that the provided note index is less than the total number of input notes.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [note_index]
+export.assert_note_index_in_bounds
+    # assert that the provided note index is less than the total number of notes
+    dup exec.memory::get_num_input_notes 
+    # => [input_notes_num, note_index, note_index]
+    
+    u32assert2.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    # => [note_index]
+end
