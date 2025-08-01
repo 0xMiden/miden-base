@@ -14,79 +14,82 @@ const.ACCOUNT_GET_NONCE_OFFSET=3                      # accessor
 const.ACCOUNT_INCR_NONCE_OFFSET=4                     # mutator
 
 # Code
-const.ACCOUNT_GET_CODE_COMMITMENT_OFFSET=5
+const.ACCOUNT_GET_INITIAL_CODE_COMMITMENT_OFFSET=5
+const.ACCOUNT_GET_CODE_COMMITMENT_OFFSET=6
 
 # Storage
-const.ACCOUNT_GET_STORAGE_COMMITMENT_OFFSET=6
-const.ACCOUNT_GET_ITEM_OFFSET=7
-const.ACCOUNT_SET_ITEM_OFFSET=8
-const.ACCOUNT_GET_MAP_ITEM_OFFSET=9
-const.ACCOUNT_SET_MAP_ITEM_OFFSET=10
+const.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET=7
+const.ACCOUNT_GET_STORAGE_COMMITMENT_OFFSET=8
+const.ACCOUNT_GET_ITEM_OFFSET=9
+const.ACCOUNT_SET_ITEM_OFFSET=10
+const.ACCOUNT_GET_MAP_ITEM_OFFSET=11
+const.ACCOUNT_SET_MAP_ITEM_OFFSET=12
 
 # Vault
-const.ACCOUNT_GET_VAULT_ROOT_OFFSET=11
-const.ACCOUNT_ADD_ASSET_OFFSET=12
-const.ACCOUNT_REMOVE_ASSET_OFFSET=13
-const.ACCOUNT_GET_BALANCE_OFFSET=14
-const.ACCOUNT_HAS_NON_FUNGIBLE_ASSET_OFFSET=15
+const.ACCOUNT_GET_INITIAL_VAULT_ROOT_OFFSET=13
+const.ACCOUNT_GET_VAULT_ROOT_OFFSET=14
+const.ACCOUNT_ADD_ASSET_OFFSET=15
+const.ACCOUNT_REMOVE_ASSET_OFFSET=16
+const.ACCOUNT_GET_BALANCE_OFFSET=17
+const.ACCOUNT_HAS_NON_FUNGIBLE_ASSET_OFFSET=18
 
 # Delta
-const.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET=16
+const.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET=19
 
 # Procedure introspection
-const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=17
+const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=20
 
 ### Faucet ######################################
-const.FAUCET_MINT_ASSET_OFFSET=18
-const.FAUCET_BURN_ASSET_OFFSET=19
-const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=20
-const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=21
+const.FAUCET_MINT_ASSET_OFFSET=21
+const.FAUCET_BURN_ASSET_OFFSET=22
+const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=23
+const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=24
 
 ### Note ########################################
 # assets
-const.NOTE_GET_ASSETS_INFO_OFFSET=22                  # accessor
-const.NOTE_ADD_ASSET_OFFSET=23                        # mutator
+const.NOTE_GET_ASSETS_INFO_OFFSET=25                  # accessor
+const.NOTE_ADD_ASSET_OFFSET=26                        # mutator
 
 # note parameters
-const.NOTE_GET_SERIAL_NUMBER_OFFSET=24
-const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=25
-const.NOTE_GET_SENDER_OFFSET=26
-const.NOTE_GET_SCRIPT_ROOT_OFFSET=27
+const.NOTE_GET_SERIAL_NUMBER_OFFSET=27
+const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=28
+const.NOTE_GET_SENDER_OFFSET=29
+const.NOTE_GET_SCRIPT_ROOT_OFFSET=30
 
 # note introspection
-const.INPUT_NOTE_GET_ASSETS_INFO_OFFSET=28
-const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=29
+const.INPUT_NOTE_GET_ASSETS_INFO_OFFSET=31
+const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=32
 
-const.INPUT_NOTE_GET_RECIPIENT_OFFSET=30
-const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=31
+const.INPUT_NOTE_GET_RECIPIENT_OFFSET=33
+const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=34
 
-const.INPUT_NOTE_GET_METADATA_OFFSET=32
-const.OUTPUT_NOTE_GET_METADATA_OFFSET=33
+const.INPUT_NOTE_GET_METADATA_OFFSET=35
+const.OUTPUT_NOTE_GET_METADATA_OFFSET=36
 
 ### Tx ##########################################
 # creation
-const.TX_CREATE_NOTE_OFFSET=34
+const.TX_CREATE_NOTE_OFFSET=37
 
 # input/output notes
 
-const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=35
-const.TX_GET_NUM_INPUT_NOTES_OFFSET=36
+const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=38
+const.TX_GET_NUM_INPUT_NOTES_OFFSET=39
 
-const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=37
-const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=38
+const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=40
+const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=41
 
 # block info
-const.TX_GET_BLOCK_COMMITMENT_OFFSET=39
-const.TX_GET_BLOCK_NUMBER_OFFSET=40
-const.TX_GET_BLOCK_TIMESTAMP_OFFSET=41
+const.TX_GET_BLOCK_COMMITMENT_OFFSET=42
+const.TX_GET_BLOCK_NUMBER_OFFSET=43
+const.TX_GET_BLOCK_TIMESTAMP_OFFSET=44
 
 # foreign context
-const.TX_START_FOREIGN_CONTEXT_OFFSET=42
-const.TX_END_FOREIGN_CONTEXT_OFFSET=43
+const.TX_START_FOREIGN_CONTEXT_OFFSET=45
+const.TX_END_FOREIGN_CONTEXT_OFFSET=46
 
 # expiration data
-const.TX_GET_EXPIRATION_DELTA_OFFSET=44               # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=45        # mutator
+const.TX_GET_EXPIRATION_DELTA_OFFSET=47               # accessor
+const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=48        # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -165,6 +168,18 @@ export.account_incr_nonce_offset
     push.ACCOUNT_INCR_NONCE_OFFSET
 end
 
+#! Returns the offset of the `account_get_initial_code_commitment` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `account_get_initial_code_commitment` kernel procedure 
+#!   required to get the address where this procedure is stored.
+export.account_get_initial_code_commitment_offset
+    push.ACCOUNT_GET_INITIAL_CODE_COMMITMENT_OFFSET
+end
+
 #! Returns the offset of the `account_get_code_commitment` kernel procedure.
 #!
 #! Inputs:  []
@@ -175,6 +190,18 @@ end
 #!   the address where this procedure is stored.
 export.account_get_code_commitment_offset
     push.ACCOUNT_GET_CODE_COMMITMENT_OFFSET
+end
+
+#! Returns the offset of the `account_get_initial_storage_commitment` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `account_get_initial_storage_commitment` kernel procedure 
+#!   required to get the address where this procedure is stored.
+export.account_get_initial_storage_commitment_offset
+    push.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET
 end
 
 #! Returns the offset of the `account_get_storage_commitment` kernel procedure.
@@ -235,6 +262,18 @@ end
 #!   address where this procedure is stored.
 export.account_set_map_item_offset
     push.ACCOUNT_SET_MAP_ITEM_OFFSET
+end
+
+#! Returns the offset of the `account_get_initial_vault_root` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `account_get_initial_vault_root` kernel procedure required
+#!   to get the address where this procedure is stored.
+export.account_get_initial_vault_root_offset
+    push.ACCOUNT_GET_INITIAL_VAULT_ROOT_OFFSET
 end
 
 #! Returns the offset of the `account_get_vault_root` kernel procedure.

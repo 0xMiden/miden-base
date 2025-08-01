@@ -22,7 +22,7 @@ use miden_objects::{
         Library,
         diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette},
     },
-    asset::AssetVault,
+    asset::{Asset, AssetVault, FungibleAsset},
     testing::{
         account_component::AccountMockComponent,
         account_id::{
@@ -135,26 +135,29 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 // ACCOUNT CODE TESTS
 // ================================================================================================
 
+// TODO: add the current code commitment obtainment once we will have updatable code
 #[test]
-pub fn test_get_code() -> miette::Result<()> {
+pub fn test_get_code_commitment() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
-    let code = "
+    let account = tx_context.account();
+
+    let code = format!(
+        r#"
         use.$kernel::prologue
         use.$kernel::account
         begin
             exec.prologue::prepare_transaction
-            exec.account::get_code_commitment
-            swapw dropw
+
+            # get the initial code commitment
+            exec.account::get_initial_code_commitment
+            push.{expected_code_commitment}
+            assert_eqw.err="actual code commitment is not equal to the expected one"
         end
-        ";
-
-    let process = &tx_context.execute_code(code).unwrap();
-
-    assert_eq!(
-        process.stack.get_word(0),
-        tx_context.account().code().commitment(),
-        "obtained code commitment is not equal to the account code commitment",
+        "#,
+        expected_code_commitment = account.code().commitment()
     );
+
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -875,6 +878,68 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
     Ok(())
 }
 
+#[test]
+fn test_get_storage_commitment() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    let account = tx_context.account().clone();
+
+    // get the initial storage commitment
+    let code = format!(
+        r#"
+        use.miden::account
+        use.$kernel::prologue
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # get the initial storage commitment
+            exec.account::get_initial_storage_commitment
+            push.{expected_storage_commitment}
+            assert_eqw.err="actual storage commitment is not equal to the expected one"
+        end
+        "#,
+        expected_storage_commitment = word_to_masm_push_string(&account.storage().commitment()),
+    );
+    tx_context.execute_code(&code)?;
+
+    // TODO: update this test once we will have `get_storage_commitment` procedure. Our current
+    //`get_storage_commitment` just returns the commitment stored in the memory, without recomputing
+    // it.
+    //
+    // get the current storage commitment
+    // account.storage_mut().set_item(1, Word::from([2, 3, 4, 5u8]))?;
+
+    let code = format!(
+        r#"
+        use.miden::account
+        use.$kernel::prologue
+        use.test::account->test_account
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # add a value to the account storage
+            # push.5.4.3.2.1
+            # call.account::set_item dropw
+            # => []
+
+            # get the current storage commitment
+            call.test_account::get_storage_commitment
+            push.{expected_storage_commitment}
+            assert_eqw.err="actual storage commitment is not equal to the expected one"
+        end
+        "#,
+        expected_storage_commitment = word_to_masm_push_string(&account.storage().commitment()),
+    );
+    tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
+
+    Ok(())
+}
+
 // ACCOUNT VAULT TESTS
 // ================================================================================================
 
@@ -882,7 +947,17 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 fn test_get_vault_root() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let account = tx_context.account();
+    let mut account = tx_context.account().clone();
+
+    let fungible_asset = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?,
+            5,
+        )
+        .context("fungible_asset_0 is invalid")?,
+    );
+
+    // get the initial vault root
     let code = format!(
         "
         use.miden::account
@@ -891,16 +966,43 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # push the new storage item onto the stack
-            exec.account::get_vault_root
+            # get the initial vault root
+            exec.account::get_initial_vault_root
             push.{expected_vault_root}
             assert_eqw
         end
         ",
         expected_vault_root = word_to_masm_push_string(&account.vault().root()),
     );
-
     tx_context.execute_code(&code)?;
+
+    // get the current vault root
+    account.vault_mut().add_asset(fungible_asset)?;
+
+    let code = format!(
+        r#"
+        use.miden::account
+        use.$kernel::prologue
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # add an asset to the account
+            push.{fungible_asset}
+            call.account::add_asset dropw
+            # => []
+
+            # get the current vault root
+            exec.account::get_vault_root
+            push.{expected_vault_root}
+            assert_eqw.err="actual vault root is not equal to the expected one"
+        end
+        "#,
+        fungible_asset = word_to_masm_push_string(&fungible_asset.into()),
+        expected_vault_root = word_to_masm_push_string(&account.vault().root()),
+    );
+    tx_context.execute_code(&code)?;
+
     Ok(())
 }
 
