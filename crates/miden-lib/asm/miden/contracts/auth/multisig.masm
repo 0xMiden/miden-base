@@ -1,0 +1,273 @@
+use.miden::account
+use.miden::auth
+use.miden::tx
+
+use.std::crypto::dsa::rpo_falcon512
+use.std::crypto::hashes::rpo
+use.std::sys
+
+# CONSTANTS
+# =================================================================================================
+
+# The event to request an authentication signature.
+const.AUTH_REQUEST=131087
+
+# The event emitted when a signature is not found for a required signer.
+const.UNAUTHORIZED_EVENT=131101
+
+# The slot in this component's storage layout where the signature threshold is stored.
+const.THRESHOLD_SLOT=0
+
+# The slot in this component's storage layout where the number of approvers is stored.
+const.NUMBER_OF_APPROVERS_SLOT=1
+
+# The slot in this component's storage layout where the public keys map is stored.
+const.PUBLIC_KEYS_MAP_SLOT=2
+
+# The slot in this component's storage layout where executed transactions are stored.
+const.EXECUTED_TXS_SLOT=3
+
+# Runtime Memory Addresses
+# @dev these can be further optimized, (i do prefer to keep the stack clean and incur the cost of calling mem_{store, load})
+const.TEMP_PK=108
+const.MESSAGE=112
+const.SUCCESSFUL_VERIFICATIONS=116
+const.THRESHOLD=120
+
+# ERRORS
+const.NON_CONSTANT_MSG="NON CONSTANT SIGNATURES"
+const.INVALID_SIGNATURE="SIG DOES NOT MATCH DIGEST"
+
+#! Check if transaction has already been executed and add it to executed transactions for replay protection.
+#!
+#! This procedure ensures that the same transaction cannot be executed multiple times by checking
+#! if the transaction message already exists in the executed transactions map. If it doesn't exist,
+#! it adds the transaction to the map to prevent future replay attacks.
+#!
+#! Inputs:  [MSG]
+#! Outputs: []
+proc.replay_protection.4
+    # Store the message for later use.
+    # ---------------------------------------------------------------------------------------------
+
+    dupw loc_storew.0 dropw
+    # => [MSG]
+
+    # Check if transaction has already been executed.
+    # ---------------------------------------------------------------------------------------------
+
+    push.EXECUTED_TXS_SLOT
+    # => [index, MSG]
+
+    exec.account::get_map_item
+    # => [LOOKUP_VAL]
+
+    padw
+    # => [EMPTY_WORD, LOOKUP_VAL]
+
+    assert_eqw
+    # => []
+
+    # Add transaction to executed transactions map.
+    # ---------------------------------------------------------------------------------------------
+
+    push.1.1.1.1
+
+    padw loc_loadw.0
+
+    push.EXECUTED_TXS_SLOT
+    # => [index, KEY, VALUE]
+
+    # Set the key value pair in the map to mark transaction as executed.
+    exec.account::set_map_item
+    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+
+    dropw dropw
+    # => []
+end
+
+#! Verify signatures for all required signers in a loop.
+#!
+#! This procedure iterates through the required number of signers, fetches their public keys
+#! from the account storage map, and verifies their signatures against the transaction message.
+#! If any required signature is missing, it emits an UNAUTHORIZED_EVENT.
+#!
+#! Inputs:  [num_required_signatures]
+#! Outputs: []
+proc.verify_signatures_loop
+    # => [num_required_signatures]
+
+    dup mem_store.THRESHOLD
+    # => [num_required_signatures]
+
+    padw mem_loadw.MESSAGE movup.4
+    # => [num_required_signatures, MESSAGE]
+
+    # Counter `i` starts at `num_required_signatures` and counts down to 0
+    # => [i, MESSAGE]
+
+    # Loop through required signers and verify signatures.
+    # ---------------------------------------------------------------------------------------------
+
+    dup neq.0
+    while.true
+        # => [i, MESSAGE]
+
+        # Fetch public key from storage map.
+        # -----------------------------------------------------------------------------------------
+
+        dup sub.1 push.0.0.0 push.PUBLIC_KEYS_MAP_SLOT
+        # => [owner_key_slot, [0, 0, 0, i-1], i, MESSAGE]
+
+        exec.account::get_map_item
+        # => [OWNER_PUB_KEY, i, MESSAGE]
+
+        mem_storew.TEMP_PK
+        # => [OWNER_PUB_KEY, i, MESSAGE]
+
+        # Check if signature exists for this signer.
+        # -----------------------------------------------------------------------------------------
+
+        movup.4 movdn.8 swapw dupw movdnw.2
+        # => [MESSAGE, OWNER_PUB_KEY, MESSAGE, i]
+
+        hmerge
+        # => [SIG_KEY, MESSAGE, i]
+
+        adv.has_mapkey
+        # => [SIG_KEY, MESSAGE, i]
+
+        adv_push.1
+        # => [has_signature, SIG_KEY, MESSAGE, i]
+
+        # if h(msg, pk) => msg exists in AdviceMap check the signature
+        if.true
+            dropw dupw
+            # => [MSG, MSG, i]
+
+            # Verify the signature against the public key and message.
+            # -----------------------------------------------------------------------------------------
+
+            padw mem_loadw.TEMP_PK
+            # => [PK, MSG, MSG, i]
+
+            swapw
+            # => [MSG, PK, MSG, i]
+
+            # Emit the authentication request event that pushes a signature for the message to the advice stack.
+            emit.AUTH_REQUEST
+
+            swapw
+            # => [PK, MSG, MSG, i ]
+
+            exec.rpo_falcon512::verify
+            # => [MSG, i]
+
+            mem_load.SUCCESSFUL_VERIFICATIONS
+            add.1
+            mem_store.SUCCESSFUL_VERIFICATIONS
+            # => [MSG, i]
+
+        else
+            dropw
+            # => [MSG, i]
+        end
+        # => [MSG, i]
+
+        movup.4
+        # => [i, MSG]
+
+        # Decrement counter and check if we should continue looping
+        sub.1
+        # => [i-1, MSG]
+
+        dup neq.0
+        # => [should_continue, i-1, MSG]
+    end
+    # => [i-1, MSG]
+
+    # Check number of successful signature verifications
+    # -----------------------------------------------------------------------------------------
+
+    drop
+    # => [MSG]
+
+    mem_load.SUCCESSFUL_VERIFICATIONS dup
+    # => [num_verifications, num_verifications, MSG]
+
+    eq.0 swap
+    # => [num_verifications, is_zero_verifications, MSG]
+
+    mem_load.THRESHOLD
+    # => [threshold, num_verifications, is_zero_verifications, MSG]
+
+    gte not or
+    # => [is_unauthorized, MSG]
+
+    # If signatures are non-existent the tx will fail here.
+    if.true
+        padw mem_loadw.TEMP_PK swapw
+        # => [MSG, SIG_KEY]
+
+        emit.UNAUTHORIZED_EVENT
+    end
+    # => [MSG, SIG_KEY]
+
+    dropw dropw
+    # => []
+end
+
+#! Multi Signature Authentication Component
+#!
+#! OS:  [SALT]
+#! AS Map => {h(SIG_0, MSG): SIG_0, h(SIG_1, MSG): SIG_1, h(SIG_n, MSG): SIG_N}
+#!
+#! Outputs: []
+# main entrypoint ->
+export.auth__tx_rpo_falcon512_multisig
+    exec.account::incr_nonce drop
+    # => [SALT]
+
+    # Computing transaction summary
+    # ______________________________________
+
+    exec.auth::create_tx_summary
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+    exec.auth::adv_insert_hqword
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+    # the commitment to the tx summary is the message that is signed
+    exec.auth::hash_tx_summary
+    # => [TX_SUMMARY_COMMITMENT]
+
+    mem_storew.MESSAGE dropw
+    # => []
+
+    # Verifying owner signatures
+    # ______________________________________
+
+    push.THRESHOLD_SLOT
+    # => [index]
+
+    exec.account::get_item
+    # => [0, 0, 0, num_required_signatures]
+
+    drop drop drop
+    # => [num_required_signatures]
+
+    exec.verify_signatures_loop
+    # => []
+
+    # Writing executed transaction MSG to map
+    # ______________________________________
+
+    mem_loadw.MESSAGE
+    # => [MSG]
+
+    exec.replay_protection
+    # => []
+
+    exec.sys::truncate_stack
+    # => []
+end
