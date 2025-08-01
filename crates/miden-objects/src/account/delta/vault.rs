@@ -264,9 +264,12 @@ impl FungibleAssetDelta {
     /// # Errors
     /// Returns an error if the delta would overflow.
     fn add_delta(&mut self, faucet_id: AccountId, delta: i64) -> Result<(), AccountDeltaError> {
+        std::println!("delta {delta}",);
         match self.0.entry(faucet_id) {
             Entry::Vacant(entry) => {
-                entry.insert(delta);
+                if delta != 0 {
+                    entry.insert(delta);
+                }
             },
             Entry::Occupied(mut entry) => {
                 let old = *entry.get();
