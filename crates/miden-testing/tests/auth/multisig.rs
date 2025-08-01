@@ -24,40 +24,85 @@ use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::crypto::RpoRandomCoin;
 
+// ================================================================================================
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Sets up secret keys, public keys, and authenticators for multisig testing
+fn setup_keys_and_authenticators(
+    num_approvers: usize,
+    num_signers: usize, // How many of the approvers will actually sign
+    seed: [u8; 32],
+) -> anyhow::Result<(
+    Vec<SecretKey>,
+    Vec<miden_objects::crypto::dsa::rpo_falcon512::PublicKey>,
+    Vec<BasicAuthenticator<ChaCha20Rng>>,
+)> {
+    let mut rng = ChaCha20Rng::from_seed(seed);
+
+    let mut secret_keys = Vec::new();
+    let mut public_keys = Vec::new();
+    let mut authenticators = Vec::new();
+
+    for _ in 0..num_approvers {
+        let sec_key = SecretKey::with_rng(&mut rng);
+        let pub_key = sec_key.public_key();
+
+        secret_keys.push(sec_key);
+        public_keys.push(pub_key);
+    }
+
+    // Create authenticators only for the signers we'll actually use
+    for i in 0..num_signers {
+        let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
+            &[(public_keys[i].into(), AuthSecretKey::RpoFalcon512(secret_keys[i].clone()))],
+            rng.clone(),
+        );
+        authenticators.push(authenticator);
+    }
+
+    Ok((secret_keys, public_keys, authenticators))
+}
+
+/// Creates a multisig account with the specified configuration
+fn create_multisig_account(
+    threshold: u32,
+    public_keys: &[miden_objects::crypto::dsa::rpo_falcon512::PublicKey],
+    account_seed: [u8; 32],
+    asset_amount: u64,
+) -> anyhow::Result<miden_objects::account::Account> {
+    let approvers: Vec<_> = public_keys.iter().map(|pk| (*pk).into()).collect();
+
+    let multisig_account = AccountBuilder::new(account_seed)
+        .with_auth_component(Auth::Multisig { threshold, approvers })
+        .with_component(BasicWallet)
+        .account_type(AccountType::RegularAccountUpdatableCode)
+        .storage_mode(AccountStorageMode::Public)
+        .with_assets(vec![FungibleAsset::mock(asset_amount)])
+        .build_existing()?;
+
+    Ok(multisig_account)
+}
+
+// ================================================================================================
+// TESTS
+// ================================================================================================
+
 #[test]
 fn test_multisig() -> anyhow::Result<()> {
     // ROLES
     // - 2 Approvers (multisig signers)
     // - 1 Multisig Contract
 
-    let mut rng = ChaCha20Rng::from_seed(Default::default());
-    let sec_key = SecretKey::with_rng(&mut rng);
-    let sec_key_2 = SecretKey::with_rng(&mut rng);
-    let pub_key_1 = sec_key.public_key();
-    let pub_key_2 = sec_key_2.public_key();
+    // Setup keys and authenticators
+    let (_secret_keys, public_keys, authenticators) =
+        setup_keys_and_authenticators(2, 2, [0u8; 32])?;
 
-    println!("pubkey: {pub_key_1:?}");
-    println!("pubkey: {pub_key_2:?}");
+    println!("pubkey: {:?}", public_keys[0]);
+    println!("pubkey: {:?}", public_keys[1]);
 
-    let authenticator_1 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key_1.into(), AuthSecretKey::RpoFalcon512(sec_key))],
-        rng.clone(),
-    );
-    let authenticator_2 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key_2.into(), AuthSecretKey::RpoFalcon512(sec_key_2))],
-        rng,
-    );
-
-    let multisig_account = AccountBuilder::new([0; 32])
-        .with_auth_component(Auth::Multisig {
-            threshold: 2,
-            approvers: vec![pub_key_1.into(), pub_key_2.into()],
-        })
-        .with_component(BasicWallet)
-        .account_type(AccountType::RegularAccountUpdatableCode)
-        .storage_mode(AccountStorageMode::Public)
-        .with_assets(vec![FungibleAsset::mock(10)])
-        .build_existing()?;
+    // Create multisig account
+    let multisig_account = create_multisig_account(2, &public_keys, [0; 32], 10)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -124,13 +169,13 @@ fn test_multisig() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    let sig_1 = authenticator_1.get_signature(pub_key_1.into(), &tx_summary)?;
-    let sig_2 = authenticator_2.get_signature(pub_key_2.into(), &tx_summary)?;
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary)?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary)?;
 
     // Populate advice map with signatures
     let mut advice_map = AdviceMap::default();
-    advice_map.insert(Hasher::merge(&[pub_key_1.into(), msg]), sig_1);
-    advice_map.insert(Hasher::merge(&[pub_key_2.into(), msg]), sig_2);
+    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
+    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
 
     // Execute transaction with signatures - should succeed
     let tx_context_execute = mock_chain
@@ -148,40 +193,13 @@ fn test_multisig() -> anyhow::Result<()> {
 #[test]
 fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     // Test 4 owners with threshold 2 - only 2 signatures should be needed
-    let mut rng = ChaCha20Rng::from_seed([1u8; 32]);
 
-    // Create 4 secret keys and public keys
-    let sec_key_1 = SecretKey::with_rng(&mut rng);
-    let sec_key_2 = SecretKey::with_rng(&mut rng);
-    let sec_key_3 = SecretKey::with_rng(&mut rng);
-    let sec_key_4 = SecretKey::with_rng(&mut rng);
-
-    let pub_key_1 = sec_key_1.public_key();
-    let pub_key_2 = sec_key_2.public_key();
-    let pub_key_3 = sec_key_3.public_key();
-    let pub_key_4 = sec_key_4.public_key();
-
-    // Create authenticators for the first two signers only
-    let authenticator_1 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key_1.into(), AuthSecretKey::RpoFalcon512(sec_key_1))],
-        rng.clone(),
-    );
-    let authenticator_2 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key_2.into(), AuthSecretKey::RpoFalcon512(sec_key_2))],
-        rng.clone(),
-    );
+    // Setup keys and authenticators (4 approvers, but only 2 signers)
+    let (_secret_keys, public_keys, authenticators) =
+        setup_keys_and_authenticators(4, 2, [1u8; 32])?;
 
     // Create multisig account with 4 approvers but threshold of 2
-    let multisig_account = AccountBuilder::new([1; 32])
-        .with_auth_component(Auth::Multisig {
-            threshold: 2,
-            approvers: vec![pub_key_1.into(), pub_key_2.into(), pub_key_3.into(), pub_key_4.into()],
-        })
-        .with_component(BasicWallet)
-        .account_type(AccountType::RegularAccountUpdatableCode)
-        .storage_mode(AccountStorageMode::Public)
-        .with_assets(vec![FungibleAsset::mock(10)])
-        .build_existing()?;
+    let multisig_account = create_multisig_account(2, &public_keys, [1; 32], 10)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -246,13 +264,13 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    let sig_1 = authenticator_1.get_signature(pub_key_1.into(), &tx_summary)?;
-    let sig_2 = authenticator_2.get_signature(pub_key_2.into(), &tx_summary)?;
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary)?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary)?;
 
     // Populate advice map with only 2 signatures
     let mut advice_map = AdviceMap::default();
-    advice_map.insert(Hasher::merge(&[pub_key_1.into(), msg]), sig_1);
-    advice_map.insert(Hasher::merge(&[pub_key_2.into(), msg]), sig_2);
+    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
+    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
 
     // Execute transaction with only 2 signatures - should succeed since threshold is 2
     let tx_context_execute = mock_chain
@@ -273,38 +291,13 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
 #[test]
 fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Test 2/3 multisig where tx is executed, then attempted again (should fail on 2nd attempt)
-    let mut rng = ChaCha20Rng::from_seed([2u8; 32]);
 
-    // Create 3 secret keys and public keys
-    let sec_key_1 = SecretKey::with_rng(&mut rng);
-    let sec_key_2 = SecretKey::with_rng(&mut rng);
-    let sec_key_3 = SecretKey::with_rng(&mut rng);
-
-    let pub_key_1 = sec_key_1.public_key();
-    let pub_key_2 = sec_key_2.public_key();
-    let pub_key_3 = sec_key_3.public_key();
-
-    // Create authenticators for 2 of the 3 signers
-    let authenticator_1 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key_1.into(), AuthSecretKey::RpoFalcon512(sec_key_1))],
-        rng.clone(),
-    );
-    let authenticator_2 = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key_2.into(), AuthSecretKey::RpoFalcon512(sec_key_2))],
-        rng.clone(),
-    );
+    // Setup keys and authenticators (3 approvers, but only 2 signers)
+    let (_secret_keys, public_keys, authenticators) =
+        setup_keys_and_authenticators(3, 2, [2u8; 32])?;
 
     // Create 2/3 multisig account
-    let multisig_account = AccountBuilder::new([2; 32])
-        .with_auth_component(Auth::Multisig {
-            threshold: 2,
-            approvers: vec![pub_key_1.into(), pub_key_2.into(), pub_key_3.into()],
-        })
-        .with_component(BasicWallet)
-        .account_type(AccountType::RegularAccountUpdatableCode)
-        .storage_mode(AccountStorageMode::Public)
-        .with_assets(vec![FungibleAsset::mock(20)])
-        .build_existing()?;
+    let multisig_account = create_multisig_account(2, &public_keys, [2; 32], 20)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -369,13 +362,13 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    let sig_1 = authenticator_1.get_signature(pub_key_1.into(), &tx_summary)?;
-    let sig_2 = authenticator_2.get_signature(pub_key_2.into(), &tx_summary)?;
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary)?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary)?;
 
     // Populate advice map with signatures
     let mut advice_map = AdviceMap::default();
-    advice_map.insert(Hasher::merge(&[pub_key_1.into(), msg]), sig_1);
-    advice_map.insert(Hasher::merge(&[pub_key_2.into(), msg]), sig_2);
+    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
+    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
 
     // Execute transaction with signatures - should succeed (first execution)
     let tx_context_execute = mock_chain
@@ -401,7 +394,7 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
         .auth_args(salt)
         .build()?;
 
-    // This should fail - either due to insufficient funds or replay protection
+    // This should fail - due to replay protection
     let result = tx_context_replay.execute();
     assert!(result.is_err(), "Second execution of the same transaction should fail");
 
