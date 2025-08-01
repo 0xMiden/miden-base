@@ -1417,7 +1417,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
         value = word_to_masm_push_string(&tx_script_input_value)
     );
 
-    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src).unwrap();
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
