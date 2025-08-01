@@ -13,7 +13,6 @@ use vm_processor::{
 use crate::{
     AccountProcedureIndexMap,
     auth::{SigningInputs, TransactionAuthenticator},
-    executor::build_tx_summary,
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
@@ -79,29 +78,26 @@ where
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the underlying [`TransactionBaseHost`].
-    pub(super) fn base_host(&self) -> &TransactionBaseHost<'store, STORE> {
-        &self.base_host
-    }
-
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
         self.base_host.tx_progress()
     }
 
-    // ADVICE INJECTOR HANDLERS
+    // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
-    /// The signature is fetched from the advice map or otherwise requested from the host's
-    /// authenticator.
-    pub fn on_signature_requested(
+    /// Expected stack state: `[MESSAGE, PUB_KEY]`
+    ///
+    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
+    /// not present in the advice map, the signature is requested from the host's authenticator.
+    pub fn on_auth_requested(
         &mut self,
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
+        let msg = process.get_stack_word(0);
+        let pub_key = process.get_stack_word(1);
 
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
@@ -110,37 +106,7 @@ where
         {
             signature.to_vec()
         } else {
-            // Retrieve transaction summary commitments from the advice provider.
-            // The commitments are stored as a contiguous array of field elements with the following
-            // layout:
-            // - commitments[0..4]:  SALT
-            // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
-            // - commitments[8..12]: INPUT_NOTES_COMMITMENT
-            // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-            let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-            })?;
-
-            if commitments.len() != 16 {
-                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                    "expected 4 words for transaction summary commitments".into(),
-                ));
-            }
-
-            let salt = extract_word(commitments, 0);
-            let output_notes_commitment = extract_word(commitments, 4);
-            let input_notes_commitment = extract_word(commitments, 8);
-            let account_delta_commitment = extract_word(commitments, 12);
-            let tx_summary = build_tx_summary(
-                self.base_host(),
-                salt,
-                output_notes_commitment,
-                input_notes_commitment,
-                account_delta_commitment,
-            )
-            .map_err(|err| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-            })?;
+            let tx_summary = self.base_host.build_tx_summary(process, msg)?;
 
             if msg != tx_summary.to_commitment() {
                 return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
@@ -210,7 +176,7 @@ where
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
             TransactionEvent::AuthRequest => {
-                self.on_signature_requested(process)
+                self.on_auth_requested(process)
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
             },
             // All other events are handled as in the base host.
@@ -221,17 +187,4 @@ where
 
         Ok(())
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Extracts a word from a slice of field elements.
-fn extract_word(commitments: &[Felt], start: usize) -> Word {
-    Word::from([
-        commitments[start],
-        commitments[start + 1],
-        commitments[start + 2],
-        commitments[start + 3],
-    ])
 }
