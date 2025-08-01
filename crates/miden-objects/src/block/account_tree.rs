@@ -1,5 +1,8 @@
+use alloc::{string::ToString, vec::Vec};
+
 use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
-use vm_processor::SMT_DEPTH;
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::{
     Felt, Word,
@@ -300,6 +303,23 @@ impl AccountTree {
 impl Default for AccountTree {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for AccountTree {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.account_commitments().collect::<Vec<_>>().write_into(target);
+    }
+}
+
+impl Deserializable for AccountTree {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let entries = Vec::<(AccountId, Word)>::read_from(source)?;
+        Self::with_entries(entries)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 

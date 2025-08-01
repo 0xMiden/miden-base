@@ -1108,9 +1108,9 @@ dependencies = [
 
 [[package]]
 name = "miden-crypto"
-version = "0.15.8"
+version = "0.15.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c58d9b9ae3867b5b5111876165c23008e934871bd3ea46a8919ea10a1ab04e8"
+checksum = "e4329275a11c7d8328b14a7129b21d40183056dcd0d871c3069be6e550d6ca40"
 dependencies = [
  "blake3",
  "cc",
@@ -1252,9 +1252,9 @@ dependencies = [
 
 [[package]]
 name = "miden-processor"
-version = "0.16.3"
+version = "0.16.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ec8e112548b2d316598c2258326b5f8d8d018f37df8a190d2cd7f9d2e11a4921"
+checksum = "8b3d8fb95de53071a391767549a5d6ef7113e121a33f9a63d91e6ae7b2ecfe6e"
 dependencies = [
  "miden-air",
  "miden-core",

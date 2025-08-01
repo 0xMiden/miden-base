@@ -1,8 +1,9 @@
 extern crate alloc;
 
 use miden_lib::{
+    account::faucets::FungibleFaucetExt,
     errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
-    transaction::{TransactionKernel, memory::FAUCET_STORAGE_DATA_SLOT},
+    transaction::TransactionKernel,
 };
 use miden_objects::{
     Felt, Word,
@@ -165,7 +166,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     // Check that the faucet reserved slot has been correctly initialized.
     // The already issued amount should be 100.
-    assert_eq!(faucet.storage().get_item(FAUCET_STORAGE_DATA_SLOT).unwrap()[3], Felt::new(100));
+    assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(100));
 
     // need to create a note with the fungible asset to be burned
     let note_script = "

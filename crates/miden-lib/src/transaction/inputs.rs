@@ -6,8 +6,10 @@ use miden_objects::{
     block::AccountWitness,
     crypto::merkle::InnerNodeInfo,
     transaction::{InputNote, PartialBlockchain, TransactionArgs, TransactionInputs},
+    utils::collections::KvMap,
     vm::AdviceInputs,
 };
+use thiserror::Error;
 
 use super::TransactionKernel;
 
@@ -27,19 +29,29 @@ impl TransactionAdviceInputs {
     /// optional account seed (required for new accounts), and the input note data, including
     /// core note data + authentication paths all the way to the root of one of partial
     /// blockchain peaks.
-    pub fn new(tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) -> Self {
+    pub fn new(
+        tx_inputs: &TransactionInputs,
+        tx_args: &TransactionArgs,
+    ) -> Result<Self, TransactionAdviceMapMismatch> {
         let mut inputs = TransactionAdviceInputs::default();
         let kernel_version = 0; // TODO: replace with user input
 
         inputs.build_stack(tx_inputs, tx_args, kernel_version);
         inputs.add_kernel_commitments(kernel_version);
         inputs.add_partial_blockchain(tx_inputs.blockchain());
-        inputs.add_input_notes(tx_inputs, tx_args);
+        inputs.add_input_notes(tx_inputs, tx_args)?;
+
+        // Add the script's MAST forest's advice inputs
+        if let Some(tx_script) = tx_args.tx_script() {
+            inputs.extend_map(
+                tx_script.mast().advice_map().iter().map(|(key, values)| (*key, values.clone())),
+            );
+        }
 
         // --- native account injection ---------------------------------------
 
         let native_acc = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native_acc);
+        inputs.add_account(&native_acc)?;
 
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
@@ -51,7 +63,7 @@ impl TransactionAdviceInputs {
         // --- foreign account injection --------------------------------------
 
         for foreign_acc in tx_args.foreign_account_inputs() {
-            inputs.add_account(foreign_acc.account());
+            inputs.add_account(foreign_acc.account())?;
             inputs.add_account_witness(foreign_acc.witness());
 
             // for foreign accounts, we need to insert the id to state mapping
@@ -66,7 +78,12 @@ impl TransactionAdviceInputs {
         // any extra user-supplied advice
         inputs.extend(tx_args.advice_inputs().clone());
 
-        inputs
+        Ok(inputs)
+    }
+
+    /// Returns a reference to the underlying advice inputs.
+    pub fn as_advice_inputs(&self) -> &AdviceInputs {
+        &self.0
     }
 
     /// Converts these transaction advice inputs into the underlying advice inputs.
@@ -222,12 +239,27 @@ impl TransactionAdviceInputs {
     /// - The account code commitment |-> procedures vector.
     /// - The leaf hash |-> (key, value), for all leaves of the partial vault.
     /// - If present, the Merkle leaves associated with the account storage maps.
-    fn add_account(&mut self, account: &PartialAccount) {
+    fn add_account(
+        &mut self,
+        account: &PartialAccount,
+    ) -> Result<(), TransactionAdviceMapMismatch> {
         // --- account code -------------------------------------------------------
 
         // CODE_COMMITMENT -> [[ACCOUNT_PROCEDURE_DATA]]
         let code = account.code();
         self.add_map_entry(code.commitment(), code.as_elements());
+
+        // Extend the advice map with the account code's advice inputs.
+        // This ensures that the advice map is available during the note script execution when it
+        // calls the account's code that relies on the it's advice map data (data segments) loaded
+        // into the advice provider
+        self.0.map.merge_advice_map(account.code().mast().advice_map()).map_err(
+            |((key, existing_val), incoming_val)| TransactionAdviceMapMismatch {
+                key,
+                existing_val,
+                incoming_val,
+            },
+        )?;
 
         // --- account storage ----------------------------------------------------
 
@@ -244,6 +276,8 @@ impl TransactionAdviceInputs {
         // populate Merkle store and advice map with nodes info needed to access vault assets
         self.extend_merkle_store(account.vault().inner_nodes());
         self.extend_map(account.vault().leaves().map(|leaf| (leaf.hash(), leaf.to_elements())));
+
+        Ok(())
     }
 
     /// Adds an account witness to the advice inputs.
@@ -273,15 +307,20 @@ impl TransactionAdviceInputs {
     ///     - The note's public inputs data. Prefixed by its length and padded to an even word
     ///       length.
     ///     - The note's asset padded. Prefixed by its length and padded to an even word length.
+    ///     - The note's script MAST forest's advice map inputs
     ///     - For authenticated notes (determined by the `is_authenticated` flag):
     ///         - The note's authentication path against its block's note tree.
     ///         - The block number, sub commitment, note root.
     ///         - The note's position in the note tree
     ///
     /// The data above is processed by `prologue::process_input_notes_data`.
-    fn add_input_notes(&mut self, tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) {
+    fn add_input_notes(
+        &mut self,
+        tx_inputs: &TransactionInputs,
+        tx_args: &TransactionArgs,
+    ) -> Result<(), TransactionAdviceMapMismatch> {
         if tx_inputs.input_notes().is_empty() {
-            return;
+            return Ok(());
         }
 
         let mut note_data = Vec::new();
@@ -338,9 +377,18 @@ impl TransactionAdviceInputs {
                     note_data.push(Felt::ZERO)
                 },
             }
+
+            self.0.map.merge_advice_map(note.script().mast().advice_map()).map_err(
+                |((key, existing_val), incoming_val)| TransactionAdviceMapMismatch {
+                    key,
+                    existing_val,
+                    incoming_val,
+                },
+            )?;
         }
 
         self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
+        Ok(())
     }
 
     // HELPER METHODS
@@ -387,4 +435,17 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
 
 fn build_account_id_key(id: AccountId) -> Word {
     Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
+}
+
+// CONFLICT ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+#[error(
+    "conflicting map entry for key {key}: existing={existing_val:?}, incoming={incoming_val:?}"
+)]
+pub struct TransactionAdviceMapMismatch {
+    pub key: Word,
+    pub existing_val: Vec<Felt>,
+    pub incoming_val: Vec<Felt>,
 }
