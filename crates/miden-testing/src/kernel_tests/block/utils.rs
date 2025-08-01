@@ -178,7 +178,7 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         "
     );
 
-    ScriptBuilder::new(false).compile_tx_script(code).unwrap()
+    ScriptBuilder::default().compile_tx_script(code).unwrap()
 }
 
 pub fn generate_batch(chain: &mut MockChain, txs: Vec<ProvenTransaction>) -> ProvenBatch {

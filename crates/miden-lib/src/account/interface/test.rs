@@ -279,8 +279,7 @@ fn test_basic_wallet_custom_notes() {
             end
         end
     ";
-    let note_script =
-        ScriptBuilder::new(false).compile_note_script(compatible_source_code).unwrap();
+    let note_script = ScriptBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -309,7 +308,7 @@ fn test_basic_wallet_custom_notes() {
         end
     ";
     let note_script =
-        ScriptBuilder::new(false).compile_note_script(incompatible_source_code).unwrap();
+        ScriptBuilder::default().compile_note_script(incompatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -369,8 +368,7 @@ fn test_basic_fungible_faucet_custom_notes() {
             end
         end
     ";
-    let note_script =
-        ScriptBuilder::new(false).compile_note_script(compatible_source_code).unwrap();
+    let note_script = ScriptBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -401,7 +399,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         end
     ";
     let note_script =
-        ScriptBuilder::new(false).compile_note_script(incompatible_source_code).unwrap();
+        ScriptBuilder::default().compile_note_script(incompatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -483,7 +481,7 @@ fn test_custom_account_custom_notes() {
             end
         end
     ";
-    let note_script = ScriptBuilder::new(false)
+    let note_script = ScriptBuilder::default()
         .with_dynamically_linked_library(account_component.library())
         .unwrap()
         .compile_note_script(compatible_source_code)
@@ -510,7 +508,7 @@ fn test_custom_account_custom_notes() {
             end
         end
     ";
-    let note_script = ScriptBuilder::new(false)
+    let note_script = ScriptBuilder::default()
         .with_dynamically_linked_library(account_component.library())
         .unwrap()
         .compile_note_script(incompatible_source_code)
@@ -604,7 +602,7 @@ fn test_custom_account_multiple_components_custom_notes() {
             end
         end
     ";
-    let note_script = ScriptBuilder::new(false)
+    let note_script = ScriptBuilder::default()
         .with_dynamically_linked_library(custom_component.library())
         .unwrap()
         .compile_note_script(compatible_source_code)
@@ -643,7 +641,7 @@ fn test_custom_account_multiple_components_custom_notes() {
             end
         end
     ";
-    let note_script = ScriptBuilder::new(false)
+    let note_script = ScriptBuilder::default()
         .with_dynamically_linked_library(custom_component.library())
         .unwrap()
         .compile_note_script(incompatible_source_code)

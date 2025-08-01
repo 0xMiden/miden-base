@@ -618,7 +618,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         map_key = STORAGE_LEAVES_2[0].0,
     );
 
-    let tx_script = ScriptBuilder::new(false).compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -837,7 +837,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         first_account_foreign_proc_hash = first_foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let tx_script = ScriptBuilder::new(false).compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
@@ -1007,7 +1007,7 @@ fn test_nested_fpi_stack_overflow() {
 
 
 
-                let tx_script = ScriptBuilder::new(false).compile_tx_script(code).unwrap();
+                let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
 
             let tx_context = mock_chain
                 .build_tx_context(native_account.id(), &[], &[])
@@ -1124,7 +1124,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         first_account_foreign_proc_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let tx_script = ScriptBuilder::new(false).compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])

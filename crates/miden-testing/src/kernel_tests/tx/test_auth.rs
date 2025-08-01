@@ -103,7 +103,7 @@ fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
         end
     ";
 
-    let tx_script = ScriptBuilder::new(false)
+    let tx_script = ScriptBuilder::default()
         .with_dynamically_linked_library(auth_component.library())
         .unwrap()
         .compile_tx_script(tx_script_source)?;

@@ -258,7 +258,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint())
     );
 
-    let tx_script = ScriptBuilder::new(false).compile_tx_script(tx_script_src)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[input_note_1.id(), input_note_2.id()], &[])?
