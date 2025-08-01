@@ -387,7 +387,7 @@ export.finalize_transaction.4
     hmerge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
-    # load fee asset from local
+    # prepare stack for build_output_vault by loading fee asset from local
     padw loc_loadw.0
     # => [FEE_ASSET, ACCOUNT_UPDATE_COMMITMENT]
 
