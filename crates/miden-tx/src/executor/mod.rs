@@ -308,7 +308,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         // TODO: Pass source manager to host once refactored.
-        _source_manager: Arc<dyn SourceManager>,
+        _source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);

@@ -47,14 +47,14 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly         = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly" }
+assembly         = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly" }
 miden-crypto     = { default-features = false, version = "0.15.6" }
-miden-prover     = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-miden-stdlib     = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-miden-utils-sync = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-miden-verifier   = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-vm-core          = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core" }
-vm-processor     = { branch = "bernhard-async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor" }
+miden-prover     = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-stdlib     = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-utils-sync = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-verifier   = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+vm-core          = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core" }
+vm-processor     = { branch = "async-experimental", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }

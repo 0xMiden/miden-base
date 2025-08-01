@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "miden-core",
  "thiserror 2.0.12",
@@ -1034,7 +1034,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "log",
  "miden-assembly-syntax",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -1090,7 +1090,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1125,7 +1125,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1165,7 +1165,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1247,7 +1247,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -1262,7 +1262,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "miden-air",
  "miden-debug-types",
@@ -1275,7 +1275,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "env_logger",
  "miden-assembly",
@@ -1338,7 +1338,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1350,7 +1350,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "lock_api",
  "loom",
@@ -1360,7 +1360,7 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#91e1d9d70dc1c2cbcc241878ef171671067dc586"
 dependencies = [
  "miden-air",
  "miden-core",
