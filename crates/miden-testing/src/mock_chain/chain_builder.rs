@@ -39,9 +39,10 @@ pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
     account_credentials: BTreeMap<AccountId, AccountCredentials>,
     notes: Vec<OutputNote>,
-    native_asset_id: AccountId,
-    native_asset_amount: u64,
     rng: RpoRandomCoin,
+    // Fee parameters.
+    native_asset_id: AccountId,
+    verification_base_fee: u32,
 }
 
 impl MockChainBuilder {
@@ -52,16 +53,19 @@ impl MockChainBuilder {
     ///
     /// By default, the `native_asset_id` is set to [`ACCOUNT_ID_NATIVE_ASSET_FAUCET`] and can be
     /// overwritten using [`Self::native_asset_id`].
+    ///
+    /// The `verification_base_fee` is initialized to 0 which means no fees are required by default.
     pub fn new() -> Self {
+        let native_asset_id =
+            ACCOUNT_ID_NATIVE_ASSET_FAUCET.try_into().expect("account ID should be valid");
+
         Self {
             accounts: BTreeMap::new(),
             account_credentials: BTreeMap::new(),
             notes: Vec::new(),
-            native_asset_id: ACCOUNT_ID_NATIVE_ASSET_FAUCET
-                .try_into()
-                .expect("account ID should be valid"),
-            native_asset_amount: 1_000_000,
             rng: RpoRandomCoin::new(Default::default()),
+            native_asset_id,
+            verification_base_fee: 0,
         }
     }
 
@@ -95,11 +99,84 @@ impl MockChainBuilder {
         self
     }
 
+    /// Sets the `verification_base_fee` of the chain.
+    ///
+    /// See [`FeeParameters`] for more details.
+    pub fn verification_base_fee(mut self, verification_base_fee: u32) -> Self {
+        self.verification_base_fee = verification_base_fee;
+        self
+    }
+
     /// Consumes the builder, creates the genesis block of the chain and returns the [`MockChain`].
     pub fn build(self) -> anyhow::Result<MockChain> {
-        let (genesis_block, account_tree) =
-            create_genesis_state(self.accounts.into_values(), self.notes, self.native_asset_id)
-                .context("failed to create genesis block")?;
+        // Create the genesis block, consisting of the provided accounts and notes.
+        let block_account_updates: Vec<BlockAccountUpdate> = self
+            .accounts
+            .into_values()
+            .map(|account| {
+                BlockAccountUpdate::new(
+                    account.id(),
+                    account.commitment(),
+                    AccountUpdateDetails::New(account),
+                )
+            })
+            .collect();
+
+        let account_tree = AccountTree::with_entries(
+            block_account_updates
+                .iter()
+                .map(|account| (account.account_id(), account.final_state_commitment())),
+        )
+        .context("failed to create genesis account tree")?;
+
+        let note_chunks = self.notes.into_iter().chunks(MAX_OUTPUT_NOTES_PER_BATCH);
+        let output_note_batches: Vec<OutputNoteBatch> = note_chunks
+            .into_iter()
+            .map(|batch_notes| batch_notes.into_iter().enumerate().collect::<Vec<_>>())
+            .collect();
+
+        let created_nullifiers = Vec::new();
+        let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
+
+        let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
+            .context("failed to create block note tree")?;
+
+        let version = 0;
+        let prev_block_commitment = Word::empty();
+        let block_num = BlockNumber::from(0u32);
+        let chain_commitment = Blockchain::new().commitment();
+        let account_root = account_tree.root();
+        let nullifier_root = NullifierTree::new().root();
+        let note_root = note_tree.root();
+        let tx_commitment = transactions.commitment();
+        let tx_kernel_commitment = TransactionKernel::kernel_commitment();
+        let proof_commitment = Word::empty();
+        let timestamp = MockChain::TIMESTAMP_START_SECS;
+        let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
+            .context("failed to construct fee parameters")?;
+
+        let header = BlockHeader::new(
+            version,
+            prev_block_commitment,
+            block_num,
+            chain_commitment,
+            account_root,
+            nullifier_root,
+            note_root,
+            tx_commitment,
+            tx_kernel_commitment,
+            proof_commitment,
+            fee_parameters,
+            timestamp,
+        );
+
+        let genesis_block = ProvenBlock::new_unchecked(
+            header,
+            block_account_updates,
+            output_note_batches,
+            created_nullifiers,
+            transactions,
+        );
 
         MockChain::from_genesis_block(genesis_block, account_tree, self.account_credentials)
     }
@@ -252,8 +329,6 @@ impl MockChainBuilder {
         slots: impl IntoIterator<Item = StorageSlot>,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Account> {
-        let fee_asset = self.native_fee_asset(self.native_asset_amount)?;
-        let assets = assets.into_iter().chain([fee_asset.into()]);
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
             .with_component(
@@ -448,8 +523,8 @@ impl MockChainBuilder {
 
     /// Creates a new P2ID note with the provided amount of the native fee asset of the chain.
     ///
-    /// By default, this is set to [`ACCOUNT_ID_NATIVE_ASSET_FAUCET`] and can be overwritten using
-    /// [`Self::native_asset_id`]. The note is added to the list of genesis notes.
+    /// The native asset ID of the asset can be set using [`Self::native_asset_id`]. By default it
+    /// is [`ACCOUNT_ID_NATIVE_ASSET_FAUCET`].
     ///
     /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`.
     pub fn add_p2id_note_with_fee(
@@ -481,83 +556,4 @@ impl Default for MockChainBuilder {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Creates the genesis block, consisting of the provided accounts and notes. The native asset of
-/// the chain will be set to the provided account ID.
-fn create_genesis_state(
-    accounts: impl IntoIterator<Item = Account>,
-    notes: impl IntoIterator<Item = OutputNote>,
-    native_asset_id: AccountId,
-) -> anyhow::Result<(ProvenBlock, AccountTree)> {
-    let block_account_updates: Vec<BlockAccountUpdate> = accounts
-        .into_iter()
-        .map(|account| {
-            BlockAccountUpdate::new(
-                account.id(),
-                account.commitment(),
-                AccountUpdateDetails::New(account),
-            )
-        })
-        .collect();
-
-    let account_tree = AccountTree::with_entries(
-        block_account_updates
-            .iter()
-            .map(|account| (account.account_id(), account.final_state_commitment())),
-    )
-    .context("failed to create genesis account tree")?;
-
-    let note_chunks = notes.into_iter().chunks(MAX_OUTPUT_NOTES_PER_BATCH);
-    let output_note_batches: Vec<OutputNoteBatch> = note_chunks
-        .into_iter()
-        .map(|batch_notes| batch_notes.into_iter().enumerate().collect::<Vec<_>>())
-        .collect();
-
-    let created_nullifiers = Vec::new();
-    let transactions = OrderedTransactionHeaders::new_unchecked(Vec::new());
-
-    let note_tree = BlockNoteTree::from_note_batches(&output_note_batches)
-        .context("failed to create block note tree")?;
-
-    let version = 0;
-    let prev_block_commitment = Word::empty();
-    let block_num = BlockNumber::from(0u32);
-    let chain_commitment = Blockchain::new().commitment();
-    let account_root = account_tree.root();
-    let nullifier_root = NullifierTree::new().root();
-    let note_root = note_tree.root();
-    let tx_commitment = transactions.commitment();
-    let tx_kernel_commitment = TransactionKernel::kernel_commitment();
-    let proof_commitment = Word::empty();
-    let timestamp = MockChain::TIMESTAMP_START_SECS;
-    let verification_base_fee = 50;
-    let fee_parameters = FeeParameters::new(native_asset_id, verification_base_fee)
-        .context("failed to construct fee parameters")?;
-
-    let header = BlockHeader::new(
-        version,
-        prev_block_commitment,
-        block_num,
-        chain_commitment,
-        account_root,
-        nullifier_root,
-        note_root,
-        tx_commitment,
-        tx_kernel_commitment,
-        proof_commitment,
-        fee_parameters,
-        timestamp,
-    );
-
-    Ok((
-        ProvenBlock::new_unchecked(
-            header,
-            block_account_updates,
-            output_note_batches,
-            created_nullifiers,
-            transactions,
-        ),
-        account_tree,
-    ))
 }

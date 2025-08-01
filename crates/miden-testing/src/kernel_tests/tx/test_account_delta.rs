@@ -440,9 +440,6 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .map(|asset| (asset.unwrap_fungible().faucet_id(), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
 
-    // Remove the fee asset from the delta as it is not under test.
-    removed_assets.remove(&mock_chain.native_asset_id());
-
     assert_eq!(added_assets.len(), 2);
     assert_eq!(removed_assets.len(), 2);
 
@@ -549,9 +546,6 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .removed_assets()
         .map(|asset| (asset.faucet_id_prefix(), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
-
-    // Remove the fee asset from the delta as it is not under test.
-    removed_assets.remove(&mock_chain.native_asset_id().prefix());
 
     assert_eq!(added_assets.len(), 1);
     assert_eq!(removed_assets.len(), 1);

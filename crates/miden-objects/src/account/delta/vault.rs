@@ -266,7 +266,10 @@ impl FungibleAssetDelta {
     fn add_delta(&mut self, faucet_id: AccountId, delta: i64) -> Result<(), AccountDeltaError> {
         match self.0.entry(faucet_id) {
             Entry::Vacant(entry) => {
-                entry.insert(delta);
+                // Change cherry-picked from #1668.
+                if delta != 0 {
+                    entry.insert(delta);
+                }
             },
             Entry::Occupied(mut entry) => {
                 let old = *entry.get();

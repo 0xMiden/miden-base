@@ -28,6 +28,7 @@ use vm_processor::{ContextId, Process};
 use crate::MockChain;
 
 mod test_account;
+mod test_fee;
 mod test_account_delta;
 mod test_account_interface;
 mod test_asset;

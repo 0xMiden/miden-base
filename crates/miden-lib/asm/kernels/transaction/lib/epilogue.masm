@@ -105,10 +105,18 @@ proc.build_output_vault
     exec.memory::get_output_vault_root_ptr movdn.4
     # => [FEE_ASSET, output_vault_root_ptr]
 
-    # we know FEE_ASSET is a fungible asset, so we call this procedure directly rather than
-    # add_asset
-    exec.asset_vault::add_fungible_asset dropw
-    # => []
+    dup.3 neq.0
+    # => [is_amount_non_zero, FEE_ASSET, output_vault_root_ptr]
+
+    if.true
+        # we know FEE_ASSET is a fungible asset, so we call this procedure directly rather than
+        # add_asset
+        exec.asset_vault::add_fungible_asset dropw
+        # => []
+    else
+        dropw drop
+        # => []
+    end
 
     # get the number of output notes from memory
     exec.memory::get_num_output_notes

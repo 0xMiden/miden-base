@@ -316,6 +316,11 @@ impl FeeParameters {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`FeeParameters`] from the provided inputs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the provided native asset ID is not a fungible faucet account ID.
     pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Result<Self, FeeError> {
         if !matches!(native_asset_id.account_type(), AccountType::FungibleFaucet) {
             return Err(FeeError::NativeAssetIdNotFungible {
