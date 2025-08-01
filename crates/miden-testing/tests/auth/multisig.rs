@@ -3,9 +3,9 @@ use miden_lib::{
 };
 use miden_objects::{
     Felt, Hasher, Word,
-    account::{AccountBuilder, AccountStorageMode, AccountType, AuthSecretKey},
+    account::{Account, AccountBuilder, AccountStorageMode, AccountType, AuthSecretKey},
     asset::FungibleAsset,
-    crypto::dsa::rpo_falcon512::SecretKey,
+    crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     note::NoteType,
     testing::account_id::{
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
@@ -33,11 +33,7 @@ fn setup_keys_and_authenticators(
     num_approvers: usize,
     num_signers: usize, // How many of the approvers will actually sign
     seed: [u8; 32],
-) -> anyhow::Result<(
-    Vec<SecretKey>,
-    Vec<miden_objects::crypto::dsa::rpo_falcon512::PublicKey>,
-    Vec<BasicAuthenticator<ChaCha20Rng>>,
-)> {
+) -> anyhow::Result<(Vec<SecretKey>, Vec<PublicKey>, Vec<BasicAuthenticator<ChaCha20Rng>>)> {
     let mut rng = ChaCha20Rng::from_seed(seed);
 
     let mut secret_keys = Vec::new();
@@ -67,10 +63,10 @@ fn setup_keys_and_authenticators(
 /// Creates a multisig account with the specified configuration
 fn create_multisig_account(
     threshold: u32,
-    public_keys: &[miden_objects::crypto::dsa::rpo_falcon512::PublicKey],
+    public_keys: &[PublicKey],
     account_seed: [u8; 32],
     asset_amount: u64,
-) -> anyhow::Result<miden_objects::account::Account> {
+) -> anyhow::Result<Account> {
     let approvers: Vec<_> = public_keys.iter().map(|pk| (*pk).into()).collect();
 
     let multisig_account = AccountBuilder::new(account_seed)
