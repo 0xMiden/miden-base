@@ -12,34 +12,8 @@ const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs e
 
 const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note inputs does not match the actual number"
 
-#! Writes the data currently on the advice stack into the memory at the specified location and
-#! verifies that the hash of the written data is equal to the provided hash.
-#!
-#! Inputs:  [start_ptr, end_ptr, HASH]
-#! Outputs: []
-#!
-#! Invocation: exec
-proc.write_advice_data_to_memory
-    # prepare the stack for reading from the advice stack
-    padw padw padw
-    # => [PAD, PAD, PAD, start_ptr, end_ptr, HASH]
-
-    # read the data from advice stack to memory
-    exec.mem::pipe_double_words_to_memory
-    # => [PERM, PERM, PERM, end_ptr, HASH]
-
-    # extract the digest
-    exec.rpo::squeeze_digest
-    # => [DIGEST, end_ptr, HASH]
-
-    # drop pointer for reading from memory
-    movup.4 drop
-    # => [DIGEST, HASH]
-
-    # assert the computed hash is equal to the expected hash
-    assert_eqw.err=ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT
-    # => []
-end
+# PROCEDURES
+# =================================================================================================
 
 #! Writes the assets of the currently executing note into memory starting at the specified address.
 #!
@@ -66,20 +40,8 @@ export.get_assets
     swapdw dropw dropw movup.7 movup.7 movup.7 drop drop drop
     # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
 
-    # load the asset data from the advice map to the advice stack
-    adv.push_mapval
-    # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
-
-    # calculate number of assets rounded up to an even number
-    dup.4 dup is_odd add
-    # => [even_num_assets, ASSETS_COMMITMENT, num_assets, dest_ptr]
-
-    # calculate the start and end pointer for reading to memory
-    mul.4 dup.6 add dup.6
-    # => [start_ptr, end_ptr, ASSETS_COMMITMENT, num_assets, dest_ptr]
-
-    # write the data from the advice stack into memory
-    exec.write_advice_data_to_memory
+    # write the assets from the advice map into memory
+    exec.write_assets_to_memory
     # => [num_assets, dest_ptr]
 end
 
@@ -143,13 +105,13 @@ export.get_inputs
     # OS => [even_num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # calculate the start and end pointer for reading to memory
-    mul.4 dup.6 add dup.6
-    # OS => [start_ptr, end_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    dup.6 swap
+    # OS => [even_num_words, dest_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # check the input data matches the commitment, and write it to memory.
-    exec.write_advice_data_to_memory
+    # write the input values from the advice stack into memory
+    exec.mem::pipe_preimage_to_memory drop
     # OS => [num_inputs, dest_ptr]
     # AS => []
 end
@@ -335,4 +297,36 @@ export.add_note_assets_to_account
 
     # clear the stack
     drop dropw drop
+end
+
+#! Writes the assets data stored in the advice map to the memory specified by the provided 
+#! destination pointer.
+#!
+#! Inputs:
+#!   Operand stack: [ASSETS_COMMITMENT, num_assets, dest_ptr]
+#!   Advice map: {
+#!     ASSETS_COMMITMENT: [[ASSETS_DATA]]
+#!   }
+#! Outputs:
+#!   Operand stack: [num_assets, dest_ptr]
+export.write_assets_to_memory
+    # load the asset data from the advice map to the advice stack
+    adv.push_mapval
+    # OS => [ASSETS_COMMITMENT, num_assets, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # calculate number of assets rounded up to an even number
+    dup.4 dup is_odd add
+    # OS => [even_num_assets, ASSETS_COMMITMENT, num_assets, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    dup.6 swap
+    # OS => [even_num_assets, dest_ptr, ASSETS_COMMITMENT, num_assets, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # write the data from the advice stack into memory
+    exec.mem::pipe_preimage_to_memory drop
+    # OS => [num_assets, dest_ptr]
+    # AS => []
 end

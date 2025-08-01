@@ -6,7 +6,7 @@ use miden_objects::{word, Word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Word; 45] = [
+pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
@@ -58,21 +58,29 @@ pub const KERNEL0_PROCEDURES: [Word; 45] = [
     // faucet_is_non_fungible_asset_issued
     word!("0x06e173cb23204c57a0ff0f604cd3b492c5c75c06e6c5d68f3ae4ccfb436a990b"),
     // note_get_assets_info
-    word!("0x8a1a66c95fd9dd85e47e30d9ba64be7803dcb7d03f612235722cc484ea865b3f"),
+    word!("0xe191daee1d69fd3928353fb9802e1aa8b8a6efc217b4d64dad1eaddbdf2b50ba"),
     // note_add_asset
     word!("0xb2c9c56be0d94ac3a0dd787ee12a4e5b9cc0d576f1e112ca0a6940e86f549e6f"),
     // note_get_serial_number
     word!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len
-    word!("0x8597b07c458fe3b3cdab1a2a01ca05476501442f3c559c2de7080403bb4398fd"),
+    word!("0x88004b9cd9571618c397637dc55a9fdf5a80421b1bbc1c964bf505b4796f410f"),
     // note_get_sender
-    word!("0x01172024b89517e5da80121cedfa6c19dd2ace0fe4d09a8cde6605103fe62952"),
+    word!("0xf45bb5a348b67c886cb1577f78abf6c5100ebe953790882518849d29fbf7e5fb"),
     // note_get_script_root
     word!("0x66fb188ca538d9f8bc6fd1aedbd19336bf6e3a1c0ae67b5f725cbc9cb4f7867f"),
     // input_note_get_assets_info
-    word!("0xe900a33c3dee3196cfd09c6375981fe77b0651b1bd786c792900534196e17663"),
+    word!("0x0816c7215676487f3ce03d372bf5512afb528ab62466074921829d7d2974147c"),
     // output_note_get_assets_info
-    word!("0xe3f2430bb2c109b187f3722b4f7776f9d59dde0bb073dc24c27e4e0eca7683a0"),
+    word!("0x590e307c82e221f8145b6293ae990994194ce03cbcc324e64e11bd79dc8d35b2"),
+    // input_note_get_recipient
+    word!("0x1e612cf8aa3cca674363d9e1fb15c666a0cf2febc80bf9d7800920941133a3f4"),
+    // output_note_get_recipient
+    word!("0x46b39f143100c86135a7a4b0759d3db9348cd1e085965ae2878df9c539a67b83"),
+    // input_note_get_metadata
+    word!("0x4b0c2a8560a007abadd55013c3b3c620b2de2189c08109500ba46a4222b37d89"),
+    // output_note_get_metadata
+    word!("0xe0c67058b91fafee772f915f74f99b3d9d9856580eabc4660f6c6a00cffba466"),
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
