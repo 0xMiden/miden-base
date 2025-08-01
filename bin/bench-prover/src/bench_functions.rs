@@ -8,7 +8,7 @@ use miden_objects::{
     transaction::ExecutedTransaction,
 };
 use miden_testing::{Auth, MockChain};
-use miden_tx::{LocalTransactionProver, ProvingOptions, TransactionProver};
+use miden_tx::{LocalTransactionProver, ProvingOptions};
 
 pub fn setup_consume_note_with_new_account() -> Result<ExecutedTransaction> {
     // Create assets
@@ -96,13 +96,13 @@ pub fn setup_consume_multiple_notes() -> Result<ExecutedTransaction> {
     Ok(executed_transaction)
 }
 
-pub fn prove_transaction(executed_transaction: ExecutedTransaction) -> Result<()> {
+pub async fn prove_transaction(executed_transaction: ExecutedTransaction) -> Result<()> {
     let executed_transaction_id = executed_transaction.id();
 
     let proof_options = ProvingOptions::default();
     let prover = LocalTransactionProver::new(proof_options);
     let proven_transaction: miden_objects::transaction::ProvenTransaction =
-        prover.prove(executed_transaction.into()).unwrap();
+        prover.prove(executed_transaction.into()).await.unwrap();
 
     assert_eq!(proven_transaction.id(), executed_transaction_id);
     Ok(())

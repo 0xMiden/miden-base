@@ -9,7 +9,6 @@ use miden_objects::{
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
-use winter_maybe_async::*;
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -51,14 +50,17 @@ impl Default for LocalTransactionProver {
 }
 
 impl LocalTransactionProver {
-    fn prove(
+    pub async fn prove(
         &self,
         tx_witness: TransactionWitness,
-    ) -> impl Future<Output = Result<ProvenTransaction, TransactionProverError>> + Send {
-        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
+    ) -> Result<ProvenTransaction, TransactionProverError> {
+        let mast_store = self.mast_store.clone();
+        let proof_options = self.proof_options.clone();
 
-        let account = tx_inputs.account();
-        let input_notes = tx_inputs.input_notes();
+        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness.clone(); // FIXME
+
+        let account = tx_inputs.account().clone();
+        let input_notes = tx_inputs.input_notes().clone();
         let ref_block_num = tx_inputs.block_header().block_num();
         let ref_block_commitment = tx_inputs.block_header().commitment();
 
@@ -70,33 +72,33 @@ impl LocalTransactionProver {
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());
 
-        let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
-            input_notes.iter().map(|n| n.note().script()),
-        );
+        let jh = tokio::task::spawn_blocking(move || {
+            let account = &account;
 
-        let mut host = {
-            let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
-                &tx_inputs,
-                &tx_args,
-                &advice_inputs,
-            )
-            .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+            let script_mast_store = ScriptMastForestStore::new(
+                tx_args.tx_script(),
+                input_notes.iter().map(|n| n.note().script()),
+            );
 
-            TransactionProverHost::new(
-                &account.into(),
-                input_notes.clone(),
-                self.mast_store.as_ref(),
-                script_mast_store,
-                acct_procedure_index_map,
-            )
-        };
+            let mut host = {
+                let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
+                    &tx_inputs,
+                    &tx_args,
+                    &advice_inputs,
+                )
+                .map_err(TransactionProverError::TransactionHostCreationFailed)?;
 
-        let advice_inputs = advice_inputs.into_advice_inputs();
+                TransactionProverHost::new(
+                    &account.into(),
+                    input_notes.clone(),
+                    mast_store.as_ref(),
+                    script_mast_store,
+                    acct_procedure_index_map,
+                )
+            };
 
-        let proof_options = self.proof_options.clone();
-        async move {
-            // FIXME TODO this `fn prove()` is also `#[maybe_async]`
+            let advice_inputs = advice_inputs.into_advice_inputs();
+
             let (stack_outputs, proof) = prove(
                 &TransactionKernel::main(),
                 stack_inputs,
@@ -104,7 +106,6 @@ impl LocalTransactionProver {
                 &mut host,
                 proof_options,
             )
-            .await
             .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
             // extract transaction outputs and process transaction data
@@ -154,6 +155,8 @@ impl LocalTransactionProver {
             };
 
             builder.build().map_err(TransactionProverError::ProvenTransactionBuildFailed)
-        }
+        });
+        let y = jh.await.unwrap(); // FIXME
+        y
     }
 }
