@@ -137,7 +137,7 @@ proc.main.1
 
     if.true
         # pad the stack
-        padw padw swapdw push.0 swap push.0 swap push.0 swap
+        padw padw swapdw push.0.0.0 movup.3
         # => [tx_script_root_ptr, pad(11), pad(16)]
 
         # load the transaction script arguments onto the stack
