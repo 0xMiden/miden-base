@@ -35,6 +35,7 @@ mod test_asset_vault;
 mod test_auth;
 mod test_epilogue;
 mod test_faucet;
+mod test_fee;
 mod test_fpi;
 mod test_input_note;
 mod test_link_map;

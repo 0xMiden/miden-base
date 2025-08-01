@@ -9,3 +9,4 @@ pub mod constants;
 pub mod note;
 pub mod partial_blockchain;
 pub mod storage;
+pub mod tx;
