@@ -109,8 +109,11 @@ end
 # ADD ASSET
 # =================================================================================================
 
-#! Add the specified fungible asset to the vault. If the vault already contains an asset issued by
-#! the same faucet, the amounts are added together.
+#! Add the specified fungible asset to the vault.
+#!
+#! If the vault already contains an asset issued by the same faucet, the amounts are added together.
+#! If the amount to be added is zero and the asset does not already exist in the vault, the vault
+#! remains unchanged.
 #!
 #! Inputs:  [ASSET, vault_root_ptr]
 #! Outputs: [ASSET']
@@ -188,10 +191,25 @@ export.add_fungible_asset
     swapw
     # => [ASSET', ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
 
+    # pad empty word for insertion
+    padw
+    # => [EMPTY_WORD, ASSET', ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
+
+    # check if amount of new asset is zero
+    # if it is zero, insert EMPTY_WORD to keep the merkle tree sparse
+    dup.7 eq.0
+    # => [is_amount_zero, EMPTY_WORD, ASSET', ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
+
+    # If is_amount_zero EMPTY_WORD remains.
+    # If !is_amount_zero ASSET' remains.
+    cdropw
+    # => [EMPTY_WORD_OR_ASSET', ASSET_KEY', VAULT_ROOT, CUR_VAULT_VALUE, ASSET', vault_root_ptr]
+
     # update asset in vault and assert the old value is equivalent to the value provided via the
     # decorator
     exec.smt::set
     # => [PREV_ASSET, VAULT_ROOT', CUR_VAULT_VALUE, ASSET', vault_root_ptr]
+
     movupw.2 assert_eqw.err=ERR_VAULT_ADD_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID
     # => [VAULT_ROOT', ASSET', vault_root_ptr]
 
