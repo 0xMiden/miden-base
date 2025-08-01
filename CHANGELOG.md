@@ -13,6 +13,7 @@
 - Pass the full `TransactionSummary` to `TransactionAuthenticator` ([#1618](https://github.com/0xMiden/miden-base/pull/1618)).
 - Add `PartialBlockchain::num_tracked_blocks()` ([#1643](https://github.com/0xMiden/miden-base/pull/1643)).
 - [BREAKING] Make transaction execution and transaction authenticatiro asynchronous ([#1636](https://github.com/0xMiden/miden-base/pull/1636)).
+- [BREAKING] Consolidate to a single async interface and drop `#[maybe_async]` usage ([#1666](https://github.com/0xMiden/miden-base/pull/#1666)).
 
 ### Changes
 
