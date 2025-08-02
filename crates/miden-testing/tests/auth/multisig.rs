@@ -28,12 +28,14 @@ use vm_processor::crypto::RpoRandomCoin;
 // HELPER FUNCTIONS
 // ================================================================================================
 
+type MultisigTestSetup = (Vec<SecretKey>, Vec<PublicKey>, Vec<BasicAuthenticator<ChaCha20Rng>>);
+
 /// Sets up secret keys, public keys, and authenticators for multisig testing
 fn setup_keys_and_authenticators(
     num_approvers: usize,
     num_signers: usize, // How many of the approvers will actually sign
     seed: [u8; 32],
-) -> anyhow::Result<(Vec<SecretKey>, Vec<PublicKey>, Vec<BasicAuthenticator<ChaCha20Rng>>)> {
+) -> anyhow::Result<MultisigTestSetup> {
     let mut rng = ChaCha20Rng::from_seed(seed);
 
     let mut secret_keys = Vec::new();
