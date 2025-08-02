@@ -7,7 +7,7 @@ use miden_objects::{
     block::BlockNumber,
     crypto::rand::FeltRng,
     note::{
-        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient,
+        Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteMetadata, NotePayload, NoteRecipient,
         NoteTag, NoteType,
     },
 };
@@ -120,7 +120,7 @@ pub fn create_swap_note<R: FeltRng>(
     let requested_asset_word: Word = requested_asset.into();
     let payback_tag = NoteTag::from_account_id(sender);
 
-    let inputs = NoteInputs::new(vec![
+    let inputs = NotePayload::new(vec![
         requested_asset_word[0],
         requested_asset_word[1],
         requested_asset_word[2],

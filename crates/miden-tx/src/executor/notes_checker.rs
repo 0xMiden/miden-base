@@ -65,7 +65,8 @@ where
                     continue;
                 }
 
-                match well_known_note.check_note_inputs(note.note(), target_account_id, block_ref) {
+                match well_known_note.check_note_payload(note.note(), target_account_id, block_ref)
+                {
                     NoteAccountCompatibility::No => {
                         // if the check failed, return a `Failure` with the vector of successfully
                         // checked `P2ID` and `P2IDE` notes

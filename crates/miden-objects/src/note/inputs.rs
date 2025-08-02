@@ -6,10 +6,10 @@ use crate::{
     utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
 };
 
-// NOTE INPUTS
+// NOTE PAYLOAD
 // ================================================================================================
 
-/// A container for note inputs.
+/// A container for note payload.
 ///
 /// A note can be associated with up to 128 input values. Each value is represented by a single
 /// field element. Thus, note input values can contain up to ~1 KB of data.
@@ -18,16 +18,16 @@ use crate::{
 /// first padding the inputs with ZEROs to the next multiple of 8, and then by computing a
 /// sequential hash of the resulting elements.
 #[derive(Clone, Debug)]
-pub struct NoteInputs {
+pub struct NotePayload {
     values: Vec<Felt>,
     commitment: Word,
 }
 
-impl NoteInputs {
+impl NotePayload {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
 
-    /// Returns [NoteInputs] instantiated from the provided values.
+    /// Returns [NotePayload] instantiated from the provided values.
     ///
     /// # Errors
     /// Returns an error if the number of provided inputs is greater than 128.
@@ -76,35 +76,35 @@ impl NoteInputs {
     }
 }
 
-impl Default for NoteInputs {
+impl Default for NotePayload {
     fn default() -> Self {
         pad_and_build(vec![])
     }
 }
 
-impl PartialEq for NoteInputs {
+impl PartialEq for NotePayload {
     fn eq(&self, other: &Self) -> bool {
-        let NoteInputs { values: inputs, commitment: _ } = self;
+        let NotePayload { values: inputs, commitment: _ } = self;
         inputs == &other.values
     }
 }
 
-impl Eq for NoteInputs {}
+impl Eq for NotePayload {}
 
 // CONVERSION
 // ================================================================================================
 
-impl From<NoteInputs> for Vec<Felt> {
-    fn from(value: NoteInputs) -> Self {
+impl From<NotePayload> for Vec<Felt> {
+    fn from(value: NotePayload) -> Self {
         value.values
     }
 }
 
-impl TryFrom<Vec<Felt>> for NoteInputs {
+impl TryFrom<Vec<Felt>> for NotePayload {
     type Error = NoteError;
 
     fn try_from(value: Vec<Felt>) -> Result<Self, Self::Error> {
-        NoteInputs::new(value)
+        NotePayload::new(value)
     }
 }
 
@@ -123,28 +123,28 @@ fn pad_inputs(inputs: &[Felt]) -> Vec<Felt> {
     padded_inputs
 }
 
-/// Pad `values` and returns a new `NoteInputs`.
-fn pad_and_build(values: Vec<Felt>) -> NoteInputs {
+/// Pad `values` and returns a new `NotePayload`.
+fn pad_and_build(values: Vec<Felt>) -> NotePayload {
     let commitment = {
         let padded_values = pad_inputs(&values);
         Hasher::hash_elements(&padded_values)
     };
 
-    NoteInputs { values, commitment }
+    NotePayload { values, commitment }
 }
 
 // SERIALIZATION
 // ================================================================================================
 
-impl Serializable for NoteInputs {
+impl Serializable for NotePayload {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let NoteInputs { values, commitment: _commitment } = self;
+        let NotePayload { values, commitment: _commitment } = self;
         target.write_u8(values.len().try_into().expect("inputs len is not a u8 value"));
         target.write_many(values);
     }
 }
 
-impl Deserializable for NoteInputs {
+impl Deserializable for NotePayload {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let num_values = source.read_u8()? as usize;
         let values = source.read_many::<Felt>(num_values)?;
@@ -159,7 +159,7 @@ impl Deserializable for NoteInputs {
 mod tests {
     use miden_crypto::utils::Deserializable;
 
-    use super::{Felt, NoteInputs, Serializable};
+    use super::{Felt, NotePayload, Serializable};
 
     #[test]
     fn test_input_ordering() {
@@ -168,17 +168,17 @@ mod tests {
         // we expect the inputs to be padded to length 16 and to remain in reverse stack order.
         let expected_ordering = vec![Felt::new(1), Felt::new(2), Felt::new(3)];
 
-        let note_inputs = NoteInputs::new(inputs).expect("note created should succeed");
-        assert_eq!(&expected_ordering, &note_inputs.values);
+        let note_payload = NotePayload::new(inputs).expect("note created should succeed");
+        assert_eq!(&expected_ordering, &note_payload.values);
     }
 
     #[test]
     fn test_input_serialization() {
         let inputs = vec![Felt::new(1), Felt::new(2), Felt::new(3)];
-        let note_inputs = NoteInputs::new(inputs).unwrap();
+        let note_payload = NotePayload::new(inputs).unwrap();
 
-        let bytes = note_inputs.to_bytes();
-        let parsed_note_inputs = NoteInputs::read_from_bytes(&bytes).unwrap();
-        assert_eq!(note_inputs, parsed_note_inputs);
+        let bytes = note_payload.to_bytes();
+        let parsed_note_payload = NotePayload::read_from_bytes(&bytes).unwrap();
+        assert_eq!(note_payload, parsed_note_payload);
     }
 }

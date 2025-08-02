@@ -16,7 +16,7 @@ mod header;
 pub use header::{NoteHeader, compute_note_commitment};
 
 mod inputs;
-pub use inputs::NoteInputs;
+pub use inputs::NotePayload;
 
 mod metadata;
 pub use metadata::NoteMetadata;
@@ -132,7 +132,7 @@ impl Note {
     }
 
     /// Returns the note's recipient inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteInputs {
+    pub fn inputs(&self) -> &NotePayload {
         self.details.inputs()
     }
 

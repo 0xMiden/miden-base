@@ -148,7 +148,7 @@ pub const ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = Masm
 /// Error Message: "attempted to access note assets from incorrect context"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note assets from incorrect context");
 /// Error Message: "attempted to access note inputs from incorrect context"
-pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note inputs from incorrect context");
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note inputs from incorrect context");
 /// Error Message: "attempted to access note sender from incorrect context"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note sender from incorrect context");
 /// Error Message: "note data does not match the commitment"
@@ -160,7 +160,7 @@ pub const ERR_NOTE_INVALID_INDEX: MasmError = MasmError::from_static_str("failed
 /// Error Message: "invalid note type for the given note tag prefix"
 pub const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX: MasmError = MasmError::from_static_str("invalid note type for the given note tag prefix");
 /// Error Message: "the specified number of note inputs does not match the actual number"
-pub const ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
+pub const ERR_NOTE_INVALID_NUMBER_OF_NOTE_PAYLOAD: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
 /// Error Message: "invalid note type"
 pub const ERR_NOTE_INVALID_TYPE: MasmError = MasmError::from_static_str("invalid note type");
 /// Error Message: "network execution mode with a specific target can only target network accounts"
@@ -210,7 +210,7 @@ pub const ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT: MasmError = MasmErro
 /// Error Message: "number of note assets exceeds the maximum limit of 256"
 pub const ERR_PROLOGUE_NUMBER_OF_NOTE_ASSETS_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of note assets exceeds the maximum limit of 256");
 /// Error Message: "number of note inputs exceeded the maximum limit of 128"
-pub const ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
+pub const ERR_PROLOGUE_NUMBER_OF_NOTE_PAYLOAD_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
 /// Error Message: "account data provided does not match the commitment recorded on-chain"
 pub const ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT: MasmError = MasmError::from_static_str("account data provided does not match the commitment recorded on-chain");
 /// Error Message: "provided info about assets of an input does not match its commitment"

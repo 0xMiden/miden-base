@@ -19,7 +19,7 @@ pub enum TransactionKernelError {
     #[error("failed to add asset to note")]
     FailedToAddAssetToNote(#[source] NoteError),
     #[error("note input data has hash {actual} but expected hash {expected}")]
-    InvalidNoteInputs { expected: Word, actual: Word },
+    InvalidNotePayload { expected: Word, actual: Word },
     #[error(
         "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
     )]
@@ -40,9 +40,9 @@ pub enum TransactionKernelError {
         source: AssetError,
     },
     #[error(
-        "note inputs data extracted from the advice map by the event handler is not well formed"
+        "note payload data extracted from the advice map by the event handler is not well formed"
     )]
-    MalformedNoteInputs(#[source] NoteError),
+    MalformedNotePayload(#[source] NoteError),
     #[error("note metadata created by the event handler is not well formed")]
     MalformedNoteMetadata(#[source] NoteError),
     #[error(
@@ -65,7 +65,7 @@ pub enum TransactionKernelError {
     #[error(
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]
-    TooFewElementsForNoteInputs { specified: u64, actual: u64 },
+    TooFewElementsForNotePayload { specified: u64, actual: u64 },
     #[error("account procedure with procedure root {0} is not in the advice provider")]
     UnknownAccountProcedure(Word),
     #[error("code commitment {0} is not in the advice provider")]
