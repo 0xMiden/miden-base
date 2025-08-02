@@ -2,7 +2,7 @@
 
 ## 0.11.0 (TBD)
 
-- [BREAKING] Rename `NoteInputs` to `NotePayload`.
+- [BREAKING] Rename `NoteInputs` to `NotePayload` ([#1677](https://github.com/0xMiden/miden-base/pull/1677)).
 
 ### Features
 
