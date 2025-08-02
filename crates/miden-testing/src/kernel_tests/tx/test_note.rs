@@ -18,7 +18,7 @@ use miden_objects::{
         rand::{FeltRng, RpoRandomCoin},
     },
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
+        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteMetadata, NotePayload,
         NoteRecipient, NoteScript, NoteTag, NoteType,
     },
     testing::{
@@ -243,7 +243,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         use.miden::note
 
         proc.process_note_0
-            # drop the note inputs
+            # drop the note payload
             dropw dropw dropw dropw
 
             # set the destination pointer for note 0 assets
@@ -266,7 +266,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         end
 
         proc.process_note_1
-            # drop the note inputs
+            # drop the note payload
             dropw dropw dropw dropw
 
             # set the destination pointer for note 1 assets
@@ -375,7 +375,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
             exec.note_internal::prepare_note
             # => [note_script_root_ptr, NOTE_ARGS, pad(11)]
 
-            # drop the note inputs
+            # drop the note payload
             dropw dropw dropw dropw
             # => []
 
@@ -436,12 +436,12 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler())
         .context("failed to compile note script")?;
 
-    // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
-    // values
+    // create a recipient with note payload, which number divides by 8. For simplicity create 8
+    // input values
     let recipient = NoteRecipient::new(
         serial_num,
         note_script,
-        NoteInputs::new(vec![
+        NotePayload::new(vec![
             ONE,
             Felt::new(2),
             Felt::new(3),
@@ -451,7 +451,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
             Felt::new(7),
             Felt::new(8),
         ])
-        .context("failed to create note inputs")?,
+        .context("failed to create note payload")?,
     );
     let input_note = Note::new(vault.clone(), metadata, recipient);
 
@@ -467,7 +467,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_inputs` procedure to trigger note inputs number assertion
+                # execute the `get_inputs` procedure to trigger note payload number assertion
                 push.0 exec.note::get_inputs
                 # => [num_inputs, 0]
 
@@ -616,7 +616,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
     note_script_root.reverse();
     expected_stack[..4].copy_from_slice(&note_script_root);
 
-    // assert that the stack contains the note inputs at the end of execution
+    // assert that the stack contains the note payload at the end of execution
     assert_eq!(process.stack.trace_state(), expected_stack)
 }
 
@@ -712,7 +712,7 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
 
     let process = &tx_context.execute_code(code)?;
 
-    let note_inputs_5_hash = NoteInputs::new(vec![
+    let note_payload_5_hash = NotePayload::new(vec![
         Felt::new(1),
         Felt::new(2),
         Felt::new(3),
@@ -721,7 +721,7 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     ])?
     .commitment();
 
-    let note_inputs_8_hash = NoteInputs::new(vec![
+    let note_payload_8_hash = NotePayload::new(vec![
         Felt::new(1),
         Felt::new(2),
         Felt::new(3),
@@ -733,7 +733,7 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     ])?
     .commitment();
 
-    let note_inputs_15_hash = NoteInputs::new(vec![
+    let note_payload_15_hash = NotePayload::new(vec![
         Felt::new(1),
         Felt::new(2),
         Felt::new(3),
@@ -754,9 +754,9 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
 
     let mut expected_stack = alloc::vec::Vec::new();
 
-    expected_stack.extend_from_slice(note_inputs_5_hash.as_elements());
-    expected_stack.extend_from_slice(note_inputs_8_hash.as_elements());
-    expected_stack.extend_from_slice(note_inputs_15_hash.as_elements());
+    expected_stack.extend_from_slice(note_payload_5_hash.as_elements());
+    expected_stack.extend_from_slice(note_payload_8_hash.as_elements());
+    expected_stack.extend_from_slice(note_payload_15_hash.as_elements());
     expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
@@ -878,12 +878,12 @@ pub fn test_timelock() -> anyhow::Result<()> {
       use.miden::tx
 
       begin
-          # store the note inputs to memory starting at address 0
+          # store the note payload to memory starting at address 0
           push.0 exec.note::get_inputs
           # => [num_inputs, inputs_ptr]
 
           # make sure the number of inputs is 1
-          eq.1 assert.err="number of note inputs is not 1"
+          eq.1 assert.err="number of note payload is not 1"
           # => [inputs_ptr]
 
           # read the timestamp at which the note can be consumed
@@ -905,7 +905,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
 
     let lock_timestamp = 2_000_000_000;
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
-        .note_inputs([Felt::from(lock_timestamp)])?
+        .note_payload([Felt::from(lock_timestamp)])?
         .code(code.clone())
         .build(&TransactionKernel::testing_assembler_with_mock_account())?;
 
@@ -984,7 +984,7 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let vault = NoteAssets::new(vec![])?;
     let note_script = NoteScript::compile("begin nop end", TransactionKernel::testing_assembler())?;
     let recipient =
-        NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
+        NoteRecipient::new(serial_num, note_script, NotePayload::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
 
     let tx_context = TransactionContextBuilder::new(target_account)

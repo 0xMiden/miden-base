@@ -11,7 +11,7 @@ use miden_objects::{
         rand::{FeltRng, RpoRandomCoin},
     },
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
+        Note, NoteAssets, NoteExecutionHint, NoteMetadata, NotePayload, NoteRecipient, NoteScript,
         NoteTag, NoteType,
     },
     testing::account_id::{
@@ -281,7 +281,7 @@ fn test_basic_wallet_custom_notes() {
     let note_script =
         NoteScript::compile(compatible_source_code, TransactionKernel::testing_assembler())
             .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -311,7 +311,7 @@ fn test_basic_wallet_custom_notes() {
     let note_script =
         NoteScript::compile(incompatible_source_code, TransactionKernel::testing_assembler())
             .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -373,7 +373,7 @@ fn test_basic_fungible_faucet_custom_notes() {
     let note_script =
         NoteScript::compile(compatible_source_code, TransactionKernel::testing_assembler())
             .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -405,7 +405,7 @@ fn test_basic_fungible_faucet_custom_notes() {
     let note_script =
         NoteScript::compile(incompatible_source_code, TransactionKernel::testing_assembler())
             .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -493,7 +493,7 @@ fn test_custom_account_custom_notes() {
             .unwrap(),
     )
     .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -522,7 +522,7 @@ fn test_custom_account_custom_notes() {
             .unwrap(),
     )
     .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,
@@ -618,7 +618,7 @@ fn test_custom_account_multiple_components_custom_notes() {
             .unwrap(),
     )
     .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::Maybe,
@@ -659,7 +659,7 @@ fn test_custom_account_multiple_components_custom_notes() {
             .unwrap(),
     )
     .unwrap();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
     let incompatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
         NoteAccountCompatibility::No,

@@ -5,7 +5,7 @@ use.miden::contracts::wallets::basic->wallet
 # CONSTANTS
 # =================================================================================================
 
-const.SWAP_NOTE_INPUTS_NUMBER=12
+const.SWAP_NOTE_PAYLOAD_NUMBER=12
 
 # ERRORS
 # =================================================================================================
@@ -50,7 +50,7 @@ begin
     # => [num_inputs, inputs_ptr]
 
     # make sure the number of inputs is 12
-    eq.SWAP_NOTE_INPUTS_NUMBER assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
+    eq.SWAP_NOTE_PAYLOAD_NUMBER assert.err=ERR_SWAP_WRONG_NUMBER_OF_INPUTS
     # => [inputs_ptr]
 
     # load REQUESTED_ASSET

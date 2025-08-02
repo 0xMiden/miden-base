@@ -345,7 +345,7 @@ pub const NOTE_MEM_SIZE: MemoryAddress = 2048;
 //
 // - NUM_INPUTS is encoded as [num_inputs, 0, 0, 0].
 // - NUM_ASSETS is encoded as [num_assets, 0, 0, 0].
-// - INPUTS_COMMITMENT is the key to look up note inputs in the advice map.
+// - INPUTS_COMMITMENT is the key to look up note payload in the advice map.
 // - ASSETS_COMMITMENT is the key to look up note assets in the advice map.
 //
 // Notice that note input values are not loaded to the memory, only their length. In order to obtain
@@ -371,7 +371,7 @@ pub const NUM_INPUT_NOTES_PTR: MemoryAddress = INPUT_NOTE_SECTION_PTR;
 pub const INPUT_NOTE_ID_OFFSET: MemoryOffset = 0;
 pub const INPUT_NOTE_SERIAL_NUM_OFFSET: MemoryOffset = 4;
 pub const INPUT_NOTE_SCRIPT_ROOT_OFFSET: MemoryOffset = 8;
-pub const INPUT_NOTE_INPUTS_COMMITMENT_OFFSET: MemoryOffset = 12;
+pub const INPUT_NOTE_PAYLOAD_COMMITMENT_OFFSET: MemoryOffset = 12;
 pub const INPUT_NOTE_ASSETS_COMMITMENT_OFFSET: MemoryOffset = 16;
 pub const INPUT_NOTE_RECIPIENT_OFFSET: MemoryOffset = 20;
 pub const INPUT_NOTE_METADATA_OFFSET: MemoryOffset = 24;

@@ -10,7 +10,7 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT="attempted t
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
 
 const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
 
@@ -83,25 +83,25 @@ end
 #! Returns the commitment to the note's inputs.
 #!
 #! Inputs:  []
-#! Outputs: [NOTE_INPUTS_COMMITMENT]
+#! Outputs: [NOTE_PAYLOAD_COMMITMENT]
 #!
 #! Where:
-#! - NOTE_INPUTS_COMMITMENT is the note inputs commitment of the note currently being processed.
+#! - NOTE_PAYLOAD_COMMITMENT is the note inputs commitment of the note currently being processed.
 #!
 #! Panics if:
 #! - the note is not being processed.
-export.get_note_inputs_commitment
+export.get_note_payload_commitment
     exec.memory::get_current_input_note_ptr
     # => [ptr]
 
     # The kernel memory is initialized by prologue::process_input_notes_data, and reset by
     # note_processing_teardown before running the tx_script. If the value is `0` it is likely this
     # procedure is being called outside of the kernel context.
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_FROM_INCORRECT_CONTEXT
     # => [ptr]
 
-    exec.memory::get_input_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT]
+    exec.memory::get_input_note_payload_commitment
+    # => [NOTE_PAYLOAD_COMMITMENT]
 end
 
 #! Move the current input note pointer to the next note and returns the pointer value.

@@ -917,23 +917,23 @@ end
 #! Returns the current note's inputs commitment and length.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+#! Outputs: [NOTE_PAYLOAD_COMMITMENT, num_inputs, pad(11)]
 #!
 #! Where:
-#! - NOTE_INPUTS_COMMITMENT is the current note's inputs commitment.
+#! - NOTE_PAYLOAD_COMMITMENT is the current note's inputs commitment.
 #! - num_inputs is the number of input values of the current note.
 #!
 #! Invocation: dynexec
-export.note_get_inputs_commitment_and_len
+export.note_get_payload_commitment_and_len
     exec.memory::get_input_note_num_inputs
     # => [num_inputs, pad(16)]
 
-    exec.note::get_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
+    exec.note::get_note_payload_commitment
+    # => [NOTE_PAYLOAD_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
     swapdw dropw dropw
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+    # => [NOTE_PAYLOAD_COMMITMENT, num_inputs, pad(11)]
 end
 
 #! Returns the sender of the note currently being processed.

@@ -163,21 +163,21 @@ impl WellKnownNote {
         }
     }
 
-    /// Checks the correctness of the provided note inputs against the target account.
+    /// Checks the correctness of the provided note payload against the target account.
     ///
     /// It performs:
-    /// - for all notes: a check that note inputs have correct number of values.
-    /// - for `P2ID` note: assertion that the account ID provided by the note inputs is equal to the
-    ///   target account ID.
+    /// - for all notes: a check that note payload have correct number of values.
+    /// - for `P2ID` note: assertion that the account ID provided by the note payload is equal to
+    ///   the target account ID.
     /// - for `P2IDE` note:
     ///   - assertion that the ID of the account, against which the transaction is being executed,
-    ///     is equal to the target account ID specified in the note inputs (which means that the
+    ///     is equal to the target account ID specified in the note payload (which means that the
     ///     note is going to be consumed by the target account) or is equal to the ID of the
     ///     account, which sent this note (which means that the note is going to be consumed by the
     ///     sender account).
     ///   - assertion that the timelock height was reached.
     ///   - assertion that the reclaim height was reached.
-    pub fn check_note_inputs(
+    pub fn check_note_payload(
         &self,
         note: &Note,
         target_account_id: AccountId,
@@ -185,17 +185,17 @@ impl WellKnownNote {
     ) -> NoteAccountCompatibility {
         match self {
             WellKnownNote::P2ID => {
-                let note_inputs = note.inputs().values();
-                if note_inputs.len() != self.num_expected_inputs() {
+                let note_payload = note.inputs().values();
+                if note_payload.len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;
                 }
 
                 // Return `No` if the note input values used to construct the account ID are invalid
-                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
+                let Some(input_account_id) = try_read_account_id_from_inputs(note_payload) else {
                     return NoteAccountCompatibility::No;
                 };
 
-                // check that the account ID in the note inputs equal to the target account ID
+                // check that the account ID in the note payload equal to the target account ID
                 if input_account_id == target_account_id {
                     NoteAccountCompatibility::Yes
                 } else {
@@ -203,15 +203,15 @@ impl WellKnownNote {
                 }
             },
             WellKnownNote::P2IDE => {
-                let note_inputs = note.inputs().values();
+                let note_payload = note.inputs().values();
 
                 // check expected number of inputs
-                if note_inputs.len() != self.num_expected_inputs() {
+                if note_payload.len() != self.num_expected_inputs() {
                     return NoteAccountCompatibility::No;
                 }
 
                 // parse timelock height and enforce it
-                let Ok(timelock_height) = note_inputs[3].try_into() else {
+                let Ok(timelock_height) = note_payload[3].try_into() else {
                     return NoteAccountCompatibility::No;
                 };
                 if block_ref.as_u32() < timelock_height {
@@ -219,7 +219,7 @@ impl WellKnownNote {
                 }
 
                 // identify who is trying to spend
-                let Some(input_account_id) = try_read_account_id_from_inputs(note_inputs) else {
+                let Some(input_account_id) = try_read_account_id_from_inputs(note_payload) else {
                     return NoteAccountCompatibility::No;
                 };
                 let sender_account_id = note.metadata().sender();
@@ -231,7 +231,7 @@ impl WellKnownNote {
                     NoteAccountCompatibility::Yes
                 } else if is_sender {
                     // sender can reclaim only after reclaim height
-                    let Ok(reclaim_height) = note_inputs[2].try_into() else {
+                    let Ok(reclaim_height) = note_payload[2].try_into() else {
                         return NoteAccountCompatibility::No;
                     };
                     return if block_ref.as_u32() >= reclaim_height {
@@ -262,9 +262,9 @@ impl WellKnownNote {
 /// Reads the account ID from the first two note input values.
 ///
 /// Returns None if the note input values used to construct the account ID are invalid.
-fn try_read_account_id_from_inputs(note_inputs: &[Felt]) -> Option<AccountId> {
-    let account_id_felts: [Felt; 2] = note_inputs[0..2].try_into().expect(
-        "Should be able to convert the first two note inputs to an array of two Felt elements",
+fn try_read_account_id_from_inputs(note_payload: &[Felt]) -> Option<AccountId> {
+    let account_id_felts: [Felt; 2] = note_payload[0..2].try_into().expect(
+        "Should be able to convert the first two note payload to an array of two Felt elements",
     );
 
     AccountId::try_from([account_id_felts[1], account_id_felts[0]]).ok()

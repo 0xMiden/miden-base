@@ -147,7 +147,7 @@ mod tests {
         asset::{Asset, FungibleAsset},
         block::BlockNumber,
         note::{
-            Note, NoteAssets, NoteFile, NoteInclusionProof, NoteInputs, NoteMetadata,
+            Note, NoteAssets, NoteFile, NoteInclusionProof, NoteMetadata, NotePayload,
             NoteRecipient, NoteScript, NoteTag, NoteType,
         },
         testing::account_id::{
@@ -162,8 +162,8 @@ mod tests {
 
         let serial_num = Word::from([0, 1, 2, 3u32]);
         let script = NoteScript::mock();
-        let note_inputs = NoteInputs::new(vec![target.prefix().into()]).unwrap();
-        let recipient = NoteRecipient::new(serial_num, script, note_inputs);
+        let note_payload = NotePayload::new(vec![target.prefix().into()]).unwrap();
+        let recipient = NoteRecipient::new(serial_num, script, note_payload);
 
         let asset = Asset::Fungible(FungibleAsset::new(faucet, 100).unwrap());
         let metadata = NoteMetadata::new(

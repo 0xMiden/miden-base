@@ -28,8 +28,8 @@ use miden_objects::{
     asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
     block::BlockNumber,
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
-        NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
+        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteMetadata,
+        NotePayload, NoteRecipient, NoteScript, NoteTag, NoteType,
     },
     testing::{
         account_component::IncrNonceAuthComponent,
@@ -379,7 +379,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         NoteExecutionHint::Always,
         ZERO,
     )?;
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NotePayload::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_1, input_note_1.script().clone(), inputs);
     let output_note_1 = Note::new(assets, metadata, recipient);
 
@@ -394,7 +394,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         NoteExecutionHint::after_block(123.into())?,
         ZERO,
     )?;
-    let inputs = NoteInputs::new(vec![])?;
+    let inputs = NotePayload::new(vec![])?;
     let recipient = NoteRecipient::new(output_serial_no_2, input_note_2.script().clone(), inputs);
     let output_note_2 = Note::new(assets, metadata, recipient);
 
@@ -752,7 +752,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let aux = Felt::new(27);
     let tag = NoteTag::for_public_use_case(42, 42, NoteExecutionMode::Network).unwrap();
     let single_input = 2;
-    let inputs = NoteInputs::new(vec![Felt::new(single_input)]).unwrap();
+    let inputs = NotePayload::new(vec![Felt::new(single_input)]).unwrap();
     let input_commitment = inputs.commitment();
 
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
@@ -1026,7 +1026,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
     let note_script_2 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
-    let inputs_2 = NoteInputs::new(vec![ONE])?;
+    let inputs_2 = NotePayload::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
     let vault_2 = NoteAssets::new(vec![removed_asset_3, removed_asset_4])?;
@@ -1037,7 +1037,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
     let note_script_3 =
         NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
-    let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
+    let inputs_3 = NotePayload::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
         note_type3,
@@ -1201,7 +1201,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     assert_eq!(expected_output_note_3.id(), resulting_output_note_3.id());
     assert_eq!(expected_output_note_3.assets(), resulting_output_note_3.assets().unwrap());
 
-    // make sure that the number of note inputs remains the same
+    // make sure that the number of note payload remains the same
     let resulting_note_2_recipient =
         resulting_output_note_2.recipient().expect("output note 2 is not full");
     assert_eq!(
