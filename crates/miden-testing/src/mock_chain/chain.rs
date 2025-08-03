@@ -364,7 +364,12 @@ impl MockChain {
         proofs
     }
 
-    /// Returns a reference to the latest [`BlockHeader`] in the chain.
+    /// Returns the genesis [`BlockHeader`] of the chain.
+    pub fn genesis_block_header(&self) -> BlockHeader {
+        self.block_header(BlockNumber::GENESIS.as_usize())
+    }
+
+    /// Returns the latest [`BlockHeader`] in the chain.
     pub fn latest_block_header(&self) -> BlockHeader {
         let chain_tip =
             self.chain.chain_tip().expect("chain should contain at least the genesis block");
@@ -383,6 +388,15 @@ impl MockChain {
     /// Returns a reference to slice of all created proven blocks.
     pub fn proven_blocks(&self) -> &[ProvenBlock] {
         &self.blocks
+    }
+
+    /// Returns the [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    ///
+    /// This value is taken from the genesis block because it is assumed not to change throughout
+    /// the chain's lifecycle.
+    pub fn native_asset_id(&self) -> AccountId {
+        self.genesis_block_header().fee_parameters().native_asset_id()
     }
 
     /// Returns a reference to the nullifier tree.
