@@ -51,6 +51,7 @@ export.auth__tx_rpo_falcon512
 
     exec.auth::create_tx_summary
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, PUB_KEY, pad(16)]
+
     exec.auth::adv_insert_hqword
 
     # the commitment to the tx summary is the message that is signed

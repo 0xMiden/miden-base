@@ -1,7 +1,6 @@
 use.miden::account
 use.miden::auth
 use.miden::tx
-
 use.std::crypto::dsa::rpo_falcon512
 use.std::crypto::hashes::rpo
 use.std::sys
@@ -35,8 +34,8 @@ const.SUCCESSFUL_VERIFICATIONS=116
 const.THRESHOLD=120
 
 # ERRORS
-const.NON_CONSTANT_MSG="NON CONSTANT SIGNATURES"
-const.INVALID_SIGNATURE="SIG DOES NOT MATCH DIGEST"
+const.NON_CONSTANT_MSG="non constant signatures"
+const.INVALID_SIGNATURE="sig does not match digest"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
