@@ -431,30 +431,30 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .added_assets()
-        .map(|asset| (asset.vault_key(), asset.unwrap_fungible().amount()))
+        .map(|asset| (asset.unwrap_fungible().faucet_id(), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
     let mut removed_assets = executed_tx
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (asset.vault_key(), asset.unwrap_fungible().amount()))
+        .map(|asset| (asset.unwrap_fungible().faucet_id(), asset.unwrap_fungible().amount()))
         .collect::<BTreeMap<_, _>>();
 
     assert_eq!(added_assets.len(), 2);
     assert_eq!(removed_assets.len(), 2);
 
     assert_eq!(
-        added_assets.remove(&original_asset2.vault_key()).unwrap(),
+        added_assets.remove(&original_asset2.faucet_id()).unwrap(),
         added_asset2.amount() - removed_asset2.amount()
     );
-    assert_eq!(added_assets.remove(&added_asset4.vault_key()).unwrap(), added_asset4.amount());
+    assert_eq!(added_assets.remove(&added_asset4.faucet_id()).unwrap(), added_asset4.amount());
 
     assert_eq!(
-        removed_assets.remove(&original_asset0.vault_key()).unwrap(),
+        removed_assets.remove(&original_asset0.faucet_id()).unwrap(),
         removed_asset0.amount() - added_asset0.amount()
     );
     assert_eq!(
-        removed_assets.remove(&original_asset3.vault_key()).unwrap(),
+        removed_assets.remove(&original_asset3.faucet_id()).unwrap(),
         removed_asset3.amount()
     );
 
@@ -538,20 +538,20 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .account_delta()
         .vault()
         .added_assets()
-        .map(|asset| (asset.vault_key(), asset.unwrap_non_fungible()))
+        .map(|asset| (asset.faucet_id_prefix(), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
     let mut removed_assets = executed_tx
         .account_delta()
         .vault()
         .removed_assets()
-        .map(|asset| (asset.vault_key(), asset.unwrap_non_fungible()))
+        .map(|asset| (asset.faucet_id_prefix(), asset.unwrap_non_fungible()))
         .collect::<BTreeMap<_, _>>();
 
     assert_eq!(added_assets.len(), 1);
     assert_eq!(removed_assets.len(), 1);
 
-    assert_eq!(added_assets.remove(&asset0.vault_key()).unwrap(), asset0);
-    assert_eq!(removed_assets.remove(&asset1.vault_key()).unwrap(), asset1);
+    assert_eq!(added_assets.remove(&asset0.faucet_id_prefix()).unwrap(), asset0);
+    assert_eq!(removed_assets.remove(&asset1.faucet_id_prefix()).unwrap(), asset1);
 
     Ok(())
 }
@@ -783,6 +783,27 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
         removed_assets.len(),
         executed_transaction.account_delta().vault().removed_assets().count()
     );
+    Ok(())
+}
+
+/// Tests that adding a fungible asset with amount zero to the account vault works and does not
+/// result in an account delta entry.
+#[test]
+fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let input_note = builder.add_p2id_note(
+        account.id(),
+        account.id(),
+        &[FungibleAsset::mock(0)],
+        NoteType::Private,
+    )?;
+    let chain = builder.build()?;
+
+    let tx = chain.build_tx_context(account, &[input_note.id()], &[])?.build()?.execute()?;
+
+    assert!(tx.account_delta().vault().is_empty());
+
     Ok(())
 }
 

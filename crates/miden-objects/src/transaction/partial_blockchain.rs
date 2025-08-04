@@ -283,8 +283,9 @@ mod tests {
     use crate::{
         PartialBlockchainError, Word,
         alloc::vec::Vec,
-        block::{BlockHeader, BlockNumber},
+        block::{BlockHeader, BlockNumber, FeeParameters},
         crypto::merkle::{Mmr, PartialMmr},
+        testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     };
 
     #[test]
@@ -425,6 +426,10 @@ mod tests {
     }
 
     fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
+        let fee_parameters =
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
+                .expect("native asset ID should be a fungible faucet ID");
+
         BlockHeader::new(
             0,
             Word::empty(),
@@ -436,6 +441,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
+            fee_parameters,
             0,
         )
     }

@@ -19,7 +19,7 @@ use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
 
 mod utils;
 use utils::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER, DEFAULT_AUTH_SCRIPT,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER,
     get_account_with_basic_authenticated_wallet, get_new_pk_and_authenticator,
     write_bench_results_to_json,
 };
@@ -117,11 +117,8 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
     )
     .unwrap();
 
-    let tx_script_target = ScriptBuilder::default().compile_tx_script(DEFAULT_AUTH_SCRIPT).unwrap();
-
     let tx_context = TransactionContextBuilder::new(target_account.clone())
         .extend_input_notes(vec![note])
-        .tx_script(tx_script_target)
         .authenticator(Some(falcon_auth))
         .build()?;
 

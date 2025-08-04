@@ -374,10 +374,10 @@ fn test_get_inputs() -> anyhow::Result<()> {
             # => []
 
             exec.note_internal::prepare_note
-            # => [NOTE_SCRIPT_ROOT, NOTE_ARGS]
+            # => [note_script_root_ptr, NOTE_ARGS, pad(11)]
 
             # drop the note inputs
-            dropw dropw
+            dropw dropw dropw dropw
             # => []
 
             push.{NOTE_0_PTR} exec.note::get_inputs
@@ -512,10 +512,12 @@ fn test_note_setup() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
             exec.note::prepare_note
+            # => [note_script_root_ptr, NOTE_ARGS, pad(11), pad(16)]
             padw movup.4 mem_loadw
+            # => [SCRIPT_ROOT, NOTE_ARGS, pad(11), pad(16)]
 
             # truncate the stack
-            swapdw dropw dropw
+            repeat.19 movup.8 drop end
         end
         ";
 
@@ -570,8 +572,17 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
             exec.prologue::prepare_transaction
             exec.memory::get_num_input_notes push.2 assert_eq
             exec.note::prepare_note drop
+            # => [NOTE_ARGS0, pad(11), pad(16)]
+            repeat.11 movup.4 drop end
+            # => [NOTE_ARGS0, pad(16)]
+
             exec.note::increment_current_input_note_ptr drop
+            # => [NOTE_ARGS0, pad(16)]
+
             exec.note::prepare_note drop
+            # => [NOTE_ARGS1, pad(11), NOTE_ARGS0, pad(16)]
+            repeat.11 movup.4 drop end
+            # => [NOTE_ARGS1, NOTE_ARGS0, pad(16)]
 
             # truncate the stack
             swapdw dropw dropw

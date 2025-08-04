@@ -10,6 +10,7 @@ use miden_objects::{
         Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
         delta::AccountUpdateDetails,
     },
+    asset::FungibleAsset,
     batch::ProvenBatch,
     block::{BlockInputs, BlockNumber, ProposedBlock},
     testing::account_component::{AccountMockComponent, IncrNonceAuthComponent},
@@ -404,6 +405,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
                 Word::empty(),
                 genesis_block.block_num(),
                 genesis_block.commitment(),
+                FungibleAsset::mock(500).unwrap_fungible(),
                 BlockNumber::from(u32::MAX),
                 ExecutionProof::new(Proof::new_dummy(), Default::default()),
             )

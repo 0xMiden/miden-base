@@ -727,6 +727,25 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that creating a note with a fungible asset with amount zero works.
+#[test]
+fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let output_note = builder.add_p2id_note(
+        account.id(),
+        account.id(),
+        &[FungibleAsset::mock(0)],
+        NoteType::Private,
+    )?;
+    let input_note = builder.add_spawn_note(account.id(), [&output_note])?;
+    let chain = builder.build()?;
+
+    chain.build_tx_context(account, &[input_note.id()], &[])?.build()?.execute()?;
+
+    Ok(())
+}
+
 #[test]
 fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {

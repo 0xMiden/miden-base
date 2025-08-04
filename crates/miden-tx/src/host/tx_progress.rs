@@ -7,16 +7,37 @@ use super::{NoteId, RowIndex, TransactionMeasurements};
 
 /// Contains the information about the number of cycles for each of the transaction execution
 /// stages.
-#[derive(Clone, Default, Debug)]
+#[derive(Clone, Debug)]
 pub struct TransactionProgress {
     prologue: CycleInterval,
     notes_processing: CycleInterval,
     note_execution: Vec<(NoteId, CycleInterval)>,
     tx_script_processing: CycleInterval,
     epilogue: CycleInterval,
+    /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
+    /// count.
+    ///
+    /// This is used to estimate the total number of cycles the transaction takes for use in
+    /// compute_fee itself.
+    epilogue_after_tx_fee_computed: Option<RowIndex>,
 }
 
 impl TransactionProgress {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Initializes a new [`TransactionProgress`] with all values set to their defaults.
+    pub fn new() -> Self {
+        Self {
+            prologue: CycleInterval::default(),
+            notes_processing: CycleInterval::default(),
+            note_execution: Vec::new(),
+            tx_script_processing: CycleInterval::default(),
+            epilogue: CycleInterval::default(),
+            epilogue_after_tx_fee_computed: None,
+        }
+    }
+
     // STATE ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -81,8 +102,18 @@ impl TransactionProgress {
         self.epilogue.set_start(cycle);
     }
 
+    pub fn epilogue_after_tx_fee_computed(&mut self, cycle: RowIndex) {
+        self.epilogue_after_tx_fee_computed = Some(cycle);
+    }
+
     pub fn end_epilogue(&mut self, cycle: RowIndex) {
         self.epilogue.set_end(cycle);
+    }
+}
+
+impl Default for TransactionProgress {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -102,12 +133,22 @@ impl From<TransactionProgress> for TransactionMeasurements {
 
         let epilogue = tx_progress.epilogue().len();
 
+        let after_tx_fee_computed_cycles = if let Some(epilogue_after_tx_fee_computed) =
+            tx_progress.epilogue_after_tx_fee_computed
+        {
+            tx_progress.epilogue().end().expect("epilogue end should be set")
+                - epilogue_after_tx_fee_computed
+        } else {
+            0
+        };
+
         Self {
             prologue,
             notes_processing,
             note_execution,
             tx_script_processing,
             epilogue,
+            after_tx_fee_computed_cycles,
         }
     }
 }

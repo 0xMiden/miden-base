@@ -136,25 +136,28 @@ export.note_processing_teardown
     # => []
 end
 
-#! Prepares a note for execution.
+#! Prepares a note for execution and pads the stack.
 #!
 #! Loads the note's script root address and args onto the stack.
 #!
 #! Inputs:  []
-#! Outputs: [note_script_root_ptr, NOTE_ARGS]
+#! Outputs: [note_script_root_ptr, NOTE_ARGS, pad(11)]
 #!
 #! Where:
 #! - note_script_root_ptr is the memory address where note's script root is stored.
 #! - NOTE_ARGS is the note's arguments.
 export.prepare_note
+    padw padw push.0.0.0
+    # => [pad(11)]
+
     exec.memory::get_current_input_note_ptr
-    # => [note_ptr]
+    # => [note_ptr, pad(11)]
 
     dup exec.memory::get_input_note_args movup.4
-    # => [note_ptr, NOTE_ARGS]
+    # => [note_ptr, NOTE_ARGS, pad(11)]
 
     exec.memory::get_input_note_script_root_ptr
-    # => [note_script_root_ptr, NOTE_ARGS]
+    # => [note_script_root_ptr, NOTE_ARGS, pad(11)]
 end
 
 # OUTPUT NOTE PROCEDURES

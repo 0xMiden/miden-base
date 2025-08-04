@@ -18,7 +18,7 @@ pub type StorageSlot = u8;
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
 // | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
 // | Global inputs      | 400 (100)                             | 431 (107)                           |                                            |
-// | Block header       | 800 (200)                             | 835 (208)                           |                                            |
+// | Block header       | 800 (200)                             | 843 (210)                           |                                            |
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each    |
 // | Accounts data      | 8_192 (2048)                          | 532_479 (133_119)                   | 64 accounts max, 8192 elements each        |
@@ -178,8 +178,20 @@ pub const PROTOCOL_VERSION_IDX: DataIndex = 1;
 /// The index of the timestamp within the block metadata
 pub const TIMESTAMP_IDX: DataIndex = 2;
 
+/// The memory address at which the fee parameters are stored. These occupy a double word.
+pub const FEE_PARAMETERS_PTR: MemoryAddress = 832;
+
+/// The index of the native asset ID suffix within the block fee parameters.
+pub const NATIVE_ASSET_ID_SUFFIX_IDX: DataIndex = 0;
+
+/// The index of the native asset ID prefix within the block fee parameters.
+pub const NATIVE_ASSET_ID_PREFIX_IDX: DataIndex = 1;
+
+/// The index of the verification base fee within the block fee parameters.
+pub const VERIFICATION_BASE_FEE_IDX: DataIndex = 2;
+
 /// The memory address at which the note root is stored
-pub const NOTE_ROOT_PTR: MemoryAddress = 832;
+pub const NOTE_ROOT_PTR: MemoryAddress = 840;
 
 // CHAIN DATA
 // ------------------------------------------------------------------------------------------------

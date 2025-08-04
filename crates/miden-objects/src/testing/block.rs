@@ -4,7 +4,8 @@ use winter_rand_utils::rand_value;
 use crate::{
     Word,
     account::Account,
-    block::{AccountTree, BlockHeader, BlockNumber},
+    block::{AccountTree, BlockHeader, BlockNumber, FeeParameters},
+    testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
 };
 
 impl BlockHeader {
@@ -25,6 +26,9 @@ impl BlockHeader {
             AccountTree::with_entries(accounts.iter().map(|acct| (acct.id(), acct.commitment())))
                 .expect("failed to create account db");
         let account_root = acct_db.root();
+        let fee_parameters =
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
+                .expect("native asset ID should be a fungible faucet ID");
 
         #[cfg(not(target_family = "wasm"))]
         let (
@@ -87,6 +91,7 @@ impl BlockHeader {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            fee_parameters,
             timestamp,
         )
     }

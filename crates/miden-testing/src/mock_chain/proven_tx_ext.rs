@@ -38,6 +38,7 @@ impl ProvenTransactionExt for ProvenTransaction {
             executed_tx.account_delta().to_commitment(),
             block_reference.block_num(),
             block_reference.commitment(),
+            executed_tx.fee(),
             executed_tx.expiration_block_num(),
             ExecutionProof::new(Proof::new_dummy(), Default::default()),
         )
