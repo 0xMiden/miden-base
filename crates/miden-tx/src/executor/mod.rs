@@ -1,4 +1,8 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{
+    collections::{BTreeMap, BTreeSet},
+    sync::Arc,
+    vec::Vec,
+};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
@@ -6,7 +10,7 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
-    note::{NoteId, NoteScript},
+    note::{Note, NoteScript},
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
@@ -309,7 +313,10 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> Result<NoteAccountExecution, TransactionExecutorError> {
+    ) -> Result<NoteConsumptionExecution, TransactionExecutorError> {
+        let mut notes_map: BTreeMap<_, _> =
+            notes.iter().map(|note| (note.id(), note.clone().into_note())).collect();
+
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
@@ -348,7 +355,7 @@ where
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        // execute the transaction kernel
+        // Execute the transaction kernel.
         let result = vm_processor::execute(
             &TransactionKernel::main(),
             stack_inputs,
@@ -360,12 +367,12 @@ where
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
-            Ok(_) => Ok(NoteAccountExecution::Success),
+            Ok(_) => Ok(NoteConsumptionExecution::Success),
             Err(tx_execution_error) => {
                 let notes = host.tx_progress().note_execution();
 
-                // empty notes vector means that we didn't process the notes, so an error
-                // occurred somewhere else
+                // Empty notes vector means that we didn't process the notes, so an error
+                // occurred somewhere else.
                 if notes.is_empty() {
                     return Err(tx_execution_error);
                 }
@@ -374,15 +381,21 @@ where
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
 
-                // if the interval end of the last note is specified, then an error occurred after
-                // notes processing
+                // If the interval end of the last note is specified, then an error occurred after
+                // notes processing.
                 if last_note_interval.end().is_some() {
                     return Err(tx_execution_error);
                 }
 
-                Ok(NoteAccountExecution::Failure {
-                    failed_note_id: *last_note,
-                    successful_notes: success_notes.iter().map(|(note, _)| *note).collect(),
+                // SAFETY: The notes are guaranteed to be in notes_map.
+                let failed = vec![notes_map.get(last_note).unwrap().clone()];
+                let successful = success_notes
+                    .iter()
+                    .filter_map(|(id, _)| notes_map.remove(id))
+                    .collect::<Vec<_>>();
+                Ok(NoteConsumptionExecution::Failure {
+                    failed,
+                    successful,
                     error: Some(tx_execution_error),
                 })
             },
@@ -533,11 +546,11 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
 /// [NoteAccountExecution::Failure] holds data for error handling: `failing_note_id` is an ID of a
 /// failing note and `successful_notes` is a vector of note IDs which were successfully executed.
 #[derive(Debug)]
-pub enum NoteAccountExecution {
+pub enum NoteConsumptionExecution {
     Success,
     Failure {
-        failed_note_id: NoteId,
-        successful_notes: Vec<NoteId>,
+        failed: Vec<Note>,
+        successful: Vec<Note>,
         error: Option<TransactionExecutorError>,
     },
 }

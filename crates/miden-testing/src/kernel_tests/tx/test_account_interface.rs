@@ -17,8 +17,8 @@ use miden_objects::{
     },
 };
 use miden_tx::{
-    NoteAccountExecution, NoteConsumptionChecker, TransactionExecutor, TransactionExecutorError,
-    auth::UnreachableAuth,
+    NoteConsumptionChecker, NoteConsumptionExecution, TransactionExecutor,
+    TransactionExecutorError, auth::UnreachableAuth,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -69,7 +69,7 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, NoteAccountExecution::Success);
+    assert_matches!(execution_check_result, NoteConsumptionExecution::Success);
 
     Ok(())
 }
@@ -107,7 +107,7 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, NoteAccountExecution::Success);
+    assert_matches!(execution_check_result, NoteConsumptionExecution::Success);
 
     Ok(())
 }
@@ -183,12 +183,12 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         source_manager,
     )?;
 
-    assert_matches!(execution_check_result, NoteAccountExecution::Failure {
-        failed_note_id,
-        successful_notes,
+    assert_matches!(execution_check_result, NoteConsumptionExecution::Failure {
+        failed,
+        successful,
         error: Some(e)} => {
-            assert_eq!(failed_note_id, failing_note_2.id());
-            assert_eq!(successful_notes, [successful_note_2.id(),successful_note_1.id()].to_vec());
+            assert_eq!(failed.first().expect("only one failed note currently supported").id(), failing_note_2.id());
+            assert_eq!([successful[0].id(), successful[1].id()], [successful_note_2.id(),successful_note_1.id()]);
             assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(
               ExecutionError::DivideByZero { .. }
             ));
