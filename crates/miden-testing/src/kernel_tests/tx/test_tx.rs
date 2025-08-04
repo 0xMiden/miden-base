@@ -1358,11 +1358,10 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    let mut assembler = TransactionKernel::assembler();
+    let assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    assembler
-        .compile_and_statically_link(source)
-        .map_err(|_| anyhow::anyhow!("adding source module"))?;
+
+    let library = assembler.assemble_library([source]).unwrap();
 
     let source = "
     use.test::module_1
@@ -1375,7 +1374,9 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = miden_objects::transaction::TransactionScript::compile(source, assembler)?;
+    let tx_script = ScriptBuilder::new(false)
+        .with_statically_linked_library(&library)?
+        .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script.clone())
         .build()?;

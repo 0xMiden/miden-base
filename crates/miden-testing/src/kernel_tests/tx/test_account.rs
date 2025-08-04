@@ -10,7 +10,7 @@ use miden_lib::{
         ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
     },
     transaction::TransactionKernel,
-    utils::word_to_masm_push_string,
+    utils::{ScriptBuilder, word_to_masm_push_string},
 };
 use miden_objects::{
     StarkField,
@@ -120,8 +120,10 @@ pub fn compute_current_commitment() -> miette::Result<()> {
     );
 
     let tx_context_builder = TransactionContextBuilder::new(account);
-    let tx_script =
-        TransactionScript::compile(tx_script, tx_context_builder.assembler()).into_diagnostic()?;
+    let tx_script = ScriptBuilder::with_mock_account_library()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script)
+        .into_diagnostic()?;
     let tx_context = tx_context_builder
         .tx_script(tx_script)
         .build()
@@ -1087,15 +1089,11 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         .build_existing()
         .into_diagnostic()?;
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        // Add the account component library since the transaction script is calling the account's
-        // procedure.
-        // Because the account code is provided by the account itself in the transaction, it can be
-        // linked dynamically.
-        TransactionKernel::assembler().with_dynamic_library(&account_component_lib)?,
-    )
-    .into_diagnostic()?;
+    let tx_script = ScriptBuilder::default()
+        .with_dynamically_linked_library(&account_component_lib)
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_src)
+        .into_diagnostic()?;
 
     let tx_context = TransactionContextBuilder::new(native_account.clone())
         .tx_script(tx_script)

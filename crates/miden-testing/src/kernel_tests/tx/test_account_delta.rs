@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use std::{collections::BTreeMap, string::String};
 
 use anyhow::Context;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::{transaction::TransactionKernel, utils::ScriptBuilder};
 use miden_objects::{
     EMPTY_WORD, Felt, LexicographicWord, Word, ZERO,
     account::{AccountBuilder, AccountId, AccountStorage, AccountType, StorageMap, StorageSlot},
@@ -700,10 +700,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
         UPDATED_MAP_KEY = word_to_masm_push_string(&updated_map_key),
     );
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_src)?;
 
     // Create the input note that carries the assets that we will assert later
     let input_note = {
@@ -822,11 +819,9 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
         code = code.as_ref()
     );
 
-    TransactionScript::compile(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
-    )
-    .context("failed to compile tx script")
+    ScriptBuilder::with_mock_account_library()?
+        .compile_tx_script(&code)
+        .context("failed to compile tx script")
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "

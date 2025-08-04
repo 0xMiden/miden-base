@@ -273,6 +273,32 @@ impl ScriptBuilder {
         })?;
         Ok(NoteScript::new(program))
     }
+
+    // TESTING CONVENIENCE FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a ScriptBuilder with the kernel library for testing scenarios.
+    ///
+    /// This is equivalent to using `TransactionKernel::testing_assembler()` and is intended
+    /// to replace scripts that were built with that assembler.
+    #[cfg(any(feature = "testing", test))]
+    pub fn with_kernel_library() -> Result<Self, ScriptBuilderError> {
+        let kernel_library = TransactionKernel::kernel_as_library();
+        Self::default().with_dynamically_linked_library(&kernel_library)
+    }
+
+    /// Creates a ScriptBuilder with both kernel and mock account libraries for testing scenarios.
+    ///
+    /// This is equivalent to using `TransactionKernel::testing_assembler_with_mock_account()`
+    /// and is intended to replace scripts that were built with that assembler.
+    #[cfg(any(feature = "testing", test))]
+    pub fn with_mock_account_library() -> Result<Self, ScriptBuilderError> {
+        let builder = Self::with_kernel_library()?;
+        let mock_account_library =
+            miden_objects::account::AccountCode::mock_library(builder.assembler.clone());
+
+        builder.with_dynamically_linked_library(&mock_account_library)
+    }
 }
 
 impl Default for ScriptBuilder {

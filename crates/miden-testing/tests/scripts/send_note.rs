@@ -1,13 +1,13 @@
 use std::collections::BTreeMap;
 
-use miden_lib::{account::interface::AccountInterface, transaction::TransactionKernel};
+use miden_lib::{account::interface::AccountInterface, utils::ScriptBuilder};
 use miden_objects::{
     Word,
     asset::{Asset, FungibleAsset},
     crypto::rand::{FeltRng, RpoRandomCoin},
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
-        NoteTag, NoteType, PartialNote,
+        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
+        NoteType, PartialNote,
     },
     transaction::OutputNote,
 };
@@ -37,8 +37,10 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let assets = NoteAssets::new(vec![sent_asset]).unwrap();
-    let note_script =
-        NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
+    let note_script = ScriptBuilder::with_kernel_library()
+        .unwrap()
+        .compile_note_script("begin nop end")
+        .unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
 
@@ -101,8 +103,10 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let assets = NoteAssets::new(vec![Asset::Fungible(
         FungibleAsset::new(sender_basic_fungible_faucet_account.id(), 10).unwrap(),
     )])?;
-    let note_script =
-        NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
+    let note_script = ScriptBuilder::with_kernel_library()
+        .unwrap()
+        .compile_note_script("begin nop end")
+        .unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
 
