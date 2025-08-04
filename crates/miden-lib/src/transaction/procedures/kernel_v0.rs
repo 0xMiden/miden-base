@@ -32,7 +32,7 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     // account_get_vault_root
     word!("0x279b4a9e5adca07f01cadf8ecc1303fa3c670003a7a4e69f09506b070c4023df"),
     // account_add_asset
-    word!("0x8b32d9dcc6364f414a625b83ca6b68fbe9877d566c20514202a5d412c1672da7"),
+    word!("0x9045a12f75f4ce5e4736a5b32d9624f20f5ec0d001b38c46c5ce732b03e10c16"),
     // account_remove_asset
     word!("0x9b2b8988d1a590c18b06de3c53ecef1d690f503761f4ebf19fbfa9fc25fc3bfb"),
     // account_get_balance
@@ -44,7 +44,7 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     // account_was_procedure_called
     word!("0xe85f7a761f0d90e4d880239c4c1f349125d5a53db1e058a51c462b9442117ab6"),
     // faucet_mint_asset
-    word!("0xa467f0b2bd1c9db5aa5b1918451290d1551e6f44c6928f01d76af51547ae704b"),
+    word!("0x01ee25cc3793f31f3e01d8b762f1db9f4d612d2ca63994557045b64a2115825c"),
     // faucet_burn_asset
     word!("0x19e13b9568d2cdd70cdb3d78b98d158dfbedee4f23d99d0962b69937035a8476"),
     // faucet_get_total_fungible_asset_issuance

@@ -266,7 +266,7 @@ impl FungibleAssetDelta {
     fn add_delta(&mut self, faucet_id: AccountId, delta: i64) -> Result<(), AccountDeltaError> {
         match self.0.entry(faucet_id) {
             Entry::Vacant(entry) => {
-                // TODO: Merge with the change from PR #1668.
+                // Only track non-zero amounts.
                 if delta != 0 {
                     entry.insert(delta);
                 }
