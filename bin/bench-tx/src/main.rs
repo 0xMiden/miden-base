@@ -2,7 +2,7 @@ use core::fmt;
 use std::{fs::File, io::Write, path::Path};
 
 use anyhow::Context;
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel, utils::ScriptBuilder};
+use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
 use miden_objects::{
     Felt, FieldElement, Word,
     account::{Account, AccountId, AccountStorageMode, AccountType},
