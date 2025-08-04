@@ -50,7 +50,7 @@ proc.replay_protection.4
     # Store the message for later use.
     # ---------------------------------------------------------------------------------------------
 
-    dupw loc_storew.0 dropw
+    loc_storew.0
     # => [MSG]
 
     # Check if transaction has already been executed.
