@@ -366,8 +366,10 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
         let msg = tx_summary.as_ref().to_commitment();
         let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-        let sig_1 = authenticators[*signer1_idx].get_signature(public_keys[*signer1_idx].into(), &tx_summary)?;
-        let sig_2 = authenticators[*signer2_idx].get_signature(public_keys[*signer2_idx].into(), &tx_summary)?;
+        let sig_1 = authenticators[*signer1_idx]
+            .get_signature(public_keys[*signer1_idx].into(), &tx_summary)?;
+        let sig_2 = authenticators[*signer2_idx]
+            .get_signature(public_keys[*signer2_idx].into(), &tx_summary)?;
 
         // Populate advice map with signatures from the chosen signers
         let mut advice_map = AdviceMap::default();
@@ -383,9 +385,10 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
             .auth_args(salt)
             .build()?;
 
-        let executed_tx = tx_context_execute
-            .execute()
-            .expect(&format!("Transaction should succeed with signers {} and {}", signer1_idx, signer2_idx));
+        let executed_tx = tx_context_execute.execute().expect(&format!(
+            "Transaction should succeed with signers {} and {}",
+            signer1_idx, signer2_idx
+        ));
 
         // Apply the transaction to the mock chain for the next iteration
         mock_chain.add_pending_executed_transaction(&executed_tx)?;

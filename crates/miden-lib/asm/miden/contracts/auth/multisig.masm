@@ -44,6 +44,7 @@ const.TEMP_PK=108
 const.MESSAGE=112
 const.SUCCESSFUL_VERIFICATIONS=116
 const.THRESHOLD=120
+const.NUM_OF_APPROVERS=124
 
 # Executed Transaction Flag Constant
 const.USED_FLAG=0xDEADBEEF
@@ -119,12 +120,12 @@ proc.verify_signatures_loop
     # => [num_required_signatures, num_of_approvers]
 
     mem_store.THRESHOLD
-    # => [num_required_signatures]
+    # => [num_of_approvers]
 
     padw mem_loadw.MESSAGE movup.4
-    # => [num_required_signatures, MESSAGE]
+    # => [num_of_approvers, MESSAGE]
 
-    # Counter `i` starts at `num_required_signatures` and counts down to 0
+    # Counter `i` starts at `num_of_approvers` and counts down to 0
     # => [i, MESSAGE]
 
     # Loop through required signers and verify signatures.
@@ -281,7 +282,7 @@ export.auth__tx_rpo_falcon512_multisig
     # => [0, 0, 0, num_of_approvers]
 
     drop drop drop
-    # => [num_of_approvers, num_required_signatures] 
+    # => [num_of_approvers, num_required_signatures]
 
     push.111 debug.stack drop
 
