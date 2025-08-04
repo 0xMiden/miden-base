@@ -461,30 +461,13 @@ proc.process_account_data
     exec.memory::get_current_account_data_ptr
     # => [acct_data_ptr]
 
-    # Prepare the stack for the account commitment computation. See `Advice stack` above for more 
-    # details.
-    padw padw padw adv_pipe
-    # => [ACCOUNT_VAULT_ROOT, ID_AND_NONCE, EMPTY_WORD, acct_data_ptr']
-
-    # store the initial vault root to the memory
-    exec.memory::set_init_account_vault_root
-    # => [ACCOUNT_VAULT_ROOT, ID_AND_NONCE, EMPTY_WORD, acct_data_ptr']
-    
-    # perform the permutation and load storage and code commitments onto the operand stack 
-    hperm adv_pipe
-    # => [ACCOUNT_CODE_COMMITMENT, ACCOUNT_STORAGE_COMMITMENT, HASH, acct_data_ptr'']
-
-    # store the initial code and storage commitments
-    exec.memory::set_init_account_code_commitment swapw
-    exec.memory::set_init_account_storage_commitment swapw
-    # => [ACCOUNT_CODE_COMMITMENT, ACCOUNT_STORAGE_COMMITMENT, HASH, acct_data_ptr'']
-
-    # perform the final permutation and extract the account commitment
-    hperm
+    # read account details and compute its digest. See `Advice stack` above for details.
+    padw padw padw
+    adv_pipe hperm
+    adv_pipe hperm
     exec.rpo::squeeze_digest
-    # => [ACCOUNT_COMMITMENT, acct_data_ptr'']
+    # => [ACCOUNT_COMMITMENT, acct_data_ptr']
 
-    # drop the account data pointer
     movup.4 drop
     # => [ACCOUNT_COMMITMENT]
 
@@ -499,14 +482,18 @@ proc.process_account_data
     exec.memory::set_init_nonce
     # => [ACCOUNT_COMMITMENT]
 
-    # validates and stores account storage slots in memory.
+    # validates and stores account storage slots in memory
+    # account storage commitment is also stored as an initial one in the global inputs
     exec.memory::get_acct_storage_commitment
+    exec.memory::set_init_account_storage_commitment
     exec.account::save_account_storage_data
     # => [ACCOUNT_COMMITMENT]
 
     # set the new account code commitment to the initial account code root
     # this is used for managing code commitment updates
+    # account code commitment is also stored as an initial one in the global inputs
     exec.memory::get_acct_code_commitment
+    exec.memory::set_init_account_code_commitment
     exec.memory::set_new_acct_code_commitment
     # => [ACCOUNT_CODE_COMMITMENT, ACCOUNT_COMMITMENT]
 
@@ -514,9 +501,12 @@ proc.process_account_data
     exec.account::save_account_procedure_data
     # => [ACCOUNT_COMMITMENT]
 
-    # copy the initial account vault hash to the input vault hash to support transaction asset
+    # copy the initial account vault root to the input vault root to support transaction asset
     # invariant checking
-    exec.memory::get_acct_vault_root exec.memory::set_input_vault_root dropw
+    # this account vault root is also stored as an initial one in the global inputs
+    exec.memory::get_acct_vault_root 
+    exec.memory::set_init_account_vault_root
+    exec.memory::set_input_vault_root dropw
     # => [ACCOUNT_COMMITMENT]
 
     # Validate the account

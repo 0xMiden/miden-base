@@ -63,8 +63,8 @@ const.GLOBAL_INPUTS_SECTION_OFFSET=400
 # The memory address at which the transaction reference block's commitment is stored.
 const.BLOCK_COMMITMENT_PTR=400
 
-# The memory address at which the account ID felts are stored.
-const.ACCT_ID_PTR=404
+# The memory address at which the native account ID is stored.
+const.NATIVE_ACCT_ID_PTR=404
 
 # The memory address at which the initial account commitment is stored.
 const.INIT_ACCOUNT_COMMITMENT_PTR=408
@@ -72,14 +72,14 @@ const.INIT_ACCOUNT_COMMITMENT_PTR=408
 # The memory address at which the initial nonce is stored.
 const.INIT_NONCE_PTR=412
 
-# The memory address at which the initial account vault root is stored.
-const.INIT_ACCOUNT_VAULT_ROOT_PTR=416
+# The memory address at which the initial vault root of the native account is stored.
+const.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR=416
 
-# The memory address at which the initial account storage commitment is stored.
-const.INIT_ACCOUNT_STORAGE_COMMITMENT_PTR=420
+# The memory address at which the initial storage commitment of the native account is stored.
+const.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR=420
 
-# The memory address at which the initial account code commitment is stored.
-const.INIT_ACCOUNT_CODE_COMMITMENT_PTR=424
+# The memory address at which the initial code commitment of the native account is stored.
+const.INIT_NATIVE_ACCOUNT_CODE_COMMITMENT_PTR=424
 
 # The memory address at which the input notes commitment is stored.
 const.INPUT_NOTES_COMMITMENT_PTR=428
@@ -403,7 +403,7 @@ export.get_block_commitment
     padw mem_loadw.BLOCK_COMMITMENT_PTR
 end
 
-#! Sets the account ID.
+#! Sets the ID of the native account.
 #!
 #! Inputs:  [acct_id_prefix, acct_id_suffix]
 #! Outputs: []
@@ -413,12 +413,12 @@ end
 export.set_global_acct_id
     push.0.0
     # => [0, 0, acct_id_prefix, acct_id_suffix]
-    mem_storew.ACCT_ID_PTR
+    mem_storew.NATIVE_ACCT_ID_PTR
     dropw
     # => []
 end
 
-#! Returns the global account ID.
+#! Returns the ID of the native account.
 #!
 #! Inputs:  []
 #! Outputs: [acct_id_prefix, acct_id_suffix]
@@ -426,12 +426,12 @@ end
 #! Where:
 #! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
 export.get_global_acct_id
-    padw mem_loadw.ACCT_ID_PTR
+    padw mem_loadw.NATIVE_ACCT_ID_PTR
     # => [0, 0, acct_id_prefix, acct_id_suffix]
     drop drop
 end
 
-#! Sets the initial account commitment.
+#! Sets the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  [INIT_ACCOUNT_COMMITMENT]
 #! Outputs: [INIT_ACCOUNT_COMMITMENT]
@@ -442,7 +442,7 @@ export.set_init_account_commitment
     mem_storew.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_COMMITMENT]
@@ -475,70 +475,70 @@ export.get_init_nonce
     mem_load.INIT_NONCE_PTR
 end
 
-#! Sets the initial account vault root.
+#! Sets the vault root of the native account at the beginning of the transaction.
 #!
-#! Inputs:  [INIT_ACCOUNT_VAULT_ROOT]
-#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#! Inputs:  [INIT_NATIVE_ACCOUNT_VAULT_ROOT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_VAULT_ROOT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+#! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
 export.set_init_account_vault_root
-    mem_storew.INIT_ACCOUNT_VAULT_ROOT_PTR
+    mem_storew.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
-#! Returns the initial account vault root.
+#! Returns the vault root of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
-#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_VAULT_ROOT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+#! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
 export.get_init_account_vault_root
-    padw mem_loadw.INIT_ACCOUNT_VAULT_ROOT_PTR
+    padw mem_loadw.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
 end
 
-#! Sets the initial account storage commitment.
+#! Sets the storage commitment of the native account at the beginning of the transaction.
 #!
-#! Inputs:  [INIT_ACCOUNT_STORAGE_COMMITMENT]
-#! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
+#! Inputs:  [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
+#! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
 export.set_init_account_storage_commitment
-    mem_storew.INIT_ACCOUNT_STORAGE_COMMITMENT_PTR
+    mem_storew.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
 end
 
-#! Returns the initial account storage commitment.
+#! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
-#! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
+#! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
 export.get_init_account_storage_commitment
-    padw mem_loadw.INIT_ACCOUNT_STORAGE_COMMITMENT_PTR
+    padw mem_loadw.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
 end
 
-#! Sets the initial account code commitment.
+#! Sets the code commitment of the native account at the beginning of the transaction.
 #!
-#! Inputs:  [INIT_ACCOUNT_CODE_COMMITMENT]
-#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
+#! Inputs:  [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
+#! - INIT_NATIVE_ACCOUNT_CODE_COMMITMENT is the initial code commitment of the native account.
 export.set_init_account_code_commitment
-    mem_storew.INIT_ACCOUNT_CODE_COMMITMENT_PTR
+    mem_storew.INIT_NATIVE_ACCOUNT_CODE_COMMITMENT_PTR
 end
 
-#! Returns the initial account code commitment.
+#! Returns the code commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
-#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
 #!
 #! Where:
-#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
+#! - INIT_NATIVE_ACCOUNT_CODE_COMMITMENT is the initial code commitment of the native account.
 export.get_init_account_code_commitment
-    padw mem_loadw.INIT_ACCOUNT_CODE_COMMITMENT_PTR
+    padw mem_loadw.INIT_NATIVE_ACCOUNT_CODE_COMMITMENT_PTR
 end
 
 #! Returns the input notes commitment.

@@ -289,7 +289,7 @@ export.memory::get_account_id->get_id
 #! - nonce is the account nonce.
 export.memory::get_acct_nonce->get_nonce
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
@@ -298,7 +298,7 @@ export.memory::get_acct_nonce->get_nonce
 #! - INIT_COMMITMENT is the initial account commitment.
 export.memory::get_init_account_commitment->get_initial_commitment
 
-#! Returns the initial account vault root.
+#! Returns the vault root of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
@@ -307,7 +307,7 @@ export.memory::get_init_account_commitment->get_initial_commitment
 #! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
 export.memory::get_init_account_vault_root->get_initial_vault_root
 
-#! Returns the initial account storage commitment.
+#! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
@@ -316,7 +316,7 @@ export.memory::get_init_account_vault_root->get_initial_vault_root
 #! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
 export.memory::get_init_account_storage_commitment->get_initial_storage_commitment
 
-#! Returns the initial account code commitment.
+#! Returns the code commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]

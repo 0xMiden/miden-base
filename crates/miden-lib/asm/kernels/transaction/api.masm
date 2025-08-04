@@ -80,7 +80,7 @@ end
 
 ### ACCOUNT #####################################
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_COMMITMENT, pad(12)]
@@ -212,7 +212,7 @@ export.account_incr_nonce
     # => [final_nonce, pad(15)]
 end
 
-#! Returns the initial account code commitment.
+#! Returns the code commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_CODE_COMMITMENT, pad(12)]
@@ -254,7 +254,7 @@ export.account_get_code_commitment
     # => [CODE_COMMITMENT, pad(12)]
 end
 
-#! Returns the initial account storage commitment.
+#! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_STORAGE_COMMITMENT, pad(12)]
@@ -436,7 +436,7 @@ export.account_set_map_item
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
 end
 
-#! Returns the initial account vault root.
+#! Returns the vault root of the native account at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_VAULT_ROOT, pad(12)]

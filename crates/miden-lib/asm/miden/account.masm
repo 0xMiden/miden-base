@@ -59,7 +59,7 @@ export.get_nonce
     # => [nonce]
 end
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
@@ -296,7 +296,7 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Returns the initial account code commitment.
+#! Returns the code commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_CODE_COMMITMENT]
@@ -346,7 +346,7 @@ export.get_code_commitment
     # => [CODE_COMMITMENT]
 end
 
-#! Returns the initial account storage commitment.
+#! Returns the storage commitment of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_STORAGE_COMMITMENT]
@@ -521,7 +521,7 @@ export.remove_asset
     # => [ASSET]
 end
 
-#! Returns the initial account vault root.
+#! Returns the vault root of the native account at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_VAULT_ROOT]

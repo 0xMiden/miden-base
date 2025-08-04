@@ -17,7 +17,7 @@ pub type StorageSlot = u8;
 // | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                    |
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
 // | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
-// | Global inputs      | 400 (100)                             | 431 (107)                           |                                            |
+// | Global inputs      | 400 (100)                             | 443 (110)                           |                                            |
 // | Block header       | 800 (200)                             | 835 (208)                           |                                            |
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each    |
@@ -118,8 +118,8 @@ pub const GLOBAL_INPUTS_SECTION_OFFSET: MemoryOffset = 400;
 /// The memory address at which the commitment of the transaction's reference block is stored.
 pub const BLOCK_COMMITMENT_PTR: MemoryAddress = 400;
 
-/// The memory address at which the account ID is stored.
-pub const ACCT_ID_PTR: MemoryAddress = 404;
+/// The memory address at which the native account ID is stored.
+pub const NATIVE_ACCT_ID_PTR: MemoryAddress = 404;
 
 /// The memory address at which the initial account commitment is stored.
 pub const INIT_ACCT_COMMITMENT_PTR: MemoryAddress = 408;
@@ -127,14 +127,14 @@ pub const INIT_ACCT_COMMITMENT_PTR: MemoryAddress = 408;
 /// The memory address at which the initial nonce is stored.
 pub const INIT_NONCE_PTR: MemoryAddress = 412;
 
-/// The memory address at which the initial account vault root is stored.
-pub const INIT_ACCT_VAULT_ROOT_PTR: MemoryAddress = 416;
+/// The memory address at which the initial vault root of the native account is stored.
+pub const INIT_NATIVE_ACCT_VAULT_ROOT_PTR: MemoryAddress = 416;
 
-/// The memory address at which the initial account storage commitment is stored.
-pub const INIT_ACCT_STORAGE_COMMITMENT_PTR: MemoryAddress = 420;
+/// The memory address at which the initial storage commitment of the native account is stored.
+pub const INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR: MemoryAddress = 420;
 
-/// The memory address at which the initial account code commitment is stored.
-pub const INIT_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = 424;
+/// The memory address at which the initial code commitment of the native account is stored.
+pub const INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = 424;
 
 /// The memory address at which the input notes commitment is stored.
 pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 428;
