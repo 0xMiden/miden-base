@@ -53,7 +53,7 @@ pub use vault::{AssetVault, PartialVault};
 /// properties described above (the fungible bit is `1`).
 ///
 /// The least significant element is set to the amount of the asset. This amount cannot be greater
-/// than 2^63 - 1 and thus requires 63-bits to store.
+/// than [`FungibleAsset::MAX_AMOUNT`] and thus fits into a felt.
 ///
 /// Elements 1 and 2 are set to ZERO.
 ///

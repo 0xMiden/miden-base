@@ -22,6 +22,9 @@ const.DOMAIN_VALUE=2
 # The domain of a map storage slot in the delta commitment.
 const.DOMAIN_MAP=3
 
+# The maximum value a felt can represent.
+const.FELT_MAX=0xffffffff00000000
+
 # PROCEDURES
 # =================================================================================================
 
@@ -332,18 +335,17 @@ proc.update_fungible_asset_delta.2
         movup.8 loc_store.1
         # => [KEY, VALUE0, ...]
         # this stack state is equivalent to:
-        # => [[faucet_id_prefix, faucet_id_suffix, 0, 0], [delta_amount_hi, delta_amount_lo, 0, 0], ...]
+        # => [[faucet_id_prefix, faucet_id_suffix, 0, 0], [delta_amount, 0, 0, 0], ...]
 
         swapw
-        # => [[delta_amount_hi, delta_amount_lo, 0, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
+        # => [[delta_amount, 0, 0, 0], [faucet_id_prefix, faucet_id_suffix, 0, 0], ...]
 
-        # this reassembles the delta amount into a felt, which is safe to do because the delta
-        # amount is in range [-2^63 + 1, 2^63 - 1], so its absolute value will fit into a felt.
-        exec.i64_absolute
-        # => [[is_amount_positive, delta_amount_abs, 0, 0], ...]
+        # compute the absolute value of delta amount with a flag indicating whether it's positive
+        exec.delta_amount_absolute
+        # => [[is_delta_amount_positive, delta_amount_abs, 0, 0, 0], ...]
 
-        # rename is_amount_positive to was_added
-        movdn.2
+        # rename is_delta_amount_positive to was_added
+        swap.3 drop
         # => [[delta_amount_abs, 0, was_added, 0], ...]
 
         dup neq.0
@@ -578,21 +580,22 @@ export.add_fungible_asset
     # contains_key can be ignored because the default value is a delta amount of 0
     # VALUE1 is unused so we drop it as well
     exec.link_map::get drop swapw dropw
-    # => [delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY, amount]
+    # => [delta_amount, 0, 0, 0, ASSET_KEY, amount]
 
-    movup.8 u32split
-    # => [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY]
+    movup.8
+    # => [amount, delta_amount, 0, 0, 0, ASSET_KEY]
 
     # compute delta + amount
-    exec.add_asset_amount
-    # => [delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY]
+    # note that this operation wraps around
+    add
+    # => [delta_amount, 0, 0, 0, ASSET_KEY]
 
     # pad VALUE1 of the link map
     swapw padw movdnw.2
-    # => [ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+    # => [ASSET_KEY, delta_amount, 0, 0, 0, EMPTY_WORD]
 
     exec.memory::get_account_delta_fungible_asset_ptr
-    # => [fungible_delta_map_ptr, ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+    # => [fungible_delta_map_ptr, ASSET_KEY, delta_amount, 0, 0, 0, EMPTY_WORD]
 
     exec.link_map::set drop
     # => []
@@ -614,21 +617,22 @@ export.remove_fungible_asset
     # contains_key can be ignored because the default value is a delta amount of 0
     # VALUE1 is unused so we drop it as well
     exec.link_map::get drop swapw dropw
-    # => [delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY, amount]
+    # => [delta_amount, 0, 0, 0, ASSET_KEY, amount]
 
-    movup.8 u32split
-    # => [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY]
+    movup.8
+    # => [amount, delta_amount, 0, 0, 0, ASSET_KEY]
 
     # compute delta - amount
-    exec.sub_asset_amount
-    # => [delta_amount_hi, delta_amount_lo, 0, 0, ASSET_KEY]
+    # note that this operation wraps around
+    sub
+    # => [delta_amount, 0, 0, 0, ASSET_KEY]
 
     # pad VALUE1 of the link map
     swapw padw movdnw.2
-    # => [ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+    # => [ASSET_KEY, delta_amount, 0, 0, 0, EMPTY_WORD]
 
     exec.memory::get_account_delta_fungible_asset_ptr
-    # => [fungible_delta_map_ptr, ASSET_KEY, delta_amount_hi, delta_amount_lo, 0, 0, EMPTY_WORD]
+    # => [fungible_delta_map_ptr, ASSET_KEY, delta_amount, 0, 0, 0, EMPTY_WORD]
 
     exec.link_map::set drop
     # => []
@@ -776,115 +780,98 @@ export.set_map_item.8
     # => []
 end
 
-# i64 MATH
+# FUNGIBLE ASSET AMOUNT MATH
 # -------------------------------------------------------------------------------------------------
 
-# Asset Amount Deltas can be signed or unsigned and they can be in range [-2^63 + 1, 2^63 - 1]. To make
-# math operations on deltas easy and avoid branches, they are represented using the std::math::u64
-# representation of two u32 limbs. This u64 can be interpreted as an i64 to get the asset delta.
-# In order to get the correct behavior, we use wrapping operations on u64s which ignore the overflow.
-# This means that a calculation such as 100 - 200 + 300 correctly results in an overall delta of 200.
+# Asset Amount Deltas can be signed or unsigned and are represented as felts.
+#
+# Any value in range [0, 2^63 - 2^31] (inclusive) is interpreted as a positive value.
+# Any value in range [2^63 - 2^31 + 1, 2^64 - 2^32] (inclusive) is interpreted as a negative value.
+# 2^64 - 2^32 represents -1, 2^64 - 2^32 - 1 represents -2, and so on, up to 2^63 - 2^31 + 1 which
+# represents -(2^63 - 2^31).
+#
+# This allows us to use the add and sub operations which wrap around. E.g. push.5 sub.6 add.1 will
+# correctly result in 0.
+#
+# To negate a negative `value`, take the max felt value (2^64 - 2^32), subtract `value` and add 1.
+# This works just like in two's complement.
+#
+# Don't we have to check for overflows? No, because we're building on top of the guarantees of the
+# asset vault. It guarantees that the max value that can be added to the vault within a transaction
+# is asset::get_fungible_asset_max_amount and that the max value that can be removed is also that.
+# Since the delta amount range can represent positive and negative
+# asset::get_fungible_asset_max_amount, this works out.
+#
+# With these ranges every positive value has a negative counterpart and vice versa. This is
+# **unlike** two's complements because the goldilocks modulus is odd while the "modulus" in
+# binary numbers is even. For example, a signed 8-bit integer can represent 128 positive and 128
+# negative values, because the total number of values is 256 divided by two. Zero is counted on the
+# positive side and so i8::MAX is 127 and i8::MIN is -128 - therefore not every negative value has
+# a positive counterpart. The "modulus", if you will, is 256 and even.
+#
+# Since the golidlocks modulus is 2^64 - 2^32 + 1 and therefore odd, we can represent
+# modulus / 2 + 1 positive and modulus / 2 negative values. Again, 0 is counted on the positive
+# side and so the largest representable positive value is modulus / 2 and the smallest
+# representable negative value is -modulus/2. So, every negative value has a positive counterpart
+# (and vice versa).
 
-#! Adds amount to the delta.
-#!
-#! Inputs:  [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo]
-#! Outputs: [delta_amount_hi, delta_amount_lo]
-#!
-#! Where:
-#! - amount_{hi, lo} are the u32 limbs of the amount to be added.
-#! - delta_amount_{hi, lo} are the u32 limbs of the delta amount to which amount is added.
-proc.add_asset_amount
-    exec.u64::wrapping_add
-end
-
-#! Subtracts amount from the delta.
-#!
-#! Inputs:  [amount_hi, amount_lo, delta_amount_hi, delta_amount_lo]
-#! Outputs: [delta_amount_hi, delta_amount_lo]
-#!
-#! Where:
-#! - amount_{hi, lo} are the u32 limbs of the amount to be subtracted.
-#! - delta_amount_{hi, lo} are the u32 limbs of the delta amount from which amount is subtracted.
-proc.sub_asset_amount
-    exec.u64::wrapping_sub
-end
-
-#! Computes the absolute value of the given i64 represented by two u32 limbs and returns a
+#! Computes the absolute value of the given delta amount represented as a felt and returns a
 #! boolean flag indicating whether the value is positive (or unsigned).
 #!
-#! Assumes that x_hi and x_lo can be safely combined into a felt.
-#!
-#! Inputs: [x_hi, x_lo]
-#! Outputs: [is_x_positive, x_abs]
+#! Inputs: [delta_amount]
+#! Outputs: [is_delta_amount_positive, delta_amount_abs]
 #!
 #! Where:
-#! - x_{hi, lo} are the u32 limbs of an i64.
-#! - is_x_positive indicates whether the inputs were positive.
-#! - x_abs is the absolute value of the inputs as a felt.
-proc.i64_absolute
-    exec.i64_is_negative
-    # => [is_x_signed, x_hi, x_lo]
+#! - delta_amount is the delta amount that can span the entire felt range.
+#! - is_x_positive indicates whether the delta amount is positive.
+#! - delta_amount_abs is the absolute value of the delta_amount, meaning negative values are
+#!   remapped to their positive equivalent value.
+proc.delta_amount_absolute
+    dup exec.delta_amount_negate
+    # => [-delta_amount, delta_amount]
 
-    movdn.2 push.0.0
-    # => [0, 0, x_hi, x_lo, is_x_signed]
+    dup.1 exec.is_delta_amount_negative
+    # => [is_delta_amount_negative, -delta_amount, delta_amount]
 
-    dup.3 dup.3
-    # => [x_hi, x_lo, 0, 0, x_hi, x_lo, is_x_signed]
+    movdn.2
+    # => [-delta_amount, delta_amount, is_delta_amount_negative]
 
-    exec.i64_negate push.0.0
-    # => [0, 0, x_neg_hi, x_neg_lo, 0, 0, x_hi, x_lo, is_x_signed]
+    dup.2
+    # => [is_delta_amount_negative, -delta_amount, delta_amount, is_delta_amount_negative]
 
-    dup.8
-    # => [is_x_signed, 0, 0, x_neg_hi, x_neg_lo, 0, 0, x_hi, x_lo, is_x_signed]
-
-    # If is_x_signed the word with the negated values remains.
-    # If !is_x_signed the word with the original values remains.
-    cdropw drop drop
-    # => [x_abs_hi, x_abs_lo, is_x_signed]
-
-    # reassemble the amount to a felt by multiplying the high part with 2^32 and adding the lo part
-    mul.0x0100000000 add
-    # => [x_abs, is_x_signed]
+    # If is_delta_amount_negative the negated value remains.
+    # If !is_delta_amount_negative the original value remains.
+    cdrop
+    # => [delta_amount_abs, is_delta_amount_negative]
 
     swap not
-    # => [is_x_unsigned, x_abs]
+    # => [is_delta_amount_positive, delta_amount_abs]
 end
 
-#! Returns 1 if the given number is negative (or signed), that is, its most significant bit is set,
-#! 0 otherwise.
+#! Returns 1 if the given delta amount is negative (or signed).
 #!
-#! Inputs: [x_hi, x_lo]
-#! Outputs: [is_x_signed, x_hi, x_lo]
+#! Inputs: [delta_amount]
+#! Outputs: [is_delta_amount_negative]
 #!
 #! Where:
-#! - x_{hi, lo} are the u32 limbs of an i64.
-#! - is_x_signed indicates whether x is signed.
-proc.i64_is_negative
-    # 0x80000000 is a u32 bitmask with highest bit set to 1 and all others to 0.
-    dup u32and.0x80000000 u32shr.31
-    # => [is_signed, x_hi, x_lo]
+#! - delta_amount is the delta amount that can span the entire felt range.
+#! - is_delta_amount_negative indicates whether the delta amount represents a negative value.
+proc.is_delta_amount_negative
+    # delta_amount represents a negative number if it is greater than the max amount
+    exec.asset::get_fungible_asset_max_amount gt
+    # => [is_delta_amount_negative]
 end
 
-#! Negates an i64 represented by two u32 limbs by computing its bitwise NOT and adding 1
-#! according to two complements.
+#! Negates the given delta amount.
 #!
-#! Inputs: [x_hi, x_lo]
-#! Outputs: [x_hi, x_lo]
+#! Inputs: [delta_amount]
+#! Outputs: [-delta_amount]
 #!
 #! Where:
-#! - x_{hi, lo} are the u32 limbs of an i64.
-proc.i64_negate
-    u32not swap u32not swap
-    # => [x_inverted_hi, x_inverted_lo]
-
-    # Add 1 to get negative x.
-    push.1.0
-    # => [0, 1, x_inverted_hi, x_inverted_lo]
-
-    # This should never overflow except when negating zero.
-    # (Consider this 8-bit example: 0b0000_0000 would become 0b1111_1111
-    # and adding 1 would overflow the byte resulting in 0b0000_0000 again).
-    # This is why we ignore the overflow flag.
-    exec.u64::wrapping_add
-    # => [-x_hi, -x_lo]
+#! - delta_amount is the delta amount that can span the entire felt range.
+proc.delta_amount_negate
+    push.FELT_MAX swap
+    # => [delta_amount, FELT_MAX]
+    sub add.1
+    # => [-delta_amount]
 end
