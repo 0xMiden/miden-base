@@ -66,12 +66,11 @@ fn setup_keys_and_authenticators(
 fn create_multisig_account(
     threshold: u32,
     public_keys: &[PublicKey],
-    account_seed: [u8; 32],
     asset_amount: u64,
 ) -> anyhow::Result<Account> {
     let approvers: Vec<_> = public_keys.iter().map(|pk| (*pk).into()).collect();
 
-    let multisig_account = AccountBuilder::new(account_seed)
+    let multisig_account = AccountBuilder::new([0; 32])
         .with_auth_component(Auth::Multisig { threshold, approvers })
         .with_component(BasicWallet)
         .account_type(AccountType::RegularAccountUpdatableCode)
@@ -96,11 +95,8 @@ fn test_multisig() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) =
         setup_keys_and_authenticators(2, 2, [0u8; 32])?;
 
-    println!("pubkey: {:?}", public_keys[0]);
-    println!("pubkey: {:?}", public_keys[1]);
-
     // Create multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, [0; 32], 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -161,8 +157,6 @@ fn test_multisig() -> anyhow::Result<()> {
         error => panic!("expected abort with tx effects: {error:?}"),
     };
 
-    println!("Tx Summary gathered");
-
     // Get signatures from both approvers
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
@@ -197,7 +191,7 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
         setup_keys_and_authenticators(4, 2, [1u8; 32])?;
 
     // Create multisig account with 4 approvers but threshold of 2
-    let multisig_account = create_multisig_account(2, &public_keys, [1; 32], 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -287,6 +281,121 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
 }
 
 #[test]
+fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow::Result<()> {
+    // Test 4 owners with threshold 2 - test different combinations of signers
+    // This tests that any 2 of the 4 approvers can sign, not just the first 2
+
+    // Setup keys and authenticators (4 approvers, all 4 can sign)
+    let (_secret_keys, public_keys, authenticators) =
+        setup_keys_and_authenticators(4, 4, [3u8; 32])?;
+
+    // Create multisig account with 4 approvers but threshold of 2
+    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+
+    let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
+        .unwrap()
+        .build()
+        .unwrap();
+
+    mock_chain.prove_next_block()?;
+
+    // Test different combinations of 2 signers out of 4
+    let signer_combinations = vec![
+        (0, 1), // First two
+        (0, 2), // First and third
+        (0, 3), // First and fourth
+        (1, 2), // Second and third
+        (1, 3), // Second and fourth
+        (2, 3), // Last two
+    ];
+
+    for (i, (signer1_idx, signer2_idx)) in signer_combinations.iter().enumerate() {
+        // Create output note for the transaction
+        let output_note = create_p2id_note(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+            vec![],
+            NoteType::Public,
+            Default::default(),
+            &mut RpoRandomCoin::new(Word::from([10u32 + i as u32; 4])),
+        )?;
+
+        let asset = FungibleAsset::mock(1);
+        let tx_script = TransactionScript::compile(
+            format!(
+                "
+                use.miden::tx
+                begin
+                    push.{recipient}
+                    push.{note_execution_hint}
+                    push.{note_type}
+                    push.0              # aux
+                    push.{tag}
+                    call.tx::create_note
+
+                    push.{asset}
+                    call.::miden::contracts::wallets::basic::move_asset_to_note
+                    dropw dropw dropw dropw
+                end
+                ",
+                recipient = word_to_masm_push_string(&output_note.recipient().digest()),
+                note_type = NoteType::Public as u8,
+                tag = Felt::from(output_note.metadata().tag()),
+                asset = word_to_masm_push_string(&asset.into()),
+                note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
+            ),
+            TransactionKernel::testing_assembler(),
+        )?;
+
+        let salt = Word::from([Felt::new(10 + i as u64); 4]);
+
+        // Execute transaction without signatures first to get tx summary
+        let tx_context_init = mock_chain
+            .build_tx_context(multisig_account.id(), &[], &[])?
+            .tx_script(tx_script.clone())
+            .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+            .auth_args(salt)
+            .build()?;
+
+        let tx_summary = match tx_context_init.execute().unwrap_err() {
+            TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
+            error => panic!("expected abort with tx effects: {error:?}"),
+        };
+
+        // Get signatures from the specific combination of signers
+        let msg = tx_summary.as_ref().to_commitment();
+        let tx_summary = SigningInputs::TransactionSummary(tx_summary);
+
+        let sig_1 = authenticators[*signer1_idx].get_signature(public_keys[*signer1_idx].into(), &tx_summary)?;
+        let sig_2 = authenticators[*signer2_idx].get_signature(public_keys[*signer2_idx].into(), &tx_summary)?;
+
+        // Populate advice map with signatures from the chosen signers
+        let mut advice_map = AdviceMap::default();
+        advice_map.insert(Hasher::merge(&[public_keys[*signer1_idx].into(), msg]), sig_1);
+        advice_map.insert(Hasher::merge(&[public_keys[*signer2_idx].into(), msg]), sig_2);
+
+        // Execute transaction with signatures - should succeed for any combination
+        let tx_context_execute = mock_chain
+            .build_tx_context(multisig_account.id(), &[], &[])?
+            .tx_script(tx_script)
+            .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
+            .extend_advice_map(advice_map)
+            .auth_args(salt)
+            .build()?;
+
+        let executed_tx = tx_context_execute
+            .execute()
+            .expect(&format!("Transaction should succeed with signers {} and {}", signer1_idx, signer2_idx));
+
+        // Apply the transaction to the mock chain for the next iteration
+        mock_chain.add_pending_executed_transaction(&executed_tx)?;
+        mock_chain.prove_next_block()?;
+    }
+
+    Ok(())
+}
+
+#[test]
 fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Test 2/3 multisig where tx is executed, then attempted again (should fail on 2nd attempt)
 
@@ -295,7 +404,7 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
         setup_keys_and_authenticators(3, 2, [2u8; 32])?;
 
     // Create 2/3 multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, [2; 32], 20)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 20)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()

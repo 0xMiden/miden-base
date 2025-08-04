@@ -516,12 +516,10 @@ mod tests {
 
         // Test threshold = 0 (should fail)
         let result = AuthMultisigRpoFalcon512::new(0, approvers.clone());
-        assert!(result.is_err());
         assert!(result.unwrap_err().to_string().contains("Threshold must be at least 1"));
 
         // Test threshold > number of approvers (should fail)
         let result = AuthMultisigRpoFalcon512::new(2, approvers);
-        assert!(result.is_err());
         assert!(
             result
                 .unwrap_err()
