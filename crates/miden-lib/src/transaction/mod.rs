@@ -1,9 +1,10 @@
 use alloc::{string::ToString, sync::Arc, vec::Vec};
 
 use miden_objects::{
-    EMPTY_WORD, Felt, Hasher, TransactionOutputError, Word,
+    Felt, Hasher, TransactionOutputError, Word,
     account::AccountId,
     assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
+    asset::FungibleAsset,
     block::BlockNumber,
     transaction::{
         OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
@@ -12,7 +13,6 @@ use miden_objects::{
     vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs},
 };
 use miden_stdlib::StdLibrary;
-use outputs::EXPIRATION_BLOCK_ELEMENT_IDX;
 
 use super::MidenLib;
 
@@ -26,8 +26,8 @@ pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
 
 mod outputs;
 pub use outputs::{
-    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX, OUTPUT_NOTES_COMMITMENT_WORD_IDX,
-    parse_final_account_header,
+    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX, EXPIRATION_BLOCK_ELEMENT_IDX, FEE_ASSET_WORD_IDX,
+    OUTPUT_NOTES_COMMITMENT_WORD_IDX, parse_final_account_header,
 };
 
 pub use crate::errors::{
@@ -205,6 +205,7 @@ impl TransactionKernel {
     /// [
     ///     OUTPUT_NOTES_COMMITMENT,
     ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
     ///     expiration_block_num,
     /// ]
     /// ```
@@ -213,17 +214,20 @@ impl TransactionKernel {
     /// - OUTPUT_NOTES_COMMITMENT is a commitment to the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
     ///   delta commitment.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - expiration_block_num is the block number at which the transaction will expire.
     pub fn build_output_stack(
         final_account_commitment: Word,
         account_delta_commitment: Word,
         output_notes_commitment: Word,
+        fee: FungibleAsset,
         expiration_block_num: BlockNumber,
     ) -> StackOutputs {
         let account_update_commitment =
             Hasher::merge(&[final_account_commitment, account_delta_commitment]);
         let mut outputs: Vec<Felt> = Vec::with_capacity(9);
         outputs.push(Felt::from(expiration_block_num));
+        outputs.extend(Word::from(fee));
         outputs.extend(account_update_commitment);
         outputs.extend(output_notes_commitment);
         outputs.reverse();
@@ -236,12 +240,20 @@ impl TransactionKernel {
     ///
     /// The data on the stack is expected to be arranged as follows:
     ///
-    /// Stack: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    /// ```text
+    /// [
+    ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
+    ///     expiration_block_num,
+    /// ]
+    /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
     ///   delta commitment.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -249,11 +261,11 @@ impl TransactionKernel {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Indices 9..16 on the stack are not zeroes.
+    /// - Indices 13..16 on the stack are not zeroes.
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
         stack: &StackOutputs,
-    ) -> Result<(Word, Word, BlockNumber), TransactionOutputError> {
+    ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
             .expect("output_notes_commitment (first word) missing");
@@ -262,9 +274,13 @@ impl TransactionKernel {
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
             .expect("account_update_commitment (second word) missing");
 
+        let fee = stack
+            .get_stack_word(FEE_ASSET_WORD_IDX * 4)
+            .expect("fee_asset (third word) missing");
+
         let expiration_block_num = stack
             .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)
-            .expect("element on index 8 missing");
+            .expect("tx_expiration_block_num (element on index 12) missing");
 
         let expiration_block_num = u32::try_from(expiration_block_num.as_int())
             .map_err(|_| {
@@ -274,23 +290,20 @@ impl TransactionKernel {
             })?
             .into();
 
-        // Make sure that indices 9, 10 and 11 are zeroes (i.e. the third word without the
+        // Make sure that indices 13, 14 and 15 are zeroes (i.e. the fourth word without the
         // expiration block number).
-        if stack.get_stack_word(9).expect("third word missing").as_elements()[..3]
+        if stack.get_stack_word(12).expect("fourth word missing").as_elements()[..3]
             != Word::empty().as_elements()[..3]
         {
             return Err(TransactionOutputError::OutputStackInvalid(
-                "indices 9, 10 and 11 on the output stack should be ZERO".into(),
+                "indices 13, 14 and 15 on the output stack should be ZERO".into(),
             ));
         }
 
-        if stack.get_stack_word(12).expect("fourth word missing") != EMPTY_WORD {
-            return Err(TransactionOutputError::OutputStackInvalid(
-                "fourth word on output stack should consist only of ZEROs".into(),
-            ));
-        }
+        let fee = FungibleAsset::try_from(fee)
+            .map_err(TransactionOutputError::FeeAssetNotFungibleAsset)?;
 
-        Ok((output_notes_commitment, account_update_commitment, expiration_block_num))
+        Ok((output_notes_commitment, account_update_commitment, fee, expiration_block_num))
     }
 
     // TRANSACTION OUTPUT PARSER
@@ -300,12 +313,20 @@ impl TransactionKernel {
     ///
     /// The output stack is expected to be arrange as follows:
     ///
-    /// Stack: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    /// ```text
+    /// [
+    ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
+    ///     expiration_block_num,
+    /// ]
+    /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the final account commitment and the account
     ///   delta commitment of the account that the transaction is being executed against.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -319,7 +340,7 @@ impl TransactionKernel {
         advice_inputs: &AdviceInputs,
         output_notes: Vec<OutputNote>,
     ) -> Result<TransactionOutputs, TransactionOutputError> {
-        let (output_notes_commitment, account_update_commitment, expiration_block_num) =
+        let (output_notes_commitment, account_update_commitment, fee, expiration_block_num) =
             Self::parse_output_stack(stack)?;
 
         let (final_account_commitment, account_delta_commitment) =
@@ -346,6 +367,7 @@ impl TransactionKernel {
             account,
             account_delta_commitment,
             output_notes,
+            fee,
             expiration_block_num,
         })
     }

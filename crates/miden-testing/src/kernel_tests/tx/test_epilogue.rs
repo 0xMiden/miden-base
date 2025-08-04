@@ -7,7 +7,7 @@ use miden_lib::{
         ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME, ERR_TX_INVALID_EXPIRATION_DELTA,
     },
     transaction::{
-        TransactionKernel,
+        EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel,
         memory::{NOTE_MEM_SIZE, OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET},
     },
 };
@@ -80,7 +80,7 @@ fn test_epilogue() -> anyhow::Result<()> {
             exec.epilogue::finalize_transaction
 
             # truncate the stack
-            movupw.3 dropw movupw.3 dropw movup.9 drop
+            repeat.13 movup.13 drop end
         end
         "
     );
@@ -120,11 +120,22 @@ fn test_epilogue() -> anyhow::Result<()> {
     let account_update_commitment =
         miden_objects::Hasher::merge(&[final_account.commitment(), account_delta_commitment]);
 
-    let mut expected_stack = Vec::with_capacity(17);
+    let mut expected_stack = Vec::with_capacity(16);
     expected_stack.extend(output_notes.commitment().as_elements().iter().rev());
     expected_stack.extend(account_update_commitment.as_elements().iter().rev());
+    expected_stack.extend(
+        Word::from(
+            FungibleAsset::new(
+                tx_context.tx_inputs().block_header().fee_parameters().native_asset_id(),
+                0,
+            )
+            .unwrap(),
+        )
+        .iter()
+        .rev(),
+    );
     expected_stack.push(Felt::from(u32::MAX)); // Value for tx expiration block number
-    expected_stack.extend((9..16).map(|_| ZERO));
+    expected_stack.extend((13..16).map(|_| ZERO));
 
     assert_eq!(
         *process.stack.build_stack_outputs()?,
@@ -179,7 +190,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
                 exec.epilogue::finalize_transaction
 
                 # truncate the stack
-                movupw.3 dropw movupw.3 dropw movup.9 drop
+                repeat.13 movup.13 drop end
             end
             "
         );
@@ -371,9 +382,9 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
 
             exec.epilogue::finalize_transaction
-                        
+
             # truncate the stack
-            movupw.3 dropw movupw.3 dropw movup.9 drop
+            repeat.13 movup.13 drop end
         end
         ";
 
@@ -392,7 +403,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         // (which can only decrease, not increase)
         let expected_expiry =
             v1.min(v2) + tx_context.tx_inputs().block_header().block_num().as_u64();
-        assert_eq!(process.stack.get(8).as_int(), expected_expiry);
+        assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int(), expected_expiry);
     }
 
     Ok(())
@@ -441,9 +452,9 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
         exec.tx::get_expiration_delta assertz
 
         exec.epilogue::finalize_transaction
-                    
+
         # truncate the stack
-        movupw.3 dropw movupw.3 dropw movup.9 drop
+        repeat.13 movup.13 drop end
     end
     ";
 
@@ -453,7 +464,7 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     )?;
 
     // Default value should be equal to u32::max, set in the prologue
-    assert_eq!(process.stack.get(8).as_int() as u32, u32::MAX);
+    assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32, u32::MAX);
 
     Ok(())
 }
