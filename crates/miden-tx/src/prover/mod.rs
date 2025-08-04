@@ -105,16 +105,12 @@ impl LocalTransactionProver {
 
         // extract transaction outputs and process transaction data
         let (account_delta, output_notes, _tx_progress) = host.into_parts();
-        let tx_outputs = TransactionKernel::from_transaction_parts(
-            &stack_outputs,
-            &advice_inputs,
-            output_notes,
-        )
-        .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
+        let tx_outputs =
+            TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
+                .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
 
         // erase private note information (convert private full notes to just headers)
-        let output_notes: Vec<_> =
-            tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
+        let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
         let account_delta_commitment = account_delta.to_commitment();
 
         let builder = ProvenTransactionBuilder::new(

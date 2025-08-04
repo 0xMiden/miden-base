@@ -19,7 +19,9 @@ use miden_tx::{
     auth::BasicAuthenticator,
 };
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
+use vm_processor::{
+    AdviceInputs, AsyncHostFuture, ExecutionError, MastForest, MastForestStore, Process, Word,
+};
 
 use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
 
@@ -188,9 +190,9 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl Future<
-        Output = Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
-    > + Send {
+    ) -> impl AsyncHostFuture<
+        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+    > {
         assert_eq!(account_id, self.account().id());
         let (account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
         async move { Ok((account, seed, header, mmr)) }
