@@ -300,7 +300,7 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
     mock_chain.prove_next_block()?;
 
     // Test different combinations of 2 signers out of 4
-    let signer_combinations = vec![
+    let signer_combinations = [
         (0, 1), // First two
         (0, 2), // First and third
         (0, 3), // First and fourth
@@ -385,10 +385,9 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
             .auth_args(salt)
             .build()?;
 
-        let executed_tx = tx_context_execute.execute().expect(&format!(
-            "Transaction should succeed with signers {} and {}",
-            signer1_idx, signer2_idx
-        ));
+        let executed_tx = tx_context_execute.execute().unwrap_or_else(|_| {
+            panic!("Transaction should succeed with signers {signer1_idx} and {signer2_idx}")
+        });
 
         // Apply the transaction to the mock chain for the next iteration
         mock_chain.add_pending_executed_transaction(&executed_tx)?;
