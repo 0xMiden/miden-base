@@ -92,7 +92,7 @@ pub enum NoteConsumptionError {
     #[error("error occurred while transactions were executed")]
     DuringExecution(NoteConsumption, #[source] TransactionExecutorError),
     #[error("error occurred while notes were checked for consumability")]
-    DuringChecker(NoteConsumption),
+    DuringCheck(NoteConsumption),
 }
 
 // TRANSACTION PROVER ERROR

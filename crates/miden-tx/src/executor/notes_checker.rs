@@ -73,7 +73,7 @@ where
                     NoteAccountCompatibility::No => {
                         // if the check failed, return a `Failure` with the vector of successfully
                         // checked `P2ID` and `P2IDE` notes
-                        return Err(NoteConsumptionError::DuringChecker(NoteConsumption {
+                        return Err(NoteConsumptionError::DuringCheck(NoteConsumption {
                             failed: vec![note.clone().into_note()],
                             successful,
                         }));
