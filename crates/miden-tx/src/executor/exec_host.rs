@@ -14,7 +14,7 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceMutation, BaseHost, EventError, FutureMaybeSend, MastForest, MastForestStore,
+    AdviceMutation, AsyncHost, BaseHost, EventError, FutureMaybeSend, MastForest, MastForestStore,
     ProcessState,
 };
 
@@ -204,7 +204,7 @@ where
     }
 }
 
-impl<STORE, AUTH> FutureMaybeSend for TransactionExecutorHost<'_, '_, STORE, AUTH>
+impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
     STORE: MastForestStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
