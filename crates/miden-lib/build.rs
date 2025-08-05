@@ -10,7 +10,7 @@ use std::{
 
 use assembly::{
     Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report,
-    diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr},
+    diagnostics::{IntoDiagnostic, Result, WrapErr},
     utils::Serializable,
 };
 use regex::Regex;

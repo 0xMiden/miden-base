@@ -266,7 +266,7 @@ export.add_assets_to_account
     padw movup.5
     # => [ptr, EMPTY_WORD, end_ptr]
 
-    # compute whether the amount of assets is non-zero
+    # loop if the amount of assets is non-zero
     dup dup.6 neq
     # => [should_loop, ptr, EMPTY_WORD, end_ptr]
 
