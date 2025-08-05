@@ -8,7 +8,7 @@ use miden_objects::{
     transaction::ExecutedTransaction,
 };
 use miden_testing::{Auth, MockChain};
-use miden_tx::{LocalTransactionProver, ProvingOptions, TransactionProver};
+use miden_tx::{LocalTransactionProver, ProvingOptions};
 
 pub fn setup_consume_note_with_new_account() -> Result<ExecutedTransaction> {
     // Create assets

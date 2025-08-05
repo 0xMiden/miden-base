@@ -1,5 +1,3 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
@@ -21,8 +19,9 @@ use miden_tx::{
     auth::BasicAuthenticator,
 };
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
-use winter_maybe_async::*;
+use vm_processor::{
+    AdviceInputs, AsyncHostFuture, ExecutionError, MastForest, MastForestStore, Process, Word,
+};
 
 use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
 
@@ -186,18 +185,17 @@ impl TransactionContext {
     }
 }
 
-#[maybe_async_trait]
 impl DataStore for TransactionContext {
-    #[maybe_async]
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError> {
+    ) -> impl AsyncHostFuture<
+        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+    > {
         assert_eq!(account_id, self.account().id());
         let (account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
-
-        Ok((account, seed, header, mmr))
+        async move { Ok((account, seed, header, mmr)) }
     }
 }
 

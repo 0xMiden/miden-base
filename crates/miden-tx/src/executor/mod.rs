@@ -15,7 +15,6 @@ use miden_objects::{
 };
 use vm_processor::{AdviceInputs, ExecutionError, StackInputs, fast::FastProcessor};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
-use winter_maybe_async::maybe_await;
 
 use super::TransactionExecutorError;
 use crate::{
@@ -151,9 +150,11 @@ where
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, seed, ref_block, mmr) =
-            maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .await
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         validate_account_inputs(&tx_args, &ref_block)?;
 
@@ -233,9 +234,11 @@ where
         _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
-        let (account, seed, ref_block, mmr) =
-            maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .await
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
         let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
 
@@ -305,14 +308,16 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         // TODO: Pass source manager to host once refactored.
-        _source_manager: Arc<dyn SourceManager>,
+        _source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, seed, ref_block, mmr) =
-            maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .await
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         validate_account_inputs(&tx_args, &ref_block)?;
 

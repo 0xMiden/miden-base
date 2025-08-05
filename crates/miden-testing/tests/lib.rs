@@ -15,8 +15,7 @@ use miden_objects::{
     transaction::{ExecutedTransaction, ProvenTransaction},
 };
 use miden_tx::{
-    LocalTransactionProver, ProvingOptions, TransactionProver, TransactionVerifier,
-    TransactionVerifierError,
+    LocalTransactionProver, ProvingOptions, TransactionVerifier, TransactionVerifierError,
 };
 use vm_processor::utils::Deserializable;
 
