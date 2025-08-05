@@ -793,8 +793,7 @@ end
 # This allows us to use the add and sub operations which wrap around. E.g. push.5 sub.6 add.1 will
 # correctly result in 0.
 #
-# To negate a negative `value`, take the max felt value (2^64 - 2^32), subtract `value` and add 1.
-# This works just like in two's complement.
+# To negate a negative `value`, we can multiply the value by -1, e.g. the result of push.0 sub.1.
 #
 # Don't we have to check for overflows? No, because we're building on top of the guarantees of the
 # asset vault. It guarantees that the max value that can be added to the vault within a transaction
@@ -823,29 +822,20 @@ end
 #!
 #! Where:
 #! - delta_amount is the delta amount that can span the entire felt range.
-#! - is_x_positive indicates whether the delta amount is positive.
+#! - is_delta_amount_positive indicates whether the delta amount is positive.
 #! - delta_amount_abs is the absolute value of the delta_amount, meaning negative values are
 #!   remapped to their positive equivalent value.
 proc.delta_amount_absolute
-    dup exec.delta_amount_negate
-    # => [-delta_amount, delta_amount]
+    dup exec.is_delta_amount_negative not
+    # => [is_positive, delta_amount]
 
-    dup.1 exec.is_delta_amount_negative
-    # => [is_delta_amount_negative, -delta_amount, delta_amount]
+    # map 0 -> -1 and 1 -> 1
+    dup mul.2 sub.1
+    # => [multiplier, is_positive, delta_amount]
 
-    movdn.2
-    # => [-delta_amount, delta_amount, is_delta_amount_negative]
-
-    dup.2
-    # => [is_delta_amount_negative, -delta_amount, delta_amount, is_delta_amount_negative]
-
-    # If is_delta_amount_negative the negated value remains.
-    # If !is_delta_amount_negative the original value remains.
-    cdrop
-    # => [delta_amount_abs, is_delta_amount_negative]
-
-    swap not
-    # => [is_delta_amount_positive, delta_amount_abs]
+    # multiply negative values by -1 and positive values by 1 to get the absolute value
+    movup.2 mul swap
+    # => [is_positive, delta_amount_abs]
 end
 
 #! Returns 1 if the given delta amount is negative (or signed).
@@ -860,18 +850,4 @@ proc.is_delta_amount_negative
     # delta_amount represents a negative number if it is greater than the max amount
     exec.asset::get_fungible_asset_max_amount gt
     # => [is_delta_amount_negative]
-end
-
-#! Negates the given delta amount.
-#!
-#! Inputs: [delta_amount]
-#! Outputs: [-delta_amount]
-#!
-#! Where:
-#! - delta_amount is the delta amount that can span the entire felt range.
-proc.delta_amount_negate
-    push.FELT_MAX swap
-    # => [delta_amount, FELT_MAX]
-    sub add.1
-    # => [-delta_amount]
 end
