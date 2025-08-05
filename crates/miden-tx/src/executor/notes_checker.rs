@@ -35,13 +35,8 @@ where
     ///
     /// This check consists of two main steps:
     /// - Statically check the notes: if all notes are either `P2ID` or `P2IDE` notes with correct
-    ///   inputs, return `NoteAccountExecution::Success`.
-    /// - Execute the transaction:
-    ///   - Returns `NoteAccountExecution::Success` if the execution was successful.
-    ///   - Returns `NoteAccountExecution::Failure` if some note returned an error. The fields
-    ///     associated with `Failure` variant contains the ID of the failed note, a vector of IDs of
-    ///     the notes, which were successfully executed, and the [TransactionExecutorError] if the
-    ///     check failed during the execution stage.
+    ///   inputs.
+    /// - Execute the transaction.
     #[maybe_async]
     pub fn check_notes_consumability(
         &self,

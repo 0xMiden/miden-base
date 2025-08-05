@@ -291,9 +291,7 @@ where
     // CHECK CONSUMABILITY
     // ============================================================================================
 
-    /// Executes the transaction with specified notes, returning the [NoteAccountExecution::Success]
-    /// if all notes has been consumed successfully and [NoteAccountExecution::Failure] if some note
-    /// returned an error.
+    /// Executes the transaction with specified notes.
     ///
     /// The `source_manager` is used to map potential errors back to their source code. To get the
     /// most value out of it, use the source manager from the
@@ -304,7 +302,7 @@ where
     ///
     /// # Errors:
     /// Returns an error if:
-    /// - If required data can not be fetched from the [DataStore].
+    /// - If required data can not be fetched from the [`DataStore`].
     /// - If the transaction host can not be created from the provided values.
     /// - If the execution of the provided program fails on the stage other than note execution.
     #[maybe_async]
