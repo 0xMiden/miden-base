@@ -158,6 +158,7 @@ where
         let (account, seed, ref_block, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
+            .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         validate_account_inputs(&tx_args, &ref_block)?;
@@ -241,6 +242,7 @@ where
         let (account, seed, ref_block, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
+            .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
         let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
@@ -311,7 +313,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         // TODO: Pass source manager to host once refactored.
-        _source_manager: Arc<dyn SourceManager>,
+        _source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -319,6 +321,7 @@ where
         let (account, seed, ref_block, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
+            .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         validate_account_inputs(&tx_args, &ref_block)?;

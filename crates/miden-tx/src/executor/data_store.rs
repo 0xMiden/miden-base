@@ -1,11 +1,9 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 
 use miden_objects::account::{Account, AccountId};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::PartialBlockchain;
-use vm_processor::{MastForestStore, Word};
+use vm_processor::{AsyncHostFuture, MastForestStore, Word};
 
 use crate::DataStoreError;
 
@@ -32,5 +30,7 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>;
+    ) -> impl AsyncHostFuture<
+        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+    >;
 }
