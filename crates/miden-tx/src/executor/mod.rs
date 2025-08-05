@@ -313,7 +313,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> Result<NoteConsumptionExecution, TransactionExecutorError> {
+    ) -> NoteConsumptionResult {
         let mut notes_map: BTreeMap<_, _> =
             notes.iter().map(|note| (note.id(), note.clone().into_note())).collect();
 
@@ -367,37 +367,24 @@ where
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
-            Ok(_) => Ok(NoteConsumptionExecution::Success),
-            Err(tx_execution_error) => {
+            Ok(_) => NoteConsumptionResult::Success,
+            Err(error) => {
                 let notes = host.tx_progress().note_execution();
-
-                // Empty notes vector means that we didn't process the notes, so an error
-                // occurred somewhere else.
-                if notes.is_empty() {
-                    return Err(tx_execution_error);
-                }
-
                 let ((last_note, last_note_interval), success_notes) = notes
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
-
-                // If the interval end of the last note is specified, then an error occurred after
-                // notes processing.
-                if last_note_interval.end().is_some() {
-                    return Err(tx_execution_error);
-                }
-
-                // SAFETY: The notes are guaranteed to be in notes_map.
-                let failed = vec![notes_map.get(last_note).unwrap().clone()];
+                let failed = vec![
+                    notes_map
+                        .get(last_note)
+                        .expect("notes from execution should all exist in notes map")
+                        .clone(),
+                ];
                 let successful = success_notes
                     .iter()
                     .filter_map(|(id, _)| notes_map.remove(id))
                     .collect::<Vec<_>>();
-                Ok(NoteConsumptionExecution::Failure {
-                    failed,
-                    successful,
-                    error: Some(tx_execution_error),
-                })
+
+                NoteConsumptionResult::Failure { failed, successful, error: Some(error) }
             },
         }
     }
@@ -546,7 +533,7 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
 /// [NoteAccountExecution::Failure] holds data for error handling: `failing_note_id` is an ID of a
 /// failing note and `successful_notes` is a vector of note IDs which were successfully executed.
 #[derive(Debug)]
-pub enum NoteConsumptionExecution {
+pub enum NoteConsumptionResult {
     Success,
     Failure {
         failed: Vec<Note>,

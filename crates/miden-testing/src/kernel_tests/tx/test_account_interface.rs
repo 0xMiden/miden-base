@@ -17,8 +17,8 @@ use miden_objects::{
     },
 };
 use miden_tx::{
-    NoteConsumptionChecker, NoteConsumptionExecution, TransactionExecutor,
-    TransactionExecutorError, auth::UnreachableAuth,
+    NoteConsumptionChecker, NoteConsumptionResult, TransactionExecutor, TransactionExecutorError,
+    auth::UnreachableAuth,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -69,7 +69,7 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, NoteConsumptionExecution::Success);
+    assert_matches!(execution_check_result, NoteConsumptionResult::Success);
 
     Ok(())
 }
@@ -107,7 +107,7 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, NoteConsumptionExecution::Success);
+    assert_matches!(execution_check_result, NoteConsumptionResult::Success);
 
     Ok(())
 }
@@ -183,7 +183,7 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         source_manager,
     )?;
 
-    assert_matches!(execution_check_result, NoteConsumptionExecution::Failure {
+    assert_matches!(execution_check_result, NoteConsumptionResult::Failure {
         failed,
         successful,
         error: Some(e)} => {
