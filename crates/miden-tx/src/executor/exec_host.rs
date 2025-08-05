@@ -14,8 +14,8 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceMutation, AsyncHost, AsyncHostFuture, BaseHost, EventError, MastForest, MastForestStore,
-    ProcessState,
+    AdviceMutation, BaseHost, EventError, FutureMaybeSend, FutureMaybeSendFuture, MastForest,
+    MastForestStore, ProcessState,
 };
 
 use crate::{
@@ -25,7 +25,7 @@ use crate::{
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
-/// The transaction executor host is responsible for handling [`AsyncHost`] requests made by the
+/// The transaction executor host is responsible for handling [`FutureMaybeSend`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests
 /// by forwarding the request to the contained [`TransactionAuthenticator`].
 ///
@@ -204,7 +204,7 @@ where
     }
 }
 
-impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
+impl<STORE, AUTH> FutureMaybeSend for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
     STORE: MastForestStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
@@ -217,7 +217,7 @@ where
         &mut self,
         process: &ProcessState,
         event_id: u32,
-    ) -> impl AsyncHostFuture<Result<Vec<AdviceMutation>, EventError>> {
+    ) -> impl FutureMaybeSendFuture<Result<Vec<AdviceMutation>, EventError>> {
         // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
         // should be cleaner.
         let event_handling_result = TransactionEvent::try_from(event_id)

@@ -6,7 +6,7 @@ use miden_objects::{
 };
 use rand::Rng;
 use tokio::sync::RwLock;
-use vm_processor::AsyncHostFuture;
+use vm_processor::FutureMaybeSendFuture;
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
@@ -91,7 +91,7 @@ pub trait TransactionAuthenticator {
         &self,
         pub_key: Word,
         signing_inputs: &SigningInputs,
-    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>>;
+    ) -> impl FutureMaybeSendFuture<Result<Vec<Felt>, AuthenticationError>>;
 }
 
 /// A placeholder type for the generic trait bound of `TransactionAuthenticator<'_,'_,_,T>`
@@ -110,7 +110,7 @@ impl TransactionAuthenticator for UnreachableAuth {
         &self,
         _pub_key: Word,
         _signing_inputs: &SigningInputs,
-    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSendFuture<Result<Vec<Felt>, AuthenticationError>> {
         async { unreachable!("Type `UnreachableAuth` must not be instantiated") }
     }
 }
@@ -168,7 +168,7 @@ impl<R: Rng + Send + Sync> TransactionAuthenticator for BasicAuthenticator<R> {
         &self,
         pub_key: Word,
         signing_inputs: &SigningInputs,
-    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSendFuture<Result<Vec<Felt>, AuthenticationError>> {
         let message = signing_inputs.to_commitment();
 
         async move {
@@ -196,7 +196,7 @@ impl TransactionAuthenticator for () {
         &self,
         _pub_key: Word,
         _signing_inputs: &SigningInputs,
-    ) -> impl AsyncHostFuture<Result<Vec<Felt>, AuthenticationError>> {
+    ) -> impl FutureMaybeSendFuture<Result<Vec<Felt>, AuthenticationError>> {
         async {
             Err(AuthenticationError::RejectedSignature(
                 "default authenticator cannot provide signatures".to_string(),

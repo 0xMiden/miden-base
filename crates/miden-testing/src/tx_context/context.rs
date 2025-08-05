@@ -20,7 +20,7 @@ use miden_tx::{
 };
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{
-    AdviceInputs, AsyncHostFuture, ExecutionError, MastForest, MastForestStore, Process, Word,
+    AdviceInputs, ExecutionError, FutureMaybeSendFuture, MastForest, MastForestStore, Process, Word,
 };
 
 use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
@@ -190,7 +190,7 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl AsyncHostFuture<
+    ) -> impl FutureMaybeSendFuture<
         Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     > {
         assert_eq!(account_id, self.account().id());
