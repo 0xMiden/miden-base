@@ -14,8 +14,8 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceMutation, BaseHost, EventError, FutureMaybeSend, FutureMaybeSend, MastForest,
-    MastForestStore, ProcessState,
+    AdviceMutation, BaseHost, EventError, FutureMaybeSend, MastForest, MastForestStore,
+    ProcessState,
 };
 
 use crate::{
@@ -25,9 +25,9 @@ use crate::{
     host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
 };
 
-/// The transaction executor host is responsible for handling [`FutureMaybeSend`] requests made by the
-/// transaction kernel during execution. In particular, it responds to signature generation requests
-/// by forwarding the request to the contained [`TransactionAuthenticator`].
+/// The transaction executor host is responsible for handling [`FutureMaybeSend`] requests made by
+/// the transaction kernel during execution. In particular, it responds to signature generation
+/// requests by forwarding the request to the contained [`TransactionAuthenticator`].
 ///
 /// Transaction hosts are created on a per-transaction basis. That is, a transaction host is meant
 /// to support execution of a single transaction and is discarded after the transaction finishes
