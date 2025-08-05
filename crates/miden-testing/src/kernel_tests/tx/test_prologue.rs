@@ -12,8 +12,7 @@ use miden_lib::{
         TransactionKernel,
         memory::{
             ACCT_DB_ROOT_PTR, BLOCK_COMMITMENT_PTR, BLOCK_METADATA_PTR, BLOCK_NUMBER_IDX,
-            CHAIN_COMMITMENT_PTR, FEE_PARAMETERS_PTR, INIT_ACCT_COMMITMENT_PTR,
-            INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR, INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
+            CHAIN_COMMITMENT_PTR, FEE_PARAMETERS_PTR, INIT_ACCT_COMMITMENT_PTR, INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
             INIT_NATIVE_ACCT_VAULT_ROOT_PTR, INIT_NONCE_PTR, INPUT_NOTE_ARGS_OFFSET,
             INPUT_NOTE_ASSETS_COMMITMENT_OFFSET, INPUT_NOTE_ASSETS_OFFSET, INPUT_NOTE_ID_OFFSET,
             INPUT_NOTE_INPUTS_COMMITMENT_OFFSET, INPUT_NOTE_METADATA_OFFSET,
@@ -165,9 +164,9 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR),
+        process.get_kernel_mem_word(NATIVE_ACCT_CODE_COMMITMENT_PTR),
         inputs.account().code().commitment(),
-        "The account code commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
+        "The initial native account code commitment should be stored at the NATIVE_ACCT_CODE_COMMITMENT_PTR"
     );
 
     assert_eq!(

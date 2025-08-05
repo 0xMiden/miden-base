@@ -31,6 +31,26 @@ const.EPILOGUE_AFTER_TX_FEE_COMPUTED=131097
 # after compute_fee.
 const.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES=1200
 
+# ACCOUNT PROCEDURES
+# =================================================================================================
+
+#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
+#! is set to the initial account code commitment in the prologue and as such this procedure will
+#! not result in a change to the account code commitment if the `account::set_code` procedure has
+#! not been invoked in this transaction.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.update_code_commitment
+    # fetch the new code commitment, which may be the initial one
+    exec.memory::get_new_acct_code_commitment
+    # => [NEW_ACCT_CODE_COMMITMENT]
+
+    # set the account code commitment to the new account code commitment (may not have changed)
+    exec.memory::set_acct_code_commitment dropw
+    # => []
+end
+
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
 
@@ -292,6 +312,10 @@ export.finalize_transaction.4
 
     # execute the account authentication procedure
     exec.execute_auth_procedure
+    # => []
+
+    # update the account code commitment in case its code has been changed
+    exec.update_code_commitment
     # => []
 
     # compute the fee the tx needs to pay

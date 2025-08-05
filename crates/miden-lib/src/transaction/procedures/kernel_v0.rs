@@ -10,7 +10,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
-    word!("0x75c693347aa735873133a0e229b840d1052d0731ae8f9c92489b633bf0145ad0"),
+    word!("0x6151e8838fd408a54e5acf53fcbb424fffc4c8f86fb45f5a4cd0fc65accf373a"),
     // account_get_id
     word!("0xcdca678a6b6c6b5e80e2cfbaa668af3cd430847a0af4569a3aed0d47f85007a2"),
     // account_get_nonce
@@ -18,7 +18,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // account_incr_nonce
     word!("0xdac6af10beb8ddbfe74369a62f517e863afe2322f323f3be4d34985ddde4167e"),
     // account_get_initial_code_commitment
-    word!("0xc3a334434daa7d4ea15e1b2cb1a8000ad757f9348560a7246336662b77b0d89a"),
+    word!("0xd0df34da9e69c69bf67364c070f01ce2671dea8b81f3842094d7aa25529c00ea"),
     // account_get_code_commitment
     word!("0x3dd7c93691699c00d70ee2687f568e38869d81402b1dba25f2d6c2b463b91f77"),
     // account_get_initial_storage_commitment
@@ -84,7 +84,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // tx_create_note
     word!("0xc6b71e55d65ed13d61a7f743557edcd90fc7ab011072656a80054c7839887c30"),
     // tx_get_input_notes_commitment
-    word!("0x568eaa0b757bafa3251a01b0e965d8dd8b306a572ca463bf7be8323483eccb3f"),
+    word!("0xc3a334434daa7d4ea15e1b2cb1a8000ad757f9348560a7246336662b77b0d89a"),
     // tx_get_num_input_notes
     word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
     // tx_get_output_notes_commitment
@@ -98,7 +98,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x7df31fef3ba4063915bec5a5c819e275a107f208d31e90f35e5d7c99e69fa527"),
+    word!("0xffcd50745961f4272007dfd88222d6f36e625eb6ee2128d1a98b96558dc57373"),
     // tx_end_foreign_context
     word!("0x1a08ac67331f5962e22ee8b30df0afa37e150efe75f8d26d60bd410646c7f2a8"),
     // tx_get_expiration_delta

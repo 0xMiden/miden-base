@@ -17,7 +17,7 @@ pub type StorageSlot = u8;
 // | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                    |
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
 // | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
-// | Global inputs      | 400 (100)                             | 443 (110)                           |                                            |
+// | Global inputs      | 400 (100)                             | 439 (109)                           |                                            |
 // | Block header       | 800 (200)                             | 843 (210)                           |                                            |
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
 // | Kernel data        | 1_600 (400)                           | 1_739 (434)                         | 34 procedures in total, 4 elements each    |
@@ -134,19 +134,23 @@ pub const INIT_NATIVE_ACCT_VAULT_ROOT_PTR: MemoryAddress = 416;
 pub const INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR: MemoryAddress = 420;
 
 /// The memory address at which the initial code commitment of the native account is stored.
-pub const INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = 424;
+///
+/// It points to the code commitment stored in the native account data block because the account's
+/// code cannot be changed during the user code execution, only in the epilogue, so the initial code
+/// commitment will be equal to the native account code commitment whenever it is called by a user.
+pub const INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = NATIVE_ACCT_CODE_COMMITMENT_PTR;
 
 /// The memory address at which the input notes commitment is stored.
-pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 428;
+pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 424;
 
 /// The memory address at which the transaction script mast root is store
-pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 432;
+pub const TX_SCRIPT_ROOT_PTR: MemoryAddress = 428;
 
 /// The memory address at which the transaction script arguments are stored.
-pub const TX_SCRIPT_ARGS: MemoryAddress = 436;
+pub const TX_SCRIPT_ARGS: MemoryAddress = 432;
 
 /// The memory address at which the key of the auth procedure arguments is stored.
-pub const AUTH_ARGS_PTR: MemoryAddress = 440;
+pub const AUTH_ARGS_PTR: MemoryAddress = 436;
 
 // BLOCK DATA
 // ------------------------------------------------------------------------------------------------
