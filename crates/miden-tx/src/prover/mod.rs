@@ -56,7 +56,7 @@ impl LocalTransactionProver {
         let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
 
         let account = tx_inputs.account();
-        let input_notes = tx_inputs.input_notes().clone();
+        let input_notes = tx_inputs.input_notes();
         let ref_block_num = tx_inputs.block_header().block_num();
         let ref_block_commitment = tx_inputs.block_header().commitment();
 
