@@ -89,8 +89,6 @@ pub enum NoteConsumptionError {
         #[source]
         error: TransactionExecutorError,
     },
-    #[error("error occurred while notes were checked for consumability")]
-    EpilogueError(#[source] TransactionExecutorError),
 }
 
 impl NoteConsumptionError {
