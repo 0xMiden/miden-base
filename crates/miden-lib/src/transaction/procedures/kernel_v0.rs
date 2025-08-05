@@ -57,7 +57,7 @@ pub const KERNEL0_PROCEDURES: [Word; 46] = [
     word!("0xb2c9c56be0d94ac3a0dd787ee12a4e5b9cc0d576f1e112ca0a6940e86f549e6f"),
     // note_get_serial_number
     word!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
-    // note_get_inputs_commitment_and_len
+    // note_get_payload_commitment_and_len
     word!("0x88004b9cd9571618c397637dc55a9fdf5a80421b1bbc1c964bf505b4796f410f"),
     // note_get_sender
     word!("0xf45bb5a348b67c886cb1577f78abf6c5100ebe953790882518849d29fbf7e5fb"),

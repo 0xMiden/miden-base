@@ -1,6 +1,6 @@
 use vm_processor::DeserializationError;
 
-use super::{NoteAssets, NoteId, NoteInputs, NoteRecipient, NoteScript, Nullifier};
+use super::{NoteAssets, NoteId, NotePayload, NoteRecipient, NoteScript, Nullifier};
 use crate::{
     Word,
     utils::serde::{ByteReader, ByteWriter, Deserializable, Serializable},
@@ -53,7 +53,7 @@ impl NoteDetails {
     }
 
     /// Returns the note's recipient inputs which customizes the script's behavior.
-    pub fn inputs(&self) -> &NoteInputs {
+    pub fn inputs(&self) -> &NotePayload {
         self.recipient.inputs()
     }
 

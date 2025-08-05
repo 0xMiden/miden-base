@@ -57,7 +57,7 @@ impl NoteBuilder {
         }
     }
 
-    pub fn note_inputs(mut self, inputs: Vec<Felt>) -> Result<Self, NoteError> {
+    pub fn note_payload(mut self, inputs: Vec<Felt>) -> Result<Self, NoteError> {
         NoteInputs::new(inputs.to_vec())?;
         self.inputs = inputs;
         Ok(self)

@@ -6,7 +6,7 @@ use miden_objects::{
     asset::{Asset, FungibleAsset},
     crypto::rand::{FeltRng, RpoRandomCoin},
     note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
+        Note, NoteAssets, NoteExecutionHint, NoteMetadata, NotePayload, NoteRecipient, NoteScript,
         NoteTag, NoteType, PartialNote,
     },
     transaction::OutputNote,
@@ -40,7 +40,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
     let note_script =
         NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
 
     let note = Note::new(assets.clone(), metadata, recipient);
     let partial_note: PartialNote = note.clone().into();
@@ -104,7 +104,7 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
     let note_script =
         NoteScript::compile("begin nop end", TransactionKernel::testing_assembler()).unwrap();
     let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
-    let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
+    let recipient = NoteRecipient::new(serial_num, note_script, NotePayload::default());
 
     let note = Note::new(assets.clone(), metadata, recipient);
     let partial_note: PartialNote = note.clone().into();

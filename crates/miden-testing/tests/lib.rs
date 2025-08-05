@@ -10,7 +10,7 @@ use miden_objects::{
     account::AccountId,
     asset::FungibleAsset,
     crypto::utils::Serializable,
-    note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, NoteType},
+    note::{Note, NoteAssets, NoteMetadata, NotePayload, NoteRecipient, NoteScript, NoteType},
     testing::account_id::ACCOUNT_ID_SENDER,
     transaction::{ExecutedTransaction, ProvenTransaction},
 };
@@ -90,7 +90,7 @@ pub fn get_note_with_fungible_asset_and_script(
     let metadata =
         NoteMetadata::new(sender_id, NoteType::Public, 1.into(), NoteExecutionHint::Always, ZERO)
             .unwrap();
-    let inputs = NoteInputs::new(vec![]).unwrap();
+    let inputs = NotePayload::new(vec![]).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, inputs);
 
     Note::new(vault, metadata, recipient)
