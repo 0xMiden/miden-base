@@ -13,6 +13,7 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
+use notes_checker::NoteConsumptionInfo;
 use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
@@ -308,7 +309,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> Result<(), Box<NoteConsumptionError>> {
+    ) -> Result<NoteConsumptionInfo, Box<NoteConsumptionError>> {
         let mut ref_blocks =
             validate_input_notes(&notes, block_ref).map_err(NoteConsumptionError::PrologueError)?;
         ref_blocks.insert(block_ref);
@@ -365,7 +366,13 @@ where
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
-            Ok(_) => Ok(()),
+            Ok(_) => Ok(NoteConsumptionInfo::new_successful(
+                tx_inputs
+                    .into_input_notes()
+                    .into_iter()
+                    .map(|note| note.into_note())
+                    .collect::<Vec<_>>(),
+            )),
             Err(error) => {
                 // Map the last note id from execution to the failed note.
                 let notes = host.tx_progress().note_execution();
@@ -379,12 +386,13 @@ where
                 let failed = vec![failed_note.note().clone()];
                 // Gather successful notes.
                 let success_notes = success_notes.iter().map(|(id, _)| *id).collect::<Vec<_>>();
-                let successful = input_notes
-                    .iter()
+                let successful = tx_inputs
+                    .into_input_notes()
+                    .into_iter()
                     .filter_map(|note| {
                         // O(n*m) is fine for the input sizes we deal with here.
                         if success_notes.contains(&note.id()) {
-                            Some(note.note().clone())
+                            Some(note.into_note())
                         } else {
                             None
                         }

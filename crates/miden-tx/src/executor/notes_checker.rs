@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, sync::Arc};
+use alloc::{boxed::Box, sync::Arc, vec::Vec};
 
 use miden_lib::{
     account::interface::NoteAccountCompatibility, note::well_known_note::WellKnownNote,
@@ -7,12 +7,30 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::BlockNumber,
+    note::Note,
     transaction::{InputNote, InputNotes, TransactionArgs},
 };
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutor;
 use crate::{DataStore, auth::TransactionAuthenticator, errors::NoteConsumptionError};
+
+// NOTE CONSUMPTION INFO
+// ================================================================================================
+
+/// This struct represents the result of a completed note consumption check.
+#[derive(Default, Debug)]
+pub struct NoteConsumptionInfo {
+    pub successful: Vec<Note>,
+    pub failed: Vec<Note>,
+}
+
+impl NoteConsumptionInfo {
+    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful notes.
+    pub fn new_successful(successful: Vec<Note>) -> Self {
+        Self { successful, ..Default::default() }
+    }
+}
 
 /// This struct performs input notes check against provided target account.
 ///
@@ -45,7 +63,7 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> Result<(), Box<NoteConsumptionError>> {
+    ) -> Result<NoteConsumptionInfo, Box<NoteConsumptionError>> {
         let mut successful = vec![];
         for note in input_notes.iter() {
             if let Some(well_known_note) = WellKnownNote::from_note(note.note()) {
@@ -86,7 +104,7 @@ where
         // If all checked notes turned out to be either `P2ID` or `P2IDE` notes and all of them
         // passed, then we could safely return the `Success`.
         if successful.len() == (input_notes.num_notes() as usize) {
-            return Ok(());
+            return Ok(NoteConsumptionInfo::new_successful(successful));
         }
 
         // Execute transaction.
