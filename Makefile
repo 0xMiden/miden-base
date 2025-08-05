@@ -66,7 +66,7 @@ lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 
 .PHONY: doc
 doc: ## Generates & checks documentation
-	$(WARNINGS) cargo doc $(ALL_FEATURES_BUT_ASYNC) --keep-going --release
+	$(WARNINGS) cargo doc $(ALL_FEATURES) --keep-going --release
 
 
 .PHONY: book
