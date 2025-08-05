@@ -1,9 +1,4 @@
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
@@ -314,9 +309,6 @@ where
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<(), Box<NoteConsumptionError>> {
-        let mut notes_map: BTreeMap<_, _> =
-            notes.iter().map(|note| (note.id(), note.clone().into_note())).collect();
-
         let mut ref_blocks =
             validate_input_notes(&notes, block_ref).map_err(NoteConsumptionError::PrologueError)?;
         ref_blocks.insert(block_ref);
@@ -375,19 +367,27 @@ where
         match result {
             Ok(_) => Ok(()),
             Err(error) => {
+                // Map the last note id from execution to the failed note.
                 let notes = host.tx_progress().note_execution();
                 let ((last_note, _last_note_interval), success_notes) = notes
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
-                let failed = vec![
-                    notes_map
-                        .get(last_note)
-                        .expect("notes from execution should all exist in notes map")
-                        .clone(),
-                ];
-                let successful = success_notes
+                let failed_note = input_notes
                     .iter()
-                    .filter_map(|(id, _)| notes_map.remove(id))
+                    .find(|&note| note.id() == *last_note)
+                    .expect("Last note returned from note execution should exist in input notes");
+                let failed = vec![failed_note.note().clone()];
+                // Gather successful notes.
+                let success_notes = success_notes.iter().map(|(id, _)| *id).collect::<Vec<_>>();
+                let successful = input_notes
+                    .iter()
+                    .filter_map(|note| {
+                        if success_notes.contains(&note.id()) {
+                            Some(note.note().clone())
+                        } else {
+                            None
+                        }
+                    })
                     .collect::<Vec<_>>();
                 Err(NoteConsumptionError::new_execution(failed, successful, error))
             },
