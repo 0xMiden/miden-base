@@ -17,8 +17,8 @@ use miden_objects::{
     },
 };
 use miden_tx::{
-    NoteConsumptionChecker, NoteConsumptionResult, TransactionExecutor, TransactionExecutorError,
-    auth::UnreachableAuth,
+    NoteConsumption, NoteConsumptionChecker, NoteConsumptionError, TransactionExecutor,
+    TransactionExecutorError, auth::UnreachableAuth,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -69,7 +69,7 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, NoteConsumptionResult::Success);
+    assert_matches!(execution_check_result, ());
 
     Ok(())
 }
@@ -107,7 +107,7 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, NoteConsumptionResult::Success);
+    assert_matches!(execution_check_result, ());
 
     Ok(())
 }
@@ -181,17 +181,24 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         input_notes,
         tx_args,
         source_manager,
-    )?;
+    );
 
-    assert_matches!(execution_check_result, NoteConsumptionResult::Failure {
-        failed,
-        successful,
-        error: Some(e)} => {
-            assert_eq!(failed.first().expect("only one failed note currently supported").id(), failing_note_2.id());
-            assert_eq!([successful[0].id(), successful[1].id()], [successful_note_2.id(),successful_note_1.id()]);
-            assert_matches!(e, TransactionExecutorError::TransactionProgramExecutionFailed(
-              ExecutionError::DivideByZero { .. }
-            ));
+    assert_matches!(
+        execution_check_result,
+        Err(NoteConsumptionError::DuringExecution(
+            NoteConsumption { failed, successful },
+            TransactionExecutorError::TransactionProgramExecutionFailed(
+                ExecutionError::DivideByZero { .. }
+            )
+        )) => {
+            assert_eq!(
+                failed.first().expect("only one failed note currently supported").id(),
+                failing_note_2.id()
+            );
+            assert_eq!(
+                [successful[0].id(), successful[1].id()],
+                [successful_note_2.id(), successful_note_1.id()]
+            );
         }
     );
     Ok(())

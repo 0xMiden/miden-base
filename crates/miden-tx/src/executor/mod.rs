@@ -10,7 +10,7 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::{BlockHeader, BlockNumber},
-    note::{Note, NoteScript},
+    note::NoteScript,
     transaction::{
         AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
         TransactionInputs, TransactionScript,
@@ -23,6 +23,7 @@ use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutorError;
 use crate::{
+    NoteConsumption, NoteConsumptionError,
     auth::TransactionAuthenticator,
     host::{AccountProcedureIndexMap, ScriptMastForestStore},
 };
@@ -34,7 +35,7 @@ mod data_store;
 pub use data_store::DataStore;
 
 mod notes_checker;
-pub use notes_checker::{NoteConsumptionChecker, NoteInputsCheck};
+pub use notes_checker::NoteConsumptionChecker;
 
 // TRANSACTION EXECUTOR
 // ================================================================================================
@@ -313,25 +314,30 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> NoteConsumptionResult {
+    ) -> Result<(), NoteConsumptionError> {
         let mut notes_map: BTreeMap<_, _> =
             notes.iter().map(|note| (note.id(), note.clone().into_note())).collect();
 
-        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
+        let mut ref_blocks = validate_input_notes(&notes, block_ref)
+            .map_err(NoteConsumptionError::BeforeConsumption)?;
         ref_blocks.insert(block_ref);
 
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)
+                .map_err(NoteConsumptionError::BeforeConsumption)?;
 
-        validate_account_inputs(&tx_args, &ref_block)?;
+        validate_account_inputs(&tx_args, &ref_block)
+            .map_err(NoteConsumptionError::BeforeConsumption)?;
 
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
+            .map_err(TransactionExecutorError::InvalidTransactionInputs)
+            .map_err(NoteConsumptionError::BeforeConsumption)?;
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
-                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)
+                .map_err(NoteConsumptionError::BeforeConsumption)?;
 
         let input_notes = tx_inputs.input_notes();
 
@@ -342,7 +348,8 @@ where
 
         let acct_procedure_index_map =
             AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)
+                .map_err(NoteConsumptionError::BeforeConsumption)?;
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
@@ -367,10 +374,10 @@ where
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
-            Ok(_) => NoteConsumptionResult::Success,
+            Ok(_) => Ok(()),
             Err(error) => {
                 let notes = host.tx_progress().note_execution();
-                let ((last_note, last_note_interval), success_notes) = notes
+                let ((last_note, _last_note_interval), success_notes) = notes
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
                 let failed = vec![
@@ -384,7 +391,8 @@ where
                     .filter_map(|(id, _)| notes_map.remove(id))
                     .collect::<Vec<_>>();
 
-                NoteConsumptionResult::Failure { failed, successful, error: Some(error) }
+                let consumption = NoteConsumption { failed, successful };
+                Err(NoteConsumptionError::DuringExecution(consumption, error))
             },
         }
     }
@@ -522,22 +530,4 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
         },
         _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
     }
-}
-
-// HELPER ENUM
-// ================================================================================================
-
-/// Describes whether a transaction with a specified set of notes could be executed against target
-/// account.
-///
-/// [NoteAccountExecution::Failure] holds data for error handling: `failing_note_id` is an ID of a
-/// failing note and `successful_notes` is a vector of note IDs which were successfully executed.
-#[derive(Debug)]
-pub enum NoteConsumptionResult {
-    Success,
-    Failure {
-        failed: Vec<Note>,
-        successful: Vec<Note>,
-        error: Option<TransactionExecutorError>,
-    },
 }

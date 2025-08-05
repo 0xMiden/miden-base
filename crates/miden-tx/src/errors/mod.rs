@@ -1,11 +1,15 @@
-use alloc::{boxed::Box, string::String};
+use alloc::{boxed::Box, string::String, vec::Vec};
 use core::error::Error;
 
 use miden_lib::transaction::TransactionAdviceMapMismatch;
 use miden_objects::{
     AccountError, Felt, ProvenTransactionError, TransactionInputError, TransactionOutputError,
-    Word, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
-    block::BlockNumber, crypto::merkle::SmtProofError, note::NoteId,
+    Word,
+    account::AccountId,
+    assembly::diagnostics::reporting::PrintDiagnostic,
+    block::BlockNumber,
+    crypto::merkle::SmtProofError,
+    note::{Note, NoteId},
     transaction::TransactionSummary,
 };
 use miden_verifier::VerificationError;
@@ -67,6 +71,28 @@ pub enum TransactionExecutorError {
     // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
     #[error("transaction is unauthorized with summary {0:?}")]
     Unauthorized(Box<TransactionSummary>),
+}
+
+// NOTE CONSUMPTION
+// ================================================================================================
+
+#[derive(Debug, Default)]
+pub struct NoteConsumption {
+    pub successful: Vec<Note>,
+    pub failed: Vec<Note>,
+}
+
+// NOTE CONSUMPTION ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum NoteConsumptionError {
+    #[error("error occurred before notes were consumed")]
+    BeforeConsumption(#[source] TransactionExecutorError),
+    #[error("error occurred while transactions were executed")]
+    DuringExecution(NoteConsumption, #[source] TransactionExecutorError),
+    #[error("error occurred while notes were checked for consumability")]
+    DuringChecker(NoteConsumption),
 }
 
 // TRANSACTION PROVER ERROR

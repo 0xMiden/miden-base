@@ -10,7 +10,8 @@ pub use miden_objects::transaction::TransactionInputs;
 
 mod executor;
 pub use executor::{
-    DataStore, ExecutionOptions, MastForestStore, TransactionExecutor, TransactionExecutorHost,
+    DataStore, ExecutionOptions, MastForestStore, NoteConsumptionChecker, TransactionExecutor,
+    TransactionExecutorHost,
 };
 
 mod host;
@@ -27,8 +28,8 @@ pub use verifier::TransactionVerifier;
 
 mod errors;
 pub use errors::{
-    AuthenticationError, DataStoreError, TransactionExecutorError, TransactionProverError,
-    TransactionVerifierError,
+    AuthenticationError, DataStoreError, NoteConsumption, NoteConsumptionError,
+    TransactionExecutorError, TransactionProverError, TransactionVerifierError,
 };
 
 pub mod auth;

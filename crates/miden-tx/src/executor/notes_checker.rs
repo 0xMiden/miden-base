@@ -12,8 +12,12 @@ use miden_objects::{
 };
 use winter_maybe_async::{maybe_async, maybe_await};
 
-use super::{NoteConsumptionResult, TransactionExecutor};
-use crate::{DataStore, auth::TransactionAuthenticator};
+use super::TransactionExecutor;
+use crate::{
+    DataStore,
+    auth::TransactionAuthenticator,
+    errors::{NoteConsumption, NoteConsumptionError},
+};
 
 /// This struct performs input notes check against provided target account.
 ///
@@ -51,7 +55,7 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> NoteConsumptionResult {
+    ) -> Result<(), NoteConsumptionError> {
         // Check input notes
         // ----------------------------------------------------------------------------------------
 
@@ -69,11 +73,10 @@ where
                     NoteAccountCompatibility::No => {
                         // if the check failed, return a `Failure` with the vector of successfully
                         // checked `P2ID` and `P2IDE` notes
-                        return NoteConsumptionResult::Failure {
+                        return Err(NoteConsumptionError::DuringChecker(NoteConsumption {
                             failed: vec![note.clone().into_note()],
                             successful,
-                            error: None,
-                        };
+                        }));
                     },
 
                     // this branch is unreachable, since we are handling the SWAP note separately,
@@ -96,7 +99,7 @@ where
         // if all checked notes turned out to be either `P2ID` or `P2IDE` notes and all of them
         // passed, then we could safely return the `Success`
         if successful.len() == (input_notes.num_notes() as usize) {
-            return NoteConsumptionResult::Success;
+            return Ok(());
         }
 
         // Execute transaction
