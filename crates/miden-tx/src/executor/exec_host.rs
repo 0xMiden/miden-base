@@ -14,7 +14,7 @@ use miden_objects::{
     transaction::{InputNote, InputNotes, OutputNote},
 };
 use vm_processor::{
-    AdviceMutation, BaseHost, EventError, FutureMaybeSend, FutureMaybeSendFuture, MastForest,
+    AdviceMutation, BaseHost, EventError, FutureMaybeSend, FutureMaybeSend, MastForest,
     MastForestStore, ProcessState,
 };
 
@@ -217,7 +217,7 @@ where
         &mut self,
         process: &ProcessState,
         event_id: u32,
-    ) -> impl FutureMaybeSendFuture<Result<Vec<AdviceMutation>, EventError>> {
+    ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
         // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
         // should be cleaner.
         let event_handling_result = TransactionEvent::try_from(event_id)

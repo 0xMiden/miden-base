@@ -87,7 +87,5 @@ pub mod utils {
 pub mod vm {
     pub use miden_verifier::ExecutionProof;
     pub use vm_core::{AdviceMap, Program, ProgramInfo, sys_events::SystemEvent};
-    pub use vm_processor::{
-        AdviceInputs, FutureMaybeSendFuture, RowIndex, StackInputs, StackOutputs,
-    };
+    pub use vm_processor::{AdviceInputs, FutureMaybeSend, RowIndex, StackInputs, StackOutputs};
 }

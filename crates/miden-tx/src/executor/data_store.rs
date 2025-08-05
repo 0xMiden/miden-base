@@ -5,7 +5,7 @@ use miden_objects::{
     block::{BlockHeader, BlockNumber},
     transaction::PartialBlockchain,
 };
-use vm_processor::{FutureMaybeSendFuture, MastForestStore, Word};
+use vm_processor::{FutureMaybeSend, MastForestStore, Word};
 
 use crate::DataStoreError;
 
@@ -32,7 +32,7 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSendFuture<
+    ) -> impl FutureMaybeSend<
         Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     >;
 }
