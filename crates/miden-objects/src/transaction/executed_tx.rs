@@ -153,7 +153,9 @@ impl ExecutedTransaction {
         let tx_witness = TransactionWitness {
             tx_inputs: self.tx_inputs,
             tx_args: self.tx_args,
-            advice_witness: self.advice_witness,
+            advice_witness: self.advice_witness.clone(),
+            account_delta: self.account_delta.clone(),
+            tx_outputs: self.tx_outputs.clone(),
         };
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
     }

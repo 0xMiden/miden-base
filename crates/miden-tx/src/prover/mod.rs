@@ -4,13 +4,17 @@ use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::{
-    account::delta::AccountUpdateDetails,
+    account::{Account, AccountDelta, delta::AccountUpdateDetails},
     assembly::DefaultSourceManager,
-    transaction::{OutputNote, ProvenTransaction, ProvenTransactionBuilder, TransactionWitness},
+    block::BlockNumber,
+    transaction::{
+        InputNote, InputNotes, OutputNote, ProvenTransaction, ProvenTransactionBuilder,
+        TransactionOutputs, TransactionWitness,
+    },
 };
 pub use miden_prover::ProvingOptions;
-use miden_prover::{ExecutionProof, Proof, prove};
-use vm_processor::{Word, execute};
+use miden_prover::{ExecutionProof, prove};
+use vm_processor::Word;
 use winter_maybe_async::*;
 
 use super::TransactionProverError;
@@ -40,13 +44,6 @@ pub trait TransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError>;
-
-    /// Dummy proves the provided transaction and returns a [ProvenTransaction].
-    #[maybe_async]
-    fn prove_dummy(
-        &self,
-        tx_witness: TransactionWitness,
-    ) -> Result<ProvenTransaction, TransactionProverError>;
 }
 
 // LOCAL TRANSACTION PROVER
@@ -70,74 +67,39 @@ impl LocalTransactionProver {
     }
 
     #[maybe_async]
-    fn build_proven_transaction(
+    #[cfg(any(feature = "testing", test))]
+    fn prove_dummy(
         &self,
         tx_witness: TransactionWitness,
-        build_proof: bool,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
+        use miden_prover::Proof;
 
-        let account = tx_inputs.account();
-        let input_notes = tx_inputs.input_notes();
-        let ref_block_num = tx_inputs.block_header().block_num();
-        let ref_block_commitment = tx_inputs.block_header().commitment();
+        let TransactionWitness { tx_inputs, account_delta, tx_outputs, .. } = tx_witness;
 
-        let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness));
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
-
-        self.mast_store.load_account_code(account.code());
-
-        let account_code_commitments: BTreeSet<Word> = tx_args.foreign_account_code_commitments();
-        let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
-            input_notes.iter().map(|n| n.note().script()),
-        );
-
-        let mut host = TransactionProverHost::new(
-            &account.into(),
-            input_notes.clone(),
-            &mut advice_inputs,
-            self.mast_store.as_ref(),
-            script_mast_store,
-            account_code_commitments,
+        self.build_proven_transaction(
+            &tx_inputs.input_notes(),
+            tx_outputs,
+            account_delta,
+            tx_inputs.account(),
+            tx_inputs.block_header().block_num(),
+            tx_inputs.block_header().commitment(),
+            ExecutionProof::new(Proof::new_dummy(), Default::default()),
         )
-        .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+    }
 
-        let source_manager = Arc::new(DefaultSourceManager::default());
-        let (stack_outputs, proof) = if build_proof {
-            maybe_await!(prove(
-                &TransactionKernel::main(),
-                stack_inputs,
-                advice_inputs.clone(),
-                &mut host,
-                self.proof_options.clone(),
-                source_manager,
-            ))
-            .map_err(TransactionProverError::TransactionProgramExecutionFailed)?
-        } else {
-            let trace = execute(
-                &TransactionKernel::main(),
-                stack_inputs.clone(),
-                advice_inputs.clone(),
-                &mut host,
-                *self.proof_options.clone().execution_options(),
-                source_manager,
-            )
-            .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
-            (
-                trace.stack_outputs().clone(),
-                ExecutionProof::new(Proof::new_dummy(), Default::default()),
-            )
-        };
-
-        let (account_delta, output_notes, _tx_progress) = host.into_parts();
-        let tx_outputs =
-            TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
-                .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
-
+    #[maybe_async]
+    fn build_proven_transaction(
+        &self,
+        input_notes: &InputNotes<InputNote>,
+        tx_outputs: TransactionOutputs,
+        account_delta: AccountDelta,
+        account: &Account,
+        ref_block_num: BlockNumber,
+        ref_block_commitment: Word,
+        proof: ExecutionProof,
+    ) -> Result<ProvenTransaction, TransactionProverError> {
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
-        let account_delta_commitment = account_delta.to_commitment();
+        let account_delta_commitment: Word = account_delta.to_commitment();
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),
@@ -187,14 +149,59 @@ impl TransactionProver for LocalTransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        self.build_proven_transaction(tx_witness, true)
-    }
+        let TransactionWitness { tx_inputs, tx_args, advice_witness, .. } = tx_witness;
 
-    #[maybe_async]
-    fn prove_dummy(
-        &self,
-        tx_witness: TransactionWitness,
-    ) -> Result<ProvenTransaction, TransactionProverError> {
-        self.build_proven_transaction(tx_witness, false)
+        let account = tx_inputs.account();
+        let input_notes = tx_inputs.input_notes();
+        let ref_block_num = tx_inputs.block_header().block_num();
+        let ref_block_commitment = tx_inputs.block_header().commitment();
+
+        let (stack_inputs, advice_inputs) =
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness));
+        let mut advice_inputs = advice_inputs.into_advice_inputs();
+
+        self.mast_store.load_account_code(account.code());
+
+        let account_code_commitments: BTreeSet<Word> = tx_args.foreign_account_code_commitments();
+        let script_mast_store = ScriptMastForestStore::new(
+            tx_args.tx_script(),
+            input_notes.iter().map(|n| n.note().script()),
+        );
+
+        let mut host = TransactionProverHost::new(
+            &account.into(),
+            input_notes.clone(),
+            &mut advice_inputs,
+            self.mast_store.as_ref(),
+            script_mast_store,
+            account_code_commitments,
+        )
+        .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+
+        let source_manager = Arc::new(DefaultSourceManager::default());
+        let (stack_outputs, proof) = maybe_await!(prove(
+            &TransactionKernel::main(),
+            stack_inputs,
+            advice_inputs.clone(),
+            &mut host,
+            self.proof_options.clone(),
+            source_manager,
+        ))
+        .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
+
+        let (account_delta, output_notes, _tx_progress) = host.into_parts();
+        let tx_outputs =
+            TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
+                .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
+
+        self.build_proven_transaction(
+            &input_notes,
+            tx_outputs,
+            account_delta,
+            account,
+            ref_block_num,
+            ref_block_commitment,
+            proof,
+        )
     }
 }

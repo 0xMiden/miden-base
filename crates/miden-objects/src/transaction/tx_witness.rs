@@ -1,5 +1,8 @@
-use super::{AdviceInputs, TransactionArgs, TransactionInputs};
-use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable};
+use super::{AdviceInputs, TransactionArgs, TransactionInputs, TransactionOutputs};
+use crate::{
+    account::AccountDelta,
+    utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable},
+};
 
 // TRANSACTION WITNESS
 // ================================================================================================
@@ -28,6 +31,10 @@ pub struct TransactionWitness {
     pub tx_inputs: TransactionInputs,
     pub tx_args: TransactionArgs,
     pub advice_witness: AdviceInputs,
+    #[cfg(any(feature = "testing", test))]
+    pub account_delta: AccountDelta,
+    #[cfg(any(feature = "testing", test))]
+    pub tx_outputs: TransactionOutputs,
 }
 
 // SERIALIZATION
@@ -46,6 +53,14 @@ impl Deserializable for TransactionWitness {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
-        Ok(Self { tx_inputs, tx_args, advice_witness })
+        let account_delta = AccountDelta::read_from(source)?;
+        let tx_outputs = TransactionOutputs::read_from(source)?;
+        Ok(Self {
+            tx_inputs,
+            tx_args,
+            advice_witness,
+            account_delta,
+            tx_outputs,
+        })
     }
 }
