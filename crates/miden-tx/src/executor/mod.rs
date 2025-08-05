@@ -382,6 +382,7 @@ where
                 let successful = input_notes
                     .iter()
                     .filter_map(|note| {
+                        // O(n*m) is fine for the input sizes we deal with here.
                         if success_notes.contains(&note.id()) {
                             Some(note.note().clone())
                         } else {
