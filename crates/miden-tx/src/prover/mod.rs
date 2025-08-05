@@ -53,9 +53,9 @@ impl LocalTransactionProver {
         let mast_store = self.mast_store.clone();
         let proof_options = self.proof_options.clone();
 
-        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness.clone(); // FIXME
+        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
 
-        let account = tx_inputs.account().clone();
+        let account = tx_inputs.account();
         let input_notes = tx_inputs.input_notes().clone();
         let ref_block_num = tx_inputs.block_header().block_num();
         let ref_block_commitment = tx_inputs.block_header().commitment();
@@ -67,8 +67,6 @@ impl LocalTransactionProver {
 
         // load the store with account/note/tx_script MASTs
         self.mast_store.load_account_code(account.code());
-
-        let account = &account;
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
