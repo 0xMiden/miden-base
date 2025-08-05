@@ -17,8 +17,8 @@ use miden_objects::{
     },
 };
 use miden_tx::{
-    NoteConsumption, NoteConsumptionChecker, NoteConsumptionError, TransactionExecutor,
-    TransactionExecutorError, auth::UnreachableAuth,
+    NoteConsumptionChecker, NoteConsumptionError, TransactionExecutor, TransactionExecutorError,
+    auth::UnreachableAuth,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -62,14 +62,13 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    let execution_check_result = notes_checker.check_notes_consumability(
+    notes_checker.check_notes_consumability(
         target_account_id,
         block_ref,
         input_notes,
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, ());
 
     Ok(())
 }
@@ -100,14 +99,13 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    let execution_check_result = notes_checker.check_notes_consumability(
+    notes_checker.check_notes_consumability(
         account_id,
         block_ref,
         input_notes,
         tx_args,
         source_manager,
     )?;
-    assert_matches!(execution_check_result, ());
 
     Ok(())
 }
@@ -183,14 +181,14 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         source_manager,
     );
 
+    let execution_check_result = execution_check_result.unwrap_err();
     assert_matches!(
-        execution_check_result,
-        Err(NoteConsumptionError::DuringExecution(
-            NoteConsumption { failed, successful },
-            TransactionExecutorError::TransactionProgramExecutionFailed(
-                ExecutionError::DivideByZero { .. }
-            )
-        )) => {
+        *execution_check_result,
+        NoteConsumptionError::ExecutionError{
+            failed, successful,
+            error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                ExecutionError::DivideByZero { .. })
+            } => {
             assert_eq!(
                 failed.first().expect("only one failed note currently supported").id(),
                 failing_note_2.id()

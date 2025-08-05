@@ -73,26 +73,36 @@ pub enum TransactionExecutorError {
     Unauthorized(Box<TransactionSummary>),
 }
 
-// NOTE CONSUMPTION
-// ================================================================================================
-
-#[derive(Debug, Default)]
-pub struct NoteConsumption {
-    pub successful: Vec<Note>,
-    pub failed: Vec<Note>,
-}
-
 // NOTE CONSUMPTION ERROR
 // ================================================================================================
 
 #[derive(Debug, Error)]
 pub enum NoteConsumptionError {
+    #[error("note incompatible with target account")]
+    AccountCompatibilityError(Note),
     #[error("error occurred before notes were consumed")]
-    BeforeConsumption(#[source] TransactionExecutorError),
+    PrologueError(#[source] TransactionExecutorError),
     #[error("error occurred while transactions were executed")]
-    DuringExecution(NoteConsumption, #[source] TransactionExecutorError),
+    ExecutionError {
+        failed: Vec<Note>,
+        successful: Vec<Note>,
+        #[source]
+        error: TransactionExecutorError,
+    },
     #[error("error occurred while notes were checked for consumability")]
-    DuringCheck(NoteConsumption),
+    EpilogueError(#[source] TransactionExecutorError),
+}
+
+impl NoteConsumptionError {
+    /// Creates a new [`NoteConsumptionError::ExecutionError`] with the given failed notes,
+    /// successful notes, and error.
+    pub fn new_execution(
+        failed: Vec<Note>,
+        successful: Vec<Note>,
+        error: TransactionExecutorError,
+    ) -> Box<Self> {
+        Self::ExecutionError { failed, successful, error }.into()
+    }
 }
 
 // TRANSACTION PROVER ERROR

@@ -1,4 +1,4 @@
-use alloc::sync::Arc;
+use alloc::{boxed::Box, sync::Arc};
 
 use miden_lib::{
     account::interface::NoteAccountCompatibility, note::well_known_note::WellKnownNote,
@@ -7,17 +7,12 @@ use miden_objects::{
     account::AccountId,
     assembly::SourceManager,
     block::BlockNumber,
-    note::NoteId,
     transaction::{InputNote, InputNotes, TransactionArgs},
 };
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutor;
-use crate::{
-    DataStore,
-    auth::TransactionAuthenticator,
-    errors::{NoteConsumption, NoteConsumptionError},
-};
+use crate::{DataStore, auth::TransactionAuthenticator, errors::NoteConsumptionError};
 
 /// This struct performs input notes check against provided target account.
 ///
@@ -55,55 +50,51 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> Result<(), NoteConsumptionError> {
-        // Check input notes
-        // ----------------------------------------------------------------------------------------
-
+    ) -> Result<(), Box<NoteConsumptionError>> {
         let mut successful = vec![];
         for note in input_notes.iter() {
             if let Some(well_known_note) = WellKnownNote::from_note(note.note()) {
                 if let WellKnownNote::SWAP = well_known_note {
-                    // if we encountered a SWAP note, then we have to execute the transaction
+                    // If we encountered a SWAP note, then we have to execute the transaction
                     // anyway, but we should continue iterating to make sure that there are no
-                    // P2IDE notes which return a `No`
+                    // P2IDE notes which return a `No`.
                     continue;
                 }
 
                 match well_known_note.check_note_inputs(note.note(), target_account_id, block_ref) {
                     NoteAccountCompatibility::No => {
-                        // if the check failed, return a `Failure` with the vector of successfully
-                        // checked `P2ID` and `P2IDE` notes
-                        return Err(NoteConsumptionError::DuringCheck(NoteConsumption {
-                            failed: vec![note.clone().into_note()],
-                            successful,
-                        }));
+                        // If the check failed, return a `Failure` with the vector of successfully
+                        // checked `P2ID` and `P2IDE` notes.
+                        return Err(NoteConsumptionError::AccountCompatibilityError(
+                            note.clone().into_note(),
+                        )
+                        .into());
                     },
 
-                    // this branch is unreachable, since we are handling the SWAP note separately,
+                    // This branch is unreachable, since we are handling the SWAP note separately,
                     // but as an extra precaution continue iterating over the notes and run the
-                    // transaction to make sure the note which returned "Maybe" could be consumed
+                    // transaction to make sure the note which returned "Maybe" could be consumed.
                     NoteAccountCompatibility::Maybe => continue,
                     NoteAccountCompatibility::Yes => {
-                        // put the successfully checked `P2ID` or `P2IDE` note to the vector
+                        // Put the successfully checked `P2ID` or `P2IDE` note to the vector.
                         successful.push(note.clone().into_note());
                     },
                 }
             } else {
-                // if we encountered not a well known note, then we have to execute the transaction
+                // If we encountered not a well known note, then we have to execute the transaction
                 // anyway, but we should continue iterating to make sure that there are no
-                // P2IDE notes which return a `No`
+                // P2IDE notes which return a `No`.
                 continue;
             }
         }
 
-        // if all checked notes turned out to be either `P2ID` or `P2IDE` notes and all of them
-        // passed, then we could safely return the `Success`
+        // If all checked notes turned out to be either `P2ID` or `P2IDE` notes and all of them
+        // passed, then we could safely return the `Success`.
         if successful.len() == (input_notes.num_notes() as usize) {
             return Ok(());
         }
 
-        // Execute transaction
-        // ----------------------------------------------------------------------------------------
+        // Execute transaction.
         maybe_await!(self.0.try_execute_notes(
             target_account_id,
             block_ref,
@@ -112,11 +103,4 @@ where
             source_manager
         ))
     }
-}
-
-/// Helper enum for getting a result of the well known note inputs check.
-#[derive(Debug, PartialEq)]
-pub enum NoteInputsCheck {
-    Maybe,
-    No { failed_note_id: NoteId },
 }

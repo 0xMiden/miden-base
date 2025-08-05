@@ -28,8 +28,8 @@ pub use verifier::TransactionVerifier;
 
 mod errors;
 pub use errors::{
-    AuthenticationError, DataStoreError, NoteConsumption, NoteConsumptionError,
-    TransactionExecutorError, TransactionProverError, TransactionVerifierError,
+    AuthenticationError, DataStoreError, NoteConsumptionError, TransactionExecutorError,
+    TransactionProverError, TransactionVerifierError,
 };
 
 pub mod auth;
