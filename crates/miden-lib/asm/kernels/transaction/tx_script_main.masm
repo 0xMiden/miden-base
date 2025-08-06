@@ -1,4 +1,4 @@
-use std::word
+use.std::word
 
 use.$kernel::memory
 use.$kernel::prologue
