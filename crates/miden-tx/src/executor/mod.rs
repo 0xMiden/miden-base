@@ -287,7 +287,9 @@ where
     // CHECK CONSUMABILITY
     // ============================================================================================
 
-    /// Executes the transaction with specified notes.
+    /// Validates input notes, transaction inputs, and account inputs before executing the
+    /// transaction with specified notes. Keeps track and returns both successfully consumed notes
+    /// as well as notes that failed to be consumed.
     ///
     /// The `source_manager` is used to map potential errors back to their source code. To get the
     /// most value out of it, use the source manager from the

@@ -80,7 +80,7 @@ pub enum TransactionExecutorError {
 pub enum NoteConsumptionError {
     #[error("note incompatible with target account")]
     AccountCompatibilityError(Note),
-    #[error("error occurred while transactions were executed")]
+    #[error("error occurred while consuming the note in a transaction")]
     ExecutionError {
         note: Note,
         #[source]

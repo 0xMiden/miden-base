@@ -187,6 +187,7 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         NoteConsumptionInfo {
             successful,
             failed,
+            ..
         } => {
                 assert_matches!(
                     failed.first().expect("failed notes should exist"),

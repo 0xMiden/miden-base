@@ -23,6 +23,7 @@ use crate::{
 
 /// Contains information about the successful and failed consumption of notes.
 #[derive(Default, Debug)]
+#[non_exhaustive]
 pub struct NoteConsumptionInfo {
     pub successful: Vec<Note>,
     pub failed: Vec<NoteConsumptionError>,
