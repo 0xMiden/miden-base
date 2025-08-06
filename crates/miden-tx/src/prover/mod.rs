@@ -68,6 +68,7 @@ impl LocalTransactionProver {
 
     #[maybe_async]
     #[cfg(any(feature = "testing", test))]
+    #[allow(dead_code)]
     fn prove_dummy(
         &self,
         tx_witness: TransactionWitness,
@@ -77,7 +78,7 @@ impl LocalTransactionProver {
         let TransactionWitness { tx_inputs, account_delta, tx_outputs, .. } = tx_witness;
 
         self.build_proven_transaction(
-            &tx_inputs.input_notes(),
+            tx_inputs.input_notes(),
             tx_outputs,
             account_delta,
             tx_inputs.account(),
@@ -195,7 +196,7 @@ impl TransactionProver for LocalTransactionProver {
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
 
         self.build_proven_transaction(
-            &input_notes,
+            input_notes,
             tx_outputs,
             account_delta,
             account,

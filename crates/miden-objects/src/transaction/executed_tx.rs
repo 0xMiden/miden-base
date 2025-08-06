@@ -154,7 +154,9 @@ impl ExecutedTransaction {
             tx_inputs: self.tx_inputs,
             tx_args: self.tx_args,
             advice_witness: self.advice_witness.clone(),
+            #[cfg(any(feature = "testing", test))]
             account_delta: self.account_delta.clone(),
+            #[cfg(any(feature = "testing", test))]
             tx_outputs: self.tx_outputs.clone(),
         };
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)

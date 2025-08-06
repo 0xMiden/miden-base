@@ -1,8 +1,9 @@
-use super::{AdviceInputs, TransactionArgs, TransactionInputs, TransactionOutputs};
-use crate::{
-    account::AccountDelta,
-    utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable},
-};
+#[cfg(any(feature = "testing", test))]
+use super::TransactionOutputs;
+use super::{AdviceInputs, TransactionArgs, TransactionInputs};
+#[cfg(any(feature = "testing", test))]
+use crate::account::AccountDelta;
+use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // TRANSACTION WITNESS
 // ================================================================================================
@@ -53,14 +54,15 @@ impl Deserializable for TransactionWitness {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
-        let account_delta = AccountDelta::read_from(source)?;
-        let tx_outputs = TransactionOutputs::read_from(source)?;
+
         Ok(Self {
             tx_inputs,
             tx_args,
             advice_witness,
-            account_delta,
-            tx_outputs,
+            #[cfg(any(feature = "testing", test))]
+            account_delta: AccountDelta::read_from(source)?,
+            #[cfg(any(feature = "testing", test))]
+            tx_outputs: TransactionOutputs::read_from(source)?,
         })
     }
 }
