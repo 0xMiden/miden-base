@@ -1,36 +1,46 @@
-use alloc::{vec, vec::Vec};
+use alloc::vec;
+use alloc::vec::Vec;
 
-use miden_lib::{
-    errors::tx_kernel_errors::{
-        ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
-        ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
-    },
-    transaction::{
-        TransactionKernel,
-        memory::{
-            ACCOUNT_DATA_LENGTH, ACCT_CODE_COMMITMENT_OFFSET, ACCT_ID_AND_NONCE_OFFSET,
-            ACCT_PROCEDURES_SECTION_OFFSET, ACCT_STORAGE_COMMITMENT_OFFSET,
-            ACCT_STORAGE_SLOTS_SECTION_OFFSET, ACCT_VAULT_ROOT_OFFSET, NATIVE_ACCOUNT_DATA_PTR,
-            NUM_ACCT_PROCEDURES_OFFSET, NUM_ACCT_STORAGE_SLOTS_OFFSET,
-        },
-    },
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
+    ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
+    ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
-use miden_objects::{
-    FieldElement,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountProcedureInfo, AccountStorage,
-        AccountStorageMode, PartialAccount, StorageSlot,
-    },
-    testing::{account_component::AccountMockComponent, storage::STORAGE_LEAVES_2},
-    transaction::{AccountInputs, TransactionScript},
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::{
+    ACCOUNT_DATA_LENGTH,
+    ACCT_CODE_COMMITMENT_OFFSET,
+    ACCT_ID_AND_NONCE_OFFSET,
+    ACCT_PROCEDURES_SECTION_OFFSET,
+    ACCT_STORAGE_COMMITMENT_OFFSET,
+    ACCT_STORAGE_SLOTS_SECTION_OFFSET,
+    ACCT_VAULT_ROOT_OFFSET,
+    NATIVE_ACCOUNT_DATA_PTR,
+    NUM_ACCT_PROCEDURES_OFFSET,
+    NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
+use miden_objects::FieldElement;
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountProcedureInfo,
+    AccountStorage,
+    AccountStorageMode,
+    PartialAccount,
+    StorageSlot,
+};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::storage::STORAGE_LEAVES_2;
+use miden_objects::transaction::{AccountInputs, TransactionScript};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, Felt};
 
 use super::{Process, Word, ZERO};
-use crate::{Auth, MockChainBuilder, assert_execution_error, kernel_tests::tx::ProcessMemoryExt};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::{Auth, MockChainBuilder, assert_execution_error};
 
 // SIMPLE FPI TESTS
 // ================================================================================================

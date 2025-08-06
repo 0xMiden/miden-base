@@ -1,29 +1,33 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
-use miden_objects::{
-    Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES,
-    account::AccountId,
-    assembly::SourceManager,
-    block::{BlockHeader, BlockNumber},
-    note::NoteScript,
-    transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs,
-        TransactionInputs, TransactionScript,
-    },
-    vm::StackOutputs,
+use miden_lib::errors::TransactionKernelError;
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::AccountId;
+use miden_objects::assembly::SourceManager;
+use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::note::NoteScript;
+use miden_objects::transaction::{
+    AccountInputs,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionScript,
 };
+use miden_objects::vm::StackOutputs;
+use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
 pub use notes_checker::NoteConsumptionInfo;
 use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutorError;
-use crate::{
-    NoteConsumptionError,
-    auth::TransactionAuthenticator,
-    host::{AccountProcedureIndexMap, ScriptMastForestStore},
-};
+use crate::NoteConsumptionError;
+use crate::auth::TransactionAuthenticator;
+use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod exec_host;
 pub use exec_host::TransactionExecutorHost;

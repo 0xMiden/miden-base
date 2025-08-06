@@ -1,24 +1,25 @@
-use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::string::String;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    TransactionScriptError, Word,
-    account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
-    assembly::mast::{MastForest, MastNode, MastNodeId},
-    crypto::dsa::rpo_falcon512,
-    note::{Note, NoteScript, PartialNote},
-    transaction::TransactionScript,
-};
+use miden_objects::account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType};
+use miden_objects::assembly::mast::{MastForest, MastNode, MastNodeId};
+use miden_objects::crypto::dsa::rpo_falcon512;
+use miden_objects::note::{Note, NoteScript, PartialNote};
+use miden_objects::transaction::TransactionScript;
+use miden_objects::{TransactionScriptError, Word};
 use thiserror::Error;
 
-use crate::{
-    AuthScheme,
-    account::components::{
-        basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library,
-        rpo_falcon_512_procedure_acl_library,
-    },
-    note::well_known_note::WellKnownNote,
-    transaction::TransactionKernel,
+use crate::AuthScheme;
+use crate::account::components::{
+    basic_fungible_faucet_library,
+    basic_wallet_library,
+    rpo_falcon_512_library,
+    rpo_falcon_512_procedure_acl_library,
 };
+use crate::note::well_known_note::WellKnownNote;
+use crate::transaction::TransactionKernel;
 
 #[cfg(test)]
 mod test;

@@ -1,16 +1,19 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt::Display;
 
 use super::Felt;
-use crate::{
-    NoteError, PrettyPrint, Word,
-    assembly::{
-        Assembler, Parse,
-        mast::{MastForest, MastNodeId},
-    },
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::Program,
+use crate::assembly::mast::{MastForest, MastNodeId};
+use crate::assembly::{Assembler, Parse};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::vm::Program;
+use crate::{NoteError, PrettyPrint, Word};
 
 // NOTE SCRIPT
 // ================================================================================================

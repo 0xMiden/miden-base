@@ -1,11 +1,10 @@
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
+use alloc::vec::Vec;
 
-use crate::{
-    Felt, Hasher, Word, ZERO,
-    account::AccountId,
-    transaction::{ProvenTransaction, TransactionId},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::account::AccountId;
+use crate::transaction::{ProvenTransaction, TransactionId};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{Felt, Hasher, Word, ZERO};
 
 // BATCH ID
 // ================================================================================================

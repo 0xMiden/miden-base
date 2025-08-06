@@ -1,19 +1,21 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use assembly::{Assembler, Parse};
 use miden_crypto::merkle::InnerNodeInfo;
 
 use super::{AccountInputs, Felt, Word};
-use crate::{
-    EMPTY_WORD, MastForest, MastNodeId, TransactionScriptError,
-    note::{NoteId, NoteRecipient},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::{AdviceInputs, AdviceMap, Program},
+use crate::note::{NoteId, NoteRecipient};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::vm::{AdviceInputs, AdviceMap, Program};
+use crate::{EMPTY_WORD, MastForest, MastNodeId, TransactionScriptError};
 
 // TRANSACTION ARGUMENTS
 // ================================================================================================
@@ -334,10 +336,8 @@ impl Deserializable for TransactionScript {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::{
-        AdviceMap,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::AdviceMap;
+    use vm_core::utils::{Deserializable, Serializable};
 
     use crate::transaction::TransactionArgs;
 

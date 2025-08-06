@@ -1,20 +1,29 @@
-use std::{collections::BTreeMap, vec, vec::Vec};
+use std::collections::BTreeMap;
+use std::vec;
+use std::vec::Vec;
 
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
-use miden_objects::{
-    Felt, ONE, Word, ZERO,
-    account::{Account, AccountId},
-    asset::{Asset, FungibleAsset},
-    batch::ProvenBatch,
-    block::BlockNumber,
-    crypto::rand::RpoRandomCoin,
-    note::{Note, NoteId, NoteTag, NoteType},
-    testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
-    transaction::{ExecutedTransaction, OutputNote, ProvenTransaction, TransactionScript},
+use miden_lib::note::create_p2id_note;
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::{Account, AccountId};
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::batch::ProvenBatch;
+use miden_objects::block::BlockNumber;
+use miden_objects::crypto::rand::RpoRandomCoin;
+use miden_objects::note::{Note, NoteId, NoteTag, NoteType};
+use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::transaction::{
+    ExecutedTransaction,
+    OutputNote,
+    ProvenTransaction,
+    TransactionScript,
 };
-use rand::{Rng, SeedableRng, rngs::SmallRng};
+use miden_objects::{Felt, ONE, Word, ZERO};
+use rand::rngs::SmallRng;
+use rand::{Rng, SeedableRng};
 
-use crate::{Auth, MockChain, TxContextInput, mock_chain::ProvenTransactionExt};
+use crate::mock_chain::ProvenTransactionExt;
+use crate::{Auth, MockChain, TxContextInput};
 
 pub struct TestSetup {
     pub chain: MockChain,

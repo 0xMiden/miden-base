@@ -1,22 +1,19 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::{
-    account::interface::NoteAccountCompatibility, note::well_known_note::WellKnownNote,
-};
-use miden_objects::{
-    account::AccountId,
-    assembly::SourceManager,
-    block::BlockNumber,
-    note::Note,
-    transaction::{InputNote, InputNotes, TransactionArgs},
-};
+use miden_lib::account::interface::NoteAccountCompatibility;
+use miden_lib::note::well_known_note::WellKnownNote;
+use miden_objects::account::AccountId;
+use miden_objects::assembly::SourceManager;
+use miden_objects::block::BlockNumber;
+use miden_objects::note::Note;
+use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
 use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::TransactionExecutor;
-use crate::{
-    DataStore, TransactionExecutorError, auth::TransactionAuthenticator,
-    errors::NoteConsumptionError,
-};
+use crate::auth::TransactionAuthenticator;
+use crate::errors::NoteConsumptionError;
+use crate::{DataStore, TransactionExecutorError};
 
 // NOTE CONSUMPTION INFO
 // ================================================================================================

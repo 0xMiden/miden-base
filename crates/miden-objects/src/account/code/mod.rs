@@ -1,15 +1,22 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use vm_core::{mast::MastForest, prettier::PrettyPrint};
+use vm_core::mast::MastForest;
+use vm_core::prettier::PrettyPrint;
 
 use super::{
-    AccountError, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Hasher,
+    AccountError,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Felt,
+    Hasher,
     Serializable,
 };
-use crate::{
-    Word,
-    account::{AccountComponent, AccountType},
-};
+use crate::Word;
+use crate::account::{AccountComponent, AccountType};
 
 pub mod procedure;
 use procedure::{AccountProcedureInfo, PrintableProcedure};
@@ -446,11 +453,11 @@ mod tests {
     use vm_core::Word;
 
     use super::{AccountCode, Deserializable, Serializable};
-    use crate::{
-        AccountError,
-        account::{AccountComponent, AccountType, StorageSlot, code::build_procedure_commitment},
-        testing::{account_code::CODE, account_component::NoopAuthComponent},
-    };
+    use crate::AccountError;
+    use crate::account::code::build_procedure_commitment;
+    use crate::account::{AccountComponent, AccountType, StorageSlot};
+    use crate::testing::account_code::CODE;
+    use crate::testing::account_component::NoopAuthComponent;
 
     #[test]
     fn test_serde_account_code() {

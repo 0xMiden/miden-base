@@ -1,48 +1,52 @@
 use std::collections::BTreeMap;
 
 use anyhow::Context;
-use miden_lib::{
-    errors::tx_kernel_errors::{
-        ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
-        ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
-        ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE, ERR_ACCOUNT_ID_UNKNOWN_VERSION,
-        ERR_ACCOUNT_NONCE_AT_MAX, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
-        ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS, ERR_FAUCET_INVALID_STORAGE_OFFSET,
-    },
-    transaction::TransactionKernel,
-    utils::word_to_masm_push_string,
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_ACCOUNT_ID_SUFFIX_LEAST_SIGNIFICANT_BYTE_MUST_BE_ZERO,
+    ERR_ACCOUNT_ID_SUFFIX_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO,
+    ERR_ACCOUNT_ID_UNKNOWN_STORAGE_MODE,
+    ERR_ACCOUNT_ID_UNKNOWN_VERSION,
+    ERR_ACCOUNT_NONCE_AT_MAX,
+    ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE,
+    ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
+    ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
-use miden_objects::{
-    StarkField,
-    account::{
-        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountIdVersion,
-        AccountProcedureInfo, AccountStorage, AccountStorageMode, AccountType, StorageSlot,
-    },
-    assembly::{
-        Library,
-        diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette},
-    },
-    asset::AssetVault,
-    testing::{
-        account_component::AccountMockComponent,
-        account_id::{
-            ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
-        storage::STORAGE_LEAVES_2,
-    },
-    transaction::{ExecutedTransaction, TransactionScript},
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::word_to_masm_push_string;
+use miden_objects::StarkField;
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountIdVersion,
+    AccountProcedureInfo,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
 };
+use miden_objects::assembly::Library;
+use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_objects::asset::AssetVault;
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+};
+use miden_objects::testing::storage::STORAGE_LEAVES_2;
+use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{EMPTY_WORD, ExecutionError, Word};
 
 use super::{Felt, ONE, StackInputs, ZERO};
-use crate::{
-    Auth, MockChain, TransactionContextBuilder, assert_execution_error, executor::CodeExecutor,
-};
+use crate::executor::CodeExecutor;
+use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
 // ACCOUNT COMMITMENT TESTS
 // ================================================================================================

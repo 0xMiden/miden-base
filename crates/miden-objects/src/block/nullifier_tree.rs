@@ -1,18 +1,15 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use vm_core::{
-    EMPTY_WORD,
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
-};
+use vm_core::EMPTY_WORD;
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use vm_processor::DeserializationError;
 
-use crate::{
-    Word,
-    block::{BlockNumber, NullifierWitness},
-    crypto::merkle::{MutationSet, SMT_DEPTH, Smt},
-    errors::NullifierTreeError,
-    note::Nullifier,
-};
+use crate::Word;
+use crate::block::{BlockNumber, NullifierWitness};
+use crate::crypto::merkle::{MutationSet, SMT_DEPTH, Smt};
+use crate::errors::NullifierTreeError;
+use crate::note::Nullifier;
 
 /// The sparse merkle tree of all nullifiers in the blockchain.
 ///
@@ -265,7 +262,9 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::NullifierTree;
-    use crate::{NullifierTreeError, Word, block::BlockNumber, note::Nullifier};
+    use crate::block::BlockNumber;
+    use crate::note::Nullifier;
+    use crate::{NullifierTreeError, Word};
 
     #[test]
     fn leaf_value_encoding() {

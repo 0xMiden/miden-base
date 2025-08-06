@@ -1,18 +1,20 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use crate::{
-    AccountDeltaError, Felt, Word, ZERO,
-    account::{Account, AccountId},
-    crypto::SequentialCommit,
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::account::{Account, AccountId};
+use crate::crypto::SequentialCommit;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{AccountDeltaError, Felt, Word, ZERO};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
 
 mod vault;
 pub use vault::{
-    AccountVaultDelta, FungibleAssetDelta, NonFungibleAssetDelta, NonFungibleDeltaAction,
+    AccountVaultDelta,
+    FungibleAssetDelta,
+    NonFungibleAssetDelta,
+    NonFungibleDeltaAction,
 };
 
 // ACCOUNT DELTA
@@ -464,21 +466,33 @@ fn validate_nonce(
 mod tests {
 
     use assert_matches::assert_matches;
-    use vm_core::{Felt, FieldElement, utils::Serializable};
+    use vm_core::utils::Serializable;
+    use vm_core::{Felt, FieldElement};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
-    use crate::{
-        AccountDeltaError, ONE, Word, ZERO,
-        account::{
-            Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
-            StorageMapDelta, delta::AccountUpdateDetails,
-        },
-        asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            AccountIdBuilder,
-        },
+    use crate::account::delta::AccountUpdateDetails;
+    use crate::account::{
+        Account,
+        AccountCode,
+        AccountId,
+        AccountStorage,
+        AccountStorageMode,
+        AccountType,
+        StorageMapDelta,
     };
+    use crate::asset::{
+        Asset,
+        AssetVault,
+        FungibleAsset,
+        NonFungibleAsset,
+        NonFungibleAssetDetails,
+    };
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        AccountIdBuilder,
+    };
+    use crate::{AccountDeltaError, ONE, Word, ZERO};
 
     #[test]
     fn account_delta_nonce_validation() {

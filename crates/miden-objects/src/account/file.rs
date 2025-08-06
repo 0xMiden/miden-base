@@ -8,12 +8,14 @@ use std::{
 
 use miden_crypto::utils::SliceReader;
 
-use super::{
-    super::utils::serde::{
-        ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
-    },
-    Account, AuthSecretKey, Word,
+use super::super::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use super::{Account, AuthSecretKey, Word};
 
 const MAGIC: &str = "acct";
 
@@ -111,20 +113,16 @@ impl Deserializable for AccountFile {
 
 #[cfg(test)]
 mod tests {
-    use miden_crypto::{
-        dsa::rpo_falcon512::SecretKey,
-        utils::{Deserializable, Serializable},
-    };
+    use miden_crypto::dsa::rpo_falcon512::SecretKey;
+    use miden_crypto::utils::{Deserializable, Serializable};
     use storage::AccountStorage;
     #[cfg(feature = "std")]
     use tempfile::tempdir;
 
     use super::AccountFile;
-    use crate::{
-        account::{Account, AccountCode, AccountId, AuthSecretKey, Felt, Word, storage},
-        asset::AssetVault,
-        testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    };
+    use crate::account::{Account, AccountCode, AccountId, AuthSecretKey, Felt, Word, storage};
+    use crate::asset::AssetVault;
+    use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
 
     fn build_account_file() -> AccountFile {
         let id = AccountId::try_from(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE).unwrap();

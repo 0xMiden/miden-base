@@ -1,7 +1,9 @@
 use alloc::string::String;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{Word, note::Note, transaction::TransactionScript};
+use miden_objects::Word;
+use miden_objects::note::Note;
+use miden_objects::transaction::TransactionScript;
 
 use super::{TestSetup, setup_test, word_to_masm_push_string};
 use crate::TxContextInput;

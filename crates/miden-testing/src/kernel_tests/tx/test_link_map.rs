@@ -1,15 +1,18 @@
 use alloc::vec::Vec;
 use core::cmp::Ordering;
-use std::{collections::BTreeMap, string::String};
+use std::collections::BTreeMap;
+use std::string::String;
 
 use anyhow::Context;
 use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
-use miden_tx::{LinkMap, utils::word_to_masm_push_string};
+use miden_tx::LinkMap;
+use miden_tx::utils::word_to_masm_push_string;
 use rand::seq::IteratorRandom;
 use vm_processor::{ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_value;
 
-use crate::{TransactionContextBuilder, executor::CodeExecutor};
+use crate::TransactionContextBuilder;
+use crate::executor::CodeExecutor;
 
 /// Tests the following properties:
 /// - Insertion into an empty map.

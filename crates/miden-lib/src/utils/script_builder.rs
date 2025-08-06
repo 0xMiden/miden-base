@@ -1,12 +1,13 @@
-use alloc::{string::String, sync::Arc};
+use alloc::string::String;
+use alloc::sync::Arc;
 
-use miden_objects::{
-    assembly::{Assembler, Library, LibraryPath, SourceManager, diagnostics::NamedSource},
-    note::NoteScript,
-    transaction::TransactionScript,
-};
+use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::assembly::{Assembler, Library, LibraryPath, SourceManager};
+use miden_objects::note::NoteScript;
+use miden_objects::transaction::TransactionScript;
 
-use crate::{errors::ScriptBuilderError, transaction::TransactionKernel};
+use crate::errors::ScriptBuilderError;
+use crate::transaction::TransactionKernel;
 
 // SCRIPT BUILDER
 // ================================================================================================

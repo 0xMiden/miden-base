@@ -1,9 +1,7 @@
 use alloc::boxed::Box;
 
-use miden_objects::{
-    ProvenBatchError,
-    batch::{ProposedBatch, ProvenBatch},
-};
+use miden_objects::ProvenBatchError;
+use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_tx::TransactionVerifier;
 
 // LOCAL BATCH PROVER

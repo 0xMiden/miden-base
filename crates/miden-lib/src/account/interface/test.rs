@@ -1,35 +1,36 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::{
-    AccountError, Felt, NoteError, Word, ZERO,
-    account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
-    assembly::{Assembler, diagnostics::NamedSource},
-    asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
-    crypto::{
-        dsa::rpo_falcon512::PublicKey,
-        rand::{FeltRng, RpoRandomCoin},
-    },
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
-        NoteTag, NoteType,
-    },
-    testing::account_id::{
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
-    },
+use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, StorageSlot};
+use miden_objects::assembly::Assembler;
+use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
 };
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
+};
+use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
-use crate::{
-    account::{
-        auth::AuthRpoFalcon512,
-        faucets::BasicFungibleFaucet,
-        interface::{AccountInterface, NoteAccountCompatibility},
-        wallets::BasicWallet,
-    },
-    note::{create_p2id_note, create_p2ide_note, create_swap_note},
-    transaction::TransactionKernel,
-};
+use crate::account::auth::AuthRpoFalcon512;
+use crate::account::faucets::BasicFungibleFaucet;
+use crate::account::interface::{AccountInterface, NoteAccountCompatibility};
+use crate::account::wallets::BasicWallet;
+use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use crate::transaction::TransactionKernel;
 
 // DEFAULT NOTES
 // ================================================================================================

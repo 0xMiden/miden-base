@@ -1,45 +1,52 @@
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::{
-    account::wallets::BasicWallet,
-    errors::{
-        MasmError, tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT,
-    },
-    transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::errors::MasmError;
+use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
+use miden_objects::account::{Account, AccountBuilder, AccountId};
+use miden_objects::assembly::diagnostics::miette::{self, miette};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteExecutionMode,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
 };
-use miden_objects::{
-    EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word,
-    account::{Account, AccountBuilder, AccountId},
-    assembly::diagnostics::miette::{self, miette},
-    asset::FungibleAsset,
-    crypto::{
-        dsa::rpo_falcon512::SecretKey,
-        rand::{FeltRng, RpoRandomCoin},
-    },
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    testing::{
-        account_id::{
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        note::NoteBuilder,
-    },
-    transaction::{AccountInputs, OutputNote, TransactionArgs},
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
+use miden_objects::{EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word};
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, Process, ZERO, word_to_masm_push_string};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, input_note_data_ptr};
 use crate::{
-    Auth, MockChain, TransactionContext, TransactionContextBuilder, TxContextInput,
+    Auth,
+    MockChain,
+    TransactionContext,
+    TransactionContextBuilder,
+    TxContextInput,
     assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt,
-    utils::{create_p2any_note, input_note_data_ptr},
 };
 
 #[test]

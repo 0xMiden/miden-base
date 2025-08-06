@@ -14,5 +14,7 @@ pub use script_builder_errors::ScriptBuilderError;
 
 mod transaction_errors;
 pub use transaction_errors::{
-    TransactionEventError, TransactionKernelError, TransactionTraceParsingError,
+    TransactionEventError,
+    TransactionKernelError,
+    TransactionTraceParsingError,
 };

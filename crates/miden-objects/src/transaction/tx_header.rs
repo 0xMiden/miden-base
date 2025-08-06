@@ -2,14 +2,17 @@ use alloc::vec::Vec;
 
 use vm_processor::DeserializationError;
 
-use crate::{
-    Word,
-    note::NoteId,
-    transaction::{
-        AccountId, InputNoteCommitment, Nullifier, OutputNote, ProvenTransaction, TransactionId,
-    },
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
+use crate::Word;
+use crate::note::NoteId;
+use crate::transaction::{
+    AccountId,
+    InputNoteCommitment,
+    Nullifier,
+    OutputNote,
+    ProvenTransaction,
+    TransactionId,
 };
+use crate::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 
 /// A transaction header derived from a
 /// [`ProvenTransaction`](crate::transaction::ProvenTransaction).

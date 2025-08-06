@@ -1,17 +1,29 @@
-use alloc::{collections::BTreeSet, string::ToString, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use core::fmt::Debug;
 
-use crate::{
-    Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word,
-    account::AccountHeader,
-    asset::FungibleAsset,
-    block::BlockNumber,
-    note::{
-        Note, NoteAssets, NoteHeader, NoteId, NoteMetadata, NoteRecipient, PartialNote,
-        compute_note_commitment,
-    },
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::AccountHeader;
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::note::{
+    Note,
+    NoteAssets,
+    NoteHeader,
+    NoteId,
+    NoteMetadata,
+    NoteRecipient,
+    PartialNote,
+    compute_note_commitment,
 };
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
+use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word};
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -326,12 +338,11 @@ mod output_notes_tests {
     use assert_matches::assert_matches;
 
     use super::OutputNotes;
-    use crate::{
-        TransactionOutputError,
-        account::AccountId,
-        testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
-        transaction::OutputNote,
-    };
+    use crate::TransactionOutputError;
+    use crate::account::AccountId;
+    use crate::testing::account_id::ACCOUNT_ID_SENDER;
+    use crate::testing::note::NoteBuilder;
+    use crate::transaction::OutputNote;
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {

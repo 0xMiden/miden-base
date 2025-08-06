@@ -1,14 +1,19 @@
-use alloc::{
-    collections::{BTreeMap, btree_map::Entry},
-    string::ToString,
-    vec::Vec,
-};
+use alloc::collections::BTreeMap;
+use alloc::collections::btree_map::Entry;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    AccountDeltaError,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
     Word,
 };
-use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO, account::StorageMap};
+use crate::account::StorageMap;
+use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 
 // ACCOUNT STORAGE DELTA
 // ================================================================================================
@@ -422,9 +427,9 @@ mod tests {
     use anyhow::Context;
 
     use super::{AccountStorageDelta, Deserializable, Serializable};
-    use crate::{
-        ONE, Word, ZERO, account::StorageMapDelta, testing::storage::AccountStorageDeltaBuilder,
-    };
+    use crate::account::StorageMapDelta;
+    use crate::testing::storage::AccountStorageDeltaBuilder;
+    use crate::{ONE, Word, ZERO};
 
     #[test]
     fn account_storage_delta_validation() {

@@ -1,15 +1,24 @@
 use anyhow::Context;
-use miden_lib::{note::utils, transaction::TransactionKernel};
-use miden_objects::{
-    Felt, NoteError, Word,
-    account::{Account, AccountId, AccountStorageMode, AccountType},
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-    note::{Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteMetadata, NoteTag, NoteType},
-    testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, AccountIdBuilder,
-    },
-    transaction::{OutputNote, TransactionScript},
+use miden_lib::note::utils;
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteDetails,
+    NoteExecutionHint,
+    NoteMetadata,
+    NoteTag,
+    NoteType,
 };
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    AccountIdBuilder,
+};
+use miden_objects::transaction::{OutputNote, TransactionScript};
+use miden_objects::{Felt, NoteError, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
 
