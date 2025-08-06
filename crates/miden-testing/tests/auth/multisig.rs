@@ -3,12 +3,12 @@ use miden_lib::{
 };
 use miden_objects::{
     Felt, Hasher, Word,
-    account::{Account, AccountBuilder, AccountStorageMode, AccountType, AuthSecretKey},
+    account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, AuthSecretKey},
     asset::FungibleAsset,
     crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     note::NoteType,
     testing::account_id::{
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     },
     transaction::{OutputNote, TransactionScript},
@@ -96,26 +96,39 @@ fn test_multisig() -> anyhow::Result<()> {
         setup_keys_and_authenticators(2, 2, [0u8; 32])?;
 
     // Create multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_starting_balance = 10u64;
+    let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
         .build()
         .unwrap();
 
-    mock_chain.prove_next_block()?;
-
-    // Create output note for the transaction
-    let output_note = create_p2id_note(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+    // Create input note for the transaction
+    let input_note_asset = FungibleAsset::mock(5);
+    let input_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-        vec![],
+        multisig_account.id().try_into().unwrap(),
+        vec![input_note_asset],
         NoteType::Public,
         Default::default(),
         &mut RpoRandomCoin::new(Word::from([3u32; 4])),
     )?;
 
-    let asset = FungibleAsset::mock(10);
+    mock_chain.add_pending_note(OutputNote::Full(input_note.clone()));
+    mock_chain.prove_next_block()?;
+
+    // Create output note for the transaction
+    let output_note_asset = FungibleAsset::mock(7);
+    let output_note = create_p2id_note(
+        multisig_account.id().try_into().unwrap(),
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
+        vec![output_note_asset],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new(Word::from([3u32; 4])),
+    )?;
+
     let tx_script = TransactionScript::compile(
         format!(
             "
@@ -136,7 +149,7 @@ fn test_multisig() -> anyhow::Result<()> {
             recipient = word_to_masm_push_string(&output_note.recipient().digest()),
             note_type = NoteType::Public as u8,
             tag = Felt::from(output_note.metadata().tag()),
-            asset = word_to_masm_push_string(&asset.into()),
+            asset = word_to_masm_push_string(&output_note_asset.into()),
             note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
         ),
         TransactionKernel::testing_assembler(),
@@ -146,8 +159,9 @@ fn test_multisig() -> anyhow::Result<()> {
 
     // Execute transaction without signatures - should fail
     let tx_context_init = mock_chain
-        .build_tx_context(multisig_account.id(), &[], &[])?
+        .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
         .tx_script(tx_script.clone())
+        .extend_input_notes(vec![input_note.clone()])
         .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
         .auth_args(salt)
         .build()?;
@@ -171,13 +185,27 @@ fn test_multisig() -> anyhow::Result<()> {
 
     // Execute transaction with signatures - should succeed
     let tx_context_execute = mock_chain
-        .build_tx_context(multisig_account.id(), &[], &[])?
+        .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
         .tx_script(tx_script)
+        .extend_input_notes(vec![input_note])
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
         .extend_advice_map(advice_map)
         .auth_args(salt)
-        .build()?;
-    tx_context_execute.execute().expect("Transaction should succeed");
+        .build()?
+        .execute()?;
+
+    multisig_account.apply_delta(tx_context_execute.account_delta())?;
+
+    mock_chain.add_pending_executed_transaction(&tx_context_execute)?;
+    mock_chain.prove_next_block()?;
+
+    assert_eq!(
+        multisig_account
+            .vault()
+            .get_balance(AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?)?,
+        multisig_starting_balance + input_note_asset.unwrap_fungible().amount()
+            - output_note_asset.unwrap_fungible().amount()
+    );
 
     Ok(())
 }
