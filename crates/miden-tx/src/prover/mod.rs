@@ -93,7 +93,7 @@ impl LocalTransactionProver {
         )
     }
 
-    #[maybe_async]
+    // #[maybe_async]
     fn build_proven_transaction(
         &self,
         input_notes: &InputNotes<InputNote>,

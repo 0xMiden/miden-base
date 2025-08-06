@@ -21,6 +21,7 @@
 - Add `FeeParameters` to `BlockHeader` and implement `compute_fee` ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654)).
 - Add `FeeParameters` to `BlockHeader`, implement `compute_fee` and output `FEE_ASSET` on the transaction stack ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659)).
 - Add `FeeParameters` to `BlockHeader` and automatically compute and remove fees from account in the transaction kernel epilogue ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659), [#1664](https://github.com/0xMiden/miden-base/pull/1664)).
+- Add `prove_dummy` APIs on `TransactionProver`. ([#4133](https://github.com/0xMiden/miden-base/pull/4133)).
 
 ### Changes
 
