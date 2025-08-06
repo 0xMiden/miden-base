@@ -34,9 +34,8 @@ type MultisigTestSetup = (Vec<SecretKey>, Vec<PublicKey>, Vec<BasicAuthenticator
 fn setup_keys_and_authenticators(
     num_approvers: usize,
     num_signers: usize, // How many of the approvers will actually sign
-    seed: [u8; 32],
 ) -> anyhow::Result<MultisigTestSetup> {
-    let mut rng = ChaCha20Rng::from_seed(seed);
+    let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
     let mut secret_keys = Vec::new();
     let mut public_keys = Vec::new();
@@ -92,8 +91,7 @@ fn test_multisig() -> anyhow::Result<()> {
     // - 1 Multisig Contract
 
     // Setup keys and authenticators
-    let (_secret_keys, public_keys, authenticators) =
-        setup_keys_and_authenticators(2, 2, [0u8; 32])?;
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
     // Create multisig account
     let multisig_starting_balance = 10u64;
@@ -215,8 +213,7 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     // Test 4 owners with threshold 2 - only 2 signatures should be needed
 
     // Setup keys and authenticators (4 approvers, but only 2 signers)
-    let (_secret_keys, public_keys, authenticators) =
-        setup_keys_and_authenticators(4, 2, [1u8; 32])?;
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(4, 2)?;
 
     // Create multisig account with 4 approvers but threshold of 2
     let multisig_account = create_multisig_account(2, &public_keys, 10)?;
@@ -314,8 +311,7 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
     // This tests that any 2 of the 4 approvers can sign, not just the first 2
 
     // Setup keys and authenticators (4 approvers, all 4 can sign)
-    let (_secret_keys, public_keys, authenticators) =
-        setup_keys_and_authenticators(4, 4, [3u8; 32])?;
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(4, 4)?;
 
     // Create multisig account with 4 approvers but threshold of 2
     let multisig_account = create_multisig_account(2, &public_keys, 10)?;
@@ -430,8 +426,7 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Test 2/3 multisig where tx is executed, then attempted again (should fail on 2nd attempt)
 
     // Setup keys and authenticators (3 approvers, but only 2 signers)
-    let (_secret_keys, public_keys, authenticators) =
-        setup_keys_and_authenticators(3, 2, [2u8; 32])?;
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(3, 2)?;
 
     // Create 2/3 multisig account
     let multisig_account = create_multisig_account(2, &public_keys, 20)?;
