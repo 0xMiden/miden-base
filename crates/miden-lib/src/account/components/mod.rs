@@ -1,11 +1,11 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Word,
-    account::AccountProcedureInfo,
-    assembly::Library,
-    utils::{Deserializable, sync::LazyLock},
-};
+use miden_objects::Word;
+use miden_objects::account::AccountProcedureInfo;
+use miden_objects::assembly::Library;
+use miden_objects::utils::Deserializable;
+use miden_objects::utils::sync::LazyLock;
 
 use crate::account::interface::AccountComponentInterface;
 
@@ -76,7 +76,7 @@ pub enum WellKnownComponent {
 impl WellKnownComponent {
     /// Returns the iterator over procedure digests, containing digests of all procedures provided
     /// by the current component.
-    fn procedure_digests(&self) -> impl Iterator<Item = Word> {
+    pub fn procedure_digests(&self) -> impl Iterator<Item = Word> {
         let forest = match self {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),

@@ -1,33 +1,49 @@
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    string::ToString,
-    vec::Vec,
-};
+use alloc::boxed::Box;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
-use miden_objects::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
-    account::{Account, AccountId, StorageSlot, delta::AccountUpdateDetails},
-    asset::Asset,
-    batch::{ProposedBatch, ProvenBatch},
-    block::{
-        AccountTree, AccountWitness, BlockHeader, BlockInputs, BlockNumber, Blockchain,
-        NullifierTree, NullifierWitness, ProposedBlock, ProvenBlock,
-    },
-    crypto::merkle::SmtProof,
-    note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
-    transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, OrderedTransactionHeaders,
-        OutputNote, PartialBlockchain, ProvenTransaction, TransactionHeader, TransactionInputs,
-    },
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{Account, AccountId, AuthSecretKey, StorageSlot};
+use miden_objects::asset::Asset;
+use miden_objects::batch::{ProposedBatch, ProvenBatch};
+use miden_objects::block::{
+    AccountTree,
+    AccountWitness,
+    BlockHeader,
+    BlockInputs,
+    BlockNumber,
+    Blockchain,
+    NullifierTree,
+    NullifierWitness,
+    ProposedBlock,
+    ProvenBlock,
 };
+use miden_objects::crypto::merkle::SmtProof;
+use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier};
+use miden_objects::transaction::{
+    AccountInputs,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    OrderedTransactionHeaders,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
+    TransactionHeader,
+    TransactionInputs,
+};
+use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
 use miden_tx::auth::BasicAuthenticator;
+use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{Word, crypto::RpoRandomCoin};
+use vm_processor::crypto::RpoRandomCoin;
+use vm_processor::{DeserializationError, Word};
+use winterfell::ByteWriter;
 
 use super::note::MockChainNote;
 use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
@@ -360,7 +376,12 @@ impl MockChain {
         proofs
     }
 
-    /// Returns a reference to the latest [`BlockHeader`] in the chain.
+    /// Returns the genesis [`BlockHeader`] of the chain.
+    pub fn genesis_block_header(&self) -> BlockHeader {
+        self.block_header(BlockNumber::GENESIS.as_usize())
+    }
+
+    /// Returns the latest [`BlockHeader`] in the chain.
     pub fn latest_block_header(&self) -> BlockHeader {
         let chain_tip =
             self.chain.chain_tip().expect("chain should contain at least the genesis block");
@@ -379,6 +400,15 @@ impl MockChain {
     /// Returns a reference to slice of all created proven blocks.
     pub fn proven_blocks(&self) -> &[ProvenBlock] {
         &self.blocks
+    }
+
+    /// Returns the [`AccountId`] of the faucet whose assets are accepted for fee payments in the
+    /// transaction kernel, or in other words, the native asset of the blockchain.
+    ///
+    /// This value is taken from the genesis block because it is assumed not to change throughout
+    /// the chain's lifecycle.
+    pub fn native_asset_id(&self) -> AccountId {
+        self.genesis_block_header().fee_parameters().native_asset_id()
     }
 
     /// Returns a reference to the nullifier tree.
@@ -1118,6 +1148,7 @@ impl MockChain {
             block_header.tx_commitment(),
             block_header.tx_kernel_commitment(),
             block_header.proof_commitment(),
+            block_header.fee_parameters().clone(),
             block_header.timestamp(),
         );
         proven_block.set_block_header(updated_header);
@@ -1173,6 +1204,50 @@ impl Default for MockChain {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for MockChain {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.chain.write_into(target);
+        self.blocks.write_into(target);
+        self.nullifier_tree.write_into(target);
+        self.account_tree.write_into(target);
+        self.pending_output_notes.write_into(target);
+        self.pending_transactions.write_into(target);
+        self.committed_accounts.write_into(target);
+        self.committed_notes.write_into(target);
+        self.account_credentials.write_into(target);
+    }
+}
+
+impl Deserializable for MockChain {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let chain = Blockchain::read_from(source)?;
+        let blocks = Vec::<ProvenBlock>::read_from(source)?;
+        let nullifier_tree = NullifierTree::read_from(source)?;
+        let account_tree = AccountTree::read_from(source)?;
+        let pending_output_notes = Vec::<OutputNote>::read_from(source)?;
+        let pending_transactions = Vec::<ProvenTransaction>::read_from(source)?;
+        let committed_accounts = BTreeMap::<AccountId, Account>::read_from(source)?;
+        let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
+        let account_credentials = BTreeMap::<AccountId, AccountCredentials>::read_from(source)?;
+
+        Ok(Self {
+            chain,
+            blocks,
+            nullifier_tree,
+            account_tree,
+            pending_output_notes,
+            pending_transactions,
+            committed_notes,
+            committed_accounts,
+            account_credentials,
+            rng: ChaCha20Rng::from_os_rng(),
+        })
+    }
+}
+
 // ACCOUNT STATE
 // ================================================================================================
 
@@ -1204,6 +1279,44 @@ impl AccountCredentials {
 
     pub fn seed(&self) -> Option<Word> {
         self.seed
+    }
+}
+
+impl PartialEq for AccountCredentials {
+    fn eq(&self, other: &Self) -> bool {
+        let authenticator_eq = match (&self.authenticator, &other.authenticator) {
+            (Some(a), Some(b)) => {
+                a.keys().keys().zip(b.keys().keys()).all(|(a_key, b_key)| a_key == b_key)
+            },
+            (None, None) => true,
+            _ => false,
+        };
+        authenticator_eq && self.seed == other.seed
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for AccountCredentials {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.seed.write_into(target);
+        self.authenticator
+            .as_ref()
+            .map(|auth| auth.keys().iter().collect::<Vec<_>>())
+            .write_into(target);
+    }
+}
+
+impl Deserializable for AccountCredentials {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let seed = Option::<Word>::read_from(source)?;
+        let authenticator = Option::<Vec<(Word, AuthSecretKey)>>::read_from(source)?;
+
+        let authenticator = authenticator
+            .map(|keys| BasicAuthenticator::new_with_rng(&keys, ChaCha20Rng::from_os_rng()));
+
+        Ok(Self { seed, authenticator })
     }
 }
 
@@ -1256,10 +1369,12 @@ impl From<ExecutedTransaction> for TxContextInput {
 #[cfg(test)]
 mod tests {
     use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::{
-        account::{AccountBuilder, AccountStorageMode},
-        asset::FungibleAsset,
-        testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER},
+    use miden_objects::account::{AccountBuilder, AccountStorageMode};
+    use miden_objects::asset::FungibleAsset;
+    use miden_objects::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_SENDER,
     };
 
     use super::*;
@@ -1317,5 +1432,63 @@ mod tests {
         );
 
         Ok(())
+    }
+
+    #[test]
+    fn mock_chain_serialization() {
+        let mut builder = MockChain::builder();
+
+        let mut notes = vec![];
+        for i in 0..10 {
+            let account = builder
+                .add_account_from_builder(
+                    Auth::BasicAuth,
+                    AccountBuilder::new([i; 32]).with_component(BasicWallet),
+                    AccountState::New,
+                )
+                .unwrap();
+            let note = builder
+                .add_p2id_note(
+                    ACCOUNT_ID_SENDER.try_into().unwrap(),
+                    account.id(),
+                    &[Asset::Fungible(
+                        FungibleAsset::new(
+                            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET.try_into().unwrap(),
+                            1000u64,
+                        )
+                        .unwrap(),
+                    )],
+                    NoteType::Private,
+                )
+                .unwrap();
+            notes.push((account, note));
+        }
+
+        let mut chain = builder.build().unwrap();
+        for (account, note) in notes {
+            let tx = chain
+                .build_tx_context(TxContextInput::Account(account), &[], &[note])
+                .unwrap()
+                .build()
+                .unwrap()
+                .execute()
+                .unwrap();
+            chain.add_pending_executed_transaction(&tx).unwrap();
+            chain.prove_next_block().unwrap();
+        }
+
+        let bytes = chain.to_bytes();
+
+        let deserialized = MockChain::read_from_bytes(&bytes).unwrap();
+
+        assert_eq!(chain.chain.as_mmr().peaks(), deserialized.chain.as_mmr().peaks());
+        assert_eq!(chain.blocks, deserialized.blocks);
+        assert_eq!(chain.nullifier_tree, deserialized.nullifier_tree);
+        assert_eq!(chain.account_tree, deserialized.account_tree);
+        assert_eq!(chain.pending_output_notes, deserialized.pending_output_notes);
+        assert_eq!(chain.pending_transactions, deserialized.pending_transactions);
+        assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
+        assert_eq!(chain.committed_notes, deserialized.committed_notes);
+        assert_eq!(chain.account_credentials, deserialized.account_credentials);
     }
 }

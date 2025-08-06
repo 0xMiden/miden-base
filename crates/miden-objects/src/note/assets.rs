@@ -1,11 +1,15 @@
 use alloc::vec::Vec;
 
-use crate::{
-    Felt, Hasher, MAX_ASSETS_PER_NOTE, WORD_SIZE, Word, ZERO,
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-    errors::NoteError,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use crate::errors::NoteError;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{Felt, Hasher, MAX_ASSETS_PER_NOTE, WORD_SIZE, Word, ZERO};
 
 // NOTE ASSETS
 // ================================================================================================
@@ -237,14 +241,13 @@ impl Deserializable for NoteAssets {
 #[cfg(test)]
 mod tests {
     use super::{NoteAssets, compute_asset_commitment};
-    use crate::{
-        Word,
-        account::AccountId,
-        asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        },
+    use crate::Word;
+    use crate::account::AccountId;
+    use crate::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     };
 
     #[test]

@@ -16,32 +16,37 @@ mod script_mast_forest_store;
 pub use script_mast_forest_store::ScriptMastForestStore;
 
 mod tx_progress;
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::transaction::{
-    TransactionEvent, TransactionEventError, TransactionKernelError,
-    memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
+use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
+use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::asset::Asset;
+use miden_objects::note::NoteId;
+use miden_objects::transaction::{
+    InputNote,
+    InputNotes,
+    OutputNote,
+    OutputNotes,
+    TransactionMeasurements,
+    TransactionSummary,
 };
-use miden_objects::{
-    Hasher, Word,
-    account::{AccountDelta, PartialAccount},
-    asset::Asset,
-    note::NoteId,
-    transaction::{InputNote, InputNotes, OutputNote, TransactionMeasurements},
-    vm::RowIndex,
-};
+use miden_objects::vm::RowIndex;
+use miden_objects::{Hasher, Word};
 pub use tx_progress::TransactionProgress;
 use vm_processor::{
-    AdviceInputs, ContextId, ErrorContext, ExecutionError, Felt, KvMap, MastForest,
-    MastForestStore, MemoryError, ProcessState,
+    ContextId,
+    ErrorContext,
+    ExecutionError,
+    Felt,
+    MastForest,
+    MastForestStore,
+    MemoryError,
+    ProcessState,
 };
-
-use crate::errors::TransactionHostError;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -89,54 +94,22 @@ where
     pub fn new(
         account: &PartialAccount,
         input_notes: InputNotes<InputNote>,
-        advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
-        mut foreign_account_code_commitments: BTreeSet<Word>,
-    ) -> Result<Self, TransactionHostError> {
-        // currently, the executor/prover do not keep track of the code commitment of the native
-        // account, so we add it to the set here
-        foreign_account_code_commitments.insert(account.code().commitment());
-
-        // Insert the account advice map into the advice recorder.
-        // This ensures that the advice map is available during the note script execution when it
-        // calls the account's code that relies on the it's advice map data (data segments) loaded
-        // into the advice provider
-        advice_inputs.extend_map(
-            account
-                .code()
-                .mast()
-                .advice_map()
-                .iter()
-                .map(|(key, values)| (*key, values.clone())),
-        );
-
-        // Add all advice data from scripts_mast_store to the adv_provider. This ensures the
-        // advice provider has all the necessary data for script execution
-        advice_inputs.extend_map(
-            scripts_mast_store
-                .advice_map()
-                .iter()
-                .map(|(key, values)| (*key, values.clone())),
-        );
-
-        let proc_index_map =
-            AccountProcedureIndexMap::new(foreign_account_code_commitments, advice_inputs)?;
-
-        let base = Self {
+        acct_procedure_index_map: AccountProcedureIndexMap,
+    ) -> Self {
+        Self {
             mast_store,
             scripts_mast_store,
             account_delta: AccountDeltaTracker::new(
                 account.id(),
                 account.storage().header().clone(),
             ),
-            acct_procedure_index_map: proc_index_map,
+            acct_procedure_index_map,
             output_notes: BTreeMap::default(),
             input_notes,
             tx_progress: TransactionProgress::default(),
-        };
-
-        Ok(base)
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -242,7 +215,7 @@ where
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process),
             TransactionEvent::NoteAfterAddAsset => Ok(()),
 
-            TransactionEvent::AuthRequest => self.on_signature_requested(process),
+            TransactionEvent::AuthRequest => self.on_auth_requested(process),
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
@@ -287,6 +260,10 @@ where
                 self.tx_progress.start_epilogue(process.clk());
                 Ok(())
             }
+            TransactionEvent::EpilogueAfterTxFeeComputed => {
+                self.tx_progress.epilogue_after_tx_fee_computed(process.clk());
+                Ok(())
+            }
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(())
@@ -311,13 +288,17 @@ where
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
-    /// The signature is fetched from the advice map and if it is not present, an error is returned.
-    pub fn on_signature_requested(
+    /// Expected stack state: `[MESSAGE, PUB_KEY]`
+    ///
+    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
+    /// the signature not present in the advice map, an error is returned.
+    pub fn on_auth_requested(
         &mut self,
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
+        let msg = process.get_stack_word(0);
+        let pub_key = process.get_stack_word(1);
+
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature = process
@@ -329,6 +310,38 @@ where
         process.advice_provider_mut().stack.extend(signature);
 
         Ok(())
+    }
+
+    /// Aborts the transaction by building the
+    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) based on elements on
+    /// the operand stack and advice map.
+    ///
+    /// Expected stack state:
+    ///
+    /// ```text
+    /// [MESSAGE]
+    /// ```
+    ///
+    /// Expected advice map state:
+    ///
+    /// ```text
+    /// MESSAGE -> [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+    /// ```
+    fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
+        let msg = process.get_stack_word(0);
+
+        let tx_summary = match self.build_tx_summary(process, msg) {
+            Ok(s) => s,
+            Err(err) => return err,
+        };
+
+        if msg != tx_summary.to_commitment() {
+            return TransactionKernelError::TransactionSummaryConstructionFailed(
+                "transaction summary doesn't commit to the expected message".into(),
+            );
+        }
+
+        TransactionKernelError::Unauthorized(Box::new(tx_summary))
     }
 
     /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
@@ -557,29 +570,6 @@ where
         Ok(())
     }
 
-    /// Aborts the transaction by extracting the
-    /// [`TransactionSummary`](miden_objects::transaction::TransactionSummary) from the stack and
-    /// returns it in an error.
-    ///
-    /// Expected stack state:
-    ///
-    /// ```text
-    /// [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
-    /// ```
-    fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
-        let account_delta_commitment = process.get_stack_word(3);
-        let input_notes_commitment = process.get_stack_word(2);
-        let output_notes_commitment = process.get_stack_word(1);
-        let salt = process.get_stack_word(0);
-
-        TransactionKernelError::Unauthorized {
-            account_delta_commitment,
-            input_notes_commitment,
-            output_notes_commitment,
-            salt,
-        }
-    }
-
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
@@ -631,4 +621,77 @@ where
 
         Ok(num_storage_slots_felt.as_int())
     }
+
+    /// Builds a [TransactionSummary] by extracting data from the advice provider and validating
+    /// commitments against the host's state.
+    pub(crate) fn build_tx_summary(
+        &self,
+        process: &ProcessState,
+        msg: Word,
+    ) -> Result<TransactionSummary, TransactionKernelError> {
+        let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
+            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+        })?;
+
+        if commitments.len() != 16 {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected 4 words for transaction summary commitments".into(),
+            ));
+        }
+
+        let salt = extract_word(commitments, 0);
+        let output_notes_commitment = extract_word(commitments, 4);
+        let input_notes_commitment = extract_word(commitments, 8);
+        let account_delta_commitment = extract_word(commitments, 12);
+
+        let account_delta = self.build_account_delta();
+        let input_notes = self.input_notes();
+        let output_notes_vec = self.build_output_notes();
+        let output_notes = OutputNotes::new(output_notes_vec).map_err(|err| {
+            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
+        })?;
+
+        // Validate commitments
+        let actual_account_delta_commitment = account_delta.to_commitment();
+        if actual_account_delta_commitment != account_delta_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected account delta commitment to be {actual_account_delta_commitment} but was {account_delta_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        let actual_input_notes_commitment = input_notes.commitment();
+        if actual_input_notes_commitment != input_notes_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected input notes commitment to be {actual_input_notes_commitment} but was {input_notes_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        let actual_output_notes_commitment = output_notes.commitment();
+        if actual_output_notes_commitment != output_notes_commitment {
+            return Err(TransactionKernelError::TransactionSummaryCommitmentMismatch(
+                format!(
+                    "expected output notes commitment to be {actual_output_notes_commitment} but was {output_notes_commitment}"
+                )
+                .into(),
+            ));
+        }
+
+        Ok(TransactionSummary::new(account_delta, input_notes, output_notes, salt))
+    }
+}
+
+/// Extracts a word from a slice of field elements.
+pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
+    Word::from([
+        commitments[start],
+        commitments[start + 1],
+        commitments[start + 2],
+        commitments[start + 3],
+    ])
 }

@@ -1,23 +1,24 @@
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
-use assembly::{
-    Assembler,
-    debuginfo::{SourceLanguage, Uri},
-};
+use assembly::Assembler;
+use assembly::debuginfo::{SourceLanguage, Uri};
 use rand::Rng;
 
-use crate::{
-    Felt, NoteError, Word, ZERO,
-    account::AccountId,
-    asset::Asset,
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
-        NoteTag, NoteType,
-    },
+use crate::account::AccountId;
+use crate::asset::Asset;
+use crate::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
 };
+use crate::{Felt, NoteError, Word, ZERO};
 
 pub const DEFAULT_NOTE_CODE: &str = "begin nop end";
 

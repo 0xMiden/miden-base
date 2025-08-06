@@ -4,23 +4,23 @@ use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    AccountTreeError, Felt, FieldElement, NullifierTreeError, Word,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountId, StorageSlot,
-        delta::AccountUpdateDetails,
-    },
-    batch::ProvenBatch,
-    block::{BlockInputs, BlockNumber, ProposedBlock},
-    testing::account_component::{AccountMockComponent, IncrNonceAuthComponent},
-    transaction::{ProvenTransaction, ProvenTransactionBuilder},
-    vm::ExecutionProof,
-};
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::batch::ProvenBatch;
+use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_objects::testing::account_component::{AccountMockComponent, IncrNonceAuthComponent};
+use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
+use miden_objects::vm::ExecutionProof;
+use miden_objects::{AccountTreeError, Felt, FieldElement, NullifierTreeError, Word};
 use winterfell::Proof;
 
 use super::utils::{
-    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
-    generate_tracked_note, setup_chain,
+    TestSetup,
+    generate_batch,
+    generate_executed_tx_with_authenticated_notes,
+    generate_tracked_note,
+    setup_chain,
 };
 use crate::{Auth, MockChain, ProvenTransactionExt, TransactionContextBuilder};
 
@@ -404,6 +404,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
                 Word::empty(),
                 genesis_block.block_num(),
                 genesis_block.commitment(),
+                FungibleAsset::mock(500).unwrap_fungible(),
                 BlockNumber::from(u32::MAX),
                 ExecutionProof::new(Proof::new_dummy(), Default::default()),
             )

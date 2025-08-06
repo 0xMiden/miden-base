@@ -1,30 +1,40 @@
+use alloc::borrow::ToOwned;
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{borrow::ToOwned, collections::BTreeSet, rc::Rc, sync::Arc, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::rc::Rc;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    account::{Account, AccountId},
-    assembly::{
-        Assembler, SourceManager,
-        debuginfo::{SourceLanguage, Uri},
-    },
-    block::{BlockHeader, BlockNumber},
-    note::Note,
-    transaction::{
-        ExecutedTransaction, InputNote, InputNotes, PartialBlockchain, TransactionArgs,
-        TransactionInputs,
-    },
+use miden_objects::account::{Account, AccountId};
+use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
+use miden_objects::assembly::{Assembler, SourceManager};
+use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::note::Note;
+use miden_objects::transaction::{
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    PartialBlockchain,
+    TransactionArgs,
+    TransactionInputs,
 };
+use miden_tx::auth::BasicAuthenticator;
 use miden_tx::{
-    DataStore, DataStoreError, TransactionExecutor, TransactionExecutorError, TransactionMastStore,
-    auth::BasicAuthenticator,
+    DataStore,
+    DataStoreError,
+    TransactionExecutor,
+    TransactionExecutorError,
+    TransactionMastStore,
 };
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
 use winter_maybe_async::*;
 
-use crate::{MockHost, executor::CodeExecutor, tx_context::builder::MockAuthenticator};
+use crate::MockHost;
+use crate::executor::CodeExecutor;
+use crate::tx_context::builder::MockAuthenticator;
 
 // TRANSACTION CONTEXT
 // ================================================================================================
@@ -71,7 +81,8 @@ impl TransactionContext {
             &self.tx_inputs,
             &self.tx_args,
             Some(self.advice_inputs.clone()),
-        );
+        )
+        .expect("error initializing transaction inputs");
 
         let test_lib = TransactionKernel::kernel_as_library();
 
@@ -103,7 +114,7 @@ impl TransactionContext {
             self.tx_inputs.account().into(),
             &advice_inputs,
             mast_store,
-            self.tx_args.foreign_account_code_commitments(),
+            self.tx_args.to_foreign_account_code_commitments(),
         ))
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)

@@ -1,12 +1,14 @@
-use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
-use vm_processor::SMT_DEPTH;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use crate::{
-    Felt, Word,
-    account::{AccountId, AccountIdPrefix},
-    block::AccountWitness,
-    errors::AccountTreeError,
-};
+use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_processor::{DeserializationError, SMT_DEPTH};
+
+use crate::account::{AccountId, AccountIdPrefix};
+use crate::block::AccountWitness;
+use crate::errors::AccountTreeError;
+use crate::{Felt, Word};
 
 // ACCOUNT TREE
 // ================================================================================================
@@ -303,6 +305,23 @@ impl Default for AccountTree {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for AccountTree {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.account_commitments().collect::<Vec<_>>().write_into(target);
+    }
+}
+
+impl Deserializable for AccountTree {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let entries = Vec::<(AccountId, Word)>::read_from(source)?;
+        Self::with_entries(entries)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+
 // ACCOUNT MUTATION SET
 // ================================================================================================
 
@@ -353,10 +372,8 @@ pub(super) mod tests {
     use assert_matches::assert_matches;
 
     use super::*;
-    use crate::{
-        account::{AccountStorageMode, AccountType},
-        testing::account_id::{AccountIdBuilder, account_id},
-    };
+    use crate::account::{AccountStorageMode, AccountType};
+    use crate::testing::account_id::{AccountIdBuilder, account_id};
 
     pub(crate) fn setup_duplicate_prefix_ids() -> [(AccountId, Word); 2] {
         let id0 = AccountId::try_from(account_id(

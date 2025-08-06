@@ -12,34 +12,8 @@ const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs e
 
 const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note inputs does not match the actual number"
 
-#! Writes the data currently on the advice stack into the memory at the specified location and
-#! verifies that the hash of the written data is equal to the provided hash.
-#!
-#! Inputs:  [start_ptr, end_ptr, HASH]
-#! Outputs: []
-#!
-#! Invocation: exec
-proc.write_advice_data_to_memory
-    # prepare the stack for reading from the advice stack
-    padw padw padw
-    # => [PAD, PAD, PAD, start_ptr, end_ptr, HASH]
-
-    # read the data from advice stack to memory
-    exec.mem::pipe_double_words_to_memory
-    # => [PERM, PERM, PERM, end_ptr, HASH]
-
-    # extract the digest
-    exec.rpo::squeeze_digest
-    # => [DIGEST, end_ptr, HASH]
-
-    # drop pointer for reading from memory
-    movup.4 drop
-    # => [DIGEST, HASH]
-
-    # assert the computed hash is equal to the expected hash
-    assert_eqw.err=ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT
-    # => []
-end
+# PROCEDURES
+# =================================================================================================
 
 #! Writes the assets of the currently executing note into memory starting at the specified address.
 #!
@@ -60,26 +34,14 @@ export.get_assets
     # => [offset, pad(15), dest_ptr]
 
     syscall.exec_kernel_proc
-    # => [ASSETS_HASH, num_assets, pad(11), dest_ptr]
+    # => [ASSETS_COMMITMENT, num_assets, pad(11), dest_ptr]
 
     # clean the stack
     swapdw dropw dropw movup.7 movup.7 movup.7 drop drop drop
-    # => [ASSETS_HASH, num_assets, dest_ptr]
+    # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
 
-    # load the asset data from the advice map to the advice stack
-    adv.push_mapval
-    # => [ASSETS_HASH, num_assets, dest_ptr]
-
-    # calculate number of assets rounded up to an even number
-    dup.4 dup is_odd add
-    # => [even_num_assets, ASSETS_HASH, num_assets, dest_ptr]
-
-    # calculate the start and end pointer for reading to memory
-    mul.4 dup.6 add dup.6
-    # => [start_ptr, end_ptr, ASSETS_HASH, num_assets, dest_ptr]
-
-    # write the data from the advice stack into memory
-    exec.write_advice_data_to_memory
+    # write the assets from the advice map into memory
+    exec.write_assets_to_memory
     # => [num_assets, dest_ptr]
 end
 
@@ -143,13 +105,13 @@ export.get_inputs
     # OS => [even_num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # calculate the start and end pointer for reading to memory
-    mul.4 dup.6 add dup.6
-    # OS => [start_ptr, end_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    dup.6 swap
+    # OS => [even_num_words, dest_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
     # AS => [[INPUT_VALUES]]
 
-    # check the input data matches the commitment, and write it to memory.
-    exec.write_advice_data_to_memory
+    # write the input values from the advice stack into memory
+    exec.mem::pipe_preimage_to_memory drop
     # OS => [num_inputs, dest_ptr]
     # AS => []
 end
@@ -285,54 +247,91 @@ end
 #! - max_inputs_per_note is the max inputs per note.
 export.::miden::util::note::get_max_inputs_per_note
 
-#! Helper procedure to add all assets of a note to an account.
+#! Adds all assets from the currently executing note to the account vault.
 #!
 #! Inputs:  []
 #! Outputs: []
-export.add_note_assets_to_account
-    push.0 exec.get_assets
-    # => [num_of_assets, 0 = ptr, ...]
+export.add_assets_to_account.1024
+    # write assets to local memory starting at offset 0
+    # we have allocated 4 * MAX_ASSETS_PER_NOTE number of locals so all assets should fit
+    # since the asset memory will be overwritten, we don't have to initialize the locals to zero
+    locaddr.0 exec.get_assets
+    # => [num_of_assets, ptr = 0]
 
     # compute the pointer at which we should stop iterating
     mul.4 dup.1 add
-    # => [end_ptr, ptr, ...]
+    # => [end_ptr, ptr]
 
     # pad the stack and move the pointer to the top
     padw movup.5
-    # => [ptr, 0, 0, 0, 0, end_ptr, ...]
+    # => [ptr, EMPTY_WORD, end_ptr]
 
-    # compute the loop latch
+    # loop if the amount of assets is non-zero
     dup dup.6 neq
-    # => [latch, ptr, 0, 0, 0, 0, end_ptr, ...]
+    # => [should_loop, ptr, EMPTY_WORD, end_ptr]
 
     while.true
-        # => [ptr, 0, 0, 0, 0, end_ptr, ...]
+        # => [ptr, EMPTY_WORD, end_ptr]
 
         # save the pointer so that we can use it later
         dup movdn.5
-        # => [ptr, 0, 0, 0, 0, ptr, end_ptr, ...]
+        # => [ptr, EMPTY_WORD, ptr, end_ptr]
 
         # load the asset
         mem_loadw
-        # => [ASSET, ptr, end_ptr, ...]
+        # => [ASSET, ptr, end_ptr]
 
         # pad the stack before call
         padw swapw padw padw swapdw
-        # => [ASSET, pad(12), ptr, end_ptr, ...]
+        # => [ASSET, pad(12), ptr, end_ptr]
 
         # add asset to the account
         call.wallet::receive_asset
-        # => [pad(16), ptr, end_ptr, ...]
+        # => [pad(16), ptr, end_ptr]
 
         # clean the stack after call
         dropw dropw dropw
-        # => [0, 0, 0, 0, ptr, end_ptr, ...]
+        # => [EMPTY_WORD, ptr, end_ptr]
 
-        # increment the pointer and compare it to the end_ptr
+        # increment the pointer and continue looping if ptr != end_ptr
         movup.4 add.4 dup dup.6 neq
-        # => [latch, ptr+4, ASSET, end_ptr, ...]
+        # => [should_loop, ptr+4, EMPTY_WORD, end_ptr]
     end
+    # => [ptr', EMPTY_WORD, end_ptr]
 
     # clear the stack
     drop dropw drop
+    # => []
+end
+
+#! Writes the assets data stored in the advice map to the memory specified by the provided 
+#! destination pointer.
+#!
+#! Inputs:
+#!   Operand stack: [ASSETS_COMMITMENT, num_assets, dest_ptr]
+#!   Advice map: {
+#!     ASSETS_COMMITMENT: [[ASSETS_DATA]]
+#!   }
+#! Outputs:
+#!   Operand stack: [num_assets, dest_ptr]
+export.write_assets_to_memory
+    # load the asset data from the advice map to the advice stack
+    adv.push_mapval
+    # OS => [ASSETS_COMMITMENT, num_assets, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # calculate number of assets rounded up to an even number
+    dup.4 dup is_odd add
+    # OS => [even_num_assets, ASSETS_COMMITMENT, num_assets, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    dup.6 swap
+    # OS => [even_num_assets, dest_ptr, ASSETS_COMMITMENT, num_assets, dest_ptr]
+    # AS => [[ASSETS_DATA]]
+
+    # write the data from the advice stack into memory
+    exec.mem::pipe_preimage_to_memory drop
+    # OS => [num_assets, dest_ptr]
+    # AS => []
 end

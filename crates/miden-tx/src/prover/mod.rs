@@ -1,16 +1,21 @@
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    account::{Account, AccountDelta, delta::AccountUpdateDetails},
-    assembly::DefaultSourceManager,
-    block::BlockNumber,
-    transaction::{
-        InputNote, InputNotes, OutputNote, ProvenTransaction, ProvenTransactionBuilder,
-        TransactionOutputs, TransactionWitness,
-    },
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{Account, AccountDelta};
+use miden_objects::assembly::DefaultSourceManager;
+use miden_objects::block::BlockNumber;
+use miden_objects::transaction::{
+    InputNote,
+    InputNotes,
+    OutputNote,
+    ProvenTransaction,
+    ProvenTransactionBuilder,
+    TransactionOutputs,
+    TransactionWitness,
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::{ExecutionProof, prove};
@@ -18,7 +23,7 @@ use vm_processor::Word;
 use winter_maybe_async::*;
 
 use super::TransactionProverError;
-use crate::host::ScriptMastForestStore;
+use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod prover_host;
 pub use prover_host::TransactionProverHost;
@@ -109,6 +114,7 @@ impl LocalTransactionProver {
             account_delta_commitment,
             ref_block_num,
             ref_block_commitment,
+            tx_outputs.fee,
             tx_outputs.expiration_block_num,
             proof,
         )
@@ -158,26 +164,34 @@ impl TransactionProver for LocalTransactionProver {
         let ref_block_commitment = tx_inputs.block_header().commitment();
 
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness));
-        let mut advice_inputs = advice_inputs.into_advice_inputs();
+            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
+                .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
         self.mast_store.load_account_code(account.code());
 
-        let account_code_commitments: BTreeSet<Word> = tx_args.foreign_account_code_commitments();
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let mut host = TransactionProverHost::new(
-            &account.into(),
-            input_notes.clone(),
-            &mut advice_inputs,
-            self.mast_store.as_ref(),
-            script_mast_store,
-            account_code_commitments,
-        )
-        .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+        let mut host = {
+            let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
+                &tx_inputs,
+                &tx_args,
+                &advice_inputs,
+            )
+            .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+
+            TransactionProverHost::new(
+                &account.into(),
+                input_notes.clone(),
+                self.mast_store.as_ref(),
+                script_mast_store,
+                acct_procedure_index_map,
+            )
+        };
+
+        let advice_inputs = advice_inputs.into_advice_inputs();
 
         let source_manager = Arc::new(DefaultSourceManager::default());
         let (stack_outputs, proof) = maybe_await!(prove(

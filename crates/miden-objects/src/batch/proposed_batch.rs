@@ -1,22 +1,24 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet, btree_map::Entry},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::collections::btree_map::Entry;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use crate::{
-    MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH, MAX_OUTPUT_NOTES_PER_BATCH,
-    account::AccountId,
-    batch::{BatchAccountUpdate, BatchId, InputOutputNoteTracker},
-    block::{BlockHeader, BlockNumber},
-    errors::ProposedBatchError,
-    note::{NoteId, NoteInclusionProof},
-    transaction::{
-        InputNoteCommitment, InputNotes, OrderedTransactionHeaders, OutputNote, PartialBlockchain,
-        ProvenTransaction, TransactionHeader,
-    },
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::AccountId;
+use crate::batch::{BatchAccountUpdate, BatchId, InputOutputNoteTracker};
+use crate::block::{BlockHeader, BlockNumber};
+use crate::errors::ProposedBatchError;
+use crate::note::{NoteId, NoteInclusionProof};
+use crate::transaction::{
+    InputNoteCommitment,
+    InputNotes,
+    OrderedTransactionHeaders,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
+    TransactionHeader,
 };
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH, MAX_OUTPUT_NOTES_PER_BATCH};
 
 /// A proposed batch of transactions with all necessary data to validate it.
 ///
@@ -429,11 +431,10 @@ mod tests {
     use winter_rand_utils::rand_value;
 
     use super::*;
-    use crate::{
-        Word,
-        account::{AccountIdVersion, AccountStorageMode, AccountType},
-        transaction::ProvenTransactionBuilder,
-    };
+    use crate::Word;
+    use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
+    use crate::asset::FungibleAsset;
+    use crate::transaction::ProvenTransactionBuilder;
 
     #[test]
     fn proposed_batch_serialization() -> anyhow::Result<()> {
@@ -481,6 +482,7 @@ mod tests {
             account_delta_commitment,
             block_num,
             block_ref,
+            FungibleAsset::mock(100).unwrap_fungible(),
             expiration_block_num,
             proof,
         )

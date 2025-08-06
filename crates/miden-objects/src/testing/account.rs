@@ -2,21 +2,24 @@ use assembly::Assembler;
 use vm_core::FieldElement;
 
 use super::constants::{self, FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use crate::{
-    Felt, Word, ZERO,
-    account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountStorage, StorageMap, StorageSlot,
-    },
-    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    testing::{
-        account_component::{AccountMockComponent, NoopAuthComponent},
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-        },
-        storage::FAUCET_STORAGE_DATA_SLOT,
-    },
+use crate::account::{
+    Account,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    StorageMap,
+    StorageSlot,
 };
+use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use crate::testing::account_component::{AccountMockComponent, NoopAuthComponent};
+use crate::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+};
+use crate::testing::storage::FAUCET_STORAGE_DATA_SLOT;
+use crate::{Felt, Word, ZERO};
 
 // MOCK ACCOUNT
 // ================================================================================================

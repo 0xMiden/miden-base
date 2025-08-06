@@ -1,10 +1,14 @@
 use alloc::vec::Vec;
 
 use super::{AccountStorage, Felt, Hasher, StorageSlot, StorageSlotType, Word};
-use crate::{
-    AccountError, ZERO,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{AccountError, ZERO};
 
 // ACCOUNT STORAGE HEADER
 // ================================================================================================
@@ -74,6 +78,14 @@ impl AccountStorageHeader {
         self.slots.iter()
     }
 
+    /// Returns an iterator over the storage header map slots.
+    pub fn map_slot_roots(&self) -> impl Iterator<Item = Word> {
+        self.slots
+            .iter()
+            .filter(|(slot_type, _)| matches!(slot_type, StorageSlotType::Map))
+            .map(|x| x.1)
+    }
+
     /// Returns the number of slots contained in the storage header.
     pub fn num_slots(&self) -> u8 {
         // SAFETY: The constructors of this type ensure this value fits in a u8.
@@ -95,6 +107,17 @@ impl AccountStorageHeader {
     /// Computes the account storage header commitment.
     pub fn compute_commitment(&self) -> Word {
         Hasher::hash_elements(&self.as_elements())
+    }
+
+    /// Indicates whether the slot at `index` is a map slot.
+    ///
+    /// # Errors
+    /// - If `index` exceeds the slot count.
+    pub fn is_map_slot(&self, index: usize) -> Result<bool, AccountError> {
+        match self.slot(index)?.0 {
+            StorageSlotType::Map => Ok(true),
+            StorageSlotType::Value => Ok(false),
+        }
     }
 
     /// Converts storage slots of this account storage header into a vector of field elements.
@@ -143,16 +166,12 @@ impl Deserializable for AccountStorageHeader {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::{
-        Felt,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::Felt;
+    use vm_core::utils::{Deserializable, Serializable};
 
     use super::AccountStorageHeader;
-    use crate::{
-        Word,
-        account::{AccountStorage, StorageSlotType},
-    };
+    use crate::Word;
+    use crate::account::{AccountStorage, StorageSlotType};
 
     #[test]
     fn test_from_account_storage() {

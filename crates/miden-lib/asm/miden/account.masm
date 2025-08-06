@@ -33,11 +33,15 @@ end
 
 #! Returns the account nonce.
 #!
+#! This procedure always returns the initial account nonce, as the nonce can only be incremented
+#! in the authentication procedure when signing the transaction after all user code has been 
+#! executed.
+#!
 #! Inputs:  []
 #! Outputs: [nonce]
 #!
 #! Where:
-#! - nonce is the account nonce.
+#! - nonce is the nonce of the current account.
 #!
 #! Invocation: exec
 export.get_nonce
@@ -59,7 +63,7 @@ export.get_nonce
     # => [nonce]
 end
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
@@ -296,6 +300,31 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
+#! Returns the code commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_CODE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_CODE_COMMITMENT is the initial account code commitment.
+#!
+#! Invocation: exec
+export.get_initial_code_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_initial_code_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_CODE_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_CODE_COMMITMENT]
+end
+
 #! Gets the account code commitment of the current account.
 #!
 #! Inputs:  []
@@ -319,6 +348,31 @@ export.get_code_commitment
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [CODE_COMMITMENT]
+end
+
+#! Returns the storage commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
+#!
+#! Invocation: exec
+export.get_initial_storage_commitment
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_initial_storage_commitment_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_STORAGE_COMMITMENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_STORAGE_COMMITMENT]
 end
 
 #! Gets the account storage commitment of the current account.
@@ -469,6 +523,31 @@ export.remove_asset
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [ASSET]
+end
+
+#! Returns the vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_VAULT_ROOT is the initial account vault root.
+#!
+#! Invocation: exec
+export.get_initial_vault_root
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_get_initial_vault_root_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_VAULT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_VAULT_ROOT]
 end
 
 #! Returns a commitment to the account vault.

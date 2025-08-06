@@ -1,15 +1,19 @@
 use alloc::string::ToString;
 
 use miden_crypto::merkle::{
-    InnerNodeInfo, LeafIndex, MerklePath, SMT_DEPTH, SmtLeaf, SmtProof, SmtProofError,
+    InnerNodeInfo,
+    LeafIndex,
+    MerklePath,
+    SMT_DEPTH,
+    SmtLeaf,
+    SmtProof,
+    SmtProofError,
 };
 
-use crate::{
-    AccountTreeError, Word,
-    account::AccountId,
-    block::AccountTree,
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::account::AccountId;
+use crate::block::AccountTree;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{AccountTreeError, Word};
 
 // ACCOUNT WITNESS
 // ================================================================================================

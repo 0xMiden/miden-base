@@ -1,10 +1,8 @@
-use crate::{
-    Word,
-    block::{BlockNumber, NullifierTree, NullifierWitness},
-    crypto::merkle::PartialSmt,
-    errors::NullifierTreeError,
-    note::Nullifier,
-};
+use crate::Word;
+use crate::block::{BlockNumber, NullifierTree, NullifierWitness};
+use crate::crypto::merkle::PartialSmt;
+use crate::errors::NullifierTreeError;
+use crate::note::Nullifier;
 
 /// The partial sparse merkle tree containing the nullifiers of consumed notes.
 ///

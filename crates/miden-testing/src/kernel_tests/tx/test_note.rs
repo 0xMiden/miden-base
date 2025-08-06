@@ -1,45 +1,52 @@
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::{
-    account::wallets::BasicWallet,
-    errors::{
-        MasmError, tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT,
-    },
-    transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::errors::MasmError;
+use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::{Account, AccountBuilder, AccountId};
+use miden_objects::assembly::diagnostics::miette::{self, miette};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteExecutionMode,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
 };
-use miden_objects::{
-    EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word,
-    account::{Account, AccountBuilder, AccountId},
-    assembly::diagnostics::miette::{self, miette},
-    asset::FungibleAsset,
-    crypto::{
-        dsa::rpo_falcon512::SecretKey,
-        rand::{FeltRng, RpoRandomCoin},
-    },
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    testing::{
-        account_id::{
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        note::NoteBuilder,
-    },
-    transaction::{AccountInputs, OutputNote, TransactionArgs, TransactionScript},
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
+use miden_objects::{EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word};
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, Process, ZERO, word_to_masm_push_string};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, input_note_data_ptr};
 use crate::{
-    Auth, MockChain, TransactionContext, TransactionContextBuilder, TxContextInput,
+    Auth,
+    MockChain,
+    TransactionContext,
+    TransactionContextBuilder,
+    TxContextInput,
     assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt,
-    utils::{create_p2any_note, input_note_data_ptr},
 };
 
 #[test]
@@ -318,82 +325,6 @@ fn test_get_assets() -> anyhow::Result<()> {
     );
 
     tx_context.execute_code(&code)?;
-    Ok(())
-}
-
-#[test]
-fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
-    let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
-    let p2id_note_1 = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(150)],
-        NoteType::Public,
-    )?;
-    let p2id_note_2 = builder.add_p2id_note(
-        ACCOUNT_ID_SENDER.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(300)],
-        NoteType::Public,
-    )?;
-    let mut mock_chain = builder.build()?;
-    mock_chain.prove_next_block()?;
-
-    let code = format!(
-        r#"
-        use.miden::input_notes
-
-        begin
-            # get the assets hash and assets number from the 0'th note
-            push.0
-            exec.input_notes::get_assets_info
-            # => [ASSETS_HASH_0, num_assets_0]
-
-            # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_0} 
-            assert_eqw.err="note 0 has incorrect assets hash"
-            # => [num_assets_0]
-
-            # assert the number of note assets
-            push.{assets_number_0}
-            assert_eq.err="note 0 has incorrect assets number"
-            # => []
-
-            # get the assets hash and assets number from the 1'st note
-            push.1
-            exec.input_notes::get_assets_info
-            # => [ASSETS_HASH_1, num_assets_1]
-
-            # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_HASH_1} 
-            assert_eqw.err="note 0 has incorrect assets hash"
-            # => [num_assets_1]
-
-            # assert the number of note assets
-            push.{assets_number_1}
-            assert_eq.err="note 1 has incorrect assets number"
-            # => []
-        end
-    "#,
-        COMPUTED_ASSETS_HASH_0 = word_to_masm_push_string(&p2id_note_1.assets().commitment()),
-        assets_number_0 = p2id_note_1.assets().num_assets(),
-        COMPUTED_ASSETS_HASH_1 = word_to_masm_push_string(&p2id_note_2.assets().commitment()),
-        assets_number_1 = p2id_note_2.assets().num_assets(),
-    );
-
-    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
-
-    let tx_context = mock_chain
-        .build_tx_context(
-            TxContextInput::AccountId(account.id()),
-            &[],
-            &[p2id_note_1, p2id_note_2],
-        )?
-        .tx_script(tx_script)
-        .build()?;
-
-    tx_context.execute()?;
 
     Ok(())
 }
@@ -449,10 +380,10 @@ fn test_get_inputs() -> anyhow::Result<()> {
             # => []
 
             exec.note_internal::prepare_note
-            # => [NOTE_SCRIPT_ROOT, NOTE_ARGS]
+            # => [note_script_root_ptr, NOTE_ARGS, pad(11)]
 
             # drop the note inputs
-            dropw dropw
+            dropw dropw dropw dropw
             # => []
 
             push.{NOTE_0_PTR} exec.note::get_inputs
@@ -509,7 +440,8 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     )
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler())
+    let note_script = ScriptBuilder::default()
+        .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
@@ -586,10 +518,12 @@ fn test_note_setup() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
             exec.note::prepare_note
+            # => [note_script_root_ptr, NOTE_ARGS, pad(11), pad(16)]
             padw movup.4 mem_loadw
+            # => [SCRIPT_ROOT, NOTE_ARGS, pad(11), pad(16)]
 
             # truncate the stack
-            swapdw dropw dropw
+            repeat.19 movup.8 drop end
         end
         ";
 
@@ -644,8 +578,17 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
             exec.prologue::prepare_transaction
             exec.memory::get_num_input_notes push.2 assert_eq
             exec.note::prepare_note drop
+            # => [NOTE_ARGS0, pad(11), pad(16)]
+            repeat.11 movup.4 drop end
+            # => [NOTE_ARGS0, pad(16)]
+
             exec.note::increment_current_input_note_ptr drop
+            # => [NOTE_ARGS0, pad(16)]
+
             exec.note::prepare_note drop
+            # => [NOTE_ARGS1, pad(11), NOTE_ARGS0, pad(16)]
+            repeat.11 movup.4 drop end
+            # => [NOTE_ARGS1, NOTE_ARGS0, pad(16)]
 
             # truncate the stack
             swapdw dropw dropw
@@ -1047,7 +990,7 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::testing_assembler())?;
+    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);

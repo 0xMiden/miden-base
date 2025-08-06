@@ -1,12 +1,16 @@
 use miden_crypto::merkle::SparseMerklePath;
 
 use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, NoteError, Serializable,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    NoteError,
+    Serializable,
 };
-use crate::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word, block::BlockNumber,
-    crypto::merkle::InnerNodeInfo,
-};
+use crate::block::BlockNumber;
+use crate::crypto::merkle::InnerNodeInfo;
+use crate::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word};
 
 /// Contains information about the location of a note.
 #[derive(Clone, Debug, PartialEq, Eq)]

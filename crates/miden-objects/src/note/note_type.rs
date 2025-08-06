@@ -1,9 +1,14 @@
-use core::{fmt::Display, str::FromStr};
+use core::fmt::Display;
+use core::str::FromStr;
 
-use crate::{
-    Felt, NoteError,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{Felt, NoteError};
 
 // CONSTANTS
 // ================================================================================================

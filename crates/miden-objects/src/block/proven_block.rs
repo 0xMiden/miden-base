@@ -1,12 +1,16 @@
 use alloc::vec::Vec;
 
-use crate::{
-    MIN_PROOF_SECURITY_LEVEL, Word,
-    block::{BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree, OutputNoteBatch},
-    note::Nullifier,
-    transaction::{OrderedTransactionHeaders, OutputNote},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::block::{
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
+    OutputNoteBatch,
 };
+use crate::note::Nullifier;
+use crate::transaction::{OrderedTransactionHeaders, OutputNote};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{MIN_PROOF_SECURITY_LEVEL, Word};
 
 // PROVEN BLOCK
 // ================================================================================================

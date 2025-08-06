@@ -6,9 +6,10 @@ use.$kernel::account_id
 use.$kernel::asset_vault
 use.$kernel::constants
 use.$kernel::faucet
-use.$kernel::input_notes
+use.$kernel::input_note
 use.$kernel::memory
 use.$kernel::note
+use.$kernel::output_note
 use.$kernel::tx
 
 # NOTE
@@ -79,7 +80,7 @@ end
 
 ### ACCOUNT #####################################
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_COMMITMENT, pad(12)]
@@ -211,6 +212,25 @@ export.account_incr_nonce
     # => [final_nonce, pad(15)]
 end
 
+#! Returns the code commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [INIT_CODE_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - INIT_CODE_COMMITMENT is the initial account code commitment.
+#!
+#! Invocation: dynexec
+export.account_get_initial_code_commitment
+    # get the initial account code commitment
+    exec.account::get_initial_code_commitment
+    # => [INIT_CODE_COMMITMENT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [INIT_CODE_COMMITMENT, pad(12)]
+end
+
 #! Gets the account code commitment of the current account.
 #!
 #! Inputs:  [pad(16)]
@@ -232,6 +252,25 @@ export.account_get_code_commitment
     # truncate the stack
     swapw dropw
     # => [CODE_COMMITMENT, pad(12)]
+end
+
+#! Returns the storage commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [INIT_STORAGE_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
+#!
+#! Invocation: dynexec
+export.account_get_initial_storage_commitment
+    # get the initial account storage commitment
+    exec.account::get_initial_storage_commitment
+    # => [INIT_STORAGE_COMMITMENT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [INIT_STORAGE_COMMITMENT, pad(12)]
 end
 
 #! Gets the account storage commitment of the current account.
@@ -395,6 +434,25 @@ export.account_set_map_item
     # set the new map item
     exec.account::set_map_item
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
+end
+
+#! Returns the vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [INIT_VAULT_ROOT, pad(12)]
+#!
+#! Where:
+#! - INIT_VAULT_ROOT is the initial account vault root.
+#!
+#! Invocation: dynexec
+export.account_get_initial_vault_root
+    # get the initial account vault root
+    exec.account::get_initial_vault_root
+    # => [INIT_VAULT_ROOT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [INIT_VAULT_ROOT, pad(12)]
 end
 
 #! Returns a commitment to the account vault the transaction is being executed against.
@@ -660,11 +718,11 @@ end
 #! Returns the information about assets in the input note with the specified index.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [ASSETS_HASH, num_assets, pad(11)]
+#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
 #!
 #! Where:
 #! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_HASH is a sequential hash of the assets in the note currently being processed.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
 #!
 #! Panics if:
 #! - a note is not being processed.
@@ -673,13 +731,13 @@ end
 export.note_get_assets_info
     # get the assets info
     exec.note::get_assets_info
-    # => [ASSETS_HASH, num_assets, pad(16)]
+    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
 
     # truncate the stack
     repeat.5
         movup.5 drop
     end
-    # => [ASSETS_HASH, num_assets, pad(11)]
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 
 #! Adds the ASSET to the note specified by the index.
@@ -711,27 +769,185 @@ end
 #! Returns the information about assets in the input note with the specified index.
 #!
 #! Inputs:  [note_index, pad(15)]
-#! Outputs: [ASSETS_HASH, num_assets, pad(11)]
+#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
 #!
 #! Where:
 #! - note_index is the index of the input note whose assets info should be returned.
 #! - num_assets is the number of assets in the specified note.
-#! - ASSETS_HASH is a sequential hash of the assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
+    # assert that the provided note index is less than the total number of input notes
+    exec.input_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
     # get the assets info
-    exec.input_notes::get_assets_info
-    # => [ASSETS_HASH, num_assets, pad(16)]
+    exec.input_note::get_assets_info
+    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
 
     # truncate the stack
     repeat.5
         movup.5 drop
     end
-    # => [ASSETS_HASH, num_assets, pad(11)]
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+end
+
+#! Returns the recipient of the input note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [RECIPIENT, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the input note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: dynexec
+export.input_note_get_recipient
+    # assert that the provided note index is less than the total number of input notes
+    exec.input_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
+    # get the note data pointer by the provided index
+    exec.memory::get_input_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the recipient
+    exec.memory::get_input_note_recipient
+    # => [RECIPIENT, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [RECIPIENT, pad(12)]
+end
+
+#! Returns the metadata of the input note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [METADATA, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the input note whose metadata should be returned.
+#! - METADATA is the metadata of the input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: dynexec
+export.input_note_get_metadata
+    # assert that the provided note index is less than the total number of input notes
+    exec.input_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
+    # get the note data pointer by the provided index
+    exec.memory::get_input_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the metadata
+    exec.memory::get_input_note_metadata
+    # => [METADATA, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [METADATA, pad(12)]
+end
+
+#! Returns the information about assets in the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_assets_info
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
+    # get the assets info
+    exec.output_note::get_assets_info
+    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
+
+    # truncate the stack
+    repeat.5
+        movup.5 drop
+    end
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+end
+
+#! Returns the recipient of the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [RECIPIENT, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the output note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_recipient
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
+    # get the note data pointer by the provided index
+    exec.memory::get_output_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the recipient
+    exec.memory::get_output_note_recipient
+    # => [RECIPIENT, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [RECIPIENT, pad(12)]
+end
+
+#! Returns the metadata of the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [METADATA, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose metadata should be returned.
+#! - METADATA is the metadata of the output note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_metadata
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+    
+    # get the note data pointer by the provided index
+    exec.memory::get_output_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the metadata
+    exec.memory::get_output_note_metadata
+    # => [METADATA, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [METADATA, pad(12)]
 end
 
 #! Returns the serial number of the note currently being processed.

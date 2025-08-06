@@ -1,60 +1,96 @@
-use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
+use alloc::string::String;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::{
-    AuthScheme,
-    account::{interface::AccountInterface, wallets::BasicWallet},
-    errors::tx_kernel_errors::{
-        ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
-    },
-    note::create_p2id_note,
-    transaction::{
-        TransactionEvent, TransactionKernel,
-        memory::{
-            NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
-            OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
-        },
-    },
-    utils::word_to_masm_push_string,
+use miden_lib::AuthScheme;
+use miden_lib::account::interface::AccountInterface;
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
+    ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
-use miden_objects::{
-    FieldElement, Hasher, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountId, AccountStorageMode},
-    assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-    block::BlockNumber,
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
-        NoteMetadata, NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    testing::{
-        account_component::IncrNonceAuthComponent,
-        account_id::{
-            ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2},
-        note::DEFAULT_NOTE_CODE,
-    },
-    transaction::{
-        InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionScript, TransactionSummary,
-    },
+use miden_lib::note::create_p2id_note;
+use miden_lib::transaction::memory::{
+    NOTE_MEM_SIZE,
+    NUM_OUTPUT_NOTES_PTR,
+    OUTPUT_NOTE_ASSETS_OFFSET,
+    OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_RECIPIENT_OFFSET,
+    OUTPUT_NOTE_SECTION_OFFSET,
 };
+use miden_lib::transaction::{TransactionEvent, TransactionKernel};
+use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
+};
+use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_objects::block::BlockNumber;
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteExecutionMode,
+    NoteHeader,
+    NoteId,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
+};
+use miden_objects::testing::account_component::IncrNonceAuthComponent;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PRIVATE_SENDER,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
+};
+use miden_objects::testing::constants::{
+    FUNGIBLE_ASSET_AMOUNT,
+    NON_FUNGIBLE_ASSET_DATA,
+    NON_FUNGIBLE_ASSET_DATA_2,
+};
+use miden_objects::testing::note::DEFAULT_NOTE_CODE;
+use miden_objects::transaction::{
+    InputNotes,
+    OutputNote,
+    OutputNotes,
+    TransactionArgs,
+    TransactionSummary,
+};
+use miden_objects::{FieldElement, Hasher, Word};
+use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
-    ExecutionOptions, ScriptMastForestStore, TransactionExecutor, TransactionExecutorError,
-    TransactionExecutorHost, TransactionMastStore, auth::UnreachableAuth,
+    AccountProcedureIndexMap,
+    ExecutionOptions,
+    ScriptMastForestStore,
+    TransactionExecutor,
+    TransactionExecutorError,
+    TransactionExecutorHost,
+    TransactionMastStore,
 };
-use vm_processor::{AdviceInputs, Process, crypto::RpoRandomCoin};
+use vm_processor::crypto::RpoRandomCoin;
+use vm_processor::{AdviceInputs, Process};
 
 use super::{Felt, ONE, ZERO};
-use crate::{
-    Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt,
-    utils::{create_p2any_note, create_spawn_note},
-};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
 /// Tests that executing a transaction with a foreign account whose inputs are stale fails.
 #[test]
@@ -726,6 +762,25 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that creating a note with a fungible asset with amount zero works.
+#[test]
+fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let output_note = builder.add_p2id_note(
+        account.id(),
+        account.id(),
+        &[FungibleAsset::mock(0)],
+        NoteType::Private,
+    )?;
+    let input_note = builder.add_spawn_note(account.id(), [&output_note])?;
+    let chain = builder.build()?;
+
+    chain.build_tx_context(account, &[input_note.id()], &[])?.build()?.execute()?;
+
+    Ok(())
+}
+
 #[test]
 fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {
@@ -915,24 +970,28 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         tx_inputs,
         tx_args,
         Some(executed_transaction.advice_witness().clone()),
-    );
-
-    let mut advice_inputs = advice_inputs.into_advice_inputs();
+    )
+    .into_diagnostic()?;
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
     mast_store.load_account_code(tx_inputs.account().code());
 
-    let mut host = TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
-        &tx_inputs.account().into(),
-        tx_inputs.input_notes().clone(),
-        &mut advice_inputs,
-        mast_store.as_ref(),
-        scripts_mast_store,
-        None,
-        BTreeSet::new(),
-    )
-    .unwrap();
+    let mut host = {
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(tx_inputs, tx_args, &advice_inputs)
+                .unwrap();
+
+        TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
+            &tx_inputs.account().into(),
+            tx_inputs.input_notes().clone(),
+            mast_store.as_ref(),
+            scripts_mast_store,
+            acct_procedure_index_map,
+            None,
+        )
+    };
+    let advice_inputs = advice_inputs.into_advice_inputs();
 
     let mut process = Process::new(
         TransactionKernel::main().kernel().clone(),
@@ -1017,8 +1076,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
-    let note_script_2 =
-        NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
+    let note_script_2 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
@@ -1028,8 +1086,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
-    let note_script_3 =
-        NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
+    let note_script_3 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
@@ -1144,10 +1201,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
     );
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
-    )?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     // expected delta
     // --------------------------------------------------------------------------------------------
@@ -1218,17 +1272,26 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
     let source_code = format!(
         "
+      use.miden::auth
+      use.miden::tx
       #! Inputs:  [AUTH_ARGS, pad(12)]
       #! Outputs: [pad(16)]
       export.auth__abort_tx
           dropw
           # => [pad(16)]
 
+          push.0.0 exec.tx::get_block_number
           exec.::miden::account::incr_nonce
-          # => [final_nonce, pad(16)]
+          # => [[final_nonce, block_num, 0, 0], pad(16)]
+          # => [SALT, pad(16)]
 
-          exec.::miden::contracts::auth::basic::create_tx_summary
+          exec.auth::create_tx_summary
           # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
+
+          exec.auth::adv_insert_hqword
+
+          exec.auth::hash_tx_summary
+          # => [MESSAGE, pad(16)]
 
           emit.{abort_event}
       end
@@ -1349,11 +1412,10 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    let mut assembler = TransactionKernel::assembler();
+    let assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    assembler
-        .compile_and_statically_link(source)
-        .map_err(|_| anyhow::anyhow!("adding source module"))?;
+
+    let library = assembler.assemble_library([source]).unwrap();
 
     let source = "
     use.test::module_1
@@ -1366,8 +1428,9 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = TransactionScript::compile(source, assembler)?;
-
+    let tx_script = ScriptBuilder::new(false)
+        .with_statically_linked_library(&library)?
+        .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script.clone())
         .build()?;
@@ -1418,8 +1481,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
         value = word_to_masm_push_string(&tx_script_input_value)
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
@@ -1457,9 +1519,9 @@ fn test_tx_script_args() -> anyhow::Result<()> {
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
         end"#;
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())
-            .context("failed to compile transaction script")?;
+    let tx_script = ScriptBuilder::default()
+        .compile_tx_script(tx_script_src)
+        .context("failed to compile transaction script")?;
 
     // extend the advice map with the entry that is accessed using the provided transaction script
     // argument
@@ -1473,6 +1535,79 @@ fn test_tx_script_args() -> anyhow::Result<()> {
         .build()?;
 
     tx_context.execute()?;
+
+    Ok(())
+}
+
+// Tests that advice map from the account code and transaction script gets correctly passed as
+// part of the transaction advice inputs
+#[test]
+fn inputs_created_correctly() -> anyhow::Result<()> {
+    let account_code_script = r#"
+            adv_map.A([6,7,8,9])=[10,11,12,13]
+
+            export.assert_adv_map
+                # test tx script advice map
+                push.[1,2,3,4]
+                adv.push_mapval adv_loadw
+                push.[5,6,7,8]
+                assert_eqw.err="script adv map not found"
+            end
+        "#;
+
+    let component = AccountComponent::compile(
+        account_code_script,
+        TransactionKernel::assembler(),
+        vec![StorageSlot::Value(Word::default())],
+    )?
+    .with_supports_all_types();
+
+    let auth_component = IncrNonceAuthComponent::new(TransactionKernel::assembler())?.into();
+    let account_code = AccountCode::from_components(
+        &[auth_component, component.clone()],
+        AccountType::RegularAccountUpdatableCode,
+    )?;
+
+    let script = format!(
+        r#"
+            use.miden::account  
+            
+            adv_map.A([1,2,3,4])=[5,6,7,8]
+
+            begin
+                # test account code advice map
+                push.[6,7,8,9]
+                adv.push_mapval adv_loadw
+                push.[10,11,12,13]
+                assert_eqw.err="account code adv map not found"
+
+                call.{assert_adv_map_proc_root}
+            end
+        "#,
+        assert_adv_map_proc_root =
+            component.library().get_procedure_root_by_name("$anon::assert_adv_map").unwrap()
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(script)?;
+
+    assert!(tx_script.mast().advice_map().get(&Word::try_from([1u64, 2, 3, 4])?).is_some());
+    assert!(
+        account_code
+            .mast()
+            .advice_map()
+            .get(&Word::try_from([6u64, 7, 8, 9])?)
+            .is_some()
+    );
+
+    let account = Account::from_parts(
+        ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
+        AssetVault::mock(),
+        AccountStorage::mock(),
+        account_code,
+        Felt::new(1u64),
+    );
+    let tx_context = crate::TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
+    _ = tx_context.execute()?;
 
     Ok(())
 }

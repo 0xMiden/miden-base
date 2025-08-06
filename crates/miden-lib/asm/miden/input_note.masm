@@ -1,0 +1,143 @@
+use.miden::kernel_proc_offsets
+use.miden::note
+
+# PROCEDURES
+# =================================================================================================
+
+#! Returns the information about assets in the input note with the specified index.
+#!
+#! This information can then be used to retrieve the actual assets from the advice map.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
+#!
+#! Where:
+#! - note_index is the index of the input note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_assets_info
+    # start padding the stack
+    push.0.0 movup.2
+    # => [note_index, 0, 0]
+
+    exec.kernel_proc_offsets::input_note_get_assets_info_offset
+    # => [offset, note_index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, note_index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+
+    # clean the stack
+    swapdw dropw dropw 
+    repeat.3
+        movup.5 drop
+    end
+    # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Writes the assets of the input note with the specified index into memory starting at the 
+#! specified address.
+#!
+#! Attention: memory starting from the `dest_ptr` should have enough space to store all the assets
+#! in the specified note. Make sure that at least `4 * num_assets` memory elements are available,
+#! or if the number of assets is not yet known, at least `4 * MAX_ASSETS_PER_NOTE`.
+#!
+#! The memory layout after the execution of this procedure will look like so:
+#! [ASSET_0, ASSET_1, ..., ASSET_N], where each asset occupies one word. For more detailed
+#! information about the layout of each asset see the description of the `Asset` Rust type.
+#!
+#! Inputs:  [dest_ptr, note_index]
+#! Outputs: [num_assets, dest_ptr, note_index]
+#!
+#! Where:
+#! - dest_ptr is the memory address to write the assets.
+#! - note_index is the index of the input note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_assets
+    # get the assets commitment and assets number
+    dup.1 exec.get_assets_info
+    # => [ASSETS_COMMITMENT, num_assets, dest_ptr, note_index]
+
+    # write the assets stored in the advice map to the specified memory pointer
+    exec.note::write_assets_to_memory
+    # => [num_assets, dest_ptr, note_index]
+end
+
+#! Returns the recipient of the input note with the specified index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - note_index is the index of the input note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_recipient
+    # start padding the stack
+    push.0.0 movup.2
+    # => [note_index, 0, 0]
+
+    exec.kernel_proc_offsets::input_note_get_recipient_offset
+    # => [offset, note_index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, note_index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [RECIPIENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [RECIPIENT]
+end
+
+#! Returns the metadata of the input note with the specified index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [METADATA]
+#!
+#! Where:
+#! - note_index is the index of the input note whose metadata should be returned.
+#! - METADATA is the metadata of the input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_metadata
+    # start padding the stack
+    push.0.0 movup.2
+    # => [note_index, 0, 0]
+
+    exec.kernel_proc_offsets::input_note_get_metadata_offset
+    # => [offset, note_index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, note_index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [METADATA, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [METADATA]
+end

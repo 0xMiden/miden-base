@@ -1,9 +1,7 @@
 use alloc::collections::BTreeMap;
 
-use miden_objects::{
-    Word,
-    account::{AccountStorageDelta, AccountStorageHeader},
-};
+use miden_objects::Word;
+use miden_objects::account::{AccountStorageDelta, AccountStorageHeader};
 
 /// Keeps track of the initial storage of an account during transaction execution.
 ///

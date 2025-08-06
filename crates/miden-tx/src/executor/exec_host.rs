@@ -1,26 +1,26 @@
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
-use miden_objects::{
-    Felt, Hasher, Word,
-    account::{AccountDelta, PartialAccount},
-    transaction::{InputNote, InputNotes, OutputNote},
-};
+use miden_lib::errors::TransactionKernelError;
+use miden_lib::transaction::TransactionEvent;
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::{Felt, Hasher, Word};
 use vm_processor::{
-    AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    BaseHost,
+    ErrorContext,
+    ExecutionError,
+    MastForest,
+    MastForestStore,
+    ProcessState,
+    SyncHost,
 };
 
-use crate::{
-    auth::{SigningInputs, TransactionAuthenticator},
-    errors::TransactionHostError,
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
-};
+use crate::AccountProcedureIndexMap;
+use crate::auth::{SigningInputs, TransactionAuthenticator};
+use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
 
 /// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests
@@ -61,54 +61,50 @@ where
     pub fn new(
         account: &PartialAccount,
         input_notes: InputNotes<InputNote>,
-        advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
+        acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
-        foreign_account_code_commitments: BTreeSet<Word>,
-    ) -> Result<Self, TransactionHostError> {
+    ) -> Self {
         let base_host = TransactionBaseHost::new(
             account,
             input_notes,
-            advice_inputs,
             mast_store,
             scripts_mast_store,
-            foreign_account_code_commitments,
-        )?;
+            acct_procedure_index_map,
+        );
 
-        Ok(Self {
+        Self {
             base_host,
             authenticator,
             generated_signatures: BTreeMap::new(),
-        })
+        }
     }
 
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
-
-    /// Returns a reference to the underlying [`TransactionBaseHost`].
-    pub(super) fn base_host(&self) -> &TransactionBaseHost<'store, STORE> {
-        &self.base_host
-    }
 
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
         self.base_host.tx_progress()
     }
 
-    // ADVICE INJECTOR HANDLERS
+    // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
-    /// The signature is fetched from the advice map or otherwise requested from the host's
-    /// authenticator.
-    pub fn on_signature_requested(
+    /// Expected stack state: `[MESSAGE, PUB_KEY]`
+    ///
+    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
+    /// not present in the advice map, the signature is requested from the host's authenticator.
+    pub fn on_auth_requested(
         &mut self,
         process: &mut ProcessState,
     ) -> Result<(), TransactionKernelError> {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
+        let msg = process.get_stack_word(0);
+        let pub_key = process.get_stack_word(1);
+
         let signature_key = Hasher::merge(&[pub_key, msg]);
 
         let signature = if let Ok(signature) =
@@ -116,10 +112,18 @@ where
         {
             signature.to_vec()
         } else {
-            let signing_inputs = SigningInputs::Blind(msg);
+            let tx_summary = self.base_host.build_tx_summary(process, msg)?;
+
+            if msg != tx_summary.to_commitment() {
+                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                    "transaction summary doesn't commit to the expected message".into(),
+                ));
+            }
 
             let authenticator =
                 self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+
+            let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
 
             let signature: Vec<Felt> = authenticator
                 .get_signature(pub_key, &signing_inputs)
@@ -178,7 +182,7 @@ where
             // Override the base host's on signature requested implementation, which would not call
             // the authenticator.
             TransactionEvent::AuthRequest => {
-                self.on_signature_requested(process)
+                self.on_auth_requested(process)
                     .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
             },
             // All other events are handled as in the base host.

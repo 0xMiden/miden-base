@@ -4,12 +4,13 @@ use miden_crypto::merkle::EmptySubtreeRoots;
 use vm_core::EMPTY_WORD;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
-use crate::{
-    Hasher,
-    account::StorageMapDelta,
-    crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof},
-    errors::StorageMapError,
-};
+use crate::Hasher;
+use crate::account::StorageMapDelta;
+use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof};
+use crate::errors::StorageMapError;
+
+mod partial;
+pub use partial::PartialStorageMap;
 
 // ACCOUNT STORAGE MAP
 // ================================================================================================

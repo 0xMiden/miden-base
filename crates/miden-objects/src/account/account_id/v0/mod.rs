@@ -1,31 +1,27 @@
 mod prefix;
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
-use core::{fmt, hash::Hash};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
+use core::fmt;
+use core::hash::Hash;
 
-use bech32::{Bech32m, primitives::decode::CheckedHrpstring};
+use bech32::Bech32m;
+use bech32::primitives::decode::CheckedHrpstring;
 use miden_crypto::utils::hex_to_bytes;
 pub use prefix::AccountIdPrefixV0;
 
-use crate::{
-    AccountError, EMPTY_WORD, Felt, Hasher, Word,
-    account::{
-        AccountIdVersion, AccountStorageMode, AccountType,
-        account_id::{
-            NetworkId,
-            account_type::{
-                FUNGIBLE_FAUCET, NON_FUNGIBLE_FAUCET, REGULAR_ACCOUNT_IMMUTABLE_CODE,
-                REGULAR_ACCOUNT_UPDATABLE_CODE,
-            },
-            address_type::AddressType,
-            storage_mode::{NETWORK, PRIVATE, PUBLIC},
-        },
-    },
-    errors::{AccountIdError, Bech32Error},
-    utils::{ByteReader, Deserializable, DeserializationError, Serializable},
+use crate::account::account_id::NetworkId;
+use crate::account::account_id::account_type::{
+    FUNGIBLE_FAUCET,
+    NON_FUNGIBLE_FAUCET,
+    REGULAR_ACCOUNT_IMMUTABLE_CODE,
+    REGULAR_ACCOUNT_UPDATABLE_CODE,
 };
+use crate::account::account_id::address_type::AddressType;
+use crate::account::account_id::storage_mode::{NETWORK, PRIVATE, PUBLIC};
+use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
+use crate::errors::{AccountIdError, Bech32Error};
+use crate::utils::{ByteReader, Deserializable, DeserializationError, Serializable};
+use crate::{AccountError, EMPTY_WORD, Felt, Hasher, Word};
 
 // ACCOUNT ID VERSION 0
 // ================================================================================================
@@ -536,13 +532,13 @@ pub(crate) fn compute_digest(seed: Word, code_commitment: Word, storage_commitme
 mod tests {
 
     use super::*;
-    use crate::{
-        account::AccountIdPrefix,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_SENDER,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
+    use crate::account::AccountIdPrefix;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
 
     #[test]

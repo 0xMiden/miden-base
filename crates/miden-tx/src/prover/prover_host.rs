@@ -1,20 +1,23 @@
-use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionEvent;
-use miden_objects::{
-    Word,
-    account::{AccountDelta, PartialAccount},
-    transaction::{InputNote, InputNotes, OutputNote},
-};
+use miden_objects::Word;
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use vm_processor::{
-    AdviceInputs, BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    BaseHost,
+    ErrorContext,
+    ExecutionError,
+    MastForest,
+    MastForestStore,
+    ProcessState,
+    SyncHost,
 };
 
-use crate::{
-    errors::TransactionHostError,
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
-};
+use crate::AccountProcedureIndexMap;
+use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.
@@ -37,21 +40,19 @@ where
     pub fn new(
         account: &PartialAccount,
         input_notes: InputNotes<InputNote>,
-        advice_inputs: &mut AdviceInputs,
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
-        foreign_account_code_commitments: BTreeSet<Word>,
-    ) -> Result<Self, TransactionHostError> {
+        acct_procedure_index_map: AccountProcedureIndexMap,
+    ) -> Self {
         let base_host = TransactionBaseHost::new(
             account,
             input_notes,
-            advice_inputs,
             mast_store,
             scripts_mast_store,
-            foreign_account_code_commitments,
-        )?;
+            acct_procedure_index_map,
+        );
 
-        Ok(Self { base_host })
+        Self { base_host }
     }
 
     // PUBLIC ACCESSORS

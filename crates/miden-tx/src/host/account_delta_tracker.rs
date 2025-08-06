@@ -1,7 +1,5 @@
-use miden_objects::{
-    Felt, FieldElement, ZERO,
-    account::{AccountDelta, AccountId, AccountStorageHeader, AccountVaultDelta},
-};
+use miden_objects::account::{AccountDelta, AccountId, AccountStorageHeader, AccountVaultDelta};
+use miden_objects::{Felt, FieldElement, ZERO};
 
 use crate::host::storage_delta_tracker::StorageDeltaTracker;
 

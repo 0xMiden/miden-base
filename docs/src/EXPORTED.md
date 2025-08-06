@@ -3,8 +3,11 @@
 # Summary
 
 - [Protocol](./index.md)
-    * [Account](./account.md)
-      - [Components](./component_templates.md)
+    * [Accounts](./account/overview.md)
+      - [ID](./account/id.md)
+      - [Code](./account/code.md)
+      - [Storage](./account/storage.md)
+      - [Component](./account/component.md)
     * [Note](./note.md)
     * [Asset](./asset.md)
     * [Transaction](./transaction.md)

@@ -1,12 +1,11 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 use core::ops::RangeTo;
 
-use crate::{
-    PartialBlockchainError,
-    block::{BlockHeader, BlockNumber},
-    crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr},
-    utils::serde::{Deserializable, Serializable},
-};
+use crate::PartialBlockchainError;
+use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
+use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
 // ================================================================================================
@@ -148,6 +147,11 @@ impl PartialBlockchain {
         )
     }
 
+    /// Returns the number of blocks tracked by this partial blockchain.
+    pub fn num_tracked_blocks(&self) -> usize {
+        self.blocks.len()
+    }
+
     /// Returns `true` if a block with the given number is present in this partial blockchain.
     ///
     /// Note that this only checks whether an entry with the block's number exists in the MMR.
@@ -201,7 +205,7 @@ impl PartialBlockchain {
     /// [`PartialBlockchain`].
     ///
     /// This does not change the commitment to the underlying MMR, but the current partial MMR
-    /// will no longer track the removed data.  
+    /// will no longer track the removed data.
     pub fn remove(&mut self, block_num: BlockNumber) {
         if self.blocks.remove(&block_num).is_some() {
             self.mmr.untrack(block_num.as_usize());
@@ -275,12 +279,11 @@ mod tests {
     use vm_core::utils::{Deserializable, Serializable};
 
     use super::PartialBlockchain;
-    use crate::{
-        PartialBlockchainError, Word,
-        alloc::vec::Vec,
-        block::{BlockHeader, BlockNumber},
-        crypto::merkle::{Mmr, PartialMmr},
-    };
+    use crate::alloc::vec::Vec;
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+    use crate::{PartialBlockchainError, Word};
 
     #[test]
     fn test_partial_blockchain_add() {
@@ -420,6 +423,10 @@ mod tests {
     }
 
     fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
+        let fee_parameters =
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
+                .expect("native asset ID should be a fungible faucet ID");
+
         BlockHeader::new(
             0,
             Word::empty(),
@@ -431,6 +438,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
+            fee_parameters,
             0,
         )
     }
@@ -455,14 +463,17 @@ mod tests {
                 .unwrap();
         }
         let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();
+        assert_eq!(chain.num_tracked_blocks(), total_blocks as usize);
 
         chain.remove(BlockNumber::from(2));
         assert!(!chain.contains_block(2.into()));
         assert!(!chain.mmr().is_tracked(2));
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 1) as usize);
 
         assert!(chain.contains_block(3.into()));
 
         chain.prune_to(..40.into());
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 40) as usize);
 
         assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
         for block_num in remove_before..total_blocks {

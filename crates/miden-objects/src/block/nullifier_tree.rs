@@ -1,12 +1,15 @@
-use vm_core::EMPTY_WORD;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use crate::{
-    Word,
-    block::{BlockNumber, NullifierWitness},
-    crypto::merkle::{MutationSet, SMT_DEPTH, Smt},
-    errors::NullifierTreeError,
-    note::Nullifier,
-};
+use vm_core::EMPTY_WORD;
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_processor::DeserializationError;
+
+use crate::Word;
+use crate::block::{BlockNumber, NullifierWitness};
+use crate::crypto::merkle::{MutationSet, SMT_DEPTH, Smt};
+use crate::errors::NullifierTreeError;
+use crate::note::Nullifier;
 
 /// The sparse merkle tree of all nullifiers in the blockchain.
 ///
@@ -193,6 +196,23 @@ impl Default for NullifierTree {
     }
 }
 
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for NullifierTree {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        self.entries().collect::<Vec<_>>().write_into(target);
+    }
+}
+
+impl Deserializable for NullifierTree {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let entries = Vec::<(Nullifier, BlockNumber)>::read_from(source)?;
+        Self::with_entries(entries)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
+
 // NULLIFIER MUTATION SET
 // ================================================================================================
 
@@ -242,7 +262,9 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::NullifierTree;
-    use crate::{NullifierTreeError, Word, block::BlockNumber, note::Nullifier};
+    use crate::block::BlockNumber;
+    use crate::note::Nullifier;
+    use crate::{NullifierTreeError, Word};
 
     #[test]
     fn leaf_value_encoding() {
