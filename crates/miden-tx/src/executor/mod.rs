@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
 
 use miden_lib::{errors::TransactionKernelError, transaction::TransactionKernel};
 use miden_objects::{
@@ -13,7 +13,7 @@ use miden_objects::{
     },
     vm::StackOutputs,
 };
-use notes_checker::NoteConsumptionInfo;
+pub use notes_checker::NoteConsumptionInfo;
 use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
@@ -309,27 +309,22 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
-    ) -> Result<NoteConsumptionInfo, Box<NoteConsumptionError>> {
-        let mut ref_blocks =
-            validate_input_notes(&notes, block_ref).map_err(NoteConsumptionError::PrologueError)?;
+    ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
+        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)
-                .map_err(NoteConsumptionError::PrologueError)?;
+                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        validate_account_inputs(&tx_args, &ref_block)
-            .map_err(NoteConsumptionError::PrologueError)?;
+        validate_account_inputs(&tx_args, &ref_block)?;
 
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)
-            .map_err(NoteConsumptionError::PrologueError)?;
+            .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
-                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)
-                .map_err(NoteConsumptionError::PrologueError)?;
+                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         let input_notes = tx_inputs.input_notes();
 
@@ -340,8 +335,7 @@ where
 
         let acct_procedure_index_map =
             AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)
-                .map_err(NoteConsumptionError::PrologueError)?;
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
@@ -379,11 +373,13 @@ where
                 let ((last_note, _last_note_interval), success_notes) = notes
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
-                let failed_note = input_notes
+                let note = input_notes
                     .iter()
                     .find(|&note| note.id() == *last_note)
-                    .expect("Last note returned from note execution should exist in input notes");
-                let failed = vec![failed_note.note().clone()];
+                    .expect("Last note returned from note execution should exist in input notes")
+                    .note()
+                    .clone();
+                let failed = vec![NoteConsumptionError::ExecutionError { note, error }];
                 // Gather successful notes.
                 let success_notes = success_notes.iter().map(|(id, _)| *id).collect::<Vec<_>>();
                 let successful = tx_inputs
@@ -398,7 +394,7 @@ where
                         }
                     })
                     .collect::<Vec<_>>();
-                Err(NoteConsumptionError::new_execution(failed, successful, error))
+                Ok(NoteConsumptionInfo::new(successful, failed))
             },
         }
     }

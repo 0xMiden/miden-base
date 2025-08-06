@@ -1,4 +1,4 @@
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::{boxed::Box, string::String};
 use core::error::Error;
 
 use miden_lib::transaction::TransactionAdviceMapMismatch;
@@ -80,26 +80,18 @@ pub enum TransactionExecutorError {
 pub enum NoteConsumptionError {
     #[error("note incompatible with target account")]
     AccountCompatibilityError(Note),
-    #[error("error occurred before notes were consumed")]
-    PrologueError(#[source] TransactionExecutorError),
     #[error("error occurred while transactions were executed")]
     ExecutionError {
-        failed: Vec<Note>,
-        successful: Vec<Note>,
+        note: Note,
         #[source]
         error: TransactionExecutorError,
     },
 }
 
 impl NoteConsumptionError {
-    /// Creates a new [`NoteConsumptionError::ExecutionError`] with the given failed notes,
-    /// successful notes, and error.
-    pub fn new_execution(
-        failed: Vec<Note>,
-        successful: Vec<Note>,
-        error: TransactionExecutorError,
-    ) -> Box<Self> {
-        Self::ExecutionError { failed, successful, error }.into()
+    /// Creates a new [`NoteConsumptionError`] instance with the given note and error.
+    pub fn new_execution_error(note: Note, error: TransactionExecutorError) -> Self {
+        Self::ExecutionError { note, error }
     }
 }
 

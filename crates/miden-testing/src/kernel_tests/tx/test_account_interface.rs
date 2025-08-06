@@ -17,8 +17,8 @@ use miden_objects::{
     },
 };
 use miden_tx::{
-    NoteConsumptionChecker, NoteConsumptionError, TransactionExecutor, TransactionExecutorError,
-    auth::UnreachableAuth,
+    NoteConsumptionChecker, NoteConsumptionError, NoteConsumptionInfo, TransactionExecutor,
+    TransactionExecutorError, auth::UnreachableAuth,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
@@ -181,23 +181,31 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         source_manager,
     );
 
-    let execution_check_result = execution_check_result.unwrap_err();
+    let execution_check_result = execution_check_result.unwrap();
     assert_matches!(
-        *execution_check_result,
-        NoteConsumptionError::ExecutionError{
-            failed, successful,
-            error: TransactionExecutorError::TransactionProgramExecutionFailed(
-                ExecutionError::DivideByZero { .. })
-            } => {
-            assert_eq!(
-                failed.first().expect("only one failed note currently supported").id(),
-                failing_note_2.id()
-            );
-            assert_eq!(
-                [successful[0].id(), successful[1].id()],
-                [successful_note_2.id(), successful_note_1.id()]
-            );
-        }
+        execution_check_result,
+        NoteConsumptionInfo {
+            successful,
+            failed,
+        } => {
+                assert_matches!(
+                    failed.first().expect("failed notes should exist"),
+                    NoteConsumptionError::ExecutionError{
+                        note,
+                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. })
+                    } => {
+                        assert_eq!(
+                            note.id(),
+                            failing_note_2.id(),
+                        );
+                    }
+                );
+                assert_eq!(
+                    [successful[0].id(), successful[1].id()],
+                    [successful_note_2.id(), successful_note_1.id()]
+                );
+            }
     );
     Ok(())
 }
