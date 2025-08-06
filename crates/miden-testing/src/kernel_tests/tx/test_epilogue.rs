@@ -2,10 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_lib::errors::tx_kernel_errors::{
-    ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
-    ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
-    ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
-    ERR_TX_INVALID_EXPIRATION_DELTA,
+    ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED, ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME, ERR_TX_INVALID_EXPIRATION_DELTA
 };
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
@@ -553,7 +550,7 @@ fn test_epilogue_increment_nonce_violation() -> anyhow::Result<()> {
             exec.epilogue::finalize_transaction
 
             # truncate the stack
-            movupw.3 dropw movupw.3 dropw movup.9 drop
+            exec.::std::sys::truncate_stack
         end
         "
     );
@@ -562,7 +559,7 @@ fn test_epilogue_increment_nonce_violation() -> anyhow::Result<()> {
         &code,
         TransactionKernel::testing_assembler_with_mock_account(),
     );
-    assert_execution_error!(process, ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE);
+    assert_execution_error!(process, ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED);
 
     Ok(())
 }

@@ -323,15 +323,18 @@ export.finalize_transaction.8
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
 
-    # execute the account authentication procedure
+    # ------ Execute the account's authentication procedure ------
+
     exec.execute_auth_procedure
     # => []
 
-    # build the output vault
+    # ------ Build output vault ------
+
     exec.build_output_vault
     # => []
 
-    # compute output notes commitment
+    # ------ Compute output notes commitment ------
+
     exec.note::compute_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT]
 
@@ -343,6 +346,8 @@ export.finalize_transaction.8
     loc_storew.0 dropw
     # => []
 
+    # ------ Compute fees ------
+
     exec.compute_and_remove_fee
     # => [FEE_ASSET]
 
@@ -350,66 +355,54 @@ export.finalize_transaction.8
     loc_storew.4 dropw
     # => []
 
-    # get the initial account commitment
-    exec.memory::get_init_account_commitment
-    # => [INIT_ACCOUNT_COMMITMENT]
+    # ------ Insert final account data into advice provider ------
 
     # get the offset for the end of the account data section
     exec.memory::get_core_acct_data_end_ptr
-    # => [acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
+    # => [acct_data_end_ptr]
 
     # get the offset for the start of the account data section
     exec.memory::get_current_account_data_ptr
-    # => [acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
+    # => [acct_data_ptr, acct_data_end_ptr]
 
     # compute the final account commitment
     exec.account::compute_current_commitment
-    # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
+    # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr]
 
     # insert final account data into the advice map
     adv.insert_mem
-    # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr, INIT_ACCOUNT_COMMITMENT]
+    # => [FINAL_ACCOUNT_COMMITMENT, acct_data_ptr, acct_data_end_ptr]
 
     # drop account data section pointers
     movup.4 drop movup.4 drop
-    # => [FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-
-    # check if the account has changed
-    eqw not
-    # => [has_acct_changed, FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-
-    # if the account has changed then apply nonce checks
-    if.true
-        # get initial nonce from memory
-        exec.memory::get_init_nonce
-        # => [init_nonce, FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-
-        # get current nonce from memory
-        exec.memory::get_acct_nonce
-        # => [current_nonce, init_nonce, FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-
-        # assert that initial nonce is less than current nonce
-        lt assert.err=ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE
-        # => [FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-    else
-        # assert that this transaction had input notes, otherwise this transaction is empty, which 
-        # is not allowed and will result in an error
-        exec.memory::get_input_notes_commitment padw eqw
-        # => [is_input_notes_commitment_empty, EMPTY_WORD, INPUT_NOTES_COMMITMENT, 
-        #        FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-
-        # assert that the input notes commitment is not an empty word, otherwise there were no input
-        # notes in this transaction
-        assertz.err=ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY dropw dropw
-        # => [FINAL_ACCOUNT_COMMITMENT, INIT_ACCOUNT_COMMITMENT]
-    end
-
-    # drop initial account commitment
-    swapw dropw
     # => [FINAL_ACCOUNT_COMMITMENT]
+
+    # ------ Compute account delta commitment ------
 
     exec.account_delta::compute_commitment
     # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+
+    # ------ Assert that account was changed or notes were consumed ------
+
+    # check if the account delta commitment is the EMPTY_WORD, which is the case when the delta
+    # is empty, i.e. the account did not change in this transaction
+    padw eqw movdn.4 dropw
+    # => [is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+
+    # assert that if the delta commitment is empty, the transaction had input notes,
+    # otherwise this transaction is considered empty, which is not allowed
+    exec.memory::get_input_notes_commitment padw
+    # => [EMPTY_WORD, INPUT_NOTES_COMMITMENT, is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+
+    # if the input notes commitment is an empty word there were no input notes in this transaction
+    eqw movdn.8 dropw dropw and
+    # => [is_delta_commitment_and_input_notes_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+
+    # assert that either the account was changed or notes were consumed
+    assertz.err=ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY
+    # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+
+    # ------ Compute and insert account update commitment ------
 
     # insert into advice map ACCOUNT_UPDATE_COMMITMENT: (FINAL_ACCOUNT_COMMITMENT, ACCOUNT_DELTA_COMMITMENT),
     # where ACCOUNT_UPDATE_COMMITMENT = hash(FINAL_ACCOUNT_COMMITMENT || ACCOUNT_DELTA_COMMITMENT)
@@ -419,10 +412,14 @@ export.finalize_transaction.8
     hmerge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
+    # ------ Assert assets are preserved ------
+
     # assert no net creation or destruction of assets over the transaction
     exec.memory::get_input_vault_root exec.memory::get_output_vault_root
     assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
     # => [ACCOUNT_UPDATE_COMMITMENT]
+
+    # ------ Build output stack ------
 
     exec.memory::get_expiration_block_num movdn.4
     # => [ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
