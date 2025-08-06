@@ -1,8 +1,12 @@
-use super::{
-    AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO,
-    account::AccountType,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use super::account::AccountType;
+use super::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use super::{AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO};
 use crate::account::AccountIdPrefix;
 
 mod fungible;
@@ -265,20 +269,20 @@ fn is_not_a_non_fungible_asset(asset: Word) -> bool {
 #[cfg(test)]
 mod tests {
 
-    use miden_crypto::{
-        Word,
-        utils::{Deserializable, Serializable},
-    };
+    use miden_crypto::Word;
+    use miden_crypto::utils::{Deserializable, Serializable};
 
     use super::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
-    use crate::{
-        account::{AccountId, AccountIdPrefix},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
-            ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
-        },
+    use crate::account::{AccountId, AccountIdPrefix};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
     };
 
     #[test]

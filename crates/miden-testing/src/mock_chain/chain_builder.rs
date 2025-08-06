@@ -1,37 +1,45 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use itertools::Itertools;
-use miden_lib::{
-    account::{faucets::BasicFungibleFaucet, wallets::BasicWallet},
-    note::{create_p2id_note, create_p2ide_note, create_swap_note},
-    transaction::{TransactionKernel, memory},
+use miden_lib::account::faucets::BasicFungibleFaucet;
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_lib::transaction::{TransactionKernel, memory};
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountId,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
 };
-use miden_objects::{
-    Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO,
-    account::{
-        Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, StorageSlot,
-        delta::AccountUpdateDetails,
-    },
-    asset::{Asset, FungibleAsset, TokenSymbol},
-    block::{
-        AccountTree, BlockAccountUpdate, BlockHeader, BlockNoteTree, BlockNumber, Blockchain,
-        FeeParameters, NullifierTree, OutputNoteBatch, ProvenBlock,
-    },
-    note::{Note, NoteDetails, NoteType},
-    testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET,
-    },
-    transaction::{OrderedTransactionHeaders, OutputNote},
+use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::block::{
+    AccountTree,
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteTree,
+    BlockNumber,
+    Blockchain,
+    FeeParameters,
+    NullifierTree,
+    OutputNoteBatch,
+    ProvenBlock,
 };
+use miden_objects::note::{Note, NoteDetails, NoteType};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
+use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
+use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
 use rand::Rng;
 use vm_processor::crypto::RpoRandomCoin;
 
-use crate::{
-    AccountState, Auth, MockChain,
-    mock_chain::chain::AccountCredentials,
-    utils::{create_p2any_note, create_spawn_note},
-};
+use crate::mock_chain::chain::AccountCredentials;
+use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`].
 #[derive(Debug, Clone)]

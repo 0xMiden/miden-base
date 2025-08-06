@@ -1,15 +1,9 @@
 use alloc::vec::Vec;
 
-use crate::{
-    AccountError, Felt, Word,
-    account::{
-        AccountStorageMode, AccountType,
-        account_id::{
-            AccountIdVersion,
-            v0::{compute_digest, validate_prefix},
-        },
-    },
-};
+use crate::account::account_id::AccountIdVersion;
+use crate::account::account_id::v0::{compute_digest, validate_prefix};
+use crate::account::{AccountStorageMode, AccountType};
+use crate::{AccountError, Felt, Word};
 
 /// Finds and returns a seed suitable for creating an account ID for the specified account type
 /// using the provided initial seed as a starting point.

@@ -1,13 +1,12 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 
-use miden_crypto::{
-    Word,
-    merkle::{InnerNodeInfo, SmtLeaf},
-};
+use miden_crypto::Word;
+use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf};
 use vm_core::utils::{Deserializable, Serializable};
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlot};
-use crate::{AccountError, account::PartialStorageMap};
+use crate::AccountError;
+use crate::account::PartialStorageMap;
 
 /// A partial representation of an account storage, containing only a subset of the storage data.
 ///
@@ -128,7 +127,11 @@ mod tests {
     use vm_core::Word;
 
     use crate::account::{
-        AccountStorage, AccountStorageHeader, PartialStorage, StorageMap, StorageSlot,
+        AccountStorage,
+        AccountStorageHeader,
+        PartialStorage,
+        StorageMap,
+        StorageSlot,
     };
 
     #[test]

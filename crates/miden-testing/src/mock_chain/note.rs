@@ -1,7 +1,5 @@
-use miden_objects::{
-    note::{Note, NoteId, NoteInclusionProof, NoteMetadata},
-    transaction::InputNote,
-};
+use miden_objects::note::{Note, NoteId, NoteInclusionProof, NoteMetadata};
+use miden_objects::transaction::InputNote;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use vm_processor::DeserializationError;
 use winterfell::ByteWriter;

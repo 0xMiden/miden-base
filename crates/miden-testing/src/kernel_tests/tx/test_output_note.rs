@@ -1,18 +1,18 @@
 use alloc::string::String;
 
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
-use miden_objects::{
-    Word,
-    account::AccountId,
-    asset::{Asset, FungibleAsset},
-    crypto::rand::RpoRandomCoin,
-    note::{Note, NoteType},
-    testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    },
-    transaction::{OutputNote, TransactionScript},
+use miden_lib::note::create_p2id_note;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::Word;
+use miden_objects::account::AccountId;
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::crypto::rand::RpoRandomCoin;
+use miden_objects::note::{Note, NoteType};
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
 };
+use miden_objects::transaction::OutputNote;
 
 use super::{Felt, TestSetup, setup_test, word_to_masm_push_string};
 use crate::{Auth, MockChain};
@@ -156,8 +156,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         assets_number_1 = output_note_1.assets().num_assets(),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -230,8 +229,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         METADATA = word_to_masm_push_string(&output_note.metadata().into()),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -334,8 +332,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?

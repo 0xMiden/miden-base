@@ -2,9 +2,13 @@ use alloc::string::String;
 use core::fmt::Display;
 
 use super::{Felt, Hasher, NoteDetails, Word};
-use crate::{
-    WordError,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::WordError;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // NOTE ID

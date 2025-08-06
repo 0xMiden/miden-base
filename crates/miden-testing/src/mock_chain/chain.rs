@@ -1,36 +1,48 @@
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    string::ToString,
-    vec::Vec,
-};
+use alloc::boxed::Box;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
-use miden_objects::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError,
-    account::{Account, AccountId, AuthSecretKey, StorageSlot, delta::AccountUpdateDetails},
-    asset::Asset,
-    batch::{ProposedBatch, ProvenBatch},
-    block::{
-        AccountTree, AccountWitness, BlockHeader, BlockInputs, BlockNumber, Blockchain,
-        NullifierTree, NullifierWitness, ProposedBlock, ProvenBlock,
-    },
-    crypto::merkle::SmtProof,
-    note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier},
-    transaction::{
-        AccountInputs, ExecutedTransaction, InputNote, InputNotes, OrderedTransactionHeaders,
-        OutputNote, PartialBlockchain, ProvenTransaction, TransactionHeader, TransactionInputs,
-    },
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{Account, AccountId, AuthSecretKey, StorageSlot};
+use miden_objects::asset::Asset;
+use miden_objects::batch::{ProposedBatch, ProvenBatch};
+use miden_objects::block::{
+    AccountTree,
+    AccountWitness,
+    BlockHeader,
+    BlockInputs,
+    BlockNumber,
+    Blockchain,
+    NullifierTree,
+    NullifierWitness,
+    ProposedBlock,
+    ProvenBlock,
 };
-use miden_tx::{
-    auth::BasicAuthenticator,
-    utils::{ByteReader, Deserializable, Serializable},
+use miden_objects::crypto::merkle::SmtProof;
+use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier};
+use miden_objects::transaction::{
+    AccountInputs,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    OrderedTransactionHeaders,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
+    TransactionHeader,
+    TransactionInputs,
 };
+use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
+use miden_tx::auth::BasicAuthenticator;
+use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{DeserializationError, Word, crypto::RpoRandomCoin};
+use vm_processor::crypto::RpoRandomCoin;
+use vm_processor::{DeserializationError, Word};
 use winterfell::ByteWriter;
 
 use super::note::MockChainNote;
@@ -1357,13 +1369,12 @@ impl From<ExecutedTransaction> for TxContextInput {
 #[cfg(test)]
 mod tests {
     use miden_lib::account::wallets::BasicWallet;
-    use miden_objects::{
-        account::{AccountBuilder, AccountStorageMode},
-        asset::FungibleAsset,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_SENDER,
-        },
+    use miden_objects::account::{AccountBuilder, AccountStorageMode};
+    use miden_objects::asset::FungibleAsset;
+    use miden_objects::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_SENDER,
     };
 
     use super::*;
