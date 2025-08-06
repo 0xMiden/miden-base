@@ -251,9 +251,9 @@ export.::miden::util::note::get_max_inputs_per_note
 #!
 #! Inputs:  []
 #! Outputs: []
-export.add_assets_to_account.256
+export.add_assets_to_account.1024
     # write assets to local memory starting at offset 0
-    # we have allocated MAX_ASSETS_PER_NOTE number of locals so all assets should fit
+    # we have allocated 4 * MAX_ASSETS_PER_NOTE number of locals so all assets should fit
     # since the asset memory will be overwritten, we don't have to initialize the locals to zero
     locaddr.0 exec.get_assets
     # => [num_of_assets, ptr = 0]
