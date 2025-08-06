@@ -136,23 +136,28 @@ impl Deserializable for NoteFile {
 mod tests {
     use alloc::vec::Vec;
 
-    use vm_core::{
-        Felt,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::Felt;
+    use vm_core::utils::{Deserializable, Serializable};
 
-    use crate::{
-        Word,
-        account::AccountId,
-        asset::{Asset, FungibleAsset},
-        block::BlockNumber,
-        note::{
-            Note, NoteAssets, NoteFile, NoteInclusionProof, NoteInputs, NoteMetadata,
-            NoteRecipient, NoteScript, NoteTag, NoteType,
-        },
-        testing::account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-        },
+    use crate::Word;
+    use crate::account::AccountId;
+    use crate::asset::{Asset, FungibleAsset};
+    use crate::block::BlockNumber;
+    use crate::note::{
+        Note,
+        NoteAssets,
+        NoteFile,
+        NoteInclusionProof,
+        NoteInputs,
+        NoteMetadata,
+        NoteRecipient,
+        NoteScript,
+        NoteTag,
+        NoteType,
+    };
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     };
 
     fn create_example_note() -> Note {

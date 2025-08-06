@@ -1,13 +1,24 @@
-use crate::{
-    AccountError, Felt, Hasher, Word, ZERO,
-    asset::AssetVault,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::asset::AssetVault;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{AccountError, Felt, Hasher, Word, ZERO};
 
 mod account_id;
 pub use account_id::{
-    AccountId, AccountIdPrefix, AccountIdPrefixV0, AccountIdV0, AccountIdVersion,
-    AccountStorageMode, AccountType, AddressType, NetworkId,
+    AccountId,
+    AccountIdPrefix,
+    AccountIdPrefixV0,
+    AccountIdV0,
+    AccountIdVersion,
+    AccountStorageMode,
+    AccountType,
+    AddressType,
+    NetworkId,
 };
 
 pub mod auth;
@@ -18,25 +29,47 @@ mod builder;
 pub use builder::AccountBuilder;
 
 pub mod code;
-pub use code::{AccountCode, procedure::AccountProcedureInfo};
+pub use code::AccountCode;
+pub use code::procedure::AccountProcedureInfo;
 
 pub mod component;
 pub use component::{
-    AccountComponent, AccountComponentMetadata, AccountComponentTemplate, FeltRepresentation,
-    InitStorageData, MapEntry, MapRepresentation, PlaceholderTypeRequirement, StorageEntry,
-    StorageValueName, StorageValueNameError, TemplateType, TemplateTypeError, WordRepresentation,
+    AccountComponent,
+    AccountComponentMetadata,
+    AccountComponentTemplate,
+    FeltRepresentation,
+    InitStorageData,
+    MapEntry,
+    MapRepresentation,
+    PlaceholderTypeRequirement,
+    StorageEntry,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateType,
+    TemplateTypeError,
+    WordRepresentation,
 };
 
 pub mod delta;
 pub use delta::{
-    AccountDelta, AccountStorageDelta, AccountVaultDelta, FungibleAssetDelta,
-    NonFungibleAssetDelta, NonFungibleDeltaAction, StorageMapDelta,
+    AccountDelta,
+    AccountStorageDelta,
+    AccountVaultDelta,
+    FungibleAssetDelta,
+    NonFungibleAssetDelta,
+    NonFungibleDeltaAction,
+    StorageMapDelta,
 };
 
 mod storage;
 pub use storage::{
-    AccountStorage, AccountStorageHeader, PartialStorage, PartialStorageMap, StorageMap,
-    StorageSlot, StorageSlotType,
+    AccountStorage,
+    AccountStorageHeader,
+    PartialStorage,
+    PartialStorageMap,
+    StorageMap,
+    StorageSlot,
+    StorageSlotType,
 };
 
 mod header;
@@ -412,29 +445,33 @@ mod tests {
 
     use assembly::Assembler;
     use assert_matches::assert_matches;
-    use miden_crypto::{
-        Felt, Word,
-        utils::{Deserializable, Serializable},
-    };
+    use miden_crypto::utils::{Deserializable, Serializable};
+    use miden_crypto::{Felt, Word};
 
     use super::{
-        AccountCode, AccountDelta, AccountId, AccountStorage, AccountStorageDelta,
+        AccountCode,
+        AccountDelta,
+        AccountId,
+        AccountStorage,
+        AccountStorageDelta,
         AccountVaultDelta,
     };
-    use crate::{
-        AccountError,
-        account::{
-            Account, AccountComponent, AccountType, StorageMap, StorageMapDelta, StorageSlot,
-        },
-        asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-        testing::{
-            account_component::NoopAuthComponent,
-            account_id::{
-                ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            },
-            storage::AccountStorageDeltaBuilder,
-        },
+    use crate::AccountError;
+    use crate::account::{
+        Account,
+        AccountComponent,
+        AccountType,
+        StorageMap,
+        StorageMapDelta,
+        StorageSlot,
     };
+    use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+    use crate::testing::account_component::NoopAuthComponent;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    };
+    use crate::testing::storage::AccountStorageDeltaBuilder;
 
     #[test]
     fn test_serde_account() {

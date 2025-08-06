@@ -1,12 +1,11 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 use core::ops::RangeTo;
 
-use crate::{
-    PartialBlockchainError,
-    block::{BlockHeader, BlockNumber},
-    crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr},
-    utils::serde::{Deserializable, Serializable},
-};
+use crate::PartialBlockchainError;
+use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
+use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
 // ================================================================================================
@@ -280,13 +279,11 @@ mod tests {
     use vm_core::utils::{Deserializable, Serializable};
 
     use super::PartialBlockchain;
-    use crate::{
-        PartialBlockchainError, Word,
-        alloc::vec::Vec,
-        block::{BlockHeader, BlockNumber, FeeParameters},
-        crypto::merkle::{Mmr, PartialMmr},
-        testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    };
+    use crate::alloc::vec::Vec;
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+    use crate::{PartialBlockchainError, Word};
 
     #[test]
     fn test_partial_blockchain_add() {

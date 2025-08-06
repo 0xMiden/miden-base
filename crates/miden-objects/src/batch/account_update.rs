@@ -1,11 +1,16 @@
 use alloc::boxed::Box;
 
-use crate::{
-    Word,
-    account::{AccountId, delta::AccountUpdateDetails},
-    errors::BatchAccountUpdateError,
-    transaction::ProvenTransaction,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::Word;
+use crate::account::AccountId;
+use crate::account::delta::AccountUpdateDetails;
+use crate::errors::BatchAccountUpdateError;
+use crate::transaction::ProvenTransaction;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // BATCH ACCOUNT UPDATE

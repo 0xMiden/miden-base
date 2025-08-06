@@ -1,11 +1,16 @@
-use alloc::{collections::BTreeSet, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
 use super::TransactionInputError;
-use crate::{
-    Felt, Hasher, MAX_INPUT_NOTES_PER_TX, Word,
-    note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::note::{Note, NoteId, NoteInclusionProof, NoteLocation, Nullifier};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{Felt, Hasher, MAX_INPUT_NOTES_PER_TX, Word};
 
 // TO INPUT NOTE COMMITMENT
 // ================================================================================================
@@ -348,12 +353,11 @@ mod input_notes_tests {
     use assert_matches::assert_matches;
 
     use super::InputNotes;
-    use crate::{
-        TransactionInputError,
-        account::AccountId,
-        testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
-        transaction::InputNote,
-    };
+    use crate::TransactionInputError;
+    use crate::account::AccountId;
+    use crate::testing::account_id::ACCOUNT_ID_SENDER;
+    use crate::testing::note::NoteBuilder;
+    use crate::transaction::InputNote;
 
     #[test]
     fn test_duplicate_input_notes() -> anyhow::Result<()> {

@@ -1,17 +1,22 @@
-use alloc::{string::ToString, sync::Arc, vec::Vec};
+use alloc::string::ToString;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Felt, Hasher, TransactionOutputError, Word,
-    account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
-    asset::FungibleAsset,
-    block::BlockNumber,
-    transaction::{
-        OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
-    },
-    utils::{serde::Deserializable, sync::LazyLock},
-    vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs},
+use miden_objects::account::AccountId;
+use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::block::BlockNumber;
+use miden_objects::transaction::{
+    OutputNote,
+    OutputNotes,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionOutputs,
 };
+use miden_objects::utils::serde::Deserializable;
+use miden_objects::utils::sync::LazyLock;
+use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
+use miden_objects::{Felt, Hasher, TransactionOutputError, Word};
 use miden_stdlib::StdLibrary;
 
 use super::MidenLib;
@@ -26,12 +31,17 @@ pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
 
 mod outputs;
 pub use outputs::{
-    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX, EXPIRATION_BLOCK_ELEMENT_IDX, FEE_ASSET_WORD_IDX,
-    OUTPUT_NOTES_COMMITMENT_WORD_IDX, parse_final_account_header,
+    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX,
+    EXPIRATION_BLOCK_ELEMENT_IDX,
+    FEE_ASSET_WORD_IDX,
+    OUTPUT_NOTES_COMMITMENT_WORD_IDX,
+    parse_final_account_header,
 };
 
 pub use crate::errors::{
-    TransactionEventError, TransactionKernelError, TransactionTraceParsingError,
+    TransactionEventError,
+    TransactionKernelError,
+    TransactionTraceParsingError,
 };
 
 mod procedures;
@@ -467,14 +477,13 @@ impl TransactionKernel {
 
 #[cfg(all(any(feature = "testing", test), feature = "std"))]
 mod source_manager_ext {
-    use std::{
-        fs, io,
-        path::{Path, PathBuf},
-        sync::Arc,
-        vec::Vec,
-    };
+    use std::path::{Path, PathBuf};
+    use std::sync::Arc;
+    use std::vec::Vec;
+    use std::{fs, io};
 
-    use miden_objects::assembly::{SourceManager, debuginfo::SourceManagerExt};
+    use miden_objects::assembly::SourceManager;
+    use miden_objects::assembly::debuginfo::SourceManagerExt;
 
     /// Loads all files with a .masm extension in the `asm` directory into the provided source
     /// manager.

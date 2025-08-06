@@ -1,17 +1,19 @@
-use alloc::{
-    collections::{BTreeMap, btree_map::Entry},
-    string::ToString,
-    vec::Vec,
-};
+use alloc::collections::BTreeMap;
+use alloc::collections::btree_map::Entry;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+    AccountDeltaError,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
-use crate::{
-    Felt, LexicographicWord, ONE, Word, ZERO,
-    account::{AccountId, AccountType},
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-};
+use crate::account::{AccountId, AccountType};
+use crate::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use crate::{Felt, LexicographicWord, ONE, Word, ZERO};
 
 // ACCOUNT VAULT DELTA
 // ================================================================================================
@@ -543,12 +545,11 @@ pub enum NonFungibleDeltaAction {
 #[cfg(test)]
 mod tests {
     use super::{AccountVaultDelta, Deserializable, Serializable};
-    use crate::{
-        account::{AccountId, AccountIdPrefix},
-        asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        },
+    use crate::account::{AccountId, AccountIdPrefix};
+    use crate::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     };
 
     #[test]

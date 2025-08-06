@@ -1,21 +1,18 @@
 extern crate alloc;
 
-use miden_lib::{
-    account::faucets::FungibleFaucetExt,
-    errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
-    transaction::TransactionKernel,
-};
-use miden_objects::{
-    Felt, Word,
-    asset::{Asset, FungibleAsset},
-    note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
-    transaction::{OutputNote, TransactionScript},
-};
+use miden_lib::account::faucets::FungibleFaucetExt;
+use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
+use miden_objects::transaction::OutputNote;
+use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
 
 use crate::{
-    assert_transaction_executor_error, get_note_with_fungible_asset_and_script,
+    assert_transaction_executor_error,
+    get_note_with_fungible_asset_and_script,
     prove_and_verify_transaction,
 };
 
@@ -67,8 +64,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         note_execution_hint = Felt::from(note_execution_hint)
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler()).unwrap();
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_code)?;
     let tx_context = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
@@ -132,8 +128,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         recipient = word_to_masm_push_string(&recipient),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_code, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_code)?;
     let tx = mock_chain
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)

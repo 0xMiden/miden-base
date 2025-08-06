@@ -1,25 +1,18 @@
-use alloc::{
-    boxed::Box,
-    collections::BTreeMap,
-    string::{String, ToString},
-};
-use core::{
-    error::Error,
-    fmt::{self, Display},
-};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::string::{String, ToString};
+use core::error::Error;
+use core::fmt::{self, Display};
 
-use miden_crypto::{
-    dsa::rpo_falcon512::{self},
-    word::parse_hex_string_as_word,
-};
+use miden_crypto::dsa::rpo_falcon512::{self};
+use miden_crypto::word::parse_hex_string_as_word;
 use thiserror::Error;
-use vm_core::{
-    Felt, Word,
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
-};
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_core::{Felt, Word};
 use vm_processor::DeserializationError;
 
-use crate::{asset::TokenSymbol, utils::sync::LazyLock};
+use crate::asset::TokenSymbol;
+use crate::utils::sync::LazyLock;
 
 /// A global registry for template converters.
 ///

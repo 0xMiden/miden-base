@@ -1,12 +1,12 @@
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
+use alloc::vec::Vec;
 
-use crate::{
-    AccountError,
-    account::{AccountComponent, StorageSlot},
-    assembly::{Assembler, Library, diagnostics::NamedSource},
-    testing::account_code::MOCK_ACCOUNT_CODE,
-    utils::sync::LazyLock,
-};
+use crate::AccountError;
+use crate::account::{AccountComponent, StorageSlot};
+use crate::assembly::diagnostics::NamedSource;
+use crate::assembly::{Assembler, Library};
+use crate::testing::account_code::MOCK_ACCOUNT_CODE;
+use crate::utils::sync::LazyLock;
 
 // ACCOUNT COMPONENT ASSEMBLY CODE
 // ================================================================================================

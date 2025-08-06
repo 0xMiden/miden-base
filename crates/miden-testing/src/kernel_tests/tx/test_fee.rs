@@ -1,5 +1,6 @@
 use anyhow::Context;
-use miden_objects::{self, Felt, Word, asset::FungibleAsset};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::{self, Felt, Word};
 
 use crate::{Auth, MockChain};
 

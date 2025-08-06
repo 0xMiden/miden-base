@@ -1,14 +1,20 @@
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use miden_crypto::EMPTY_WORD;
 use vm_core::{Felt, Word};
 
-use crate::{
-    AccountDeltaError,
-    account::{AccountStorage, AccountStorageDelta, StorageMap, StorageMapDelta, StorageSlot},
-    note::NoteAssets,
-    utils::word_to_masm_push_string,
+use crate::AccountDeltaError;
+use crate::account::{
+    AccountStorage,
+    AccountStorageDelta,
+    StorageMap,
+    StorageMapDelta,
+    StorageSlot,
 };
+use crate::note::NoteAssets;
+use crate::utils::word_to_masm_push_string;
 
 // ACCOUNT STORAGE DELTA BUILDER
 // ================================================================================================
