@@ -8,8 +8,7 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     note::NoteType,
     testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     },
     transaction::{OutputNote, TransactionScript},
     vm::AdviceMap,
