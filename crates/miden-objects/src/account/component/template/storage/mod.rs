@@ -1,21 +1,25 @@
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::boxed::Box;
+use alloc::string::String;
+use alloc::vec::Vec;
 use core::ops::Range;
 
-use vm_core::{
-    Felt, FieldElement,
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
-};
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use vm_core::{Felt, FieldElement};
 use vm_processor::DeserializationError;
 
 mod entry_content;
 pub use entry_content::*;
 
 use super::AccountComponentTemplateError;
-use crate::{Word, account::StorageSlot};
+use crate::Word;
+use crate::account::StorageSlot;
 
 mod placeholder;
 pub use placeholder::{
-    PlaceholderTypeRequirement, StorageValueName, StorageValueNameError, TemplateType,
+    PlaceholderTypeRequirement,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateType,
     TemplateTypeError,
 };
 
@@ -368,33 +372,38 @@ impl Deserializable for MapEntry {
 
 #[cfg(test)]
 mod tests {
-    use alloc::{collections::BTreeSet, string::ToString};
-    use core::{error::Error, panic};
+    use alloc::collections::BTreeSet;
+    use alloc::string::ToString;
+    use core::error::Error;
+    use core::panic;
 
     use assembly::Assembler;
     use semver::Version;
-    use vm_core::{
-        EMPTY_WORD, Felt, Word,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::utils::{Deserializable, Serializable};
+    use vm_core::{EMPTY_WORD, Felt, Word};
 
-    use crate::{
-        AccountError,
-        account::{
-            AccountComponent, AccountComponentTemplate, AccountType, FeltRepresentation,
-            StorageEntry, StorageSlot, TemplateTypeError, WordRepresentation,
-            component::{
-                FieldIdentifier,
-                template::{
-                    AccountComponentMetadata, InitStorageData, MapEntry, MapRepresentation,
-                    StorageValueName, storage::placeholder::TemplateType,
-                },
-            },
-        },
-        errors::AccountComponentTemplateError,
-        testing::account_code::CODE,
-        word,
+    use crate::account::component::FieldIdentifier;
+    use crate::account::component::template::storage::placeholder::TemplateType;
+    use crate::account::component::template::{
+        AccountComponentMetadata,
+        InitStorageData,
+        MapEntry,
+        MapRepresentation,
+        StorageValueName,
     };
+    use crate::account::{
+        AccountComponent,
+        AccountComponentTemplate,
+        AccountType,
+        FeltRepresentation,
+        StorageEntry,
+        StorageSlot,
+        TemplateTypeError,
+        WordRepresentation,
+    };
+    use crate::errors::AccountComponentTemplateError;
+    use crate::testing::account_code::CODE;
+    use crate::{AccountError, word};
 
     #[test]
     fn test_storage_entry_serialization() {

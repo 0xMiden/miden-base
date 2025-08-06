@@ -1,13 +1,18 @@
-use alloc::{sync::Arc, vec::Vec};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 use core::fmt::Display;
 
 use super::Felt;
-use crate::{
-    NoteError, PrettyPrint, Word,
-    assembly::mast::{MastForest, MastNodeId},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::Program,
+use crate::assembly::mast::{MastForest, MastNodeId};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::vm::Program;
+use crate::{NoteError, PrettyPrint, Word};
 
 // NOTE SCRIPT
 // ================================================================================================
@@ -194,7 +199,8 @@ impl Display for NoteScript {
 #[cfg(test)]
 mod tests {
     use super::{Felt, NoteScript, Vec};
-    use crate::{assembly::Assembler, testing::note::DEFAULT_NOTE_CODE};
+    use crate::assembly::Assembler;
+    use crate::testing::note::DEFAULT_NOTE_CODE;
 
     #[test]
     fn test_note_script_to_from_felt() {

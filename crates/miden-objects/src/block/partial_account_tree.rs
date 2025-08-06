@@ -1,12 +1,10 @@
 use miden_crypto::merkle::SmtLeaf;
 
-use crate::{
-    Word,
-    account::AccountId,
-    block::{AccountTree, AccountWitness},
-    crypto::merkle::PartialSmt,
-    errors::AccountTreeError,
-};
+use crate::Word;
+use crate::account::AccountId;
+use crate::block::{AccountTree, AccountWitness};
+use crate::crypto::merkle::PartialSmt;
+use crate::errors::AccountTreeError;
 
 /// The partial sparse merkle tree containing the state commitments of accounts in the chain.
 ///

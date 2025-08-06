@@ -8,10 +8,10 @@ extern crate alloc;
 #[cfg(feature = "std")]
 extern crate std;
 
-use miden_objects::{
-    assembly::{Library, mast::MastForest},
-    utils::{serde::Deserializable, sync::LazyLock},
-};
+use miden_objects::assembly::Library;
+use miden_objects::assembly::mast::MastForest;
+use miden_objects::utils::serde::Deserializable;
+use miden_objects::utils::sync::LazyLock;
 
 mod auth;
 pub use auth::AuthScheme;

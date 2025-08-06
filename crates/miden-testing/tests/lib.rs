@@ -5,17 +5,18 @@ mod scripts;
 mod wallet;
 
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::{
-    Word, ZERO,
-    account::AccountId,
-    asset::FungibleAsset,
-    crypto::utils::Serializable,
-    note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteType},
-    testing::account_id::ACCOUNT_ID_SENDER,
-    transaction::{ExecutedTransaction, ProvenTransaction},
-};
+use miden_objects::account::AccountId;
+use miden_objects::asset::FungibleAsset;
+use miden_objects::crypto::utils::Serializable;
+use miden_objects::note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteType};
+use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
+use miden_objects::{Word, ZERO};
 use miden_tx::{
-    LocalTransactionProver, ProvingOptions, TransactionProver, TransactionVerifier,
+    LocalTransactionProver,
+    ProvingOptions,
+    TransactionProver,
+    TransactionVerifier,
     TransactionVerifierError,
 };
 use vm_processor::utils::Deserializable;

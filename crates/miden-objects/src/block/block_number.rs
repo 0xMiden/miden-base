@@ -1,8 +1,13 @@
-use core::{fmt, ops::Add};
+use core::fmt;
+use core::ops::Add;
 
-use crate::{
-    Felt,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::Felt;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // BLOCK NUMBER

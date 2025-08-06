@@ -1,33 +1,31 @@
-use alloc::{
-    collections::BTreeMap,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::collections::BTreeMap;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::fmt;
 
-use serde::{
-    Deserialize, Deserializer, Serialize, Serializer,
-    de::{self, Error, MapAccess, SeqAccess, Visitor, value::MapAccessDeserializer},
-    ser::{SerializeMap, SerializeStruct},
-};
+use serde::de::value::MapAccessDeserializer;
+use serde::de::{self, Error, MapAccess, SeqAccess, Visitor};
+use serde::ser::{SerializeMap, SerializeStruct};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use vm_core::Felt;
 
+use super::placeholder::TemplateType;
 use super::{
-    FeltRepresentation, InitStorageData, MapEntry, MapRepresentation, MultiWordRepresentation,
-    StorageEntry, StorageValueNameError, WordRepresentation, placeholder::TemplateType,
+    FeltRepresentation,
+    InitStorageData,
+    MapEntry,
+    MapRepresentation,
+    MultiWordRepresentation,
+    StorageEntry,
+    StorageValueNameError,
+    WordRepresentation,
 };
-use crate::{
-    account::{
-        AccountComponentMetadata, StorageValueName,
-        component::{
-            FieldIdentifier,
-            template::storage::placeholder::{TEMPLATE_REGISTRY, TemplateFelt},
-        },
-    },
-    errors::AccountComponentTemplateError,
-    utils::parse_hex_string_as_word,
-};
+use crate::account::component::FieldIdentifier;
+use crate::account::component::template::storage::placeholder::{TEMPLATE_REGISTRY, TemplateFelt};
+use crate::account::{AccountComponentMetadata, StorageValueName};
+use crate::errors::AccountComponentTemplateError;
+use crate::utils::parse_hex_string_as_word;
 
 // ACCOUNT COMPONENT METADATA TOML FROM/TO
 // ================================================================================================

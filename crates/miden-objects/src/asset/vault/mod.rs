@@ -1,14 +1,19 @@
 use alloc::string::ToString;
 
 use super::{
-    AccountType, Asset, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    FungibleAsset, NonFungibleAsset, Serializable,
+    AccountType,
+    Asset,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    FungibleAsset,
+    NonFungibleAsset,
+    Serializable,
 };
-use crate::{
-    AssetVaultError, Word,
-    account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction},
-    crypto::merkle::Smt,
-};
+use crate::account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction};
+use crate::crypto::merkle::Smt;
+use crate::{AssetVaultError, Word};
 
 mod partial;
 pub use partial::PartialVault;

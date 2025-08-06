@@ -1,10 +1,8 @@
 use alloc::vec::Vec;
 
-use crate::{
-    PartialBlockchainError,
-    block::{BlockHeader, BlockNumber, Blockchain},
-    transaction::PartialBlockchain,
-};
+use crate::PartialBlockchainError;
+use crate::block::{BlockHeader, BlockNumber, Blockchain};
+use crate::transaction::PartialBlockchain;
 
 impl PartialBlockchain {
     /// Converts the [`Blockchain`] into a [`PartialBlockchain`] by selectively copying all leaves
