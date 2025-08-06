@@ -198,7 +198,7 @@ where
         let (stack_outputs, advice_provider) = processor
             .execute(&TransactionKernel::main(), &mut host)
             .await
-            .map_err(|err| map_execution_error(err))?;
+            .map_err(map_execution_error)?;
 
         // The stack is not necessary since it is being reconstructed when re-executing.
         let (_stack, advice_map, merkle_store) = advice_provider.into_parts();

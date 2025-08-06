@@ -200,7 +200,7 @@ where
                     TransactionEventHandling::Handled(mutations) => Ok(mutations),
                     TransactionEventHandling::Unhandled(_data) => {
                         Err(Box::new(TransactionKernelError::MissingAuthenticator)
-                            as Box<dyn std::error::Error + Send + Sync + 'static>)
+                            as Box<dyn core::error::Error + Send + Sync + 'static>)
                     },
                 },
             }
