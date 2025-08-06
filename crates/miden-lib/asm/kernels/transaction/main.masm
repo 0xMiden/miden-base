@@ -1,4 +1,4 @@
-use.std::utils
+use.std::word
 
 use.$kernel::epilogue
 use.$kernel::memory
@@ -132,7 +132,7 @@ proc.main.1
     padw dup.4 mem_loadw
     # => [TX_SCRIPT_ROOT, tx_script_root_ptr, pad(16)]
 
-    exec.utils::is_empty_word not movdn.4 dropw
+    exec.word::eqz not movdn.4 dropw
     # => [has_tx_script, tx_script_root_ptr, pad(16)]
 
     if.true

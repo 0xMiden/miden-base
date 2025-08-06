@@ -56,9 +56,9 @@ checksum = "4b46cbb362ab8752921c97e041f5e366ee6297bd428a31275b9fcf1e380f7299"
 
 [[package]]
 name = "anstream"
-version = "0.6.19"
+version = "0.6.20"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "301af1932e46185686725e0fad2f8f2aa7da69dd70bf6ecc44d6b703844a3933"
+checksum = "3ae563653d1938f79b1ab1b5e668c87c76a9930414574a6583a7b7e11a8e6192"
 dependencies = [
  "anstyle",
  "anstyle-parse",
@@ -86,22 +86,22 @@ dependencies = [
 
 [[package]]
 name = "anstyle-query"
-version = "1.1.3"
+version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c8bdeb6047d8983be085bab0ba1472e6dc604e7041dbf6fcd5e71523014fae9"
+checksum = "9e231f6134f61b71076a3eab506c379d4f36122f2af15a9ff04415ea4c3339e2"
 dependencies = [
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
 name = "anstyle-wincon"
-version = "3.0.9"
+version = "3.0.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "403f75924867bb1033c59fbf0797484329750cfbe3c4325cd33127941fabc882"
+checksum = "3e0633414522a32ffaac8ac6cc8f748e090c5717661fddeea04219e2344f5f2a"
 dependencies = [
  "anstyle",
  "once_cell_polyfill",
- "windows-sys 0.59.0",
+ "windows-sys 0.60.2",
 ]
 
 [[package]]
@@ -270,9 +270,9 @@ checksum = "37b2a672a2cb129a2e41c10b1224bb368f9f37a2b16b612598138befd7b37eb5"
 
 [[package]]
 name = "cc"
-version = "1.2.30"
+version = "1.2.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "deec109607ca693028562ed836a5f1c4b8bd77755c4e132fc5ce11b0b6211ae7"
+checksum = "c3a42d84bb6b69d3a8b3eaacf0d88f179e1929695e1ad012b6cf64d9caaa5fd2"
 dependencies = [
  "jobserver",
  "libc",
@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "miden-core",
  "thiserror 2.0.12",
@@ -1034,7 +1034,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "log",
  "miden-assembly-syntax",
@@ -1047,7 +1047,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -1056,6 +1056,7 @@ dependencies = [
  "miden-core",
  "miden-debug-types",
  "miden-utils-diagnostics",
+ "midenc-hir-type",
  "regex",
  "rustc_version 0.4.1",
  "semver 1.0.26",
@@ -1090,7 +1091,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1125,7 +1126,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1165,7 +1166,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1247,7 +1248,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -1262,7 +1263,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "miden-air",
  "miden-debug-types",
@@ -1275,7 +1276,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "env_logger",
  "miden-assembly",
@@ -1338,7 +1339,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1350,7 +1351,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "lock_api",
  "loom",
@@ -1360,13 +1361,24 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.17.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#a35aa4dccef9ecc960e73e6a8b40ee824170791c"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=async-experimental#1bd6781364d43ba422e9739b303dc56ba6950fb1"
 dependencies = [
  "miden-air",
  "miden-core",
  "thiserror 2.0.12",
  "tracing",
  "winter-verifier",
+]
+
+[[package]]
+name = "midenc-hir-type"
+version = "0.1.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "e381ba23e4f57ffa0d6039113f6d6004e5b8c7ae6cb909329b48f2ab525e8680"
+dependencies = [
+ "miden-formatting",
+ "smallvec",
+ "thiserror 2.0.12",
 ]
 
 [[package]]
@@ -2018,9 +2030,9 @@ dependencies = [
 
 [[package]]
 name = "serde_json"
-version = "1.0.141"
+version = "1.0.142"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "30b9eff21ebe718216c6ec64e1d9ac57087aad11efc64e32002bce4a0d4c03d3"
+checksum = "030fedb782600dcbd6f02d479bf0d817ac3bb40d644745b769d6a96bc3afc5a7"
 dependencies = [
  "indexmap",
  "itoa",
@@ -2167,9 +2179,9 @@ checksum = "b7401a30af6cb5818bb64852270bb722533397edcfc7344954a38f420819ece2"
 
 [[package]]
 name = "symbolic-common"
-version = "12.16.0"
+version = "12.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9c5199e46f23c77c611aa2a383b2f72721dfee4fb2bf85979eea1e0f26ba6e35"
+checksum = "70f4d06896c59fabe3fe36d7bc003c975f0a0af67d380e14a95eaebffe4f8de5"
 dependencies = [
  "debugid",
  "memmap2",
@@ -2179,9 +2191,9 @@ dependencies = [
 
 [[package]]
 name = "symbolic-demangle"
-version = "12.16.0"
+version = "12.16.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fa3c03956e32254f74e461a330b9522a2689686d80481708fb2014780d8d3959"
+checksum = "bd3903bafe2ed4c3512ff4c6eb77cc22b6f43662f3b9f7e3fe4f152927f54ec8"
 dependencies = [
  "rustc-demangle",
  "symbolic-common",
@@ -2317,9 +2329,9 @@ dependencies = [
 
 [[package]]
 name = "tokio"
-version = "1.47.0"
+version = "1.47.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "43864ed400b6043a4757a25c7a64a8efde741aed79a056a2fb348a406701bb35"
+checksum = "89e49afdadebb872d3145a5638b59eb0691ea23e46ca484037cfab3b76b95038"
 dependencies = [
  "backtrace",
  "io-uring",
@@ -2355,9 +2367,9 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.9.4"
+version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "41ae868b5a0f67631c14589f7e250c1ea2c574ee5ba21c6c8dd4b1485705a5a1"
+checksum = "75129e1dc5000bfbaa9fee9d1b21f974f9fbad9daec557a521ee6e080825f6e8"
 dependencies = [
  "indexmap",
  "serde",
@@ -2402,9 +2414,9 @@ dependencies = [
 
 [[package]]
 name = "toml_parser"
-version = "1.0.1"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "97200572db069e74c512a14117b296ba0a80a30123fbbb5aa1f4a348f639ca30"
+checksum = "b551886f449aa90d4fe2bdaa9f4a2577ad2dde302c61ecf262d80b116db95c10"
 dependencies = [
  "winnow",
 ]
@@ -2484,9 +2496,9 @@ dependencies = [
 
 [[package]]
 name = "trybuild"
-version = "1.0.108"
+version = "1.0.110"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e087ef3afcfc5301c6a67d03db4ffaaf70b2fc4b753d3b42558d8a5a7e770f43"
+checksum = "32e257d7246e7a9fd015fb0b28b330a8d4142151a33f03e6a497754f4b1f6a8e"
 dependencies = [
  "dissimilar",
  "glob",
@@ -2495,7 +2507,7 @@ dependencies = [
  "serde_json",
  "target-triple",
  "termcolor",
- "toml 0.9.4",
+ "toml 0.9.5",
 ]
 
 [[package]]
