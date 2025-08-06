@@ -1,15 +1,24 @@
 use anyhow::Context;
-use miden_lib::{note::utils, transaction::TransactionKernel};
-use miden_objects::{
-    Felt, NoteError, Word,
-    account::{Account, AccountId, AccountStorageMode, AccountType},
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-    note::{Note, NoteAssets, NoteDetails, NoteExecutionHint, NoteMetadata, NoteTag, NoteType},
-    testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, AccountIdBuilder,
-    },
-    transaction::{OutputNote, TransactionScript},
+use miden_lib::note::utils;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteDetails,
+    NoteExecutionHint,
+    NoteMetadata,
+    NoteTag,
+    NoteType,
 };
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    AccountIdBuilder,
+};
+use miden_objects::transaction::OutputNote;
+use miden_objects::{Felt, NoteError, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
 
@@ -53,11 +62,7 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
         note_execution_hint = Felt::from(swap_note.metadata().execution_hint())
     );
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        TransactionKernel::testing_assembler().with_debug_mode(true),
-    )
-    .unwrap();
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     let create_swap_note_tx = mock_chain
         .build_tx_context(sender_account.id(), &[], &[])

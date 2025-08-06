@@ -114,8 +114,16 @@ const.PROOF_COMMITMENT_PTR=824
 # The memory address at which the block metadata is stored [block_number, version, timestamp, 0]
 const.BLOCK_METADATA_PTR=828
 
+# The memory address at which the fee parameters are stored. These occupy a double word.
+# [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
+# [0, 0, 0, 0]
+const.FEE_PARAMETERS_PTR=832
+
+# The memory address at which the verification base fee is stored.
+const.VERIFICATION_BASE_FEE_PTR=FEE_PARAMETERS_PTR+2
+
 # The memory address at which the note root is stored
-const.NOTE_ROOT_PTR=832
+const.NOTE_ROOT_PTR=840
 
 # PARTIAL BLOCKCHAIN
 # -------------------------------------------------------------------------------------------------
@@ -207,11 +215,12 @@ const.INPUT_NOTE_SERIAL_NUM_OFFSET=4
 const.INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
 const.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
 const.INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
-const.INPUT_NOTE_METADATA_OFFSET=20
-const.INPUT_NOTE_ARGS_OFFSET=24
-const.INPUT_NOTE_NUM_INPUTS_OFFSET=28
-const.INPUT_NOTE_NUM_ASSETS_OFFSET=32
-const.INPUT_NOTE_ASSETS_OFFSET=36
+const.INPUT_NOTE_RECIPIENT_OFFSET=20
+const.INPUT_NOTE_METADATA_OFFSET=24
+const.INPUT_NOTE_ARGS_OFFSET=28
+const.INPUT_NOTE_NUM_INPUTS_OFFSET=32
+const.INPUT_NOTE_NUM_ASSETS_OFFSET=36
+const.INPUT_NOTE_ASSETS_OFFSET=40
 
 # OUTPUT NOTES
 # -------------------------------------------------------------------------------------------------
@@ -615,6 +624,31 @@ end
 const.BLOCK_METADATA_TIMESTAMP_PTR=BLOCK_METADATA_PTR+2
 export.get_blk_timestamp
     mem_load.BLOCK_METADATA_TIMESTAMP_PTR
+end
+
+#! Returns the faucet ID of the native asset as defined in the transaction's reference block.
+#!
+#! Inputs:  []
+#! Outputs: [native_asset_id_prefix, native_asset_id_suffix]
+#!
+#! Where:
+#! - native_asset_id_{prefix,suffix} are the prefix and suffix felts of the faucet ID that defines
+#!   the native asset.
+export.get_native_asset_id
+    padw mem_loadw.FEE_PARAMETERS_PTR drop drop
+    # => [native_asset_id_prefix, native_asset_id_suffix]
+end
+
+#! Returns the verification base fee from the transaction's reference block.
+#!
+#! Inputs:  []
+#! Outputs: [verification_base_fee]
+#!
+#! Where:
+#! - verification_base_fee is the base fee capturing the cost for the verification of a
+#!   transaction.
+export.get_verification_base_fee
+    mem_load.VERIFICATION_BASE_FEE_PTR
 end
 
 #! Returns the chain commitment of the transaction reference block.
@@ -1547,6 +1581,33 @@ export.get_input_note_assets_ptr
     add.INPUT_NOTE_ASSETS_OFFSET
 end
 
+#! Returns the input note recipient.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the input note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+export.get_input_note_recipient
+    padw
+    movup.4 add.INPUT_NOTE_RECIPIENT_OFFSET
+    mem_loadw
+end
+
+#! Sets the input note's recipient.
+#!
+#! Inputs:  [note_ptr, RECIPIENT]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
+export.set_input_note_recipient
+    add.INPUT_NOTE_RECIPIENT_OFFSET
+    mem_storew
+end
+
 #! Returns the assets commitment for the input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
@@ -1635,12 +1696,12 @@ end
 
 #! Returns the output note recipient.
 #!
-#! Inputs:  [output_note_data_ptr]
+#! Inputs:  [note_ptr]
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - output_note_data_ptr is the memory address at which the output note data begins.
-#! - RECIPIENT is the recipient of the output note.
+#! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.get_output_note_recipient
     padw
     movup.4 add.OUTPUT_NOTE_RECIPIENT_OFFSET
@@ -1653,11 +1714,25 @@ end
 #! Outputs: [RECIPIENT]
 #!
 #! Where:
-#! - RECIPIENT is the recipient of the note.
 #! - note_ptr is the memory address at which the output note data begins.
+#! - RECIPIENT is the commitment to the note's script, inputs and the serial number.
 export.set_output_note_recipient
     add.OUTPUT_NOTE_RECIPIENT_OFFSET
     mem_storew
+end
+
+#! Returns the output note's metadata.
+#!
+#! Inputs:  [note_ptr]
+#! Outputs: [METADATA]
+#!
+#! Where:
+#! - METADATA is the note metadata.
+#! - note_ptr is the memory address at which the output note data begins.
+export.get_output_note_metadata
+    padw
+    movup.4 add.OUTPUT_NOTE_METADATA_OFFSET
+    mem_loadw
 end
 
 #! Sets the output note's metadata.

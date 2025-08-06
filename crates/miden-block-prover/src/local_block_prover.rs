@@ -1,17 +1,25 @@
-use std::{collections::BTreeMap, vec::Vec};
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    Word,
-    account::AccountId,
-    block::{
-        AccountUpdateWitness, BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree,
-        BlockNumber, NullifierWitness, OutputNoteBatch, PartialAccountTree, PartialNullifierTree,
-        ProposedBlock, ProvenBlock,
-    },
-    note::Nullifier,
-    transaction::PartialBlockchain,
+use miden_objects::Word;
+use miden_objects::account::AccountId;
+use miden_objects::block::{
+    AccountUpdateWitness,
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
+    BlockNumber,
+    NullifierWitness,
+    OutputNoteBatch,
+    PartialAccountTree,
+    PartialNullifierTree,
+    ProposedBlock,
+    ProvenBlock,
 };
+use miden_objects::note::Nullifier;
+use miden_objects::transaction::PartialBlockchain;
 
 use crate::errors::ProvenBlockError;
 
@@ -91,6 +99,10 @@ impl LocalBlockProver {
         ) = proposed_block.into_parts();
 
         let prev_block_commitment = prev_block_header.commitment();
+        // For now we copy the parameters of the previous header, which means the parameters set on
+        // the genesis block will be passed through. Eventually, the contained base fees will be
+        // updated based on the demand in the currently proposed block.
+        let fee_parameters = prev_block_header.fee_parameters().clone();
 
         // Compute the root of the block note tree.
         // --------------------------------------------------------------------------------------------
@@ -162,6 +174,7 @@ impl LocalBlockProver {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            fee_parameters,
             timestamp,
         );
 

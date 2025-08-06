@@ -1,9 +1,13 @@
-use alloc::{boxed::Box, collections::BTreeMap, string::ToString, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::string::ToString;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Felt, Hasher, Word, account::AuthSecretKey, crypto::SequentialCommit,
-    transaction::TransactionSummary,
-};
+use miden_objects::account::AuthSecretKey;
+use miden_objects::crypto::SequentialCommit;
+use miden_objects::transaction::TransactionSummary;
+use miden_objects::{Felt, Hasher, Word};
 use rand::Rng;
 use tokio::sync::RwLock;
 use vm_processor::AsyncHostFuture;
@@ -129,7 +133,8 @@ pub struct BasicAuthenticator<R> {
 impl<R: Rng> BasicAuthenticator<R> {
     #[cfg(feature = "std")]
     pub fn new(keys: &[(Word, AuthSecretKey)]) -> BasicAuthenticator<rand::rngs::StdRng> {
-        use rand::{SeedableRng, rngs::StdRng};
+        use rand::SeedableRng;
+        use rand::rngs::StdRng;
 
         let rng = StdRng::from_os_rng();
         BasicAuthenticator::<StdRng>::new_with_rng(keys, rng)
@@ -208,7 +213,8 @@ impl TransactionAuthenticator for () {
 #[cfg(test)]
 mod test {
     use miden_lib::utils::{Deserializable, Serializable};
-    use miden_objects::{account::AuthSecretKey, crypto::dsa::rpo_falcon512::SecretKey};
+    use miden_objects::account::AuthSecretKey;
+    use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 
     #[test]
     fn serialize_auth_key() {

@@ -1,17 +1,24 @@
 extern crate alloc;
-pub use alloc::{collections::BTreeMap, string::String};
+pub use alloc::collections::BTreeMap;
+pub use alloc::string::String;
 use std::fs::{read_to_string, write};
 
 use anyhow::Context;
-use miden_lib::account::{auth::AuthRpoFalcon512, wallets::BasicWallet};
-use miden_objects::{
-    account::{Account, AccountBuilder, AccountStorageMode, AccountType, AuthSecretKey},
-    asset::Asset,
-    crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
-    transaction::TransactionMeasurements,
+use miden_lib::account::auth::AuthRpoFalcon512;
+use miden_lib::account::wallets::BasicWallet;
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountStorageMode,
+    AccountType,
+    AuthSecretKey,
 };
+use miden_objects::asset::Asset;
+use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
+use miden_objects::transaction::TransactionMeasurements;
 use miden_tx::auth::BasicAuthenticator;
-use rand_chacha::{ChaCha20Rng, rand_core::SeedableRng};
+use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
 use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 
@@ -24,14 +31,6 @@ use super::{Benchmark, Path};
 pub const ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET: u128 = 0x00aa00000000bc200000bc000000de00;
 pub const ACCOUNT_ID_SENDER: u128 = 0x00fa00000000bb800000cc000000de00;
 
-pub const DEFAULT_AUTH_SCRIPT: &str = "
-    begin
-        padw padw padw padw
-        call.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
-        dropw dropw dropw dropw
-    end
-";
-
 // MEASUREMENTS PRINTER
 // ================================================================================================
 
@@ -42,19 +41,24 @@ pub struct MeasurementsPrinter {
     note_execution: BTreeMap<String, usize>,
     tx_script_processing: usize,
     epilogue: usize,
+    after_tx_fee_computed_cycles: usize,
 }
 
 impl From<TransactionMeasurements> for MeasurementsPrinter {
-    fn from(value: TransactionMeasurements) -> Self {
-        let note_execution_map =
-            value.note_execution.iter().map(|(id, len)| (id.to_hex(), *len)).collect();
+    fn from(tx_measurements: TransactionMeasurements) -> Self {
+        let note_execution_map = tx_measurements
+            .note_execution
+            .iter()
+            .map(|(id, len)| (id.to_hex(), *len))
+            .collect();
 
         MeasurementsPrinter {
-            prologue: value.prologue,
-            notes_processing: value.notes_processing,
+            prologue: tx_measurements.prologue,
+            notes_processing: tx_measurements.notes_processing,
             note_execution: note_execution_map,
-            tx_script_processing: value.tx_script_processing,
-            epilogue: value.epilogue,
+            tx_script_processing: tx_measurements.tx_script_processing,
+            epilogue: tx_measurements.epilogue,
+            after_tx_fee_computed_cycles: tx_measurements.after_tx_fee_computed_cycles,
         }
     }
 }
@@ -74,7 +78,7 @@ pub fn get_account_with_basic_authenticated_wallet(
         .storage_mode(storage_mode)
         .with_assets(assets)
         .with_component(BasicWallet)
-        .with_component(AuthRpoFalcon512::new(public_key))
+        .with_auth_component(AuthRpoFalcon512::new(public_key))
         .build_existing()
         .unwrap()
 }

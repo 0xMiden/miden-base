@@ -1,13 +1,17 @@
 use alloc::vec::Vec;
 
-use miden_objects::{
-    EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO,
-    account::{AccountHeader, AccountId, PartialAccount},
-    block::AccountWitness,
-    crypto::merkle::InnerNodeInfo,
-    transaction::{InputNote, PartialBlockchain, TransactionArgs, TransactionInputs},
-    vm::AdviceInputs,
+use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
+use miden_objects::block::AccountWitness;
+use miden_objects::crypto::merkle::InnerNodeInfo;
+use miden_objects::transaction::{
+    InputNote,
+    PartialBlockchain,
+    TransactionArgs,
+    TransactionInputs,
 };
+use miden_objects::utils::collections::KvMap;
+use miden_objects::vm::AdviceInputs;
+use miden_objects::{EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO};
 use thiserror::Error;
 
 use super::TransactionKernel;
@@ -115,6 +119,8 @@ impl TransactionAdviceInputs {
     ///     TX_KERNEL_COMMITMENT
     ///     PROOF_COMMITMENT,
     ///     [block_num, version, timestamp, 0],
+    ///     [native_asset_id_suffix, native_asset_id_prefix, verification_base_fee, 0]
+    ///     [0, 0, 0, 0]
     ///     NOTE_ROOT,
     ///     kernel_version
     ///     [account_id, 0, 0, account_nonce],
@@ -148,6 +154,13 @@ impl TransactionAdviceInputs {
             header.timestamp().into(),
             ZERO,
         ]);
+        self.extend_stack([
+            header.fee_parameters().native_asset_id().suffix(),
+            header.fee_parameters().native_asset_id().prefix().as_felt(),
+            header.fee_parameters().verification_base_fee().into(),
+            ZERO,
+        ]);
+        self.extend_stack([ZERO, ZERO, ZERO, ZERO]);
         self.extend_stack(header.note_root());
 
         // --- kernel version (keep in sync with process_kernel_data) ---------

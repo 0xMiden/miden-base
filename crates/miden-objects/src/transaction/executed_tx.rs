@@ -1,13 +1,30 @@
 use alloc::vec::Vec;
 
 use super::{
-    Account, AccountDelta, AccountHeader, AccountId, AdviceInputs, BlockHeader, InputNote,
-    InputNotes, NoteId, OutputNotes, TransactionArgs, TransactionId, TransactionInputs,
-    TransactionOutputs, TransactionWitness,
+    Account,
+    AccountDelta,
+    AccountHeader,
+    AccountId,
+    AdviceInputs,
+    BlockHeader,
+    InputNote,
+    InputNotes,
+    NoteId,
+    OutputNotes,
+    TransactionArgs,
+    TransactionId,
+    TransactionInputs,
+    TransactionOutputs,
+    TransactionWitness,
 };
-use crate::{
-    block::BlockNumber,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // EXECUTED TRANSACTION
@@ -104,6 +121,11 @@ impl ExecutedTransaction {
     /// Returns the notes created in this transaction.
     pub fn output_notes(&self) -> &OutputNotes {
         &self.tx_outputs.output_notes
+    }
+
+    /// Returns the fee of the transaction.
+    pub fn fee(&self) -> FungibleAsset {
+        self.tx_outputs.fee
     }
 
     /// Returns the block number at which the transaction will expire.
@@ -216,6 +238,12 @@ pub struct TransactionMeasurements {
     pub note_execution: Vec<(NoteId, usize)>,
     pub tx_script_processing: usize,
     pub epilogue: usize,
+    /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
+    /// count.
+    ///
+    /// This is used to estimate the total number of cycles the transaction takes for use in
+    /// compute_fee itself.
+    pub after_tx_fee_computed_cycles: usize,
 }
 
 impl TransactionMeasurements {
@@ -239,6 +267,7 @@ impl Serializable for TransactionMeasurements {
         self.note_execution.write_into(target);
         self.tx_script_processing.write_into(target);
         self.epilogue.write_into(target);
+        self.after_tx_fee_computed_cycles.write_into(target);
     }
 }
 
@@ -249,6 +278,7 @@ impl Deserializable for TransactionMeasurements {
         let note_execution = Vec::<(NoteId, usize)>::read_from(source)?;
         let tx_script_processing = usize::read_from(source)?;
         let epilogue = usize::read_from(source)?;
+        let after_tx_fee_computed_cycles = usize::read_from(source)?;
 
         Ok(Self {
             prologue,
@@ -256,6 +286,7 @@ impl Deserializable for TransactionMeasurements {
             note_execution,
             tx_script_processing,
             epilogue,
+            after_tx_fee_computed_cycles,
         })
     }
 }

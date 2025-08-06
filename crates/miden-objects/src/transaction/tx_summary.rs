@@ -1,12 +1,10 @@
 use alloc::vec::Vec;
 
-use crate::{
-    Felt, Word,
-    account::AccountDelta,
-    crypto::SequentialCommit,
-    transaction::{InputNote, InputNotes, OutputNotes},
-    utils::{Deserializable, Serializable},
-};
+use crate::account::AccountDelta;
+use crate::crypto::SequentialCommit;
+use crate::transaction::{InputNote, InputNotes, OutputNotes};
+use crate::utils::{Deserializable, Serializable};
+use crate::{Felt, Word};
 
 /// The summary of the changes that result from executing a transaction.
 ///

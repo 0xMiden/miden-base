@@ -19,6 +19,18 @@ const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither c
 
 const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been called from outside the epilogue"
 
+# CONSTANTS
+# =================================================================================================
+
+# Event emitted to signal that the compute_fee procedure has obtained the current number of cycles.
+const.EPILOGUE_AFTER_TX_FEE_COMPUTED=131097
+
+# The number of cycles the epilogue is estimated to take after compute_fee has been executed.
+# This is _estimated_ using the transaction measurements on ExecutedTransaction.
+# This should be replaced with a way to _calculate_ the number of cycles that the epilogue will incur
+# after compute_fee.
+const.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES=1200
+
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
 
@@ -74,18 +86,28 @@ end
 # =================================================================================================
 
 #! Builds the output vault which is combination of the assets in the account vault at the end of the
-#! transaction and all the assets in the output notes.
+#! transaction, all the assets in the output notes and the provided fee asset.
 #!
 #! The output vault is built as follows:
 #! - we first copy the account vault root to the output vault root.
+#! - we add the fee asset to the output vault.
 #! - we then loop over the output notes and insert their assets into the output vault.
 #!
-#! Inputs:  []
+#! Inputs:  [FEE_ASSET]
 #! Outputs: []
 proc.build_output_vault
     # copy final account vault root to output account vault root
     exec.memory::get_acct_vault_root exec.memory::set_output_vault_root dropw
-    # => []
+    # => [FEE_ASSET]
+
+    # the fee asset is special in the sense that it is left as a final stack output, so we have
+    # to account for it explicitly in the output vault by adding it.
+    exec.memory::get_output_vault_root_ptr movdn.4
+    # => [FEE_ASSET, output_vault_root_ptr]
+
+    # we know FEE_ASSET is a fungible asset, so we call this procedure directly rather than
+    # add_asset
+    exec.asset_vault::add_fungible_asset dropw
 
     # get the number of output notes from memory
     exec.memory::get_num_output_notes
@@ -194,6 +216,56 @@ proc.execute_auth_procedure
     dropw dropw dropw dropw
 end
 
+# FEE PROCEDURES
+# =================================================================================================
+
+#! Computes the fee required for the current transaction.
+#!
+#! The number of cycles a transaction will take to verify depends logarithmically on the number of
+#! cycles that were proven. We estimate this by taking log2 of the estimated number of cycles the
+#! transaction will take to execute, rounded up to the next power of two.
+#!
+#! Inputs:  []
+#! Outputs: [fee_amount]
+proc.compute_fee
+    # get the number of cycles the transaction has taken to execute up this point
+    clk
+    # => [num_current_cycles]
+
+    emit.EPILOGUE_AFTER_TX_FEE_COMPUTED
+
+    # estimate the number of cycles the transaction will take
+    add.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES
+    # => [num_tx_cycles]
+
+    # ilog2 will round down, but we need to round up, so we add 1 afterwards.
+    # technically we don't need to do this if num_tx_cycles is already a power of two, but
+    # because we're estimating part of the cycle count anyway, this is not a correctness
+    # concern currently.
+    ilog2 add.1
+    # => [num_estimated_verification_cycles]
+
+    exec.memory::get_verification_base_fee
+    # => [verification_base_fee, num_estimated_verification_cycles]
+
+    mul
+    # => [verification_cost]
+end
+
+#! Builds the fee asset with the provided fee amount and the native asset ID of the transaction's
+#! reference block as the faucet ID.
+#!
+#! Inputs:  [fee_amount]
+#! Outputs: [FEE_ASSET]
+proc.build_native_fee_asset
+    exec.memory::get_native_asset_id
+    # => [native_asset_id_prefix, native_asset_id_suffix, fee_amount]
+
+    push.0 movdn.2
+    # => [native_asset_id_prefix, native_asset_id_suffix, 0, fee_amount]
+    # => [FEE_ASSET]
+end
+
 # TRANSACTION EPILOGUE PROCEDURE
 # =================================================================================================
 
@@ -206,19 +278,36 @@ end
 #! - asserts that the input and output vault roots are equal.
 #!
 #! Inputs:  []
-#! Outputs: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+#! Outputs: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 #!
 #! Where:
 #! - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
 #! - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
 #!   delta commitment.
+#! - FEE_ASSET is the fungible asset used as the transaction fee.
 #! - tx_expiration_block_num is the transaction expiration block number.
-export.finalize_transaction
+export.finalize_transaction.4
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
 
     # execute the account authentication procedure
     exec.execute_auth_procedure
+    # => []
+
+    # compute the fee the tx needs to pay
+    # ignored for now
+    exec.compute_fee
+    # => [fee_amount]
+
+    exec.build_native_fee_asset
+    # => [FEE_ASSET]
+
+    # remove the fee from the native account's vault
+    exec.account::remove_asset_from_vault
+    # => [FEE_ASSET]
+
+    # store the fee asset for later
+    loc_storew.0 dropw
     # => []
 
     # get the initial account commitment
@@ -290,6 +379,10 @@ export.finalize_transaction
     hmerge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
+    # prepare stack for build_output_vault by loading fee asset from local
+    padw loc_loadw.0
+    # => [FEE_ASSET, ACCOUNT_UPDATE_COMMITMENT]
+
     # build the output vault
     exec.build_output_vault
     # => [ACCOUNT_UPDATE_COMMITMENT]
@@ -309,4 +402,11 @@ export.finalize_transaction
 
     exec.memory::get_expiration_block_num movdn.8
     # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+
+    # load fee asset from local
+    padw loc_loadw.0
+    # => [FEE_ASSET, OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+
+    movdnw.2
+    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 end

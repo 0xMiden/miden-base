@@ -1,30 +1,30 @@
 use assert_matches::assert_matches;
-use miden_lib::{
-    note::{create_p2id_note, create_p2ide_note},
-    transaction::TransactionKernel,
+use miden_lib::note::{create_p2id_note, create_p2ide_note};
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::{Account, AccountId};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::note::NoteType;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
-use miden_objects::{
-    Felt, FieldElement, Word,
-    account::{Account, AccountId},
-    asset::FungibleAsset,
-    note::NoteType,
-    testing::{
-        account_id::{
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        note::NoteBuilder,
-    },
-};
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::{Felt, FieldElement, Word};
+use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
-    NoteAccountExecution, NoteConsumptionChecker, TransactionExecutor, TransactionExecutorError,
-    auth::UnreachableAuth,
+    NoteAccountExecution,
+    NoteConsumptionChecker,
+    TransactionExecutor,
+    TransactionExecutorError,
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{ExecutionError, crypto::RpoRandomCoin};
+use vm_processor::ExecutionError;
+use vm_processor::crypto::RpoRandomCoin;
 
-use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, utils::create_p2any_note};
+use crate::utils::create_p2any_note;
+use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
 async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {

@@ -1,18 +1,17 @@
 use alloc::sync::Arc;
 
-use miden_lib::{
-    account::interface::NoteAccountCompatibility, note::well_known_note::WellKnownNote,
-};
-use miden_objects::{
-    account::AccountId,
-    assembly::SourceManager,
-    block::BlockNumber,
-    note::NoteId,
-    transaction::{InputNote, InputNotes, TransactionArgs},
-};
+use miden_lib::account::interface::NoteAccountCompatibility;
+use miden_lib::note::well_known_note::WellKnownNote;
+use miden_objects::account::AccountId;
+use miden_objects::assembly::SourceManager;
+use miden_objects::block::BlockNumber;
+use miden_objects::note::NoteId;
+use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
+use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{NoteAccountExecution, TransactionExecutor, TransactionExecutorError};
-use crate::{DataStore, auth::TransactionAuthenticator};
+use crate::DataStore;
+use crate::auth::TransactionAuthenticator;
 
 /// This struct performs input notes check against provided target account.
 ///

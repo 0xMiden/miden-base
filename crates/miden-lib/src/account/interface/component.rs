@@ -1,17 +1,14 @@
-use alloc::{
-    collections::BTreeMap,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::collections::BTreeMap;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Felt,
-    account::{AccountId, AccountProcedureInfo},
-    note::PartialNote,
-    utils::word_to_masm_push_string,
-};
+use miden_objects::Felt;
+use miden_objects::account::{AccountId, AccountProcedureInfo};
+use miden_objects::note::PartialNote;
+use miden_objects::utils::word_to_masm_push_string;
 
-use crate::account::{components::WellKnownComponent, interface::AccountInterfaceError};
+use crate::account::components::WellKnownComponent;
+use crate::account::interface::AccountInterfaceError;
 
 // ACCOUNT COMPONENT INTERFACE
 // ================================================================================================

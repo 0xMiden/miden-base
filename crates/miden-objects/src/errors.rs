@@ -1,30 +1,43 @@
-use alloc::{boxed::Box, string::String, vec::Vec};
+use alloc::boxed::Box;
+use alloc::string::String;
+use alloc::vec::Vec;
 use core::error::Error;
 
-use assembly::{Report, diagnostics::reporting::PrintDiagnostic};
-use miden_crypto::{merkle::MmrError, utils::HexParseError};
+use assembly::Report;
+use assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_crypto::merkle::MmrError;
+use miden_crypto::utils::HexParseError;
 use thiserror::Error;
-use vm_core::{Felt, mast::MastForestError};
+use vm_core::Felt;
+use vm_core::mast::MastForestError;
 use vm_processor::DeserializationError;
 
-use super::{
-    MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word,
-    account::AccountId,
-    asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
-    crypto::merkle::MerkleError,
-    note::NoteId,
+use super::account::AccountId;
+use super::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
+use super::crypto::merkle::MerkleError;
+use super::note::NoteId;
+use super::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word};
+use crate::account::{
+    AccountCode,
+    AccountIdPrefix,
+    AccountStorage,
+    AccountType,
+    AddressType,
+    StorageValueName,
+    StorageValueNameError,
+    TemplateTypeError,
 };
+use crate::batch::BatchId;
+use crate::block::BlockNumber;
+use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
+use crate::transaction::TransactionId;
 use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE, MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH,
-    MAX_INPUT_NOTES_PER_TX, MAX_INPUTS_PER_NOTE, MAX_OUTPUT_NOTES_PER_TX,
-    account::{
-        AccountCode, AccountIdPrefix, AccountStorage, AccountType, AddressType, StorageValueName,
-        StorageValueNameError, TemplateTypeError,
-    },
-    batch::BatchId,
-    block::BlockNumber,
-    note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier},
-    transaction::TransactionId,
+    ACCOUNT_UPDATE_MAX_SIZE,
+    MAX_ACCOUNTS_PER_BATCH,
+    MAX_INPUT_NOTES_PER_BATCH,
+    MAX_INPUT_NOTES_PER_TX,
+    MAX_INPUTS_PER_NOTE,
+    MAX_OUTPUT_NOTES_PER_TX,
 };
 
 // ACCOUNT COMPONENT TEMPLATE ERROR
@@ -546,6 +559,8 @@ pub enum TransactionOutputError {
     DuplicateOutputNote(NoteId),
     #[error("final account commitment is not in the advice map")]
     FinalAccountCommitmentMissingInAdviceMap,
+    #[error("fee asset is not a fungible asset")]
+    FeeAssetNotFungibleAsset(#[source] AssetError),
     #[error("failed to parse final account header")]
     FinalAccountHeaderParseFailure(#[source] AccountError),
     #[error(
@@ -869,6 +884,15 @@ pub enum ProposedBlockError {
         account_id: AccountId,
         source: Box<AccountDeltaError>,
     },
+}
+
+// FEE ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum FeeError {
+    #[error("native asset of the chain must be a fungible faucet but was of type {account_type}")]
+    NativeAssetIdNotFungible { account_type: AccountType },
 }
 
 // NULLIFIER TREE ERROR

@@ -1,12 +1,17 @@
 use alloc::borrow::ToOwned;
+use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::assembly::{
-    SourceManager,
-    debuginfo::{SourceLanguage, Uri},
-};
+use miden_objects::assembly::SourceManager;
+use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use vm_processor::{
-    AdviceInputs, DefaultHost, ExecutionError, Process, Program, StackInputs, SyncHost,
+    AdviceInputs,
+    DefaultHost,
+    ExecutionError,
+    Process,
+    Program,
+    StackInputs,
+    SyncHost,
 };
 
 // MOCK CODE EXECUTOR

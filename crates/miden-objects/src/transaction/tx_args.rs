@@ -1,19 +1,20 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use assembly::{Assembler, Parse};
 use miden_crypto::merkle::InnerNodeInfo;
 
 use super::{AccountInputs, Felt, Word};
-use crate::{
-    EMPTY_WORD, MastForest, MastNodeId, TransactionScriptError,
-    note::{NoteId, NoteRecipient},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::{AdviceInputs, AdviceMap, Program},
+use crate::note::{NoteId, NoteRecipient};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::vm::{AdviceInputs, AdviceMap, Program};
+use crate::{EMPTY_WORD, MastForest, MastNodeId};
 
 // TRANSACTION ARGUMENTS
 // ================================================================================================
@@ -277,21 +278,6 @@ impl TransactionScript {
         Self::from_parts(code.mast_forest().clone(), code.entrypoint())
     }
 
-    /// Returns a new [TransactionScript] compiled from the provided source code using the specified
-    /// assembler.
-    ///
-    /// # Errors
-    /// Returns an error if the compilation of the provided source code fails.
-    pub fn compile(
-        source_code: impl Parse,
-        assembler: Assembler,
-    ) -> Result<Self, TransactionScriptError> {
-        let program = assembler
-            .assemble_program(source_code)
-            .map_err(TransactionScriptError::AssemblyError)?;
-        Ok(Self::new(program))
-    }
-
     /// Returns a new [TransactionScript] instantiated from the provided MAST forest and entrypoint.
     ///
     /// # Panics
@@ -337,10 +323,8 @@ impl Deserializable for TransactionScript {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::{
-        AdviceMap,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::AdviceMap;
+    use vm_core::utils::{Deserializable, Serializable};
 
     use crate::transaction::TransactionArgs;
 

@@ -1,8 +1,15 @@
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    asset::Asset,
-    note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteScript, PartialNote},
+use miden_objects::asset::Asset;
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    PartialNote,
 };
 use vm_processor::AdviceProvider;
 

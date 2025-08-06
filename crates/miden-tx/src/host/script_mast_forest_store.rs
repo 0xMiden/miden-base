@@ -1,9 +1,11 @@
-use alloc::{collections::BTreeMap, sync::Arc};
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 
-use miden_objects::{
-    Word, assembly::mast::MastForest, note::NoteScript, transaction::TransactionScript,
-    vm::AdviceMap,
-};
+use miden_objects::Word;
+use miden_objects::assembly::mast::MastForest;
+use miden_objects::note::NoteScript;
+use miden_objects::transaction::TransactionScript;
+use miden_objects::vm::AdviceMap;
 use vm_processor::MastForestStore;
 
 /// Stores the MAST forests for a set of scripts (both note scripts and transaction scripts).

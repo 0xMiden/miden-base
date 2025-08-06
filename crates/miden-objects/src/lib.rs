@@ -24,28 +24,52 @@ mod errors;
 
 pub use constants::*;
 pub use errors::{
-    AccountDeltaError, AccountError, AccountIdError, AccountTreeError, AssetError, AssetVaultError,
-    BatchAccountUpdateError, NetworkIdError, NoteError, NullifierTreeError, PartialBlockchainError,
-    ProposedBatchError, ProposedBlockError, ProvenBatchError, ProvenTransactionError,
-    TokenSymbolError, TransactionInputError, TransactionOutputError, TransactionScriptError,
+    AccountDeltaError,
+    AccountError,
+    AccountIdError,
+    AccountTreeError,
+    AssetError,
+    AssetVaultError,
+    BatchAccountUpdateError,
+    FeeError,
+    NetworkIdError,
+    NoteError,
+    NullifierTreeError,
+    PartialBlockchainError,
+    ProposedBatchError,
+    ProposedBlockError,
+    ProvenBatchError,
+    ProvenTransactionError,
+    TokenSymbolError,
+    TransactionInputError,
+    TransactionOutputError,
+    TransactionScriptError,
 };
-pub use miden_crypto::{
-    hash::rpo::Rpo256 as Hasher,
-    word,
-    word::{LexicographicWord, Word, WordError},
-};
-pub use vm_core::{
-    EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO,
-    mast::{MastForest, MastNodeId},
-    prettier::PrettyPrint,
-};
+pub use miden_crypto::hash::rpo::Rpo256 as Hasher;
+pub use miden_crypto::word;
+pub use miden_crypto::word::{LexicographicWord, Word, WordError};
+pub use vm_core::mast::{MastForest, MastNodeId};
+pub use vm_core::prettier::PrettyPrint;
+pub use vm_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO};
 
 pub mod assembly {
+    pub use assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
     pub use assembly::{
-        Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, LibraryPath,
-        Parse, ParseOptions, SourceFile, SourceId, SourceManager,
-        ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName},
-        debuginfo, diagnostics, mast,
+        Assembler,
+        DefaultSourceManager,
+        KernelLibrary,
+        Library,
+        LibraryNamespace,
+        LibraryPath,
+        Parse,
+        ParseOptions,
+        SourceFile,
+        SourceId,
+        SourceManager,
+        SourceSpan,
+        debuginfo,
+        diagnostics,
+        mast,
     };
 }
 
@@ -56,16 +80,18 @@ pub mod crypto {
 pub mod utils {
     use alloc::string::String;
 
-    pub use miden_crypto::{
-        utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes},
-        word::parse_hex_string_as_word,
-    };
+    pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
+    pub use miden_crypto::word::parse_hex_string_as_word;
     pub use miden_utils_sync as sync;
     pub use vm_core::utils::*;
 
     pub mod serde {
         pub use vm_core::utils::{
-            ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable,
+            ByteReader,
+            ByteWriter,
+            Deserializable,
+            DeserializationError,
+            Serializable,
         };
     }
 
@@ -86,6 +112,7 @@ pub mod utils {
 
 pub mod vm {
     pub use miden_verifier::ExecutionProof;
-    pub use vm_core::{AdviceMap, Program, ProgramInfo, sys_events::SystemEvent};
+    pub use vm_core::sys_events::SystemEvent;
+    pub use vm_core::{AdviceMap, Program, ProgramInfo};
     pub use vm_processor::{AdviceInputs, RowIndex, StackInputs, StackOutputs};
 }

@@ -1,12 +1,11 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 use core::ops::RangeTo;
 
-use crate::{
-    PartialBlockchainError,
-    block::{BlockHeader, BlockNumber},
-    crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr},
-    utils::serde::{Deserializable, Serializable},
-};
+use crate::PartialBlockchainError;
+use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
+use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
 // ================================================================================================
@@ -280,12 +279,11 @@ mod tests {
     use vm_core::utils::{Deserializable, Serializable};
 
     use super::PartialBlockchain;
-    use crate::{
-        PartialBlockchainError, Word,
-        alloc::vec::Vec,
-        block::{BlockHeader, BlockNumber},
-        crypto::merkle::{Mmr, PartialMmr},
-    };
+    use crate::alloc::vec::Vec;
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+    use crate::{PartialBlockchainError, Word};
 
     #[test]
     fn test_partial_blockchain_add() {
@@ -425,6 +423,10 @@ mod tests {
     }
 
     fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
+        let fee_parameters =
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
+                .expect("native asset ID should be a fungible faucet ID");
+
         BlockHeader::new(
             0,
             Word::empty(),
@@ -436,6 +438,7 @@ mod tests {
             Word::empty(),
             Word::empty(),
             Word::empty(),
+            fee_parameters,
             0,
         )
     }

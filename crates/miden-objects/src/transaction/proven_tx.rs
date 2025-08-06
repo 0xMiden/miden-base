@@ -1,15 +1,28 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use super::{InputNote, ToInputNoteCommitments};
-use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word,
-    account::delta::AccountUpdateDetails,
-    block::BlockNumber,
-    note::NoteHeader,
-    transaction::{AccountId, InputNotes, Nullifier, OutputNote, OutputNotes, TransactionId},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::ExecutionProof,
+use crate::account::delta::AccountUpdateDetails;
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::note::NoteHeader;
+use crate::transaction::{
+    AccountId,
+    InputNotes,
+    Nullifier,
+    OutputNote,
+    OutputNotes,
+    TransactionId,
 };
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
+use crate::vm::ExecutionProof;
+use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word};
 
 // PROVEN TRANSACTION
 // ================================================================================================
@@ -43,6 +56,9 @@ pub struct ProvenTransaction {
 
     /// The block commitment of the transaction's reference block.
     ref_block_commitment: Word,
+
+    /// The fee of the transaction.
+    fee: FungibleAsset,
 
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
@@ -90,6 +106,11 @@ impl ProvenTransaction {
     /// Returns the commitment of the block transaction was executed against.
     pub fn ref_block_commitment(&self) -> Word {
         self.ref_block_commitment
+    }
+
+    /// Returns the fee of the transaction.
+    pub fn fee(&self) -> FungibleAsset {
+        self.fee
     }
 
     /// Returns an iterator of the headers of unauthenticated input notes in this transaction.
@@ -197,6 +218,7 @@ impl Serializable for ProvenTransaction {
         self.output_notes.write_into(target);
         self.ref_block_num.write_into(target);
         self.ref_block_commitment.write_into(target);
+        self.fee.write_into(target);
         self.expiration_block_num.write_into(target);
         self.proof.write_into(target);
     }
@@ -211,6 +233,7 @@ impl Deserializable for ProvenTransaction {
 
         let ref_block_num = BlockNumber::read_from(source)?;
         let ref_block_commitment = Word::read_from(source)?;
+        let fee = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
         let proof = ExecutionProof::read_from(source)?;
 
@@ -228,6 +251,7 @@ impl Deserializable for ProvenTransaction {
             output_notes,
             ref_block_num,
             ref_block_commitment,
+            fee,
             expiration_block_num,
             proof,
         };
@@ -271,6 +295,9 @@ pub struct ProvenTransactionBuilder {
     /// Block digest of the transaction's reference block.
     ref_block_commitment: Word,
 
+    /// The fee of the transaction.
+    fee: FungibleAsset,
+
     /// The block number by which the transaction will expire, as defined by the executed scripts.
     expiration_block_num: BlockNumber,
 
@@ -283,6 +310,7 @@ impl ProvenTransactionBuilder {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a [ProvenTransactionBuilder] used to build a [ProvenTransaction].
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         account_id: AccountId,
         initial_account_commitment: Word,
@@ -290,6 +318,7 @@ impl ProvenTransactionBuilder {
         account_delta_commitment: Word,
         ref_block_num: BlockNumber,
         ref_block_commitment: Word,
+        fee: FungibleAsset,
         expiration_block_num: BlockNumber,
         proof: ExecutionProof,
     ) -> Self {
@@ -303,6 +332,7 @@ impl ProvenTransactionBuilder {
             output_notes: Vec::new(),
             ref_block_num,
             ref_block_commitment,
+            fee,
             expiration_block_num,
             proof,
         }
@@ -388,6 +418,7 @@ impl ProvenTransactionBuilder {
             output_notes,
             ref_block_num: self.ref_block_num,
             ref_block_commitment: self.ref_block_commitment,
+            fee: self.fee,
             expiration_block_num: self.expiration_block_num,
             proof: self.proof,
         };
@@ -619,18 +650,32 @@ mod tests {
     use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
+    use crate::account::delta::AccountUpdateDetails;
+    use crate::account::{
+        AccountDelta,
+        AccountId,
+        AccountIdVersion,
+        AccountStorageDelta,
+        AccountStorageMode,
+        AccountType,
+        AccountVaultDelta,
+        StorageMapDelta,
+    };
+    use crate::asset::FungibleAsset;
+    use crate::block::BlockNumber;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    };
+    use crate::transaction::{ProvenTransactionBuilder, TxAccountUpdate};
+    use crate::utils::Serializable;
     use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
-        account::{
-            AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
-        },
-        block::BlockNumber,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
-        transaction::{ProvenTransactionBuilder, TxAccountUpdate},
-        utils::Serializable,
+        ACCOUNT_UPDATE_MAX_SIZE,
+        EMPTY_WORD,
+        LexicographicWord,
+        ONE,
+        ProvenTransactionError,
+        Word,
     };
 
     fn check_if_sync<T: Sync>() {}
@@ -734,6 +779,7 @@ mod tests {
             account_delta_commitment,
             ref_block_num,
             ref_block_commitment,
+            FungibleAsset::mock(42).unwrap_fungible(),
             expiration_block_num,
             proof,
         )

@@ -1,14 +1,19 @@
 use alloc::string::ToString;
 
-use miden_objects::{
-    AccountError, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType},
-    assembly::{ProcedureName, QualifiedProcedureName},
-    utils::sync::LazyLock,
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorageMode,
+    AccountType,
 };
+use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
+use miden_objects::utils::sync::LazyLock;
+use miden_objects::{AccountError, Word};
 
 use super::AuthScheme;
-use crate::account::{auth::AuthRpoFalcon512, components::basic_wallet_library};
+use crate::account::auth::AuthRpoFalcon512;
+use crate::account::components::basic_wallet_library;
 
 // BASIC WALLET
 // ================================================================================================
@@ -125,7 +130,8 @@ pub fn create_basic_wallet(
 #[cfg(test)]
 mod tests {
 
-    use miden_objects::{ONE, Word, crypto::dsa::rpo_falcon512};
+    use miden_objects::crypto::dsa::rpo_falcon512;
+    use miden_objects::{ONE, Word};
     use vm_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};

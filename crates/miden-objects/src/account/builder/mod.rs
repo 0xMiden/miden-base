@@ -1,15 +1,21 @@
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use vm_core::FieldElement;
 
-use crate::{
-    AccountError, Felt, Word,
-    account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountIdV0, AccountIdVersion,
-        AccountStorage, AccountStorageMode, AccountType,
-    },
-    asset::AssetVault,
+use crate::account::{
+    Account,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountIdV0,
+    AccountIdVersion,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
 };
+use crate::asset::AssetVault;
+use crate::{AccountError, Felt, Word};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by
 /// combining multiple [`AccountComponent`]s.
@@ -35,6 +41,17 @@ use crate::{
 ///   account's nonce to `1`.
 /// - Add assets to the account's vault, however this will only succeed when using
 ///   [`AccountBuilder::build_existing`].
+///
+/// **Storage Slot Order**
+///
+/// Note that the components are merged together in the same order as `with_component` is called,
+/// except for the auth component. It is always moved to the first position, due to the requirement
+/// that the auth procedure must be at procedure index 0 within an [`AccountCode`]. That also
+/// affects the storage slot order and means the auth component's storage comes first, if it has any
+/// storage.
+///
+/// Faucet accounts have a protocol-reserved storage slot which is at index 0. This means
+/// user-defined storage slots start at index 1.
 #[derive(Debug, Clone)]
 pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]
@@ -254,7 +271,8 @@ mod tests {
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::{account::StorageSlot, testing::account_component::NoopAuthComponent};
+    use crate::account::StorageSlot;
+    use crate::testing::account_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
           export.foo

@@ -1,5 +1,6 @@
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{transaction::ProvenTransaction, vm::ProgramInfo};
+use miden_objects::transaction::ProvenTransaction;
+use miden_objects::vm::ProgramInfo;
 use miden_verifier::verify;
 
 use super::TransactionVerifierError;
@@ -43,6 +44,7 @@ impl TransactionVerifier {
             transaction.account_update().final_state_commitment(),
             transaction.account_update().account_delta_commitment(),
             transaction.output_notes().commitment(),
+            transaction.fee(),
             transaction.expiration_block_num(),
         );
 

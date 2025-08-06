@@ -1,16 +1,29 @@
-use alloc::{collections::BTreeSet, string::ToString, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use core::fmt::Debug;
 
-use crate::{
-    Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word,
-    account::AccountHeader,
-    block::BlockNumber,
-    note::{
-        Note, NoteAssets, NoteHeader, NoteId, NoteMetadata, NoteRecipient, PartialNote,
-        compute_note_commitment,
-    },
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::AccountHeader;
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::note::{
+    Note,
+    NoteAssets,
+    NoteHeader,
+    NoteId,
+    NoteMetadata,
+    NoteRecipient,
+    PartialNote,
+    compute_note_commitment,
 };
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
+use crate::{Felt, Hasher, MAX_OUTPUT_NOTES_PER_TX, TransactionOutputError, Word};
 
 // TRANSACTION OUTPUTS
 // ================================================================================================
@@ -24,6 +37,8 @@ pub struct TransactionOutputs {
     pub account_delta_commitment: Word,
     /// Set of output notes created by the transaction.
     pub output_notes: OutputNotes,
+    /// The fee of the transaction.
+    pub fee: FungibleAsset,
     /// Defines up to which block the transaction is considered valid.
     pub expiration_block_num: BlockNumber,
 }
@@ -33,6 +48,7 @@ impl Serializable for TransactionOutputs {
         self.account.write_into(target);
         self.account_delta_commitment.write_into(target);
         self.output_notes.write_into(target);
+        self.fee.write_into(target);
         self.expiration_block_num.write_into(target);
     }
 }
@@ -42,12 +58,14 @@ impl Deserializable for TransactionOutputs {
         let account = AccountHeader::read_from(source)?;
         let account_delta_commitment = Word::read_from(source)?;
         let output_notes = OutputNotes::read_from(source)?;
+        let fee = FungibleAsset::read_from(source)?;
         let expiration_block_num = BlockNumber::read_from(source)?;
 
         Ok(Self {
             account,
             account_delta_commitment,
             output_notes,
+            fee,
             expiration_block_num,
         })
     }
@@ -320,12 +338,11 @@ mod output_notes_tests {
     use assert_matches::assert_matches;
 
     use super::OutputNotes;
-    use crate::{
-        TransactionOutputError,
-        account::AccountId,
-        testing::{account_id::ACCOUNT_ID_SENDER, note::NoteBuilder},
-        transaction::OutputNote,
-    };
+    use crate::TransactionOutputError;
+    use crate::account::AccountId;
+    use crate::testing::account_id::ACCOUNT_ID_SENDER;
+    use crate::testing::note::NoteBuilder;
+    use crate::transaction::OutputNote;
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {

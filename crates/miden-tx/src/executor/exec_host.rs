@@ -1,29 +1,32 @@
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::{
-    errors::TransactionKernelError,
-    transaction::{TransactionEvent, TransactionEventData, TransactionEventHandling},
-};
-use miden_objects::{
-    Felt, Word,
-    account::{AccountDelta, PartialAccount},
-    assembly::{
-        DefaultSourceManager, SourceManager,
-        debuginfo::{Location, SourceFile, SourceSpan},
-    },
-    transaction::{InputNote, InputNotes, OutputNote},
-};
+use miden_lib::errors::TransactionKernelError;
+use miden_lib::transaction::{TransactionEvent, TransactionEventData, TransactionEventHandling};
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::assembly::debuginfo::Location;
+use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::{Felt, Hasher, Word};
 use vm_processor::{
-    AdviceMutation, AsyncHost, AsyncHostFuture, BaseHost, EventError, MastForest, MastForestStore,
+    AdviceMutation,
+    AsyncHost,
+    AsyncHostFuture,
+    BaseHost,
+    ErrorContext,
+    EventError,
+    ExecutionError,
+    MastForest,
+    MastForestStore,
     ProcessState,
+    SyncHost,
 };
 
-use crate::{
-    AccountProcedureIndexMap,
-    auth::{SigningInputs, TransactionAuthenticator},
-    executor::build_tx_summary,
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
-};
+use crate::AccountProcedureIndexMap;
+use crate::auth::{SigningInputs, TransactionAuthenticator};
+use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
 
 /// The transaction executor host is responsible for handling [`AsyncHost`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests
@@ -87,90 +90,57 @@ where
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a reference to the underlying [`TransactionBaseHost`].
-    pub(super) fn base_host(&self) -> &TransactionBaseHost<'store, STORE> {
-        &self.base_host
-    }
-
     /// Returns a reference to the `tx_progress` field of this transaction host.
     pub fn tx_progress(&self) -> &TransactionProgress {
         self.base_host.tx_progress()
     }
 
-    // ADVICE INJECTOR HANDLERS
+    // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
-    /// The signature is fetched from the advice map or otherwise requested from the host's
-    /// authenticator.
-    async fn on_signature_requested(
+    /// Expected stack state: `[MESSAGE, PUB_KEY]`
+    ///
+    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
+    /// not present in the advice map, the signature is requested from the host's authenticator.
+    pub async fn on_auth_requested(
         &mut self,
-        pub_key_hash: Word,
-        message: Word,
-        signature_key: Word,
-        signature_opt: Option<Vec<Felt>>,
-        commitments_opt: Option<Vec<Felt>>,
+        process: &ProcessState<'_>,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let signature = if let Some(signature) = signature_opt {
-            signature.to_vec()
-        } else {
-            // Retrieve transaction summary commitments from the advice provider.
-            // The commitments are stored as a contiguous array of field elements with the following
-            // layout:
-            // - commitments[0..4]:  SALT
-            // - commitments[4..8]:  OUTPUT_NOTES_COMMITMENT
-            // - commitments[8..12]: INPUT_NOTES_COMMITMENT
-            // - commitments[12..16]: ACCOUNT_DELTA_COMMITMENT
-            let commitments = commitments_opt.ok_or_else(|| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::from(
-                    "expected commitments to be present in advice provider",
-                ))
-            })?;
+        let msg = process.get_stack_word(0);
+        let pub_key = process.get_stack_word(1);
 
-            if commitments.len() != 16 {
-                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                    "expected 4 words for transaction summary commitments".into(),
-                ));
-            }
+        let signature_key = Hasher::merge(&[pub_key, msg]);
 
-            let salt = extract_word(&commitments, 0);
-            let output_notes_commitment = extract_word(&commitments, 4);
-            let input_notes_commitment = extract_word(&commitments, 8);
-            let account_delta_commitment = extract_word(&commitments, 12);
-            let tx_summary = build_tx_summary(
-                self.base_host(),
-                salt,
-                output_notes_commitment,
-                input_notes_commitment,
-                account_delta_commitment,
-            )
-            .map_err(|err| {
-                TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-            })?;
+        let signature =
+            if let Some(signature) = process.advice_provider().get_mapped_values(&signature_key) {
+                signature.to_vec()
+            } else {
+                let tx_summary = self.base_host.build_tx_summary(process, msg)?;
 
-            if message != tx_summary.to_commitment() {
-                return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                    "transaction summary doesn't commit to the expected message".into(),
-                ));
-            }
+                if msg != tx_summary.to_commitment() {
+                    return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                        "transaction summary doesn't commit to the expected message".into(),
+                    ));
+                }
 
-            let authenticator =
-                self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+                let authenticator =
+                    self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
-            let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
+                let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
 
-            let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key_hash, &signing_inputs)
-                .await
-                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+                let signature: Vec<Felt> =
+                    authenticator.get_signature(pub_key, &signing_inputs).await.map_err(|err| {
+                        TransactionKernelError::SignatureGenerationFailed(Box::new(err))
+                    })?;
 
-            self.generated_signatures.insert(signature_key, signature.clone());
+                self.generated_signatures.insert(signature_key, signature.clone());
 
-            signature
-        };
+                signature
+            };
 
-        Ok(vec![AdviceMutation::ExtendStack { values: signature }])
+        Ok(vec![AdviceMutation::extend_stack(signature)])
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -218,8 +188,6 @@ where
         process: &ProcessState,
         event_id: u32,
     ) -> impl AsyncHostFuture<Result<Vec<AdviceMutation>, EventError>> {
-        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
-        // should be cleaner.
         let event_handling_result = TransactionEvent::try_from(event_id)
             .map_err(EventError::from)
             .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
@@ -233,37 +201,13 @@ where
                 },
             };
 
-            match event_data {
-                TransactionEventData::AuthRequest {
-                    pub_key_hash,
-                    message,
-                    signature_key,
-                    signature_opt,
-                    commitments_opt,
-                } => self
-                    .on_signature_requested(
-                        pub_key_hash,
-                        message,
-                        signature_key,
-                        signature_opt,
-                        commitments_opt,
-                    )
-                    .await
-                    .map_err(EventError::from),
+            if let TransactionEventData::AuthRequest { .. } = &event_data {
+                let modifications =
+                    self.on_auth_requested(process).await.map_err(EventError::from)?;
+                Ok(modifications)
+            } else {
+                Ok(vec![])
             }
         }
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Extracts a word from a slice of field elements.
-fn extract_word(commitments: &[Felt], start: usize) -> Word {
-    Word::from([
-        commitments[start],
-        commitments[start + 1],
-        commitments[start + 2],
-        commitments[start + 3],
-    ])
 }

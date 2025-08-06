@@ -1,13 +1,19 @@
-use alloc::{string::ToString, sync::Arc};
+use alloc::string::ToString;
+use alloc::sync::Arc;
 
-use vm_core::{mast::MastForest, prettier::PrettyPrint};
+use vm_core::mast::MastForest;
+use vm_core::prettier::PrettyPrint;
 use vm_processor::{MastNode, MastNodeId};
 
 use super::Felt;
-use crate::{
-    AccountError, FieldElement, Word,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{AccountError, FieldElement, Word};
 
 // ACCOUNT PROCEDURE INFO
 // ================================================================================================
