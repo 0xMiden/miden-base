@@ -108,7 +108,7 @@ fn test_multisig() -> anyhow::Result<()> {
     let input_note_asset = FungibleAsset::mock(5);
     let input_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-        multisig_account.id().try_into().unwrap(),
+        multisig_account.id(),
         vec![input_note_asset],
         NoteType::Public,
         Default::default(),
@@ -121,7 +121,7 @@ fn test_multisig() -> anyhow::Result<()> {
     // Create output note for the transaction
     let output_note_asset = FungibleAsset::mock(7);
     let output_note = create_p2id_note(
-        multisig_account.id().try_into().unwrap(),
+        multisig_account.id(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
         vec![output_note_asset],
         NoteType::Public,
