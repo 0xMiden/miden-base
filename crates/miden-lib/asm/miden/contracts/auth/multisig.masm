@@ -47,7 +47,7 @@ const.THRESHOLD=120
 const.NUM_OF_APPROVERS=124
 
 # Executed Transaction Flag Constant
-const.USED_FLAG=0xDEADBEEF
+const.USED_FLAG=0x4D6964656E
 
 # ERRORS
 const.TX_ALREADY_EXECUTED="tx hash exists in tx map"
