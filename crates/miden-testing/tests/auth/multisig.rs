@@ -8,7 +8,7 @@ use miden_objects::{
     crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
     note::NoteType,
     testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     },
     transaction::{OutputNote, TransactionScript},
@@ -222,53 +222,13 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
         .unwrap()
         .build()
         .unwrap();
-
     mock_chain.prove_next_block()?;
-
-    // Create output note for the transaction
-    let output_note = create_p2id_note(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-        vec![],
-        NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([4u32; 4])),
-    )?;
-
-    let asset = FungibleAsset::mock(5);
-    let tx_script = TransactionScript::compile(
-        format!(
-            "
-            use.miden::tx
-            begin
-                push.{recipient}
-                push.{note_execution_hint}
-                push.{note_type}
-                push.0              # aux
-                push.{tag}
-                call.tx::create_note
-
-                push.{asset}
-                call.::miden::contracts::wallets::basic::move_asset_to_note
-                dropw dropw dropw dropw
-            end
-            ",
-            recipient = word_to_masm_push_string(&output_note.recipient().digest()),
-            note_type = NoteType::Public as u8,
-            tag = Felt::from(output_note.metadata().tag()),
-            asset = word_to_masm_push_string(&asset.into()),
-            note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
-        ),
-        TransactionKernel::testing_assembler(),
-    )?;
 
     let salt = Word::from([Felt::new(2); 4]);
 
     // Execute transaction without signatures - should fail
     let tx_context_init = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .tx_script(tx_script.clone())
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
         .auth_args(salt)
         .build()?;
 
@@ -292,8 +252,6 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     // Execute transaction with only 2 signatures - should succeed since threshold is 2
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .tx_script(tx_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
         .extend_advice_map(advice_map)
         .auth_args(salt)
         .build()?;
@@ -334,50 +292,11 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
     ];
 
     for (i, (signer1_idx, signer2_idx)) in signer_combinations.iter().enumerate() {
-        // Create output note for the transaction
-        let output_note = create_p2id_note(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-            vec![],
-            NoteType::Public,
-            Default::default(),
-            &mut RpoRandomCoin::new(Word::from([10u32 + i as u32; 4])),
-        )?;
-
-        let asset = FungibleAsset::mock(1);
-        let tx_script = TransactionScript::compile(
-            format!(
-                "
-                use.miden::tx
-                begin
-                    push.{recipient}
-                    push.{note_execution_hint}
-                    push.{note_type}
-                    push.0              # aux
-                    push.{tag}
-                    call.tx::create_note
-
-                    push.{asset}
-                    call.::miden::contracts::wallets::basic::move_asset_to_note
-                    dropw dropw dropw dropw
-                end
-                ",
-                recipient = word_to_masm_push_string(&output_note.recipient().digest()),
-                note_type = NoteType::Public as u8,
-                tag = Felt::from(output_note.metadata().tag()),
-                asset = word_to_masm_push_string(&asset.into()),
-                note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
-            ),
-            TransactionKernel::testing_assembler(),
-        )?;
-
         let salt = Word::from([Felt::new(10 + i as u64); 4]);
 
         // Execute transaction without signatures first to get tx summary
         let tx_context_init = mock_chain
             .build_tx_context(multisig_account.id(), &[], &[])?
-            .tx_script(tx_script.clone())
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
             .auth_args(salt)
             .build()?;
 
@@ -403,8 +322,6 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
         // Execute transaction with signatures - should succeed for any combination
         let tx_context_execute = mock_chain
             .build_tx_context(multisig_account.id(), &[], &[])?
-            .tx_script(tx_script)
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
             .extend_advice_map(advice_map)
             .auth_args(salt)
             .build()?;
@@ -438,50 +355,11 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
 
     mock_chain.prove_next_block()?;
 
-    // Create output note for the transaction
-    let output_note = create_p2id_note(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
-        vec![],
-        NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([5u32; 4])),
-    )?;
-
-    let asset = FungibleAsset::mock(3);
-    let tx_script = TransactionScript::compile(
-        format!(
-            "
-            use.miden::tx
-            begin
-                push.{recipient}
-                push.{note_execution_hint}
-                push.{note_type}
-                push.0              # aux
-                push.{tag}
-                call.tx::create_note
-
-                push.{asset}
-                call.::miden::contracts::wallets::basic::move_asset_to_note
-                dropw dropw dropw dropw
-            end
-            ",
-            recipient = word_to_masm_push_string(&output_note.recipient().digest()),
-            note_type = NoteType::Public as u8,
-            tag = Felt::from(output_note.metadata().tag()),
-            asset = word_to_masm_push_string(&asset.into()),
-            note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
-        ),
-        TransactionKernel::testing_assembler(),
-    )?;
-
     let salt = Word::from([Felt::new(3); 4]);
 
     // Execute transaction without signatures first to get tx summary
     let tx_context_init = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .tx_script(tx_script.clone())
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
         .auth_args(salt)
         .build()?;
 
@@ -505,8 +383,6 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Execute transaction with signatures - should succeed (first execution)
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .tx_script(tx_script.clone())
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
         .extend_advice_map(advice_map.clone())
         .auth_args(salt)
         .build()?;
@@ -520,8 +396,6 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Now attempt to execute the same transaction again - should fail due to replay protection
     let tx_context_replay = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .tx_script(tx_script)
-        .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
         .extend_advice_map(advice_map)
         .auth_args(salt)
         .build()?;

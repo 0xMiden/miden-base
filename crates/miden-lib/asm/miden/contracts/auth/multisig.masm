@@ -47,7 +47,7 @@ const.THRESHOLD=120
 const.NUM_OF_APPROVERS=124
 
 # Executed Transaction Flag Constant
-const.USED_FLAG=0x4D6964656E
+const.USED_FLAG=1
 
 # ERRORS
 const.TX_ALREADY_EXECUTED="tx hash exists in tx map"
@@ -283,8 +283,6 @@ export.auth__tx_rpo_falcon512_multisig
 
     drop drop drop
     # => [num_of_approvers, num_required_signatures]
-
-    push.111 debug.stack drop
 
     exec.verify_signatures_loop
     # => []
