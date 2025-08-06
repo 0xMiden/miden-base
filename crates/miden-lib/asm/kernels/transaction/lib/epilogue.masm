@@ -86,28 +86,22 @@ end
 # =================================================================================================
 
 #! Builds the output vault which is combination of the assets in the account vault at the end of the
-#! transaction, all the assets in the output notes and the provided fee asset.
+#! transaction and all the assets in the output notes.
 #!
 #! The output vault is built as follows:
 #! - we first copy the account vault root to the output vault root.
-#! - we add the fee asset to the output vault.
 #! - we then loop over the output notes and insert their assets into the output vault.
 #!
-#! Inputs:  [FEE_ASSET]
+#! Note that this does not handle anything related to the fee asset. The fee asset is removed from
+#! the account vault after this procedure has executed and since it is not added to an output note,
+#! we don't have to account for it explicitly.
+#!
+#! Inputs:  []
 #! Outputs: []
 proc.build_output_vault
     # copy final account vault root to output account vault root
     exec.memory::get_acct_vault_root exec.memory::set_output_vault_root dropw
-    # => [FEE_ASSET]
-
-    # the fee asset is special in the sense that it is left as a final stack output, so we have
-    # to account for it explicitly in the output vault by adding it.
-    exec.memory::get_output_vault_root_ptr movdn.4
-    # => [FEE_ASSET, output_vault_root_ptr]
-
-    # we know FEE_ASSET is a fungible asset, so we call this procedure directly rather than
-    # add_asset
-    exec.asset_vault::add_fungible_asset dropw
+    # => []
 
     # get the number of output notes from memory
     exec.memory::get_num_output_notes
@@ -276,6 +270,11 @@ end
 
 #! Computes the fee of this transaction and removes the asset from the native account's vault.
 #!
+#! Note that this does not have to account for the fee asset in the output vault explicitly,
+#! because the fee asset is removed from the account vault after build_output_vault and because
+#! it is not added to an output note. Effectively, the fee asset bypasses the asset preservation
+#! check. That's okay, because the logic is entirely determined by the transaction kernel.
+#!
 #! Inputs:  []
 #! Outputs: [FEE_ASSET]
 #!
@@ -294,7 +293,6 @@ proc.compute_and_remove_fee
 
     # remove the fee from the native account's vault
     exec.account::remove_asset_from_vault
-    # => [FEE_ASSET]
 end
 
 # TRANSACTION EPILOGUE PROCEDURE
@@ -317,7 +315,11 @@ end
 #!   delta commitment.
 #! - FEE_ASSET is the fungible asset used as the transaction fee.
 #! - tx_expiration_block_num is the transaction expiration block number.
-export.finalize_transaction.4
+#!
+#! Locals:
+#! - 0..4: OUTPUT_NOTES_COMMITMENT
+#! - 4..8: FEE_ASSET
+export.finalize_transaction.8
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
 
@@ -325,11 +327,27 @@ export.finalize_transaction.4
     exec.execute_auth_procedure
     # => []
 
+    # build the output vault
+    exec.build_output_vault
+    # => []
+
+    # compute output notes commitment
+    exec.note::compute_output_notes_commitment
+    # => [OUTPUT_NOTES_COMMITMENT]
+
+    # copy output note data to the advice map
+    exec.copy_output_notes_to_advice_map
+    # => [OUTPUT_NOTES_COMMITMENT]
+
+    # store commitment in local
+    loc_storew.0 dropw
+    # => []
+
     exec.compute_and_remove_fee
     # => [FEE_ASSET]
 
-    # store the fee asset for later
-    loc_storew.0 dropw
+    # store fee asset in local
+    loc_storew.4 dropw
     # => []
 
     # get the initial account commitment
@@ -401,34 +419,19 @@ export.finalize_transaction.4
     hmerge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
-    # prepare stack for build_output_vault by loading fee asset from local
-    padw loc_loadw.0
-    # => [FEE_ASSET, ACCOUNT_UPDATE_COMMITMENT]
-
-    # build the output vault
-    exec.build_output_vault
-    # => [ACCOUNT_UPDATE_COMMITMENT]
-
-    # compute output notes commitment
-    exec.note::compute_output_notes_commitment
-    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT]
-
-    # copy output note data to the advice map
-    exec.copy_output_notes_to_advice_map
-    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT]
-
     # assert no net creation or destruction of assets over the transaction
     exec.memory::get_input_vault_root exec.memory::get_output_vault_root
     assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
-    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT]
+    # => [ACCOUNT_UPDATE_COMMITMENT]
 
-    exec.memory::get_expiration_block_num movdn.8
-    # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    exec.memory::get_expiration_block_num movdn.4
+    # => [ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
 
     # load fee asset from local
-    padw loc_loadw.0
-    # => [FEE_ASSET, OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    padw loc_loadw.4 swapw
+    # => [ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 
-    movdnw.2
+    # load output notes commitment from local
+    padw loc_loadw.0
     # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 end
