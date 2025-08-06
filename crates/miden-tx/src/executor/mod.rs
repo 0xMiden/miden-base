@@ -22,7 +22,6 @@ use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
 use vm_processor::fast::FastProcessor;
 use vm_processor::{AdviceInputs, ExecutionError, Process, StackInputs};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
-use winter_maybe_async::maybe_await;
 
 use super::TransactionExecutorError;
 use crate::auth::TransactionAuthenticator;
@@ -156,9 +155,10 @@ where
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, seed, ref_block, mmr) =
-            maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         validate_account_inputs(&tx_args, &ref_block)?;
 
@@ -194,16 +194,11 @@ where
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        // Execute the transaction kernel
-        let trace = vm_processor::execute(
-            &TransactionKernel::main(),
-            stack_inputs,
-            advice_inputs,
-            &mut host,
-            self.exec_options,
-        )
-        .map_err(map_execution_error)?;
-        let (stack_outputs, advice_provider) = trace.into_outputs();
+        let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+        let (stack_outputs, advice_provider) = processor
+            .execute(&TransactionKernel::main(), &mut host)
+            .await
+            .map_err(|err| map_execution_error(err))?;
 
         // The stack is not necessary since it is being reconstructed when re-executing.
         let (_stack, advice_map, merkle_store) = advice_provider.into_parts();
@@ -243,9 +238,10 @@ where
         _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
-        let (account, seed, ref_block, mmr) =
-            maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
         let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
 
@@ -320,9 +316,10 @@ where
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, seed, ref_block, mmr) =
-            maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
         validate_account_inputs(&tx_args, &ref_block)?;
 

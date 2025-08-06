@@ -2,16 +2,20 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountHeader, AccountVaultDelta};
+use miden_objects::assembly::SourceManager;
 use miden_objects::{Felt, Word};
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
     AdviceInputs,
+    AdviceMutation,
     BaseHost,
     ContextId,
     ErrorContext,
+    EventError,
     ExecutionError,
     MastForest,
     MastForestStore,
