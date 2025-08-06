@@ -1,11 +1,16 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use crate::{
-    FeeError, Felt, Hasher, Word, ZERO,
-    account::{AccountId, AccountType},
-    block::BlockNumber,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::{AccountId, AccountType};
+use crate::block::BlockNumber;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{FeeError, Felt, Hasher, Word, ZERO};
 
 /// The header of a block. It contains metadata about the block, commitments to the current
 /// state of the chain and the hash of the proof that attests to the integrity of the chain.

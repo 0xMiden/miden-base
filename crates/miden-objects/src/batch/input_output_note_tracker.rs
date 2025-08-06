@@ -1,16 +1,19 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
-use crate::{
-    ProposedBlockError, Word,
-    batch::{BatchId, ProvenBatch},
-    block::{BlockHeader, BlockNumber},
-    crypto::merkle::MerkleError,
-    errors::ProposedBatchError,
-    note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier},
-    transaction::{
-        InputNoteCommitment, OutputNote, PartialBlockchain, ProvenTransaction, TransactionId,
-    },
+use crate::batch::{BatchId, ProvenBatch};
+use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::MerkleError;
+use crate::errors::ProposedBatchError;
+use crate::note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier};
+use crate::transaction::{
+    InputNoteCommitment,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
+    TransactionId,
 };
+use crate::{ProposedBlockError, Word};
 
 type BatchInputNotes = Vec<InputNoteCommitment>;
 type BlockInputNotes = Vec<InputNoteCommitment>;

@@ -1,16 +1,22 @@
 use std::collections::BTreeMap;
 
-use miden_lib::{account::interface::AccountInterface, utils::ScriptBuilder};
-use miden_objects::{
-    Word,
-    asset::{Asset, FungibleAsset},
-    crypto::rand::{FeltRng, RpoRandomCoin},
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteTag,
-        NoteType, PartialNote,
-    },
-    transaction::OutputNote,
+use miden_lib::account::interface::AccountInterface;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::Word;
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
+    PartialNote,
 };
+use miden_objects::transaction::OutputNote;
 use miden_testing::{Auth, MockChain};
 
 /// Tests the execution of the generated send_note transaction script in case the sending account

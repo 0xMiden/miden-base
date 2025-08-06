@@ -1,25 +1,27 @@
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    EMPTY_WORD, FieldElement,
-    account::Account,
-    assembly::Assembler,
-    note::{Note, NoteId},
-    testing::{
-        account_component::{IncrNonceAuthComponent, NoopAuthComponent},
-        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    },
-    transaction::{
-        AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
-    },
-    vm::AdviceMap,
+use miden_objects::account::Account;
+use miden_objects::assembly::Assembler;
+use miden_objects::note::{Note, NoteId};
+use miden_objects::testing::account_component::{IncrNonceAuthComponent, NoopAuthComponent};
+use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::transaction::{
+    AccountInputs,
+    OutputNote,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionScript,
 };
-use miden_tx::{TransactionMastStore, auth::BasicAuthenticator};
+use miden_objects::vm::AdviceMap;
+use miden_objects::{EMPTY_WORD, FieldElement};
+use miden_tx::TransactionMastStore;
+use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, Felt, Word};
 

@@ -1,32 +1,26 @@
 use assert_matches::assert_matches;
-use miden_lib::{
-    errors::tx_kernel_errors::{
-        ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
-        ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED,
-        ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET,
-        ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
-        ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
-    },
-    transaction::{TransactionKernel, memory},
-    utils::word_to_masm_push_string,
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
+    ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED,
+    ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET,
+    ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
+    ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
 };
-use miden_objects::{
-    AssetVaultError,
-    account::AccountId,
-    asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-    testing::{
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
-        },
-        constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA},
-    },
+use miden_lib::transaction::{TransactionKernel, memory};
+use miden_lib::utils::word_to_masm_push_string;
+use miden_objects::AssetVaultError;
+use miden_objects::account::AccountId;
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
 };
+use miden_objects::testing::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
 
 use super::{Felt, ONE, Word, ZERO};
-use crate::{
-    TransactionContextBuilder, assert_execution_error, kernel_tests::tx::ProcessMemoryExt,
-};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::{TransactionContextBuilder, assert_execution_error};
 
 #[test]
 fn test_get_balance() -> anyhow::Result<()> {

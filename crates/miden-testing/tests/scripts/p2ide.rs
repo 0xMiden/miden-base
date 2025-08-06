@@ -1,15 +1,15 @@
 use anyhow::Context;
 use miden_lib::errors::note_script_errors::{
-    ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER, ERR_P2IDE_RECLAIM_DISABLED,
-    ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED,
+    ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER,
+    ERR_P2IDE_RECLAIM_DISABLED,
+    ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED,
+    ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED,
 };
-use miden_objects::{
-    Felt,
-    account::Account,
-    asset::{Asset, AssetVault, FungibleAsset},
-    block::BlockNumber,
-    note::{Note, NoteType},
-};
+use miden_objects::Felt;
+use miden_objects::account::Account;
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::block::BlockNumber;
+use miden_objects::note::{Note, NoteType};
 use miden_testing::{Auth, MockChain};
 
 use crate::assert_transaction_executor_error;

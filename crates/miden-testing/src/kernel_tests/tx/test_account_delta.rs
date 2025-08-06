@@ -1,35 +1,47 @@
 use alloc::vec::Vec;
-use std::{collections::BTreeMap, string::String};
+use std::collections::BTreeMap;
+use std::string::String;
 
 use anyhow::Context;
-use miden_lib::{transaction::TransactionKernel, utils::ScriptBuilder};
-use miden_objects::{
-    EMPTY_WORD, Felt, LexicographicWord, Word, ZERO,
-    account::{AccountBuilder, AccountId, AccountStorage, AccountType, StorageMap, StorageSlot},
-    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    note::{Note, NoteExecutionHint, NoteTag, NoteType},
-    testing::{
-        account_component::AccountMockComponent,
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_SENDER, AccountIdBuilder,
-        },
-        asset::NonFungibleAssetBuilder,
-        constants::{
-            CONSUMED_ASSET_1_AMOUNT, CONSUMED_ASSET_3_AMOUNT, FUNGIBLE_ASSET_AMOUNT,
-            NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2,
-        },
-        storage::{STORAGE_INDEX_0, STORAGE_INDEX_2},
-    },
-    transaction::TransactionScript,
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::{
+    AccountBuilder,
+    AccountId,
+    AccountStorage,
+    AccountType,
+    StorageMap,
+    StorageSlot,
 };
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_SENDER,
+    AccountIdBuilder,
+};
+use miden_objects::testing::asset::NonFungibleAssetBuilder;
+use miden_objects::testing::constants::{
+    CONSUMED_ASSET_1_AMOUNT,
+    CONSUMED_ASSET_3_AMOUNT,
+    FUNGIBLE_ASSET_AMOUNT,
+    NON_FUNGIBLE_ASSET_DATA,
+    NON_FUNGIBLE_ASSET_DATA_2,
+};
+use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
+use miden_objects::transaction::TransactionScript;
+use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
 use miden_tx::utils::word_to_masm_push_string;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
 
-use crate::{Auth, MockChain, TransactionContextBuilder, utils::create_p2any_note};
+use crate::utils::create_p2any_note;
+use crate::{Auth, MockChain, TransactionContextBuilder};
 
 // ACCOUNT DELTA TESTS
 //

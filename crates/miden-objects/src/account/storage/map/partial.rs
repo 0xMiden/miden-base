@@ -1,6 +1,12 @@
-use miden_crypto::{
-    Word,
-    merkle::{InnerNodeInfo, LeafIndex, MerkleError, PartialSmt, SMT_DEPTH, SmtLeaf, SmtProof},
+use miden_crypto::Word;
+use miden_crypto::merkle::{
+    InnerNodeInfo,
+    LeafIndex,
+    MerkleError,
+    PartialSmt,
+    SMT_DEPTH,
+    SmtLeaf,
+    SmtProof,
 };
 use vm_core::utils::{Deserializable, Serializable};
 

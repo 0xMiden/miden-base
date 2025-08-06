@@ -2,13 +2,16 @@ use alloc::string::ToString;
 
 use miden_crypto::merkle::SparseMerklePath;
 
+use crate::batch::BatchNoteTree;
+use crate::crypto::merkle::{LeafIndex, MerkleError, SimpleSmt};
+use crate::note::{NoteId, NoteMetadata, compute_note_commitment};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 use crate::{
-    BLOCK_NOTE_TREE_DEPTH, MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH,
-    MAX_OUTPUT_NOTES_PER_BLOCK, Word,
-    batch::BatchNoteTree,
-    crypto::merkle::{LeafIndex, MerkleError, SimpleSmt},
-    note::{NoteId, NoteMetadata, compute_note_commitment},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+    BLOCK_NOTE_TREE_DEPTH,
+    MAX_BATCHES_PER_BLOCK,
+    MAX_OUTPUT_NOTES_PER_BATCH,
+    MAX_OUTPUT_NOTES_PER_BLOCK,
+    Word,
 };
 
 /// Wrapper over [SimpleSmt<BLOCK_NOTE_TREE_DEPTH>] for notes tree.
@@ -173,10 +176,8 @@ impl Deserializable for BlockNoteTree {
 
 #[cfg(test)]
 mod tests {
-    use miden_crypto::{
-        merkle::SimpleSmt,
-        utils::{Deserializable, Serializable},
-    };
+    use miden_crypto::merkle::SimpleSmt;
+    use miden_crypto::utils::{Deserializable, Serializable};
 
     use super::BlockNoteTree;
     use crate::Word;

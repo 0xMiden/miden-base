@@ -1,18 +1,14 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    env,
-    fmt::Write,
-    fs::{self},
-    io::{self},
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::env;
+use std::fmt::Write;
+use std::fs::{self};
+use std::io::{self};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use assembly::{
-    Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report,
-    diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr},
-    utils::Serializable,
-};
+use assembly::diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr};
+use assembly::utils::Serializable;
+use assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report};
 use regex::Regex;
 use walkdir::WalkDir;
 

@@ -1,21 +1,18 @@
 extern crate alloc;
 
-use miden_lib::{
-    account::faucets::FungibleFaucetExt,
-    errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED,
-    utils::ScriptBuilder,
-};
-use miden_objects::{
-    Felt, Word,
-    asset::{Asset, FungibleAsset},
-    note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType},
-    transaction::OutputNote,
-};
+use miden_lib::account::faucets::FungibleFaucetExt;
+use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
+use miden_objects::transaction::OutputNote;
+use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::utils::word_to_masm_push_string;
 
 use crate::{
-    assert_transaction_executor_error, get_note_with_fungible_asset_and_script,
+    assert_transaction_executor_error,
+    get_note_with_fungible_asset_and_script,
     prove_and_verify_transaction,
 };
 

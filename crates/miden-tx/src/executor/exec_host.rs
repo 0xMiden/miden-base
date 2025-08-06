@@ -1,20 +1,26 @@
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::{errors::TransactionKernelError, transaction::TransactionEvent};
-use miden_objects::{
-    Felt, Hasher, Word,
-    account::{AccountDelta, PartialAccount},
-    transaction::{InputNote, InputNotes, OutputNote},
-};
+use miden_lib::errors::TransactionKernelError;
+use miden_lib::transaction::TransactionEvent;
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::{Felt, Hasher, Word};
 use vm_processor::{
-    BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
+    BaseHost,
+    ErrorContext,
+    ExecutionError,
+    MastForest,
+    MastForestStore,
+    ProcessState,
+    SyncHost,
 };
 
-use crate::{
-    AccountProcedureIndexMap,
-    auth::{SigningInputs, TransactionAuthenticator},
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
-};
+use crate::AccountProcedureIndexMap;
+use crate::auth::{SigningInputs, TransactionAuthenticator};
+use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
 
 /// The transaction executor host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests

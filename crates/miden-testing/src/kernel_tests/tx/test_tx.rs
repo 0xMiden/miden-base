@@ -1,61 +1,96 @@
-use alloc::{string::String, sync::Arc, vec::Vec};
+use alloc::string::String;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::{
-    AuthScheme,
-    account::{interface::AccountInterface, wallets::BasicWallet},
-    errors::tx_kernel_errors::{
-        ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
-    },
-    note::create_p2id_note,
-    transaction::{
-        TransactionEvent, TransactionKernel,
-        memory::{
-            NOTE_MEM_SIZE, NUM_OUTPUT_NOTES_PTR, OUTPUT_NOTE_ASSETS_OFFSET,
-            OUTPUT_NOTE_METADATA_OFFSET, OUTPUT_NOTE_RECIPIENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET,
-        },
-    },
-    utils::{ScriptBuilder, word_to_masm_push_string},
+use miden_lib::AuthScheme;
+use miden_lib::account::interface::AccountInterface;
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
+    ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
-use miden_objects::{
-    FieldElement, Hasher, Word,
-    account::{
-        Account, AccountBuilder, AccountCode, AccountComponent, AccountId, AccountStorage,
-        AccountStorageMode, AccountType, StorageSlot,
-    },
-    assembly::diagnostics::{IntoDiagnostic, NamedSource, miette},
-    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    block::BlockNumber,
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteHeader, NoteId, NoteInputs,
-        NoteMetadata, NoteRecipient, NoteTag, NoteType,
-    },
-    testing::{
-        account_component::IncrNonceAuthComponent,
-        account_id::{
-            ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2},
-        note::DEFAULT_NOTE_CODE,
-    },
-    transaction::{InputNotes, OutputNote, OutputNotes, TransactionArgs, TransactionSummary},
+use miden_lib::note::create_p2id_note;
+use miden_lib::transaction::memory::{
+    NOTE_MEM_SIZE,
+    NUM_OUTPUT_NOTES_PTR,
+    OUTPUT_NOTE_ASSETS_OFFSET,
+    OUTPUT_NOTE_METADATA_OFFSET,
+    OUTPUT_NOTE_RECIPIENT_OFFSET,
+    OUTPUT_NOTE_SECTION_OFFSET,
 };
+use miden_lib::transaction::{TransactionEvent, TransactionKernel};
+use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
+};
+use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use miden_objects::block::BlockNumber;
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteExecutionMode,
+    NoteHeader,
+    NoteId,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
+};
+use miden_objects::testing::account_component::IncrNonceAuthComponent;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PRIVATE_SENDER,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
+};
+use miden_objects::testing::constants::{
+    FUNGIBLE_ASSET_AMOUNT,
+    NON_FUNGIBLE_ASSET_DATA,
+    NON_FUNGIBLE_ASSET_DATA_2,
+};
+use miden_objects::testing::note::DEFAULT_NOTE_CODE;
+use miden_objects::transaction::{
+    InputNotes,
+    OutputNote,
+    OutputNotes,
+    TransactionArgs,
+    TransactionSummary,
+};
+use miden_objects::{FieldElement, Hasher, Word};
+use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
-    AccountProcedureIndexMap, ExecutionOptions, ScriptMastForestStore, TransactionExecutor,
-    TransactionExecutorError, TransactionExecutorHost, TransactionMastStore, auth::UnreachableAuth,
+    AccountProcedureIndexMap,
+    ExecutionOptions,
+    ScriptMastForestStore,
+    TransactionExecutor,
+    TransactionExecutorError,
+    TransactionExecutorHost,
+    TransactionMastStore,
 };
-use vm_processor::{AdviceInputs, Process, crypto::RpoRandomCoin};
+use vm_processor::crypto::RpoRandomCoin;
+use vm_processor::{AdviceInputs, Process};
 
 use super::{Felt, ONE, ZERO};
-use crate::{
-    Auth, MockChain, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt,
-    utils::{create_p2any_note, create_spawn_note},
-};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
 /// Tests that executing a transaction with a foreign account whose inputs are stale fails.
 #[test]

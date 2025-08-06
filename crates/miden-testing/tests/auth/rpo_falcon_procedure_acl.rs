@@ -1,19 +1,19 @@
 use assert_matches::assert_matches;
-use miden_lib::{
-    transaction::{TransactionKernel, TransactionKernelError},
-    utils::ScriptBuilder,
+use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::{
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
 };
-use miden_objects::{
-    Felt, FieldElement, Word,
-    account::{
-        AccountBuilder, AccountComponent, AccountId, AccountStorage, AccountStorageMode,
-        AccountType,
-    },
-    testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_SENDER, note::NoteBuilder,
-    },
-    transaction::OutputNote,
-};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::transaction::OutputNote;
+use miden_objects::{Felt, FieldElement, Word};
 use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
 use vm_processor::ExecutionError;
