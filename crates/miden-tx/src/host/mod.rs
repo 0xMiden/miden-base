@@ -25,36 +25,20 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
 use miden_lib::transaction::{
-    TransactionEvent,
-    TransactionEventError,
-    TransactionEventHandling,
-    TransactionKernelError,
+    TransactionEvent, TransactionEventError, TransactionEventHandling, TransactionKernelError,
 };
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::asset::Asset;
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
-    InputNote,
-    InputNotes,
-    OutputNote,
-    OutputNotes,
-    TransactionMeasurements,
-    TransactionSummary,
+    InputNote, InputNotes, OutputNote, OutputNotes, TransactionMeasurements, TransactionSummary,
 };
 use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
 pub use tx_progress::TransactionProgress;
 use vm_processor::{
-    AdviceMutation,
-    ContextId,
-    ErrorContext,
-    EventError,
-    ExecutionError,
-    Felt,
-    MastForest,
-    MastForestStore,
-    MemoryError,
-    ProcessState,
+    AdviceMutation, ContextId, ErrorContext, EventError, ExecutionError, Felt, MastForest,
+    MastForestStore, MemoryError, ProcessState,
 };
 
 // TRANSACTION BASE HOST
@@ -625,9 +609,9 @@ where
         process: &ProcessState,
         msg: Word,
     ) -> Result<TransactionSummary, TransactionKernelError> {
-        let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-        })?;
+        let Some(commitments) = process.advice_provider().get_mapped_values(&msg) else {
+            return Err(todo!()); // FIXME
+        };
 
         if commitments.len() != 16 {
             return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
