@@ -10,7 +10,7 @@ use.std::math::u64
 # ERRORS
 # =================================================================================================
 
-const.ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_WITH_VAULT_OR_STORAGE_CHANGES="account delta nonce must incremented if vault or storage changed"
+const.ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED="nonce must be incremented if account vault or account storage changed"
 
 # CONSTANTS
 # =================================================================================================
@@ -76,17 +76,14 @@ export.compute_commitment
     exec.rpo::squeeze_digest
     # => [DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
-    exec.was_nonce_incremented
-    # => [was_nonce_incremented, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
-
-    eq.0
-    # => [is_nonce_zero, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
+    exec.was_nonce_incremented not
+    # => [!was_nonce_incremented, DELTA_COMMITMENT, ID_AND_NONCE_DIGEST]
 
     if.true
         # if the nonce wasn't incremented, then the vault and storage changes must be empty
         # if the delta commitment is equivalent to the ID_AND_NONCE_DIGEST, then storage
         # and vault delta were empty
-        assert_eqw.err=ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_WITH_VAULT_OR_STORAGE_CHANGES
+        assert_eqw.err=ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED
         # => []
 
         # if the delta is empty, its commitment is defined as the empty word
