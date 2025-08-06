@@ -180,8 +180,6 @@ const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
 const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
 const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
 
-const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
-
 # Offset at which an exact copy of the account's storage slot section starting at
 # ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
 # slots accessible to enable computing a diff between the initial and current account storage slots
@@ -1070,7 +1068,7 @@ end
 #! - acct_nonce is the account nonce.
 
 export.get_acct_nonce
-    exec.get_current_account_data_ptr add.ACCT_NONCE_PTR
+    exec.get_current_account_data_ptr add.ACCT_NONCE_OFFSET
     mem_load
 end
 
