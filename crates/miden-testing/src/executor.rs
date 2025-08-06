@@ -1,5 +1,4 @@
 use alloc::borrow::ToOwned;
-use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::SourceManager;

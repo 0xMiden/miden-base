@@ -47,13 +47,11 @@ pub use tx_progress::TransactionProgress;
 use vm_processor::{
     AdviceMutation,
     ContextId,
-    ErrorContext,
     EventError,
     ExecutionError,
     Felt,
     MastForest,
     MastForestStore,
-    MemoryError,
     ProcessState,
 };
 

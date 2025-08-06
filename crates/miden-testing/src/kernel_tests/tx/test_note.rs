@@ -6,12 +6,13 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
+use miden_lib::note::create_p2id_note;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
 use miden_objects::assembly::diagnostics::miette::{self, miette};
-use miden_objects::asset::FungibleAsset;
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
 use miden_objects::note::{
@@ -26,7 +27,10 @@ use miden_objects::note::{
     NoteType,
 };
 use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
@@ -389,7 +393,7 @@ fn test_input_notes_get_asset_info() -> anyhow::Result<()> {
         assets_number_1 = p2id_note_2.assets().num_assets(),
     );
 
-    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -544,8 +548,7 @@ fn test_output_notes_get_asset_info() -> anyhow::Result<()> {
         assets_number_2 = output_note_2.assets().num_assets(),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?

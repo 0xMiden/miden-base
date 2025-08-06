@@ -812,7 +812,10 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
     )?;
     let chain = builder.build()?;
 
-    let tx = chain.build_tx_context(account, &[input_note.id()], &[])?.build()?.execute()?;
+    let tx = chain
+        .build_tx_context(account, &[input_note.id()], &[])?
+        .build()?
+        .execute_blocking()?;
 
     assert!(tx.account_delta().vault().is_empty());
 

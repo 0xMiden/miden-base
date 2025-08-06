@@ -11,9 +11,7 @@ use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use vm_processor::{
     AdviceMutation,
     BaseHost,
-    ErrorContext,
     EventError,
-    ExecutionError,
     MastForest,
     MastForestStore,
     ProcessState,
@@ -80,6 +78,10 @@ impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
+    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
+        self.base_host.get_mast_forest(procedure_root)
+    }
+
     fn get_label_and_source_file(
         &self,
         _location: &Location,
@@ -95,10 +97,6 @@ impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
-    }
-
     fn on_event(
         &mut self,
         process: &ProcessState,

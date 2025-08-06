@@ -5,7 +5,6 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::transaction::{
     OutputNote,
     ProvenTransaction,

@@ -6,7 +6,6 @@ use miden_objects::account::{Account, AccountId};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::PartialBlockchain;
 use vm_processor::{MastForestStore, Word};
-use winter_maybe_async::*;
 
 use crate::DataStoreError;
 

@@ -665,8 +665,8 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let code2 = assembler.clone().assemble_library([source_code_component2]).unwrap();
     let find_procedure_digest_by_name = |name: &str, lib: &Library| {
         lib.exports().find_map(|export| {
-            if export.name.as_str() == name {
-                Some(lib.mast_forest()[lib.get_export_node_id(export)].digest())
+            if export.name.name.as_str() == name {
+                Some(lib.mast_forest()[lib.get_export_node_id(&export.name)].digest())
             } else {
                 None
             }

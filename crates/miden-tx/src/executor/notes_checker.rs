@@ -7,7 +7,6 @@ use miden_objects::assembly::SourceManager;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
-use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{NoteAccountExecution, TransactionExecutor, TransactionExecutorError};
 use crate::DataStore;

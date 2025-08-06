@@ -9,7 +9,6 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionInputs,
 };
-use miden_objects::utils::collections::KvMap;
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO};
 use thiserror::Error;

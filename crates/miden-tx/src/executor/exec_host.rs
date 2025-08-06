@@ -13,15 +13,12 @@ use miden_objects::{Felt, Hasher, Word};
 use vm_processor::{
     AdviceMutation,
     AsyncHost,
-    AsyncHostFuture,
     BaseHost,
-    ErrorContext,
     EventError,
-    ExecutionError,
+    FutureMaybeSend,
     MastForest,
     MastForestStore,
     ProcessState,
-    SyncHost,
 };
 
 use crate::AccountProcedureIndexMap;
@@ -162,6 +159,10 @@ where
     STORE: MastForestStore,
     AUTH: TransactionAuthenticator,
 {
+    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
+        self.base_host.get_mast_forest(procedure_root)
+    }
+
     fn get_label_and_source_file(
         &self,
         location: &Location,
@@ -179,15 +180,11 @@ where
     STORE: MastForestStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
-    }
-
     fn on_event(
         &mut self,
         process: &ProcessState,
         event_id: u32,
-    ) -> impl AsyncHostFuture<Result<Vec<AdviceMutation>, EventError>> {
+    ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
         let event_handling_result = TransactionEvent::try_from(event_id)
             .map_err(EventError::from)
             .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
@@ -201,13 +198,9 @@ where
                 },
             };
 
-            if let TransactionEventData::AuthRequest { .. } = &event_data {
-                let modifications =
-                    self.on_auth_requested(process).await.map_err(EventError::from)?;
-                Ok(modifications)
-            } else {
-                Ok(vec![])
-            }
+            let TransactionEventData::AuthRequest { .. } = &event_data;
+            let modifications = self.on_auth_requested(process).await.map_err(EventError::from)?;
+            Ok(modifications)
         }
     }
 }
