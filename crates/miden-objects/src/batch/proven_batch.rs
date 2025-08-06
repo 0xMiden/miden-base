@@ -1,15 +1,15 @@
-use alloc::{collections::BTreeMap, string::ToString, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use crate::{
-    MIN_PROOF_SECURITY_LEVEL, Word,
-    account::AccountId,
-    batch::{BatchAccountUpdate, BatchId},
-    block::BlockNumber,
-    errors::ProvenBatchError,
-    note::Nullifier,
-    transaction::{InputNoteCommitment, InputNotes, OrderedTransactionHeaders, OutputNote},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::account::AccountId;
+use crate::batch::{BatchAccountUpdate, BatchId};
+use crate::block::BlockNumber;
+use crate::errors::ProvenBatchError;
+use crate::note::Nullifier;
+use crate::transaction::{InputNoteCommitment, InputNotes, OrderedTransactionHeaders, OutputNote};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{MIN_PROOF_SECURITY_LEVEL, Word};
 
 /// A transaction batch with an execution proof.
 #[derive(Debug, Clone, PartialEq, Eq)]

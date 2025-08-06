@@ -1,17 +1,25 @@
-use std::{collections::BTreeMap, vec::Vec};
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    Word,
-    account::AccountId,
-    block::{
-        AccountUpdateWitness, BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree,
-        BlockNumber, NullifierWitness, OutputNoteBatch, PartialAccountTree, PartialNullifierTree,
-        ProposedBlock, ProvenBlock,
-    },
-    note::Nullifier,
-    transaction::PartialBlockchain,
+use miden_objects::Word;
+use miden_objects::account::AccountId;
+use miden_objects::block::{
+    AccountUpdateWitness,
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
+    BlockNumber,
+    NullifierWitness,
+    OutputNoteBatch,
+    PartialAccountTree,
+    PartialNullifierTree,
+    ProposedBlock,
+    ProvenBlock,
 };
+use miden_objects::note::Nullifier;
+use miden_objects::transaction::PartialBlockchain;
 
 use crate::errors::ProvenBlockError;
 

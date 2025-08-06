@@ -1,19 +1,23 @@
-use alloc::{boxed::Box, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionEvent;
-use miden_objects::{
-    Word,
-    account::{AccountDelta, PartialAccount},
-    transaction::{InputNote, InputNotes, OutputNote},
-};
+use miden_objects::Word;
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use vm_processor::{
-    BaseHost, ErrorContext, ExecutionError, MastForest, MastForestStore, ProcessState, SyncHost,
+    BaseHost,
+    ErrorContext,
+    ExecutionError,
+    MastForest,
+    MastForestStore,
+    ProcessState,
+    SyncHost,
 };
 
-use crate::{
-    AccountProcedureIndexMap,
-    host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress},
-};
+use crate::AccountProcedureIndexMap;
+use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.

@@ -1,16 +1,19 @@
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_objects::{
-    Word,
-    account::AccountId,
-    asset::FungibleAsset,
-    block::BlockNumber,
-    crypto::merkle::SparseMerklePath,
-    note::{Note, NoteInclusionProof, Nullifier},
-    transaction::{InputNote, OutputNote, ProvenTransaction, ProvenTransactionBuilder},
-    vm::ExecutionProof,
+use miden_objects::Word;
+use miden_objects::account::AccountId;
+use miden_objects::asset::FungibleAsset;
+use miden_objects::block::BlockNumber;
+use miden_objects::crypto::merkle::SparseMerklePath;
+use miden_objects::note::{Note, NoteInclusionProof, Nullifier};
+use miden_objects::transaction::{
+    InputNote,
+    OutputNote,
+    ProvenTransaction,
+    ProvenTransactionBuilder,
 };
+use miden_objects::vm::ExecutionProof;
 use winterfell::Proof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.

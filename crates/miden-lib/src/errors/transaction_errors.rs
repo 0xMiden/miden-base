@@ -1,10 +1,10 @@
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use core::error::Error;
 
-use miden_objects::{
-    AccountDeltaError, AssetError, Felt, NoteError, Word, note::NoteMetadata,
-    transaction::TransactionSummary,
-};
+use miden_objects::note::NoteMetadata;
+use miden_objects::transaction::TransactionSummary;
+use miden_objects::{AccountDeltaError, AssetError, Felt, NoteError, Word};
 use thiserror::Error;
 
 // TRANSACTION KERNEL ERROR

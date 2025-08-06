@@ -1,7 +1,9 @@
-use alloc::{boxed::Box, string::String};
+use alloc::boxed::Box;
+use alloc::string::String;
 use core::error::Error;
 
-use miden_objects::assembly::diagnostics::{Report, reporting::PrintDiagnostic};
+use miden_objects::assembly::diagnostics::Report;
+use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 
 // SCRIPT BUILDER ERROR
 // ================================================================================================

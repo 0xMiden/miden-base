@@ -1,35 +1,36 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::{
-    AccountError, Felt, NoteError, Word, ZERO,
-    account::{AccountBuilder, AccountComponent, AccountType, StorageSlot},
-    assembly::{Assembler, diagnostics::NamedSource},
-    asset::{FungibleAsset, NonFungibleAsset, TokenSymbol},
-    crypto::{
-        dsa::rpo_falcon512::PublicKey,
-        rand::{FeltRng, RpoRandomCoin},
-    },
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
-        NoteTag, NoteType,
-    },
-    testing::account_id::{
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
-    },
+use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, StorageSlot};
+use miden_objects::assembly::Assembler;
+use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
 };
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
+};
+use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
-use crate::{
-    account::{
-        auth::AuthRpoFalcon512,
-        faucets::BasicFungibleFaucet,
-        interface::{AccountInterface, NoteAccountCompatibility},
-        wallets::BasicWallet,
-    },
-    note::{create_p2id_note, create_p2ide_note, create_swap_note},
-    transaction::TransactionKernel,
-};
+use crate::account::auth::AuthRpoFalcon512;
+use crate::account::faucets::BasicFungibleFaucet;
+use crate::account::interface::{AccountInterface, NoteAccountCompatibility};
+use crate::account::wallets::BasicWallet;
+use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use crate::transaction::TransactionKernel;
+use crate::utils::ScriptBuilder;
 
 // DEFAULT NOTES
 // ================================================================================================
@@ -278,9 +279,7 @@ fn test_basic_wallet_custom_notes() {
             end
         end
     ";
-    let note_script =
-        NoteScript::compile(compatible_source_code, TransactionKernel::testing_assembler())
-            .unwrap();
+    let note_script = ScriptBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -309,8 +308,7 @@ fn test_basic_wallet_custom_notes() {
         end
     ";
     let note_script =
-        NoteScript::compile(incompatible_source_code, TransactionKernel::testing_assembler())
-            .unwrap();
+        ScriptBuilder::default().compile_note_script(incompatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -370,9 +368,7 @@ fn test_basic_fungible_faucet_custom_notes() {
             end
         end
     ";
-    let note_script =
-        NoteScript::compile(compatible_source_code, TransactionKernel::testing_assembler())
-            .unwrap();
+    let note_script = ScriptBuilder::default().compile_note_script(compatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -403,8 +399,7 @@ fn test_basic_fungible_faucet_custom_notes() {
         end
     ";
     let note_script =
-        NoteScript::compile(incompatible_source_code, TransactionKernel::testing_assembler())
-            .unwrap();
+        ScriptBuilder::default().compile_note_script(incompatible_source_code).unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -486,13 +481,11 @@ fn test_custom_account_custom_notes() {
             end
         end
     ";
-    let note_script = NoteScript::compile(
-        compatible_source_code,
-        TransactionKernel::testing_assembler()
-            .with_dynamic_library(account_component.library())
-            .unwrap(),
-    )
-    .unwrap();
+    let note_script = ScriptBuilder::default()
+        .with_dynamically_linked_library(account_component.library())
+        .unwrap()
+        .compile_note_script(compatible_source_code)
+        .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -515,13 +508,11 @@ fn test_custom_account_custom_notes() {
             end
         end
     ";
-    let note_script = NoteScript::compile(
-        incompatible_source_code,
-        TransactionKernel::testing_assembler()
-            .with_dynamic_library(account_component.library())
-            .unwrap(),
-    )
-    .unwrap();
+    let note_script = ScriptBuilder::default()
+        .with_dynamically_linked_library(account_component.library())
+        .unwrap()
+        .compile_note_script(incompatible_source_code)
+        .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault, metadata, recipient);
     assert_eq!(
@@ -611,13 +602,11 @@ fn test_custom_account_multiple_components_custom_notes() {
             end
         end
     ";
-    let note_script = NoteScript::compile(
-        compatible_source_code,
-        TransactionKernel::testing_assembler()
-            .with_dynamic_library(custom_component.library())
-            .unwrap(),
-    )
-    .unwrap();
+    let note_script = ScriptBuilder::default()
+        .with_dynamically_linked_library(custom_component.library())
+        .unwrap()
+        .compile_note_script(compatible_source_code)
+        .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let compatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(
@@ -652,13 +641,11 @@ fn test_custom_account_multiple_components_custom_notes() {
             end
         end
     ";
-    let note_script = NoteScript::compile(
-        incompatible_source_code,
-        TransactionKernel::testing_assembler()
-            .with_dynamic_library(custom_component.library())
-            .unwrap(),
-    )
-    .unwrap();
+    let note_script = ScriptBuilder::default()
+        .with_dynamically_linked_library(custom_component.library())
+        .unwrap()
+        .compile_note_script(incompatible_source_code)
+        .unwrap();
     let recipient = NoteRecipient::new(serial_num, note_script, NoteInputs::default());
     let incompatible_custom_note = Note::new(vault.clone(), metadata, recipient);
     assert_eq!(

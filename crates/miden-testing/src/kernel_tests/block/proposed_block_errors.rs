@@ -1,25 +1,32 @@
-use std::{collections::BTreeMap, vec::Vec};
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::{
-    MAX_BATCHES_PER_BLOCK, ProposedBlockError,
-    account::AccountId,
-    block::{BlockInputs, BlockNumber, ProposedBlock},
-    crypto::merkle::SparseMerklePath,
-    note::NoteInclusionProof,
-    testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    transaction::{OutputNote, ProvenTransaction},
-};
+use miden_objects::account::AccountId;
+use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
+use miden_objects::crypto::merkle::SparseMerklePath;
+use miden_objects::note::NoteInclusionProof;
+use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use miden_objects::transaction::{OutputNote, ProvenTransaction};
+use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
 use vm_processor::crypto::MerklePath;
 
 use super::utils::{
-    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
-    generate_fungible_asset, generate_output_note, generate_tracked_note,
-    generate_tracked_note_with_asset, generate_tx_with_authenticated_notes,
-    generate_tx_with_expiration, generate_tx_with_unauthenticated_notes, generate_untracked_note,
+    TestSetup,
+    generate_batch,
+    generate_executed_tx_with_authenticated_notes,
+    generate_fungible_asset,
+    generate_output_note,
+    generate_tracked_note,
+    generate_tracked_note_with_asset,
+    generate_tx_with_authenticated_notes,
+    generate_tx_with_expiration,
+    generate_tx_with_unauthenticated_notes,
+    generate_untracked_note,
     setup_chain,
 };
-use crate::{ProvenTransactionExt, utils::create_spawn_note};
+use crate::ProvenTransactionExt;
+use crate::utils::create_spawn_note;
 
 /// Tests that too many batches produce an error.
 #[test]

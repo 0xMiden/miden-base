@@ -1,20 +1,21 @@
-use alloc::{
-    boxed::Box,
-    collections::BTreeSet,
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::boxed::Box;
+use alloc::collections::BTreeSet;
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::iter;
 
+use super::placeholder::{PlaceholderTypeRequirement, TEMPLATE_REGISTRY, TemplateType};
 use super::{
-    FieldIdentifier, InitStorageData, MapEntry, StorageValueName, TemplateRequirementsIter,
-    placeholder::{PlaceholderTypeRequirement, TEMPLATE_REGISTRY, TemplateType},
+    FieldIdentifier,
+    InitStorageData,
+    MapEntry,
+    StorageValueName,
+    TemplateRequirementsIter,
 };
-use crate::{
-    Felt, FieldElement, Word,
-    account::{StorageMap, component::template::AccountComponentTemplateError},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::account::StorageMap;
+use crate::account::component::template::AccountComponentTemplateError;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{Felt, FieldElement, Word};
 
 // WORDS
 // ================================================================================================

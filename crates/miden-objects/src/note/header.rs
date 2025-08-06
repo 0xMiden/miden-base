@@ -1,8 +1,15 @@
 use alloc::vec::Vec;
 
 use super::{
-    ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, NoteId, NoteMetadata,
-    Serializable, Word,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Felt,
+    NoteId,
+    NoteMetadata,
+    Serializable,
+    Word,
 };
 use crate::Hasher;
 

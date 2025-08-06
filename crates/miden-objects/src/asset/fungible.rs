@@ -1,10 +1,15 @@
-use alloc::{boxed::Box, string::ToString};
+use alloc::boxed::Box;
+use alloc::string::ToString;
 use core::fmt;
 
 use super::{AccountType, Asset, AssetError, Felt, Word, ZERO, is_not_a_non_fungible_asset};
-use crate::{
-    account::{AccountId, AccountIdPrefix},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::{AccountId, AccountIdPrefix};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // FUNGIBLE ASSET
@@ -244,13 +249,14 @@ impl FungibleAsset {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        account::AccountId,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
-        },
+    use crate::account::AccountId;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
     };
 
     #[test]

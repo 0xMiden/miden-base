@@ -1,26 +1,28 @@
 use core::fmt;
-use std::{fs::File, io::Write, path::Path};
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 use anyhow::Context;
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
-use miden_objects::{
-    Felt, FieldElement, Word,
-    account::{Account, AccountId, AccountStorageMode, AccountType},
-    asset::{Asset, FungibleAsset},
-    crypto::rand::RpoRandomCoin,
-    note::NoteType,
-    testing::{
-        account_component::IncrNonceAuthComponent,
-        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    },
-    transaction::TransactionMeasurements,
-};
-use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
+use miden_lib::note::create_p2id_note;
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::crypto::rand::RpoRandomCoin;
+use miden_objects::note::NoteType;
+use miden_objects::testing::account_component::IncrNonceAuthComponent;
+use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::transaction::TransactionMeasurements;
+use miden_objects::{Felt, FieldElement, Word};
+use miden_testing::TransactionContextBuilder;
+use miden_testing::utils::create_p2any_note;
 
 mod utils;
 use utils::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER,
-    get_account_with_basic_authenticated_wallet, get_new_pk_and_authenticator,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_SENDER,
+    get_account_with_basic_authenticated_wallet,
+    get_new_pk_and_authenticator,
     write_bench_results_to_json,
 };
 pub enum Benchmark {

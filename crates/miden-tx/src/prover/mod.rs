@@ -1,12 +1,16 @@
 #[cfg(feature = "async")]
 use alloc::boxed::Box;
-use alloc::{sync::Arc, vec::Vec};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    account::delta::AccountUpdateDetails,
-    assembly::DefaultSourceManager,
-    transaction::{OutputNote, ProvenTransaction, ProvenTransactionBuilder, TransactionWitness},
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::assembly::DefaultSourceManager;
+use miden_objects::transaction::{
+    OutputNote,
+    ProvenTransaction,
+    ProvenTransactionBuilder,
+    TransactionWitness,
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::prove;

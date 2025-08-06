@@ -1,7 +1,5 @@
-use vm_core::{
-    Felt,
-    utils::{Deserializable, Serializable},
-};
+use vm_core::Felt;
+use vm_core::utils::{Deserializable, Serializable};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
 use crate::asset::PartialVault;

@@ -1,43 +1,52 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use miden_lib::{
-    errors::tx_kernel_errors::{
-        ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
-        ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
-        ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME, ERR_TX_INVALID_EXPIRATION_DELTA,
-    },
-    transaction::{
-        EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel,
-        memory::{NOTE_MEM_SIZE, OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET, OUTPUT_NOTE_SECTION_OFFSET},
-    },
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE,
+    ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY,
+    ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
+    ERR_TX_INVALID_EXPIRATION_DELTA,
 };
-use miden_objects::{
-    FieldElement, Word,
-    account::{Account, AccountComponent, AccountDelta, AccountStorageDelta, AccountVaultDelta},
-    asset::{Asset, AssetVault, FungibleAsset},
-    note::{NoteTag, NoteType},
-    testing::{
-        account_component::IncrNonceAuthComponent,
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        constants::{CONSUMED_ASSET_1_AMOUNT, CONSUMED_ASSET_2_AMOUNT, CONSUMED_ASSET_3_AMOUNT},
-        note::NoteBuilder,
-    },
-    transaction::{OutputNote, OutputNotes},
+use miden_lib::transaction::memory::{
+    NOTE_MEM_SIZE,
+    OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
+    OUTPUT_NOTE_SECTION_OFFSET,
 };
+use miden_lib::transaction::{EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel};
+use miden_objects::account::{
+    Account,
+    AccountComponent,
+    AccountDelta,
+    AccountStorageDelta,
+    AccountVaultDelta,
+};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::note::{NoteTag, NoteType};
+use miden_objects::testing::account_component::IncrNonceAuthComponent;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
+    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
+};
+use miden_objects::testing::constants::{
+    CONSUMED_ASSET_1_AMOUNT,
+    CONSUMED_ASSET_2_AMOUNT,
+    CONSUMED_ASSET_3_AMOUNT,
+};
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::transaction::{OutputNote, OutputNotes};
+use miden_objects::{FieldElement, Word};
 use miden_tx::TransactionExecutorError;
 use rand::rng;
 use vm_processor::{Felt, ONE};
 
 use super::{ZERO, create_mock_notes_procedure};
-use crate::{
-    Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt,
-    utils::{create_p2any_note, create_spawn_note},
-};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error};
 
 #[test]
 fn test_epilogue() -> anyhow::Result<()> {

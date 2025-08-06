@@ -1,14 +1,22 @@
-use alloc::{boxed::Box, collections::BTreeSet, rc::Rc, sync::Arc};
+use alloc::boxed::Box;
+use alloc::collections::BTreeSet;
+use alloc::rc::Rc;
+use alloc::sync::Arc;
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
-use miden_objects::{
-    Felt, Word,
-    account::{AccountHeader, AccountVaultDelta},
-};
+use miden_objects::account::{AccountHeader, AccountVaultDelta};
+use miden_objects::{Felt, Word};
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
-    AdviceInputs, BaseHost, ContextId, ErrorContext, ExecutionError, MastForest, MastForestStore,
-    ProcessState, SyncHost,
+    AdviceInputs,
+    BaseHost,
+    ContextId,
+    ErrorContext,
+    ExecutionError,
+    MastForest,
+    MastForestStore,
+    ProcessState,
+    SyncHost,
 };
 
 // MOCK HOST
