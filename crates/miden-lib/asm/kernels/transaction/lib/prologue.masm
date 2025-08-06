@@ -505,9 +505,7 @@ proc.process_account_data
 
     # set the new account code commitment to the initial account code root
     # this is used for managing code commitment updates
-    # account code commitment is also stored as an initial one in the global inputs
     exec.memory::get_acct_code_commitment
-    exec.memory::set_init_account_code_commitment
     exec.memory::set_new_acct_code_commitment
     # => [ACCOUNT_CODE_COMMITMENT, ACCOUNT_COMMITMENT]
 

@@ -33,11 +33,15 @@ end
 
 #! Returns the account nonce.
 #!
+#! This procedure always returns the initial account nonce, as the nonce can only be incremented
+#! in the authentication procedure when signing the transaction after all user code has been 
+#! executed.
+#!
 #! Inputs:  []
 #! Outputs: [nonce]
 #!
 #! Where:
-#! - nonce is the account nonce.
+#! - nonce is the nonce of the current account.
 #!
 #! Invocation: exec
 export.get_nonce

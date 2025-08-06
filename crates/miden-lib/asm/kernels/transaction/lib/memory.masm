@@ -78,16 +78,6 @@ const.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR=416
 # The memory address at which the initial storage commitment of the native account is stored.
 const.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR=420
 
-# The memory address at which the initial code commitment of the native account is stored.
-# 
-# It points to the code commitment stored in the native account data block because the account's 
-# code cannot be changed during the user code execution, only in the epilogue, so the initial code 
-# commitment will be equal to the native account code commitment whenever it is called by a user.
-#
-# The value of this constant is equal to NATIVE_ACCOUNT_DATA_PTR + ACCT_CODE_COMMITMENT_OFFSET, but
-# because this constant should be created first, we have to use the final value itself.
-const.INIT_NATIVE_ACCOUNT_CODE_COMMITMENT_PTR=8204
-
 # The memory address at which the input notes commitment is stored.
 const.INPUT_NOTES_COMMITMENT_PTR=424
 
@@ -179,6 +169,7 @@ const.ACCOUNT_DATA_LENGTH=8192
 
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const.ACCT_ID_AND_NONCE_OFFSET=0
+const.ACCT_NONCE_OFFSET=3
 const.ACCT_VAULT_ROOT_OFFSET=4
 const.ACCT_STORAGE_COMMITMENT_OFFSET=8
 const.ACCT_CODE_COMMITMENT_OFFSET=12
@@ -188,6 +179,8 @@ const.ACCT_PROCEDURES_SECTION_OFFSET=32
 const.ACCT_PROCEDURES_CALL_TRACKING_OFFSET=2084
 const.NUM_ACCT_STORAGE_SLOTS_OFFSET=2340
 const.ACCT_STORAGE_SLOTS_SECTION_OFFSET=2344
+
+const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
 
 # Offset at which an exact copy of the account's storage slot section starting at
 # ACCT_STORAGE_SLOTS_SECTION_OFFSET is kept. This keeps the initial values of the account storage
@@ -534,18 +527,15 @@ export.get_init_account_storage_commitment
     padw mem_loadw.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
 end
 
-#! Sets the code commitment of the native account at the beginning of the transaction.
-#!
-#! Inputs:  [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
-#! Outputs: [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
-#!
-#! Where:
-#! - INIT_NATIVE_ACCOUNT_CODE_COMMITMENT is the initial code commitment of the native account.
-export.set_init_account_code_commitment
-    mem_storew.INIT_NATIVE_ACCOUNT_CODE_COMMITMENT_PTR
-end
-
 #! Returns the code commitment of the native account at the beginning of the transaction.
+#!
+#! This procedure returns the code commitment stored in the native account data block because the
+#! account's code cannot be changed during the user code execution. Only in the epilogue the code 
+#! commitment can be updated. So, the initial code commitment will be equal to the native account
+#! code commitment whenever it is called by a user.
+#!
+#! For the same reason this procedure doesn't have a dedicated setter, `set_acct_code_commitment` 
+#! procedure should be used as a setter instead.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
@@ -553,7 +543,9 @@ end
 #! Where:
 #! - INIT_NATIVE_ACCOUNT_CODE_COMMITMENT is the initial code commitment of the native account.
 export.get_init_account_code_commitment
-    padw mem_loadw.INIT_NATIVE_ACCOUNT_CODE_COMMITMENT_PTR
+    padw
+    exec.get_native_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
+    mem_loadw
 end
 
 #! Returns the input notes commitment.
@@ -1076,7 +1068,7 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
-const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
+
 export.get_acct_nonce
     exec.get_current_account_data_ptr add.ACCT_NONCE_PTR
     mem_load
