@@ -14,9 +14,7 @@ use vm_processor::{
     AdviceMutation,
     BaseHost,
     ContextId,
-    ErrorContext,
     EventError,
-    ExecutionError,
     MastForest,
     MastForestStore,
     ProcessState,
@@ -71,6 +69,10 @@ impl MockHost {
 }
 
 impl BaseHost for MockHost {
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
+        self.mast_store.get(node_digest)
+    }
+
     fn get_label_and_source_file(
         &self,
         location: &miden_objects::assembly::debuginfo::Location,
@@ -87,10 +89,6 @@ impl BaseHost for MockHost {
 }
 
 impl SyncHost for MockHost {
-    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
-        self.mast_store.get(node_digest)
-    }
-
     fn on_event(
         &mut self,
         process: &ProcessState,

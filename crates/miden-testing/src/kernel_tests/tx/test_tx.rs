@@ -33,7 +33,8 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
+use miden_objects::assembly::DefaultSourceManager;
+use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{
@@ -75,17 +76,8 @@ use miden_objects::transaction::{
 };
 use miden_objects::{FieldElement, Hasher, Word};
 use miden_tx::auth::UnreachableAuth;
-use miden_tx::{
-    AccountProcedureIndexMap,
-    ExecutionOptions,
-    ScriptMastForestStore,
-    TransactionExecutor,
-    TransactionExecutorError,
-    TransactionExecutorHost,
-    TransactionMastStore,
-};
+use miden_tx::{TransactionExecutor, TransactionExecutorError};
 use vm_processor::crypto::RpoRandomCoin;
-use vm_processor::{AdviceInputs, Process};
 
 use super::{Felt, ONE, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
@@ -781,7 +773,10 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
     let input_note = builder.add_spawn_note(account.id(), [&output_note])?;
     let chain = builder.build()?;
 
-    chain.build_tx_context(account, &[input_note.id()], &[])?.build()?.execute()?;
+    chain
+        .build_tx_context(account, &[input_note.id()], &[])?
+        .build()?
+        .execute_blocking()?;
 
     Ok(())
 }
@@ -1420,9 +1415,8 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    // FIXME TODO
-    let assembler = TransactionKernel::assembler();
-    let source_manager = assembler.source_manager();
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
 
     let library = assembler.assemble_library([source]).unwrap();
 

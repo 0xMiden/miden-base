@@ -624,7 +624,9 @@ where
         msg: Word,
     ) -> Result<TransactionSummary, TransactionKernelError> {
         let Some(commitments) = process.advice_provider().get_mapped_values(&msg) else {
-            return Err(todo!()); // FIXME
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected message to exist in advice provider".into(),
+            ));
         };
 
         if commitments.len() != 16 {

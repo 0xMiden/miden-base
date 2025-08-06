@@ -411,7 +411,7 @@ fn test_get_map_item() -> miette::Result<()> {
                 push.{item_index}
                 call.::test::account::get_map_item
 
-                # truncate the stack 
+                # truncate the stack
                 swapw dropw movup.4 drop
             end
             ",
