@@ -4,6 +4,7 @@ use std::vec::Vec;
 
 use miden_lib::note::create_p2id_note;
 use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::batch::ProvenBatch;
@@ -187,8 +188,7 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
         "
     );
 
-    TransactionScript::compile(code, TransactionKernel::testing_assembler_with_mock_account())
-        .unwrap()
+    ScriptBuilder::default().compile_tx_script(code).unwrap()
 }
 
 pub fn generate_batch(chain: &mut MockChain, txs: Vec<ProvenTransaction>) -> ProvenBatch {

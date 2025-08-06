@@ -496,8 +496,10 @@ proc.process_account_data
     exec.memory::set_init_nonce
     # => [ACCOUNT_COMMITMENT]
 
-    # validates and stores account storage slots in memory.
+    # validates and stores account storage slots in memory
+    # account storage commitment is also stored as an initial one in the global inputs
     exec.memory::get_acct_storage_commitment
+    exec.memory::set_init_account_storage_commitment
     exec.account::save_account_storage_data
     # => [ACCOUNT_COMMITMENT]
 
@@ -511,9 +513,12 @@ proc.process_account_data
     exec.account::save_account_procedure_data
     # => [ACCOUNT_COMMITMENT]
 
-    # copy the initial account vault hash to the input vault hash to support transaction asset
+    # copy the initial account vault root to the input vault root to support transaction asset
     # invariant checking
-    exec.memory::get_acct_vault_root exec.memory::set_input_vault_root dropw
+    # this account vault root is also stored as an initial one in the global inputs
+    exec.memory::get_acct_vault_root 
+    exec.memory::set_init_account_vault_root
+    exec.memory::set_input_vault_root dropw
     # => [ACCOUNT_COMMITMENT]
 
     # Validate the account

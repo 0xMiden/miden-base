@@ -56,7 +56,7 @@ use crate::transaction::TransactionKernel;
 /// # // Create sample libraries for the example
 /// # let my_lib = StdLibrary::default().into(); // Convert StdLibrary to Library
 /// # let fpi_lib = StdLibrary::default().into();
-/// let script = ScriptBuilder::new(true)
+/// let script = ScriptBuilder::default()
 ///     .with_linked_module("my::module", module_code).context("failed to link module")?
 ///     .with_statically_linked_library(&my_lib).context("failed to link static library")?
 ///     .with_dynamically_linked_library(&fpi_lib).context("failed to link dynamic library")?  // For FPI calls
@@ -247,9 +247,10 @@ impl ScriptBuilder {
     ) -> Result<TransactionScript, ScriptBuilderError> {
         let assembler = self.assembler;
 
-        TransactionScript::compile(tx_script.as_ref(), assembler).map_err(|err| {
-            ScriptBuilderError::build_error_with_source("failed to compile transaction script", err)
-        })
+        let program = assembler.assemble_program(tx_script.as_ref()).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to compile transaction script", err)
+        })?;
+        Ok(TransactionScript::new(program))
     }
 
     /// Compiles a note script with the provided program code.
@@ -268,9 +269,36 @@ impl ScriptBuilder {
     ) -> Result<NoteScript, ScriptBuilderError> {
         let assembler = self.assembler;
 
-        NoteScript::compile(program.as_ref(), assembler).map_err(|err| {
-            ScriptBuilderError::build_error_with_source("failed to compile note script", err)
-        })
+        let program = assembler.assemble_program(program.as_ref()).map_err(|err| {
+            ScriptBuilderError::build_error_with_report("failed to compile note script", err)
+        })?;
+        Ok(NoteScript::new(program))
+    }
+
+    // TESTING CONVENIENCE FUNCTIONS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a ScriptBuilder with the kernel library for testing scenarios.
+    ///
+    /// This is equivalent to using `TransactionKernel::testing_assembler()` and is intended
+    /// to replace scripts that were built with that assembler.
+    #[cfg(any(feature = "testing", test))]
+    pub fn with_kernel_library() -> Result<Self, ScriptBuilderError> {
+        let kernel_library = TransactionKernel::kernel_as_library();
+        Self::default().with_dynamically_linked_library(&kernel_library)
+    }
+
+    /// Creates a ScriptBuilder with both kernel and mock account libraries for testing scenarios.
+    ///
+    /// This is equivalent to using `TransactionKernel::testing_assembler_with_mock_account()`
+    /// and is intended to replace scripts that were built with that assembler.
+    #[cfg(any(feature = "testing", test))]
+    pub fn with_mock_account_library() -> Result<Self, ScriptBuilderError> {
+        let builder = Self::with_kernel_library()?;
+        let mock_account_library =
+            miden_objects::account::AccountCode::mock_library(builder.assembler.clone());
+
+        builder.with_dynamically_linked_library(&mock_account_library)
     }
 }
 
@@ -291,13 +319,13 @@ mod tests {
 
     #[test]
     fn test_script_builder_new() {
-        let _builder = ScriptBuilder::new(true);
+        let _builder = ScriptBuilder::default();
         // Test that the builder can be created successfully
     }
 
     #[test]
     fn test_script_builder_basic_script_compilation() -> anyhow::Result<()> {
-        let builder = ScriptBuilder::new(true);
+        let builder = ScriptBuilder::default();
         builder
             .compile_tx_script("begin nop end")
             .context("failed to compile basic tx script")?;
@@ -328,7 +356,7 @@ mod tests {
 
         let library_path = "external_contract::counter_contract";
 
-        let mut builder_with_lib = ScriptBuilder::new(true);
+        let mut builder_with_lib = ScriptBuilder::default();
         builder_with_lib
             .link_module(library_path, account_code)
             .context("failed to link module")?;
@@ -364,7 +392,7 @@ mod tests {
         let library_path = "external_contract::counter_contract";
 
         // Test single library
-        let mut builder_with_lib = ScriptBuilder::new(true);
+        let mut builder_with_lib = ScriptBuilder::default();
         builder_with_lib
             .link_module(library_path, account_code)
             .context("failed to link module")?;
@@ -373,7 +401,7 @@ mod tests {
             .context("failed to compile tx script")?;
 
         // Test multiple libraries
-        let mut builder_with_libs = ScriptBuilder::new(true);
+        let mut builder_with_libs = ScriptBuilder::default();
         builder_with_libs
             .link_module(library_path, account_code)
             .context("failed to link first module")?;
@@ -410,7 +438,7 @@ mod tests {
         ";
 
         // Test builder-style chaining with modules
-        let builder = ScriptBuilder::new(true)
+        let builder = ScriptBuilder::default()
             .with_linked_module("external_contract::counter_contract", account_code)
             .context("failed to link module")?;
 
@@ -425,7 +453,7 @@ mod tests {
             "use.test::lib1 use.test::lib2 begin exec.lib1::test1 exec.lib2::test2 end";
 
         // Test chaining multiple modules
-        let builder = ScriptBuilder::new(true)
+        let builder = ScriptBuilder::default()
             .with_linked_module("test::lib1", "export.test1 push.1 add end")
             .context("failed to link first module")?
             .with_linked_module("test::lib2", "export.test2 push.2 add end")

@@ -11,13 +11,15 @@ use miden_lib::errors::tx_kernel_errors::{
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
     ACCT_DB_ROOT_PTR,
-    ACCT_ID_PTR,
     BLOCK_COMMITMENT_PTR,
     BLOCK_METADATA_PTR,
     BLOCK_NUMBER_IDX,
     CHAIN_COMMITMENT_PTR,
     FEE_PARAMETERS_PTR,
     INIT_ACCT_COMMITMENT_PTR,
+    INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR,
+    INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
+    INIT_NATIVE_ACCT_VAULT_ROOT_PTR,
     INIT_NONCE_PTR,
     INPUT_NOTE_ARGS_OFFSET,
     INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
@@ -36,6 +38,7 @@ use miden_lib::transaction::memory::{
     MemoryOffset,
     NATIVE_ACCT_CODE_COMMITMENT_PTR,
     NATIVE_ACCT_ID_AND_NONCE_PTR,
+    NATIVE_ACCT_ID_PTR,
     NATIVE_ACCT_PROCEDURES_SECTION_PTR,
     NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
     NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR,
@@ -170,12 +173,12 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(ACCT_ID_PTR)[0],
+        process.get_kernel_mem_word(NATIVE_ACCT_ID_PTR)[0],
         inputs.account().id().suffix(),
         "The account ID prefix should be stored at the ACCT_ID_PTR[0]"
     );
     assert_eq!(
-        process.get_kernel_mem_word(ACCT_ID_PTR)[1],
+        process.get_kernel_mem_word(NATIVE_ACCT_ID_PTR)[1],
         inputs.account().id().prefix().as_felt(),
         "The account ID suffix should be stored at the ACCT_ID_PTR[1]"
     );
@@ -184,6 +187,24 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
         process.get_kernel_mem_word(INIT_ACCT_COMMITMENT_PTR),
         inputs.account().commitment(),
         "The account commitment should be stored at the INIT_ACCT_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_NATIVE_ACCT_VAULT_ROOT_PTR),
+        inputs.account().vault().root(),
+        "The initial native account vault root should be stored at the INIT_ACCT_VAULT_ROOT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
+        inputs.account().storage().commitment(),
+        "The initial native account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR),
+        inputs.account().code().commitment(),
+        "The initial native account code commitment should be stored at the INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR"
     );
 
     assert_eq!(

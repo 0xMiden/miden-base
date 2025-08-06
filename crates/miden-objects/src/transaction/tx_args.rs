@@ -2,7 +2,6 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use assembly::{Assembler, Parse};
 use miden_crypto::merkle::InnerNodeInfo;
 
 use super::{AccountInputs, Felt, Word};
@@ -15,7 +14,7 @@ use crate::utils::serde::{
     Serializable,
 };
 use crate::vm::{AdviceInputs, AdviceMap, Program};
-use crate::{EMPTY_WORD, MastForest, MastNodeId, TransactionScriptError};
+use crate::{EMPTY_WORD, MastForest, MastNodeId};
 
 // TRANSACTION ARGUMENTS
 // ================================================================================================
@@ -274,21 +273,6 @@ impl TransactionScript {
     /// Returns a new [TransactionScript] instantiated with the provided code.
     pub fn new(code: Program) -> Self {
         Self::from_parts(code.mast_forest().clone(), code.entrypoint())
-    }
-
-    /// Returns a new [TransactionScript] compiled from the provided source code using the specified
-    /// assembler.
-    ///
-    /// # Errors
-    /// Returns an error if the compilation of the provided source code fails.
-    pub fn compile(
-        source_code: impl Parse,
-        assembler: Assembler,
-    ) -> Result<Self, TransactionScriptError> {
-        let program = assembler
-            .assemble_program(source_code)
-            .map_err(TransactionScriptError::AssemblyError)?;
-        Ok(Self::new(program))
     }
 
     /// Returns a new [TransactionScript] instantiated from the provided MAST forest and entrypoint.

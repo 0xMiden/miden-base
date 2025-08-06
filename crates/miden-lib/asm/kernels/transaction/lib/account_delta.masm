@@ -128,8 +128,9 @@ proc.update_storage_delta
         dup movdn.13
         # => [next_slot_idx, RATE, RATE, PERM, next_slot_idx, num_storage_slots]
 
-        # compute next_slot_idx < num_storage_slots
-        dup.14 lt
+        # continue if next_slot_idx != num_storage_slots
+        # we use neq instead of lt for efficiency
+        dup.14 neq
         # => [should_loop, RATE, RATE, PERM, next_slot_idx, num_storage_slots]
     end
     # => [RATE, RATE, PERM, next_slot_idx, num_storage_slots]

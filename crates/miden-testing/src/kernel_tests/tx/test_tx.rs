@@ -21,7 +21,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::transaction::{TransactionEvent, TransactionKernel};
-use miden_lib::utils::word_to_masm_push_string;
+use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -46,7 +46,6 @@ use miden_objects::note::{
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
-    NoteScript,
     NoteTag,
     NoteType,
 };
@@ -72,7 +71,6 @@ use miden_objects::transaction::{
     OutputNote,
     OutputNotes,
     TransactionArgs,
-    TransactionScript,
     TransactionSummary,
 };
 use miden_objects::{FieldElement, Hasher, Word};
@@ -195,7 +193,7 @@ fn test_create_note() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
-        
+
         use.$kernel::prologue
 
         begin
@@ -292,16 +290,16 @@ fn note_creation_script(tag: Felt) -> String {
         "
             use.miden::tx
             use.$kernel::prologue
-    
+
             begin
                 exec.prologue::prepare_transaction
-    
+
                 push.{recipient}
                 push.{execution_hint_always}
                 push.{PUBLIC_NOTE}
                 push.{aux}
                 push.{tag}
-    
+
                 call.tx::create_note
 
                 # clean the stack
@@ -330,7 +328,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             exec.constants::get_max_num_output_notes
             exec.memory::set_num_output_notes
             exec.prologue::prepare_transaction
-            
+
             push.{recipient}
             push.{execution_hint_always}
             push.{PUBLIC_NOTE}
@@ -466,7 +464,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             push.{asset_1}
             call.tx::add_asset_to_note
             # => [ASSET, note_idx]
-            
+
             dropw drop
             # => []
 
@@ -479,7 +477,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             call.tx::create_note
             # => [note_idx]
 
-            push.{asset_2} 
+            push.{asset_2}
             call.tx::add_asset_to_note
             # => [ASSET, note_idx]
 
@@ -735,12 +733,12 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             call.tx::create_note
             # => [note_idx, pad(15)]
 
-            push.{nft} 
+            push.{nft}
             call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
             dropw
 
-            push.{nft} 
+            push.{nft}
             call.tx::add_asset_to_note
             # => [NFT, note_idx, pad(15)]
 
@@ -1078,8 +1076,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 2 which is public
     let serial_num_2 = Word::from([1, 2, 3, 4u32]);
-    let note_script_2 =
-        NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
+    let note_script_2 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_2 = NoteInputs::new(vec![ONE])?;
     let metadata_2 =
         NoteMetadata::new(account_id, note_type2, tag2, NoteExecutionHint::none(), aux2)?;
@@ -1089,8 +1086,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
 
     // Create the expected output note for Note 3 which is public
     let serial_num_3 = Word::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]);
-    let note_script_3 =
-        NoteScript::compile(DEFAULT_NOTE_CODE, TransactionKernel::testing_assembler())?;
+    let note_script_3 = ScriptBuilder::default().compile_note_script(DEFAULT_NOTE_CODE)?;
     let inputs_3 = NoteInputs::new(vec![ONE, Felt::new(2)])?;
     let metadata_3 = NoteMetadata::new(
         account_id,
@@ -1205,10 +1201,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         EXECUTION_HINT_3 = Felt::from(NoteExecutionHint::on_block_slot(11, 22, 33)),
     );
 
-    let tx_script = TransactionScript::compile(
-        tx_script_src,
-        TransactionKernel::testing_assembler_with_mock_account().with_debug_mode(true),
-    )?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     // expected delta
     // --------------------------------------------------------------------------------------------
@@ -1419,11 +1412,10 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    let mut assembler = TransactionKernel::assembler();
+    let assembler = TransactionKernel::assembler();
     let source_manager = assembler.source_manager();
-    assembler
-        .compile_and_statically_link(source)
-        .map_err(|_| anyhow::anyhow!("adding source module"))?;
+
+    let library = assembler.assemble_library([source]).unwrap();
 
     let source = "
     use.test::module_1
@@ -1436,8 +1428,9 @@ fn execute_tx_view_script() -> anyhow::Result<()> {
     end
     ";
 
-    let tx_script = TransactionScript::compile(source, assembler)?;
-
+    let tx_script = ScriptBuilder::new(false)
+        .with_statically_linked_library(&library)?
+        .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script.clone())
         .build()?;
@@ -1488,8 +1481,7 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
         value = word_to_masm_push_string(&tx_script_input_value)
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler()).unwrap();
+    let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
@@ -1527,9 +1519,9 @@ fn test_tx_script_args() -> anyhow::Result<()> {
             push.5.6.7.8 assert_eqw.err="obtained advice map value doesn't match the expected one"
         end"#;
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())
-            .context("failed to compile transaction script")?;
+    let tx_script = ScriptBuilder::default()
+        .compile_tx_script(tx_script_src)
+        .context("failed to compile transaction script")?;
 
     // extend the advice map with the entry that is accessed using the provided transaction script
     // argument
@@ -1578,8 +1570,8 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
 
     let script = format!(
         r#"
-            use.miden::account  
-            
+            use.miden::account
+
             adv_map.A([1,2,3,4])=[5,6,7,8]
 
             begin
@@ -1595,7 +1587,8 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
         assert_adv_map_proc_root =
             component.library().get_procedure_root_by_name("$anon::assert_adv_map").unwrap()
     );
-    let tx_script = TransactionScript::compile(script, TransactionKernel::assembler())?;
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(script)?;
 
     assert!(tx_script.mast().advice_map().get(&Word::try_from([1u64, 2, 3, 4])?).is_some());
     assert!(

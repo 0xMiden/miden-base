@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use miden_lib::note::create_p2id_note;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -12,7 +12,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
 };
-use miden_objects::transaction::{OutputNote, TransactionScript};
+use miden_objects::transaction::OutputNote;
 
 use super::{Felt, TestSetup, setup_test, word_to_masm_push_string};
 use crate::{Auth, MockChain};
@@ -156,8 +156,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         assets_number_1 = output_note_1.assets().num_assets(),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -207,7 +206,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # => [RECIPIENT]
 
             # assert the correctness of the recipient
-            push.{RECIPIENT} 
+            push.{RECIPIENT}
             assert_eqw.err="requested note has incorrect recipient"
             # => []
 
@@ -217,7 +216,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # => [METADATA]
 
             # assert the correctness of the metadata
-            push.{METADATA} 
+            push.{METADATA}
             assert_eqw.err="requested note has incorrect metadata"
             # => []
 
@@ -230,8 +229,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         METADATA = word_to_masm_push_string(&output_note.metadata().into()),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?
@@ -315,7 +313,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         begin
             {create_note_0}
             {check_note_0}
-            
+
             {create_note_1}
             {check_note_1}
 
@@ -334,8 +332,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
-    let tx_script =
-        TransactionScript::compile(tx_script_src, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(tx_script_src)?;
 
     let tx_context = mock_chain
         .build_tx_context(account.id(), &[], &[])?

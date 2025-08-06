@@ -4,19 +4,10 @@ mod auth;
 mod scripts;
 mod wallet;
 
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::utils::Serializable;
-use miden_objects::note::{
-    Note,
-    NoteAssets,
-    NoteInputs,
-    NoteMetadata,
-    NoteRecipient,
-    NoteScript,
-    NoteType,
-};
+use miden_objects::note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipient, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
 use miden_objects::{Word, ZERO};
@@ -88,10 +79,10 @@ pub fn get_note_with_fungible_asset_and_script(
     fungible_asset: FungibleAsset,
     note_script: &str,
 ) -> Note {
+    use miden_lib::utils::ScriptBuilder;
     use miden_objects::note::NoteExecutionHint;
 
-    let assembler = TransactionKernel::assembler().with_debug_mode(true);
-    let note_script = NoteScript::compile(note_script, assembler).unwrap();
+    let note_script = ScriptBuilder::default().compile_note_script(note_script).unwrap();
     let serial_num = Word::from([1, 2, 3, 4u32]);
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 

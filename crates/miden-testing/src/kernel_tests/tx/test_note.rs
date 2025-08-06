@@ -8,6 +8,7 @@ use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
@@ -21,7 +22,6 @@ use miden_objects::note::{
     NoteInputs,
     NoteMetadata,
     NoteRecipient,
-    NoteScript,
     NoteTag,
     NoteType,
 };
@@ -440,7 +440,8 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     )
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler())
+    let note_script = ScriptBuilder::default()
+        .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
@@ -989,7 +990,7 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::testing_assembler())?;
+    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);

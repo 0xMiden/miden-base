@@ -4,7 +4,6 @@ use core::fmt::Display;
 
 use super::Felt;
 use crate::assembly::mast::{MastForest, MastNodeId};
-use crate::assembly::{Assembler, Parse};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -38,18 +37,6 @@ impl NoteScript {
             entrypoint: code.entrypoint(),
             mast: code.mast_forest().clone(),
         }
-    }
-
-    /// Returns a new [NoteScript] compiled from the provided source code using the specified
-    /// assembler.
-    ///
-    /// # Errors
-    /// Returns an error if the compilation of the provided source code fails.
-    pub fn compile(source_code: impl Parse, assembler: Assembler) -> Result<Self, NoteError> {
-        let program = assembler
-            .assemble_program(source_code)
-            .map_err(NoteError::NoteScriptAssemblyError)?;
-        Ok(Self::new(program))
     }
 
     /// Returns a new [NoteScript] deserialized from the provided bytes.
@@ -211,14 +198,16 @@ impl Display for NoteScript {
 
 #[cfg(test)]
 mod tests {
-    use super::{Assembler, Felt, NoteScript, Vec};
+    use super::{Felt, NoteScript, Vec};
+    use crate::assembly::Assembler;
     use crate::testing::note::DEFAULT_NOTE_CODE;
 
     #[test]
     fn test_note_script_to_from_felt() {
         let assembler = Assembler::default();
         let tx_script_src = DEFAULT_NOTE_CODE;
-        let note_script = NoteScript::compile(tx_script_src, assembler).unwrap();
+        let program = assembler.assemble_program(tx_script_src).unwrap();
+        let note_script = NoteScript::new(program);
 
         let encoded: Vec<Felt> = (&note_script).into();
         let decoded: NoteScript = encoded.try_into().unwrap();
