@@ -2,6 +2,7 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::{TransactionEvent, TransactionEventHandling};
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
@@ -102,17 +103,23 @@ where
         process: &ProcessState,
         event_id: u32,
     ) -> Result<Vec<AdviceMutation>, EventError> {
-        let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
+        let transaction_event_result =
+            TransactionEvent::try_from(event_id).map_err(EventError::from);
 
-        match self.base_host.handle_event(process, transaction_event)? {
-            TransactionEventHandling::Unhandled(_event_data) => {
-                let x = self.base_host.on_auth_requested(process).map_err(EventError::from)?;
-                match x {
-                    TransactionEventHandling::Handled(mutations) => Ok(mutations),
-                    TransactionEventHandling::Unhandled(_unhandled) => Ok(vec![]),
-                }
+        let transaction_event = transaction_event_result?;
+        match transaction_event {
+            TransactionEvent::AuthRequest => {
+                let modifications =
+                    self.base_host.on_auth_requested(process).map_err(EventError::from)?;
+                Ok(modifications)
             },
-            TransactionEventHandling::Handled(mutations) => Ok(mutations),
+            _ => match self.base_host.handle_event(process, transaction_event)? {
+                TransactionEventHandling::Handled(mutations) => Ok(mutations),
+                TransactionEventHandling::Unhandled(_data) => {
+                    Err(Box::new(TransactionKernelError::MissingAuthenticator)
+                        as Box<dyn core::error::Error + Send + Sync + 'static>)
+                },
+            },
         }
     }
 }

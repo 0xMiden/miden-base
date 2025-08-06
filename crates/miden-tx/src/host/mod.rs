@@ -218,7 +218,7 @@ where
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::AuthRequest => self.on_auth_requested(process),
+            TransactionEvent::AuthRequest => self.on_auth_requested(process).map(TransactionEventHandling::Handled),
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
@@ -296,7 +296,7 @@ where
     pub fn on_auth_requested(
         &mut self,
         process: &ProcessState,
-    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let pub_key = process.get_stack_word(0);
         let msg = process.get_stack_word(1);
 
@@ -308,7 +308,7 @@ where
             .ok_or_else(|| TransactionKernelError::MissingAuthenticator)?
             .to_vec();
 
-        Ok(TransactionEventHandling::Handled(vec![AdviceMutation::extend_stack(signature)]))
+        Ok(vec![AdviceMutation::extend_stack(signature)])
     }
 
     /// Aborts the transaction by building the
