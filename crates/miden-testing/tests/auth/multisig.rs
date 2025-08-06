@@ -33,7 +33,7 @@ type MultisigTestSetup = (Vec<SecretKey>, Vec<PublicKey>, Vec<BasicAuthenticator
 /// Sets up secret keys, public keys, and authenticators for multisig testing
 fn setup_keys_and_authenticators(
     num_approvers: usize,
-    num_signers: usize, // How many of the approvers will actually sign
+    threshold: usize,
 ) -> anyhow::Result<MultisigTestSetup> {
     let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
 
@@ -50,7 +50,7 @@ fn setup_keys_and_authenticators(
     }
 
     // Create authenticators only for the signers we'll actually use
-    for i in 0..num_signers {
+    for i in 0..threshold {
         let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
             &[(public_keys[i].into(), AuthSecretKey::RpoFalcon512(secret_keys[i].clone()))],
             rng.clone(),
