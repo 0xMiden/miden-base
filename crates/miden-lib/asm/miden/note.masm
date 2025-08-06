@@ -249,13 +249,13 @@ export.::miden::util::note::get_max_inputs_per_note
 
 #! Adds all assets from the currently executing note to the account vault.
 #!
-#! Note that this overwrites memory in region 0..(num_assets * 4), where num_assets is the number
-#! of assets in the note.
-#!
 #! Inputs:  []
 #! Outputs: []
-export.add_assets_to_account
-    push.0 exec.get_assets
+export.add_assets_to_account.256
+    # write assets to local memory starting at offset 0
+    # we have allocated MAX_ASSETS_PER_NOTE number of locals so all assets should fit
+    # since the asset memory will be overwritten, we don't have to initialize the locals to zero
+    locaddr.0 exec.get_assets
     # => [num_of_assets, ptr = 0]
 
     # compute the pointer at which we should stop iterating
