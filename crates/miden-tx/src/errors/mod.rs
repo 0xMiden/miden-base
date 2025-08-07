@@ -7,7 +7,7 @@ use miden_objects::account::AccountId;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProofError;
-use miden_objects::note::{Note, NoteId};
+use miden_objects::note::NoteId;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{
     AccountError,
@@ -76,28 +76,6 @@ pub enum TransactionExecutorError {
     // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
     #[error("transaction is unauthorized with summary {0:?}")]
     Unauthorized(Box<TransactionSummary>),
-}
-
-// NOTE CONSUMPTION ERROR
-// ================================================================================================
-
-#[derive(Debug, Error)]
-pub enum NoteConsumptionError {
-    #[error("note incompatible with target account")]
-    AccountCompatibilityError(Note),
-    #[error("error occurred while consuming the note in a transaction")]
-    ExecutionError {
-        note: Note,
-        #[source]
-        error: TransactionExecutorError,
-    },
-}
-
-impl NoteConsumptionError {
-    /// Creates a new [`NoteConsumptionError`] instance with the given note and error.
-    pub fn new_execution_error(note: Note, error: TransactionExecutorError) -> Self {
-        Self::ExecutionError { note, error }
-    }
 }
 
 // TRANSACTION PROVER ERROR

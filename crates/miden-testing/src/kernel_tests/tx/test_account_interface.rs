@@ -12,12 +12,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_tx::auth::UnreachableAuth;
-use miden_tx::{
-    NoteConsumptionError,
-    NoteConsumptionInfo,
-    TransactionExecutor,
-    TransactionExecutorError,
-};
+use miden_tx::{FailedNote, NoteConsumptionInfo, TransactionExecutor, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::ExecutionError;
@@ -177,10 +172,11 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
         } => {
                 assert_matches!(
                     failed.first().expect("failed notes should exist"),
-                    NoteConsumptionError::ExecutionError{
+                    FailedNote {
                         note,
                         error: TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. })
+                            ExecutionError::DivideByZero { .. }),
+                        ..
                     } => {
                         assert_eq!(
                             note.id(),

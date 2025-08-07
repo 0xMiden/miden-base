@@ -12,6 +12,7 @@ mod executor;
 pub use executor::{
     DataStore,
     ExecutionOptions,
+    FailedNote,
     MastForestStore,
     NoteConsumptionInfo,
     TransactionExecutor,
@@ -37,7 +38,6 @@ mod errors;
 pub use errors::{
     AuthenticationError,
     DataStoreError,
-    NoteConsumptionError,
     TransactionExecutorError,
     TransactionProverError,
     TransactionVerifierError,
