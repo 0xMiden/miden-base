@@ -7,7 +7,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::SourceManager;
 use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::note::NoteScript;
+use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
@@ -19,7 +19,6 @@ use miden_objects::transaction::{
 };
 use miden_objects::vm::StackOutputs;
 use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
-pub use notes_checker::NoteConsumptionInfo;
 use vm_processor::{AdviceInputs, ExecutionError, Process};
 pub use vm_processor::{ExecutionOptions, MastForestStore};
 use winter_maybe_async::{maybe_async, maybe_await};
@@ -37,6 +36,29 @@ pub use data_store::DataStore;
 
 mod notes_checker;
 pub use notes_checker::NoteConsumptionChecker;
+
+// NOTE CONSUMPTION INFO
+// ================================================================================================
+
+/// Contains information about the successful and failed consumption of notes.
+#[derive(Default, Debug)]
+#[non_exhaustive]
+pub struct NoteConsumptionInfo {
+    pub successful: Vec<Note>,
+    pub failed: Vec<NoteConsumptionError>,
+}
+
+impl NoteConsumptionInfo {
+    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful notes.
+    pub fn new_successful(successful: Vec<Note>) -> Self {
+        Self { successful, ..Default::default() }
+    }
+
+    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
+    pub fn new(successful: Vec<Note>, failed: Vec<NoteConsumptionError>) -> Self {
+        Self { successful, failed }
+    }
+}
 
 // TRANSACTION EXECUTOR
 // ================================================================================================

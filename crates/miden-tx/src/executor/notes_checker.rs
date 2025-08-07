@@ -1,40 +1,14 @@
 use alloc::sync::Arc;
-use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
 use miden_objects::assembly::SourceManager;
 use miden_objects::block::BlockNumber;
-use miden_objects::note::Note;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
 use winter_maybe_async::maybe_await;
 
-use super::TransactionExecutor;
+use super::{NoteConsumptionInfo, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
-use crate::errors::NoteConsumptionError;
 use crate::{DataStore, TransactionExecutorError};
-
-// NOTE CONSUMPTION INFO
-// ================================================================================================
-
-/// Contains information about the successful and failed consumption of notes.
-#[derive(Default, Debug)]
-#[non_exhaustive]
-pub struct NoteConsumptionInfo {
-    pub successful: Vec<Note>,
-    pub failed: Vec<NoteConsumptionError>,
-}
-
-impl NoteConsumptionInfo {
-    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful notes.
-    pub fn new_successful(successful: Vec<Note>) -> Self {
-        Self { successful, ..Default::default() }
-    }
-
-    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
-    pub fn new(successful: Vec<Note>, failed: Vec<NoteConsumptionError>) -> Self {
-        Self { successful, failed }
-    }
-}
 
 /// This struct performs input notes check against provided target account.
 ///
