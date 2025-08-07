@@ -366,13 +366,16 @@ where
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
-            Ok(_) => Ok(NoteConsumptionInfo::new_successful(
-                tx_inputs
-                    .into_input_notes()
+            Ok(_) => {
+                // Return all the input notes as successful.
+                let (_, _, _, _, input_notes) = tx_inputs.into_parts();
+                Ok(NoteConsumptionInfo::new_successful(
+                input_notes
                     .into_iter()
                     .map(|note| note.into_note())
-                    .collect::<Vec<_>>(),
-            )),
+                        .collect::<Vec<_>>(),
+                ))
+            },
             Err(error) => {
                 // Map the last note id from execution to the failed note.
                 let notes = host.tx_progress().note_execution();
@@ -388,8 +391,8 @@ where
                 let failed = vec![NoteConsumptionError::ExecutionError { note, error }];
                 // Gather successful notes.
                 let success_notes = success_notes.iter().map(|(id, _)| *id).collect::<Vec<_>>();
-                let successful = tx_inputs
-                    .into_input_notes()
+                let (_, _, _, _, input_notes) = tx_inputs.into_parts();
+                let successful = input_notes
                     .into_iter()
                     .filter_map(|note| {
                         // O(n*m) is fine for the input sizes we deal with here.

@@ -125,11 +125,6 @@ impl TransactionInputs {
     // CONVERSIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Consumes these transaction inputs and returns underlying inputs.
-    pub fn into_input_notes(self) -> InputNotes<InputNote> {
-        self.input_notes
-    }
-
     /// Consumes these transaction inputs and returns their underlying components.
     pub fn into_parts(
         self,
