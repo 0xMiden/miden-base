@@ -65,6 +65,9 @@ impl AccountDelta {
         Ok(Self { account_id, storage, vault, nonce_delta })
     }
 
+    // PUBLIC MUTATORS
+    // --------------------------------------------------------------------------------------------
+
     /// Merge another [AccountDelta] into this one.
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
         let new_nonce_delta = self.nonce_delta + other.nonce_delta;
@@ -81,6 +84,11 @@ impl AccountDelta {
 
         self.storage.merge(other.storage)?;
         self.vault.merge(other.vault)
+    }
+
+    /// Returns a mutable reference to the account vault delta.
+    pub fn vault_mut(&mut self) -> &mut AccountVaultDelta {
+        &mut self.vault
     }
 
     // PUBLIC ACCESSORS

@@ -6,6 +6,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::assembly::DefaultSourceManager;
+use miden_objects::asset::Asset;
 use miden_objects::transaction::{
     OutputNote,
     ProvenTransaction,
@@ -136,14 +137,32 @@ impl TransactionProver for LocalTransactionProver {
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         // extract transaction outputs and process transaction data
-        let (account_delta, output_notes, _tx_progress) = host.into_parts();
+        let (mut account_delta, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
 
         // erase private note information (convert private full notes to just headers)
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
+
+        // Because the fee asset is removed from the vault after the commitment is computed in the
+        // kernel, we have to *add* it to the delta before compute the commitment against which the
+        // transaction is proven.
+        // Note that the fee asset is a transaction output and so is part of the proof. The delta
+        // without the added fee asset can still be validated by repeating this process.
+        account_delta
+            .vault_mut()
+            .add_asset(Asset::from(tx_outputs.fee))
+            .map_err(TransactionProverError::FailedToMutateAccountDeltaWithFee)?;
+
         let account_delta_commitment = account_delta.to_commitment();
+
+        // Now that we have computed the commitment of the delta with the fee, we revert the above
+        // changes to get back the actual account delta of the transaction.
+        account_delta
+            .vault_mut()
+            .remove_asset(Asset::from(tx_outputs.fee))
+            .map_err(TransactionProverError::FailedToMutateAccountDeltaWithFee)?;
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),

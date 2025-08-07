@@ -321,7 +321,7 @@ impl TransactionKernel {
 
     /// Returns [TransactionOutputs] constructed from the provided output stack and advice map.
     ///
-    /// The output stack is expected to be arrange as follows:
+    /// The output stack is expected to be arranged as follows:
     ///
     /// ```text
     /// [

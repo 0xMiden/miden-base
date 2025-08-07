@@ -10,6 +10,7 @@ use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::NoteId;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{
+    AccountDeltaError,
     AccountError,
     Felt,
     ProvenTransactionError,
@@ -51,6 +52,8 @@ pub enum TransactionExecutorError {
         in_kernel_commitment: Word,
         host_commitment: Word,
     },
+    #[error("failed to add or remove fee asset from transaction outputs to account delta")]
+    FailedToMutateAccountDeltaWithFee(#[source] AccountDeltaError),
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
     InconsistentAccountId {
         input_id: AccountId,
@@ -85,6 +88,8 @@ pub enum TransactionExecutorError {
 pub enum TransactionProverError {
     #[error("failed to apply account delta")]
     AccountDeltaApplyFailed(#[source] AccountError),
+    #[error("failed to add or remove fee asset from transaction outputs to account delta")]
+    FailedToMutateAccountDeltaWithFee(#[source] AccountDeltaError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]

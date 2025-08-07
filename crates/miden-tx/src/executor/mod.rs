@@ -6,6 +6,7 @@ use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::SourceManager;
+use miden_objects::asset::Asset;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -463,11 +464,19 @@ fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
+    let (mut account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
 
     let tx_outputs =
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
+
+    // Because the fee asset is removed from the vault after the commitment is computed in the
+    // kernel, we have to *add* it to the delta before checking that both delta commitments
+    // match.
+    account_delta
+        .vault_mut()
+        .add_asset(Asset::from(tx_outputs.fee))
+        .map_err(TransactionExecutorError::FailedToMutateAccountDeltaWithFee)?;
 
     let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
@@ -479,6 +488,13 @@ fn build_executed_transaction<STORE: DataStore, AUTH: TransactionAuthenticator>(
             host_commitment: host_delta_commitment,
         });
     }
+
+    // Now that we have validated the delta, we revert the above changes to get back the actual
+    // account delta of the transaction.
+    account_delta
+        .vault_mut()
+        .remove_asset(Asset::from(tx_outputs.fee))
+        .map_err(TransactionExecutorError::FailedToMutateAccountDeltaWithFee)?;
 
     if initial_account.id() != final_account.id() {
         return Err(TransactionExecutorError::InconsistentAccountId {

@@ -315,6 +315,8 @@ proc.compute_and_remove_fee
     # => [FEE_ASSET]
 
     # remove the fee from the native account's vault
+    # note that this modifies the vault delta of the account, but for all purposes, this is ignored
+    # because the account delta commitment is computed *before* this procedure.
     exec.account::remove_asset_from_vault
 end
 
