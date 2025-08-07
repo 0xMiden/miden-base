@@ -9,12 +9,7 @@ use miden_objects::assembly::SourceManager;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
-    AccountInputs,
-    ExecutedTransaction,
-    InputNote,
-    InputNotes,
-    TransactionArgs,
-    TransactionInputs,
+    AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs, TransactionInputs,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;
@@ -393,8 +388,12 @@ where
                 ))
             },
             Err(error) => {
-                // Map the last note id from execution to the failed note.
                 let notes = host.tx_progress().note_execution();
+                if notes.is_empty() {
+                    return Err(error);
+                }
+
+                // Map the last note id from execution to the failed note.
                 let ((last_note, _last_note_interval), success_notes) = notes
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
