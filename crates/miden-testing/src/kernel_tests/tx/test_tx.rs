@@ -1416,7 +1416,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
 
     let source = NamedSource::new("test::module_1", test_module_source);
     let source_manager = Arc::new(DefaultSourceManager::default());
-    let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
+    let assembler = TransactionKernel::assembler();
 
     let library = assembler.assemble_library([source]).unwrap();
 
