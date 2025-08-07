@@ -6,7 +6,9 @@ use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::{
-    multisig_library, rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library,
+    multisig_library,
+    rpo_falcon_512_library,
+    rpo_falcon_512_procedure_acl_library,
 };
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
@@ -222,6 +224,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
 /// - Slot 2(map): A map with approver public keys (index -> pubkey)
 ///
 /// This component supports all account types.
+#[derive(Debug)]
 pub struct AuthMultisigRpoFalcon512 {
     threshold: u32,
     approvers: Vec<PublicKey>,
@@ -270,6 +273,10 @@ impl From<AuthMultisigRpoFalcon512> for AccountComponent {
 
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
+
+        // Slot 3: A map which stores executed transactions
+        let executed_transactions = StorageMap::default();
+        storage_slots.push(StorageSlot::Map(executed_transactions));
 
         AccountComponent::new(multisig_library(), storage_slots)
             .expect("Multisig auth component should satisfy the requirements of a valid account component")
@@ -428,5 +435,99 @@ mod tests {
             allow_unauthorized_input_notes: true,
             expected_slot_1: Word::from([2u32, 1, 1, 0]),
         });
+    }
+
+    // MULTISIG TESTS
+    // ============================================================================================
+
+    /// Test multisig component setup with various configurations
+    #[test]
+    fn test_multisig_component_setup() {
+        // Create test public keys
+        let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
+        let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
+        let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
+        let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
+        let threshold = 2u32;
+
+        // Create multisig component
+        let multisig_component = AuthMultisigRpoFalcon512::new(threshold, approvers.clone())
+            .expect("multisig component creation failed");
+
+        // Build account with multisig component
+        let (account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(multisig_component)
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
+
+        // Verify slot 0: Threshold
+        let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        assert_eq!(threshold_slot, Word::from([threshold, 0, 0, 0]));
+
+        // Verify slot 1: Number of approvers
+        let num_approvers_slot =
+            account.storage().get_item(1).expect("storage slot 1 access failed");
+        assert_eq!(num_approvers_slot, Word::from([approvers.len() as u32, 0, 0, 0]));
+
+        // Verify slot 2: Approver public keys in map
+        for (i, expected_pub_key) in approvers.iter().enumerate() {
+            let stored_pub_key = account
+                .storage()
+                .get_map_item(2, Word::from([i as u32, 0, 0, 0]))
+                .expect("storage map access failed");
+            assert_eq!(stored_pub_key, Word::from(*expected_pub_key));
+        }
+    }
+
+    /// Test multisig component with minimum threshold (1 of 1)
+    #[test]
+    fn test_multisig_component_minimum_threshold() {
+        let pub_key = PublicKey::new(Word::from([42u32, 0, 0, 0]));
+        let approvers = vec![pub_key];
+        let threshold = 1u32;
+
+        let multisig_component = AuthMultisigRpoFalcon512::new(threshold, approvers.clone())
+            .expect("multisig component creation failed");
+
+        let (account, _) = AccountBuilder::new([0; 32])
+            .with_auth_component(multisig_component)
+            .with_component(BasicWallet)
+            .build()
+            .expect("account building failed");
+
+        // Verify storage layout
+        let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
+        assert_eq!(threshold_slot, Word::from([threshold, 0, 0, 0]));
+
+        let num_approvers_slot =
+            account.storage().get_item(1).expect("storage slot 1 access failed");
+        assert_eq!(num_approvers_slot, Word::from([1u32, 0, 0, 0]));
+
+        let stored_pub_key = account
+            .storage()
+            .get_map_item(2, Word::from([0u32, 0, 0, 0]))
+            .expect("storage map access failed");
+        assert_eq!(stored_pub_key, Word::from(pub_key));
+    }
+
+    /// Test multisig component error cases
+    #[test]
+    fn test_multisig_component_error_cases() {
+        let pub_key = PublicKey::new(Word::from([1u32, 0, 0, 0]));
+        let approvers = vec![pub_key];
+
+        // Test threshold = 0 (should fail)
+        let result = AuthMultisigRpoFalcon512::new(0, approvers.clone());
+        assert!(result.unwrap_err().to_string().contains("Threshold must be at least 1"));
+
+        // Test threshold > number of approvers (should fail)
+        let result = AuthMultisigRpoFalcon512::new(2, approvers);
+        assert!(
+            result
+                .unwrap_err()
+                .to_string()
+                .contains("Threshold cannot be greater than number of approvers")
+        );
     }
 }
