@@ -382,11 +382,12 @@ where
                 let note = input_notes
                     .iter()
                     .find(|&note| note.id() == *last_note)
-                    .expect("Last note returned from note execution should exist in input notes")
+                    .expect("last note returned from note execution should exist in input notes")
                     .note()
                     .clone();
                 let failed = vec![NoteConsumptionError::ExecutionError { note, error }];
-                // Gather successful notes.
+
+                // Map successful note Ids to notes.
                 let success_notes = success_notes.iter().map(|(id, _)| *id).collect::<Vec<_>>();
                 let (_, _, _, _, input_notes) = tx_inputs.into_parts();
                 let successful = input_notes
