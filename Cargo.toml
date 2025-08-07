@@ -47,14 +47,14 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly         = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly" }
+assembly         = { branch = "bernhard-future-maybe-send,", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly" }
 miden-crypto     = { default-features = false, version = "0.15.6" }
-miden-prover     = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-miden-stdlib     = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-miden-utils-sync = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-miden-verifier   = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
-vm-core          = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core" }
-vm-processor     = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor" }
+miden-prover     = { branch = "bernhard-future-maybe-send", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-stdlib     = { branch = "bernhard-future-maybe-send", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-utils-sync = { branch = "bernhard-future-maybe-send", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-verifier   = { branch = "bernhard-future-maybe-send", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+vm-core          = { branch = "bernhard-future-maybe-send", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core" }
+vm-processor     = { branch = "bernhard-future-maybe-send", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }
