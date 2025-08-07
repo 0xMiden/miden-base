@@ -142,65 +142,61 @@ proc.verify_signatures_loop
         # => [owner_key_slot, [0, 0, 0, i-1], i-1, MESSAGE]
 
         exec.account::get_map_item
-        # => [OWNER_PUB_KEY, i, MESSAGE]
+        # => [OWNER_PUB_KEY, i-1, MESSAGE]
 
         mem_storew.TEMP_PK
-        # => [OWNER_PUB_KEY, i, MESSAGE]
+        # => [OWNER_PUB_KEY, i-1, MESSAGE]
 
         # Check if signature exists for this signer.
         # -----------------------------------------------------------------------------------------
 
         movup.4 movdn.8 swapw dupw movdnw.2
-        # => [MESSAGE, OWNER_PUB_KEY, MESSAGE, i]
+        # => [MESSAGE, OWNER_PUB_KEY, MESSAGE, i-1]
 
         hmerge
-        # => [SIG_KEY, MESSAGE, i]
+        # => [SIG_KEY, MESSAGE, i-1]
 
         adv.has_mapkey
-        # => [SIG_KEY, MESSAGE, i]
+        # => [SIG_KEY, MESSAGE, i-1]
 
         adv_push.1
-        # => [has_signature, SIG_KEY, MESSAGE, i]
+        # => [has_signature, SIG_KEY, MESSAGE, i-1]
 
         # if h(msg, pk) => msg exists in AdviceMap check the signature
         if.true
             dropw dupw
-            # => [MSG, MSG, i]
+            # => [MSG, MSG, i-1]
 
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
             padw mem_loadw.TEMP_PK
-            # => [PK, MSG, MSG, i]
+            # => [PK, MSG, MSG, i-1]
 
             swapw
-            # => [MSG, PK, MSG, i]
+            # => [MSG, PK, MSG, i-1]
 
             # Emit the authentication request event that pushes a signature for the message to the advice stack.
             emit.AUTH_REQUEST
 
             swapw
-            # => [PK, MSG, MSG, i ]
+            # => [PK, MSG, MSG, i-1]
 
             exec.rpo_falcon512::verify
-            # => [MSG, i]
+            # => [MSG, i-1]
 
             mem_load.SUCCESSFUL_VERIFICATIONS
             add.1
             mem_store.SUCCESSFUL_VERIFICATIONS
-            # => [MSG, i]
+            # => [MSG, i-1]
 
         else
             dropw
-            # => [MSG, i]
+            # => [MSG, i-1]
         end
-        # => [MSG, i]
+        # => [MSG, i-1]
 
         movup.4
-        # => [i, MSG]
-
-        # Decrement counter and check if we should continue looping
-        sub.1
         # => [i-1, MSG]
 
         dup neq.0
