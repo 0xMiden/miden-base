@@ -38,8 +38,6 @@ const.PUBLIC_KEYS_MAP_SLOT=2
 const.EXECUTED_TXS_SLOT=3
 
 # Runtime Memory Address Constants
-
-# @dev these can be further optimized, (i do prefer to keep the stack clean and incur the cost of calling mem_{store, load})
 const.TEMP_PK=108
 const.MESSAGE=112
 const.SUCCESSFUL_VERIFICATIONS=116
