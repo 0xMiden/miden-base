@@ -51,8 +51,9 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
         &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
+    let notes = vec![p2id_note, p2ide_note];
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
-        .extend_input_notes(vec![p2id_note, p2ide_note])
+        .extend_input_notes(notes.clone())
         .build()?;
     let source_manager = tx_context.source_manager();
 
@@ -74,7 +75,10 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
     )?;
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
-    assert!(successful.is_empty());
+    assert_eq!(successful.len(), notes.len());
+    successful.iter().zip(notes.iter()).for_each(|(success, note)| {
+        assert_eq!(success, note);
+    });
     assert!(failed.is_empty());
     });
     Ok(())
