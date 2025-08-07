@@ -302,6 +302,9 @@ end
 #! - fee_amount is the computed fee amount of the transaction in the native asset.
 #! - FEE_ASSET is the fungible asset with amount set to fee_amount and the faucet ID set to the
 #!   native asset.
+#!
+#! Panics if:
+#! - the account vault does not contain the computed fee.
 proc.compute_and_remove_fee
     # compute the fee the tx needs to pay
     exec.compute_fee
@@ -353,6 +356,7 @@ end
 #!   replayability. A tx changes the chain state if it either consumes 1 or more input notes or by
 #!   changing the account's state. The latter is validated as part of computing the account delta
 #!   commitment.
+#! - the account vault does not contain the computed fee.
 export.finalize_transaction.8
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
@@ -433,6 +437,7 @@ export.finalize_transaction.8
 
     # check if the account delta commitment is the EMPTY_WORD, which is the case when the delta
     # is empty, i.e. the account did not change in this transaction
+    # TODO: Use std::word in the future (#1658).
     padw eqw movdn.4 dropw
     # => [is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
@@ -442,6 +447,7 @@ export.finalize_transaction.8
     # => [EMPTY_WORD, INPUT_NOTES_COMMITMENT, is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     # if the input notes commitment is an empty word there were no input notes in this transaction
+    # TODO: Use std::word in the future (#1658).
     eqw movdn.8 dropw dropw and
     # => [is_delta_commitment_and_input_notes_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
