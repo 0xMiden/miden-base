@@ -47,14 +47,14 @@ miden-tx              = { default-features = false, path = "crates/miden-tx", ve
 miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
 
 # Miden dependencies
-assembly         = { default-features = false, package = "miden-assembly", version = "0.17" }
+assembly         = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-assembly" }
 miden-crypto     = { default-features = false, version = "0.15.6" }
-miden-prover     = { default-features = false, version = "0.17" }
-miden-stdlib     = { default-features = false, version = "0.17" }
-miden-utils-sync = { default-features = false, version = "0.17" }
-miden-verifier   = { default-features = false, version = "0.17" }
-vm-core          = { default-features = false, package = "miden-core", version = "0.17" }
-vm-processor     = { default-features = false, package = "miden-processor", version = "0.17" }
+miden-prover     = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-stdlib     = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-utils-sync = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+miden-verifier   = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git" }
+vm-core          = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-core" }
+vm-processor     = { branch = "next", default-features = false, git = "https://github.com/0xMiden/miden-vm.git", package = "miden-processor" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }
