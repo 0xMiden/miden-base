@@ -4,6 +4,7 @@ mod auth;
 mod scripts;
 mod wallet;
 
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::utils::Serializable;
@@ -79,7 +80,6 @@ pub fn get_note_with_fungible_asset_and_script(
     fungible_asset: FungibleAsset,
     note_script: &str,
 ) -> Note {
-    use miden_lib::utils::ScriptBuilder;
     use miden_objects::note::NoteExecutionHint;
 
     let note_script = ScriptBuilder::default().compile_note_script(note_script).unwrap();
