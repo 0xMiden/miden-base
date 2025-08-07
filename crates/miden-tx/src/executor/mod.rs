@@ -342,6 +342,9 @@ where
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
+        if notes.is_empty() {
+            return Ok(NoteConsumptionInfo::default());
+        }
         // Validate input notes.
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -389,10 +392,10 @@ where
         )
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
+        let (_, _, _, _, input_notes) = tx_inputs.into_parts();
         match result {
             Ok(_) => {
                 // Return all the input notes as successful.
-                let (_, _, _, _, input_notes) = tx_inputs.into_parts();
                 Ok(NoteConsumptionInfo::new_successful(
                     input_notes.into_iter().map(|note| note.into_note()).collect::<Vec<_>>(),
                 ))
@@ -419,14 +422,21 @@ where
                 // Partition the input notes into successful and failed results.
                 let mut successful = Vec::with_capacity(success_notes.len());
                 let mut failed = Vec::with_capacity(1);
-                let (_, _, _, _, input_notes) = tx_inputs.into_parts();
                 for (i, note) in input_notes.into_iter().enumerate() {
                     if i < success_notes.len() {
-                        debug_assert_eq!(success_notes[i].0, note.id());
+                        debug_assert_eq!(
+                            success_notes[i].0,
+                            note.id(),
+                            "notes should be processed in the same order as they appear in the input notes"
+                        );
                         successful.push(note.into_note());
                     } else {
                         // This is the last (failed) note.
-                        debug_assert_eq!(*last_note, note.id());
+                        debug_assert_eq!(
+                            *last_note,
+                            note.id(),
+                            "notes should be processed in the same order as they appear in the input notes"
+                        );
                         failed.push(FailedNote { note: note.into_note(), error });
                         break;
                     }
