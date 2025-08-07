@@ -1,3 +1,4 @@
+use core::slice;
 use std::collections::BTreeMap;
 use std::vec::Vec;
 
@@ -322,7 +323,8 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
     let note0 = generate_untracked_note(account0.id(), account1.id());
 
     // This tx will use block1 as the reference block.
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
 
     // This batch will use block1 as the reference block.
     let batch0 = generate_batch(&mut chain, vec![tx0]);
@@ -396,7 +398,8 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
 
     let note0 = generate_tracked_note(&mut chain, account0.id(), account1.id());
 
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
 
     let batch0 = generate_batch(&mut chain, vec![tx0]);
 
@@ -423,7 +426,8 @@ fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
     let note0 = generate_untracked_note(account0.id(), account1.id());
 
     // This tx will use block1 as the reference block.
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
 
     // This batch will use block1 as the reference block.
     let batch0 = generate_batch(&mut chain, vec![tx0]);
@@ -461,7 +465,8 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
     let note0 = generate_untracked_note(account0.id(), account1.id());
 
     // This tx will use block1 as the reference block.
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
 
     // This batch will use block1 as the reference block.
     let batch0 = generate_batch(&mut chain, vec![tx0]);

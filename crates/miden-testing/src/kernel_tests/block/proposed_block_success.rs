@@ -1,3 +1,4 @@
+use core::slice;
 use std::collections::BTreeMap;
 use std::vec::Vec;
 
@@ -191,8 +192,10 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let note1 = generate_untracked_note(account0.id(), account2.id());
 
     // These txs will use block1 as the reference block.
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
-    let tx1 = generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), &[note1.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
+    let tx1 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), slice::from_ref(&note1));
 
     // These batches will use block1 as the reference block.
     let batch0 = generate_batch(&mut chain, vec![tx0.clone()]);

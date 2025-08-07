@@ -57,15 +57,13 @@ fn compute_account_seed_single(
 
         if let Ok((computed_account_type, computed_storage_mode, computed_version)) =
             validate_prefix(prefix)
+            && computed_account_type == account_type
+            && computed_storage_mode == storage_mode
+            && computed_version == version
+            && is_suffix_msb_zero
         {
-            if computed_account_type == account_type
-                && computed_storage_mode == storage_mode
-                && computed_version == version
-                && is_suffix_msb_zero
-            {
-                return Ok(current_seed);
-            };
-        }
+            return Ok(current_seed);
+        };
 
         current_seed = current_digest;
         current_digest = compute_digest(current_seed, code_commitment, storage_commitment);
