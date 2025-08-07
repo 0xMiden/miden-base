@@ -4,7 +4,7 @@ use miden_objects::account::AccountId;
 use miden_objects::assembly::SourceManager;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
-use winter_maybe_async::maybe_await;
+use winter_maybe_async::{maybe_async, maybe_await};
 
 use super::{NoteConsumptionInfo, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
@@ -29,6 +29,7 @@ where
 
     /// Checks whether the provided input notes could be consumed by the provided account by
     /// executing the transaction.
+    #[maybe_async]
     pub fn check_notes_consumability(
         &self,
         target_account_id: AccountId,

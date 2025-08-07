@@ -1,4 +1,4 @@
-use std::vec::Vec;
+use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
