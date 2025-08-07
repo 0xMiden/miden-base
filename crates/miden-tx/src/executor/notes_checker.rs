@@ -70,7 +70,9 @@ where
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        let input_note_count = input_notes.num_notes() as usize;
+        // Check input notes
+        // --------------------------------------------------------------------------------------------
+        let num_input_notes = input_notes.num_notes() as usize;
         let mut successful = vec![];
         let mut failed = vec![];
         let mut maybe = vec![];
@@ -114,11 +116,12 @@ where
 
         // If all checked notes turned out to be either `P2ID` or `P2IDE` notes and all of them
         // passed, then we could safely return the `Success`.
-        if successful.len() == input_note_count {
+        if successful.len() == num_input_notes {
             return Ok(NoteConsumptionInfo::new_successful(successful));
         }
 
-        // Execute transaction.
+        // Execute transaction
+        // --------------------------------------------------------------------------------------------
         let mut consumption_info = maybe_await!(self.0.try_execute_notes(
             target_account_id,
             block_ref,

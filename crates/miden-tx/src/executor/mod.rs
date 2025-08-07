@@ -370,10 +370,7 @@ where
                 // Return all the input notes as successful.
                 let (_, _, _, _, input_notes) = tx_inputs.into_parts();
                 Ok(NoteConsumptionInfo::new_successful(
-                input_notes
-                    .into_iter()
-                    .map(|note| note.into_note())
-                        .collect::<Vec<_>>(),
+                    input_notes.into_iter().map(|note| note.into_note()).collect::<Vec<_>>(),
                 ))
             },
             Err(error) => {
