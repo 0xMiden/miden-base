@@ -518,6 +518,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests that changing the account state without incrementing the nonce results in an error.
 #[test]
 fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
     let code = "
