@@ -33,6 +33,9 @@ pub use exec_host::TransactionExecutorHost;
 mod data_store;
 pub use data_store::DataStore;
 
+mod notes_checker;
+pub use notes_checker::NoteConsumptionChecker;
+
 // NOTE CONSUMPTION INFO
 // ================================================================================================
 
@@ -334,7 +337,7 @@ where
     /// - If the transaction host can not be created from the provided values.
     /// - If the execution of the provided program fails on the stage other than note execution.
     #[maybe_async]
-    pub fn try_execute_notes(
+    pub(crate) fn try_execute_notes(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,

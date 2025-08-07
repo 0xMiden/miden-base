@@ -12,7 +12,13 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_tx::auth::UnreachableAuth;
-use miden_tx::{FailedNote, NoteConsumptionInfo, TransactionExecutor, TransactionExecutorError};
+use miden_tx::{
+    FailedNote,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
+    TransactionExecutor,
+    TransactionExecutorError,
+};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::ExecutionError;
@@ -55,8 +61,9 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
 
     let executor =
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    executor.try_execute_notes(
+    let execution_check_result = notes_checker.check_notes_consumability(
         target_account_id,
         block_ref,
         input_notes,
@@ -64,6 +71,10 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
         source_manager,
     )?;
 
+    assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
+    assert!(successful.is_empty());
+    assert!(failed.is_empty());
+    });
     Ok(())
 }
 
@@ -91,9 +102,20 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
 
     let executor =
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    executor.try_execute_notes(account_id, block_ref, input_notes, tx_args, source_manager)?;
+    let execution_check_result = notes_checker.check_notes_consumability(
+        account_id,
+        block_ref,
+        input_notes,
+        tx_args,
+        source_manager,
+    )?;
 
+    assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
+    assert!(successful.is_empty());
+    assert!(failed.is_empty());
+    });
     Ok(())
 }
 
@@ -158,9 +180,15 @@ fn check_note_consumability_failure() -> anyhow::Result<()> {
 
     let executor =
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
 
-    let execution_check_result =
-        executor.try_execute_notes(account_id, block_ref, input_notes, tx_args, source_manager);
+    let execution_check_result = notes_checker.check_notes_consumability(
+        account_id,
+        block_ref,
+        input_notes,
+        tx_args,
+        source_manager,
+    );
 
     let execution_check_result = execution_check_result.unwrap();
     assert_matches!(
