@@ -13,7 +13,6 @@ pub use executor::{
     DataStore,
     ExecutionOptions,
     MastForestStore,
-    NoteConsumptionChecker,
     NoteConsumptionInfo,
     TransactionExecutor,
     TransactionExecutorHost,

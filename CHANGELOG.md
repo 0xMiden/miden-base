@@ -51,7 +51,7 @@
 - [BREAKING] Move transaction inputs insertion out of transaction hosts ([#1639](https://github.com/0xMiden/miden-node/issues/1639))
 - Implemented serialization for `MockChain` ([#1642](https://github.com/0xMiden/miden-base/pull/1642)).
 - Avoid modifying an asset vault when adding a fungible asset with amount zero and the asset does not already exist ([#1668](https://github.com/0xMiden/miden-base/pull/1668)).
-- [BREAKING] Update `TransactionExecutor` and `NoteConsumptionChecker` to return `NoteConsumptionInfo` containing `Note` rather than `NoteId` ([#1680](https://github.com/0xMiden/miden-base/pull/1680)).
+- [BREAKING] Remove `NoteConsumptionChecker` and update `TransactionExecutor::try_execute_notes` to be public and return `NoteConsumptionInfo` containing `Note` rather than `NoteId` ([#1680](https://github.com/0xMiden/miden-base/pull/1680)).
 - [BREAKING] Remove note script utils and rename `note::add_note_assets_to_account` to `note::add_assets_to_account` ([#1694](https://github.com/0xMiden/miden-base/pull/1694)).
 
 ## 0.10.0 (2025-07-08)
