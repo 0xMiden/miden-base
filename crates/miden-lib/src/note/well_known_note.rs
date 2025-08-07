@@ -235,11 +235,11 @@ impl WellKnownNote {
                     let Ok(reclaim_height) = note_inputs[2].try_into() else {
                         return NoteAccountCompatibility::No;
                     };
-                    return if block_ref.as_u32() >= reclaim_height {
+                    if block_ref.as_u32() >= reclaim_height {
                         NoteAccountCompatibility::Yes
                     } else {
                         NoteAccountCompatibility::No
-                    };
+                    }
                 } else {
                     // neither target nor sender
                     NoteAccountCompatibility::No

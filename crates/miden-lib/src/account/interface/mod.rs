@@ -245,7 +245,7 @@ impl AccountInterface {
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {
-            return Err(AccountInterfaceError::UnsupportedAccountInterface);
+            Err(AccountInterfaceError::UnsupportedAccountInterface)
         }
     }
 

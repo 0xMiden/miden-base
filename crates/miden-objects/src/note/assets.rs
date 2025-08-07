@@ -83,7 +83,7 @@ impl NoteAssets {
     }
 
     /// Returns an iterator over all assets.
-    pub fn iter(&self) -> core::slice::Iter<Asset> {
+    pub fn iter(&self) -> core::slice::Iter<'_, Asset> {
         self.assets.iter()
     }
 
