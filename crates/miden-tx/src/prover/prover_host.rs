@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
-use miden_lib::transaction::{TransactionEvent, TransactionEventHandling};
+use miden_lib::transaction::TransactionEvent;
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -20,7 +20,13 @@ use vm_processor::{
 };
 
 use crate::AccountProcedureIndexMap;
-use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
+use crate::host::{
+    ScriptMastForestStore,
+    TransactionBaseHost,
+    TransactionEventData,
+    TransactionEventHandling,
+    TransactionProgress,
+};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.
@@ -103,23 +109,16 @@ where
         process: &ProcessState,
         event_id: u32,
     ) -> Result<Vec<AdviceMutation>, EventError> {
-        let transaction_event_result =
-            TransactionEvent::try_from(event_id).map_err(EventError::from);
+        let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
-        let transaction_event = transaction_event_result?;
-        match transaction_event {
-            TransactionEvent::AuthRequest => {
-                let modifications =
-                    self.base_host.on_auth_requested(process).map_err(EventError::from)?;
-                Ok(modifications)
+        match self.base_host.handle_event(process, transaction_event)? {
+            TransactionEventHandling::Unhandled(event_data) => {
+                let TransactionEventData::AuthRequest { signature_opt, .. } = event_data;
+                let signature =
+                    signature_opt.ok_or_else(|| TransactionKernelError::MissingAuthenticator)?;
+                Ok(vec![AdviceMutation::extend_stack(signature)])
             },
-            _ => match self.base_host.handle_event(process, transaction_event)? {
-                TransactionEventHandling::Handled(mutations) => Ok(mutations),
-                TransactionEventHandling::Unhandled(_data) => {
-                    Err(Box::new(TransactionKernelError::MissingAuthenticator)
-                        as Box<dyn core::error::Error + Send + Sync + 'static>)
-                },
-            },
+            TransactionEventHandling::Handled(mutations) => Ok(mutations),
         }
     }
 }

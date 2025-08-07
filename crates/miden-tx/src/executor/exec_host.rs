@@ -4,12 +4,12 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
-use miden_lib::transaction::{TransactionEvent, TransactionEventHandling};
+use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
-use miden_objects::{Felt, Hasher, Word};
+use miden_objects::{Felt, Word};
 use vm_processor::{
     AdviceMutation,
     AsyncHost,
@@ -23,7 +23,13 @@ use vm_processor::{
 
 use crate::AccountProcedureIndexMap;
 use crate::auth::{SigningInputs, TransactionAuthenticator};
-use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
+use crate::host::{
+    ScriptMastForestStore,
+    TransactionBaseHost,
+    TransactionEventData,
+    TransactionEventHandling,
+    TransactionProgress,
+};
 
 /// The transaction executor host is responsible for handling [`AsyncHost`] requests made by the
 /// transaction kernel during execution. In particular, it responds to signature generation requests
@@ -103,39 +109,26 @@ where
     /// not present in the advice map, the signature is requested from the host's authenticator.
     pub async fn on_auth_requested(
         &mut self,
-        process: &ProcessState<'_>,
+        pub_key_hash: Word,
+        signature_key: Word,
+        signature_opt: Option<Vec<Felt>>,
+        signing_inputs: SigningInputs,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let msg = process.get_stack_word(0);
-        let pub_key = process.get_stack_word(1);
+        let signature = if let Some(signature) = signature_opt {
+            signature.to_vec()
+        } else {
+            let authenticator =
+                self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
-        let signature_key = Hasher::merge(&[pub_key, msg]);
+            let signature: Vec<Felt> = authenticator
+                .get_signature(pub_key_hash, &signing_inputs)
+                .await
+                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
-        let signature =
-            if let Some(signature) = process.advice_provider().get_mapped_values(&signature_key) {
-                signature.to_vec()
-            } else {
-                let tx_summary = self.base_host.build_tx_summary(process, msg)?;
+            self.generated_signatures.insert(signature_key, signature.clone());
 
-                if msg != tx_summary.to_commitment() {
-                    return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
-                        "transaction summary doesn't commit to the expected message".into(),
-                    ));
-                }
-
-                let authenticator =
-                    self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
-
-                let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
-
-                let signature: Vec<Felt> =
-                    authenticator.get_signature(pub_key, &signing_inputs).await.map_err(|err| {
-                        TransactionKernelError::SignatureGenerationFailed(Box::new(err))
-                    })?;
-
-                self.generated_signatures.insert(signature_key, signature.clone());
-
-                signature
-            };
+            signature
+        };
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
     }
@@ -185,24 +178,31 @@ where
         process: &ProcessState,
         event_id: u32,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
-        let transaction_event_result =
-            TransactionEvent::try_from(event_id).map_err(EventError::from);
+        // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
+        // should be cleaner.
+        let event_handling_result = TransactionEvent::try_from(event_id)
+            .map_err(EventError::from)
+            .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));
 
         async move {
-            let transaction_event = transaction_event_result?;
-            match transaction_event {
-                TransactionEvent::AuthRequest => {
-                    let modifications =
-                        self.on_auth_requested(process).await.map_err(EventError::from)?;
-                    Ok(modifications)
+            let event_handling = event_handling_result?;
+            let event_data = match event_handling {
+                TransactionEventHandling::Unhandled(event) => event,
+                TransactionEventHandling::Handled(mutations) => {
+                    return Ok(mutations);
                 },
-                _ => match self.base_host.handle_event(process, transaction_event)? {
-                    TransactionEventHandling::Handled(mutations) => Ok(mutations),
-                    TransactionEventHandling::Unhandled(_data) => {
-                        Err(Box::new(TransactionKernelError::MissingAuthenticator)
-                            as Box<dyn core::error::Error + Send + Sync + 'static>)
-                    },
-                },
+            };
+
+            match event_data {
+                TransactionEventData::AuthRequest {
+                    pub_key_hash,
+                    signature_key,
+                    signature_opt,
+                    signing_inputs,
+                } => self
+                    .on_auth_requested(pub_key_hash, signature_key, signature_opt, signing_inputs)
+                    .await
+                    .map_err(EventError::from),
             }
         }
     }

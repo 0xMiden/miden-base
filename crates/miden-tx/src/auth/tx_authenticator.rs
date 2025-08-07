@@ -27,6 +27,7 @@ use crate::errors::AuthenticationError;
 ///   display it appropriately.
 /// - `Blind`: The underlying data is not meant to be displayed in a human-readable format. It must
 ///   be a cryptographic commitment to some data.
+#[derive(Debug, Clone)]
 pub enum SigningInputs {
     TransactionSummary(Box<TransactionSummary>),
     Arbitrary(Vec<Felt>),

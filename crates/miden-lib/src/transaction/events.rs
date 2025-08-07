@@ -1,8 +1,4 @@
-use alloc::vec::Vec;
 use core::fmt;
-
-use miden_objects::{Felt, Word};
-use vm_processor::AdviceMutation;
 
 use super::TransactionEventError;
 
@@ -113,23 +109,6 @@ pub enum TransactionEvent {
     LinkMapGetEvent = LINK_MAP_GET_EVENT,
 
     Unauthorized = UNAUTHORIZED_EVENT,
-}
-
-#[derive(Debug)]
-pub enum TransactionEventHandling {
-    Unhandled(TransactionEventData),
-    Handled(Vec<AdviceMutation>),
-}
-
-#[derive(Debug, Clone)]
-pub enum TransactionEventData {
-    AuthRequest {
-        pub_key_hash: Word,
-        message: Word,
-        signature_key: Word,
-        signature_opt: Option<Vec<Felt>>,
-        commitments_opt: Option<Vec<Felt>>,
-    },
 }
 
 impl TransactionEvent {

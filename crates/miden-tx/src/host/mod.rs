@@ -24,12 +24,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
-use miden_lib::transaction::{
-    TransactionEvent,
-    TransactionEventError,
-    TransactionEventHandling,
-    TransactionKernelError,
-};
+use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::asset::Asset;
 use miden_objects::note::NoteId;
@@ -54,6 +49,8 @@ use vm_processor::{
     MastForestStore,
     ProcessState,
 };
+
+use crate::auth::SigningInputs;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -218,7 +215,32 @@ where
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::AuthRequest => self.on_auth_requested(process).map(TransactionEventHandling::Handled),
+            TransactionEvent::AuthRequest => {
+              let message = process.get_stack_word(0);
+              let pub_key_hash = process.get_stack_word(1);
+              let signature_key = Hasher::merge(&[pub_key_hash, message]);
+
+              let tx_summary = self.build_tx_summary(process, message)?;
+
+              if message != tx_summary.to_commitment() {
+                  return Err(EventError::from(TransactionKernelError::TransactionSummaryConstructionFailed(
+                      "transaction summary doesn't commit to the expected message".into(),
+                  )));
+              }
+
+              let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
+
+              let signature_opt = process
+                  .advice_provider()
+                  .get_mapped_values(&signature_key)
+                  .map(|slice| slice.to_vec());
+
+              // We only extract the necessary data to handle the event here, but do not actually
+              // handle it, so return TransactionEventHandling::Unhandled.
+              Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest {
+                  pub_key_hash,  signature_key, signature_opt, signing_inputs
+              }))
+            },
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
@@ -285,30 +307,6 @@ where
         .map_err(EventError::from)?;
 
         Ok(advice_mutations)
-    }
-
-    /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
-    ///
-    /// Expected stack state: `[MESSAGE, PUB_KEY]`
-    ///
-    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
-    /// the signature not present in the advice map, an error is returned.
-    pub fn on_auth_requested(
-        &mut self,
-        process: &ProcessState,
-    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let pub_key = process.get_stack_word(0);
-        let msg = process.get_stack_word(1);
-
-        let signature_key = Hasher::merge(&[pub_key, msg]);
-
-        let signature = process
-            .advice_provider()
-            .get_mapped_values(&signature_key)
-            .ok_or_else(|| TransactionKernelError::MissingAuthenticator)?
-            .to_vec();
-
-        Ok(vec![AdviceMutation::extend_stack(signature)])
     }
 
     /// Aborts the transaction by building the
@@ -690,4 +688,31 @@ pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
         commitments[start + 2],
         commitments[start + 3],
     ])
+}
+
+/// Indicates whether a [`TransactionEvent`] was handled or not.
+///
+/// If it is unhandled, the necessary data to handle it is returned.
+#[derive(Debug)]
+pub enum TransactionEventHandling {
+    Unhandled(TransactionEventData),
+    Handled(Vec<AdviceMutation>),
+}
+
+/// The data necessary to handle an [`TransactionEvent`].
+#[derive(Debug, Clone)]
+pub enum TransactionEventData {
+    /// The data necessary to handle an auth request.
+    AuthRequest {
+        /// The hash of the public key for which a signature was requested.
+        pub_key_hash: Word,
+        /// The signing inputs that summarize what is being signed. The commitment to these inputs
+        /// is the message that is being signed.
+        signing_inputs: SigningInputs,
+        /// The key of the signature in the advice map which is the combined hash of public key
+        /// hash and message.
+        signature_key: Word,
+        /// The signature that was requested, if it was found in the advice provider.
+        signature_opt: Option<Vec<Felt>>,
+    },
 }
