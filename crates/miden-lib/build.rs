@@ -599,12 +599,11 @@ fn extract_masm_errors(
 
         if let Some(ExtractedError { message: existing_error_message, .. }) =
             errors.get(&error_name)
+            && existing_error_message != &error_message
         {
-            if existing_error_message != &error_message {
-                return Err(Report::msg(format!(
-                    "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
-                )));
-            }
+            return Err(Report::msg(format!(
+                "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
+            )));
         }
 
         // Enforce the "no trailing punctuation" rule from the Rust error guidelines on MASM errors.

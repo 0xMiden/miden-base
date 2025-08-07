@@ -50,9 +50,15 @@
 - [BREAKING] Changed `PartialStorage` and `PartialVault` to use `PartialSmt` instead of separate merkle proofs ([#1590](https://github.com/0xMiden/miden-base/pull/1590)).
 - [BREAKING] Move transaction inputs insertion out of transaction hosts ([#1639](https://github.com/0xMiden/miden-node/issues/1639))
 - Implemented serialization for `MockChain` ([#1642](https://github.com/0xMiden/miden-base/pull/1642)).
+- [BREAKING] Reduce `FungibleAsset::MAX_AMOUNT` by a small fraction which allows using felt-based arithmetic in the fungible asset account delta ([#1681](https://github.com/0xMiden/miden-base/pull/1681)).
 - Avoid modifying an asset vault when adding a fungible asset with amount zero and the asset does not already exist ([#1668](https://github.com/0xMiden/miden-base/pull/1668)).
 - [BREAKING] Update `NoteConsumptionChecker::check_notes_consumability` and `TransactionExecutor::try_execute_notes` to return `NoteConsumptionInfo` containing lists of `Note` rather than `NoteId` ([#1680](https://github.com/0xMiden/miden-base/pull/1680)).
+- Refactor epilogue to run as much code as possible before fees are computed ([#1698](https://github.com/0xMiden/miden-base/pull/1698)).
 - [BREAKING] Remove note script utils and rename `note::add_note_assets_to_account` to `note::add_assets_to_account` ([#1694](https://github.com/0xMiden/miden-base/pull/1694)).
+
+## 0.10.1 (2025-08-02)
+
+- Added `NoAuth` component to the set of standard components ([#1620]([(https://github.com/0xMiden/miden-base/pull/1620](https://github.com/0xMiden/miden-base/pull/1620)))). 
 
 ## 0.10.0 (2025-07-08)
 

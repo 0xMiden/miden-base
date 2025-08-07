@@ -1,3 +1,5 @@
+use alloc::string::String;
+
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -278,14 +280,20 @@ pub fn create_basic_fungible_faucet(
 ) -> Result<(Account, Word), FungibleFaucetError> {
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
-    let auth_component: AuthRpoFalcon512Acl = match auth_scheme {
+    let auth_component: AccountComponent = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512Acl::new(
             pub_key,
             AuthRpoFalcon512AclConfig::new()
                 .with_auth_trigger_procedures(vec![distribute_proc_root])
                 .with_allow_unauthorized_input_notes(true),
         )
-        .map_err(FungibleFaucetError::AccountError)?,
+        .map_err(FungibleFaucetError::AccountError)?
+        .into(),
+        AuthScheme::NoAuth => {
+            return Err(FungibleFaucetError::UnsupportedAuthScheme(
+                "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
+            ));
+        },
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -317,6 +325,8 @@ pub enum FungibleFaucetError {
     InvalidStorageOffset(u8),
     #[error("invalid token symbol")]
     InvalidTokenSymbol(#[source] TokenSymbolError),
+    #[error("unsupported authentication scheme: {0}")]
+    UnsupportedAuthScheme(String),
     #[error("account creation failed")]
     AccountError(#[source] AccountError),
     #[error("account is not a fungible faucet account")]

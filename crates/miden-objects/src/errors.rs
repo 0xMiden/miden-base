@@ -214,8 +214,8 @@ pub enum AccountTreeError {
 
 #[derive(Debug, Error)]
 pub enum Bech32Error {
-    #[error("failed to decode bech32 string")]
-    DecodeError(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error(transparent)]
+    DecodeError(Box<dyn Error + Send + Sync + 'static>),
     #[error("found unknown address type {0} which is not the expected {account_addr} account ID address type",
       account_addr = AddressType::AccountId as u8
     )]
