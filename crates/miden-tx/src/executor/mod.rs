@@ -409,25 +409,24 @@ where
                     return Err(error);
                 }
 
-                // Map the last note id from execution to the failed note.
-                let note = input_notes
-                    .iter()
-                    .find(|&note| note.id() == *last_note)
-                    .expect("last note returned from note execution should exist in input notes")
-                    .note()
-                    .clone();
-                let failed = vec![NoteConsumptionError::ExecutionError { note, error }];
-
-                // Map successful note Ids to notes.
+                // Partition the input notes into successful and failed results.
+                let mut successful = Vec::with_capacity(success_notes.len());
+                let mut failed = Vec::with_capacity(1);
                 let (_, _, _, _, input_notes) = tx_inputs.into_parts();
-                let successful = success_notes
-                    .iter()
-                    .zip(input_notes)
-                    .map(|((note_id, _), note)| {
-                        debug_assert_eq!(note_id, &note.id());
-                        note.into_note()
-                    })
-                    .collect();
+                for (i, note) in input_notes.into_iter().enumerate() {
+                    if i < success_notes.len() {
+                        debug_assert_eq!(success_notes[i].0, note.id());
+                        successful.push(note.into_note());
+                    } else {
+                        // This is the last (failed) note.
+                        debug_assert_eq!(*last_note, note.id());
+                        failed.push(NoteConsumptionError::ExecutionError {
+                            note: note.into_note(),
+                            error,
+                        });
+                        break;
+                    }
+                }
 
                 // Return information about all the consumed notes.
                 Ok(NoteConsumptionInfo::new(successful, failed))
