@@ -319,12 +319,17 @@ end
 # =================================================================================================
 
 #! Finalizes the transaction by performing the following steps:
+#! - invokes the native account's authentication procedure.
+#! - computes the output notes commitment.
+#! - computes the transaction's fees and takes them out of the account vault.
 #! - computes the account delta commitment and the final account commitment, and the merged
 #!   hash of both.
-#! - if the account has changed, assert that the final account nonce is greater than the initial
-#!   account nonce.
-#! - computes the output notes commitment.
-#! - asserts that the input and output vault roots are equal.
+#!
+#! Note that the order of operations in this procedure is important. We want to run as many
+#! operations as possible before computing the fee, since the fee depends on the transaction's
+#! number of cycles. All operations that run before fee computation are included when invoking
+#! `clk`. The cycles of operations that run after fee computation must be calculated to include
+#! them in the fee and calculating is easiest when the operations are simple.
 #!
 #! Inputs:  []
 #! Outputs: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
@@ -339,6 +344,15 @@ end
 #! Locals:
 #! - 0..4: OUTPUT_NOTES_COMMITMENT
 #! - 4..8: FEE_ASSET
+#!
+#! Panics if:
+#! - the assets that were in input notes or in the account vault at the beginning of
+#!   transaction execution are not in output notes or in the account vault at the end of the
+#!   transaction. The exception to this is the automatically computed and removed fee asset.
+#! - the transaction does not change the chain state. This must be the case to avoid tx
+#!   replayability. A tx changes the chain state if it either consumes 1 or more input notes or by
+#!   changing the account's state. The latter is validated as part of computing the account delta
+#!   commitment.
 export.finalize_transaction.8
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
@@ -354,10 +368,17 @@ export.finalize_transaction.8
     exec.update_code_commitment
     # => []
 
-    # ------ Build output vault ------
+    # ------ Assert assets are preserved ------
 
+    # build the output vault representing the assets that were in the account at the end of the
+    # transaction and all assets from all output notes
     exec.build_output_vault
     # => []
+
+    # assert no net creation or destruction of assets over the transaction
+    exec.memory::get_input_vault_root exec.memory::get_output_vault_root
+    assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
+    # => [ACCOUNT_UPDATE_COMMITMENT]
 
     # ------ Compute output notes commitment ------
 
@@ -436,13 +457,6 @@ export.finalize_transaction.8
     # => [ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     hmerge
-    # => [ACCOUNT_UPDATE_COMMITMENT]
-
-    # ------ Assert assets are preserved ------
-
-    # assert no net creation or destruction of assets over the transaction
-    exec.memory::get_input_vault_root exec.memory::get_output_vault_root
-    assert_eqw.err=ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
     # ------ Build output stack ------
