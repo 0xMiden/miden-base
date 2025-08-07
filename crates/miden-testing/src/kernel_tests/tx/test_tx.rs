@@ -34,7 +34,7 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{
@@ -76,8 +76,17 @@ use miden_objects::transaction::{
 };
 use miden_objects::{FieldElement, Hasher, Word};
 use miden_tx::auth::UnreachableAuth;
-use miden_tx::{TransactionExecutor, TransactionExecutorError};
+use miden_tx::{
+    AccountProcedureIndexMap,
+    ScriptMastForestStore,
+    TransactionExecutor,
+    TransactionExecutorError,
+    TransactionExecutorHost,
+    TransactionMastStore,
+};
 use vm_processor::crypto::RpoRandomCoin;
+use vm_processor::fast::FastProcessor;
+use vm_processor::{AdviceInputs, StackInputs};
 
 use super::{Felt, ONE, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
@@ -926,11 +935,10 @@ fn test_block_procedures() -> anyhow::Result<()> {
     Ok(())
 }
 
-/* TODO: Reenable and use fast processor for reexecution?
 /// Tests that the transaction witness retrieved from an executed transaction contains all necessary
 /// advice input to execute the transaction again.
-#[test]
-fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transaction()
+#[tokio::test]
+async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transaction()
 -> miette::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
@@ -955,8 +963,7 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
             .unwrap()
     };
 
-    let source_manager = tx_context.source_manager();
-    let executed_transaction = tx_context.execute().into_diagnostic()?;
+    let executed_transaction = tx_context.execute().await.into_diagnostic()?;
 
     let tx_inputs = executed_transaction.tx_inputs();
     let tx_args = executed_transaction.tx_args();
@@ -993,21 +1000,24 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
         )
     };
     let advice_inputs = advice_inputs.into_advice_inputs();
+    // Note: This confusingly reverses the stack inputs.
+    let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
-    let mut process = Process::new(
-        TransactionKernel::main().kernel().clone(),
-        stack_inputs,
-        advice_inputs,
-        ExecutionOptions::default(),
-    )
-    .with_source_manager(source_manager);
-
-    let stack_outputs = process
+    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
+    let (stack_outputs, advice_provider) = processor
         .execute(&TransactionKernel::main(), &mut host)
+        .await
         .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
         .into_diagnostic()?;
-    // TODO: adviceprovider
-    let advice_inputs = AdviceInputs::default(); //.with_map(process.advice);
+
+    // Extract advice map from advice provider.
+    let advice_inputs = AdviceInputs::default().with_map(
+        advice_provider
+            .into_parts()
+            .1
+            .into_iter()
+            .map(|(key, value)| (key, value.to_vec())),
+    );
 
     let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
     let tx_outputs =
@@ -1022,7 +1032,6 @@ fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transactio
 
     Ok(())
 }
-*/
 
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {

@@ -169,8 +169,9 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
-        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
-        // this but the new processor expects the reverse of that.
+        // This confusingly reverses the stack inputs. Once we use the FastProcessor for execution
+        // and proving, we can change the way these inputs are constructed in
+        // TransactionKernel::prepare_inputs.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let input_notes = tx_inputs.input_notes();
