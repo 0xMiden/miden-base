@@ -13,6 +13,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::transaction::{EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel};
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountComponent,
@@ -518,52 +519,35 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_epilogue_increment_nonce_violation() -> anyhow::Result<()> {
-    let tx_context = {
-        let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
-        let input_note_1 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
-        TransactionContextBuilder::with_noop_auth_account(ONE)
-            .extend_input_notes(vec![input_note_1])
-            .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
-            .build()?
-    };
-
-    let output_notes_data_procedure =
-        create_mock_notes_procedure(tx_context.expected_output_notes());
-
-    let code = format!(
-        "
-        use.$kernel::prologue
+fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
+    let code = "
         use.test::account
-        use.$kernel::epilogue
-
-        {output_notes_data_procedure}
 
         begin
-            exec.prologue::prepare_transaction
-
-            exec.create_mock_notes
-
             push.91.92.93.94
             push.0
+            repeat.5 movup.5 drop end
+            # => [index, VALUE]
             call.account::set_item
+            # => [PREV_VALUE]
             dropw
-
-            exec.epilogue::finalize_transaction
-
-            # truncate the stack
-            exec.::std::sys::truncate_stack
         end
-        "
-    );
+        ";
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    );
+    let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(code)?;
+
+    let err = TransactionContextBuilder::with_noop_auth_account(ONE)
+        .tx_script(tx_script)
+        .build()?
+        .execute()
+        .unwrap_err();
+
+    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
+        panic!("unexpected error")
+    };
+
     assert_execution_error!(
-        process,
+        Err::<(), _>(err),
         ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED
     );
 
