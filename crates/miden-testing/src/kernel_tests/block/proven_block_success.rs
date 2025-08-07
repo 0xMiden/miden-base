@@ -1,3 +1,4 @@
+use core::slice;
 use std::collections::BTreeMap;
 use std::vec::Vec;
 
@@ -230,8 +231,11 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[note0.id()]);
-    let tx1 =
-        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[output_note0.clone()]);
+    let tx1 = generate_tx_with_unauthenticated_notes(
+        &mut chain,
+        account1.id(),
+        slice::from_ref(&output_note0),
+    );
     let tx2 = generate_tx_with_authenticated_notes(&mut chain, account2.id(), &[note2.id()]);
     let tx3 = generate_tx_with_authenticated_notes(&mut chain, account3.id(), &[note3.id()]);
 
