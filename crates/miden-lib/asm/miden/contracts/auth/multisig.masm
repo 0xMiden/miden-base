@@ -221,14 +221,11 @@ proc.verify_signatures_loop
 
     # If signatures are non-existent the tx will fail here.
     if.true
-        padw mem_loadw.TEMP_PK swapw
-        # => [MSG, SIG_KEY]
-
         emit.UNAUTHORIZED_EVENT
     end
-    # => [MSG, SIG_KEY]
+    # => [MSG]
 
-    dropw dropw
+    dropw
     # => []
 end
 
