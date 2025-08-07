@@ -9,7 +9,12 @@ use miden_objects::assembly::SourceManager;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
-    AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs, TransactionInputs,
+    AccountInputs,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    TransactionArgs,
+    TransactionInputs,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;
@@ -330,33 +335,32 @@ where
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager>,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
+        // Validate input notes.
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
+        // Validate account inputs.
         let (account, seed, ref_block, mmr) =
             maybe_await!(self.data_store.get_transaction_inputs(account_id, ref_blocks))
                 .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-
         validate_account_inputs(&tx_args, &ref_block)?;
 
+        // Prepare transaction inputs.
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
-
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
+        // Prepare host for transaction execution.
         let input_notes = tx_inputs.input_notes();
-
         let scripts_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
-
         let acct_procedure_index_map =
             AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
-
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
             input_notes.clone(),
@@ -365,7 +369,6 @@ where
             acct_procedure_index_map,
             self.authenticator,
         );
-
         let advice_inputs = advice_inputs.into_advice_inputs();
 
         // Execute the transaction kernel.
@@ -389,14 +392,24 @@ where
             },
             Err(error) => {
                 let notes = host.tx_progress().note_execution();
+
+                // Empty notes vector means that we didn't process the notes, so an error
+                // occurred.
                 if notes.is_empty() {
                     return Err(error);
                 }
 
-                // Map the last note id from execution to the failed note.
-                let ((last_note, _last_note_interval), success_notes) = notes
+                let ((last_note, last_note_interval), success_notes) = notes
                     .split_last()
                     .expect("notes vector should not be empty because we just checked");
+
+                // If the interval end of the last note is specified, then an error occurred after
+                // notes processing.
+                if last_note_interval.end().is_some() {
+                    return Err(error);
+                }
+
+                // Map the last note id from execution to the failed note.
                 let note = input_notes
                     .iter()
                     .find(|&note| note.id() == *last_note)
@@ -419,6 +432,8 @@ where
                         }
                     })
                     .collect::<Vec<_>>();
+
+                // Return information about all the consumed notes.
                 Ok(NoteConsumptionInfo::new(successful, failed))
             },
         }
