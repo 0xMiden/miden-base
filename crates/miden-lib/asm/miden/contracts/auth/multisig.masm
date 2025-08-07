@@ -138,8 +138,8 @@ proc.verify_signatures_loop
         # Fetch public key from storage map.
         # -----------------------------------------------------------------------------------------
 
-        dup sub.1 push.0.0.0 push.PUBLIC_KEYS_MAP_SLOT
-        # => [owner_key_slot, [0, 0, 0, i-1], i, MESSAGE]
+        sub.1 dup push.0.0.0 push.PUBLIC_KEYS_MAP_SLOT
+        # => [owner_key_slot, [0, 0, 0, i-1], i-1, MESSAGE]
 
         exec.account::get_map_item
         # => [OWNER_PUB_KEY, i, MESSAGE]
