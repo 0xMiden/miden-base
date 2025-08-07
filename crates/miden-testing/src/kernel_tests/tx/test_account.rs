@@ -12,7 +12,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::StarkField;
 use miden_objects::account::{
     Account,
@@ -29,7 +29,7 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
-use miden_objects::asset::AssetVault;
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -118,9 +118,9 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             dropw dropw dropw dropw
         end
     "#,
-        key = word_to_masm_push_string(&key),
-        value = word_to_masm_push_string(&value),
-        expected_commitment = word_to_masm_push_string(&expected_commitment),
+        key = &key,
+        value = &value,
+        expected_commitment = &expected_commitment,
     );
 
     let tx_context_builder = TransactionContextBuilder::new(account);
@@ -141,26 +141,29 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 // ACCOUNT CODE TESTS
 // ================================================================================================
 
+// TODO: add the current code commitment obtainment once we will have updatable code
 #[test]
-pub fn test_get_code() -> miette::Result<()> {
+pub fn test_get_code_commitment() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
-    let code = "
+    let account = tx_context.account();
+
+    let code = format!(
+        r#"
         use.$kernel::prologue
         use.$kernel::account
         begin
             exec.prologue::prepare_transaction
-            exec.account::get_code_commitment
-            swapw dropw
+
+            # get the initial code commitment
+            exec.account::get_initial_code_commitment
+            push.{expected_code_commitment}
+            assert_eqw.err="actual code commitment is not equal to the expected one"
         end
-        ";
-
-    let process = &tx_context.execute_code(code).unwrap();
-
-    assert_eq!(
-        process.stack.get_word(0),
-        tx_context.account().code().commitment(),
-        "obtained code commitment is not equal to the account code commitment",
+        "#,
+        expected_code_commitment = account.code().commitment()
     );
+
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -370,7 +373,7 @@ fn test_get_item() -> miette::Result<()> {
             end
             ",
             item_index = storage_item.index,
-            item_value = word_to_masm_push_string(&storage_item.slot.value())
+            item_value = &storage_item.slot.value(),
         );
 
         tx_context.execute_code(&code).unwrap();
@@ -413,7 +416,7 @@ fn test_get_map_item() -> miette::Result<()> {
             end
             ",
             item_index = 0,
-            map_key = word_to_masm_push_string(&key),
+            map_key = &key,
         );
 
         let process = &tx_context
@@ -523,7 +526,7 @@ fn test_set_item() -> miette::Result<()> {
             assert_eqw
         end
         ",
-        new_storage_item = word_to_masm_push_string(&new_storage_item),
+        new_storage_item = &new_storage_item,
         new_storage_item_index = 0,
     );
 
@@ -558,6 +561,7 @@ fn test_set_map_item() -> miette::Result<()> {
 
         use.test::account
         use.$kernel::prologue
+        use.test::account->test_account
 
         begin
             exec.prologue::prepare_transaction
@@ -566,19 +570,19 @@ fn test_set_map_item() -> miette::Result<()> {
             push.{new_value}
             push.{new_key}
             push.{item_index}
-            call.account::set_map_item
+            call.test_account::set_map_item
 
             # double check that on storage slot is indeed the new map
             push.{item_index}
-            call.account::get_item
+            call.test_account::get_item
 
             # truncate the stack
             exec.sys::truncate_stack
         end
         ",
         item_index = 0,
-        new_key = word_to_masm_push_string(&new_key),
-        new_value = word_to_masm_push_string(&new_value),
+        new_key = &new_key,
+        new_value = &new_value,
     );
 
     let process = &tx_context
@@ -881,6 +885,56 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
     Ok(())
 }
 
+#[test]
+fn test_get_storage_commitment() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    let account = tx_context.account().clone();
+
+    // get the initial storage commitment
+    let code = format!(
+        r#"
+        use.miden::account
+        use.$kernel::prologue
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # get the initial storage commitment
+            exec.account::get_initial_storage_commitment
+            push.{expected_storage_commitment}
+            assert_eqw.err="actual storage commitment is not equal to the expected one"
+        end
+        "#,
+        expected_storage_commitment = &account.storage().commitment(),
+    );
+    tx_context.execute_code(&code)?;
+
+    let code = format!(
+        r#"
+        use.miden::account
+        use.$kernel::prologue
+        use.test::account->test_account
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # get the current storage commitment
+            call.test_account::get_storage_commitment
+            push.{expected_storage_commitment}
+            assert_eqw.err="actual storage commitment is not equal to the expected one"
+        end
+        "#,
+        expected_storage_commitment = &account.storage().commitment(),
+    );
+    tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
+
+    Ok(())
+}
+
 // ACCOUNT VAULT TESTS
 // ================================================================================================
 
@@ -888,7 +942,17 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 fn test_get_vault_root() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let account = tx_context.account();
+    let mut account = tx_context.account().clone();
+
+    let fungible_asset = Asset::Fungible(
+        FungibleAsset::new(
+            AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).context("id should be valid")?,
+            5,
+        )
+        .context("fungible_asset_0 is invalid")?,
+    );
+
+    // get the initial vault root
     let code = format!(
         "
         use.miden::account
@@ -897,16 +961,47 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # push the new storage item onto the stack
-            exec.account::get_vault_root
+            # get the initial vault root
+            exec.account::get_initial_vault_root
             push.{expected_vault_root}
             assert_eqw
         end
         ",
-        expected_vault_root = word_to_masm_push_string(&account.vault().root()),
+        expected_vault_root = &account.vault().root(),
     );
-
     tx_context.execute_code(&code)?;
+
+    // get the current vault root
+    account.vault_mut().add_asset(fungible_asset)?;
+
+    let code = format!(
+        r#"
+        use.miden::account
+        use.$kernel::prologue
+        use.test::account->test_account
+
+        begin
+            exec.prologue::prepare_transaction
+
+            # add an asset to the account
+            push.{fungible_asset}
+            call.test_account::add_asset dropw
+            # => []
+
+            # get the current vault root
+            exec.account::get_vault_root
+            push.{expected_vault_root}
+            assert_eqw.err="actual vault root is not equal to the expected one"
+        end
+        "#,
+        fungible_asset = Word::from(&fungible_asset),
+        expected_vault_root = &account.vault().root(),
+    );
+    tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::testing_assembler_with_mock_account(),
+    )?;
+
     Ok(())
 }
 
@@ -950,7 +1045,7 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
                 dropw
             end
             ",
-            root = word_to_masm_push_string(&root)
+            root = &root,
         );
 
         // Execution of this code will return an EventError(UnknownAccountProcedure) for procs
