@@ -1000,7 +1000,8 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
         )
     };
     let advice_inputs = advice_inputs.into_advice_inputs();
-    // Note: This confusingly reverses the stack inputs.
+    // This reverses the stack inputs (even though it doesn't look like it does) because the
+    // fast processor expects the reverse order.
     let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
     let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);

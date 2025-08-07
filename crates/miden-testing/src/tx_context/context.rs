@@ -97,7 +97,7 @@ impl TransactionContext {
                     dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
                 >;
 
-        // TODO: Load source into host-owned source manager.
+        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file = source_manager.load(
             SourceLanguage::Masm,

@@ -1,5 +1,4 @@
 mod account_delta_tracker;
-use core::error::Error;
 
 use account_delta_tracker::AccountDeltaTracker;
 
@@ -584,7 +583,7 @@ where
         };
         // convert note address into u32
         let note_address = u32::try_from(note_address_felt).map_err(|_| {
-            Box::<dyn Error + Send + Sync>::from(format!(
+            EventError::from(format!(
                 "failed to convert {note_address_felt} into a memory address (u32)"
             ))
         })?;
@@ -694,14 +693,14 @@ pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
 ///
 /// If it is unhandled, the necessary data to handle it is returned.
 #[derive(Debug)]
-pub enum TransactionEventHandling {
+pub(super) enum TransactionEventHandling {
     Unhandled(TransactionEventData),
     Handled(Vec<AdviceMutation>),
 }
 
 /// The data necessary to handle an [`TransactionEvent`].
 #[derive(Debug, Clone)]
-pub enum TransactionEventData {
+pub(super) enum TransactionEventData {
     /// The data necessary to handle an auth request.
     AuthRequest {
         /// The hash of the public key for which a signature was requested.

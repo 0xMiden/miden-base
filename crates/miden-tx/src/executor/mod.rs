@@ -149,7 +149,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        // TODO: Pass source manager to host once refactored.
+        // TODO: SourceManager: Pass source manager to host once refactored.
         _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -169,9 +169,11 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
-        // This confusingly reverses the stack inputs. Once we use the FastProcessor for execution
-        // and proving, we can change the way these inputs are constructed in
-        // TransactionKernel::prepare_inputs.
+        // This reverses the stack inputs (even though it doesn't look like it does) because the
+        // fast processor expects the reverse order.
+        //
+        // Once we use the FastProcessor for execution and proving, we can change the way these
+        // inputs are constructed in TransactionKernel::prepare_inputs.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let input_notes = tx_inputs.input_notes();
@@ -236,7 +238,7 @@ where
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        // TODO: Pass source manager to host once refactored.
+        // TODO: SourceManager: Pass source manager to host once refactored.
         _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
@@ -256,8 +258,8 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
-        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
-        // this but the new processor expects the reverse of that.
+        // This reverses the stack inputs (even though it doesn't look like it does) because the
+        // fast processor expects the reverse order.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let scripts_mast_store =
@@ -313,7 +315,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        // TODO: Pass source manager to host once refactored.
+        // TODO: SourceManager: Pass source manager to host once refactored.
         _source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteAccountExecution, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
@@ -333,8 +335,8 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
-        // TODO: This _confusingly_ reverses the stack inputs. The old processor did not require
-        // this but the new processor expects the reverse of that.
+        // This reverses the stack inputs (even though it doesn't look like it does) because the
+        // fast processor expects the reverse order.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
         let input_notes = tx_inputs.input_notes();

@@ -80,7 +80,7 @@ impl BaseHost for MockHost {
         miden_objects::assembly::debuginfo::SourceSpan,
         Option<Arc<miden_objects::assembly::SourceFile>>,
     ) {
-        // TODO: Replace with proper call to source manager once the host owns it.
+        // TODO: SourceManager: Replace with proper call to source manager once the host owns it.
         let stub_source_manager = miden_objects::assembly::DefaultSourceManager::default();
         let maybe_file = stub_source_manager.get_by_uri(location.uri());
         let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();

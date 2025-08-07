@@ -268,7 +268,7 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        // TODO: Proper fix.
+        // TODO: SourceManager.
         let source_manager =
             alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
                 as alloc::sync::Arc<
