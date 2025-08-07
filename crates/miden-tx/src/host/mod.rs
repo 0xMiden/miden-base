@@ -166,7 +166,7 @@ where
 
     /// Handles the given [`TransactionEvent`], for example by updating the account delta or pushing
     /// requested advice to the advice stack.
-    pub fn handle_event(
+    pub(super) fn handle_event(
         &mut self,
         process: &ProcessState,
         transaction_event: TransactionEvent,
