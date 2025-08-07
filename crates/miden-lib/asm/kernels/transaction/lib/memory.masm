@@ -63,26 +63,32 @@ const.GLOBAL_INPUTS_SECTION_OFFSET=400
 # The memory address at which the transaction reference block's commitment is stored.
 const.BLOCK_COMMITMENT_PTR=400
 
-# The memory address at which the account ID felts are stored.
-const.ACCT_ID_PTR=404
+# The memory address at which the native account ID is stored.
+const.NATIVE_ACCT_ID_PTR=404
 
 # The memory address at which the initial account commitment is stored.
 const.INIT_ACCOUNT_COMMITMENT_PTR=408
 
-# The memory address at which the input notes commitment is stored.
-const.INPUT_NOTES_COMMITMENT_PTR=412
-
 # The memory address at which the initial nonce is stored.
-const.INIT_NONCE_PTR=416
+const.INIT_NONCE_PTR=412
+
+# The memory address at which the initial vault root of the native account is stored.
+const.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR=416
+
+# The memory address at which the initial storage commitment of the native account is stored.
+const.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR=420
+
+# The memory address at which the input notes commitment is stored.
+const.INPUT_NOTES_COMMITMENT_PTR=424
 
 # The memory address at which the transaction script mast root is stored.
-const.TX_SCRIPT_ROOT_PTR=420
+const.TX_SCRIPT_ROOT_PTR=428
 
 # The memory address at which the transaction script arguments are stored.
-const.TX_SCRIPT_ARGS_PTR=424
+const.TX_SCRIPT_ARGS_PTR=432
 
 # The memory address at which the auth procedure arguments are stored.
-const.AUTH_ARGS_PTR=428
+const.AUTH_ARGS_PTR=436
 
 # GLOBAL BLOCK DATA
 # -------------------------------------------------------------------------------------------------
@@ -163,6 +169,7 @@ const.ACCOUNT_DATA_LENGTH=8192
 
 # The offsets at which the account data is stored relative to the start of the account data segment.
 const.ACCT_ID_AND_NONCE_OFFSET=0
+const.ACCT_NONCE_OFFSET=3
 const.ACCT_VAULT_ROOT_OFFSET=4
 const.ACCT_STORAGE_COMMITMENT_OFFSET=8
 const.ACCT_CODE_COMMITMENT_OFFSET=12
@@ -402,7 +409,7 @@ export.get_block_commitment
     padw mem_loadw.BLOCK_COMMITMENT_PTR
 end
 
-#! Sets the account ID.
+#! Sets the ID of the native account.
 #!
 #! Inputs:  [acct_id_prefix, acct_id_suffix]
 #! Outputs: []
@@ -412,12 +419,12 @@ end
 export.set_global_acct_id
     push.0.0
     # => [0, 0, acct_id_prefix, acct_id_suffix]
-    mem_storew.ACCT_ID_PTR
+    mem_storew.NATIVE_ACCT_ID_PTR
     dropw
     # => []
 end
 
-#! Returns the global account ID.
+#! Returns the ID of the native account.
 #!
 #! Inputs:  []
 #! Outputs: [acct_id_prefix, acct_id_suffix]
@@ -425,12 +432,12 @@ end
 #! Where:
 #! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
 export.get_global_acct_id
-    padw mem_loadw.ACCT_ID_PTR
+    padw mem_loadw.NATIVE_ACCT_ID_PTR
     # => [0, 0, acct_id_prefix, acct_id_suffix]
     drop drop
 end
 
-#! Sets the initial account commitment.
+#! Sets the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  [INIT_ACCOUNT_COMMITMENT]
 #! Outputs: [INIT_ACCOUNT_COMMITMENT]
@@ -441,7 +448,7 @@ export.set_init_account_commitment
     mem_storew.INIT_ACCOUNT_COMMITMENT_PTR
 end
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_ACCOUNT_COMMITMENT]
@@ -450,6 +457,93 @@ end
 #! - INIT_ACCOUNT_COMMITMENT is the initial account commitment.
 export.get_init_account_commitment
     padw mem_loadw.INIT_ACCOUNT_COMMITMENT_PTR
+end
+
+#! Sets the initial account nonce.
+#!
+#! Inputs:  [init_nonce]
+#! Outputs: []
+#!
+#! Where:
+#! - init_nonce is the initial account nonce.
+export.set_init_nonce
+    mem_store.INIT_NONCE_PTR
+end
+
+#! Returns the initial account nonce.
+#!
+#! Inputs:  []
+#! Outputs: [init_nonce]
+#!
+#! Where:
+#! - init_nonce is the initial account nonce.
+export.get_init_nonce
+    mem_load.INIT_NONCE_PTR
+end
+
+#! Sets the vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [INIT_NATIVE_ACCOUNT_VAULT_ROOT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
+export.set_init_account_vault_root
+    mem_storew.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
+end
+
+#! Returns the vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_NATIVE_ACCOUNT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_NATIVE_ACCOUNT_VAULT_ROOT is the initial vault root of the native account.
+export.get_init_account_vault_root
+    padw mem_loadw.INIT_NATIVE_ACCOUNT_VAULT_ROOT_PTR
+end
+
+#! Sets the storage commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]
+#! Outputs: [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
+export.set_init_account_storage_commitment
+    mem_storew.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
+end
+
+#! Returns the storage commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
+export.get_init_account_storage_commitment
+    padw mem_loadw.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
+end
+
+#! Returns the code commitment of the native account at the beginning of the transaction.
+#!
+#! This procedure returns the code commitment stored in the native account data block because the
+#! account's code cannot be changed during the user code execution. Only in the epilogue the code 
+#! commitment can be updated. So, the initial code commitment will be equal to the native account
+#! code commitment whenever it is called by a user.
+#!
+#! For the same reason this procedure doesn't have a dedicated setter, `set_acct_code_commitment` 
+#! procedure should be used as a setter instead.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_NATIVE_ACCOUNT_CODE_COMMITMENT is the initial code commitment of the native account.
+export.get_init_account_code_commitment
+    padw
+    exec.get_native_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
+    mem_loadw
 end
 
 #! Returns the input notes commitment.
@@ -474,28 +568,6 @@ end
 #! - INPUT_NOTES_COMMITMENT is the notes' commitment.
 export.set_nullifier_commitment
     mem_storew.INPUT_NOTES_COMMITMENT_PTR
-end
-
-#! Returns the initial account nonce.
-#!
-#! Inputs:  []
-#! Outputs: [init_nonce]
-#!
-#! Where:
-#! - init_nonce is the initial account nonce.
-export.get_init_nonce
-    mem_load.INIT_NONCE_PTR
-end
-
-#! Sets the initial account nonce.
-#!
-#! Inputs:  [init_nonce]
-#! Outputs: []
-#!
-#! Where:
-#! - init_nonce is the initial account nonce.
-export.set_init_nonce
-    mem_store.INIT_NONCE_PTR
 end
 
 #! Returns a memory address of the transaction script root.
@@ -994,9 +1066,9 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
-const.ACCT_NONCE_PTR=ACCT_ID_AND_NONCE_OFFSET+3
+
 export.get_acct_nonce
-    exec.get_current_account_data_ptr add.ACCT_NONCE_PTR
+    exec.get_current_account_data_ptr add.ACCT_NONCE_OFFSET
     mem_load
 end
 

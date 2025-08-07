@@ -80,7 +80,7 @@ end
 
 ### ACCOUNT #####################################
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [INIT_COMMITMENT, pad(12)]
@@ -212,6 +212,25 @@ export.account_incr_nonce
     # => [final_nonce, pad(15)]
 end
 
+#! Returns the code commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [INIT_CODE_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - INIT_CODE_COMMITMENT is the initial account code commitment.
+#!
+#! Invocation: dynexec
+export.account_get_initial_code_commitment
+    # get the initial account code commitment
+    exec.account::get_initial_code_commitment
+    # => [INIT_CODE_COMMITMENT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [INIT_CODE_COMMITMENT, pad(12)]
+end
+
 #! Gets the account code commitment of the current account.
 #!
 #! Inputs:  [pad(16)]
@@ -233,6 +252,25 @@ export.account_get_code_commitment
     # truncate the stack
     swapw dropw
     # => [CODE_COMMITMENT, pad(12)]
+end
+
+#! Returns the storage commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [INIT_STORAGE_COMMITMENT, pad(12)]
+#!
+#! Where:
+#! - INIT_STORAGE_COMMITMENT is the initial account storage commitment.
+#!
+#! Invocation: dynexec
+export.account_get_initial_storage_commitment
+    # get the initial account storage commitment
+    exec.account::get_initial_storage_commitment
+    # => [INIT_STORAGE_COMMITMENT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [INIT_STORAGE_COMMITMENT, pad(12)]
 end
 
 #! Gets the account storage commitment of the current account.
@@ -396,6 +434,25 @@ export.account_set_map_item
     # set the new map item
     exec.account::set_map_item
     # => [OLD_MAP_ROOT, OLD_VALUE, pad(8)]
+end
+
+#! Returns the vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [INIT_VAULT_ROOT, pad(12)]
+#!
+#! Where:
+#! - INIT_VAULT_ROOT is the initial account vault root.
+#!
+#! Invocation: dynexec
+export.account_get_initial_vault_root
+    # get the initial account vault root
+    exec.account::get_initial_vault_root
+    # => [INIT_VAULT_ROOT, pad(16)]
+
+    # truncate the stack
+    swapw dropw
+    # => [INIT_VAULT_ROOT, pad(12)]
 end
 
 #! Returns a commitment to the account vault the transaction is being executed against.
