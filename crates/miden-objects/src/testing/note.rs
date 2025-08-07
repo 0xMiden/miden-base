@@ -104,7 +104,7 @@ impl NoteBuilder {
     }
 
     pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        // TODO: Proper fix.
+        // TODO: SourceManager.
         let source_manager = alloc::sync::Arc::new(crate::assembly::DefaultSourceManager::default())
             as alloc::sync::Arc<dyn crate::assembly::SourceManager>;
         // Generate a unique file name from the note's serial number, which should be unique per

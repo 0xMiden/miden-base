@@ -50,12 +50,12 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
         let assembler = TransactionKernel::testing_assembler().with_debug_mode(true);
-        // TODO: Proper fix.
+        // TODO: SourceManager.
         let source_manager =
             alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
                 as alloc::sync::Arc<dyn miden_objects::assembly::SourceManager>;
 
-        // TODO: Load source into host-owned source manager.
+        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file =
             source_manager.load(SourceLanguage::Masm, Uri::new("_user_code"), code.to_owned());
