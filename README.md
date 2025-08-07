@@ -19,7 +19,7 @@ If you want to join the technical discussion or learn more about the project, pl
 * the [Documentation](https://0xMiden.github.io/miden-docs).
 * the [Telegram](https://t.me/BuildOnMiden)
 * the [Repo](https://github.com/0xMiden)
-* the [Roadmap](docs/roadmap.md)
+* the [Roadmap](https://miden.xyz/roadmap)
 
 ## Status and features
 

@@ -1,8 +1,12 @@
-use crate::{
-    Word,
-    account::delta::AccountUpdateDetails,
-    block::AccountWitness,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::Word;
+use crate::account::delta::AccountUpdateDetails;
+use crate::block::AccountWitness;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 /// This type encapsulates essentially three components:

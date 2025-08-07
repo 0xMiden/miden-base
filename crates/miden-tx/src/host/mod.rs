@@ -16,25 +16,35 @@ mod script_mast_forest_store;
 pub use script_mast_forest_store::ScriptMastForestStore;
 
 mod tx_progress;
-use alloc::{boxed::Box, collections::BTreeMap, sync::Arc, vec::Vec};
+use alloc::boxed::Box;
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_lib::transaction::{
-    TransactionEvent, TransactionEventError, TransactionKernelError,
-    memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR},
+use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
+use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
+use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::asset::Asset;
+use miden_objects::note::NoteId;
+use miden_objects::transaction::{
+    InputNote,
+    InputNotes,
+    OutputNote,
+    OutputNotes,
+    TransactionMeasurements,
+    TransactionSummary,
 };
-use miden_objects::{
-    Hasher, Word,
-    account::{AccountDelta, PartialAccount},
-    asset::Asset,
-    note::NoteId,
-    transaction::{
-        InputNote, InputNotes, OutputNote, OutputNotes, TransactionMeasurements, TransactionSummary,
-    },
-    vm::RowIndex,
-};
+use miden_objects::vm::RowIndex;
+use miden_objects::{Hasher, Word};
 pub use tx_progress::TransactionProgress;
 use vm_processor::{
-    ContextId, ErrorContext, ExecutionError, Felt, MastForest, MastForestStore, MemoryError,
+    ContextId,
+    ErrorContext,
+    ExecutionError,
+    Felt,
+    MastForest,
+    MastForestStore,
+    MemoryError,
     ProcessState,
 };
 

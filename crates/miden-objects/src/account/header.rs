@@ -1,10 +1,8 @@
 use alloc::vec::Vec;
 
 use super::{Account, AccountId, Felt, PartialAccount, ZERO, hash_account};
-use crate::{
-    Word,
-    utils::serde::{Deserializable, Serializable},
-};
+use crate::Word;
+use crate::utils::serde::{Deserializable, Serializable};
 
 // ACCOUNT HEADER
 // ================================================================================================
@@ -184,17 +182,14 @@ impl Deserializable for AccountHeader {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::{
-        Felt,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::Felt;
+    use vm_core::utils::{Deserializable, Serializable};
 
     use super::AccountHeader;
-    use crate::{
-        Word,
-        account::{StorageSlot, tests::build_account},
-        asset::FungibleAsset,
-    };
+    use crate::Word;
+    use crate::account::StorageSlot;
+    use crate::account::tests::build_account;
+    use crate::asset::FungibleAsset;
 
     #[test]
     fn test_serde_account_storage() {

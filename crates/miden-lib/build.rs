@@ -1,18 +1,14 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    env,
-    fmt::Write,
-    fs::{self},
-    io::{self},
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::env;
+use std::fmt::Write;
+use std::fs::{self};
+use std::io::{self};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use assembly::{
-    Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report,
-    diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr},
-    utils::Serializable,
-};
+use assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
+use assembly::utils::Serializable;
+use assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report};
 use regex::Regex;
 use walkdir::WalkDir;
 
@@ -318,34 +314,23 @@ fn compile_miden_lib(
 /// file, and stores the compiled files into the "{target_dir}".
 ///
 /// The source files are expected to contain executable programs.
-fn compile_note_scripts(
-    source_dir: &Path,
-    target_dir: &Path,
-    mut assembler: Assembler,
-) -> Result<()> {
+fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
     fs::create_dir_all(target_dir)
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
-    // Add utils.masm as a library to the assembler
-    let utils_file_path = source_dir.join("utils.masm");
-    let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
-    assembler.compile_and_statically_link(NamedSource::new("note_scripts::utils", utils_source))?;
-
     for masm_file_path in get_masm_files(source_dir).unwrap() {
-        // Skip utils.masm since it was added as a library
-        if masm_file_path == utils_file_path {
-            continue;
-        }
-
         // read the MASM file, parse it, and serialize the parsed AST to bytes
         let code = assembler.clone().assemble_program(masm_file_path.clone())?;
 
         let bytes = code.to_bytes();
 
-        // TODO: get rid of unwraps
-        let masb_file_name = masm_file_path.file_name().unwrap().to_str().unwrap();
-        let mut masb_file_path = target_dir.join(masb_file_name);
+        let masm_file_name = masm_file_path
+            .file_name()
+            .expect("file name should exist")
+            .to_str()
+            .ok_or_else(|| Report::msg("failed to convert file name to &str"))?;
+        let mut masb_file_path = target_dir.join(masm_file_name);
 
         // write the binary MASB to the output dir
         masb_file_path.set_extension("masb");
@@ -614,12 +599,11 @@ fn extract_masm_errors(
 
         if let Some(ExtractedError { message: existing_error_message, .. }) =
             errors.get(&error_name)
+            && existing_error_message != &error_message
         {
-            if existing_error_message != &error_message {
-                return Err(Report::msg(format!(
-                    "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
-                )));
-            }
+            return Err(Report::msg(format!(
+                "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
+            )));
         }
 
         // Enforce the "no trailing punctuation" rule from the Rust error guidelines on MASM errors.

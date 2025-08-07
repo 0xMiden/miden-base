@@ -1,7 +1,12 @@
-use alloc::{collections::BTreeMap, sync::Arc};
+use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 
-use miden_lib::{MidenLib, StdLibrary, transaction::TransactionKernel};
-use miden_objects::{Word, account::AccountCode, assembly::mast::MastForest, utils::sync::RwLock};
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::{MidenLib, StdLibrary};
+use miden_objects::Word;
+use miden_objects::account::AccountCode;
+use miden_objects::assembly::mast::MastForest;
+use miden_objects::utils::sync::RwLock;
 use vm_processor::MastForestStore;
 
 // TRANSACTION MAST STORE

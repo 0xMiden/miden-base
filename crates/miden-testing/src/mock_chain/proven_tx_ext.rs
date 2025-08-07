@@ -1,8 +1,10 @@
-use miden_objects::{
-    account::delta::AccountUpdateDetails,
-    transaction::{ExecutedTransaction, ProvenTransaction, ProvenTransactionBuilder},
-    vm::ExecutionProof,
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::transaction::{
+    ExecutedTransaction,
+    ProvenTransaction,
+    ProvenTransactionBuilder,
 };
+use miden_objects::vm::ExecutionProof;
 use winterfell::Proof;
 
 /// Extension trait to convert an [`ExecutedTransaction`] into a [`ProvenTransaction`] with a dummy

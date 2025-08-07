@@ -2,19 +2,17 @@
 // ================================================================================================
 use alloc::vec::Vec;
 
-use miden_lib::{
-    account::auth::{
+use miden_lib::account::auth::{
         AuthMultisigRpoFalcon512, AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig,
-    },
-    transaction::TransactionKernel,
-};
-use miden_objects::{
-    Word,
-    account::{AccountComponent, AuthSecretKey},
-    crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
-    testing::account_component::{
-        ConditionalAuthComponent, IncrNonceAuthComponent, NoopAuthComponent,
-    },
+    };
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::Word;
+use miden_objects::account::{AccountComponent, AuthSecretKey};
+use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
+use miden_objects::testing::account_component::{
+    ConditionalAuthComponent,
+    IncrNonceAuthComponent,
+    NoopAuthComponent,
 };
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;

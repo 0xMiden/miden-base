@@ -1,16 +1,28 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use super::{InputNote, ToInputNoteCommitments};
-use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word,
-    account::delta::AccountUpdateDetails,
-    asset::FungibleAsset,
-    block::BlockNumber,
-    note::NoteHeader,
-    transaction::{AccountId, InputNotes, Nullifier, OutputNote, OutputNotes, TransactionId},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::ExecutionProof,
+use crate::account::delta::AccountUpdateDetails;
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::note::NoteHeader;
+use crate::transaction::{
+    AccountId,
+    InputNotes,
+    Nullifier,
+    OutputNote,
+    OutputNotes,
+    TransactionId,
 };
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
+use crate::vm::ExecutionProof;
+use crate::{ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, ProvenTransactionError, Word};
 
 // PROVEN TRANSACTION
 // ================================================================================================
@@ -638,19 +650,32 @@ mod tests {
     use winter_rand_utils::rand_value;
 
     use super::ProvenTransaction;
+    use crate::account::delta::AccountUpdateDetails;
+    use crate::account::{
+        AccountDelta,
+        AccountId,
+        AccountIdVersion,
+        AccountStorageDelta,
+        AccountStorageMode,
+        AccountType,
+        AccountVaultDelta,
+        StorageMapDelta,
+    };
+    use crate::asset::FungibleAsset;
+    use crate::block::BlockNumber;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+    };
+    use crate::transaction::{ProvenTransactionBuilder, TxAccountUpdate};
+    use crate::utils::Serializable;
     use crate::{
-        ACCOUNT_UPDATE_MAX_SIZE, EMPTY_WORD, LexicographicWord, ONE, ProvenTransactionError, Word,
-        account::{
-            AccountDelta, AccountId, AccountIdVersion, AccountStorageDelta, AccountStorageMode,
-            AccountType, AccountVaultDelta, StorageMapDelta, delta::AccountUpdateDetails,
-        },
-        asset::FungibleAsset,
-        block::BlockNumber,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
-        transaction::{ProvenTransactionBuilder, TxAccountUpdate},
-        utils::Serializable,
+        ACCOUNT_UPDATE_MAX_SIZE,
+        EMPTY_WORD,
+        LexicographicWord,
+        ONE,
+        ProvenTransactionError,
+        Word,
     };
 
     fn check_if_sync<T: Sync>() {}

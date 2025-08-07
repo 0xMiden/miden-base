@@ -1,12 +1,10 @@
 #[cfg(not(target_family = "wasm"))]
 use winter_rand_utils::rand_value;
 
-use crate::{
-    Word,
-    account::Account,
-    block::{AccountTree, BlockHeader, BlockNumber, FeeParameters},
-    testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-};
+use crate::Word;
+use crate::account::Account;
+use crate::block::{AccountTree, BlockHeader, BlockNumber, FeeParameters};
+use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 
 impl BlockHeader {
     /// Creates a mock block. The account tree is formed from the provided `accounts`,

@@ -1,11 +1,11 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Word,
-    account::AccountProcedureInfo,
-    assembly::Library,
-    utils::{Deserializable, sync::LazyLock},
-};
+use miden_objects::Word;
+use miden_objects::account::AccountProcedureInfo;
+use miden_objects::assembly::Library;
+use miden_objects::utils::Deserializable;
+use miden_objects::utils::sync::LazyLock;
 
 use crate::account::interface::AccountComponentInterface;
 

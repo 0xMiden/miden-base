@@ -1,12 +1,10 @@
 use anyhow::Result;
-use miden_objects::{
-    Felt,
-    account::Account,
-    asset::{Asset, AssetVault, FungibleAsset},
-    note::NoteType,
-    testing::account_id::ACCOUNT_ID_SENDER,
-    transaction::ExecutedTransaction,
-};
+use miden_objects::Felt;
+use miden_objects::account::Account;
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::note::NoteType;
+use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
+use miden_objects::transaction::ExecutedTransaction;
 use miden_testing::{Auth, MockChain};
 use miden_tx::{LocalTransactionProver, ProvingOptions, TransactionProver};
 

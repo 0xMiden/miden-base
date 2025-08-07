@@ -1,8 +1,17 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use super::{
-    AccountError, AccountStorageDelta, ByteReader, ByteWriter, Deserializable,
-    DeserializationError, Felt, Hasher, Serializable, Word,
+    AccountError,
+    AccountStorageDelta,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Felt,
+    Hasher,
+    Serializable,
+    Word,
 };
 use crate::account::{AccountComponent, AccountType};
 
@@ -323,7 +332,12 @@ impl Deserializable for AccountStorage {
 #[cfg(test)]
 mod tests {
     use super::{
-        AccountStorage, Deserializable, Serializable, StorageMap, Word, build_slots_commitment,
+        AccountStorage,
+        Deserializable,
+        Serializable,
+        StorageMap,
+        Word,
+        build_slots_commitment,
     };
     use crate::account::StorageSlot;
 

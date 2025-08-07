@@ -1,62 +1,100 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::{
-    account::wallets::BasicWallet,
-    errors::tx_kernel_errors::{
-        ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
-        ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
-        ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
-    },
-    transaction::{
-        TransactionKernel,
-        memory::{
-            ACCT_DB_ROOT_PTR, ACCT_ID_PTR, BLOCK_COMMITMENT_PTR, BLOCK_METADATA_PTR,
-            BLOCK_NUMBER_IDX, CHAIN_COMMITMENT_PTR, FEE_PARAMETERS_PTR, INIT_ACCT_COMMITMENT_PTR,
-            INIT_NONCE_PTR, INPUT_NOTE_ARGS_OFFSET, INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
-            INPUT_NOTE_ASSETS_OFFSET, INPUT_NOTE_ID_OFFSET, INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
-            INPUT_NOTE_METADATA_OFFSET, INPUT_NOTE_NULLIFIER_SECTION_PTR,
-            INPUT_NOTE_NUM_ASSETS_OFFSET, INPUT_NOTE_RECIPIENT_OFFSET,
-            INPUT_NOTE_SCRIPT_ROOT_OFFSET, INPUT_NOTE_SECTION_PTR, INPUT_NOTE_SERIAL_NUM_OFFSET,
-            INPUT_NOTES_COMMITMENT_PTR, KERNEL_PROCEDURES_PTR, MemoryOffset,
-            NATIVE_ACCT_CODE_COMMITMENT_PTR, NATIVE_ACCT_ID_AND_NONCE_PTR,
-            NATIVE_ACCT_PROCEDURES_SECTION_PTR, NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
-            NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR, NATIVE_ACCT_VAULT_ROOT_PTR,
-            NATIVE_ASSET_ID_PREFIX_IDX, NATIVE_ASSET_ID_SUFFIX_IDX, NATIVE_NUM_ACCT_PROCEDURES_PTR,
-            NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR, NOTE_ROOT_PTR, NULLIFIER_DB_ROOT_PTR,
-            NUM_KERNEL_PROCEDURES_PTR, PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
-            PARTIAL_BLOCKCHAIN_PEAKS_PTR, PREV_BLOCK_COMMITMENT_PTR, PROOF_COMMITMENT_PTR,
-            PROTOCOL_VERSION_IDX, TIMESTAMP_IDX, TX_COMMITMENT_PTR, TX_KERNEL_COMMITMENT_PTR,
-            TX_SCRIPT_ROOT_PTR, VERIFICATION_BASE_FEE_IDX,
-        },
-    },
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_ACCOUNT_SEED_AND_COMMITMENT_DIGEST_MISMATCH,
+    ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
+    ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
-use miden_objects::{
-    EMPTY_WORD, FieldElement, WORD_SIZE,
-    account::{
-        Account, AccountBuilder, AccountId, AccountIdVersion, AccountProcedureInfo,
-        AccountStorageMode, AccountType, StorageSlot,
-    },
-    asset::FungibleAsset,
-    testing::{
-        account_component::AccountMockComponent,
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        constants::FUNGIBLE_FAUCET_INITIAL_BALANCE,
-    },
-    transaction::{AccountInputs, TransactionArgs, TransactionScript},
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::{
+    ACCT_DB_ROOT_PTR,
+    BLOCK_COMMITMENT_PTR,
+    BLOCK_METADATA_PTR,
+    BLOCK_NUMBER_IDX,
+    CHAIN_COMMITMENT_PTR,
+    FEE_PARAMETERS_PTR,
+    INIT_ACCT_COMMITMENT_PTR,
+    INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR,
+    INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
+    INIT_NATIVE_ACCT_VAULT_ROOT_PTR,
+    INIT_NONCE_PTR,
+    INPUT_NOTE_ARGS_OFFSET,
+    INPUT_NOTE_ASSETS_COMMITMENT_OFFSET,
+    INPUT_NOTE_ASSETS_OFFSET,
+    INPUT_NOTE_ID_OFFSET,
+    INPUT_NOTE_INPUTS_COMMITMENT_OFFSET,
+    INPUT_NOTE_METADATA_OFFSET,
+    INPUT_NOTE_NULLIFIER_SECTION_PTR,
+    INPUT_NOTE_NUM_ASSETS_OFFSET,
+    INPUT_NOTE_RECIPIENT_OFFSET,
+    INPUT_NOTE_SCRIPT_ROOT_OFFSET,
+    INPUT_NOTE_SECTION_PTR,
+    INPUT_NOTE_SERIAL_NUM_OFFSET,
+    INPUT_NOTES_COMMITMENT_PTR,
+    KERNEL_PROCEDURES_PTR,
+    MemoryOffset,
+    NATIVE_ACCT_CODE_COMMITMENT_PTR,
+    NATIVE_ACCT_ID_AND_NONCE_PTR,
+    NATIVE_ACCT_ID_PTR,
+    NATIVE_ACCT_PROCEDURES_SECTION_PTR,
+    NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
+    NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR,
+    NATIVE_ACCT_VAULT_ROOT_PTR,
+    NATIVE_ASSET_ID_PREFIX_IDX,
+    NATIVE_ASSET_ID_SUFFIX_IDX,
+    NATIVE_NUM_ACCT_PROCEDURES_PTR,
+    NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+    NOTE_ROOT_PTR,
+    NULLIFIER_DB_ROOT_PTR,
+    NUM_KERNEL_PROCEDURES_PTR,
+    PARTIAL_BLOCKCHAIN_NUM_LEAVES_PTR,
+    PARTIAL_BLOCKCHAIN_PEAKS_PTR,
+    PREV_BLOCK_COMMITMENT_PTR,
+    PROOF_COMMITMENT_PTR,
+    PROTOCOL_VERSION_IDX,
+    TIMESTAMP_IDX,
+    TX_COMMITMENT_PTR,
+    TX_KERNEL_COMMITMENT_PTR,
+    TX_SCRIPT_ROOT_PTR,
+    VERIFICATION_BASE_FEE_IDX,
 };
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountId,
+    AccountIdVersion,
+    AccountProcedureInfo,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
+};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
+};
+use miden_objects::testing::constants::FUNGIBLE_FAUCET_INITIAL_BALANCE;
+use miden_objects::transaction::{AccountInputs, TransactionArgs, TransactionScript};
+use miden_objects::{EMPTY_WORD, FieldElement, WORD_SIZE};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, ExecutionError, Process, Word};
 
 use super::{Felt, ZERO};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, input_note_data_ptr};
 use crate::{
-    Auth, MockChain, TransactionContext, TransactionContextBuilder, assert_execution_error,
-    kernel_tests::tx::ProcessMemoryExt,
-    utils::{create_p2any_note, input_note_data_ptr},
+    Auth,
+    MockChain,
+    TransactionContext,
+    TransactionContextBuilder,
+    assert_execution_error,
 };
 
 #[test]
@@ -135,12 +173,12 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
     );
 
     assert_eq!(
-        process.get_kernel_mem_word(ACCT_ID_PTR)[0],
+        process.get_kernel_mem_word(NATIVE_ACCT_ID_PTR)[0],
         inputs.account().id().suffix(),
         "The account ID prefix should be stored at the ACCT_ID_PTR[0]"
     );
     assert_eq!(
-        process.get_kernel_mem_word(ACCT_ID_PTR)[1],
+        process.get_kernel_mem_word(NATIVE_ACCT_ID_PTR)[1],
         inputs.account().id().prefix().as_felt(),
         "The account ID suffix should be stored at the ACCT_ID_PTR[1]"
     );
@@ -149,6 +187,24 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
         process.get_kernel_mem_word(INIT_ACCT_COMMITMENT_PTR),
         inputs.account().commitment(),
         "The account commitment should be stored at the INIT_ACCT_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_NATIVE_ACCT_VAULT_ROOT_PTR),
+        inputs.account().vault().root(),
+        "The initial native account vault root should be stored at the INIT_ACCT_VAULT_ROOT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
+        inputs.account().storage().commitment(),
+        "The initial native account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
+    );
+
+    assert_eq!(
+        process.get_kernel_mem_word(INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR),
+        inputs.account().code().commitment(),
+        "The initial native account code commitment should be stored at the INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR"
     );
 
     assert_eq!(

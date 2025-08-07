@@ -1,36 +1,47 @@
-use alloc::{vec, vec::Vec};
+use alloc::vec;
+use alloc::vec::Vec;
 
-use miden_lib::{
-    errors::tx_kernel_errors::{
-        ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
-        ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
-    },
-    transaction::{
-        TransactionKernel,
-        memory::{
-            ACCOUNT_DATA_LENGTH, ACCT_CODE_COMMITMENT_OFFSET, ACCT_ID_AND_NONCE_OFFSET,
-            ACCT_PROCEDURES_SECTION_OFFSET, ACCT_STORAGE_COMMITMENT_OFFSET,
-            ACCT_STORAGE_SLOTS_SECTION_OFFSET, ACCT_VAULT_ROOT_OFFSET, NATIVE_ACCOUNT_DATA_PTR,
-            NUM_ACCT_PROCEDURES_OFFSET, NUM_ACCT_STORAGE_SLOTS_OFFSET,
-        },
-    },
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_FOREIGN_ACCOUNT_CONTEXT_AGAINST_NATIVE_ACCOUNT,
+    ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
+    ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
-use miden_objects::{
-    FieldElement,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountProcedureInfo, AccountStorage,
-        AccountStorageMode, PartialAccount, StorageSlot,
-    },
-    testing::{account_component::AccountMockComponent, storage::STORAGE_LEAVES_2},
-    transaction::{AccountInputs, TransactionScript},
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::{
+    ACCOUNT_DATA_LENGTH,
+    ACCT_CODE_COMMITMENT_OFFSET,
+    ACCT_ID_AND_NONCE_OFFSET,
+    ACCT_PROCEDURES_SECTION_OFFSET,
+    ACCT_STORAGE_COMMITMENT_OFFSET,
+    ACCT_STORAGE_SLOTS_SECTION_OFFSET,
+    ACCT_VAULT_ROOT_OFFSET,
+    NATIVE_ACCOUNT_DATA_PTR,
+    NUM_ACCT_PROCEDURES_OFFSET,
+    NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::FieldElement;
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountProcedureInfo,
+    AccountStorage,
+    AccountStorageMode,
+    PartialAccount,
+    StorageSlot,
+};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::storage::STORAGE_LEAVES_2;
+use miden_objects::transaction::AccountInputs;
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, Felt};
 
 use super::{Process, Word, ZERO};
-use crate::{Auth, MockChainBuilder, assert_execution_error, kernel_tests::tx::ProcessMemoryExt};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::{Auth, MockChainBuilder, assert_execution_error};
 
 // SIMPLE FPI TESTS
 // ================================================================================================
@@ -617,7 +628,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         map_key = STORAGE_LEAVES_2[0].0,
     );
 
-    let tx_script = TransactionScript::compile(code, TransactionKernel::testing_assembler())?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let foreign_account_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
@@ -836,10 +847,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         first_account_foreign_proc_hash = first_foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let tx_script = TransactionScript::compile(
-        code,
-        TransactionKernel::testing_assembler().with_debug_mode(true),
-    )?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
@@ -1007,11 +1015,9 @@ fn test_nested_fpi_stack_overflow() {
                 foreign_suffix = foreign_accounts.last().unwrap().id().suffix(),
             );
 
-            let tx_script = TransactionScript::compile(
-                code,
-                TransactionKernel::testing_assembler().with_debug_mode(true),
-            )
-            .unwrap();
+
+
+                let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
 
             let tx_context = mock_chain
                 .build_tx_context(native_account.id(), &[], &[])
@@ -1128,10 +1134,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         first_account_foreign_proc_hash = foreign_account.code().procedures()[1].mast_root(),
     );
 
-    let tx_script = TransactionScript::compile(
-        code,
-        TransactionKernel::testing_assembler().with_debug_mode(true),
-    )?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(native_account.id(), &[], &[])

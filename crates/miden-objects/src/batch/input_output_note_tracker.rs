@@ -1,16 +1,19 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
-use crate::{
-    ProposedBlockError, Word,
-    batch::{BatchId, ProvenBatch},
-    block::{BlockHeader, BlockNumber},
-    crypto::merkle::MerkleError,
-    errors::ProposedBatchError,
-    note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier},
-    transaction::{
-        InputNoteCommitment, OutputNote, PartialBlockchain, ProvenTransaction, TransactionId,
-    },
+use crate::batch::{BatchId, ProvenBatch};
+use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::MerkleError;
+use crate::errors::ProposedBatchError;
+use crate::note::{NoteHeader, NoteId, NoteInclusionProof, Nullifier};
+use crate::transaction::{
+    InputNoteCommitment,
+    OutputNote,
+    PartialBlockchain,
+    ProvenTransaction,
+    TransactionId,
 };
+use crate::{ProposedBlockError, Word};
 
 type BatchInputNotes = Vec<InputNoteCommitment>;
 type BlockInputNotes = Vec<InputNoteCommitment>;
@@ -144,16 +147,16 @@ impl<ContainerId: Copy> InputOutputNoteTracker<ContainerId> {
         for (mut input_note_commitment, container_id) in input_notes_iter {
             // Transform unauthenticated notes into authenticated ones if the provided proof is
             // valid.
-            if let Some(note_header) = input_note_commitment.header() {
-                if let Some(proof) = unauthenticated_note_proofs.get(&note_header.id()) {
-                    input_note_commitment = Self::authenticate_unauthenticated_note(
-                        input_note_commitment.nullifier(),
-                        note_header,
-                        proof,
-                        partial_blockchain,
-                        reference_block,
-                    )?;
-                }
+            if let Some(note_header) = input_note_commitment.header()
+                && let Some(proof) = unauthenticated_note_proofs.get(&note_header.id())
+            {
+                input_note_commitment = Self::authenticate_unauthenticated_note(
+                    input_note_commitment.nullifier(),
+                    note_header,
+                    proof,
+                    partial_blockchain,
+                    reference_block,
+                )?;
             }
 
             let nullifier = input_note_commitment.nullifier();
