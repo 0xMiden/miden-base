@@ -419,19 +419,15 @@ where
                 let failed = vec![NoteConsumptionError::ExecutionError { note, error }];
 
                 // Map successful note Ids to notes.
-                let success_notes = success_notes.iter().map(|(id, _)| *id).collect::<Vec<_>>();
                 let (_, _, _, _, input_notes) = tx_inputs.into_parts();
-                let successful = input_notes
-                    .into_iter()
-                    .filter_map(|note| {
-                        // O(n*m) is fine for the input sizes we deal with here.
-                        if success_notes.contains(&note.id()) {
-                            Some(note.into_note())
-                        } else {
-                            None
-                        }
+                let successful = success_notes
+                    .iter()
+                    .zip(input_notes)
+                    .map(|((note_id, _), note)| {
+                        debug_assert_eq!(note_id, &note.id());
+                        note.into_note()
                     })
-                    .collect::<Vec<_>>();
+                    .collect();
 
                 // Return information about all the consumed notes.
                 Ok(NoteConsumptionInfo::new(successful, failed))
