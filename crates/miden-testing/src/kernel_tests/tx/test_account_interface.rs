@@ -1,9 +1,11 @@
+use std::vec::Vec;
+
 use assert_matches::assert_matches;
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::FungibleAsset;
-use miden_objects::note::NoteType;
+use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -78,8 +80,11 @@ fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[rstest::rstest]
+#[case::empty(vec![])]
+#[case::one(vec![create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)])])]
 #[test]
-fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
+fn check_note_consumability_custom_notes_success(#[case] notes: Vec<Note>) -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -87,10 +92,8 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
             Auth::IncrNonce,
             TransactionKernel::testing_assembler(),
         );
-        let input_note =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
-            .extend_input_notes(vec![input_note])
+            .extend_input_notes(notes.clone())
             .build()?
     };
     let source_manager = tx_context.source_manager();
@@ -113,8 +116,12 @@ fn check_note_consumability_custom_notes_success() -> anyhow::Result<()> {
     )?;
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
-    assert!(successful.is_empty());
-    assert!(failed.is_empty());
+        if notes.is_empty() {
+            assert!(successful.is_empty());
+            assert!(failed.is_empty());
+        } else {
+            assert_eq!(successful.len(), notes.len());
+        }
     });
     Ok(())
 }

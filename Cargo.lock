@@ -1307,6 +1307,7 @@ dependencies = [
  "miden-tx",
  "rand",
  "rand_chacha",
+ "rstest",
  "thiserror 2.0.12",
  "winter-maybe-async 0.13.1",
  "winter-rand-utils",
