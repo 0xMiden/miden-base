@@ -253,12 +253,10 @@ impl AccountComponentMetadata {
 
         // Check that slots start at 0 and are contiguous
         all_slots.sort_unstable();
-        if let Some(&first_slot) = all_slots.first() {
-            if first_slot != 0 {
-                return Err(AccountComponentTemplateError::StorageSlotsDoNotStartAtZero(
-                    first_slot,
-                ));
-            }
+        if let Some(&first_slot) = all_slots.first()
+            && first_slot != 0
+        {
+            return Err(AccountComponentTemplateError::StorageSlotsDoNotStartAtZero(first_slot));
         }
 
         for slots in all_slots.windows(2) {

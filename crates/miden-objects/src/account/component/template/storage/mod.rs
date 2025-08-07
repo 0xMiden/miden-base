@@ -172,7 +172,7 @@ impl StorageEntry {
 
     /// Returns an iterator over all of the storage entries's value names, alongside their
     /// expected type.
-    pub fn template_requirements(&self) -> TemplateRequirementsIter {
+    pub fn template_requirements(&self) -> TemplateRequirementsIter<'_> {
         match self {
             StorageEntry::Value { word_entry, .. } => {
                 word_entry.template_requirements(StorageValueName::empty())
