@@ -3,8 +3,11 @@
 use alloc::vec::Vec;
 
 use miden_lib::account::auth::{
-        AuthMultisigRpoFalcon512, AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig,
-    };
+    AuthMultisigRpoFalcon512,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512AclConfig,
+};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{AccountComponent, AuthSecretKey};

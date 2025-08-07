@@ -1,24 +1,28 @@
-use miden_lib::{
-    account::wallets::BasicWallet, note::create_p2id_note, transaction::TransactionKernel,
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::note::create_p2id_note;
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountId,
+    AccountStorageMode,
+    AccountType,
+    AuthSecretKey,
 };
-use miden_objects::{
-    Felt, Hasher, Word,
-    account::{Account, AccountBuilder, AccountId, AccountStorageMode, AccountType, AuthSecretKey},
-    asset::FungibleAsset,
-    crypto::dsa::rpo_falcon512::{PublicKey, SecretKey},
-    note::NoteType,
-    testing::account_id::{
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    },
-    transaction::{OutputNote, TransactionScript},
-    vm::AdviceMap,
+use miden_objects::asset::FungibleAsset;
+use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
+use miden_objects::note::NoteType;
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
+use miden_objects::transaction::{OutputNote, TransactionScript};
+use miden_objects::vm::AdviceMap;
+use miden_objects::{Felt, Hasher, Word};
 use miden_testing::{Auth, MockChainBuilder};
-use miden_tx::{
-    TransactionExecutorError,
-    auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator},
-    utils::word_to_masm_push_string,
-};
+use miden_tx::TransactionExecutorError;
+use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
+use miden_tx::utils::word_to_masm_push_string;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::crypto::RpoRandomCoin;
