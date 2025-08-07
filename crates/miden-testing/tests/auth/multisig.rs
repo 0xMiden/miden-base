@@ -1,6 +1,6 @@
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::create_p2id_note;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -16,7 +16,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
-use miden_objects::transaction::{OutputNote, TransactionScript};
+use miden_objects::transaction::OutputNote;
 use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_testing::{Auth, MockChainBuilder};
@@ -130,8 +130,8 @@ fn test_multisig() -> anyhow::Result<()> {
         &mut RpoRandomCoin::new(Word::from([3u32; 4])),
     )?;
 
-    let tx_script = TransactionScript::compile(
-        format!(
+    let tx_script = ScriptBuilder::with_kernel_library()?
+        .compile_tx_script(format!(
             "
             use.miden::tx
             begin
@@ -152,9 +152,8 @@ fn test_multisig() -> anyhow::Result<()> {
             tag = Felt::from(output_note.metadata().tag()),
             asset = word_to_masm_push_string(&output_note_asset.into()),
             note_execution_hint = Felt::from(output_note.metadata().execution_hint()),
-        ),
-        TransactionKernel::testing_assembler(),
-    )?;
+        ))
+        .unwrap();
 
     let salt = Word::from([Felt::new(1); 4]);
 
