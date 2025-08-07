@@ -1,10 +1,8 @@
-use std::{
-    env,
-    fs::{self},
-    io::Write,
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::env;
+use std::fs::{self};
+use std::io::Write;
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 use anyhow::{Context, Result};
 use serde::Deserialize;

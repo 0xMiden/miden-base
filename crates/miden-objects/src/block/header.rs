@@ -1,11 +1,16 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use crate::{
-    FeeError, Felt, Hasher, Word, ZERO,
-    account::{AccountId, AccountType},
-    block::BlockNumber,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::{AccountId, AccountType};
+use crate::block::BlockNumber;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{FeeError, Felt, Hasher, Word, ZERO};
 
 /// The header of a block. It contains metadata about the block, commitments to the current
 /// state of the chain and the hash of the proof that attests to the integrity of the chain.
@@ -316,6 +321,11 @@ impl FeeParameters {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`FeeParameters`] from the provided inputs.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the provided native asset ID is not a fungible faucet account ID.
     pub fn new(native_asset_id: AccountId, verification_base_fee: u32) -> Result<Self, FeeError> {
         if !matches!(native_asset_id.account_type(), AccountType::FungibleFaucet) {
             return Err(FeeError::NativeAssetIdNotFungible {

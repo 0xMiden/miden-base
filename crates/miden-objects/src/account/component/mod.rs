@@ -1,15 +1,15 @@
-use alloc::{collections::BTreeSet, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
-use assembly::{Assembler, Library, Parse, ast::QualifiedProcedureName};
+use assembly::ast::QualifiedProcedureName;
+use assembly::{Assembler, Library, Parse};
 use vm_processor::MastForest;
 
 mod template;
 pub use template::*;
 
-use crate::{
-    AccountError, Word,
-    account::{AccountType, StorageSlot},
-};
+use crate::account::{AccountType, StorageSlot};
+use crate::{AccountError, Word};
 
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
 /// the [`StorageSlot`]s it accesses.

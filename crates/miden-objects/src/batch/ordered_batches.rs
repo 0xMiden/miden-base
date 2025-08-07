@@ -1,10 +1,8 @@
 use alloc::vec::Vec;
 
-use crate::{
-    batch::ProvenBatch,
-    transaction::OrderedTransactionHeaders,
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::batch::ProvenBatch;
+use crate::transaction::OrderedTransactionHeaders;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // ORDERED BATCHES
 // ================================================================================================

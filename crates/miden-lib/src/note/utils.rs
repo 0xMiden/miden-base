@@ -1,10 +1,8 @@
-use miden_objects::{
-    Felt, NoteError, Word,
-    account::AccountId,
-    asset::Asset,
-    block::BlockNumber,
-    note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType},
-};
+use miden_objects::account::AccountId;
+use miden_objects::asset::Asset;
+use miden_objects::block::BlockNumber;
+use miden_objects::note::{NoteExecutionMode, NoteInputs, NoteRecipient, NoteTag, NoteType};
+use miden_objects::{Felt, NoteError, Word};
 
 use super::well_known_note::WellKnownNote;
 
@@ -80,11 +78,9 @@ pub fn build_swap_tag(
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::{
-        self,
-        account::{AccountIdVersion, AccountStorageMode, AccountType},
-        asset::{FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-    };
+    use miden_objects::account::{AccountIdVersion, AccountStorageMode, AccountType};
+    use miden_objects::asset::{FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+    use miden_objects::{self};
 
     use super::*;
 

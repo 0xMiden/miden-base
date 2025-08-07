@@ -1,27 +1,31 @@
-use std::{collections::BTreeMap, vec::Vec};
+use core::slice;
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    account::{Account, AccountId, AccountStorageMode, delta::AccountUpdateDetails},
-    block::{BlockInputs, ProposedBlock},
-    testing::{
-        account_component::AccountMockComponent, account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    },
-    transaction::{OutputNote, ProvenTransaction, TransactionHeader},
-};
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{Account, AccountId, AccountStorageMode};
+use miden_objects::block::{BlockInputs, ProposedBlock};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use miden_objects::transaction::{OutputNote, ProvenTransaction, TransactionHeader};
 use rand::Rng;
 
 use super::utils::{
-    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
-    generate_fungible_asset, generate_tracked_note_with_asset, generate_tx_with_expiration,
-    generate_tx_with_unauthenticated_notes, generate_untracked_note, setup_chain,
+    TestSetup,
+    generate_batch,
+    generate_executed_tx_with_authenticated_notes,
+    generate_fungible_asset,
+    generate_tracked_note_with_asset,
+    generate_tx_with_expiration,
+    generate_tx_with_unauthenticated_notes,
+    generate_untracked_note,
+    setup_chain,
 };
-use crate::{
-    AccountState, Auth, MockChain, ProvenTransactionExt,
-    kernel_tests::block::utils::generate_conditional_tx,
-};
+use crate::kernel_tests::block::utils::generate_conditional_tx;
+use crate::{AccountState, Auth, MockChain, ProvenTransactionExt};
 
 /// Tests that we can build empty blocks.
 #[test]
@@ -188,8 +192,10 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let note1 = generate_untracked_note(account0.id(), account2.id());
 
     // These txs will use block1 as the reference block.
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
-    let tx1 = generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), &[note1.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
+    let tx1 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), slice::from_ref(&note1));
 
     // These batches will use block1 as the reference block.
     let batch0 = generate_batch(&mut chain, vec![tx0.clone()]);

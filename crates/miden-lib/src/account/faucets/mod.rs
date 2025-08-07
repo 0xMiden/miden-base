@@ -1,26 +1,23 @@
-use miden_objects::{
-    AccountError, Felt, FieldElement, TokenSymbolError, Word,
-    account::{
-        Account, AccountBuilder, AccountComponent, AccountStorage, AccountStorageMode, AccountType,
-        StorageSlot,
-    },
-    assembly::{ProcedureName, QualifiedProcedureName},
-    asset::{FungibleAsset, TokenSymbol},
-    utils::sync::LazyLock,
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
+    StorageSlot,
 };
+use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
+use miden_objects::asset::{FungibleAsset, TokenSymbol};
+use miden_objects::utils::sync::LazyLock;
+use miden_objects::{AccountError, Felt, FieldElement, TokenSymbolError, Word};
 use thiserror::Error;
 
-use super::{
-    AuthScheme,
-    interface::{AccountComponentInterface, AccountInterface},
-};
-use crate::{
-    account::{
-        auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig},
-        components::basic_fungible_faucet_library,
-    },
-    transaction::memory::FAUCET_STORAGE_DATA_SLOT,
-};
+use super::AuthScheme;
+use super::interface::{AccountComponentInterface, AccountInterface};
+use crate::account::auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
+use crate::account::components::basic_fungible_faucet_library;
+use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
 
 // BASIC FUNGIBLE FAUCET ACCOUNT COMPONENT
 // ================================================================================================
@@ -332,16 +329,22 @@ pub enum FungibleFaucetError {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use miden_objects::{
-        FieldElement, ONE, Word,
-        crypto::dsa::rpo_falcon512::{self, PublicKey},
-    };
+    use miden_objects::crypto::dsa::rpo_falcon512::{self, PublicKey};
+    use miden_objects::{FieldElement, ONE, Word};
 
     use super::{
-        AccountBuilder, AccountStorageMode, AccountType, AuthScheme, BasicFungibleFaucet, Felt,
-        FungibleFaucetError, TokenSymbol, create_basic_fungible_faucet,
+        AccountBuilder,
+        AccountStorageMode,
+        AccountType,
+        AuthScheme,
+        BasicFungibleFaucet,
+        Felt,
+        FungibleFaucetError,
+        TokenSymbol,
+        create_basic_fungible_faucet,
     };
-    use crate::account::{auth::AuthRpoFalcon512, wallets::BasicWallet};
+    use crate::account::auth::AuthRpoFalcon512;
+    use crate::account::wallets::BasicWallet;
 
     #[test]
     fn faucet_contract_creation() {

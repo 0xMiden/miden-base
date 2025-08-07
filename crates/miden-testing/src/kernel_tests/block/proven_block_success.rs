@@ -1,20 +1,31 @@
-use std::{collections::BTreeMap, vec::Vec};
+use core::slice;
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::LocalBlockProver;
-use miden_objects::{
-    MIN_PROOF_SECURITY_LEVEL,
-    batch::BatchNoteTree,
-    block::{AccountTree, BlockInputs, BlockNoteIndex, BlockNoteTree, ProposedBlock},
-    crypto::merkle::Smt,
-    transaction::{InputNoteCommitment, OutputNote},
+use miden_objects::MIN_PROOF_SECURITY_LEVEL;
+use miden_objects::batch::BatchNoteTree;
+use miden_objects::block::{
+    AccountTree,
+    BlockInputs,
+    BlockNoteIndex,
+    BlockNoteTree,
+    ProposedBlock,
 };
+use miden_objects::crypto::merkle::Smt;
+use miden_objects::transaction::{InputNoteCommitment, OutputNote};
 use rand::Rng;
 
 use super::utils::{
-    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes, generate_output_note,
-    generate_tracked_note, generate_tx_with_authenticated_notes,
-    generate_tx_with_unauthenticated_notes, setup_chain,
+    TestSetup,
+    generate_batch,
+    generate_executed_tx_with_authenticated_notes,
+    generate_output_note,
+    generate_tracked_note,
+    generate_tx_with_authenticated_notes,
+    generate_tx_with_unauthenticated_notes,
+    setup_chain,
 };
 use crate::utils::create_spawn_note;
 
@@ -220,8 +231,11 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[note0.id()]);
-    let tx1 =
-        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[output_note0.clone()]);
+    let tx1 = generate_tx_with_unauthenticated_notes(
+        &mut chain,
+        account1.id(),
+        slice::from_ref(&output_note0),
+    );
     let tx2 = generate_tx_with_authenticated_notes(&mut chain, account2.id(), &[note2.id()]);
     let tx3 = generate_tx_with_authenticated_notes(&mut chain, account3.id(), &[note3.id()]);
 

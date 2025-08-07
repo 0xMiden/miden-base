@@ -1,6 +1,10 @@
-use crate::{
-    crypto::merkle::SmtProof,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::crypto::merkle::SmtProof;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // NULLIFIER WITNESS

@@ -1,16 +1,17 @@
-use miden_objects::{
-    Felt, Word,
-    account::AccountId,
-    block::BlockNumber,
-    note::{Note, NoteScript},
-    utils::{Deserializable, sync::LazyLock},
-    vm::Program,
-};
+use miden_objects::account::AccountId;
+use miden_objects::block::BlockNumber;
+use miden_objects::note::{Note, NoteScript};
+use miden_objects::utils::Deserializable;
+use miden_objects::utils::sync::LazyLock;
+use miden_objects::vm::Program;
+use miden_objects::{Felt, Word};
 
-use crate::account::{
-    interface::{AccountComponentInterface, AccountInterface, NoteAccountCompatibility},
-    wallets::BasicWallet,
+use crate::account::interface::{
+    AccountComponentInterface,
+    AccountInterface,
+    NoteAccountCompatibility,
 };
+use crate::account::wallets::BasicWallet;
 
 // WELL KNOWN NOTE SCRIPTS
 // ================================================================================================
@@ -234,11 +235,11 @@ impl WellKnownNote {
                     let Ok(reclaim_height) = note_inputs[2].try_into() else {
                         return NoteAccountCompatibility::No;
                     };
-                    return if block_ref.as_u32() >= reclaim_height {
+                    if block_ref.as_u32() >= reclaim_height {
                         NoteAccountCompatibility::Yes
                     } else {
                         NoteAccountCompatibility::No
-                    };
+                    }
                 } else {
                     // neither target nor sender
                     NoteAccountCompatibility::No

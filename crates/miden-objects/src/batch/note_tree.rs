@@ -1,11 +1,9 @@
 use alloc::vec::Vec;
 
-use crate::{
-    BATCH_NOTE_TREE_DEPTH, EMPTY_WORD, Word,
-    crypto::merkle::{LeafIndex, MerkleError, SimpleSmt},
-    note::{NoteId, NoteMetadata, compute_note_commitment},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::crypto::merkle::{LeafIndex, MerkleError, SimpleSmt};
+use crate::note::{NoteId, NoteMetadata, compute_note_commitment};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{BATCH_NOTE_TREE_DEPTH, EMPTY_WORD, Word};
 
 /// Wrapper over [SimpleSmt<BATCH_NOTE_TREE_DEPTH>] for batch note tree.
 ///

@@ -1,9 +1,13 @@
 use alloc::string::{String, ToString};
 
-use crate::{
-    Felt, Word,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{Felt, Word};
 
 // STORAGE SLOT TYPE
 // ================================================================================================

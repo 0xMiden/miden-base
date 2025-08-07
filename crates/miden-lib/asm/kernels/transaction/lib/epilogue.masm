@@ -31,6 +31,26 @@ const.EPILOGUE_AFTER_TX_FEE_COMPUTED=131097
 # after compute_fee.
 const.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES=1200
 
+# ACCOUNT PROCEDURES
+# =================================================================================================
+
+#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
+#! is set to the initial account code commitment in the prologue and as such this procedure will
+#! not result in a change to the account code commitment if the `account::set_code` procedure has
+#! not been invoked in this transaction.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.update_code_commitment
+    # fetch the new code commitment, which may be the initial one
+    exec.memory::get_new_acct_code_commitment
+    # => [NEW_ACCT_CODE_COMMITMENT]
+
+    # set the account code commitment to the new account code commitment (may not have changed)
+    exec.memory::set_acct_code_commitment dropw
+    # => []
+end
+
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
 
@@ -86,18 +106,28 @@ end
 # =================================================================================================
 
 #! Builds the output vault which is combination of the assets in the account vault at the end of the
-#! transaction and all the assets in the output notes.
+#! transaction, all the assets in the output notes and the provided fee asset.
 #!
 #! The output vault is built as follows:
 #! - we first copy the account vault root to the output vault root.
+#! - we add the fee asset to the output vault.
 #! - we then loop over the output notes and insert their assets into the output vault.
 #!
-#! Inputs:  []
+#! Inputs:  [FEE_ASSET]
 #! Outputs: []
 proc.build_output_vault
     # copy final account vault root to output account vault root
     exec.memory::get_acct_vault_root exec.memory::set_output_vault_root dropw
-    # => []
+    # => [FEE_ASSET]
+
+    # the fee asset is special in the sense that it is left as a final stack output, so we have
+    # to account for it explicitly in the output vault by adding it.
+    exec.memory::get_output_vault_root_ptr movdn.4
+    # => [FEE_ASSET, output_vault_root_ptr]
+
+    # we know FEE_ASSET is a fungible asset, so we call this procedure directly rather than
+    # add_asset
+    exec.asset_vault::add_fungible_asset dropw
 
     # get the number of output notes from memory
     exec.memory::get_num_output_notes
@@ -276,7 +306,7 @@ end
 #!   delta commitment.
 #! - FEE_ASSET is the fungible asset used as the transaction fee.
 #! - tx_expiration_block_num is the transaction expiration block number.
-export.finalize_transaction
+export.finalize_transaction.4
     # make sure that the context was switched back to the native account
     exec.memory::assert_native_account
 
@@ -284,9 +314,24 @@ export.finalize_transaction
     exec.execute_auth_procedure
     # => []
 
+    # update the account code commitment in case its code has been changed
+    exec.update_code_commitment
+    # => []
+
     # compute the fee the tx needs to pay
     # ignored for now
-    exec.compute_fee drop
+    exec.compute_fee
+    # => [fee_amount]
+
+    exec.build_native_fee_asset
+    # => [FEE_ASSET]
+
+    # remove the fee from the native account's vault
+    exec.account::remove_asset_from_vault
+    # => [FEE_ASSET]
+
+    # store the fee asset for later
+    loc_storew.0 dropw
     # => []
 
     # get the initial account commitment
@@ -358,6 +403,10 @@ export.finalize_transaction
     hmerge
     # => [ACCOUNT_UPDATE_COMMITMENT]
 
+    # prepare stack for build_output_vault by loading fee asset from local
+    padw loc_loadw.0
+    # => [FEE_ASSET, ACCOUNT_UPDATE_COMMITMENT]
+
     # build the output vault
     exec.build_output_vault
     # => [ACCOUNT_UPDATE_COMMITMENT]
@@ -378,8 +427,10 @@ export.finalize_transaction
     exec.memory::get_expiration_block_num movdn.8
     # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
 
-    # TODO: output proper fee asset
-    # For now, output dummy fee asset
-    push.0 exec.build_native_fee_asset movdnw.2
+    # load fee asset from local
+    padw loc_loadw.0
+    # => [FEE_ASSET, OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+
+    movdnw.2
     # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num]
 end

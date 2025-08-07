@@ -1,19 +1,14 @@
 use alloc::string::{String, ToString};
-use core::{fmt, hash::Hash};
+use core::fmt;
+use core::hash::Hash;
 
-use vm_core::{
-    Felt,
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
-};
+use vm_core::Felt;
+use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use vm_processor::DeserializationError;
 
-use crate::{
-    account::{
-        AccountIdVersion, AccountStorageMode, AccountType,
-        account_id::v0::{self, validate_prefix},
-    },
-    errors::AccountIdError,
-};
+use crate::account::account_id::v0::{self, validate_prefix};
+use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
+use crate::errors::AccountIdError;
 
 // ACCOUNT ID PREFIX VERSION 0
 // ================================================================================================
@@ -230,13 +225,13 @@ impl Deserializable for AccountIdPrefixV0 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        account::{AccountId, AccountIdPrefix},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_SENDER,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
+    use crate::account::{AccountId, AccountIdPrefix};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
 
     #[test]

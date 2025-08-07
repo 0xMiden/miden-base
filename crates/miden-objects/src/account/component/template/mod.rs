@@ -1,8 +1,6 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 use core::str::FromStr;
 
 use assembly::Library;
@@ -255,12 +253,10 @@ impl AccountComponentMetadata {
 
         // Check that slots start at 0 and are contiguous
         all_slots.sort_unstable();
-        if let Some(&first_slot) = all_slots.first() {
-            if first_slot != 0 {
-                return Err(AccountComponentTemplateError::StorageSlotsDoNotStartAtZero(
-                    first_slot,
-                ));
-            }
+        if let Some(&first_slot) = all_slots.first()
+            && first_slot != 0
+        {
+            return Err(AccountComponentTemplateError::StorageSlotsDoNotStartAtZero(first_slot));
         }
 
         for slots in all_slots.windows(2) {
@@ -331,32 +327,27 @@ impl Deserializable for AccountComponentMetadata {
 
 #[cfg(test)]
 mod tests {
-    use std::{collections::BTreeSet, string::ToString};
+    use std::collections::BTreeSet;
+    use std::string::ToString;
 
     use assembly::Assembler;
     use assert_matches::assert_matches;
     use semver::Version;
-    use vm_core::{
-        Felt, FieldElement,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::utils::{Deserializable, Serializable};
+    use vm_core::{Felt, FieldElement};
 
     use super::FeltRepresentation;
-    use crate::{
-        AccountError,
-        account::{
-            AccountComponent, StorageValueName,
-            component::{
-                FieldIdentifier,
-                template::{
-                    AccountComponentMetadata, AccountComponentTemplate, InitStorageData,
-                    storage::StorageEntry,
-                },
-            },
-        },
-        errors::AccountComponentTemplateError,
-        testing::account_code::CODE,
+    use crate::AccountError;
+    use crate::account::component::FieldIdentifier;
+    use crate::account::component::template::storage::StorageEntry;
+    use crate::account::component::template::{
+        AccountComponentMetadata,
+        AccountComponentTemplate,
+        InitStorageData,
     };
+    use crate::account::{AccountComponent, StorageValueName};
+    use crate::errors::AccountComponentTemplateError;
+    use crate::testing::account_code::CODE;
 
     fn default_felt_array() -> [FeltRepresentation; 4] {
         [

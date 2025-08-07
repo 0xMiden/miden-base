@@ -1,10 +1,9 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    AccountError, Word,
-    account::{AccountCode, AccountComponent, StorageMap, StorageSlot},
-    crypto::dsa::rpo_falcon512::PublicKey,
-};
+use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+use miden_objects::{AccountError, Word};
 
 use crate::account::components::{
     multisig_library, rpo_falcon_512_library, rpo_falcon_512_procedure_acl_library,
@@ -283,10 +282,12 @@ impl From<AuthMultisigRpoFalcon512> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
-    use miden_objects::{Word, account::AccountBuilder};
+    use miden_objects::Word;
+    use miden_objects::account::AccountBuilder;
 
     use super::*;
-    use crate::account::{components::WellKnownComponent, wallets::BasicWallet};
+    use crate::account::components::WellKnownComponent;
+    use crate::account::wallets::BasicWallet;
 
     /// Test configuration for parametrized ACL tests
     struct AclTestConfig {

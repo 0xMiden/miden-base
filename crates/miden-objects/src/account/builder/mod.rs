@@ -1,15 +1,21 @@
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use vm_core::FieldElement;
 
-use crate::{
-    AccountError, Felt, Word,
-    account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountIdV0, AccountIdVersion,
-        AccountStorage, AccountStorageMode, AccountType,
-    },
-    asset::AssetVault,
+use crate::account::{
+    Account,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountIdV0,
+    AccountIdVersion,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
 };
+use crate::asset::AssetVault;
+use crate::{AccountError, Felt, Word};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by
 /// combining multiple [`AccountComponent`]s.
@@ -265,7 +271,8 @@ mod tests {
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::{account::StorageSlot, testing::account_component::NoopAuthComponent};
+    use crate::account::StorageSlot;
+    use crate::testing::account_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
           export.foo

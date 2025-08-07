@@ -203,14 +203,11 @@ export.compute_current_commitment
     exec.memory::is_native_account
     # => [is_native_account]
 
-    # first compute the latest storage commitment and update the code commitment
+    # first compute the latest storage commitment
     # since foreign accounts do not change during transaction execution, this step can be skipped
     # for them
     if.true
         exec.compute_current_storage_commitment
-        # => []
-
-        exec.update_code_commitment
         # => []
     end
 
@@ -289,7 +286,7 @@ export.memory::get_account_id->get_id
 #! - nonce is the account nonce.
 export.memory::get_acct_nonce->get_nonce
 
-#! Returns the initial account commitment.
+#! Returns the native account commitment at the beginning of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [INIT_COMMITMENT]
@@ -297,6 +294,33 @@ export.memory::get_acct_nonce->get_nonce
 #! Where:
 #! - INIT_COMMITMENT is the initial account commitment.
 export.memory::get_init_account_commitment->get_initial_commitment
+
+#! Returns the vault root of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_VAULT_ROOT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_VAULT_ROOT is the initial account vault root.
+export.memory::get_init_account_vault_root->get_initial_vault_root
+
+#! Returns the storage commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_STORAGE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
+export.memory::get_init_account_storage_commitment->get_initial_storage_commitment
+
+#! Returns the code commitment of the native account at the beginning of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
+#!
+#! Where:
+#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
+export.memory::get_init_account_code_commitment->get_initial_code_commitment
 
 #! Gets the code commitment of the current account.
 #!
@@ -317,7 +341,7 @@ end
 #! Outputs: [STORAGE_COMMITMENT]
 #!
 #! Where:
-#! - STORAGE_COMMITMENT is the commitment of the account code.
+#! - STORAGE_COMMITMENT is the commitment of the account storage.
 export.get_storage_commitment
     # get the storage commitment
     exec.memory::get_acct_storage_commitment
@@ -1280,23 +1304,6 @@ proc.compute_current_storage_commitment
         drop
         # => []
     end
-end
-
-#! Updates the account code commitment if the account code has changed. `NEW_ACCT_CODE_COMMITMENT`
-#! is set to the initial account code commitment in the prologue and as such this procedure will
-#! not result in a change to the account code commitment if the `account::set_code` procedure has
-#! not been invoked in this transaction.
-#!
-#! Inputs:  []
-#! Outputs: []
-proc.update_code_commitment
-    # fetch the new code commitment, which may be the initial one
-    exec.memory::get_new_acct_code_commitment
-    # => [NEW_ACCT_CODE_COMMITMENT]
-
-    # set the account code commitment to the new account code commitment (may not have changed)
-    exec.memory::set_acct_code_commitment dropw
-    # => []
 end
 
 #! Checks if a procedure has been called during transaction execution.

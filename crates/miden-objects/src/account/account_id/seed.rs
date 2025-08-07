@@ -1,15 +1,9 @@
 use alloc::vec::Vec;
 
-use crate::{
-    AccountError, Felt, Word,
-    account::{
-        AccountStorageMode, AccountType,
-        account_id::{
-            AccountIdVersion,
-            v0::{compute_digest, validate_prefix},
-        },
-    },
-};
+use crate::account::account_id::AccountIdVersion;
+use crate::account::account_id::v0::{compute_digest, validate_prefix};
+use crate::account::{AccountStorageMode, AccountType};
+use crate::{AccountError, Felt, Word};
 
 /// Finds and returns a seed suitable for creating an account ID for the specified account type
 /// using the provided initial seed as a starting point.
@@ -63,15 +57,13 @@ fn compute_account_seed_single(
 
         if let Ok((computed_account_type, computed_storage_mode, computed_version)) =
             validate_prefix(prefix)
+            && computed_account_type == account_type
+            && computed_storage_mode == storage_mode
+            && computed_version == version
+            && is_suffix_msb_zero
         {
-            if computed_account_type == account_type
-                && computed_storage_mode == storage_mode
-                && computed_version == version
-                && is_suffix_msb_zero
-            {
-                return Ok(current_seed);
-            };
-        }
+            return Ok(current_seed);
+        };
 
         current_seed = current_digest;
         current_digest = compute_digest(current_seed, code_commitment, storage_commitment);

@@ -1,11 +1,9 @@
 use alloc::vec::Vec;
 
-use crate::{
-    Felt, Hasher, Word, ZERO,
-    account::AccountId,
-    transaction::{TransactionHeader, TransactionId},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::account::AccountId;
+use crate::transaction::{TransactionHeader, TransactionId};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{Felt, Hasher, Word, ZERO};
 
 // ORDERED TRANSACTION HEADERS
 // ================================================================================================

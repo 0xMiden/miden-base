@@ -1,11 +1,11 @@
-use alloc::{boxed::Box, string::ToString, vec::Vec};
+use alloc::boxed::Box;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 use core::fmt;
 
 use super::{AccountIdPrefix, AccountType, Asset, AssetError, Felt, Hasher, Word};
-use crate::{
-    FieldElement, WORD_SIZE,
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{FieldElement, WORD_SIZE};
 
 /// Position of the faucet_id inside the [`NonFungibleAsset`] word.
 const FAUCET_ID_POS: usize = 3;
@@ -265,12 +265,12 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::*;
-    use crate::{
-        account::AccountId,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
-        },
+    use crate::account::AccountId;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
     };
 
     #[test]
