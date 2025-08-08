@@ -110,7 +110,7 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
 
     # If authentication is required, perform signature verification
     if.true
-        exec.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
+        exec.::miden::auth::rpo_falcon512::authenticate_transaction
     else
         # ------ Check if initial account commitment differs from current commitment ------
 

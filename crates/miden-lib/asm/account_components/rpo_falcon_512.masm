@@ -2,4 +2,12 @@
 #
 # See the `RpoFalcon512` Rust type's documentation for more details.
 
-export.::miden::contracts::auth::basic::auth__tx_rpo_falcon512
+export.auth__tx_rpo_falcon512
+    # Inputs: [AUTH_ARGS, pad(12)] - drop them to preserve old interface
+    dropw
+    # => [pad(12)]
+
+    # Delegate to the new exec-invoked library procedure
+    exec.::miden::auth::rpo_falcon512::authenticate_transaction
+    # => [pad(16)]
+end
