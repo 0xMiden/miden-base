@@ -143,10 +143,12 @@ impl Default for AuthRpoFalcon512AclConfig {
 /// ## Important Note on Procedure Detection
 /// The procedure-based authentication relies on the `was_procedure_called` kernel function,
 /// which only returns `true` if the procedure in question called into a kernel account API
-/// that is restricted to the account context. Procedures that don't interact with account
-/// state or kernel APIs may not be detected as "called" even if they were executed during
-/// the transaction. This is an important limitation to consider when designing trigger
-/// procedures for authentication.
+/// that is restricted to the account context (e.g., via `tx::authenticate_account_origin`
+/// which executes `account::authenticate_and_track_procedure`, or via
+/// `tx::assert_auth_procedure_origin`). Procedures that don't interact with account state
+/// or account-restricted kernel APIs may not be detected as "called" even if they were
+/// executed during the transaction. This is an important limitation to consider when
+/// designing trigger procedures for authentication.
 ///
 /// This component supports all account types.
 pub struct AuthRpoFalcon512Acl {

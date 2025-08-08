@@ -47,6 +47,9 @@ A `Transaction` requires several inputs:
 4. **Epilogue**
    Completes the execution, resulting in an updated account state and a generated zero-knowledge proof. The validity of the resulting transaction is checked. The account's state must have changed or at least one input note must have been consumed to make the transaction non-empty. This check ensures that a transaction can only be submitted once to the network. If the account's state has changed, the `nonce` must have been incremented, which is how the entire transaction is authenticated. Additionally, the net sum of all involved assets must be `0` (if the account is not a faucet).
 
+   > [!Note]
+   > Authentication procedures can base their decision on whether specific account procedures were called during the transaction. A procedure is considered "tracked" only if it invokes account-restricted kernel APIs (e.g., via `tx::authenticate_account_origin` → `account::authenticate_and_track_procedure`). Procedures that execute only local instructions (e.g., a noop `push.0 drop`) will not be marked as called.
+
 The proof together with the corresponding data needed for verification and updates of the global state can then be submitted and processed by the network.
 
 ## Examples
