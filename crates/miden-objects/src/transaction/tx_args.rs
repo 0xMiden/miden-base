@@ -54,8 +54,7 @@ impl TransactionArgs {
     /// Returns new [TransactionArgs] instantiated with the provided transaction script, advice
     /// map and foreign account inputs.
     pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
-        let advice_inputs = AdviceInputs::default()
-            .with_map(advice_map.iter().map(|(key, value)| (*key, value.to_vec())));
+        let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
 
         Self {
             tx_script: None,

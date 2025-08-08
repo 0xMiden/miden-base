@@ -237,9 +237,11 @@ where
 
         // The stack is not necessary since it is being reconstructed when re-executing.
         let (_stack, advice_map, merkle_store) = advice_provider.into_parts();
-        let advice_inputs = AdviceInputs::default()
-            .with_map(advice_map.iter().map(|(key, value)| (*key, value.to_vec())))
-            .with_merkle_store(merkle_store);
+        let advice_inputs = AdviceInputs {
+            map: advice_map,
+            store: merkle_store,
+            ..Default::default()
+        };
 
         build_executed_transaction(advice_inputs, tx_args, tx_inputs, stack_outputs, host)
     }

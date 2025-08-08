@@ -29,10 +29,9 @@ miden-verifier = { workspace = true }
 vm-processor   = { workspace = true }
 
 # External dependencies
-async-trait = "0.1"
-rand        = { workspace = true }
-thiserror   = { workspace = true }
-tokio       = { features = ["rt"], workspace = true }
+rand      = { workspace = true }
+thiserror = { workspace = true }
+tokio     = { features = ["rt"], workspace = true }
 
 [dev-dependencies]
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }

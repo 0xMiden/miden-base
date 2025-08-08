@@ -1012,13 +1012,10 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
         .into_diagnostic()?;
 
     // Extract advice map from advice provider.
-    let advice_inputs = AdviceInputs::default().with_map(
-        advice_provider
-            .into_parts()
-            .1
-            .into_iter()
-            .map(|(key, value)| (key, value.to_vec())),
-    );
+    let advice_inputs = AdviceInputs {
+        map: advice_provider.into_parts().1,
+        ..Default::default()
+    };
 
     let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
     let tx_outputs =
