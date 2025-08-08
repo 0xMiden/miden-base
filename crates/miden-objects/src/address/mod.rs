@@ -3,9 +3,6 @@ use crate::account::{AccountId, AccountStorageMode};
 use crate::note::{DEFAULT_LOCAL_TAG_LENGTH, MAX_LOCAL_TAG_LENGTH};
 
 /// A user-facing address in Miden.
-///
-/// For now this supports only account-id based addressing. Future schemes (e.g. public keys)
-/// can be added as new enum variants.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Address {
     AccountId(AccountIdAddress),
