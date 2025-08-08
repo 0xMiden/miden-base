@@ -49,12 +49,12 @@ miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batc
 # Miden dependencies
 assembly         = { default-features = false, package = "miden-assembly", version = "0.17" }
 miden-crypto     = { default-features = false, version = "0.15.6" }
-miden-prover     = { version = "0.17" }
-miden-stdlib     = { version = "0.17" }
-miden-utils-sync = { version = "0.17" }
-miden-verifier   = { version = "0.17" }
-vm-core          = { package = "miden-core", version = "0.17" }
-vm-processor     = { package = "miden-processor", version = "0.17" }
+miden-prover     = { default-features = false, version = "0.17" }
+miden-stdlib     = { default-features = false, version = "0.17" }
+miden-utils-sync = { default-features = false, version = "0.17" }
+miden-verifier   = { default-features = false, version = "0.17" }
+vm-core          = { default-features = false, package = "miden-core", version = "0.17" }
+vm-processor     = { default-features = false, package = "miden-processor", version = "0.17" }
 
 # External dependencies
 assert_matches = { default-features = false, version = "1.5" }
