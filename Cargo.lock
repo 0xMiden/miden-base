@@ -1012,7 +1012,7 @@ dependencies = [
 [[package]]
 name = "miden-air"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "miden-core",
  "thiserror 2.0.12",
@@ -1023,7 +1023,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "log",
  "miden-assembly-syntax",
@@ -1036,7 +1036,7 @@ dependencies = [
 [[package]]
 name = "miden-assembly-syntax"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "aho-corasick",
  "lalrpop",
@@ -1080,7 +1080,7 @@ dependencies = [
 [[package]]
 name = "miden-core"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1115,7 +1115,7 @@ dependencies = [
 [[package]]
 name = "miden-debug-types"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "memchr",
  "miden-crypto",
@@ -1155,7 +1155,7 @@ dependencies = [
 [[package]]
 name = "miden-mast-package"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "derive_more",
  "miden-assembly-syntax",
@@ -1237,7 +1237,7 @@ dependencies = [
 [[package]]
 name = "miden-processor"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "miden-air",
  "miden-core",
@@ -1252,7 +1252,7 @@ dependencies = [
 [[package]]
 name = "miden-prover"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "miden-air",
  "miden-debug-types",
@@ -1265,7 +1265,7 @@ dependencies = [
 [[package]]
 name = "miden-stdlib"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "env_logger",
  "miden-assembly",
@@ -1325,7 +1325,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-diagnostics"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "miden-crypto",
  "miden-debug-types",
@@ -1337,7 +1337,7 @@ dependencies = [
 [[package]]
 name = "miden-utils-sync"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "lock_api",
  "loom",
@@ -1347,7 +1347,7 @@ dependencies = [
 [[package]]
 name = "miden-verifier"
 version = "0.18.0"
-source = "git+https://github.com/0xMiden/miden-vm.git?branch=bernhard-future-maybe-send#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
+source = "git+https://github.com/0xMiden/miden-vm.git?branch=next#a2d1a0a85ffbf13da70641210a1518fb1597c65f"
 dependencies = [
  "miden-air",
  "miden-core",
