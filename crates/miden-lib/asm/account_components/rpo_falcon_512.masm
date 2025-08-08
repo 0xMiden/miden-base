@@ -18,10 +18,9 @@
 #!
 #! Invocation: call
 export.auth__tx_rpo_falcon512
-    dropw padw
+    dropw
     # => [pad(16)]
 
-    # Delegate to the new exec-invoked library procedure
     exec.::miden::auth::rpo_falcon512::authenticate_transaction
     # => [pad(16)]
 end
