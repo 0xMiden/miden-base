@@ -1,8 +1,18 @@
 use alloc::string::ToString;
 
+use super::execution_hint::NoteExecutionHint;
 use super::{
-    AccountId, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, NoteError,
-    NoteTag, NoteType, Serializable, Word, execution_hint::NoteExecutionHint,
+    AccountId,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Felt,
+    NoteError,
+    NoteTag,
+    NoteType,
+    Serializable,
+    Word,
 };
 
 // NOTE METADATA
@@ -121,7 +131,7 @@ impl From<&NoteMetadata> for Word {
     ///
     /// The produced layout of the word is documented on the [`NoteMetadata`] type.
     fn from(metadata: &NoteMetadata) -> Self {
-        let mut elements = Word::default();
+        let mut elements = Word::empty();
         elements[0] = metadata.sender.prefix().as_felt();
         elements[1] = merge_id_type_and_hint_tag(
             metadata.sender.suffix(),

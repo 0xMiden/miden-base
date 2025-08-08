@@ -1,18 +1,47 @@
-use alloc::string::ToString;
+use alloc::string::{String, ToString};
 
-use miden_objects::{
-    AccountError, Word,
-    account::{Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType},
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorageMode,
+    AccountType,
 };
+use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
+use miden_objects::utils::sync::LazyLock;
+use miden_objects::{AccountError, Word};
+use thiserror::Error;
 
 use super::AuthScheme;
-use crate::account::{
-    auth::{NoAuth, RpoFalcon512},
-    components::basic_wallet_library,
-};
+use crate::account::auth::AuthRpoFalcon512;
+use crate::account::components::basic_wallet_library;
 
 // BASIC WALLET
 // ================================================================================================
+
+// Initialize the digest of the `receive_asset` procedure of the Basic Wallet only once.
+static BASIC_WALLET_RECEIVE_ASSET: LazyLock<Word> = LazyLock::new(|| {
+    let receive_asset_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicWallet::RECEIVE_ASSET_PROC_NAME)
+            .expect("failed to create name for 'receive_asset' procedure"),
+    );
+    basic_wallet_library()
+        .get_procedure_root_by_name(receive_asset_proc_name)
+        .expect("Basic Wallet should contain 'receive_asset' procedure")
+});
+
+// Initialize the digest of the `move_asset_to_note` procedure of the Basic Wallet only once.
+static BASIC_WALLET_MOVE_ASSET_TO_NOTE: LazyLock<Word> = LazyLock::new(|| {
+    let move_asset_to_note_proc_name = QualifiedProcedureName::new(
+        Default::default(),
+        ProcedureName::new(BasicWallet::MOVE_ASSET_TO_NOTE_PROC_NAME)
+            .expect("failed to create name for 'move_asset_to_note' procedure"),
+    );
+    basic_wallet_library()
+        .get_procedure_root_by_name(move_asset_to_note_proc_name)
+        .expect("Basic Wallet should contain 'move_asset_to_note' procedure")
+});
 
 /// An [`AccountComponent`] implementing a basic wallet.
 ///
@@ -32,12 +61,44 @@ use crate::account::{
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct BasicWallet;
 
+impl BasicWallet {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+    const RECEIVE_ASSET_PROC_NAME: &str = "receive_asset";
+    const MOVE_ASSET_TO_NOTE_PROC_NAME: &str = "move_asset_to_note";
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns the digest of the `receive_asset` wallet procedure.
+    pub fn receive_asset_digest() -> Word {
+        *BASIC_WALLET_RECEIVE_ASSET
+    }
+
+    /// Returns the digest of the `move_asset_to_note` wallet procedure.
+    pub fn move_asset_to_note_digest() -> Word {
+        *BASIC_WALLET_MOVE_ASSET_TO_NOTE
+    }
+}
+
 impl From<BasicWallet> for AccountComponent {
     fn from(_: BasicWallet) -> Self {
         AccountComponent::new(basic_wallet_library(), vec![])
           .expect("basic wallet component should satisfy the requirements of a valid account component")
           .with_supports_all_types()
     }
+}
+
+// BASIC WALLET ERROR
+// ================================================================================================
+
+/// Basic wallet related errors.
+#[derive(Debug, Error)]
+pub enum BasicWalletError {
+    #[error("unsupported authentication scheme: {0}")]
+    UnsupportedAuthScheme(String),
+    #[error("account creation failed")]
+    AccountError(#[source] AccountError),
 }
 
 /// Creates a new account with basic wallet interface, the specified authentication scheme and the
@@ -55,16 +116,20 @@ pub fn create_basic_wallet(
     auth_scheme: AuthScheme,
     account_type: AccountType,
     account_storage_mode: AccountStorageMode,
-) -> Result<(Account, Word), AccountError> {
+) -> Result<(Account, Word), BasicWalletError> {
     if matches!(account_type, AccountType::FungibleFaucet | AccountType::NonFungibleFaucet) {
-        return Err(AccountError::AssumptionViolated(
+        return Err(BasicWalletError::AccountError(AccountError::AssumptionViolated(
             "basic wallet accounts cannot have a faucet account type".to_string(),
-        ));
+        )));
     }
 
     let auth_component: AccountComponent = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => RpoFalcon512::new(pub_key).into(),
-        AuthScheme::NoAuth => NoAuth::new().into(),
+        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
+        AuthScheme::NoAuth => {
+            return Err(BasicWalletError::UnsupportedAuthScheme(
+                "basic wallets cannot be created with NoAuth authentication scheme".into(),
+            ));
+        },
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -72,7 +137,8 @@ pub fn create_basic_wallet(
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
         .with_component(BasicWallet)
-        .build()?;
+        .build()
+        .map_err(BasicWalletError::AccountError)?;
 
     Ok((account, account_seed))
 }
@@ -83,14 +149,16 @@ pub fn create_basic_wallet(
 #[cfg(test)]
 mod tests {
 
-    use miden_objects::{ONE, crypto::dsa::rpo_falcon512};
+    use miden_objects::crypto::dsa::rpo_falcon512;
+    use miden_objects::{ONE, Word};
     use vm_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
+    use crate::account::wallets::BasicWallet;
 
     #[test]
     fn test_create_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
+        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },
@@ -105,7 +173,7 @@ mod tests {
 
     #[test]
     fn test_serialize_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new([ONE; 4]);
+        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
             AuthScheme::RpoFalcon512 { pub_key },
@@ -118,5 +186,12 @@ mod tests {
         let bytes = wallet.to_bytes();
         let deserialized_wallet = Account::read_from_bytes(&bytes).unwrap();
         assert_eq!(wallet, deserialized_wallet);
+    }
+
+    /// Check that the obtaining of the basic wallet procedure digests does not panic.
+    #[test]
+    fn get_faucet_procedures() {
+        let _receive_asset_digest = BasicWallet::receive_asset_digest();
+        let _move_asset_to_note_digest = BasicWallet::move_asset_to_note_digest();
     }
 }

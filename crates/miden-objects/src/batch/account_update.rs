@@ -1,11 +1,16 @@
 use alloc::boxed::Box;
 
-use crate::{
-    Digest,
-    account::{AccountId, delta::AccountUpdateDetails},
-    errors::BatchAccountUpdateError,
-    transaction::ProvenTransaction,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::Word;
+use crate::account::AccountId;
+use crate::account::delta::AccountUpdateDetails;
+use crate::errors::BatchAccountUpdateError;
+use crate::transaction::ProvenTransaction;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // BATCH ACCOUNT UPDATE
@@ -19,11 +24,11 @@ pub struct BatchAccountUpdate {
 
     /// Commitment to the state of the account before this update is applied.
     ///
-    /// Equal to `Digest::default()` for new accounts.
-    initial_state_commitment: Digest,
+    /// Equal to `Word::empty()` for new accounts.
+    initial_state_commitment: Word,
 
     /// Commitment to the state of the account after this update is applied.
-    final_state_commitment: Digest,
+    final_state_commitment: Word,
 
     /// A set of changes which can be applied to the previous account state (i.e. `initial_state`)
     /// to get the new account state. For private accounts, this is set to
@@ -50,8 +55,8 @@ impl BatchAccountUpdate {
     #[cfg(any(feature = "testing", test))]
     pub fn new_unchecked(
         account_id: AccountId,
-        initial_state_commitment: Digest,
-        final_state_commitment: Digest,
+        initial_state_commitment: Word,
+        final_state_commitment: Word,
         details: AccountUpdateDetails,
     ) -> Self {
         Self {
@@ -72,13 +77,13 @@ impl BatchAccountUpdate {
 
     /// Returns a commitment to the state of the account before this update is applied.
     ///
-    /// This is equal to [`Digest::default()`] for new accounts.
-    pub fn initial_state_commitment(&self) -> Digest {
+    /// This is equal to [`Word::empty()`] for new accounts.
+    pub fn initial_state_commitment(&self) -> Word {
         self.initial_state_commitment
     }
 
     /// Returns a commitment to the state of the account after this update is applied.
-    pub fn final_state_commitment(&self) -> Digest {
+    pub fn final_state_commitment(&self) -> Word {
         self.final_state_commitment
     }
 
@@ -158,8 +163,8 @@ impl Deserializable for BatchAccountUpdate {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         Ok(Self {
             account_id: AccountId::read_from(source)?,
-            initial_state_commitment: Digest::read_from(source)?,
-            final_state_commitment: Digest::read_from(source)?,
+            initial_state_commitment: Word::read_from(source)?,
+            final_state_commitment: Word::read_from(source)?,
             details: AccountUpdateDetails::read_from(source)?,
         })
     }

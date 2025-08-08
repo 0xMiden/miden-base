@@ -1,18 +1,14 @@
-use std::{
-    collections::{BTreeMap, BTreeSet},
-    env,
-    fmt::Write,
-    fs::{self},
-    io::{self},
-    path::{Path, PathBuf},
-    sync::Arc,
-};
+use std::collections::{BTreeMap, BTreeSet};
+use std::env;
+use std::fmt::Write;
+use std::fs::{self};
+use std::io::{self};
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 
-use assembly::{
-    Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report,
-    diagnostics::{IntoDiagnostic, NamedSource, Result, WrapErr},
-    utils::Serializable,
-};
+use assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
+use assembly::utils::Serializable;
+use assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report};
 use regex::Regex;
 use walkdir::WalkDir;
 
@@ -43,7 +39,7 @@ const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";
 const TX_KERNEL_ERRORS_ARRAY_NAME: &str = "TX_KERNEL_ERRORS";
 const NOTE_SCRIPT_ERRORS_ARRAY_NAME: &str = "NOTE_SCRIPT_ERRORS";
 
-const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
+const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 14] = [
     TxKernelErrorCategory::Kernel,
     TxKernelErrorCategory::Prologue,
     TxKernelErrorCategory::Epilogue,
@@ -56,6 +52,8 @@ const TX_KERNEL_ERROR_CATEGORIES: [TxKernelErrorCategory; 12] = [
     TxKernelErrorCategory::NonFungibleAsset,
     TxKernelErrorCategory::Vault,
     TxKernelErrorCategory::LinkMap,
+    TxKernelErrorCategory::InputNote,
+    TxKernelErrorCategory::OutputNote,
 ];
 
 // PRE-PROCESSING
@@ -92,7 +90,7 @@ fn main() -> Result<()> {
 
     // compile miden library
     let miden_lib = compile_miden_lib(&source_dir, &target_dir, assembler.clone())?;
-    assembler.add_library(miden_lib)?;
+    assembler.link_dynamic_library(miden_lib)?;
 
     // compile note scripts
     compile_note_scripts(
@@ -139,18 +137,15 @@ fn main() -> Result<()> {
 /// - src/transaction/procedures/kernel_v0.rs -> contains the kernel procedures table.
 fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> {
     let shared_utils_path = Path::new(ASM_DIR).join(SHARED_UTILS_DIR);
-    let kernel_namespace = LibraryNamespace::new("kernel").expect("namespace should be valid");
+    let kernel_namespace = LibraryNamespace::Kernel;
 
     let mut assembler = build_assembler(None)?;
     // add the shared util modules to the kernel lib under the kernel::util namespace
-    assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+    assembler.compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
     // assemble the kernel library and write it to the "tx_kernel.masl" file
-    let kernel_lib = KernelLibrary::from_dir(
-        source_dir.join("api.masm"),
-        Some(source_dir.join("lib")),
-        assembler,
-    )?;
+    let kernel_lib = assembler
+        .assemble_kernel_from_dir(source_dir.join("api.masm"), Some(source_dir.join("lib")))?;
 
     // generate `kernel_v0.rs` file
     generate_kernel_proc_hash_file(kernel_lib.clone())?;
@@ -163,8 +158,10 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();
     // add the shared util modules to the kernel lib under the kernel::util namespace
-    main_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
-    main_assembler.add_modules_from_dir(kernel_namespace, &source_dir.join("lib"))?;
+    main_assembler
+        .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+    main_assembler
+        .compile_and_statically_link_from_dir(kernel_namespace.clone(), source_dir.join("lib"))?;
 
     let main_file_path = source_dir.join("main.masm");
     let kernel_main = main_assembler.clone().assemble_program(main_file_path)?;
@@ -181,15 +178,14 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
         // Build kernel as a library and save it to file.
         // This is needed in test assemblers to access individual procedures which would otherwise
         // be hidden when using KernelLibrary (api.masm)
-        let kernel_namespace =
-            "kernel".parse::<LibraryNamespace>().expect("invalid base namespace");
 
         // add the shared util modules to the kernel lib under the kernel::util namespace
-        kernel_lib_assembler.add_modules_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
+        kernel_lib_assembler
+            .compile_and_statically_link_from_dir(kernel_namespace.clone(), &shared_utils_path)?;
 
-        let test_lib =
-            Library::from_dir(source_dir.join("lib"), kernel_namespace, kernel_lib_assembler)
-                .unwrap();
+        let test_lib = kernel_lib_assembler
+            .assemble_library_from_dir(source_dir.join("lib"), kernel_namespace)
+            .unwrap();
 
         let masb_file_path =
             target_dir.join("kernel_library").with_extension(Library::LIBRARY_EXTENSION);
@@ -238,7 +234,7 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
                 panic!("Offset constant for function `{name}` not found in `{offsets_filename:?}`");
             };
 
-            (offset, format!("    // {name}\n    digest!(\"{}\"),", proc_info.digest))
+            (offset, format!("    // {name}\n    word!(\"{}\"),", proc_info.digest))
         })
         .collect();
 
@@ -256,13 +252,13 @@ fn generate_kernel_proc_hash_file(kernel: KernelLibrary) -> Result<()> {
         format!(
             r#"//! This file is generated by build.rs, do not modify
 
-use miden_objects::{{digest, Digest}};
+use miden_objects::{{word, Word}};
 
 // KERNEL V0 PROCEDURES
 // ================================================================================================
 
 /// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Digest; {proc_count}] = [
+pub const KERNEL0_PROCEDURES: [Word; {proc_count}] = [
 {generated_procs}
 ];
 "#,
@@ -301,9 +297,9 @@ fn compile_miden_lib(
 
     let miden_namespace = "miden".parse::<LibraryNamespace>().expect("invalid base namespace");
     // add the shared modules to the kernel lib under the miden::util namespace
-    assembler.add_modules_from_dir(miden_namespace.clone(), &shared_path)?;
+    assembler.compile_and_statically_link_from_dir(miden_namespace.clone(), &shared_path)?;
 
-    let miden_lib = Library::from_dir(source_dir, miden_namespace, assembler)?;
+    let miden_lib = assembler.assemble_library_from_dir(source_dir, miden_namespace)?;
 
     let output_file = target_dir.join("miden").with_extension(Library::LIBRARY_EXTENSION);
     miden_lib.write_to_file(output_file).into_diagnostic()?;
@@ -318,34 +314,23 @@ fn compile_miden_lib(
 /// file, and stores the compiled files into the "{target_dir}".
 ///
 /// The source files are expected to contain executable programs.
-fn compile_note_scripts(
-    source_dir: &Path,
-    target_dir: &Path,
-    mut assembler: Assembler,
-) -> Result<()> {
+fn compile_note_scripts(source_dir: &Path, target_dir: &Path, assembler: Assembler) -> Result<()> {
     fs::create_dir_all(target_dir)
         .into_diagnostic()
         .wrap_err("failed to create note_scripts directory")?;
 
-    // Add utils.masm as a library to the assembler
-    let utils_file_path = source_dir.join("utils.masm");
-    let utils_source = fs::read_to_string(&utils_file_path).into_diagnostic()?;
-    assembler.add_module(NamedSource::new("note_scripts::utils", utils_source))?;
-
     for masm_file_path in get_masm_files(source_dir).unwrap() {
-        // Skip utils.masm since it was added as a library
-        if masm_file_path == utils_file_path {
-            continue;
-        }
-
         // read the MASM file, parse it, and serialize the parsed AST to bytes
         let code = assembler.clone().assemble_program(masm_file_path.clone())?;
 
         let bytes = code.to_bytes();
 
-        // TODO: get rid of unwraps
-        let masb_file_name = masm_file_path.file_name().unwrap().to_str().unwrap();
-        let mut masb_file_path = target_dir.join(masb_file_name);
+        let masm_file_name = masm_file_path
+            .file_name()
+            .expect("file name should exist")
+            .to_str()
+            .ok_or_else(|| Report::msg("failed to convert file name to &str"))?;
+        let mut masb_file_path = target_dir.join(masm_file_name);
 
         // write the binary MASB to the output dir
         masb_file_path.set_extension("masb");
@@ -404,7 +389,7 @@ fn build_assembler(kernel: Option<KernelLibrary>) -> Result<Assembler> {
         .map(|kernel| Assembler::with_kernel(Arc::new(DefaultSourceManager::default()), kernel))
         .unwrap_or_default()
         .with_debug_mode(cfg!(feature = "with-debug-info"))
-        .with_library(miden_stdlib::StdLibrary::default())
+        .with_dynamic_library(miden_stdlib::StdLibrary::default())
 }
 
 /// Recursively copies `src` into `dst`.
@@ -455,7 +440,7 @@ fn copy_directory<T: AsRef<Path>, R: AsRef<Path>>(src: T, dst: R) -> Result<()> 
 /// This is required to include the shared modules as APIs of the `kernel` and `miden` libraries.
 ///
 /// This is done to make it possible to import the modules in the `shared_modules` folder directly,
-/// i.e. "use.kernel::account_id".
+/// i.e. "use.$kernel::account_id".
 fn copy_shared_modules<T: AsRef<Path>>(source_dir: T) -> Result<()> {
     // source is expected to be an `OUT_DIR/asm` folder
     let shared_modules_dir = source_dir.as_ref().join(SHARED_MODULES_DIR);
@@ -614,12 +599,11 @@ fn extract_masm_errors(
 
         if let Some(ExtractedError { message: existing_error_message, .. }) =
             errors.get(&error_name)
+            && existing_error_message != &error_message
         {
-            if existing_error_message != &error_message {
-                return Err(Report::msg(format!(
-                    "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
-                )));
-            }
+            return Err(Report::msg(format!(
+                "Transaction kernel error constant ERR_{error_name} is already defined elsewhere but its error message is different"
+            )));
         }
 
         // Enforce the "no trailing punctuation" rule from the Rust error guidelines on MASM errors.
@@ -759,6 +743,8 @@ enum TxKernelErrorCategory {
     NonFungibleAsset,
     Vault,
     LinkMap,
+    InputNote,
+    OutputNote,
 }
 
 impl TxKernelErrorCategory {
@@ -776,6 +762,8 @@ impl TxKernelErrorCategory {
             TxKernelErrorCategory::NonFungibleAsset => "NON_FUNGIBLE_ASSET",
             TxKernelErrorCategory::Vault => "VAULT",
             TxKernelErrorCategory::LinkMap => "LINK_MAP",
+            TxKernelErrorCategory::InputNote => "INPUT_NOTE",
+            TxKernelErrorCategory::OutputNote => "OUTPUT_NOTE",
         }
     }
 }

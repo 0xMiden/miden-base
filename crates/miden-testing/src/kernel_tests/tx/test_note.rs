@@ -1,46 +1,52 @@
-use alloc::{collections::BTreeMap, string::String, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::{
-    account::wallets::BasicWallet,
-    errors::{
-        MasmError, tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT,
-    },
-    transaction::{TransactionKernel, memory::CURRENT_INPUT_NOTE_PTR},
+use miden_lib::account::wallets::BasicWallet;
+use miden_lib::errors::MasmError;
+use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
+use miden_lib::utils::ScriptBuilder;
+use miden_objects::account::{Account, AccountBuilder, AccountId};
+use miden_objects::assembly::diagnostics::miette::{self, miette};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
+use miden_objects::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteExecutionMode,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteTag,
+    NoteType,
 };
-use miden_objects::{
-    Digest, EMPTY_WORD, FieldElement, ONE, WORD_SIZE,
-    account::{Account, AccountBuilder, AccountId},
-    assembly::diagnostics::miette,
-    asset::FungibleAsset,
-    crypto::{
-        dsa::rpo_falcon512::SecretKey,
-        rand::{FeltRng, RpoRandomCoin},
-    },
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteExecutionMode, NoteInputs, NoteMetadata,
-        NoteRecipient, NoteScript, NoteTag, NoteType,
-    },
-    testing::{
-        account_id::{
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
-        },
-        note::NoteBuilder,
-    },
-    transaction::{AccountInputs, OutputNote, TransactionArgs},
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
+use miden_objects::{EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word};
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{ProcessState, Word};
 
 use super::{Felt, Process, ZERO, word_to_masm_push_string};
+use crate::kernel_tests::tx::ProcessMemoryExt;
+use crate::utils::{create_p2any_note, input_note_data_ptr};
 use crate::{
-    Auth, MockChain, TransactionContext, TransactionContextBuilder, TxContextInput,
+    Auth,
+    MockChain,
+    TransactionContext,
+    TransactionContextBuilder,
+    TxContextInput,
     assert_execution_error,
-    kernel_tests::tx::read_root_mem_word,
-    utils::{create_p2any_note, input_note_data_ptr},
 };
 
 #[test]
@@ -48,8 +54,8 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     // calling get_sender should return sender
     let code = "
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::memory
+        use.$kernel::prologue
         use.miden::note
 
         begin
@@ -87,8 +93,8 @@ fn test_get_sender() -> anyhow::Result<()> {
 
     // calling get_sender should return sender
     let code = "
-        use.kernel::prologue
-        use.kernel::note->note_internal
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
         use.miden::note
 
         begin
@@ -113,20 +119,21 @@ fn test_get_sender() -> anyhow::Result<()> {
 #[test]
 fn test_get_vault_data() -> anyhow::Result<()> {
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note_1 = mock_chain.add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
+        let p2id_note_1 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(150)],
             NoteType::Public,
         )?;
-        let p2id_note_2 = mock_chain.add_pending_p2id_note(
+        let p2id_note_2 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(300)],
             NoteType::Public,
         )?;
+        let mut mock_chain = builder.build()?;
         mock_chain.prove_next_block()?;
 
         mock_chain
@@ -145,8 +152,8 @@ fn test_get_vault_data() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction
@@ -183,24 +190,26 @@ fn test_get_vault_data() -> anyhow::Result<()> {
     tx_context.execute_code(&code)?;
     Ok(())
 }
+
 #[test]
 fn test_get_assets() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note_1 = mock_chain.add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note_1 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(150)],
             NoteType::Public,
         )?;
-        let p2id_note_2 = mock_chain.add_pending_p2id_note(
+        let p2id_note_2 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(300)],
             NoteType::Public,
         )?;
+        let mut mock_chain = builder.build()?;
         mock_chain.prove_next_block()?;
 
         mock_chain
@@ -225,7 +234,7 @@ fn test_get_assets() -> anyhow::Result<()> {
                 # assert the asset is correct
                 dup padw movup.4 mem_loadw push.{asset} assert_eqw push.4 add
                 ",
-                asset = word_to_masm_push_string(&<[Felt; 4]>::from(*asset))
+                asset = word_to_masm_push_string(&Word::from(asset))
             );
         }
         code
@@ -236,8 +245,8 @@ fn test_get_assets() -> anyhow::Result<()> {
         "
         use.std::sys
 
-        use.kernel::prologue
-        use.kernel::note->note_internal
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
         use.miden::note
 
         proc.process_note_0
@@ -323,14 +332,15 @@ fn test_get_assets() -> anyhow::Result<()> {
 fn test_get_inputs() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note = mock_chain.add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(100)],
             NoteType::Public,
         )?;
+        let mut mock_chain = builder.build()?;
         mock_chain.prove_next_block()?;
 
         mock_chain
@@ -342,7 +352,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
         let mut code = String::new();
         for input_chunk in note.inputs().values().chunks(WORD_SIZE) {
             let mut input_word = EMPTY_WORD;
-            input_word[..input_chunk.len()].copy_from_slice(input_chunk);
+            input_word.as_mut_slice()[..input_chunk.len()].copy_from_slice(input_chunk);
 
             code += &format!(
                 "
@@ -359,8 +369,8 @@ fn test_get_inputs() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
-        use.kernel::note->note_internal
+        use.$kernel::prologue
+        use.$kernel::note->note_internal
         use.miden::note
 
         begin
@@ -369,10 +379,10 @@ fn test_get_inputs() -> anyhow::Result<()> {
             # => []
 
             exec.note_internal::prepare_note
-            # => [NOTE_SCRIPT_ROOT, NOTE_ARGS]
+            # => [note_script_root_ptr, NOTE_ARGS, pad(11)]
 
             # drop the note inputs
-            dropw dropw
+            dropw dropw dropw dropw
             # => []
 
             push.{NOTE_0_PTR} exec.note::get_inputs
@@ -418,8 +428,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     )?;
 
     // prepare note data
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([4u32; 4])).draw_word();
     let tag = NoteTag::from_account_id(target_id);
     let metadata = NoteMetadata::new(
         sender_id,
@@ -430,7 +439,8 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     )
     .context("failed to create metadata")?;
     let vault = NoteAssets::new(vec![]).context("failed to create input note assets")?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::assembler())
+    let note_script = ScriptBuilder::default()
+        .compile_note_script("begin nop end")
         .context("failed to compile note script")?;
 
     // create a recipient with note inputs, which number divides by 8. For simplicity create 8 input
@@ -458,7 +468,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
         .build()?;
 
     let tx_code = "
-            use.kernel::prologue
+            use.$kernel::prologue
             use.miden::note
 
             begin
@@ -484,14 +494,15 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
 #[test]
 fn test_note_setup() -> anyhow::Result<()> {
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note_1 = mock_chain.add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note_1 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(150)],
             NoteType::Public,
         )?;
+        let mut mock_chain = builder.build()?;
         mock_chain.prove_next_block()?;
 
         mock_chain
@@ -500,16 +511,18 @@ fn test_note_setup() -> anyhow::Result<()> {
     };
 
     let code = "
-        use.kernel::prologue
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction
             exec.note::prepare_note
+            # => [note_script_root_ptr, NOTE_ARGS, pad(11), pad(16)]
             padw movup.4 mem_loadw
+            # => [SCRIPT_ROOT, NOTE_ARGS, pad(11), pad(16)]
 
             # truncate the stack
-            swapdw dropw dropw
+            repeat.19 movup.8 drop end
         end
         ";
 
@@ -523,24 +536,25 @@ fn test_note_setup() -> anyhow::Result<()> {
 #[test]
 fn test_note_script_and_note_args() -> miette::Result<()> {
     let mut tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note_1 = mock_chain
-            .add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth).map_err(|err| miette!(err))?;
+        let p2id_note_1 = builder
+            .add_p2id_note(
                 ACCOUNT_ID_SENDER.try_into().unwrap(),
                 account.id(),
                 &[FungibleAsset::mock(150)],
                 NoteType::Public,
             )
-            .unwrap();
-        let p2id_note_2 = mock_chain
-            .add_pending_p2id_note(
+            .map_err(|err| miette!(err))?;
+        let p2id_note_2 = builder
+            .add_p2id_note(
                 ACCOUNT_ID_SENDER.try_into().unwrap(),
                 account.id(),
                 &[FungibleAsset::mock(300)],
                 NoteType::Public,
             )
-            .unwrap();
+            .map_err(|err| miette!(err))?;
+        let mut mock_chain = builder.build().map_err(|err| miette!(err))?;
         mock_chain.prove_next_block().unwrap();
 
         mock_chain
@@ -555,26 +569,32 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
     };
 
     let code = "
-        use.kernel::prologue
-        use.kernel::memory
-        use.kernel::note
+        use.$kernel::prologue
+        use.$kernel::memory
+        use.$kernel::note
 
         begin
             exec.prologue::prepare_transaction
             exec.memory::get_num_input_notes push.2 assert_eq
             exec.note::prepare_note drop
+            # => [NOTE_ARGS0, pad(11), pad(16)]
+            repeat.11 movup.4 drop end
+            # => [NOTE_ARGS0, pad(16)]
+
             exec.note::increment_current_input_note_ptr drop
+            # => [NOTE_ARGS0, pad(16)]
+
             exec.note::prepare_note drop
+            # => [NOTE_ARGS1, pad(11), NOTE_ARGS0, pad(16)]
+            repeat.11 movup.4 drop end
+            # => [NOTE_ARGS1, NOTE_ARGS0, pad(16)]
 
             # truncate the stack
             swapdw dropw dropw
         end
         ";
 
-    let note_args = [
-        [Felt::new(91), Felt::new(91), Felt::new(91), Felt::new(91)],
-        [Felt::new(92), Felt::new(92), Felt::new(92), Felt::new(92)],
-    ];
+    let note_args = [Word::from([91, 91, 91, 91u32]), Word::from([92, 92, 92, 92u32])];
     let note_args_map = BTreeMap::from([
         (tx_context.input_notes().get_note(0).note().id(), note_args[1]),
         (tx_context.input_notes().get_note(1).note().id(), note_args[0]),
@@ -610,7 +630,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
 fn note_setup_memory_assertions(process: &Process) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        read_root_mem_word(&process.into(), CURRENT_INPUT_NOTE_PTR)[0],
+        process.get_kernel_mem_word(CURRENT_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }
@@ -618,15 +638,15 @@ fn note_setup_memory_assertions(process: &Process) {
 #[test]
 fn test_get_note_serial_number() -> anyhow::Result<()> {
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note_1 = mock_chain.add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note_1 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(150)],
             NoteType::Public,
         )?;
-        mock_chain.prove_next_block()?;
+        let mock_chain = builder.build()?;
 
         mock_chain
             .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1])?
@@ -635,7 +655,7 @@ fn test_get_note_serial_number() -> anyhow::Result<()> {
 
     // calling get_serial_number should return the serial number of the note
     let code = "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::note
 
         begin
@@ -698,7 +718,6 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     ";
 
     let process = &tx_context.execute_code(code)?;
-    let process_state: ProcessState = process.into();
 
     let note_inputs_5_hash = NoteInputs::new(vec![
         Felt::new(1),
@@ -745,25 +764,25 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     expected_stack.extend_from_slice(note_inputs_5_hash.as_elements());
     expected_stack.extend_from_slice(note_inputs_8_hash.as_elements());
     expected_stack.extend_from_slice(note_inputs_15_hash.as_elements());
-    expected_stack.extend_from_slice(&[ZERO, ZERO, ZERO, ZERO]);
+    expected_stack.extend_from_slice(Word::empty().as_elements());
     expected_stack.reverse();
 
-    assert_eq!(process_state.get_stack_state()[0..16], expected_stack);
+    assert_eq!(process.stack.get_state_at(process.system.clk())[0..16], expected_stack);
     Ok(())
 }
 
 #[test]
 fn test_get_current_script_root() -> anyhow::Result<()> {
     let tx_context = {
-        let mut mock_chain = MockChain::new();
-        let account = mock_chain.add_pending_existing_wallet(crate::Auth::BasicAuth, vec![]);
-        let p2id_note_1 = mock_chain.add_pending_p2id_note(
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note_1 = builder.add_p2id_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             account.id(),
             &[FungibleAsset::mock(150)],
             NoteType::Public,
         )?;
-        mock_chain.prove_next_block()?;
+        let mock_chain = builder.build()?;
 
         mock_chain
             .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1])?
@@ -772,7 +791,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
 
     // calling get_script_root should return script root
     let code = "
-    use.kernel::prologue
+    use.$kernel::prologue
     use.miden::note
 
     begin
@@ -787,7 +806,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
     let process = tx_context.execute_code(code)?;
 
     let script_root = tx_context.input_notes().get_note(0).note().script().root();
-    assert_eq!(process.stack.get_word(0), script_root.as_elements());
+    assert_eq!(process.stack.get_word(0), script_root);
     Ok(())
 }
 
@@ -822,8 +841,8 @@ fn test_build_note_metadata() -> miette::Result<()> {
     for (iteration, test_metadata) in [test_metadata1, test_metadata2].into_iter().enumerate() {
         let code = format!(
             "
-        use.kernel::prologue
-        use.kernel::tx
+        use.$kernel::prologue
+        use.$kernel::tx
 
         begin
           exec.prologue::prepare_transaction
@@ -842,12 +861,12 @@ fn test_build_note_metadata() -> miette::Result<()> {
 
         let process = tx_context.execute_code(&code).unwrap();
 
-        let metadata_word = [
+        let metadata_word = Word::new([
             process.stack.get(3),
             process.stack.get(2),
             process.stack.get(1),
             process.stack.get(0),
-        ];
+        ]);
 
         assert_eq!(Word::from(test_metadata), metadata_word, "failed in iteration {iteration}");
     }
@@ -858,8 +877,6 @@ fn test_build_note_metadata() -> miette::Result<()> {
 /// This serves as a test that setting a custom timestamp on mock chain blocks works.
 #[test]
 pub fn test_timelock() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    let account = mock_chain.add_pending_existing_wallet(Auth::IncrNonce, vec![]);
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(
@@ -890,13 +907,18 @@ pub fn test_timelock() -> anyhow::Result<()> {
         TIMESTAMP_ERROR.message()
     );
 
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::IncrNonce)?;
+
     let lock_timestamp = 2_000_000_000;
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
         .code(code.clone())
         .build(&TransactionKernel::testing_assembler_with_mock_account())?;
 
-    mock_chain.add_pending_note(OutputNote::Full(timelock_note.clone()));
+    builder.add_note(OutputNote::Full(timelock_note.clone()));
+
+    let mut mock_chain = builder.build()?;
     mock_chain
         .prove_next_block_at(lock_timestamp - 100)
         .context("failed to prove next block at lock timestamp - 100")?;
@@ -908,7 +930,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::new(account.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let err = tx_context.execute().unwrap_err();
+    let err = tx_context.execute_blocking().unwrap_err();
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
         panic!("unexpected error")
     };
@@ -923,7 +945,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_inputs =
         mock_chain.get_transaction_inputs(account.clone(), None, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -944,22 +966,20 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
 
     let (rpo_component, authenticator) = Auth::BasicAuth.build_component();
 
-    let mock_seed_1 = Digest::from([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).as_bytes();
+    let mock_seed_1 = Word::from([1, 2, 3, 4u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed_1)
         .with_auth_component(rpo_component.clone())
         .with_component(BasicWallet)
         .build_existing()?;
 
-    let mock_seed_2 =
-        Digest::from([Felt::new(5), Felt::new(6), Felt::new(7), Felt::new(8)]).as_bytes();
+    let mock_seed_2 = Word::from([5, 6, 7, 8u32]).as_bytes();
 
     let sender_account = AccountBuilder::new(mock_seed_2)
         .with_auth_component(rpo_component)
         .with_component(BasicWallet)
         .build_existing()?;
 
-    let serial_num =
-        RpoRandomCoin::new([ONE, Felt::new(2), Felt::new(3), Felt::new(4)]).draw_word();
+    let serial_num = RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])).draw_word();
     let tag = NoteTag::from_account_id(target_account.id());
     let metadata = NoteMetadata::new(
         sender_account.id(),
@@ -969,7 +989,7 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         Default::default(),
     )?;
     let vault = NoteAssets::new(vec![])?;
-    let note_script = NoteScript::compile("begin nop end", TransactionKernel::testing_assembler())?;
+    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
     let recipient =
         NoteRecipient::new(serial_num, note_script, NoteInputs::new(public_key_value.to_vec())?);
     let note_with_pub_key = Note::new(vault.clone(), metadata, recipient);
@@ -979,6 +999,6 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .authenticator(authenticator)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
     Ok(())
 }

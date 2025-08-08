@@ -1,13 +1,17 @@
 use core::fmt::Debug;
 
 use super::PartialBlockchain;
-use crate::{
-    TransactionInputError, Word,
-    account::{Account, AccountId},
-    block::BlockHeader,
-    note::{Note, NoteInclusionProof},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::{Account, AccountId};
+use crate::block::BlockHeader;
+use crate::note::{Note, NoteInclusionProof};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{TransactionInputError, Word};
 
 mod account;
 pub use account::AccountInputs;

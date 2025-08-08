@@ -1,23 +1,26 @@
-use alloc::{collections::BTreeSet, string::String, sync::Arc, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::string::String;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Digest, TransactionScriptError,
-    account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType},
-    assembly::mast::{MastForest, MastNode, MastNodeId},
-    crypto::dsa::rpo_falcon512,
-    note::{Note, NoteScript, PartialNote},
-    transaction::TransactionScript,
-};
+use miden_objects::Word;
+use miden_objects::account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType};
+use miden_objects::assembly::mast::{MastForest, MastNode, MastNodeId};
+use miden_objects::crypto::dsa::rpo_falcon512;
+use miden_objects::note::{Note, NoteScript, PartialNote};
+use miden_objects::transaction::TransactionScript;
 use thiserror::Error;
 
-use crate::{
-    AuthScheme,
-    account::components::{
-        basic_fungible_faucet_library, basic_wallet_library, rpo_falcon_512_library,
-    },
-    note::well_known_note::WellKnownNote,
-    transaction::TransactionKernel,
+use crate::AuthScheme;
+use crate::account::components::{
+    basic_fungible_faucet_library,
+    basic_wallet_library,
+    rpo_falcon_512_library,
+    rpo_falcon_512_procedure_acl_library,
 };
+use crate::errors::ScriptBuilderError;
+use crate::note::well_known_note::WellKnownNote;
+use crate::utils::ScriptBuilder;
 
 #[cfg(test)]
 mod test;
@@ -123,7 +126,7 @@ impl AccountInterface {
     }
 
     /// Returns a digests set of all procedures from all account component interfaces.
-    pub(crate) fn get_procedure_digests(&self) -> BTreeSet<Digest> {
+    pub(crate) fn get_procedure_digests(&self) -> BTreeSet<Word> {
         let mut component_proc_digests = BTreeSet::new();
         for component in self.components.iter() {
             match component {
@@ -135,9 +138,14 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(basic_fungible_faucet_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::RpoFalcon512(_) => {
+                AccountComponentInterface::AuthRpoFalcon512(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
+                    component_proc_digests.extend(
+                        rpo_falcon_512_procedure_acl_library().mast_forest().procedure_digests(),
+                    );
                 },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
@@ -207,8 +215,8 @@ impl AccountInterface {
             note_creation_source,
         );
 
-        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-        let tx_script = TransactionScript::compile(script, assembler)
+        let tx_script = ScriptBuilder::new(in_debug_mode)
+            .compile_tx_script(script)
             .map_err(AccountInterfaceError::InvalidTransactionScript)?;
 
         Ok(tx_script)
@@ -237,7 +245,7 @@ impl AccountInterface {
         } else if self.components().contains(&AccountComponentInterface::BasicWallet) {
             AccountComponentInterface::BasicWallet.send_note_body(*self.id(), output_notes)
         } else {
-            return Err(AccountInterfaceError::UnsupportedAccountInterface);
+            Err(AccountInterfaceError::UnsupportedAccountInterface)
         }
     }
 
@@ -256,15 +264,20 @@ impl From<&Account> for AccountInterface {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
-            if let AccountComponentInterface::RpoFalcon512(storage_index) = interface {
-                auth.push(AuthScheme::RpoFalcon512 {
-                    pub_key: rpo_falcon512::PublicKey::new(
-                        *account
-                            .storage()
-                            .get_item(*storage_index)
-                            .expect("invalid storage index of the public key"),
-                    ),
-                })
+            match interface {
+                // RpoFalcon512 and RpoFalcon512ProcedureAcl use the same RpoFalcon512 auth scheme
+                AccountComponentInterface::AuthRpoFalcon512(storage_index)
+                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
+                    auth.push(AuthScheme::RpoFalcon512 {
+                        pub_key: rpo_falcon512::PublicKey::new(
+                            account
+                                .storage()
+                                .get_item(*storage_index)
+                                .expect("invalid storage index of the public key"),
+                        ),
+                    })
+                },
+                _ => {},
             }
         });
 
@@ -295,7 +308,7 @@ pub enum NoteAccountCompatibility {
 }
 
 // HELPER FUNCTIONS
-// ================================================================================================
+// ------------------------------------------------------------------------------------------------
 
 /// Verifies that the provided note script is compatible with the target account interfaces.
 ///
@@ -306,7 +319,7 @@ pub enum NoteAccountCompatibility {
 /// from note scripts, while kernel procedures are `sycall`ed.
 fn verify_note_script_compatibility(
     note_script: &NoteScript,
-    account_procedures: BTreeSet<Digest>,
+    account_procedures: BTreeSet<Word>,
 ) -> NoteAccountCompatibility {
     // collect call branches of the note script
     let branches = collect_call_branches(note_script);
@@ -321,7 +334,7 @@ fn verify_note_script_compatibility(
 
 /// Collect call branches by recursively traversing through program execution branches and
 /// accumulating call targets.
-fn collect_call_branches(note_script: &NoteScript) -> Vec<BTreeSet<Digest>> {
+fn collect_call_branches(note_script: &NoteScript) -> Vec<BTreeSet<Word>> {
     let mut branches = vec![BTreeSet::new()];
 
     let entry_node = note_script.entrypoint();
@@ -332,7 +345,7 @@ fn collect_call_branches(note_script: &NoteScript) -> Vec<BTreeSet<Digest>> {
 /// Generates a list of calls invoked in each execution branch of the provided code block.
 fn recursively_collect_call_branches(
     mast_node_id: MastNodeId,
-    branches: &mut Vec<BTreeSet<Digest>>,
+    branches: &mut Vec<BTreeSet<Word>>,
     note_script_forest: &Arc<MastForest>,
 ) {
     let mast_node = &note_script_forest[mast_node_id];
@@ -386,7 +399,7 @@ pub enum AccountInterfaceError {
     #[error("note created by the basic fungible faucet doesn't contain exactly one asset")]
     FaucetNoteWithoutAsset,
     #[error("invalid transaction script")]
-    InvalidTransactionScript(#[source] TransactionScriptError),
+    InvalidTransactionScript(#[source] ScriptBuilderError),
     #[error("invalid sender account: {0}")]
     InvalidSenderAccount(AccountId),
     #[error("{} interface does not support the generation of the standard send_note script", interface.name())]

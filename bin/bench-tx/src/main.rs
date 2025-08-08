@@ -1,26 +1,28 @@
 use core::fmt;
-use std::{fs::File, io::Write, path::Path};
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
 
 use anyhow::Context;
-use miden_lib::{note::create_p2id_note, transaction::TransactionKernel};
-use miden_objects::{
-    Felt, FieldElement,
-    account::{Account, AccountId, AccountStorageMode, AccountType},
-    asset::{Asset, FungibleAsset},
-    crypto::rand::RpoRandomCoin,
-    note::NoteType,
-    testing::{
-        account_component::IncrNonceAuthComponent,
-        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    },
-    transaction::{TransactionMeasurements, TransactionScript},
-};
-use miden_testing::{TransactionContextBuilder, utils::create_p2any_note};
+use miden_lib::note::create_p2id_note;
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
+use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::crypto::rand::RpoRandomCoin;
+use miden_objects::note::NoteType;
+use miden_objects::testing::account_component::IncrNonceAuthComponent;
+use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::transaction::TransactionMeasurements;
+use miden_objects::{Felt, FieldElement, Word};
+use miden_testing::TransactionContextBuilder;
+use miden_testing::utils::create_p2any_note;
 
 mod utils;
 use utils::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER, DEFAULT_AUTH_SCRIPT,
-    get_account_with_basic_authenticated_wallet, get_new_pk_and_authenticator,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_SENDER,
+    get_account_with_basic_authenticated_wallet,
+    get_new_pk_and_authenticator,
     write_bench_results_to_json,
 };
 pub enum Benchmark {
@@ -81,7 +83,8 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             .extend_input_notes(vec![input_note_1, input_note_2])
             .build()?
     };
-    let executed_transaction = tx_context.execute().context("failed to execute transaction")?;
+    let executed_transaction =
+        tx_context.execute_blocking().context("failed to execute transaction")?;
 
     Ok(executed_transaction.into())
 }
@@ -113,20 +116,16 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
         vec![fungible_asset],
         NoteType::Public,
         Felt::new(0),
-        &mut RpoRandomCoin::new([Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)]),
+        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )
     .unwrap();
 
-    let tx_script_target =
-        TransactionScript::compile(DEFAULT_AUTH_SCRIPT, TransactionKernel::assembler()).unwrap();
-
     let tx_context = TransactionContextBuilder::new(target_account.clone())
         .extend_input_notes(vec![note])
-        .tx_script(tx_script_target)
         .authenticator(Some(falcon_auth))
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     Ok(executed_transaction.into())
 }

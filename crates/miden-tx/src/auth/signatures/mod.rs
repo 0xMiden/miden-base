@@ -1,9 +1,7 @@
 use alloc::vec::Vec;
 
-use miden_objects::{
-    Hasher,
-    crypto::dsa::rpo_falcon512::{self, Polynomial},
-};
+use miden_objects::Hasher;
+use miden_objects::crypto::dsa::rpo_falcon512::{self, Polynomial};
 use rand::Rng;
 use vm_processor::{Felt, Word};
 

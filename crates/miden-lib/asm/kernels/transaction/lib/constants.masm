@@ -51,7 +51,7 @@ end
 #!
 #! Where:
 #! - max_inputs_per_note is the max inputs per note.
-export.::kernel::util::note::get_max_inputs_per_note
+export.::$kernel::util::note::get_max_inputs_per_note
 
 #! Returns the max allowed number of assets per note.
 #!

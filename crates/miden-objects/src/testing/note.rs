@@ -1,20 +1,24 @@
-use alloc::{
-    string::{String, ToString},
-    vec::Vec,
-};
+use alloc::string::{String, ToString};
+use alloc::vec::Vec;
 
 use assembly::Assembler;
+use assembly::debuginfo::{SourceLanguage, Uri};
 use rand::Rng;
 
-use crate::{
-    Felt, NoteError, Word, ZERO,
-    account::AccountId,
-    asset::Asset,
-    note::{
-        Note, NoteAssets, NoteExecutionHint, NoteInputs, NoteMetadata, NoteRecipient, NoteScript,
-        NoteTag, NoteType,
-    },
+use crate::account::AccountId;
+use crate::asset::Asset;
+use crate::note::{
+    Note,
+    NoteAssets,
+    NoteExecutionHint,
+    NoteInputs,
+    NoteMetadata,
+    NoteRecipient,
+    NoteScript,
+    NoteTag,
+    NoteType,
 };
+use crate::{Felt, NoteError, Word, ZERO};
 
 pub const DEFAULT_NOTE_CODE: &str = "begin nop end";
 
@@ -36,12 +40,12 @@ pub struct NoteBuilder {
 
 impl NoteBuilder {
     pub fn new<T: Rng>(sender: AccountId, mut rng: T) -> Self {
-        let serial_num = [
+        let serial_num = Word::from([
             Felt::new(rng.random()),
             Felt::new(rng.random()),
             Felt::new(rng.random()),
             Felt::new(rng.random()),
-        ];
+        ]);
 
         Self {
             sender,
@@ -100,13 +104,20 @@ impl NoteBuilder {
     }
 
     pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        let source_manager = assembler.source_manager();
+        // TODO: SourceManager.
+        let source_manager = alloc::sync::Arc::new(crate::assembly::DefaultSourceManager::default())
+            as alloc::sync::Arc<dyn crate::assembly::SourceManager>;
         // Generate a unique file name from the note's serial number, which should be unique per
         // note. Only includes two elements in the file name which should be enough for the
         // uniqueness in the testing context and does not result in overly long file names which do
         // not render well in all situations.
         let virtual_source_file = source_manager.load(
-            &format!("note_{:x}{:x}", self.serial_num[0].as_int(), self.serial_num[1].as_int()),
+            SourceLanguage::Masm,
+            Uri::new(format!(
+                "note_{:x}{:x}",
+                self.serial_num[0].as_int(),
+                self.serial_num[1].as_int()
+            )),
             self.code,
         );
         let code = assembler

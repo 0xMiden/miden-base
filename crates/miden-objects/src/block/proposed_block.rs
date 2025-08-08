@@ -1,22 +1,36 @@
-use alloc::{
-    boxed::Box,
-    collections::{BTreeMap, BTreeSet},
-    vec::Vec,
-};
+use alloc::boxed::Box;
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::vec::Vec;
 
-use crate::{
-    Digest, EMPTY_WORD, MAX_BATCHES_PER_BLOCK,
-    account::{AccountId, delta::AccountUpdateDetails},
-    batch::{BatchAccountUpdate, BatchId, InputOutputNoteTracker, OrderedBatches, ProvenBatch},
-    block::{
-        AccountUpdateWitness, AccountWitness, BlockHeader, BlockNumber, NullifierWitness,
-        OutputNoteBatch, block_inputs::BlockInputs,
-    },
-    errors::ProposedBlockError,
-    note::{NoteId, Nullifier},
-    transaction::{InputNoteCommitment, OutputNote, PartialBlockchain, TransactionHeader},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::AccountId;
+use crate::account::delta::AccountUpdateDetails;
+use crate::batch::{
+    BatchAccountUpdate,
+    BatchId,
+    InputOutputNoteTracker,
+    OrderedBatches,
+    ProvenBatch,
 };
+use crate::block::block_inputs::BlockInputs;
+use crate::block::{
+    AccountUpdateWitness,
+    AccountWitness,
+    BlockHeader,
+    BlockNumber,
+    NullifierWitness,
+    OutputNoteBatch,
+};
+use crate::errors::ProposedBlockError;
+use crate::note::{NoteId, Nullifier};
+use crate::transaction::{InputNoteCommitment, OutputNote, PartialBlockchain, TransactionHeader};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
+};
+use crate::{EMPTY_WORD, MAX_BATCHES_PER_BLOCK, Word};
 
 // PROPOSED BLOCK
 // =================================================================================================
@@ -420,7 +434,7 @@ fn check_nullifiers(
     for block_input_note in block_input_notes {
         match nullifier_witnesses
             .get(&block_input_note)
-            .and_then(|x| x.proof().get(&block_input_note.inner()))
+            .and_then(|x| x.proof().get(&block_input_note.as_word()))
         {
             Some(nullifier_value) => {
                 if nullifier_value != EMPTY_WORD {
@@ -582,7 +596,7 @@ struct AccountUpdateAggregator {
     /// commitment from which the contained update starts.
     /// An invariant of this field is that if the outer map has an entry for some account, the
     /// inner update map is guaranteed to not be empty as well.
-    updates: BTreeMap<AccountId, BTreeMap<Digest, (BatchAccountUpdate, BatchId)>>,
+    updates: BTreeMap<AccountId, BTreeMap<Word, (BatchAccountUpdate, BatchId)>>,
 }
 
 impl AccountUpdateAggregator {
@@ -665,14 +679,14 @@ impl AccountUpdateAggregator {
     fn aggregate_account(
         account_id: AccountId,
         initial_state_proof: AccountWitness,
-        mut updates: BTreeMap<Digest, (BatchAccountUpdate, BatchId)>,
+        mut updates: BTreeMap<Word, (BatchAccountUpdate, BatchId)>,
     ) -> Result<AccountUpdateWitness, ProposedBlockError> {
         // The account witness could prove inclusion of a different ID in which case the initial
         // state commitment of the current ID is the empty word.
         let initial_state_commitment = if account_id == initial_state_proof.id() {
             initial_state_proof.state_commitment()
         } else {
-            Digest::from(EMPTY_WORD)
+            Word::empty()
         };
 
         let mut details: Option<AccountUpdateDetails> = None;

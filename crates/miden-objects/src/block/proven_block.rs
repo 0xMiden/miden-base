@@ -1,12 +1,16 @@
 use alloc::vec::Vec;
 
-use crate::{
-    Digest, MIN_PROOF_SECURITY_LEVEL,
-    block::{BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree, OutputNoteBatch},
-    note::Nullifier,
-    transaction::{OrderedTransactionHeaders, OutputNote},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::block::{
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
+    OutputNoteBatch,
 };
+use crate::note::Nullifier;
+use crate::transaction::{OrderedTransactionHeaders, OutputNote};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{MIN_PROOF_SECURITY_LEVEL, Word};
 
 // PROVEN BLOCK
 // ================================================================================================
@@ -72,7 +76,7 @@ impl ProvenBlock {
     }
 
     /// Returns the commitment to this block.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.header.commitment()
     }
 

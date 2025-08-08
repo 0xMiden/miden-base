@@ -2,21 +2,24 @@ use assembly::Assembler;
 use vm_core::FieldElement;
 
 use super::constants::{self, FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use crate::{
-    Felt, ZERO,
-    account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountStorage, StorageMap, StorageSlot,
-    },
-    asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset},
-    testing::{
-        account_component::{AccountMockComponent, NoopAuthComponent},
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-        },
-        storage::FAUCET_STORAGE_DATA_SLOT,
-    },
+use crate::account::{
+    Account,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountStorage,
+    StorageMap,
+    StorageSlot,
 };
+use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
+use crate::testing::account_component::{AccountMockComponent, NoopAuthComponent};
+use crate::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+};
+use crate::testing::storage::FAUCET_STORAGE_DATA_SLOT;
+use crate::{Felt, Word, ZERO};
 
 // MOCK ACCOUNT
 // ================================================================================================
@@ -66,7 +69,7 @@ impl Account {
         )
         .unwrap();
 
-        let faucet_data_slot = [ZERO, ZERO, ZERO, initial_balance];
+        let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
         account_storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
 
         Account::from_parts(account_id, AssetVault::default(), account_storage, account_code, nonce)
@@ -83,7 +86,7 @@ impl Account {
             false => {
                 let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
                 let vault_key = asset.vault_key();
-                vec![(vault_key.into(), asset.into())]
+                vec![(vault_key, asset.into())]
             },
         };
 

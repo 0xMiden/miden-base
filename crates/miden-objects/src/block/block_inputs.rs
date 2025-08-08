@@ -1,11 +1,9 @@
 use alloc::collections::BTreeMap;
 
-use crate::{
-    account::AccountId,
-    block::{AccountWitness, BlockHeader, NullifierWitness},
-    note::{NoteId, NoteInclusionProof, Nullifier},
-    transaction::PartialBlockchain,
-};
+use crate::account::AccountId;
+use crate::block::{AccountWitness, BlockHeader, NullifierWitness};
+use crate::note::{NoteId, NoteInclusionProof, Nullifier};
+use crate::transaction::PartialBlockchain;
 
 // BLOCK INPUTS
 // ================================================================================================

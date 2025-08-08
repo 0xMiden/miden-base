@@ -1,14 +1,15 @@
-use alloc::{string::String, vec::Vec};
+use alloc::string::String;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionKernel, memory};
-use miden_objects::{
-    account::AccountId,
-    asset::Asset,
-    note::Note,
-    testing::{note::NoteBuilder, storage::prepare_assets},
-};
+use miden_objects::account::AccountId;
+use miden_objects::asset::Asset;
+use miden_objects::note::Note;
+use miden_objects::testing::note::NoteBuilder;
+use miden_objects::testing::storage::prepare_assets;
 use miden_tx::utils::word_to_masm_push_string;
-use rand::{SeedableRng, rngs::SmallRng};
+use rand::SeedableRng;
+use rand::rngs::SmallRng;
 use vm_processor::Felt;
 
 // TEST HELPERS

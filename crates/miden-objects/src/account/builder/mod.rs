@@ -1,16 +1,21 @@
-use alloc::{boxed::Box, vec::Vec};
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 
 use vm_core::FieldElement;
-use vm_processor::Digest;
 
-use crate::{
-    AccountError, Felt, Word,
-    account::{
-        Account, AccountCode, AccountComponent, AccountId, AccountIdV0, AccountIdVersion,
-        AccountStorage, AccountStorageMode, AccountType,
-    },
-    asset::AssetVault,
+use crate::account::{
+    Account,
+    AccountCode,
+    AccountComponent,
+    AccountId,
+    AccountIdV0,
+    AccountIdVersion,
+    AccountStorage,
+    AccountStorageMode,
+    AccountType,
 };
+use crate::asset::AssetVault;
+use crate::{AccountError, Felt, Word};
 
 /// A convenient builder for an [`Account`] allowing for safe construction of an account by
 /// combining multiple [`AccountComponent`]s.
@@ -151,8 +156,8 @@ impl AccountBuilder {
         &self,
         init_seed: [u8; 32],
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Word, AccountError> {
         let seed = AccountIdV0::compute_account_seed(
             init_seed,
@@ -266,7 +271,8 @@ mod tests {
     use vm_core::FieldElement;
 
     use super::*;
-    use crate::{account::StorageSlot, testing::account_component::NoopAuthComponent};
+    use crate::account::StorageSlot;
+    use crate::testing::account_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
           export.foo
@@ -295,7 +301,7 @@ mod tests {
     }
     impl From<CustomComponent1> for AccountComponent {
         fn from(custom: CustomComponent1) -> Self {
-            let mut value = Word::default();
+            let mut value = Word::empty();
             value[0] = Felt::new(custom.slot0);
 
             AccountComponent::new(CUSTOM_LIBRARY1.clone(), vec![StorageSlot::Value(value)])
@@ -310,9 +316,9 @@ mod tests {
     }
     impl From<CustomComponent2> for AccountComponent {
         fn from(custom: CustomComponent2) -> Self {
-            let mut value0 = Word::default();
+            let mut value0 = Word::empty();
             value0[3] = Felt::new(custom.slot0);
-            let mut value1 = Word::default();
+            let mut value1 = Word::empty();
             value1[3] = Felt::new(custom.slot1);
 
             AccountComponent::new(
@@ -356,10 +362,10 @@ mod tests {
         assert_eq!(account.code.procedure_roots().count(), 3);
 
         let foo_root = CUSTOM_LIBRARY1.mast_forest()
-            [CUSTOM_LIBRARY1.get_export_node_id(CUSTOM_LIBRARY1.exports().next().unwrap())]
+            [CUSTOM_LIBRARY1.get_export_node_id(&CUSTOM_LIBRARY1.exports().next().unwrap().name)]
         .digest();
         let bar_root = CUSTOM_LIBRARY2.mast_forest()
-            [CUSTOM_LIBRARY2.get_export_node_id(CUSTOM_LIBRARY2.exports().next().unwrap())]
+            [CUSTOM_LIBRARY2.get_export_node_id(&CUSTOM_LIBRARY2.exports().next().unwrap().name)]
         .digest();
 
         let foo_procedure_info = &account

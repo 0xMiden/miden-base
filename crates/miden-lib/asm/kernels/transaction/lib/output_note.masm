@@ -1,0 +1,77 @@
+use.$kernel::memory
+use.$kernel::note
+
+# ERRORS
+# =================================================================================================
+
+const.ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested output note index should be less than the total number of created output notes"
+
+# OUTPUT NOTE PROCEDURES
+# =================================================================================================
+
+#! Returns the information about assets in the output note with the specified index.
+#!
+#! The provided output note index is expected to be less than the total number of output notes.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
+#!
+#! Where:
+#! - note_index is the index of the output note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+export.get_assets_info
+    # get the note data pointer based on the index of the requested note
+    exec.memory::get_output_note_ptr
+    # => [note_data_ptr]
+
+    # get the number of assets in the note
+    dup exec.memory::get_output_note_num_assets swap
+    # => [note_data_ptr, num_assets]
+
+    # get the assets commitment
+    dup exec.note::compute_output_note_assets_commitment
+    # => [ASSETS_COMMITMENT, note_data_ptr, num_assets]
+
+    # next we should store the assets in the advice map using the computed assets commitment to be
+    # able to get the assets later (in the `miden::output_note::get_assets` procedure)
+
+    # get the start and the end pointers of the asset data
+    # 
+    # notice that if the number of assets is odd, the asset data end pointer will be shifted one 
+    # word further to make the assets number even (the same way it is done in the 
+    # `note::compute_output_note_assets_commitment` procedure)
+    movup.4 exec.memory::get_output_note_asset_data_ptr
+    # => [assets_data_ptr, ASSETS_COMMITMENT, num_assets]
+
+    dup dup.6 dup is_odd add
+    # => [padded_num_assets, assets_data_ptr, assets_data_ptr, ASSETS_COMMITMENT, num_assets]
+    
+    mul.4 add
+    # => [assets_end_ptr, assets_start_ptr, ASSETS_COMMITMENT, num_assets]
+
+    movdn.5 movdn.4
+    # => [ASSETS_COMMITMENT, assets_start_ptr, assets_end_ptr, num_assets]
+
+    # store the assets data to the advice map using ASSETS_COMMITMENT as a key  
+    adv.insert_mem
+    # => [ASSETS_COMMITMENT, assets_start_ptr, assets_end_ptr, num_assets]
+
+    # remove asset pointers from the stack
+    movup.4 drop movup.4 drop
+    # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Assert that the provided note index is less than the total number of output notes.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [note_index]
+export.assert_note_index_in_bounds
+    # assert that the provided note index is less than the total number of notes
+    dup exec.memory::get_num_output_notes 
+    # => [output_notes_num, note_index, note_index]
+    
+    u32assert2.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    u32lt assert.err=ERR_OUTPUT_NOTE_INDEX_OUT_OF_BOUNDS
+    # => [note_index]
+end

@@ -1,18 +1,23 @@
-use alloc::{string::ToString, sync::Arc, vec::Vec};
+use alloc::string::ToString;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_objects::{
-    Digest, EMPTY_WORD, Felt, Hasher, TransactionOutputError,
-    account::AccountId,
-    assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager},
-    block::BlockNumber,
-    transaction::{
-        OutputNote, OutputNotes, TransactionArgs, TransactionInputs, TransactionOutputs,
-    },
-    utils::{serde::Deserializable, sync::LazyLock},
-    vm::{AdviceInputs, AdviceMap, Program, ProgramInfo, StackInputs, StackOutputs},
+use miden_objects::account::AccountId;
+use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::block::BlockNumber;
+use miden_objects::transaction::{
+    OutputNote,
+    OutputNotes,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionOutputs,
 };
+use miden_objects::utils::serde::Deserializable;
+use miden_objects::utils::sync::LazyLock;
+use miden_objects::vm::{AdviceInputs, Program, ProgramInfo, StackInputs, StackOutputs};
+use miden_objects::{Felt, Hasher, TransactionOutputError, Word};
 use miden_stdlib::StdLibrary;
-use outputs::EXPIRATION_BLOCK_ELEMENT_IDX;
 
 use super::MidenLib;
 
@@ -22,16 +27,21 @@ mod events;
 pub use events::TransactionEvent;
 
 mod inputs;
-pub use inputs::TransactionAdviceInputs;
+pub use inputs::{TransactionAdviceInputs, TransactionAdviceMapMismatch};
 
 mod outputs;
 pub use outputs::{
-    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX, OUTPUT_NOTES_COMMITMENT_WORD_IDX,
+    ACCOUNT_UPDATE_COMMITMENT_WORD_IDX,
+    EXPIRATION_BLOCK_ELEMENT_IDX,
+    FEE_ASSET_WORD_IDX,
+    OUTPUT_NOTES_COMMITMENT_WORD_IDX,
     parse_final_account_header,
 };
 
 pub use crate::errors::{
-    TransactionEventError, TransactionKernelError, TransactionTraceParsingError,
+    TransactionEventError,
+    TransactionKernelError,
+    TransactionTraceParsingError,
 };
 
 mod procedures;
@@ -116,7 +126,7 @@ impl TransactionKernel {
         tx_inputs: &TransactionInputs,
         tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
-    ) -> (StackInputs, TransactionAdviceInputs) {
+    ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
         let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
@@ -127,12 +137,12 @@ impl TransactionKernel {
             tx_inputs.block_header().block_num(),
         );
 
-        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args);
+        let mut tx_advice_inputs = TransactionAdviceInputs::new(tx_inputs, tx_args)?;
         if let Some(init_advice_inputs) = init_advice_inputs {
             tx_advice_inputs.extend(init_advice_inputs);
         }
 
-        (stack_inputs, tx_advice_inputs)
+        Ok((stack_inputs, tx_advice_inputs))
     }
 
     // ASSEMBLER CONSTRUCTOR
@@ -148,9 +158,9 @@ impl TransactionKernel {
         source_manager_ext::load_masm_source_files(&source_manager);
 
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_library(StdLibrary::default())
+            .with_dynamic_library(StdLibrary::default())
             .expect("failed to load std-lib")
-            .with_library(MidenLib::default())
+            .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")
     }
 
@@ -180,9 +190,9 @@ impl TransactionKernel {
     /// - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
     pub fn build_input_stack(
         account_id: AccountId,
-        init_account_commitment: Digest,
-        input_notes_commitment: Digest,
-        block_commitment: Digest,
+        init_account_commitment: Word,
+        input_notes_commitment: Word,
+        block_commitment: Word,
         block_num: BlockNumber,
     ) -> StackInputs {
         // Note: Must be kept in sync with the transaction's kernel prepare_transaction procedure
@@ -205,6 +215,7 @@ impl TransactionKernel {
     /// [
     ///     OUTPUT_NOTES_COMMITMENT,
     ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
     ///     expiration_block_num,
     /// ]
     /// ```
@@ -213,17 +224,20 @@ impl TransactionKernel {
     /// - OUTPUT_NOTES_COMMITMENT is a commitment to the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
     ///   delta commitment.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - expiration_block_num is the block number at which the transaction will expire.
     pub fn build_output_stack(
-        final_account_commitment: Digest,
-        account_delta_commitment: Digest,
-        output_notes_commitment: Digest,
+        final_account_commitment: Word,
+        account_delta_commitment: Word,
+        output_notes_commitment: Word,
+        fee: FungibleAsset,
         expiration_block_num: BlockNumber,
     ) -> StackOutputs {
         let account_update_commitment =
             Hasher::merge(&[final_account_commitment, account_delta_commitment]);
         let mut outputs: Vec<Felt> = Vec::with_capacity(9);
         outputs.push(Felt::from(expiration_block_num));
+        outputs.extend(Word::from(fee));
         outputs.extend(account_update_commitment);
         outputs.extend(output_notes_commitment);
         outputs.reverse();
@@ -236,12 +250,20 @@ impl TransactionKernel {
     ///
     /// The data on the stack is expected to be arranged as follows:
     ///
-    /// Stack: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    /// ```text
+    /// [
+    ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
+    ///     expiration_block_num,
+    /// ]
+    /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the the final account commitment and account
     ///   delta commitment.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -249,24 +271,26 @@ impl TransactionKernel {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - Indices 9..16 on the stack are not zeroes.
+    /// - Indices 13..16 on the stack are not zeroes.
     /// - Overflow addresses are not empty.
     pub fn parse_output_stack(
         stack: &StackOutputs,
-    ) -> Result<(Digest, Digest, BlockNumber), TransactionOutputError> {
+    ) -> Result<(Word, Word, FungibleAsset, BlockNumber), TransactionOutputError> {
         let output_notes_commitment = stack
             .get_stack_word(OUTPUT_NOTES_COMMITMENT_WORD_IDX * 4)
-            .expect("output_notes_commitment (first word) missing")
-            .into();
+            .expect("output_notes_commitment (first word) missing");
 
         let account_update_commitment = stack
             .get_stack_word(ACCOUNT_UPDATE_COMMITMENT_WORD_IDX * 4)
-            .expect("account_update_commitment (second word) missing")
-            .into();
+            .expect("account_update_commitment (second word) missing");
+
+        let fee = stack
+            .get_stack_word(FEE_ASSET_WORD_IDX * 4)
+            .expect("fee_asset (third word) missing");
 
         let expiration_block_num = stack
             .get_stack_item(EXPIRATION_BLOCK_ELEMENT_IDX)
-            .expect("element on index 8 missing");
+            .expect("tx_expiration_block_num (element on index 12) missing");
 
         let expiration_block_num = u32::try_from(expiration_block_num.as_int())
             .map_err(|_| {
@@ -276,21 +300,20 @@ impl TransactionKernel {
             })?
             .into();
 
-        // Make sure that indices 9, 10 and 11 are zeroes (i.e. the third word without the
+        // Make sure that indices 13, 14 and 15 are zeroes (i.e. the fourth word without the
         // expiration block number).
-        if stack.get_stack_word(9).expect("third word missing")[..3] != EMPTY_WORD[..3] {
+        if stack.get_stack_word(12).expect("fourth word missing").as_elements()[..3]
+            != Word::empty().as_elements()[..3]
+        {
             return Err(TransactionOutputError::OutputStackInvalid(
-                "indices 9, 10 and 11 on the output stack should be ZERO".into(),
+                "indices 13, 14 and 15 on the output stack should be ZERO".into(),
             ));
         }
 
-        if stack.get_stack_word(12).expect("fourth word missing") != EMPTY_WORD {
-            return Err(TransactionOutputError::OutputStackInvalid(
-                "fourth word on output stack should consist only of ZEROs".into(),
-            ));
-        }
+        let fee = FungibleAsset::try_from(fee)
+            .map_err(TransactionOutputError::FeeAssetNotFungibleAsset)?;
 
-        Ok((output_notes_commitment, account_update_commitment, expiration_block_num))
+        Ok((output_notes_commitment, account_update_commitment, fee, expiration_block_num))
     }
 
     // TRANSACTION OUTPUT PARSER
@@ -300,12 +323,20 @@ impl TransactionKernel {
     ///
     /// The output stack is expected to be arrange as follows:
     ///
-    /// Stack: [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, tx_expiration_block_num]
+    /// ```text
+    /// [
+    ///     OUTPUT_NOTES_COMMITMENT,
+    ///     ACCOUNT_UPDATE_COMMITMENT,
+    ///     FEE_ASSET,
+    ///     expiration_block_num,
+    /// ]
+    /// ```
     ///
     /// Where:
     /// - OUTPUT_NOTES_COMMITMENT is the commitment of the output notes.
     /// - ACCOUNT_UPDATE_COMMITMENT is the hash of the final account commitment and the account
     ///   delta commitment of the account that the transaction is being executed against.
+    /// - FEE_ASSET is the fungible asset used as the transaction fee.
     /// - tx_expiration_block_num is the block height at which the transaction will become expired,
     ///   defined by the sum of the execution block ref and the transaction's block expiration delta
     ///   (if set during transaction execution).
@@ -316,17 +347,18 @@ impl TransactionKernel {
     /// `FINAL_ACCOUNT_COMMITMENT`.
     pub fn from_transaction_parts(
         stack: &StackOutputs,
-        adv_map: &AdviceMap,
+        advice_inputs: &AdviceInputs,
         output_notes: Vec<OutputNote>,
     ) -> Result<TransactionOutputs, TransactionOutputError> {
-        let (output_notes_commitment, account_update_commitment, expiration_block_num) =
+        let (output_notes_commitment, account_update_commitment, fee, expiration_block_num) =
             Self::parse_output_stack(stack)?;
 
         let (final_account_commitment, account_delta_commitment) =
-            Self::parse_account_update_commitment(account_update_commitment, adv_map)?;
+            Self::parse_account_update_commitment(account_update_commitment, advice_inputs)?;
 
         // parse final account state
-        let final_account_data = adv_map
+        let final_account_data = advice_inputs
+            .map
             .get(&final_account_commitment)
             .ok_or(TransactionOutputError::FinalAccountCommitmentMissingInAdviceMap)?;
 
@@ -346,6 +378,7 @@ impl TransactionKernel {
             account,
             account_delta_commitment,
             output_notes,
+            fee,
             expiration_block_num,
         })
     }
@@ -353,14 +386,15 @@ impl TransactionKernel {
     /// Returns the final account commitment and account delta commitment extracted from the account
     /// update commitment.
     fn parse_account_update_commitment(
-        account_update_commitment: Digest,
-        adv_map: &AdviceMap,
-    ) -> Result<(Digest, Digest), TransactionOutputError> {
-        let account_update_data = adv_map.get(&account_update_commitment).ok_or_else(|| {
-            TransactionOutputError::AccountUpdateCommitment(
-                "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
-            )
-        })?;
+        account_update_commitment: Word,
+        advice_inputs: &AdviceInputs,
+    ) -> Result<(Word, Word), TransactionOutputError> {
+        let account_update_data =
+            advice_inputs.map.get(&account_update_commitment).ok_or_else(|| {
+                TransactionOutputError::AccountUpdateCommitment(
+                    "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
+                )
+            })?;
 
         if account_update_data.len() != 8 {
             return Err(TransactionOutputError::AccountUpdateCommitment(
@@ -371,11 +405,11 @@ impl TransactionKernel {
 
         // SAFETY: We just asserted that the data is of length 8 so slicing the data into two words
         // is fine.
-        let final_account_commitment = Digest::from(
+        let final_account_commitment = Word::from(
             <[Felt; 4]>::try_from(&account_update_data[0..4])
                 .expect("we should have sliced off exactly four elements"),
         );
-        let account_delta_commitment = Digest::from(
+        let account_delta_commitment = Word::from(
             <[Felt; 4]>::try_from(&account_update_data[4..8])
                 .expect("we should have sliced off exactly four elements"),
         );
@@ -420,11 +454,11 @@ impl TransactionKernel {
         source_manager_ext::load_masm_source_files(&source_manager);
 
         Assembler::with_kernel(source_manager, Self::kernel())
-            .with_library(StdLibrary::default())
+            .with_dynamic_library(StdLibrary::default())
             .expect("failed to load std-lib")
-            .with_library(MidenLib::default())
+            .with_dynamic_library(MidenLib::default())
             .expect("failed to load miden-lib")
-            .with_library(kernel_library)
+            .with_dynamic_library(kernel_library)
             .expect("failed to load kernel library (/lib)")
             .with_debug_mode(true)
     }
@@ -436,20 +470,21 @@ impl TransactionKernel {
         let assembler = Self::testing_assembler().with_debug_mode(true);
         let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
 
-        assembler.with_library(library).expect("failed to add mock account code")
+        assembler
+            .with_dynamic_library(library)
+            .expect("failed to add mock account code")
     }
 }
 
 #[cfg(all(any(feature = "testing", test), feature = "std"))]
 mod source_manager_ext {
-    use std::{
-        fs, io,
-        path::{Path, PathBuf},
-        sync::Arc,
-        vec::Vec,
-    };
+    use std::path::{Path, PathBuf};
+    use std::sync::Arc;
+    use std::vec::Vec;
+    use std::{fs, io};
 
-    use miden_objects::assembly::{SourceManager, diagnostics::SourceManagerExt};
+    use miden_objects::assembly::SourceManager;
+    use miden_objects::assembly::debuginfo::SourceManagerExt;
 
     /// Loads all files with a .masm extension in the `asm` directory into the provided source
     /// manager.

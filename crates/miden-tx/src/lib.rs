@@ -10,22 +10,36 @@ pub use miden_objects::transaction::TransactionInputs;
 
 mod executor;
 pub use executor::{
-    DataStore, ExecutionOptions, MastForestStore, NoteAccountExecution, NoteConsumptionChecker,
-    NoteInputsCheck, TransactionExecutor,
+    DataStore,
+    ExecutionOptions,
+    FailedNote,
+    MastForestStore,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
+    TransactionExecutor,
+    TransactionExecutorHost,
 };
 
-pub mod host;
-pub use host::{TransactionHost, TransactionProgress};
+mod host;
+pub use host::{AccountProcedureIndexMap, LinkMap, ScriptMastForestStore};
 
 mod prover;
-pub use prover::{LocalTransactionProver, ProvingOptions, TransactionMastStore, TransactionProver};
+pub use prover::{
+    LocalTransactionProver,
+    ProvingOptions,
+    TransactionMastStore,
+    TransactionProverHost,
+};
 
 mod verifier;
 pub use verifier::TransactionVerifier;
 
 mod errors;
 pub use errors::{
-    AuthenticationError, DataStoreError, TransactionExecutorError, TransactionProverError,
+    AuthenticationError,
+    DataStoreError,
+    TransactionExecutorError,
+    TransactionProverError,
     TransactionVerifierError,
 };
 

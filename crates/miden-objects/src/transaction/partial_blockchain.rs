@@ -1,11 +1,11 @@
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
+use core::ops::RangeTo;
 
-use crate::{
-    PartialBlockchainError,
-    block::{BlockHeader, BlockNumber},
-    crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr},
-    utils::serde::{Deserializable, Serializable},
-};
+use crate::PartialBlockchainError;
+use crate::block::{BlockHeader, BlockNumber};
+use crate::crypto::merkle::{InnerNodeInfo, MmrPeaks, PartialMmr};
+use crate::utils::serde::{Deserializable, Serializable};
 
 // PARTIAL BLOCKCHAIN
 // ================================================================================================
@@ -104,7 +104,7 @@ impl PartialBlockchain {
         mmr: PartialMmr,
         blocks: impl IntoIterator<Item = BlockHeader>,
     ) -> Result<Self, PartialBlockchainError> {
-        let chain_length = mmr.forest();
+        let chain_length = mmr.forest().num_leaves();
         let mut block_map = BTreeMap::new();
         for block in blocks {
             let block_num = block.block_num();
@@ -142,9 +142,14 @@ impl PartialBlockchain {
     /// Returns total number of blocks contain in the chain described by this MMR.
     pub fn chain_length(&self) -> BlockNumber {
         BlockNumber::from(
-            u32::try_from(self.mmr.forest())
+            u32::try_from(self.mmr.forest().num_leaves())
                 .expect("partial blockchain should never contain more than u32::MAX blocks"),
         )
+    }
+
+    /// Returns the number of blocks tracked by this partial blockchain.
+    pub fn num_tracked_blocks(&self) -> usize {
+        self.blocks.len()
     }
 
     /// Returns `true` if a block with the given number is present in this partial blockchain.
@@ -180,6 +185,31 @@ impl PartialBlockchain {
     pub fn add_block(&mut self, block_header: BlockHeader, track: bool) {
         assert_eq!(block_header.block_num(), self.chain_length());
         self.mmr.add(block_header.commitment(), track);
+    }
+
+    /// Drop every block header whose number is strictly less than `to.end`.
+    ///
+    /// After the call, all such headers are removed, and each pruned header’s path is `untrack`‑ed
+    /// from the internal [`PartialMmr`], eliminating local authentication data for those leaves
+    /// while leaving the MMR root commitment unchanged.
+    pub fn prune_to(&mut self, to: RangeTo<BlockNumber>) {
+        let kept = self.blocks.split_off(&to.end);
+
+        for block_num in self.blocks.keys() {
+            self.mmr.untrack(block_num.as_usize());
+        }
+        self.blocks = kept;
+    }
+
+    /// Removes a single block header and the associated authentication path from this
+    /// [`PartialBlockchain`].
+    ///
+    /// This does not change the commitment to the underlying MMR, but the current partial MMR
+    /// will no longer track the removed data.
+    pub fn remove(&mut self, block_num: BlockNumber) {
+        if self.blocks.remove(&block_num).is_some() {
+            self.mmr.untrack(block_num.as_usize());
+        }
     }
 
     // ITERATORS
@@ -235,13 +265,8 @@ impl Deserializable for PartialBlockchain {
 
 impl Default for PartialBlockchain {
     fn default() -> Self {
-        // TODO: Replace with PartialMmr::default after https://github.com/0xMiden/crypto/pull/409/files
-        // is available for use.
-        let empty_mmr = PartialMmr::from_peaks(
-            MmrPeaks::new(0, Vec::new()).expect("empty MmrPeaks should be valid"),
-        );
-
-        Self::new(empty_mmr, Vec::new()).expect("empty partial blockchain should be valid")
+        Self::new(PartialMmr::default(), Vec::new())
+            .expect("empty partial blockchain should be valid")
     }
 }
 
@@ -254,12 +279,11 @@ mod tests {
     use vm_core::utils::{Deserializable, Serializable};
 
     use super::PartialBlockchain;
-    use crate::{
-        Digest, PartialBlockchainError,
-        alloc::vec::Vec,
-        block::{BlockHeader, BlockNumber},
-        crypto::merkle::{Mmr, PartialMmr},
-    };
+    use crate::alloc::vec::Vec;
+    use crate::block::{BlockHeader, BlockNumber, FeeParameters};
+    use crate::crypto::merkle::{Mmr, PartialMmr};
+    use crate::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+    use crate::{PartialBlockchainError, Word};
 
     #[test]
     fn test_partial_blockchain_add() {
@@ -324,7 +348,7 @@ mod tests {
                 .unwrap();
         }
 
-        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Digest::default());
+        let fake_block_header2 = BlockHeader::mock(2, None, None, &[], Word::empty());
 
         assert_ne!(block_header2.commitment(), fake_block_header2.commitment());
 
@@ -399,18 +423,66 @@ mod tests {
     }
 
     fn int_to_block_header(block_num: impl Into<BlockNumber>) -> BlockHeader {
+        let fee_parameters =
+            FeeParameters::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap(), 500)
+                .expect("native asset ID should be a fungible faucet ID");
+
         BlockHeader::new(
             0,
-            Digest::default(),
+            Word::empty(),
             block_num.into(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
-            Digest::default(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            Word::empty(),
+            fee_parameters,
             0,
         )
+    }
+
+    #[test]
+    fn prune_before_and_remove() {
+        let total_blocks = 128;
+        let remove_before = 40;
+
+        let mut full_mmr = Mmr::default();
+        let mut headers = Vec::new();
+        for i in 0..total_blocks {
+            let h = int_to_block_header(i);
+            full_mmr.add(h.commitment());
+            headers.push(h);
+        }
+        let mut partial_mmr: PartialMmr = full_mmr.peaks().into();
+        for i in 0..total_blocks {
+            let i: usize = i as usize;
+            partial_mmr
+                .track(i, full_mmr.get(i).unwrap(), &full_mmr.open(i).unwrap().merkle_path)
+                .unwrap();
+        }
+        let mut chain = PartialBlockchain::new(partial_mmr, headers).unwrap();
+        assert_eq!(chain.num_tracked_blocks(), total_blocks as usize);
+
+        chain.remove(BlockNumber::from(2));
+        assert!(!chain.contains_block(2.into()));
+        assert!(!chain.mmr().is_tracked(2));
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 1) as usize);
+
+        assert!(chain.contains_block(3.into()));
+
+        chain.prune_to(..40.into());
+        assert_eq!(chain.num_tracked_blocks(), (total_blocks - 40) as usize);
+
+        assert_eq!(chain.block_headers().count(), (total_blocks - remove_before) as usize);
+        for block_num in remove_before..total_blocks {
+            assert!(chain.contains_block(block_num.into()));
+            assert!(chain.mmr().is_tracked(block_num as usize));
+        }
+        for block_num in 0u32..remove_before {
+            assert!(!chain.contains_block(block_num.into()));
+            assert!(!chain.mmr().is_tracked(block_num as usize));
+        }
     }
 }

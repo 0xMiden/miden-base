@@ -1,25 +1,27 @@
 // TRANSACTION CONTEXT BUILDER
 // ================================================================================================
 
-use alloc::{collections::BTreeMap, vec::Vec};
+use alloc::collections::BTreeMap;
+use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    EMPTY_WORD, FieldElement,
-    account::Account,
-    assembly::Assembler,
-    note::{Note, NoteId},
-    testing::{
-        account_component::{IncrNonceAuthComponent, NoopAuthComponent},
-        account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    },
-    transaction::{
-        AccountInputs, OutputNote, TransactionArgs, TransactionInputs, TransactionScript,
-    },
-    vm::AdviceMap,
+use miden_objects::account::Account;
+use miden_objects::assembly::Assembler;
+use miden_objects::note::{Note, NoteId};
+use miden_objects::testing::account_component::{IncrNonceAuthComponent, NoopAuthComponent};
+use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::transaction::{
+    AccountInputs,
+    OutputNote,
+    TransactionArgs,
+    TransactionInputs,
+    TransactionScript,
 };
-use miden_tx::{TransactionMastStore, auth::BasicAuthenticator};
+use miden_objects::vm::AdviceMap;
+use miden_objects::{EMPTY_WORD, FieldElement};
+use miden_tx::TransactionMastStore;
+use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, Felt, Word};
 
@@ -45,7 +47,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 ///
 /// let code = "
-/// use.kernel::prologue
+/// use.$kernel::prologue
 /// use.test::account
 ///
 /// begin
@@ -68,9 +70,10 @@ pub struct TransactionContextBuilder {
     foreign_account_inputs: Vec<AccountInputs>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
-    tx_script_arg: Word,
+    tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
+    auth_args: Word,
 }
 
 impl TransactionContextBuilder {
@@ -82,12 +85,13 @@ impl TransactionContextBuilder {
             input_notes: Vec::new(),
             expected_output_notes: Vec::new(),
             tx_script: None,
-            tx_script_arg: EMPTY_WORD,
+            tx_script_args: EMPTY_WORD,
             authenticator: None,
             advice_inputs: Default::default(),
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
+            auth_args: EMPTY_WORD,
         }
     }
 
@@ -124,10 +128,11 @@ impl TransactionContextBuilder {
             expected_output_notes: Vec::new(),
             advice_inputs: Default::default(),
             tx_script: None,
-            tx_script_arg: EMPTY_WORD,
+            tx_script_args: EMPTY_WORD,
             transaction_inputs: None,
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
+            auth_args: EMPTY_WORD,
         }
     }
 
@@ -194,8 +199,7 @@ impl TransactionContextBuilder {
         mut self,
         map_entries: impl IntoIterator<Item = (Word, Vec<Felt>)>,
     ) -> Self {
-        self.advice_inputs
-            .extend_map(map_entries.into_iter().map(|(hash, input)| (hash.into(), input)));
+        self.advice_inputs.map.extend(map_entries);
         self
     }
 
@@ -223,9 +227,15 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Set the transaction script argument
-    pub fn tx_script_arg(mut self, tx_script_arg: Word) -> Self {
-        self.tx_script_arg = tx_script_arg;
+    /// Set the transaction script arguments
+    pub fn tx_script_args(mut self, tx_script_args: Word) -> Self {
+        self.tx_script_args = tx_script_args;
+        self
+    }
+
+    /// Set the desired auth arguments
+    pub fn auth_args(mut self, auth_args: Word) -> Self {
+        self.auth_args = auth_args;
         self
     }
 
@@ -258,7 +268,12 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        let source_manager = self.assembler.source_manager();
+        // TODO: SourceManager.
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<
+                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
+                >;
 
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,
@@ -292,10 +307,12 @@ impl TransactionContextBuilder {
             .with_note_args(self.note_args);
 
         let mut tx_args = if let Some(tx_script) = self.tx_script {
-            tx_args.with_tx_script_and_arg(tx_script, self.tx_script_arg)
+            tx_args.with_tx_script_and_args(tx_script, self.tx_script_args)
         } else {
             tx_args
         };
+
+        tx_args = tx_args.with_auth_args(self.auth_args);
 
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());

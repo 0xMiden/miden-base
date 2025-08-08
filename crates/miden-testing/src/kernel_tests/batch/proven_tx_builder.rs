@@ -1,23 +1,28 @@
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_objects::{
-    account::AccountId,
-    block::BlockNumber,
-    crypto::merkle::MerklePath,
-    note::{Note, NoteInclusionProof, Nullifier},
-    transaction::{InputNote, OutputNote, ProvenTransaction, ProvenTransactionBuilder},
-    vm::ExecutionProof,
+use miden_objects::Word;
+use miden_objects::account::AccountId;
+use miden_objects::asset::FungibleAsset;
+use miden_objects::block::BlockNumber;
+use miden_objects::crypto::merkle::SparseMerklePath;
+use miden_objects::note::{Note, NoteInclusionProof, Nullifier};
+use miden_objects::transaction::{
+    InputNote,
+    OutputNote,
+    ProvenTransaction,
+    ProvenTransactionBuilder,
 };
-use vm_processor::Digest;
+use miden_objects::vm::ExecutionProof;
 use winterfell::Proof;
 
 /// A builder to build mocked [`ProvenTransaction`]s.
 pub struct MockProvenTxBuilder {
     account_id: AccountId,
-    initial_account_commitment: Digest,
-    final_account_commitment: Digest,
-    ref_block_commitment: Option<Digest>,
+    initial_account_commitment: Word,
+    final_account_commitment: Word,
+    ref_block_commitment: Option<Word>,
+    fee: FungibleAsset,
     expiration_block_num: BlockNumber,
     output_notes: Option<Vec<OutputNote>>,
     input_notes: Option<Vec<InputNote>>,
@@ -29,14 +34,15 @@ impl MockProvenTxBuilder {
     /// and final state commitment.
     pub fn with_account(
         account_id: AccountId,
-        initial_account_commitment: Digest,
-        final_account_commitment: Digest,
+        initial_account_commitment: Word,
+        final_account_commitment: Word,
     ) -> Self {
         Self {
             account_id,
             initial_account_commitment,
             final_account_commitment,
             ref_block_commitment: None,
+            fee: FungibleAsset::mock(50).unwrap_fungible(),
             expiration_block_num: BlockNumber::from(u32::MAX),
             output_notes: None,
             input_notes: None,
@@ -47,8 +53,12 @@ impl MockProvenTxBuilder {
     /// Adds unauthenticated notes to the transaction.
     #[must_use]
     pub fn authenticated_notes(mut self, notes: Vec<Note>) -> Self {
-        let mock_proof =
-            NoteInclusionProof::new(BlockNumber::from(0), 0, MerklePath::new(vec![])).unwrap();
+        let mock_proof = NoteInclusionProof::new(
+            BlockNumber::from(0),
+            0,
+            SparseMerklePath::from_sized_iter(vec![]).unwrap(),
+        )
+        .unwrap();
         self.input_notes = Some(
             notes
                 .into_iter()
@@ -85,7 +95,7 @@ impl MockProvenTxBuilder {
 
     /// Sets the transaction's block reference.
     #[must_use]
-    pub fn ref_block_commitment(mut self, ref_block_commitment: Digest) -> Self {
+    pub fn ref_block_commitment(mut self, ref_block_commitment: Word) -> Self {
         self.ref_block_commitment = Some(ref_block_commitment);
 
         self
@@ -97,9 +107,10 @@ impl MockProvenTxBuilder {
             self.account_id,
             self.initial_account_commitment,
             self.final_account_commitment,
-            Digest::default(),
+            Word::empty(),
             BlockNumber::from(0),
             self.ref_block_commitment.unwrap_or_default(),
+            self.fee,
             self.expiration_block_num,
             ExecutionProof::new(Proof::new_dummy(), Default::default()),
         )

@@ -1,19 +1,20 @@
-use alloc::{
-    collections::{BTreeMap, BTreeSet},
-    sync::Arc,
-    vec::Vec,
-};
+use alloc::collections::{BTreeMap, BTreeSet};
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use assembly::{Assembler, Compile};
 use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{AccountInputs, Digest, Felt, Word};
-use crate::{
-    EMPTY_WORD, MastForest, MastNodeId, TransactionScriptError,
-    note::{NoteId, NoteRecipient},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-    vm::{AdviceInputs, AdviceMap, Program},
+use super::{AccountInputs, Felt, Word};
+use crate::note::{NoteId, NoteRecipient};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::vm::{AdviceInputs, AdviceMap, Program};
+use crate::{EMPTY_WORD, MastForest, MastNodeId};
 
 // TRANSACTION ARGUMENTS
 // ================================================================================================
@@ -22,23 +23,28 @@ use crate::{
 ///
 /// - Transaction script: a program that is executed in a transaction after all input notes scripts
 ///   have been executed.
-/// - Transaction script argument: a [`Word`], which will be pushed to the operand stack before the
-///   transaction script execution. If this argument is not specified, the [`EMPTY_WORD`] would be
-///   used as a default value. If the [AdviceInputs] are propagated with some user defined map
-///   entries, this script argument could be used as a key to access the corresponding value.
+/// - Transaction script arguments: a [`Word`], which will be pushed to the operand stack before the
+///   transaction script execution. If these arguments are not specified, the [`EMPTY_WORD`] would
+///   be used as a default value. If the [AdviceInputs] are propagated with some user defined map
+///   entries, this script arguments word could be used as a key to access the corresponding value.
 /// - Note arguments: data put onto the stack right before a note script is executed. These are
 ///   different from note inputs, as the user executing the transaction can specify arbitrary note
 ///   args.
 /// - Advice inputs: provides data needed by the runtime, like the details of public output notes.
 /// - Foreign account inputs: provides foreign account data that will be used during the foreign
 ///   procedure invocation (FPI).
+/// - Auth arguments: data put onto the stack right before authentication procedure execution. If
+///   this argument is not specified, the [`EMPTY_WORD`] would be used as a default value. If the
+///   [AdviceInputs] are propagated with some user defined map entries, this argument could be used
+///   as a key to access the corresponding value.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct TransactionArgs {
     tx_script: Option<TransactionScript>,
-    tx_script_arg: Word,
+    tx_script_args: Word,
     note_args: BTreeMap<NoteId, Word>,
     advice_inputs: AdviceInputs,
     foreign_account_inputs: Vec<AccountInputs>,
+    auth_args: Word,
 }
 
 impl TransactionArgs {
@@ -48,12 +54,15 @@ impl TransactionArgs {
     /// Returns new [TransactionArgs] instantiated with the provided transaction script, advice
     /// map and foreign account inputs.
     pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
+        let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
+
         Self {
             tx_script: None,
-            tx_script_arg: EMPTY_WORD,
+            tx_script_args: EMPTY_WORD,
             note_args: Default::default(),
-            advice_inputs: AdviceInputs::default().with_map(advice_map),
+            advice_inputs,
             foreign_account_inputs,
+            auth_args: EMPTY_WORD,
         }
     }
 
@@ -68,18 +77,18 @@ impl TransactionArgs {
     }
 
     /// Returns new [TransactionArgs] instantiated with the provided transaction script and its
-    /// argument.
+    /// arguments.
     ///
-    /// If the transaction script and argument are already set, they will be overwritten with the
+    /// If the transaction script and arguments are already set, they will be overwritten with the
     /// newly provided ones.
     #[must_use]
-    pub fn with_tx_script_and_arg(
+    pub fn with_tx_script_and_args(
         mut self,
         tx_script: TransactionScript,
-        tx_script_arg: Word,
+        tx_script_args: Word,
     ) -> Self {
         self.tx_script = Some(tx_script);
-        self.tx_script_arg = tx_script_arg;
+        self.tx_script_args = tx_script_args;
         self
     }
 
@@ -93,6 +102,13 @@ impl TransactionArgs {
         self
     }
 
+    /// Returns new [TransactionArgs] instantiated with the provided auth arguments.
+    #[must_use]
+    pub fn with_auth_args(mut self, auth_args: Word) -> Self {
+        self.auth_args = auth_args;
+        self
+    }
+
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -101,15 +117,15 @@ impl TransactionArgs {
         self.tx_script.as_ref()
     }
 
-    /// Returns the transaction script argument, or [`EMPTY_WORD`] if the argument was not
+    /// Returns the transaction script arguments, or [`EMPTY_WORD`] if the arguments were not
     /// specified.
     ///
-    /// This argument could be potentially used as a key to access the advice map during the
+    /// These arguments could be potentially used as a key to access the advice map during the
     /// transaction script execution. Notice that the corresponding map entry should be provided
     /// separately during the creation with the [`TransactionArgs::new`] or using the
     /// [`TransactionArgs::extend_advice_map`] method.
-    pub fn tx_script_arg(&self) -> Word {
-        self.tx_script_arg
+    pub fn tx_script_args(&self) -> Word {
+        self.tx_script_args
     }
 
     /// Returns a reference to a specific note argument.
@@ -128,11 +144,22 @@ impl TransactionArgs {
     }
 
     /// Collects and returns a set containing all code commitments from foreign accounts.
-    pub fn foreign_account_code_commitments(&self) -> BTreeSet<Digest> {
+    pub fn to_foreign_account_code_commitments(&self) -> BTreeSet<Word> {
         self.foreign_account_inputs()
             .iter()
             .map(|acc| acc.code().commitment())
             .collect()
+    }
+
+    /// Returns a reference to the authentication procedure argument, or [`EMPTY_WORD`] if the
+    /// argument was not specified.
+    ///
+    /// This argument could be potentially used as a key to access the advice map during the
+    /// transaction script execution. Notice that the corresponding map entry should be provided
+    /// separately during the creation with the [`TransactionArgs::new`] or using the
+    /// [`TransactionArgs::extend_advice_map`] method.
+    pub fn auth_args(&self) -> Word {
+        self.auth_args
     }
 
     // STATE MUTATORS
@@ -157,7 +184,7 @@ impl TransactionArgs {
             (script.root(), script_encoded),
         ];
 
-        self.advice_inputs.extend_map(new_elements);
+        self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
     }
 
     /// Populates the advice inputs with the specified note recipient details.
@@ -178,13 +205,13 @@ impl TransactionArgs {
     }
 
     /// Extends the internal advice inputs' map with the provided key-value pairs.
-    pub fn extend_advice_map<T: IntoIterator<Item = (Digest, Vec<Felt>)>>(&mut self, iter: T) {
-        self.advice_inputs.extend_map(iter)
+    pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
+        self.advice_inputs.map.extend(iter);
     }
 
     /// Extends the internal advice inputs' merkle store with the provided nodes.
     pub fn extend_merkle_store<I: Iterator<Item = InnerNodeInfo>>(&mut self, iter: I) {
-        self.advice_inputs.extend_merkle_store(iter)
+        self.advice_inputs.store.extend(iter);
     }
 
     /// Extends the advice inputs in self with the provided ones.
@@ -197,27 +224,30 @@ impl TransactionArgs {
 impl Serializable for TransactionArgs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.tx_script.write_into(target);
-        self.tx_script_arg.write_into(target);
+        self.tx_script_args.write_into(target);
         self.note_args.write_into(target);
         self.advice_inputs.write_into(target);
         self.foreign_account_inputs.write_into(target);
+        self.auth_args.write_into(target);
     }
 }
 
 impl Deserializable for TransactionArgs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_script = Option::<TransactionScript>::read_from(source)?;
-        let tx_script_arg = Word::read_from(source)?;
+        let tx_script_args = Word::read_from(source)?;
         let note_args = BTreeMap::<NoteId, Word>::read_from(source)?;
         let advice_inputs = AdviceInputs::read_from(source)?;
         let foreign_account_inputs = Vec::<AccountInputs>::read_from(source)?;
+        let auth_args = Word::read_from(source)?;
 
         Ok(Self {
             tx_script,
-            tx_script_arg,
+            tx_script_args,
             note_args,
             advice_inputs,
             foreign_account_inputs,
+            auth_args,
         })
     }
 }
@@ -247,21 +277,6 @@ impl TransactionScript {
         Self::from_parts(code.mast_forest().clone(), code.entrypoint())
     }
 
-    /// Returns a new [TransactionScript] compiled from the provided source code using the specified
-    /// assembler.
-    ///
-    /// # Errors
-    /// Returns an error if the compilation of the provided source code fails.
-    pub fn compile(
-        source_code: impl Compile,
-        assembler: Assembler,
-    ) -> Result<Self, TransactionScriptError> {
-        let program = assembler
-            .assemble_program(source_code)
-            .map_err(TransactionScriptError::AssemblyError)?;
-        Ok(Self::new(program))
-    }
-
     /// Returns a new [TransactionScript] instantiated from the provided MAST forest and entrypoint.
     ///
     /// # Panics
@@ -281,7 +296,7 @@ impl TransactionScript {
     }
 
     /// Returns the commitment of this transaction script (i.e., the script's MAST root).
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.mast[self.entrypoint].digest()
     }
 }
@@ -307,10 +322,8 @@ impl Deserializable for TransactionScript {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::{
-        AdviceMap,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::AdviceMap;
+    use vm_core::utils::{Deserializable, Serializable};
 
     use crate::transaction::TransactionArgs;
 

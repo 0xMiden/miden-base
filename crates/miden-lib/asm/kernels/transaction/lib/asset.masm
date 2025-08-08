@@ -1,5 +1,5 @@
-use.kernel::account
-use.kernel::account_id
+use.$kernel::account
+use.$kernel::account_id
 
 # ERRORS
 # =================================================================================================
@@ -28,7 +28,7 @@ const.ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN="the origin of the non-fungibl
 #!
 #! Where:
 #! - fungible_asset_max_amount is the maximum amount of a fungible asset.
-export.::kernel::util::asset::get_fungible_asset_max_amount
+export.::$kernel::util::asset::get_fungible_asset_max_amount
 
 # PROCEDURES
 # =================================================================================================

@@ -1,12 +1,21 @@
-use alloc::{collections::BTreeSet, sync::Arc, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::sync::Arc;
+use alloc::vec::Vec;
 
-use miden_crypto::hash::rpo::RpoDigest;
-use vm_core::{mast::MastForest, prettier::PrettyPrint};
+use vm_core::mast::MastForest;
+use vm_core::prettier::PrettyPrint;
 
 use super::{
-    AccountError, ByteReader, ByteWriter, Deserializable, DeserializationError, Digest, Felt,
-    Hasher, Serializable,
+    AccountError,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Felt,
+    Hasher,
+    Serializable,
 };
+use crate::Word;
 use crate::account::{AccountComponent, AccountType};
 
 pub mod procedure;
@@ -33,7 +42,7 @@ use procedure::{AccountProcedureInfo, PrintableProcedure};
 pub struct AccountCode {
     mast: Arc<MastForest>,
     procedures: Vec<AccountProcedureInfo>,
-    commitment: Digest,
+    commitment: Word,
 }
 
 impl AccountCode {
@@ -133,7 +142,7 @@ impl AccountCode {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a commitment to an account's public interface.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.commitment
     }
 
@@ -148,7 +157,7 @@ impl AccountCode {
     }
 
     /// Returns an iterator over the procedure MAST roots of this account code.
-    pub fn procedure_roots(&self) -> impl Iterator<Item = Digest> + '_ {
+    pub fn procedure_roots(&self) -> impl Iterator<Item = Word> + '_ {
         self.procedures().iter().map(|procedure| *procedure.mast_root())
     }
 
@@ -158,7 +167,7 @@ impl AccountCode {
     }
 
     /// Returns true if a procedure with the specified MAST root is defined in this account code.
-    pub fn has_procedure(&self, mast_root: Digest) -> bool {
+    pub fn has_procedure(&self, mast_root: Word) -> bool {
         self.procedures.iter().any(|procedure| procedure.mast_root() == &mast_root)
     }
 
@@ -172,7 +181,7 @@ impl AccountCode {
 
     /// Returns the procedure index for the procedure with the specified MAST root or None if such
     /// procedure is not defined in this [AccountCode].
-    pub fn get_procedure_index_by_root(&self, root: Digest) -> Option<usize> {
+    pub fn get_procedure_index_by_root(&self, root: Word) -> Option<usize> {
         self.procedures
             .iter()
             .map(|procedure| procedure.mast_root())
@@ -323,7 +332,7 @@ impl PrettyPrint for AccountCode {
 
 struct ProcedureInfoBuilder {
     procedures: Vec<AccountProcedureInfo>,
-    proc_root_set: BTreeSet<RpoDigest>,
+    proc_root_set: BTreeSet<Word>,
     storage_offset: u8,
 }
 
@@ -380,7 +389,7 @@ impl ProcedureInfoBuilder {
 
     fn add_procedure(
         &mut self,
-        proc_mast_root: RpoDigest,
+        proc_mast_root: Word,
         component_storage_size: u8,
     ) -> Result<(), AccountError> {
         // We cannot support procedures from multiple components with the same MAST root
@@ -423,7 +432,7 @@ impl ProcedureInfoBuilder {
 // ================================================================================================
 
 /// Computes the commitment to the given procedures
-pub(crate) fn build_procedure_commitment(procedures: &[AccountProcedureInfo]) -> Digest {
+pub(crate) fn build_procedure_commitment(procedures: &[AccountProcedureInfo]) -> Word {
     let elements = procedures_as_elements(procedures);
     Hasher::hash_elements(&elements)
 }
@@ -444,11 +453,11 @@ mod tests {
     use vm_core::Word;
 
     use super::{AccountCode, Deserializable, Serializable};
-    use crate::{
-        AccountError,
-        account::{AccountComponent, AccountType, StorageSlot, code::build_procedure_commitment},
-        testing::{account_code::CODE, account_component::NoopAuthComponent},
-    };
+    use crate::AccountError;
+    use crate::account::code::build_procedure_commitment;
+    use crate::account::{AccountComponent, AccountType, StorageSlot};
+    use crate::testing::account_code::CODE;
+    use crate::testing::account_component::NoopAuthComponent;
 
     #[test]
     fn test_serde_account_code() {
@@ -476,11 +485,11 @@ mod tests {
             NoopAuthComponent::new(Assembler::default()).unwrap().into();
 
         let component1 =
-            AccountComponent::new(library1, vec![StorageSlot::Value(Word::default()); 250])
+            AccountComponent::new(library1, vec![StorageSlot::Value(Word::empty()); 250])
                 .unwrap()
                 .with_supports_all_types();
         let mut component2 =
-            AccountComponent::new(library2, vec![StorageSlot::Value(Word::default()); 5])
+            AccountComponent::new(library2, vec![StorageSlot::Value(Word::empty()); 5])
                 .unwrap()
                 .with_supports_all_types();
 
@@ -492,7 +501,7 @@ mod tests {
         .unwrap();
 
         // Push one more slot so offset+size exceeds 255.
-        component2.storage_slots.push(StorageSlot::Value(Word::default()));
+        component2.storage_slots.push(StorageSlot::Value(Word::empty()));
 
         let err = AccountCode::from_components(
             &[auth_component, component1, component2],

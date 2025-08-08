@@ -1,18 +1,19 @@
-use alloc::{
-    collections::{BTreeMap, btree_map::Entry},
-    string::ToString,
-    vec::Vec,
-};
+use alloc::collections::BTreeMap;
+use alloc::collections::btree_map::Entry;
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
 use super::{
-    AccountDeltaError, ByteReader, ByteWriter, Deserializable, DeserializationError,
-    LexicographicWord, Serializable,
+    AccountDeltaError,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
-use crate::{
-    Felt, ONE, Word, ZERO,
-    account::{AccountId, AccountType},
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-};
+use crate::account::{AccountId, AccountType};
+use crate::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use crate::{Felt, LexicographicWord, ONE, Word, ZERO};
 
 // ACCOUNT VAULT DELTA
 // ================================================================================================
@@ -267,7 +268,10 @@ impl FungibleAssetDelta {
     fn add_delta(&mut self, faucet_id: AccountId, delta: i64) -> Result<(), AccountDeltaError> {
         match self.0.entry(faucet_id) {
             Entry::Vacant(entry) => {
-                entry.insert(delta);
+                // Only track non-zero amounts.
+                if delta != 0 {
+                    entry.insert(delta);
+                }
             },
             Entry::Occupied(mut entry) => {
                 let old = *entry.get();
@@ -328,7 +332,7 @@ impl FungibleAssetDelta {
             let was_added = if *amount_delta > 0 { ONE } else { ZERO };
 
             elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
-            elements.extend_from_slice(&Word::from(asset));
+            elements.extend_from_slice(Word::from(asset).as_elements());
         }
     }
 }
@@ -481,7 +485,7 @@ impl NonFungibleAssetDelta {
             };
 
             elements.extend_from_slice(&[DOMAIN_ASSET, was_added, ZERO, ZERO]);
-            elements.extend_from_slice(&Word::from(*asset));
+            elements.extend_from_slice(Word::from(*asset).as_elements());
         }
     }
 }
@@ -541,12 +545,11 @@ pub enum NonFungibleDeltaAction {
 #[cfg(test)]
 mod tests {
     use super::{AccountVaultDelta, Deserializable, Serializable};
-    use crate::{
-        account::{AccountId, AccountIdPrefix},
-        asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        },
+    use crate::account::{AccountId, AccountIdPrefix};
+    use crate::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     };
 
     #[test]

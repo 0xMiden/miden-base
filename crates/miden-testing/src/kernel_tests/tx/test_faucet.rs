@@ -1,34 +1,36 @@
-use miden_lib::{
-    errors::tx_kernel_errors::{
-        ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET,
-        ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
-        ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
-        ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
-        ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
-        ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
-    },
-    transaction::{TransactionKernel, memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR},
-    utils::word_to_masm_push_string,
+use miden_lib::errors::tx_kernel_errors::{
+    ERR_FAUCET_BURN_NON_FUNGIBLE_ASSET_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET,
+    ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
+    ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
+    ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND,
+    ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
+    ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
+    ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
 };
-use miden_objects::{
-    FieldElement,
-    account::{Account, AccountId, StorageMap},
-    asset::{FungibleAsset, NonFungibleAsset},
-    testing::{
-        account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1, ACCOUNT_ID_SENDER,
-        },
-        constants::{
-            CONSUMED_ASSET_1_AMOUNT, FUNGIBLE_ASSET_AMOUNT, FUNGIBLE_FAUCET_INITIAL_BALANCE,
-            NON_FUNGIBLE_ASSET_DATA, NON_FUNGIBLE_ASSET_DATA_2,
-        },
-        storage::FAUCET_STORAGE_DATA_SLOT,
-    },
+use miden_lib::transaction::TransactionKernel;
+use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
+use miden_lib::utils::word_to_masm_push_string;
+use miden_objects::FieldElement;
+use miden_objects::account::{Account, AccountId, StorageMap};
+use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_SENDER,
 };
-use vm_processor::{Felt, ONE, ProcessState};
+use miden_objects::testing::constants::{
+    CONSUMED_ASSET_1_AMOUNT,
+    FUNGIBLE_ASSET_AMOUNT,
+    FUNGIBLE_FAUCET_INITIAL_BALANCE,
+    NON_FUNGIBLE_ASSET_DATA,
+    NON_FUNGIBLE_ASSET_DATA_2,
+};
+use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
+use vm_processor::{Felt, ONE};
 
-use crate::{TransactionContextBuilder, assert_execution_error, utils::create_p2any_note};
+use crate::utils::create_p2any_note;
+use crate::{TransactionContextBuilder, assert_execution_error};
 
 // FUNGIBLE FAUCET MINT TESTS
 // ================================================================================================
@@ -47,9 +49,9 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use.test::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             # mint asset
@@ -78,15 +80,16 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process_state
-        .get_mem_value(process_state.ctx(), faucet_storage_amount_location)
+    let faucet_storage_amount = process
+        .chiplets
+        .memory
+        .get_value(process.system.ctx(), faucet_storage_amount_location)
         .unwrap()
         .as_int();
 
@@ -102,7 +105,7 @@ fn test_mint_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -131,7 +134,7 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -165,7 +168,7 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -207,10 +210,10 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         r#"
         use.std::collections::smt
 
-        use.kernel::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::account
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
         use.test::account->test_account
 
         begin
@@ -240,7 +243,7 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         end
         "#,
         non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into()),
-        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key.into())),
+        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key)),
     );
 
     tx_context
@@ -260,7 +263,7 @@ fn test_mint_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()>
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -289,7 +292,7 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -323,7 +326,7 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<(
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -368,9 +371,9 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let code = format!(
         r#"
         use.test::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
 
         begin
             # burn asset
@@ -402,15 +405,16 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             TransactionKernel::testing_assembler_with_mock_account(),
         )
         .unwrap();
-    let process_state: ProcessState = process.into();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
     let faucet_reserved_slot_storage_location =
         FAUCET_STORAGE_DATA_SLOT as u32 + NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
     let faucet_storage_amount_location = faucet_reserved_slot_storage_location + 3;
 
-    let faucet_storage_amount = process_state
-        .get_mem_value(process_state.ctx(), faucet_storage_amount_location)
+    let faucet_storage_amount = process
+        .chiplets
+        .memory
+        .get_value(process.system.ctx(), faucet_storage_amount_location)
         .unwrap()
         .as_int();
 
@@ -426,7 +430,7 @@ fn test_burn_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -461,7 +465,7 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -496,7 +500,7 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -536,10 +540,10 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::account
-        use.kernel::asset_vault
-        use.kernel::memory
-        use.kernel::prologue
+        use.$kernel::account
+        use.$kernel::asset_vault
+        use.$kernel::memory
+        use.$kernel::prologue
         use.test::account->test_account
 
         begin
@@ -612,7 +616,7 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -642,7 +646,7 @@ fn test_burn_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()>
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -681,7 +685,7 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 
     let code = format!(
         "
-        use.kernel::prologue
+        use.$kernel::prologue
         use.test::account
 
         begin
@@ -722,7 +726,7 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::faucet
 
         begin
@@ -770,7 +774,7 @@ fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.kernel::prologue
+        use.$kernel::prologue
         use.miden::faucet
 
         begin

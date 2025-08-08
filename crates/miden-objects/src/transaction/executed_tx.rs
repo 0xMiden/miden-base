@@ -1,14 +1,30 @@
 use alloc::vec::Vec;
-use core::cell::OnceCell;
 
 use super::{
-    Account, AccountDelta, AccountHeader, AccountId, AdviceInputs, BlockHeader, InputNote,
-    InputNotes, NoteId, OutputNotes, TransactionArgs, TransactionId, TransactionInputs,
-    TransactionOutputs, TransactionWitness,
+    Account,
+    AccountDelta,
+    AccountHeader,
+    AccountId,
+    AdviceInputs,
+    BlockHeader,
+    InputNote,
+    InputNotes,
+    NoteId,
+    OutputNotes,
+    TransactionArgs,
+    TransactionId,
+    TransactionInputs,
+    TransactionOutputs,
+    TransactionWitness,
 };
-use crate::{
-    block::BlockNumber,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::asset::FungibleAsset;
+use crate::block::BlockNumber;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // EXECUTED TRANSACTION
@@ -26,7 +42,7 @@ use crate::{
 ///   witness).
 #[derive(Debug, Clone, PartialEq)]
 pub struct ExecutedTransaction {
-    id: OnceCell<TransactionId>,
+    id: TransactionId,
     tx_inputs: TransactionInputs,
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
@@ -54,8 +70,17 @@ impl ExecutedTransaction {
         // make sure account IDs are consistent across transaction inputs and outputs
         assert_eq!(tx_inputs.account().id(), tx_outputs.account.id());
 
+        // we create the id from the content, so we cannot construct the
+        // `id` value after construction `Self {..}` without moving
+        let id = TransactionId::new(
+            tx_inputs.account().init_commitment(),
+            tx_outputs.account.commitment(),
+            tx_inputs.input_notes().commitment(),
+            tx_outputs.output_notes.commitment(),
+        );
+
         Self {
-            id: OnceCell::new(),
+            id,
             tx_inputs,
             tx_outputs,
             account_delta,
@@ -70,7 +95,7 @@ impl ExecutedTransaction {
 
     /// Returns a unique identifier of this transaction.
     pub fn id(&self) -> TransactionId {
-        *self.id.get_or_init(|| self.into())
+        self.id
     }
 
     /// Returns the ID of the account against which this transaction was executed.
@@ -96,6 +121,11 @@ impl ExecutedTransaction {
     /// Returns the notes created in this transaction.
     pub fn output_notes(&self) -> &OutputNotes {
         &self.tx_outputs.output_notes
+    }
+
+    /// Returns the fee of the transaction.
+    pub fn fee(&self) -> FungibleAsset {
+        self.tx_outputs.fee
     }
 
     /// Returns the block number at which the transaction will expire.
@@ -208,6 +238,12 @@ pub struct TransactionMeasurements {
     pub note_execution: Vec<(NoteId, usize)>,
     pub tx_script_processing: usize,
     pub epilogue: usize,
+    /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
+    /// count.
+    ///
+    /// This is used to estimate the total number of cycles the transaction takes for use in
+    /// compute_fee itself.
+    pub after_tx_fee_computed_cycles: usize,
 }
 
 impl TransactionMeasurements {
@@ -231,6 +267,7 @@ impl Serializable for TransactionMeasurements {
         self.note_execution.write_into(target);
         self.tx_script_processing.write_into(target);
         self.epilogue.write_into(target);
+        self.after_tx_fee_computed_cycles.write_into(target);
     }
 }
 
@@ -241,6 +278,7 @@ impl Deserializable for TransactionMeasurements {
         let note_execution = Vec::<(NoteId, usize)>::read_from(source)?;
         let tx_script_processing = usize::read_from(source)?;
         let epilogue = usize::read_from(source)?;
+        let after_tx_fee_computed_cycles = usize::read_from(source)?;
 
         Ok(Self {
             prologue,
@@ -248,6 +286,25 @@ impl Deserializable for TransactionMeasurements {
             note_execution,
             tx_script_processing,
             epilogue,
+            after_tx_fee_computed_cycles,
         })
+    }
+}
+
+// TESTS
+// ================================================================================================
+
+#[cfg(test)]
+mod tests {
+    use core::marker::PhantomData;
+
+    use crate::transaction::ExecutedTransaction;
+
+    fn ensure_send<T: Send>(_: PhantomData<T>) {}
+
+    /// Add assurance `ExecutedTransaction` remains `Send`
+    #[allow(dead_code)]
+    fn compiletime_ensure_send_for_types() {
+        ensure_send::<ExecutedTransaction>(PhantomData);
     }
 }

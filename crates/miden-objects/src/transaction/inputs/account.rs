@@ -1,11 +1,9 @@
-use crate::{
-    Digest,
-    account::{AccountCode, AccountId, PartialAccount, PartialStorage},
-    asset::PartialVault,
-    block::AccountWitness,
-    crypto::merkle::{SmtProof, SmtProofError},
-    utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
-};
+use crate::Word;
+use crate::account::{AccountCode, AccountId, PartialAccount, PartialStorage};
+use crate::asset::PartialVault;
+use crate::block::AccountWitness;
+use crate::crypto::merkle::{SmtProof, SmtProofError};
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // ACCOUNT INPUTS
 // ================================================================================================
@@ -66,7 +64,7 @@ impl AccountInputs {
 
     /// Computes the account root based on the account witness.
     /// This root should be equal to the account root in the reference block header.
-    pub fn compute_account_root(&self) -> Result<Digest, SmtProofError> {
+    pub fn compute_account_root(&self) -> Result<Word, SmtProofError> {
         let smt_merkle_path = self.witness.path().clone();
         let smt_leaf = self.witness.leaf();
         let root = SmtProof::new(smt_merkle_path, smt_leaf)?.compute_root();
@@ -99,19 +97,15 @@ mod tests {
     use alloc::vec::Vec;
 
     use miden_crypto::merkle::MerklePath;
-    use vm_core::{
-        Felt,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::Felt;
+    use vm_core::utils::{Deserializable, Serializable};
     use vm_processor::SMT_DEPTH;
 
-    use crate::{
-        account::{Account, AccountCode, AccountId, AccountStorage},
-        asset::AssetVault,
-        block::AccountWitness,
-        testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        transaction::AccountInputs,
-    };
+    use crate::account::{Account, AccountCode, AccountId, AccountStorage};
+    use crate::asset::AssetVault;
+    use crate::block::AccountWitness;
+    use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
+    use crate::transaction::AccountInputs;
 
     #[test]
     fn serde_roundtrip() {

@@ -22,9 +22,9 @@ export.auth__no_auth
     # TODO: use std::word::eq when it becomes available
     eqw not movdn.8 dropw dropw
     # => [has_account_state_changed, pad(16)]
-    
+
     # if the account has been updated, increment the nonce
     if.true
-        push.1 exec.account::incr_nonce drop
+        exec.account::incr_nonce drop
     end
 end

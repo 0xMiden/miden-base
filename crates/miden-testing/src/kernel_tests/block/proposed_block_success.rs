@@ -1,20 +1,31 @@
-use std::{collections::BTreeMap, vec::Vec};
+use core::slice;
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_objects::{
-    account::{AccountId, delta::AccountUpdateDetails},
-    block::{BlockInputs, ProposedBlock},
-    testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    transaction::{OutputNote, ProvenTransaction, TransactionHeader},
-};
+use miden_lib::transaction::TransactionKernel;
+use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::account::{Account, AccountId, AccountStorageMode};
+use miden_objects::block::{BlockInputs, ProposedBlock};
+use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use miden_objects::transaction::{OutputNote, ProvenTransaction, TransactionHeader};
+use rand::Rng;
 
 use super::utils::{
-    TestSetup, generate_batch, generate_executed_tx_with_authenticated_notes,
-    generate_fungible_asset, generate_tracked_note_with_asset, generate_tx_with_expiration,
-    generate_tx_with_unauthenticated_notes, generate_untracked_note, setup_chain,
+    TestSetup,
+    generate_batch,
+    generate_executed_tx_with_authenticated_notes,
+    generate_fungible_asset,
+    generate_tracked_note_with_asset,
+    generate_tx_with_expiration,
+    generate_tx_with_unauthenticated_notes,
+    generate_untracked_note,
+    setup_chain,
 };
-use crate::ProvenTransactionExt;
+use crate::kernel_tests::block::utils::generate_conditional_tx;
+use crate::{AccountState, Auth, MockChain, ProvenTransactionExt};
 
 /// Tests that we can build empty blocks.
 #[test]
@@ -181,8 +192,10 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let note1 = generate_untracked_note(account0.id(), account2.id());
 
     // These txs will use block1 as the reference block.
-    let tx0 = generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), &[note0.clone()]);
-    let tx1 = generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), &[note1.clone()]);
+    let tx0 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
+    let tx1 =
+        generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), slice::from_ref(&note1));
 
     // These batches will use block1 as the reference block.
     let batch0 = generate_batch(&mut chain, vec![tx0.clone()]);
@@ -243,6 +256,57 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     // at block 3 (due to tx1) should still be accepted into the block.
     let block_inputs = chain.get_block_inputs(&batches)?;
     ProposedBlock::new(block_inputs.clone(), batches.clone())?;
+
+    Ok(())
+}
+
+/// Tests that a NOOP transaction with state commitments X -> X against account A can appear
+/// in one batch while another batch contains a state-updating transaction with state commitments X
+/// -> Y against the same account A. Both batches are in the same block.
+#[test]
+fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
+    let account_builder = Account::builder(rand::rng().random())
+        .storage_mode(AccountStorageMode::Public)
+        .with_component(
+            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
+        );
+
+    let mut builder = MockChain::builder();
+
+    let account0 = builder.add_account_from_builder(
+        Auth::Conditional,
+        account_builder,
+        AccountState::Exists,
+    )?;
+
+    let mut chain = builder.build()?;
+
+    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), false);
+    let state_updating_tx = generate_conditional_tx(&mut chain, noop_tx.clone(), true);
+
+    // sanity check: NOOP transaction's init and final commitment should be the same.
+    assert_eq!(noop_tx.initial_account().commitment(), noop_tx.final_account().commitment());
+    // sanity check: State-updating transaction's init and final commitment should *not* be the
+    // same.
+    assert_ne!(
+        state_updating_tx.initial_account().commitment(),
+        state_updating_tx.final_account().commitment()
+    );
+
+    let tx0 = ProvenTransaction::from_executed_transaction_mocked(noop_tx);
+    let tx1 = ProvenTransaction::from_executed_transaction_mocked(state_updating_tx);
+
+    let batch0 = generate_batch(&mut chain, vec![tx0]);
+    let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
+
+    let batches = vec![batch0.clone(), batch1.clone()];
+
+    let block_inputs = chain.get_block_inputs(&batches)?;
+    let block = ProposedBlock::new(block_inputs, batches.clone())?;
+
+    let (_, update) = block.updated_accounts().iter().next().unwrap();
+    assert_eq!(update.initial_state_commitment(), account0.commitment());
+    assert_eq!(update.final_state_commitment(), tx1.account_update().final_state_commitment());
 
     Ok(())
 }

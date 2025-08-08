@@ -65,7 +65,7 @@ proc.reclaim_note
     # => []
 
     # add note assets to account
-    exec.utils::add_note_assets_to_account
+    exec.note::add_assets_to_account
     # => []
 end
 
@@ -131,7 +131,7 @@ begin
 
     if.true
         # we can safely consume the note since the current account is the target of the note
-        dropw exec.utils::add_note_assets_to_account
+        dropw exec.note::add_assets_to_account
         # => []
 
     else

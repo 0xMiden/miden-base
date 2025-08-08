@@ -1,12 +1,10 @@
 use miden_crypto::merkle::SmtLeaf;
 
-use crate::{
-    Digest, Word,
-    account::AccountId,
-    block::{AccountTree, AccountWitness},
-    crypto::merkle::PartialSmt,
-    errors::AccountTreeError,
-};
+use crate::Word;
+use crate::account::AccountId;
+use crate::block::{AccountTree, AccountWitness};
+use crate::crypto::merkle::PartialSmt;
+use crate::errors::AccountTreeError;
 
 /// The partial sparse merkle tree containing the state commitments of accounts in the chain.
 ///
@@ -71,16 +69,15 @@ impl PartialAccountTree {
     ///
     /// Returns an error if:
     /// - the account ID is not tracked by this account tree.
-    pub fn get(&self, account_id: AccountId) -> Result<Digest, AccountTreeError> {
+    pub fn get(&self, account_id: AccountId) -> Result<Word, AccountTreeError> {
         let key = AccountTree::id_to_smt_key(account_id);
         self.smt
             .get_value(&key)
-            .map(Digest::from)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
     }
 
     /// Returns the root of the tree.
-    pub fn root(&self) -> Digest {
+    pub fn root(&self) -> Word {
         self.smt.root()
     }
 
@@ -129,7 +126,7 @@ impl PartialAccountTree {
     /// - the account_id is not tracked by this partial account tree.
     pub fn upsert_state_commitments(
         &mut self,
-        updates: impl IntoIterator<Item = (AccountId, Digest)>,
+        updates: impl IntoIterator<Item = (AccountId, Word)>,
     ) -> Result<(), AccountTreeError> {
         for (account_id, state_commitment) in updates {
             self.insert(account_id, state_commitment)?;
@@ -152,8 +149,8 @@ impl PartialAccountTree {
     fn insert(
         &mut self,
         account_id: AccountId,
-        state_commitment: Digest,
-    ) -> Result<Digest, AccountTreeError> {
+        state_commitment: Word,
+    ) -> Result<Word, AccountTreeError> {
         let key = AccountTree::id_to_smt_key(account_id);
 
         // If there exists a tracked leaf whose key is _not_ the one we're about to overwrite, then
@@ -162,17 +159,16 @@ impl PartialAccountTree {
         // Note that if the leaf is empty, that's fine. It means it is tracked by the partial SMT,
         // but no account ID is inserted yet.
         // Also note that the multiple variant cannot occur by construction of the tree.
-        if let Ok(SmtLeaf::Single((existing_key, _))) = self.smt.get_leaf(&key) {
-            if key != existing_key {
-                return Err(AccountTreeError::DuplicateIdPrefix {
-                    duplicate_prefix: account_id.prefix(),
-                });
-            }
+        if let Ok(SmtLeaf::Single((existing_key, _))) = self.smt.get_leaf(&key)
+            && key != existing_key
+        {
+            return Err(AccountTreeError::DuplicateIdPrefix {
+                duplicate_prefix: account_id.prefix(),
+            });
         }
 
         self.smt
-            .insert(key, Word::from(state_commitment))
-            .map(Digest::from)
+            .insert(key, state_commitment)
             .map_err(|source| AccountTreeError::UntrackedAccountId { id: account_id, source })
     }
 }
@@ -262,7 +258,7 @@ mod tests {
         // account IDs with the same prefix.
         let full_tree = Smt::with_entries(
             setup_duplicate_prefix_ids()
-                .map(|(id, commitment)| (AccountTree::id_to_smt_key(id), Word::from(commitment))),
+                .map(|(id, commitment)| (AccountTree::id_to_smt_key(id), commitment)),
         )
         .unwrap();
 
@@ -274,16 +270,10 @@ mod tests {
         let proof1 = full_tree.open(&key1);
         assert_eq!(proof0.leaf(), proof1.leaf());
 
-        let witness0 = AccountWitness::new_unchecked(
-            id0,
-            proof0.get(&key0).unwrap().into(),
-            proof0.into_parts().0,
-        );
-        let witness1 = AccountWitness::new_unchecked(
-            id1,
-            proof1.get(&key1).unwrap().into(),
-            proof1.into_parts().0,
-        );
+        let witness0 =
+            AccountWitness::new_unchecked(id0, proof0.get(&key0).unwrap(), proof0.into_parts().0);
+        let witness1 =
+            AccountWitness::new_unchecked(id1, proof1.get(&key1).unwrap(), proof1.into_parts().0);
 
         let mut partial_tree = PartialAccountTree::new();
         partial_tree.track_account(witness0).unwrap();

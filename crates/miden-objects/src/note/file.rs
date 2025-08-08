@@ -136,22 +136,28 @@ impl Deserializable for NoteFile {
 mod tests {
     use alloc::vec::Vec;
 
-    use vm_core::{
-        Felt,
-        utils::{Deserializable, Serializable},
-    };
+    use vm_core::Felt;
+    use vm_core::utils::{Deserializable, Serializable};
 
-    use crate::{
-        account::AccountId,
-        asset::{Asset, FungibleAsset},
-        block::BlockNumber,
-        note::{
-            Note, NoteAssets, NoteFile, NoteInclusionProof, NoteInputs, NoteMetadata,
-            NoteRecipient, NoteScript, NoteTag, NoteType,
-        },
-        testing::account_id::{
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-        },
+    use crate::Word;
+    use crate::account::AccountId;
+    use crate::asset::{Asset, FungibleAsset};
+    use crate::block::BlockNumber;
+    use crate::note::{
+        Note,
+        NoteAssets,
+        NoteFile,
+        NoteInclusionProof,
+        NoteInputs,
+        NoteMetadata,
+        NoteRecipient,
+        NoteScript,
+        NoteTag,
+        NoteType,
+    };
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
     };
 
     fn create_example_note() -> Note {
@@ -159,7 +165,7 @@ mod tests {
         let target =
             AccountId::try_from(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE).unwrap();
 
-        let serial_num = [Felt::new(0), Felt::new(1), Felt::new(2), Felt::new(3)];
+        let serial_num = Word::from([0, 1, 2, 3u32]);
         let script = NoteScript::mock();
         let note_inputs = NoteInputs::new(vec![target.prefix().into()]).unwrap();
         let recipient = NoteRecipient::new(serial_num, script, note_inputs);

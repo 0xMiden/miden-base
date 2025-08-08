@@ -1,13 +1,13 @@
 [package]
-name = "miden-bench-tx"
-version = "0.1.0"
-edition.workspace = true
+authors.workspace      = true
+edition.workspace      = true
+exclude.workspace      = true
+homepage.workspace     = true
+license.workspace      = true
+name                   = "miden-bench-tx"
+repository.workspace   = true
 rust-version.workspace = true
-license.workspace = true
-authors.workspace = true
-homepage.workspace = true
-repository.workspace = true
-exclude.workspace = true
+version                = "0.1.0"
 
 [[bin]]
 name = "bench-tx"
@@ -15,17 +15,16 @@ path = "src/main.rs"
 
 [dependencies]
 # Workspace dependencies
-miden-lib = { workspace = true }
+miden-lib     = { workspace = true }
 miden-objects = { workspace = true }
 miden-testing = { workspace = true }
-miden-tx = { workspace = true, features = ["testing"] }
+miden-tx      = { features = ["testing"], workspace = true }
 
 # Miden dependencies
 vm-processor = { workspace = true }
 
 # External dependencies
-anyhow = { version = "1.0", features = ["std", "backtrace"] }
-rand_chacha = { version = "0.9", default-features = false }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = { package = "serde_json", version = "1.0", features = ["preserve_order"] }
-
+anyhow      = { features = ["backtrace", "std"], version = "1.0" }
+rand_chacha = { default-features = false, version = "0.9" }
+serde       = { features = ["derive"], version = "1.0" }
+serde_json  = { features = ["preserve_order"], package = "serde_json", version = "1.0" }

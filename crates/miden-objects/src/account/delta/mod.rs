@@ -1,26 +1,27 @@
-use alloc::{string::ToString, vec::Vec};
+use alloc::string::ToString;
+use alloc::vec::Vec;
 
-use super::{
-    Account, ByteReader, ByteWriter, Deserializable, DeserializationError, Felt, Serializable,
-    Word, ZERO,
-};
-use crate::{AccountDeltaError, Digest, EMPTY_WORD, Hasher, account::AccountId};
-
-mod lexicographic_word;
-pub use lexicographic_word::LexicographicWord;
+use crate::account::{Account, AccountId};
+use crate::crypto::SequentialCommit;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
+use crate::{AccountDeltaError, Felt, Word, ZERO};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
 
 mod vault;
 pub use vault::{
-    AccountVaultDelta, FungibleAssetDelta, NonFungibleAssetDelta, NonFungibleDeltaAction,
+    AccountVaultDelta,
+    FungibleAssetDelta,
+    NonFungibleAssetDelta,
+    NonFungibleDeltaAction,
 };
 
 // ACCOUNT DELTA
 // ================================================================================================
 
-/// [AccountDelta] stores the differences between two account states.
+/// The [`AccountDelta`] stores the differences between two account states, which can result from
+/// one or more transaction.
 ///
 /// The differences are represented as follows:
 /// - storage: an [AccountStorageDelta] that contains the changes to the account storage.
@@ -241,10 +242,21 @@ impl AccountDelta {
     /// generally). Including `num_changed_entries` disambiguates this situation, by ensuring
     /// that the delta commitment is different when, e.g. 1) a non-fungible asset and one key-value
     /// pair have changed and 2) when two key-value pairs have changed.
-    pub fn commitment(&self) -> Digest {
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
+}
+
+impl SequentialCommit for AccountDelta {
+    type Commitment = Word;
+
+    /// Reduces the delta to a sequence of field elements.
+    ///
+    /// See [AccountDelta::to_commitment()] for more details.
+    fn to_elements(&self) -> Vec<Felt> {
         // The commitment to an empty delta is defined as the empty word.
         if self.is_empty() {
-            return Digest::default();
+            return Vec::new();
         }
 
         // Minor optimization: At least 24 elements are always added.
@@ -257,7 +269,7 @@ impl AccountDelta {
             self.account_id.suffix(),
             self.account_id.prefix().as_felt(),
         ]);
-        elements.extend_from_slice(&EMPTY_WORD);
+        elements.extend_from_slice(Word::empty().as_elements());
 
         // Vault Delta
         self.vault.append_delta_elements(&mut elements);
@@ -271,12 +283,25 @@ impl AccountDelta {
             elements.len()
         );
 
-        Hasher::hash_elements(&elements)
+        elements
     }
 }
 
-/// Describes the details of an account state transition resulting from applying a transaction to
-/// the account.
+// ACCOUNT UPDATE DETAILS
+// ================================================================================================
+
+/// [`AccountUpdateDetails`] describes the details of one or more transactions executed against an
+/// account.
+///
+/// In particular, private account changes aren't tracked at all; they are represented as
+/// [`AccountUpdateDetails::Private`].
+///
+/// New non-private accounts are included in full and changes to a non-private account are tracked
+/// as an [`AccountDelta`].
+///
+/// Note that these details can represent the changes from one or more transactions in which case
+/// the delta is either applied to the new account or deltas are merged together using
+/// [`AccountDelta::merge`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AccountUpdateDetails {
     /// Account is private (no on-chain state change).
@@ -428,7 +453,7 @@ fn validate_nonce(
     vault: &AccountVaultDelta,
 ) -> Result<(), AccountDeltaError> {
     if (!storage.is_empty() || !vault.is_empty()) && nonce_delta == ZERO {
-        return Err(AccountDeltaError::ZeroNonceForNonEmptyDelta);
+        return Err(AccountDeltaError::NonEmptyStorageOrVaultDeltaWithZeroNonceDelta);
     }
 
     Ok(())
@@ -441,21 +466,33 @@ fn validate_nonce(
 mod tests {
 
     use assert_matches::assert_matches;
-    use vm_core::{Felt, FieldElement, utils::Serializable};
+    use vm_core::utils::Serializable;
+    use vm_core::{Felt, FieldElement};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
-    use crate::{
-        AccountDeltaError, ONE, ZERO,
-        account::{
-            Account, AccountCode, AccountId, AccountStorage, AccountStorageMode, AccountType,
-            StorageMapDelta, delta::AccountUpdateDetails,
-        },
-        asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            AccountIdBuilder,
-        },
+    use crate::account::delta::AccountUpdateDetails;
+    use crate::account::{
+        Account,
+        AccountCode,
+        AccountId,
+        AccountStorage,
+        AccountStorageMode,
+        AccountType,
+        StorageMapDelta,
     };
+    use crate::asset::{
+        Asset,
+        AssetVault,
+        FungibleAsset,
+        NonFungibleAsset,
+        NonFungibleAssetDetails,
+    };
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        AccountIdBuilder,
+    };
+    use crate::{AccountDeltaError, ONE, Word, ZERO};
 
     #[test]
     fn account_delta_nonce_validation() {
@@ -473,7 +510,7 @@ mod tests {
         assert_matches!(
             AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
                 .unwrap_err(),
-            AccountDeltaError::ZeroNonceForNonEmptyDelta
+            AccountDeltaError::NonEmptyStorageOrVaultDeltaWithZeroNonceDelta
         );
         AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ONE).unwrap();
     }
@@ -517,12 +554,12 @@ mod tests {
 
         let storage_delta = AccountStorageDelta::from_iters(
             [1],
-            [(2, [ONE, ONE, ONE, ONE]), (3, [ONE, ONE, ZERO, ONE])],
+            [(2, Word::from([1, 1, 1, 1u32])), (3, Word::from([1, 1, 0, 1u32]))],
             [(
                 4,
                 StorageMapDelta::from_iters(
-                    [[ONE, ONE, ONE, ZERO], [ZERO, ONE, ONE, ONE]],
-                    [([ONE, ONE, ONE, ONE], [ONE, ONE, ONE, ONE])],
+                    [Word::from([1, 1, 1, 0u32]), Word::from([0, 1, 1, 1u32])],
+                    [(Word::from([1, 1, 1, 1u32]), Word::from([1, 1, 1, 1u32]))],
                 ),
             )],
         );

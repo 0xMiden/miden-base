@@ -1,17 +1,25 @@
-use std::{collections::BTreeMap, vec::Vec};
+use std::collections::BTreeMap;
+use std::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::{
-    Digest,
-    account::AccountId,
-    block::{
-        AccountUpdateWitness, BlockAccountUpdate, BlockHeader, BlockNoteIndex, BlockNoteTree,
-        BlockNumber, NullifierWitness, OutputNoteBatch, PartialAccountTree, PartialNullifierTree,
-        ProposedBlock, ProvenBlock,
-    },
-    note::Nullifier,
-    transaction::PartialBlockchain,
+use miden_objects::Word;
+use miden_objects::account::AccountId;
+use miden_objects::block::{
+    AccountUpdateWitness,
+    BlockAccountUpdate,
+    BlockHeader,
+    BlockNoteIndex,
+    BlockNoteTree,
+    BlockNumber,
+    NullifierWitness,
+    OutputNoteBatch,
+    PartialAccountTree,
+    PartialNullifierTree,
+    ProposedBlock,
+    ProvenBlock,
 };
+use miden_objects::note::Nullifier;
+use miden_objects::transaction::PartialBlockchain;
 
 use crate::errors::ProvenBlockError;
 
@@ -91,6 +99,10 @@ impl LocalBlockProver {
         ) = proposed_block.into_parts();
 
         let prev_block_commitment = prev_block_header.commitment();
+        // For now we copy the parameters of the previous header, which means the parameters set on
+        // the genesis block will be passed through. Eventually, the contained base fees will be
+        // updated based on the demand in the currently proposed block.
+        let fee_parameters = prev_block_header.fee_parameters().clone();
 
         // Compute the root of the block note tree.
         // --------------------------------------------------------------------------------------------
@@ -149,7 +161,7 @@ impl LocalBlockProver {
         let tx_kernel_commitment = TransactionKernel::kernel_commitment();
 
         // For now, we're not actually proving the block.
-        let proof_commitment = Digest::default();
+        let proof_commitment = Word::empty();
 
         let header = BlockHeader::new(
             version,
@@ -162,6 +174,7 @@ impl LocalBlockProver {
             tx_commitment,
             tx_kernel_commitment,
             proof_commitment,
+            fee_parameters,
             timestamp,
         );
 
@@ -187,7 +200,7 @@ fn compute_nullifiers(
     created_nullifiers: BTreeMap<Nullifier, NullifierWitness>,
     prev_block_header: &BlockHeader,
     block_num: BlockNumber,
-) -> Result<(Vec<Nullifier>, Digest), ProvenBlockError> {
+) -> Result<(Vec<Nullifier>, Word), ProvenBlockError> {
     // If no nullifiers were created, the nullifier tree root is unchanged.
     if created_nullifiers.is_empty() {
         return Ok((Vec::new(), prev_block_header.nullifier_root()));
@@ -234,7 +247,7 @@ fn compute_nullifiers(
 fn compute_chain_commitment(
     mut partial_blockchain: PartialBlockchain,
     prev_block_header: BlockHeader,
-) -> Digest {
+) -> Word {
     // SAFETY: This does not panic as long as the block header we're adding is the next one in the
     // chain which is validated as part of constructing a `ProposedBlock`.
     partial_blockchain.add_block(prev_block_header, true);
@@ -248,7 +261,7 @@ fn compute_chain_commitment(
 fn compute_account_root(
     updated_accounts: &[(AccountId, AccountUpdateWitness)],
     prev_block_header: &BlockHeader,
-) -> Result<Digest, ProvenBlockError> {
+) -> Result<Word, ProvenBlockError> {
     // If no accounts were updated, the account tree root is unchanged.
     if updated_accounts.is_empty() {
         return Ok(prev_block_header.account_root());

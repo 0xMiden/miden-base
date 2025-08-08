@@ -24,13 +24,12 @@ use core::fmt;
 
 pub use id_version::AccountIdVersion;
 use miden_crypto::utils::hex_to_bytes;
-use vm_core::{
-    Felt, Word,
-    utils::{ByteReader, Deserializable, Serializable},
-};
-use vm_processor::{DeserializationError, Digest};
+use vm_core::Felt;
+use vm_core::utils::{ByteReader, Deserializable, Serializable};
+use vm_processor::DeserializationError;
 
-use crate::{AccountError, errors::AccountIdError};
+use crate::errors::AccountIdError;
+use crate::{AccountError, Word};
 
 /// The identifier of an [`Account`](crate::account::Account).
 ///
@@ -120,8 +119,8 @@ impl AccountId {
     pub fn new(
         seed: Word,
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Self, AccountIdError> {
         match version {
             AccountIdVersion::Version0 => {
@@ -193,8 +192,8 @@ impl AccountId {
         account_type: AccountType,
         storage_mode: AccountStorageMode,
         version: AccountIdVersion,
-        code_commitment: Digest,
-        storage_commitment: Digest,
+        code_commitment: Word,
+        storage_commitment: Word,
     ) -> Result<Word, AccountError> {
         match version {
             AccountIdVersion::Version0 => AccountIdV0::compute_account_seed(
@@ -462,7 +461,7 @@ impl fmt::Display for AccountId {
 // ================================================================================================
 
 impl Serializable for AccountId {
-    fn write_into<W: miden_crypto::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
         match self {
             AccountId::V0(account_id) => {
                 account_id.write_into(target);
@@ -494,18 +493,16 @@ mod tests {
     use bech32::{Bech32, Bech32m, Hrp, NoChecksum};
 
     use super::*;
-    use crate::{
-        account::account_id::{
-            address_type::AddressType,
-            v0::{extract_storage_mode, extract_type, extract_version},
-        },
-        errors::Bech32Error,
-        testing::account_id::{
-            ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-        },
+    use crate::account::account_id::address_type::AddressType;
+    use crate::account::account_id::v0::{extract_storage_mode, extract_type, extract_version};
+    use crate::errors::Bech32Error;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
 
     #[test]

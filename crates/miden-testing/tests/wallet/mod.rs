@@ -1,11 +1,15 @@
-use miden_lib::{AuthScheme, account::wallets::create_basic_wallet};
-use miden_objects::{Word, crypto::dsa::rpo_falcon512::SecretKey};
-use rand_chacha::{ChaCha20Rng, rand_core::SeedableRng};
+use miden_lib::AuthScheme;
+use miden_lib::account::wallets::create_basic_wallet;
+use miden_objects::Word;
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+use rand_chacha::ChaCha20Rng;
+use rand_chacha::rand_core::SeedableRng;
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn wallet_creation() {
-    use miden_lib::account::{auth::RpoFalcon512, wallets::BasicWallet};
+    use miden_lib::account::auth::AuthRpoFalcon512;
+    use miden_lib::account::wallets::BasicWallet;
     use miden_objects::account::{AccountCode, AccountStorageMode, AccountType};
 
     // we need a Falcon Public Key to create the wallet account
@@ -29,7 +33,7 @@ fn wallet_creation() {
         create_basic_wallet(init_seed, auth_scheme, account_type, storage_mode).unwrap();
 
     let expected_code = AccountCode::from_components(
-        &[RpoFalcon512::new(pub_key).into(), BasicWallet.into()],
+        &[AuthRpoFalcon512::new(pub_key).into(), BasicWallet.into()],
         AccountType::RegularAccountUpdatableCode,
     )
     .unwrap();
@@ -38,5 +42,5 @@ fn wallet_creation() {
     assert!(wallet.is_regular_account());
     assert_eq!(wallet.code().commitment(), expected_code_commitment);
     let pub_key_word: Word = pub_key.into();
-    assert_eq!(wallet.storage().get_item(0).unwrap().as_elements(), pub_key_word);
+    assert_eq!(wallet.storage().get_item(0).unwrap(), pub_key_word);
 }

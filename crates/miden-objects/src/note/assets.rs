@@ -1,11 +1,15 @@
 use alloc::vec::Vec;
 
-use crate::{
-    Digest, Felt, Hasher, MAX_ASSETS_PER_NOTE, WORD_SIZE, Word, ZERO,
-    asset::{Asset, FungibleAsset, NonFungibleAsset},
-    errors::NoteError,
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use crate::errors::NoteError;
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
+use crate::{Felt, Hasher, MAX_ASSETS_PER_NOTE, WORD_SIZE, Word, ZERO};
 
 // NOTE ASSETS
 // ================================================================================================
@@ -20,7 +24,7 @@ use crate::{
 #[derive(Debug, Default, Clone)]
 pub struct NoteAssets {
     assets: Vec<Asset>,
-    hash: Digest,
+    hash: Word,
 }
 
 impl NoteAssets {
@@ -64,7 +68,7 @@ impl NoteAssets {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a commitment to the note's assets.
-    pub fn commitment(&self) -> Digest {
+    pub fn commitment(&self) -> Word {
         self.hash
     }
 
@@ -79,7 +83,7 @@ impl NoteAssets {
     }
 
     /// Returns an iterator over all assets.
-    pub fn iter(&self) -> core::slice::Iter<Asset> {
+    pub fn iter(&self) -> core::slice::Iter<'_, Asset> {
         self.assets.iter()
     }
 
@@ -99,7 +103,7 @@ impl NoteAssets {
         let mut padded_assets = Vec::with_capacity(padded_len * WORD_SIZE);
 
         // populate the vector with the assets
-        padded_assets.extend(self.assets.iter().flat_map(|asset| <[Felt; 4]>::from(*asset)));
+        padded_assets.extend(self.assets.iter().flat_map(|asset| Word::from(*asset)));
 
         // pad with an empty word if we have an odd number of assets
         padded_assets.resize(padded_len, ZERO);
@@ -181,9 +185,9 @@ impl Eq for NoteAssets {}
 /// The commitment is computed as a sequential hash of all assets (each asset represented by 4
 /// field elements), padded to the next multiple of 2. If the asset list is empty, a default digest
 /// is returned.
-fn compute_asset_commitment(assets: &[Asset]) -> Digest {
+fn compute_asset_commitment(assets: &[Asset]) -> Word {
     if assets.is_empty() {
-        return Digest::default();
+        return Word::empty();
     }
 
     // If we have an odd number of assets we pad the vector with 4 zero elements. This is to
@@ -198,14 +202,14 @@ fn compute_asset_commitment(assets: &[Asset]) -> Digest {
     for asset in assets.iter() {
         // convert the asset into field elements and add them to the list elements
         let asset_word: Word = (*asset).into();
-        asset_elements.extend_from_slice(&asset_word);
+        asset_elements.extend_from_slice(asset_word.as_elements());
     }
 
     // If we have an odd number of assets we pad the vector with 4 zero elements. This is to
     // ensure the number of elements is a multiple of 8 - the size of the hasher rate. This
     // simplifies hashing inside of the virtual machine when ingesting assets from a note.
     if assets.len() % 2 == 1 {
-        asset_elements.extend_from_slice(&Word::default());
+        asset_elements.extend_from_slice(Word::empty().as_elements());
     }
 
     Hasher::hash_elements(&asset_elements)
@@ -237,14 +241,13 @@ impl Deserializable for NoteAssets {
 #[cfg(test)]
 mod tests {
     use super::{NoteAssets, compute_asset_commitment};
-    use crate::{
-        Digest,
-        account::AccountId,
-        asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails},
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        },
+    use crate::Word;
+    use crate::account::AccountId;
+    use crate::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     };
 
     #[test]
@@ -257,7 +260,7 @@ mod tests {
         // create empty assets
         let mut assets = NoteAssets::default();
 
-        assert_eq!(assets.hash, Digest::default());
+        assert_eq!(assets.hash, Word::empty());
 
         // add asset1
         assert!(assets.add_asset(asset1).is_ok());

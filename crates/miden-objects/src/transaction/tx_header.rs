@@ -1,14 +1,18 @@
 use alloc::vec::Vec;
 
-use vm_processor::{DeserializationError, Digest};
+use vm_processor::DeserializationError;
 
-use crate::{
-    note::NoteId,
-    transaction::{
-        AccountId, InputNoteCommitment, Nullifier, OutputNote, ProvenTransaction, TransactionId,
-    },
-    utils::{ByteReader, ByteWriter, Deserializable, Serializable},
+use crate::Word;
+use crate::note::NoteId;
+use crate::transaction::{
+    AccountId,
+    InputNoteCommitment,
+    Nullifier,
+    OutputNote,
+    ProvenTransaction,
+    TransactionId,
 };
+use crate::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 
 /// A transaction header derived from a
 /// [`ProvenTransaction`](crate::transaction::ProvenTransaction).
@@ -21,8 +25,8 @@ use crate::{
 pub struct TransactionHeader {
     id: TransactionId,
     account_id: AccountId,
-    initial_state_commitment: Digest,
-    final_state_commitment: Digest,
+    initial_state_commitment: Word,
+    final_state_commitment: Word,
     input_notes: Vec<Nullifier>,
     output_notes: Vec<NoteId>,
 }
@@ -40,8 +44,8 @@ impl TransactionHeader {
     pub(crate) fn new(
         id: TransactionId,
         account_id: AccountId,
-        initial_state_commitment: Digest,
-        final_state_commitment: Digest,
+        initial_state_commitment: Word,
+        final_state_commitment: Word,
         input_notes: Vec<Nullifier>,
         output_notes: Vec<NoteId>,
     ) -> Self {
@@ -60,8 +64,8 @@ impl TransactionHeader {
     pub fn new_unchecked(
         id: TransactionId,
         account_id: AccountId,
-        initial_state_commitment: Digest,
-        final_state_commitment: Digest,
+        initial_state_commitment: Word,
+        final_state_commitment: Word,
         input_notes: Vec<Nullifier>,
         output_notes: Vec<NoteId>,
     ) -> Self {
@@ -90,13 +94,13 @@ impl TransactionHeader {
 
     /// Returns a commitment to the state of the account before this update is applied.
     ///
-    /// This is equal to [`Digest::default()`] for new accounts.
-    pub fn initial_state_commitment(&self) -> Digest {
+    /// This is equal to [`Word::empty()`] for new accounts.
+    pub fn initial_state_commitment(&self) -> Word {
         self.initial_state_commitment
     }
 
     /// Returns a commitment to the state of the account after this update is applied.
-    pub fn final_state_commitment(&self) -> Digest {
+    pub fn final_state_commitment(&self) -> Word {
         self.final_state_commitment
     }
 
@@ -148,8 +152,8 @@ impl Deserializable for TransactionHeader {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let id = <TransactionId>::read_from(source)?;
         let account_id = <AccountId>::read_from(source)?;
-        let initial_state_commitment = <Digest>::read_from(source)?;
-        let final_state_commitment = <Digest>::read_from(source)?;
+        let initial_state_commitment = <Word>::read_from(source)?;
+        let final_state_commitment = <Word>::read_from(source)?;
         let input_notes = <Vec<Nullifier>>::read_from(source)?;
         let output_notes = <Vec<NoteId>>::read_from(source)?;
 

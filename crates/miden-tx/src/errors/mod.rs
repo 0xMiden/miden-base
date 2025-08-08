@@ -1,10 +1,21 @@
-use alloc::{boxed::Box, string::String};
+use alloc::boxed::Box;
+use alloc::string::String;
 use core::error::Error;
 
+use miden_lib::transaction::TransactionAdviceMapMismatch;
+use miden_objects::account::AccountId;
+use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_objects::block::BlockNumber;
+use miden_objects::crypto::merkle::SmtProofError;
+use miden_objects::note::NoteId;
+use miden_objects::transaction::TransactionSummary;
 use miden_objects::{
-    AccountError, Digest, Felt, ProvenTransactionError, TransactionInputError,
-    TransactionOutputError, account::AccountId, assembly::diagnostics::reporting::PrintDiagnostic,
-    block::BlockNumber, crypto::merkle::SmtProofError, note::NoteId,
+    AccountError,
+    Felt,
+    ProvenTransactionError,
+    TransactionInputError,
+    TransactionOutputError,
+    Word,
 };
 use miden_verifier::VerificationError;
 use thiserror::Error;
@@ -15,6 +26,8 @@ use vm_processor::ExecutionError;
 
 #[derive(Debug, Error)]
 pub enum TransactionExecutorError {
+    #[error("the advice map contains conflicting map entries")]
+    ConflictingAdviceMapEntry(#[source] TransactionAdviceMapMismatch),
     #[error("failed to fetch transaction inputs from the data store")]
     FetchTransactionInputsFailed(#[source] DataStoreError),
     #[error("foreign account inputs for ID {0} are not anchored on reference block")]
@@ -35,8 +48,8 @@ pub enum TransactionExecutorError {
         "account delta commitment computed in transaction kernel ({in_kernel_commitment}) does not match account delta computed via the host ({host_commitment})"
     )]
     InconsistentAccountDeltaCommitment {
-        in_kernel_commitment: Digest,
-        host_commitment: Digest,
+        in_kernel_commitment: Word,
+        host_commitment: Word,
     },
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
     InconsistentAccountId {
@@ -59,6 +72,10 @@ pub enum TransactionExecutorError {
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
+    /// This variant can be matched on to get the summary of a transaction for signing purposes.
+    // It is boxed to avoid triggering clippy::result_large_err for functions that return this type.
+    #[error("transaction is unauthorized with summary {0:?}")]
+    Unauthorized(Box<TransactionSummary>),
 }
 
 // TRANSACTION PROVER ERROR
@@ -72,6 +89,8 @@ pub enum TransactionProverError {
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]
     ProvenTransactionBuildFailed(#[source] ProvenTransactionError),
+    #[error("the advice map contains conflicting map entries")]
+    ConflictingAdviceMapEntry(#[source] TransactionAdviceMapMismatch),
     // Print the diagnostic directly instead of returning the source error. In the source error
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]

@@ -3,7 +3,13 @@ use core::fmt;
 use miden_crypto::Felt;
 
 use super::{
-    AccountId, ByteReader, ByteWriter, Deserializable, DeserializationError, NoteError, NoteType,
+    AccountId,
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    NoteError,
+    NoteType,
     Serializable,
 };
 use crate::account::AccountStorageMode;
@@ -349,27 +355,34 @@ mod tests {
     use assert_matches::assert_matches;
 
     use super::{NoteExecutionMode, NoteTag};
-    use crate::{
-        NoteError,
-        account::AccountId,
-        note::{
-            NoteType,
-            note_tag::{LOCAL_ANY, LOCAL_PUBLIC_ANY, NETWORK_ACCOUNT, NETWORK_PUBLIC_USECASE},
-        },
-        testing::account_id::{
-            ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET, ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PRIVATE_SENDER, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3, ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_REGULAR_NETWORK_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE_ON_CHAIN_2, ACCOUNT_ID_SENDER,
-        },
+    use crate::NoteError;
+    use crate::account::AccountId;
+    use crate::note::NoteType;
+    use crate::note::note_tag::{
+        LOCAL_ANY,
+        LOCAL_PUBLIC_ANY,
+        NETWORK_ACCOUNT,
+        NETWORK_PUBLIC_USECASE,
+    };
+    use crate::testing::account_id::{
+        ACCOUNT_ID_NETWORK_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_SENDER,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
+        ACCOUNT_ID_REGULAR_NETWORK_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE_ON_CHAIN_2,
+        ACCOUNT_ID_SENDER,
     };
 
     #[test]

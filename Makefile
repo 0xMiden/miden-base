@@ -7,7 +7,7 @@ help:
 # -- variables --------------------------------------------------------------------------------------
 
 WARNINGS=RUSTDOCFLAGS="-D warnings"
-ALL_FEATURES_BUT_ASYNC=--features concurrent,testing
+ALL_FEATURES=--features concurrent,testing
 # Enable file generation in the `src` directory.
 # This is used in the build scripts of miden-lib.
 BUILD_GENERATED_FILES_IN_SRC=BUILD_GENERATED_FILES_IN_SRC=1
@@ -19,7 +19,7 @@ BACKTRACE=RUST_BACKTRACE=1
 
 .PHONY: clippy
 clippy: ## Runs Clippy with configs
-	cargo clippy --workspace --all-targets $(ALL_FEATURES_BUT_ASYNC) -- -D warnings
+	cargo clippy --workspace --all-targets $(ALL_FEATURES) -- -D warnings
 
 
 .PHONY: clippy-no-std
@@ -29,7 +29,7 @@ clippy-no-std: ## Runs Clippy with configs
 
 .PHONY: fix
 fix: ## Runs Fix with configs
-	cargo fix --workspace --allow-staged --allow-dirty --all-targets $(ALL_FEATURES_BUT_ASYNC)
+	cargo fix --workspace --allow-staged --allow-dirty --all-targets $(ALL_FEATURES)
 
 
 .PHONY: format
@@ -45,19 +45,28 @@ format-check: ## Runs Format using nightly toolchain but only in check mode
 typos-check: ## Runs spellchecker
 	typos
 
+.PHONY: toml
+toml: ## Runs Format for all TOML files
+	taplo fmt
+
+.PHONY: toml-check
+toml-check: ## Runs Format for all TOML files but only in check mode
+	taplo fmt --check
+
 .PHONY: lint
-lint: ## Runs all linting tasks at once (Clippy, fixing, formatting)
+lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) format
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) fix
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) clippy-no-std
 	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) typos-check
+	@$(BUILD_GENERATED_FILES_IN_SRC) $(MAKE) toml
 
 # --- docs ----------------------------------------------------------------------------------------
 
 .PHONY: doc
 doc: ## Generates & checks documentation
-	$(WARNINGS) cargo doc $(ALL_FEATURES_BUT_ASYNC) --keep-going --release
+	$(WARNINGS) cargo doc $(ALL_FEATURES) --keep-going --release
 
 
 .PHONY: book
@@ -85,14 +94,14 @@ test-dev: ## Run default tests excluding slow prove tests in debug mode intended
 
 .PHONY: test-docs
 test-docs: ## Run documentation tests
-	$(WARNINGS) cargo test --doc $(ALL_FEATURES_BUT_ASYNC)
+	$(WARNINGS) cargo test --doc $(ALL_FEATURES)
 
 
 # --- checking ------------------------------------------------------------------------------------
 
 .PHONY: check
 check: ## Check all targets and features for errors without code generation
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --all-targets $(ALL_FEATURES_BUT_ASYNC)
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --all-targets $(ALL_FEATURES)
 
 
 .PHONY: check-no-std
@@ -115,11 +124,6 @@ build-no-std: ## Build without the standard library
 build-no-std-testing: ## Build without the standard library. Includes the `testing` feature
 	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --no-default-features --target wasm32-unknown-unknown --workspace --exclude miden-bench-tx --features testing --exclude bench-prover
 
-
-.PHONY: build-async
-build-async: ## Build with the `async` feature enabled (only libraries)
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo build --lib --release --features async --workspace --exclude bench-prover
-
 # --- benchmarking --------------------------------------------------------------------------------
 
 .PHONY: bench-tx
@@ -139,11 +143,13 @@ check-tools: ## Checks if development tools are installed
 	@command -v mdbook >/dev/null 2>&1 && echo "[OK] mdbook is installed" || echo "[MISSING] mdbook is not installed (run: make install-tools)"
 	@command -v typos >/dev/null 2>&1 && echo "[OK] typos is installed" || echo "[MISSING] typos is not installed (run: make install-tools)"
 	@command -v nextest >/dev/null 2>&1 && echo "[OK] nextest is installed" || echo "[MISSING] nextest is not installed (run: make install-tools)"
+	@command -v taplo >/dev/null 2>&1 && echo "[OK] taplo is installed" || echo "[MISSING] taplo is not installed (run: make install-tools)"
 
 .PHONY: install-tools
-install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest)
+install-tools: ## Installs development tools required by the Makefile (mdbook, typos, nextest, taplo)
 	@echo "Installing development tools..."
 	cargo install mdbook --locked
 	cargo install typos-cli --locked
 	cargo install cargo-nextest --locked
+	cargo install taplo-cli --locked
 	@echo "Development tools installation complete!"

@@ -1,10 +1,15 @@
-use std::{hint::black_box, time::Duration};
+use std::hint::black_box;
+use std::time::Duration;
 
-use bench_prover::{
-    bench_functions::{
-        prove_transaction, setup_consume_multiple_notes, setup_consume_note_with_new_account,
-    },
-    benchmark_names::{BENCH_CONSUME_MULTIPLE_NOTES, BENCH_CONSUME_NOTE_NEW_ACCOUNT, BENCH_GROUP},
+use bench_prover::bench_functions::{
+    prove_transaction,
+    setup_consume_multiple_notes,
+    setup_consume_note_with_new_account,
+};
+use bench_prover::benchmark_names::{
+    BENCH_CONSUME_MULTIPLE_NOTES,
+    BENCH_CONSUME_NOTE_NEW_ACCOUNT,
+    BENCH_GROUP,
 };
 use criterion::{Criterion, SamplingMode, criterion_group, criterion_main};
 

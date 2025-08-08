@@ -1,9 +1,7 @@
 use assembly::{Assembler, Library};
 
-use crate::{
-    account::{AccountCode, AccountComponent, AccountType},
-    testing::account_component::{AccountMockComponent, NoopAuthComponent},
-};
+use crate::account::{AccountCode, AccountComponent, AccountType};
+use crate::testing::account_component::{AccountMockComponent, NoopAuthComponent};
 
 pub const CODE: &str = "
     export.foo

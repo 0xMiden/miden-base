@@ -1,10 +1,12 @@
 use std::path::PathBuf;
 
 use anyhow::{Context, Result};
-use bench_prover::{
-    benchmark_names::{BENCH_CONSUME_MULTIPLE_NOTES, BENCH_CONSUME_NOTE_NEW_ACCOUNT, BENCH_GROUP},
-    utils::{cargo_target_directory, process_benchmark_data, save_json_to_file},
+use bench_prover::benchmark_names::{
+    BENCH_CONSUME_MULTIPLE_NOTES,
+    BENCH_CONSUME_NOTE_NEW_ACCOUNT,
+    BENCH_GROUP,
 };
+use bench_prover::utils::{cargo_target_directory, process_benchmark_data, save_json_to_file};
 use serde_json::json;
 
 fn main() -> Result<()> {

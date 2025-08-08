@@ -1,10 +1,15 @@
-use alloc::{boxed::Box, string::ToString};
+use alloc::boxed::Box;
+use alloc::string::ToString;
 use core::fmt;
 
 use super::{AccountType, Asset, AssetError, Felt, Word, ZERO, is_not_a_non_fungible_asset};
-use crate::{
-    account::{AccountId, AccountIdPrefix},
-    utils::serde::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable},
+use crate::account::{AccountId, AccountIdPrefix};
+use crate::utils::serde::{
+    ByteReader,
+    ByteWriter,
+    Deserializable,
+    DeserializationError,
+    Serializable,
 };
 
 // FUNGIBLE ASSET
@@ -22,8 +27,11 @@ pub struct FungibleAsset {
 impl FungibleAsset {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
-    /// Specifies a maximum amount value for fungible assets which can be at most a 63-bit value.
-    pub const MAX_AMOUNT: u64 = (1_u64 << 63) - 1;
+    /// Specifies the maximum amount a fungible asset can represent.
+    ///
+    /// This number was chosen so that it can be represented as a positive and negative number in a
+    /// field element. See `account_delta.masm` for more details on how this number was chosen.
+    pub const MAX_AMOUNT: u64 = 2u64.pow(63) - 2u64.pow(31);
 
     /// The serialized size of a [`FungibleAsset`] in bytes.
     ///
@@ -146,7 +154,7 @@ impl FungibleAsset {
 
     /// Returns the key which is used to store this asset in the account vault.
     pub(super) fn vault_key_from_faucet(faucet_id: AccountId) -> Word {
-        let mut key = Word::default();
+        let mut key = Word::empty();
         key[2] = faucet_id.suffix();
         key[3] = faucet_id.prefix().as_felt();
         key
@@ -155,7 +163,7 @@ impl FungibleAsset {
 
 impl From<FungibleAsset> for Word {
     fn from(asset: FungibleAsset) -> Self {
-        let mut result = Word::default();
+        let mut result = Word::empty();
         result[0] = Felt::new(asset.amount);
         result[2] = asset.faucet_id.suffix();
         result[3] = asset.faucet_id.prefix().as_felt();
@@ -244,13 +252,14 @@ impl FungibleAsset {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::{
-        account::AccountId,
-        testing::account_id::{
-            ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET, ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2, ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
-        },
+    use crate::account::AccountId;
+    use crate::testing::account_id::{
+        ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
+        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_3,
     };
 
     #[test]

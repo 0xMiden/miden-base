@@ -1,15 +1,15 @@
-use alloc::{collections::BTreeSet, vec::Vec};
+use alloc::collections::BTreeSet;
+use alloc::vec::Vec;
 
-use assembly::{Assembler, Compile, Library};
-use vm_processor::{Digest, MastForest};
+use assembly::ast::QualifiedProcedureName;
+use assembly::{Assembler, Library, Parse};
+use vm_processor::MastForest;
 
 mod template;
 pub use template::*;
 
-use crate::{
-    AccountError,
-    account::{AccountType, StorageSlot},
-};
+use crate::account::{AccountType, StorageSlot};
+use crate::{AccountError, Word};
 
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
 /// the [`StorageSlot`]s it accesses.
@@ -75,7 +75,7 @@ impl AccountComponent {
     /// - the compilation of the provided source code fails.
     /// - The number of storage slots exceeds 255.
     pub fn compile(
-        source_code: impl Compile,
+        source_code: impl Parse,
         assembler: Assembler,
         storage_slots: Vec<StorageSlot>,
     ) -> Result<Self, AccountError> {
@@ -147,7 +147,7 @@ impl AccountComponent {
     }
 
     /// Returns a vector of tuples (digest, is_auth) for all procedures in this component.
-    pub(crate) fn get_procedures(&self) -> Vec<(Digest, bool)> {
+    pub(crate) fn get_procedures(&self) -> Vec<(Word, bool)> {
         let mut procedures = Vec::new();
         for module in self.library.module_infos() {
             for (_, procedure_info) in module.procedures() {
@@ -156,6 +156,15 @@ impl AccountComponent {
             }
         }
         procedures
+    }
+
+    /// Returns the digest of the procedure with the specified name, or `None` if it was not found
+    /// in this component's library or its library path is malformed.
+    pub fn get_procedure_root_by_name(
+        &self,
+        proc_name: impl TryInto<QualifiedProcedureName>,
+    ) -> Option<Word> {
+        self.library.get_procedure_root_by_name(proc_name)
     }
 
     // MUTATORS

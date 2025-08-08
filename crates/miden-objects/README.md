@@ -11,7 +11,7 @@ Here is a broad overview of each module, with links to additional documentation.
 
 Structures used to define accounts, including abstractions over its code, storage, and vault.
 
-[Documentation](https://0xMiden.github.io/miden-base/account.html).
+[Documentation](https://0xmiden.github.io/miden-base/account/overview.html).
 
 ### Assets
 
