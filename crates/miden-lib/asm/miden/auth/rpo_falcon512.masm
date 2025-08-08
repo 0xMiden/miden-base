@@ -1,5 +1,5 @@
 use.miden::account
-use.miden::auth::util
+use.miden::auth
 use.miden::tx
 use.std::crypto::dsa::rpo_falcon512
 
@@ -42,12 +42,12 @@ export.authenticate_transaction
 
     # Compute the message that is signed.
     # ---------------------------------------------------------------------------------------------
-    exec.util::create_tx_summary
+    exec.auth::create_tx_summary
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, PUB_KEY]
-    exec.util::adv_insert_hqword
+    exec.auth::adv_insert_hqword
 
     # The commitment to the tx summary is the message that is signed
-    exec.util::hash_tx_summary
+    exec.auth::hash_tx_summary
     # OS => [MESSAGE, PUB_KEY]
     # AS => []
 
