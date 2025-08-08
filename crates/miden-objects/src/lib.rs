@@ -30,6 +30,7 @@ pub use errors::{
     AccountError,
     AccountIdError,
     AccountTreeError,
+    AddressError,
     AssetError,
     AssetVaultError,
     BatchAccountUpdateError,

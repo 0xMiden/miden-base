@@ -209,6 +209,17 @@ pub enum AccountTreeError {
     WitnessMerklePathDepthDoesNotMatchAccountTreeDepth(usize),
 }
 
+// ADDRESS ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum AddressError {
+    #[error("network addresses are not supported")]
+    NetworkAddressesNotSupported,
+    #[error("tag length {0} is too large, must be less than or equal to {max}", max = crate::note::MAX_LOCAL_TAG_LENGTH)]
+    TagLengthTooLarge(u8),
+}
+
 // BECH32 ERROR
 // ================================================================================================
 
