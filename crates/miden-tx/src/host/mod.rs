@@ -214,32 +214,7 @@ where
             TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::AuthRequest => {
-              let message = process.get_stack_word(0);
-              let pub_key_hash = process.get_stack_word(1);
-              let signature_key = Hasher::merge(&[pub_key_hash, message]);
-
-              let tx_summary = self.build_tx_summary(process, message)?;
-
-              if message != tx_summary.to_commitment() {
-                  return Err(EventError::from(TransactionKernelError::TransactionSummaryConstructionFailed(
-                      "transaction summary doesn't commit to the expected message".into(),
-                  )));
-              }
-
-              let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
-
-              let signature_opt = process
-                  .advice_provider()
-                  .get_mapped_values(&signature_key)
-                  .map(|slice| slice.to_vec());
-
-              // We only extract the necessary data to handle the event here, but do not actually
-              // handle it, so return TransactionEventHandling::Unhandled.
-              Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest {
-                  pub_key_hash,  signature_key, signature_opt, signing_inputs
-              }))
-            },
+            TransactionEvent::AuthRequest => self.on_auth_requested(process),
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
@@ -306,6 +281,50 @@ where
         .map_err(EventError::from)?;
 
         Ok(advice_mutations)
+    }
+
+    /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
+    ///
+    /// Expected stack state: `[MESSAGE, PUB_KEY]`
+    ///
+    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
+    /// not present in the advice map [`TransactionEventHandling::Unhandled`] is returned with the
+    /// data required to request a signature from a
+    /// [`TransactionAuthenticator`](crate::auth::TransactionAuthenticator).
+    fn on_auth_requested(
+        &self,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let message = process.get_stack_word(0);
+        let pub_key_hash = process.get_stack_word(1);
+        let signature_key = Hasher::merge(&[pub_key_hash, message]);
+
+        let tx_summary = self.build_tx_summary(process, message)?;
+
+        if message != tx_summary.to_commitment() {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "transaction summary doesn't commit to the expected message".into(),
+            ));
+        }
+
+        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
+
+        if let Some(signature) = process
+            .advice_provider()
+            .get_mapped_values(&signature_key)
+            .map(|slice| slice.to_vec())
+        {
+            return Ok(TransactionEventHandling::Handled(vec![AdviceMutation::extend_stack(
+                signature,
+            )]));
+        }
+
+        // If the signature is not present in the advice map, extract the necessary data to handle
+        // the event at a later point.
+        Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest {
+            pub_key_hash,
+            signing_inputs,
+        }))
     }
 
     /// Aborts the transaction by building the
@@ -708,10 +727,5 @@ pub(super) enum TransactionEventData {
         /// The signing inputs that summarize what is being signed. The commitment to these inputs
         /// is the message that is being signed.
         signing_inputs: SigningInputs,
-        /// The key of the signature in the advice map which is the combined hash of public key
-        /// hash and message.
-        signature_key: Word,
-        /// The signature that was requested, if it was found in the advice provider.
-        signature_opt: Option<Vec<Felt>>,
     },
 }

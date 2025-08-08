@@ -2,7 +2,6 @@ use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
@@ -113,10 +112,12 @@ where
 
         match self.base_host.handle_event(process, transaction_event)? {
             TransactionEventHandling::Unhandled(event_data) => {
-                let TransactionEventData::AuthRequest { signature_opt, .. } = event_data;
-                let signature =
-                    signature_opt.ok_or_else(|| TransactionKernelError::MissingAuthenticator)?;
-                Ok(vec![AdviceMutation::extend_stack(signature)])
+                // The base host should have handled this event since the signature should be
+                // present in the advice map. We match on the event_data here so that if a new
+                // variant is added to the enum, this fails compilation and we can adapt
+                // accordingly.
+                let TransactionEventData::AuthRequest { .. } = event_data;
+                Err(EventError::from("base host should have handled auth request event"))
             },
             TransactionEventHandling::Handled(mutations) => Ok(mutations),
         }

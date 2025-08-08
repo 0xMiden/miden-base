@@ -9,7 +9,7 @@ use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
-use miden_objects::{Felt, Word};
+use miden_objects::{Felt, Hasher, Word};
 use vm_processor::{
     AdviceMutation,
     AsyncHost,
@@ -103,32 +103,23 @@ where
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
-    /// Expected stack state: `[MESSAGE, PUB_KEY]`
-    ///
-    /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
-    /// not present in the advice map, the signature is requested from the host's authenticator.
+    /// The signature is requested from the host's authenticator.
     pub async fn on_auth_requested(
         &mut self,
         pub_key_hash: Word,
-        signature_key: Word,
-        signature_opt: Option<Vec<Felt>>,
         signing_inputs: SigningInputs,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        let signature = if let Some(signature) = signature_opt {
-            signature.to_vec()
-        } else {
-            let authenticator =
-                self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
+        let authenticator =
+            self.authenticator.ok_or(TransactionKernelError::MissingAuthenticator)?;
 
-            let signature: Vec<Felt> = authenticator
-                .get_signature(pub_key_hash, &signing_inputs)
-                .await
-                .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+        let signature: Vec<Felt> = authenticator
+            .get_signature(pub_key_hash, &signing_inputs)
+            .await
+            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
 
-            self.generated_signatures.insert(signature_key, signature.clone());
+        let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
 
-            signature
-        };
+        self.generated_signatures.insert(signature_key, signature.clone());
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
     }
@@ -194,13 +185,8 @@ where
             };
 
             match event_data {
-                TransactionEventData::AuthRequest {
-                    pub_key_hash,
-                    signature_key,
-                    signature_opt,
-                    signing_inputs,
-                } => self
-                    .on_auth_requested(pub_key_hash, signature_key, signature_opt, signing_inputs)
+                TransactionEventData::AuthRequest { pub_key_hash, signing_inputs } => self
+                    .on_auth_requested(pub_key_hash, signing_inputs)
                     .await
                     .map_err(EventError::from),
             }
