@@ -13,6 +13,8 @@ pub mod block;
 pub mod note;
 pub mod transaction;
 
+pub mod address;
+
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
 
@@ -28,6 +30,7 @@ pub use errors::{
     AccountError,
     AccountIdError,
     AccountTreeError,
+    AddressError,
     AssetError,
     AssetVaultError,
     BatchAccountUpdateError,
