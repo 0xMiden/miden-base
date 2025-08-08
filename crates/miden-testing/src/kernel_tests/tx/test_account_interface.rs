@@ -90,7 +90,9 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
 #[case::empty(vec![])]
 #[case::one(vec![create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)])])]
 #[tokio::test]
-async fn check_note_consumability_custom_notes_success(#[case] notes: Vec<Note>) -> anyhow::Result<()> {
+async fn check_note_consumability_custom_notes_success(
+    #[case] notes: Vec<Note>,
+) -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
@@ -116,7 +118,6 @@ async fn check_note_consumability_custom_notes_success(#[case] notes: Vec<Note>)
     let execution_check_result = notes_checker
         .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
         .await?;
-    assert_matches!(execution_check_result, NoteAccountExecution::Success);
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
         if notes.is_empty() {
@@ -196,7 +197,6 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
         .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
         .await?;
 
-    let execution_check_result = execution_check_result.unwrap();
     assert_matches!(
         execution_check_result,
         NoteConsumptionInfo {

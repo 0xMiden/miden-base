@@ -36,12 +36,8 @@ where
         tx_args: TransactionArgs,
         source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        self.0.try_execute_notes(
-            target_account_id,
-            block_ref,
-            input_notes,
-            tx_args,
-            source_manager
-        ).await
+        self.0
+            .try_execute_notes(target_account_id, block_ref, input_notes, tx_args, source_manager)
+            .await
     }
 }

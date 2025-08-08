@@ -356,9 +356,11 @@ where
         ref_blocks.insert(block_ref);
 
         // Validate account inputs.
-        let (account, seed, ref_block, mmr) =
-            self.data_store.get_transaction_inputs(account_id, ref_blocks).await
-                .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+        let (account, seed, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .await
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
         validate_account_inputs(&tx_args, &ref_block)?;
 
         // Prepare transaction inputs.

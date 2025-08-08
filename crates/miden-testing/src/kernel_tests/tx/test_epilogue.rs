@@ -540,7 +540,7 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
     let err = TransactionContextBuilder::with_noop_auth_account(ONE)
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .unwrap_err();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
