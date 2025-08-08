@@ -55,7 +55,6 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(notes.clone())
         .build()?;
-    let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
     let target_account_id = tx_context.account().id();
@@ -67,13 +66,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(
-            target_account_id,
-            block_ref,
-            input_notes,
-            tx_args,
-            source_manager,
-        )
+        .check_notes_consumability(target_account_id, block_ref, input_notes, tx_args)
         .await?;
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
@@ -104,7 +97,6 @@ async fn check_note_consumability_custom_notes_success(
             .extend_input_notes(notes.clone())
             .build()?
     };
-    let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
@@ -116,7 +108,7 @@ async fn check_note_consumability_custom_notes_success(
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
         .await?;
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
@@ -182,7 +174,6 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
             ],
         )?
         .build()?;
-    let source_manager = tx_context.source_manager();
 
     let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
@@ -194,7 +185,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args, source_manager)
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
         .await?;
 
     assert_matches!(

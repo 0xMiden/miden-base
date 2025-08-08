@@ -346,7 +346,6 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        _source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
         if notes.is_empty() {
             return Ok(NoteConsumptionInfo::default());

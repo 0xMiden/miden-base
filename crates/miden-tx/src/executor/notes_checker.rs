@@ -1,7 +1,4 @@
-use alloc::sync::Arc;
-
 use miden_objects::account::AccountId;
-use miden_objects::assembly::SourceManager;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
 
@@ -34,10 +31,9 @@ where
         block_ref: BlockNumber,
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        source_manager: Arc<dyn SourceManager + Sync + Send>,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
         self.0
-            .try_execute_notes(target_account_id, block_ref, input_notes, tx_args, source_manager)
+            .try_execute_notes(target_account_id, block_ref, input_notes, tx_args)
             .await
     }
 }
