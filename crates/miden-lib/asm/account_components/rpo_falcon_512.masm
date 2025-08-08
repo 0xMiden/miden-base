@@ -2,10 +2,24 @@
 #
 # See the `RpoFalcon512` Rust type's documentation for more details.
 
+#! Authenticate a transaction using the Falcon signature scheme.
+#!
+#! It first increments the nonce of the account, independent of whether the account's state has
+#! changed or not. Then it computes and signs the following message (in memory order):
+#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT,
+#!  OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
+#!
+#! Including the final_nonce is necessary for replay protection. The reference block number is
+#! included to commit to the transaction creator's intended reference block of the transaction
+#! which determines the fee parameters and therefore the fee amount that is deducted.
+#!
+#! Inputs:  [AUTH_ARGS, pad(12)]
+#! Outputs: [pad(16)]
+#!
+#! Invocation: call
 export.auth__tx_rpo_falcon512
-    # Inputs: [AUTH_ARGS, pad(12)] - drop them to preserve old interface
-    dropw
-    # => [pad(12)]
+    dropw padw
+    # => [pad(16)]
 
     # Delegate to the new exec-invoked library procedure
     exec.::miden::auth::rpo_falcon512::authenticate_transaction

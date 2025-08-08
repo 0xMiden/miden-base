@@ -1,7 +1,7 @@
 use.miden::account
 use.miden::auth::util
 use.miden::tx
-use.std::crypto::hashes::rpo
+use.std::crypto::dsa::rpo_falcon512
 
 # CONSTANTS
 # =================================================================================================
@@ -25,6 +25,7 @@ const.PUBLIC_KEY_SLOT=0
 #!
 #! Inputs:  []
 #! Outputs: []
+#!
 #! Invocation: exec
 export.authenticate_transaction
     # Fetch public key from storage.
@@ -41,13 +42,14 @@ export.authenticate_transaction
 
     # Compute the message that is signed.
     # ---------------------------------------------------------------------------------------------
-    exec.auth::util::create_tx_summary
+    exec.util::create_tx_summary
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, PUB_KEY]
-    exec.auth::util::adv_insert_hqword
+    exec.util::adv_insert_hqword
 
     # The commitment to the tx summary is the message that is signed
-    exec.auth::util::hash_tx_summary
+    exec.util::hash_tx_summary
     # OS => [MESSAGE, PUB_KEY]
+    # AS => []
 
     # Fetch signature from advice provider and verify.
     # ---------------------------------------------------------------------------------------------
