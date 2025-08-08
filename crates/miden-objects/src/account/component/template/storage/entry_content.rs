@@ -567,14 +567,14 @@ impl MapRepresentation {
             if let Ok(key) = entry
                 .key()
                 .try_build_word(&InitStorageData::default(), StorageValueName::empty())
+                && !seen_keys.insert(key)
             {
-                if !seen_keys.insert(key) {
-                    return Err(AccountComponentTemplateError::StorageMapHasDuplicateKeys(
-                        Box::from(format!("key `{key}` is duplicated")),
-                    ));
-                }
-            };
+                return Err(AccountComponentTemplateError::StorageMapHasDuplicateKeys(Box::from(
+                    format!("key `{key}` is duplicated"),
+                )));
+            }
         }
+
         Ok(())
     }
 }

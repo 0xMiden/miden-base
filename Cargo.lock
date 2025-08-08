@@ -1310,6 +1310,7 @@ dependencies = [
  "miden-tx",
  "rand",
  "rand_chacha",
+ "rstest",
  "thiserror 2.0.12",
  "tokio",
  "winter-rand-utils",

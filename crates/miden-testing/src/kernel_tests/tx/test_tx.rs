@@ -1400,7 +1400,10 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let summary_commitment = summary.to_commitment();
 
     let account_interface = AccountInterface::from(&account);
-    let AuthScheme::RpoFalcon512 { pub_key } = account_interface.auth().first().unwrap();
+    let pub_key = match account_interface.auth().first().unwrap() {
+        AuthScheme::RpoFalcon512 { pub_key } => pub_key,
+        AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
+    };
 
     // This is in an internal detail of the tx executor host, but this is the easiest way to check
     // for the presence of the signature in the advice map.

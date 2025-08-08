@@ -1,3 +1,5 @@
+use core::slice;
+
 use anyhow::Context;
 use miden_lib::errors::note_script_errors::{
     ERR_P2IDE_RECLAIM_ACCT_IS_NOT_SENDER,
@@ -31,7 +33,7 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])?
+        .build_tx_context(malicious_account.id(), &[], slice::from_ref(&p2ide_note))?
         .build()?
         .execute_blocking();
 
@@ -265,7 +267,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
 
     // CONSTRUCT AND EXECUTE TX (Failure - Malicious Account)
     let executed_transaction_1 = mock_chain
-        .build_tx_context(malicious_account.id(), &[], &[p2ide_note.clone()])?
+        .build_tx_context(malicious_account.id(), &[], slice::from_ref(&p2ide_note))?
         .build()?
         .execute_blocking();
 

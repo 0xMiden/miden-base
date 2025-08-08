@@ -270,6 +270,14 @@ impl InputNote {
         }
     }
 
+    /// Consumes the [`InputNote`] an converts it to a [`Note`].
+    pub fn into_note(self) -> Note {
+        match self {
+            Self::Authenticated { note, .. } => note,
+            Self::Unauthenticated { note } => note,
+        }
+    }
+
     /// Returns a reference to the inclusion proof of the note.
     pub fn proof(&self) -> Option<&NoteInclusionProof> {
         match self {

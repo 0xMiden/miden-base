@@ -40,4 +40,5 @@ winterfell = { version = "0.13" }
 anyhow            = { features = ["backtrace", "std"], version = "1.0" }
 assert_matches    = { workspace = true }
 miden-objects     = { features = ["std"], workspace = true }
+rstest            = { version = "0.25" }
 winter-rand-utils = { version = "0.13" }

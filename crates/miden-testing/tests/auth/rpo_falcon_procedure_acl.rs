@@ -1,3 +1,5 @@
+use core::slice;
+
 use assert_matches::assert_matches;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
@@ -144,7 +146,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // Test 1: Transaction WITH authenticator calling trigger procedure 1 (should succeed)
     let tx_context_with_auth_1 = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(authenticator.clone())
         .tx_script(tx_script_trigger_1.clone())
         .build()?;
@@ -155,7 +157,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(authenticator)
         .tx_script(tx_script_trigger_2)
         .build()?;
@@ -166,7 +168,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_trigger_1)
         .build()?;
@@ -184,7 +186,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     let tx_context_no_trigger = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
@@ -220,7 +222,7 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
     // This tests that when allow_unauthorized_output_notes=true, transactions without
     // authenticators can still succeed even if they create output notes
     let tx_context_no_trigger = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
@@ -256,7 +258,7 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
     // notes This should FAIL because allow_unauthorized_input_notes=false and we're consuming
     // input notes
     let tx_context_no_auth = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
