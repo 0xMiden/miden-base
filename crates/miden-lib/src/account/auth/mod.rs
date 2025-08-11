@@ -257,9 +257,9 @@ impl From<NoAuth> for AccountComponent {
 /// This component requires a threshold number of signatures from a set of approvers.
 ///
 /// The storage layout is:
-/// - Slot 0(value): Threshold
-/// - Slot 1(value): Total number of approvers
-/// - Slot 2(map): A map with approver public keys (index -> pubkey)
+/// - Slot 0(value): [threshold, num_approvers, 0, 0]
+/// - Slot 1(map): A map with approver public keys (index -> pubkey)
+/// - Slot 2(map): A map which stores executed transactions
 ///
 /// This component supports all account types.
 #[derive(Debug)]
@@ -295,14 +295,16 @@ impl From<AuthMultisigRpoFalcon512> for AccountComponent {
     fn from(multisig: AuthMultisigRpoFalcon512) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
-        // Slot 0: Threshold
-        storage_slots.push(StorageSlot::Value(Word::from([multisig.threshold, 0, 0, 0])));
-
-        // Slot 1: Number of approvers
+        // Slot 0: [threshold, num_approvers, 0, 0]
         let num_approvers = multisig.approvers.len() as u32;
-        storage_slots.push(StorageSlot::Value(Word::from([num_approvers, 0, 0, 0])));
+        storage_slots.push(StorageSlot::Value(Word::from([
+            multisig.threshold,
+            num_approvers,
+            0,
+            0,
+        ])));
 
-        // Slot 2: A map with approver public keys
+        // Slot 1: A map with approver public keys
         let map_entries = multisig
             .approvers
             .iter()
@@ -312,7 +314,7 @@ impl From<AuthMultisigRpoFalcon512> for AccountComponent {
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
 
-        // Slot 3: A map which stores executed transactions
+        // Slot 2: A map which stores executed transactions
         let executed_transactions = StorageMap::default();
         storage_slots.push(StorageSlot::Map(executed_transactions));
 
@@ -509,20 +511,15 @@ mod tests {
             .build()
             .expect("account building failed");
 
-        // Verify slot 0: Threshold
+        // Verify slot 0: [threshold, num_approvers, 0, 0]
         let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(threshold_slot, Word::from([threshold, 0, 0, 0]));
+        assert_eq!(threshold_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
-        // Verify slot 1: Number of approvers
-        let num_approvers_slot =
-            account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_approvers_slot, Word::from([approvers.len() as u32, 0, 0, 0]));
-
-        // Verify slot 2: Approver public keys in map
+        // Verify slot 1: Approver public keys in map
         for (i, expected_pub_key) in approvers.iter().enumerate() {
             let stored_pub_key = account
                 .storage()
-                .get_map_item(2, Word::from([i as u32, 0, 0, 0]))
+                .get_map_item(1, Word::from([i as u32, 0, 0, 0]))
                 .expect("storage map access failed");
             assert_eq!(stored_pub_key, Word::from(*expected_pub_key));
         }
@@ -546,15 +543,11 @@ mod tests {
 
         // Verify storage layout
         let threshold_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(threshold_slot, Word::from([threshold, 0, 0, 0]));
-
-        let num_approvers_slot =
-            account.storage().get_item(1).expect("storage slot 1 access failed");
-        assert_eq!(num_approvers_slot, Word::from([1u32, 0, 0, 0]));
+        assert_eq!(threshold_slot, Word::from([threshold, approvers.len() as u32, 0, 0]));
 
         let stored_pub_key = account
             .storage()
-            .get_map_item(2, Word::from([0u32, 0, 0, 0]))
+            .get_map_item(1, Word::from([0u32, 0, 0, 0]))
             .expect("storage map access failed");
         assert_eq!(stored_pub_key, Word::from(pub_key));
     }

@@ -19,24 +19,23 @@ const.UNAUTHORIZED_EVENT=131101
 
 # Storage Layout Constants
 #
-# ┌───────────┬───────────────┬──────────┬──────────────┐
-# │ THRESHOLD │ NUM APPROVERS │ PUB KEYS │ EXECUTED TXS │
-# │  (value)  │    (value)    │   (map)  │    (map)     │
-# ├───────────┼───────────────┼──────────┼──────────────┤
-# │     0     │       1       │    2     │      3       │
-# └───────────┴───────────────┴──────────┴──────────────┘
+# ┌─────────────────────────────┬──────────┬──────────────┐
+# │    THRESHOLD & APPROVERS    │ PUB KEYS │ EXECUTED TXS │
+# │ [threshold, num_approvers,  │   (map)  │    (map)     │
+# │         0, 0] (value)       │          │              │
+# ├─────────────────────────────┼──────────┼──────────────┤
+# │              0              │    1     │      2       │
+# └─────────────────────────────┴──────────┴──────────────┘
 
-# The slot in this component's storage layout where the signature threshold is stored.
+# The slot in this component's storage layout where both the signature threshold
+# and number of approvers are stored as [threshold, num_approvers, 0, 0].
 const.THRESHOLD_SLOT=0
 
-# The slot in this component's storage layout where the number of approvers is stored.
-const.NUMBER_OF_APPROVERS_SLOT=1
-
 # The slot in this component's storage layout where the public keys map is stored.
-const.PUBLIC_KEYS_MAP_SLOT=2
+const.PUBLIC_KEYS_MAP_SLOT=1
 
 # The slot in this component's storage layout where executed transactions are stored.
-const.EXECUTED_TXS_SLOT=3
+const.EXECUTED_TXS_SLOT=2
 
 # Runtime Memory Address Constants
 const.TEMP_PK=108
@@ -290,19 +289,12 @@ export.auth__tx_rpo_falcon512_multisig
     # => [index]
 
     exec.account::get_item
-    # => [0, 0, 0, num_required_signatures]
+    # => [0, 0, num_of_approvers, num_required_signatures]
 
-    drop drop drop
-    # => [num_required_signatures]
-
-    push.NUMBER_OF_APPROVERS_SLOT
-    # => [index, num_required_signatures]
-
-    exec.account::get_item
-    # => [0, 0, 0, num_of_approvers]
-
-    drop drop drop
+    drop drop
     # => [num_of_approvers, num_required_signatures]
+
+    push.111 debug.stack drop
 
     exec.verify_signatures
     # => []
