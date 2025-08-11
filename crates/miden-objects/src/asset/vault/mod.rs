@@ -218,24 +218,22 @@ impl AssetVault {
         asset: FungibleAsset,
     ) -> Result<FungibleAsset, AssetVaultError> {
         // fetch the asset from the vault.
-        let mut current = match self.asset_tree.get_value(&asset.vault_key()) {
+        let new: FungibleAsset = match self.asset_tree.get_value(&asset.vault_key()) {
             current if current == Smt::EMPTY_VALUE => {
                 return Err(AssetVaultError::FungibleAssetNotFound(asset));
             },
-            current => FungibleAsset::new_unchecked(current),
+            current => {
+                let current = FungibleAsset::new_unchecked(current);
+                current.sub(asset).map_err(AssetVaultError::SubtractFungibleAssetBalanceError)?
+            },
         };
-
-        // subtract the amount of the asset to be removed from the current amount.
-        current
-            .sub(asset.amount())
-            .map_err(AssetVaultError::SubtractFungibleAssetBalanceError)?;
 
         // if the amount of the asset is zero, remove the asset from the vault.
-        let new = match current.amount() {
+        let value = match new.amount() {
             0 => Smt::EMPTY_VALUE,
-            _ => current.into(),
+            _ => new.into(),
         };
-        self.asset_tree.insert(asset.vault_key(), new);
+        self.asset_tree.insert(new.vault_key(), value);
 
         // return the asset that was removed.
         Ok(asset)
