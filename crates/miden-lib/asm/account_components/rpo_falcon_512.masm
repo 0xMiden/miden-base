@@ -1,6 +1,15 @@
 # The MASM code of the RPO Falcon 512 authentication Account Component.
 #
-# See the `RpoFalcon512` Rust type's documentation for more details.
+# See the `AuthRpoFalcon512` Rust type's documentation for more details.
+
+use.miden::auth::rpo_falcon512
+use.miden::account
+
+# CONSTANTS
+# =================================================================================================
+
+# The slot in this component's storage layout where the public key is stored.
+const.PUBLIC_KEY_SLOT=0
 
 #! Authenticate a transaction using the Falcon signature scheme.
 #!
@@ -21,6 +30,11 @@ export.auth__tx_rpo_falcon512
     dropw
     # => [pad(16)]
 
-    exec.::miden::auth::rpo_falcon512::authenticate_transaction
+    # Fetch public key from storage.
+    # ---------------------------------------------------------------------------------------------
+    push.PUBLIC_KEY_SLOT exec.account::get_item
+    # => [PUB_KEY, pad(16)]
+
+    exec.rpo_falcon512::authenticate_transaction
     # => [pad(16)]
 end

@@ -23,16 +23,11 @@ const.PUBLIC_KEY_SLOT=0
 #! included to commit to the transaction creator's intended reference block of the transaction
 #! which determines the fee parameters and therefore the fee amount that is deducted.
 #!
-#! Inputs:  []
+#! Inputs:  [PUB_KEY]
 #! Outputs: []
 #!
 #! Invocation: exec
 export.authenticate_transaction
-    # Fetch public key from storage.
-    # ---------------------------------------------------------------------------------------------
-    push.PUBLIC_KEY_SLOT exec.account::get_item
-    # => [PUB_KEY]
-
     # Increment the account's nonce.
     # ---------------------------------------------------------------------------------------------
     # This has to happen before computing the delta commitment, otherwise that procedure will abort

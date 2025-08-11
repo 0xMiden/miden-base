@@ -1,8 +1,15 @@
+# The MASM code of the RPO Falcon 512 authentication Account Component with ACL.
+#
+# See the `AuthRpoFalcon512Acl` Rust type's documentation for more details.
+
 use.miden::account
 use.miden::tx
 
 # CONSTANTS
 # =================================================================================================
+
+# The slot in this component's storage layout where the public key is stored.
+const.PUBLIC_KEY_SLOT=0
 
 # The slot where the authentication configuration is stored.
 const.AUTH_CONFIG_SLOT=1
@@ -112,6 +119,10 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
 
     # If authentication is required, perform signature verification
     if.true
+        # Fetch public key from storage.
+        push.PUBLIC_KEY_SLOT exec.account::get_item
+        # => [PUB_KEY, pad(16)]
+
         exec.::miden::auth::rpo_falcon512::authenticate_transaction
     else
         # ------ Check if initial account commitment differs from current commitment ------
