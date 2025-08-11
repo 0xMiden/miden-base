@@ -7,6 +7,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
+use miden_lib::testing::account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
@@ -56,7 +57,6 @@ fn test_epilogue() -> anyhow::Result<()> {
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
@@ -100,13 +100,11 @@ fn test_epilogue() -> anyhow::Result<()> {
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
-    let assembler = TransactionKernel::assembler();
     let auth_component: AccountComponent = IncrNonceAuthComponent.into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,
         auth_component,
-        assembler,
     );
 
     let output_notes = OutputNotes::new(
@@ -167,7 +165,6 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
         );
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);

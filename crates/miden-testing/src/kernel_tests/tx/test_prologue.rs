@@ -8,6 +8,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
+use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
     ACCT_DB_ROOT_PTR,
@@ -72,7 +74,6 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::asset::FungibleAsset;
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
@@ -104,7 +105,6 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
         );
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
@@ -555,7 +555,7 @@ fn create_simple_account() -> anyhow::Result<()> {
     let (account, seed) = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?)
+        .with_component(AccountMockComponent::new_with_empty_slots()?)
         .build()?;
 
     let tx = TransactionContextBuilder::new(account)
@@ -620,10 +620,9 @@ pub fn create_multiple_accounts_test(
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
             .with_component(
-                AccountMockComponent::new_with_slots(
-                    TransactionKernel::testing_assembler(),
-                    vec![StorageSlot::Value(Word::from([255u32; WORD_SIZE]))],
-                )
+                AccountMockComponent::new_with_slots(vec![StorageSlot::Value(Word::from(
+                    [255u32; WORD_SIZE],
+                ))])
                 .unwrap(),
             )
             .build()
@@ -694,7 +693,6 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         ZERO,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
-        TransactionKernel::assembler().with_debug_mode(true),
     );
     let (account, account_seed) = compute_valid_account_id(account);
 
@@ -712,12 +710,8 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block()?;
 
-    let account = Account::mock_non_fungible_faucet(
-        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
-        ZERO,
-        false,
-        TransactionKernel::assembler().with_debug_mode(true),
-    );
+    let account =
+        Account::mock_non_fungible_faucet(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET, ZERO, false);
     let (account, account_seed) = compute_valid_account_id(account);
 
     let result = create_account_test(&mock_chain, account, account_seed);

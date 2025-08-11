@@ -5,8 +5,8 @@ use std::path::Path;
 
 use anyhow::Context;
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
@@ -63,14 +63,11 @@ fn main() -> anyhow::Result<()> {
 /// Runs the default transaction with empty transaction script and two default notes.
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
-    let assembler = TransactionKernel::testing_assembler();
-
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             IncrNonceAuthComponent,
-            assembler,
         );
 
         let input_note_1 =

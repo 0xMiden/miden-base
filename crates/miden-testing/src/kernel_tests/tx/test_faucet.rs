@@ -7,6 +7,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN,
     ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW,
 };
+use miden_lib::testing::account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
 use miden_lib::utils::word_to_masm_push_string;
@@ -357,7 +358,6 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             ONE,
             Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
-            TransactionKernel::testing_assembler(),
         );
         let note = create_p2any_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),

@@ -7,7 +7,7 @@ use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceA
 use miden_objects::Word;
 use miden_objects::account::{AccountComponent, AuthSecretKey};
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
-use miden_objects::testing::account_component::NoopAuthComponent;
+use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;

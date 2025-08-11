@@ -12,6 +12,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
@@ -367,7 +368,6 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
         );
 
         let output_note_1 =
@@ -797,7 +797,6 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
         );
 
         let input_note_1 =
@@ -1033,13 +1032,10 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
 
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
-    let assembler = TransactionKernel::testing_assembler();
-
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         Felt::ONE,
         IncrNonceAuthComponent,
-        assembler,
     );
     let account_id = executor_account.id();
 

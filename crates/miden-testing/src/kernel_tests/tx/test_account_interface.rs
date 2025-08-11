@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
+use miden_lib::testing::account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::FungibleAsset;
@@ -91,7 +92,6 @@ async fn check_note_consumability_custom_notes_success(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
             Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
         );
         TransactionContextBuilder::new(account)
             .extend_input_notes(notes.clone())

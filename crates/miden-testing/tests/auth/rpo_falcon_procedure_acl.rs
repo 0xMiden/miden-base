@@ -1,6 +1,7 @@
 use core::slice;
 
 use assert_matches::assert_matches;
+use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -11,7 +12,6 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::OutputNote;
@@ -42,12 +42,10 @@ fn setup_rpo_falcon_procedure_acl_test(
 ) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
     let assembler = TransactionKernel::assembler();
 
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
+    let component: AccountComponent =
+        AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots())
+            .expect("failed to create mock component")
+            .into();
 
     let get_item_proc_root = component
         .get_procedure_root_by_name("test::account::get_item")
@@ -89,13 +87,10 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     let (account, mut mock_chain, note) = setup_rpo_falcon_procedure_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
-    let assembler = TransactionKernel::assembler();
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
+    let component: AccountComponent =
+        AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots())
+            .expect("failed to create mock component")
+            .into();
 
     let get_item_proc_root = component
         .get_procedure_root_by_name("test::account::get_item")

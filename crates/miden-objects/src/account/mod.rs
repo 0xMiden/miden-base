@@ -466,11 +466,11 @@ mod tests {
         StorageSlot,
     };
     use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
-    use crate::testing::account_component::NoopAuthComponent;
     use crate::testing::account_id::{
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
+    use crate::testing::noop_auth_component::NoopAuthComponent;
     use crate::testing::storage::AccountStorageDeltaBuilder;
 
     #[test]

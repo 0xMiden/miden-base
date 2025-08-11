@@ -11,6 +11,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
     ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
+use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::StarkField;
@@ -30,7 +32,6 @@ use miden_objects::account::{
 use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -53,12 +54,8 @@ use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
 #[test]
 pub fn compute_current_commitment() -> miette::Result<()> {
-    let account = Account::mock(
-        ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-        ONE,
-        Auth::IncrNonce,
-        TransactionKernel::assembler(),
-    );
+    let account =
+        Account::mock(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, ONE, Auth::IncrNonce);
 
     // Precompute a commitment to a changed account so we can assert it during tx script execution.
     let mut account_clone = account.clone();
@@ -390,11 +387,7 @@ fn test_get_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::assembler(),
-                vec![AccountStorage::mock_item_2().slot],
-            )
-            .unwrap(),
+            AccountMockComponent::new_with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
         )
         .build_existing()
         .unwrap();
@@ -546,11 +539,7 @@ fn test_set_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::assembler(),
-                vec![AccountStorage::mock_item_2().slot],
-            )
-            .unwrap(),
+            AccountMockComponent::new_with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
         )
         .build_existing()
         .unwrap();
@@ -767,10 +756,7 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
             .with_auth_component(Auth::IncrNonce)
-            .with_component(
-                AccountMockComponent::new_with_empty_slots(TransactionKernel::testing_assembler())
-                    .unwrap(),
-            )
+            .with_component(AccountMockComponent::new_with_empty_slots().unwrap())
             .build()
             .context("failed to build account")?;
 
@@ -1013,8 +999,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
 
 #[test]
 fn test_authenticate_and_track_procedure() -> miette::Result<()> {
-    let mock_component =
-        AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap();
+    let mock_component = AccountMockComponent::new_with_empty_slots().unwrap();
 
     let account_code = AccountCode::from_components(
         &[Auth::IncrNonce.into(), mock_component.into()],
@@ -1070,11 +1055,8 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 #[test]
 fn test_was_procedure_called() -> miette::Result<()> {
     // Create a standard account using the mock component
-    let mock_component = AccountMockComponent::new_with_slots(
-        TransactionKernel::assembler(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .unwrap();
+    let mock_component =
+        AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots()).unwrap();
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(mock_component)
@@ -1232,9 +1214,7 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
             .with_supports_all_types();
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
-        .with_component(
-            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
-        )
+        .with_component(AccountMockComponent::new_with_empty_slots().unwrap())
         .build()
         .context("failed to build account")?;
 
@@ -1258,9 +1238,7 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
 fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     let mut account = AccountBuilder::new([42; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(
-            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
-        )
+        .with_component(AccountMockComponent::new_with_empty_slots().unwrap())
         .build_existing()
         .context("failed to build account")?;
     // Increment the nonce to the maximum felt value. The nonce is already 1, so we increment by

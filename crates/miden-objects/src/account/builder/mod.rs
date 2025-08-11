@@ -272,7 +272,7 @@ mod tests {
 
     use super::*;
     use crate::account::StorageSlot;
-    use crate::testing::account_component::NoopAuthComponent;
+    use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
           export.foo

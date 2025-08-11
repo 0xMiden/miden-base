@@ -6,6 +6,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT,
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
+use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
     ACCOUNT_DATA_LENGTH,
@@ -31,7 +32,6 @@ use miden_objects::account::{
     PartialAccount,
     StorageSlot,
 };
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::AccountInputs;
 use miden_tx::TransactionExecutorError;
@@ -90,11 +90,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::testing_assembler(),
-                vec![AccountStorage::mock_item_2().slot],
-            )
-            .unwrap(),
+            AccountMockComponent::new_with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
         )
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
@@ -353,9 +349,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_empty_slots(
-            TransactionKernel::testing_assembler(),
-        )?)
+        .with_component(AccountMockComponent::new_with_empty_slots()?)
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -550,10 +544,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_slots(
-            TransactionKernel::testing_assembler(),
-            vec![],
-        )?)
+        .with_component(AccountMockComponent::new_with_slots(vec![])?)
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -772,10 +763,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ NATIVE ACCOUNT ---------------------------------------------------------------
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_slots(
-            TransactionKernel::testing_assembler(),
-            vec![],
-        )?)
+        .with_component(AccountMockComponent::new_with_slots(vec![])?)
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -968,7 +956,6 @@ fn test_nested_fpi_stack_overflow() {
                 .with_auth_component(Auth::IncrNonce)
                 .with_component(
                     AccountMockComponent::new_with_slots(
-                        TransactionKernel::testing_assembler(),
                         vec![],
                     )
                     .unwrap(),
@@ -1087,10 +1074,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // ------ NATIVE ACCOUNT ---------------------------------------------------------------
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(
-            AccountMockComponent::new_with_slots(TransactionKernel::testing_assembler(), vec![])
-                .unwrap(),
-        )
+        .with_component(AccountMockComponent::new_with_empty_slots().unwrap())
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -1189,11 +1173,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
     let native_account = AccountBuilder::new([4; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::testing_assembler(),
-                vec![AccountStorage::mock_item_2().slot],
-            )
-            .unwrap(),
+            AccountMockComponent::new_with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
         )
         .build_existing()?;
 

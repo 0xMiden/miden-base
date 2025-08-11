@@ -1,0 +1,45 @@
+use alloc::vec::Vec;
+
+use miden_objects::AccountError;
+use miden_objects::account::{AccountCode, AccountComponent, StorageSlot};
+
+use crate::testing::account_code::MockAccountCodeExt;
+
+// ACCOUNT MOCK COMPONENT
+// ================================================================================================
+
+/// Creates a mock [`Library`] which can be used to assemble programs and as a library to create a
+/// mock [`AccountCode`](crate::account::AccountCode) interface. Transaction and note scripts that
+/// make use of this interface should be assembled with this.
+///
+/// This component supports all [`AccountType`](crate::account::AccountType)s for testing purposes.
+pub struct AccountMockComponent {
+    storage_slots: Vec<StorageSlot>,
+}
+
+impl AccountMockComponent {
+    fn new(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+        // Check that we have less than 256 storage slots.
+        u8::try_from(storage_slots.len())
+            .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))
+            .expect("too many storage slots");
+
+        Ok(Self { storage_slots })
+    }
+
+    pub fn new_with_empty_slots() -> Result<Self, AccountError> {
+        Self::new(vec![])
+    }
+
+    pub fn new_with_slots(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+        Self::new(storage_slots)
+    }
+}
+
+impl From<AccountMockComponent> for AccountComponent {
+    fn from(mock_component: AccountMockComponent) -> Self {
+        AccountComponent::new(AccountCode::mock_library(), mock_component.storage_slots)
+          .expect("account mock component should satisfy the requirements of a valid account component")
+          .with_supports_all_types()
+    }
+}

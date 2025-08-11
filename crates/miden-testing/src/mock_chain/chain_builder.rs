@@ -6,6 +6,7 @@ use itertools::Itertools;
 use miden_lib::account::faucets::BasicFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
@@ -30,7 +31,6 @@ use miden_objects::block::{
     ProvenBlock,
 };
 use miden_objects::note::{Note, NoteDetails, NoteType};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
@@ -296,7 +296,7 @@ impl MockChainBuilder {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
             .with_component(
-                AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())
+                AccountMockComponent::new_with_empty_slots()
                     .context("failed to create mock component")?,
             );
 
@@ -340,11 +340,8 @@ impl MockChainBuilder {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
             .with_component(
-                AccountMockComponent::new_with_slots(
-                    TransactionKernel::assembler(),
-                    slots.into_iter().collect(),
-                )
-                .context("failed to create mock component")?,
+                AccountMockComponent::new_with_slots(slots.into_iter().collect())
+                    .context("failed to create mock component")?,
             )
             .with_assets(assets);
 

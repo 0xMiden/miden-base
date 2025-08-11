@@ -2,8 +2,8 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
+use miden_lib::testing::account::MockAccountExt;
 use miden_lib::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
-use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
@@ -25,7 +25,6 @@ fn test_auth_procedure_args() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         ONE,
         ConditionalAuthComponent,
-        TransactionKernel::testing_assembler(),
     );
 
     let auth_args = [
@@ -53,7 +52,6 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         ONE,
         ConditionalAuthComponent,
-        TransactionKernel::testing_assembler(),
     );
 
     // The auth script expects [99, 98, 97, nonce_increment_flag]

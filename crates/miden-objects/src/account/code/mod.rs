@@ -457,7 +457,7 @@ mod tests {
     use crate::account::code::build_procedure_commitment;
     use crate::account::{AccountComponent, AccountType, StorageSlot};
     use crate::testing::account_code::CODE;
-    use crate::testing::account_component::NoopAuthComponent;
+    use crate::testing::noop_auth_component::NoopAuthComponent;
 
     #[test]
     fn test_serde_account_code() {

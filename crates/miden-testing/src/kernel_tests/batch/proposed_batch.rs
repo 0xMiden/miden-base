@@ -3,13 +3,13 @@ use std::collections::BTreeMap;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
+use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::batch::ProposedBatch;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::MerkleError;
 use miden_objects::note::{Note, NoteType};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::AccountIdBuilder;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
@@ -54,9 +54,7 @@ fn setup_chain() -> TestSetup {
 fn generate_account(chain: &mut MockChainBuilder) -> Account {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Private)
-        .with_component(
-            AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler()).unwrap(),
-        );
+        .with_component(AccountMockComponent::new_with_empty_slots().unwrap());
     chain
         .add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")
