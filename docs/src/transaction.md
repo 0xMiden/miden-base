@@ -49,7 +49,7 @@ A `Transaction` requires several inputs:
    - The account's [authentication procedure](account/code.md#authentication) is called to authorize the transaction.
    - The account's state must have changed, or at least one input note must have been consumed to make the transaction non-empty.
    - If the account's state has changed, the `nonce` must have been incremented to prevent replay attacks.
-   - Additionally, the net sum of all involved assets must be `0` (if the account is not a faucet).
+   - Additionally, the sum of all input assets must be equal to the sum of all output assets (if the account is not a faucet).
 
 The proof together with the corresponding data needed for verification and updates of the global state can then be submitted and processed by the network.
 
