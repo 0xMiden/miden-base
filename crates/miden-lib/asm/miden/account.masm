@@ -577,6 +577,10 @@ end
 
 #! Checks if a procedure has been called during transaction execution.
 #!
+#! Note: This returns 1 only if the procedure invoked account-restricted kernel APIs (e.g.,
+#! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute
+#! only local MASM instructions will return 0 even if they were executed.
+#!
 #! Inputs:  [PROC_ROOT]
 #! Outputs: [was_called]
 #!
@@ -584,9 +588,6 @@ end
 #! - PROC_ROOT is the hash of the procedure to check.
 #! - was_called is 1 if the procedure was called, 0 otherwise.
 #!
-#! NOTE: This returns true only if the procedure invoked account-restricted kernel APIs (e.g.,
-#! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute
-#! only local MASM instructions will return false even if they were executed.
 #! Invocation: exec
 export.was_procedure_called
     exec.kernel_proc_offsets::account_was_procedure_called_offset
