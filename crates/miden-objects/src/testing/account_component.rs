@@ -6,14 +6,6 @@ use crate::assembly::diagnostics::NamedSource;
 use crate::assembly::{Assembler, Library};
 use crate::testing::account_code::MOCK_ACCOUNT_CODE;
 
-// ACCOUNT COMPONENT ASSEMBLY CODE
-// ================================================================================================
-
-pub const BASIC_WALLET_CODE: &str = "
-    export.::miden::contracts::wallets::basic::receive_asset
-    export.::miden::contracts::wallets::basic::move_asset_to_note
-";
-
 // ACCOUNT MOCK COMPONENT
 // ================================================================================================
 
