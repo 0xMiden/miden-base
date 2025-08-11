@@ -4,6 +4,7 @@ use.miden::tx
 use.std::crypto::dsa::rpo_falcon512
 use.std::crypto::hashes::rpo
 use.std::sys
+use.std::word
 
 # CONSTANTS
 # =================================================================================================
@@ -73,10 +74,13 @@ proc.assert_new_tx.4
     exec.account::get_map_item
     # => [LOOKUP_VAL]
 
-    padw
-    # => [EMPTY_WORD, LOOKUP_VAL]
+    exec.word::eqz
+    # => [is_zero, LOOKUP_VAL]
 
-    assert_eqw.err=TX_ALREADY_EXECUTED
+    assert.err=TX_ALREADY_EXECUTED
+    # => [LOOKUP_VAL]
+
+    dropw
     # => []
 
     # Add transaction to executed transactions map.
