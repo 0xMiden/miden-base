@@ -62,7 +62,7 @@
 
 ## 0.10.1 (2025-08-02)
 
-- Added `NoAuth` component to the set of standard components ([#1620](<[(https://github.com/0xMiden/miden-base/pull/1620](https://github.com/0xMiden/miden-base/pull/1620))>)).
+- Added `NoAuth` component to the set of standard components ([#1620](https://github.com/0xMiden/miden-base/pull/1620)).
 
 ## 0.10.0 (2025-07-08)
 
