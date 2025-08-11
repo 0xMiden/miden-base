@@ -54,11 +54,13 @@ impl TransactionArgs {
     /// Returns new [TransactionArgs] instantiated with the provided transaction script, advice
     /// map and foreign account inputs.
     pub fn new(advice_map: AdviceMap, foreign_account_inputs: Vec<AccountInputs>) -> Self {
+        let advice_inputs = AdviceInputs { map: advice_map, ..Default::default() };
+
         Self {
             tx_script: None,
             tx_script_args: EMPTY_WORD,
             note_args: Default::default(),
-            advice_inputs: AdviceInputs::default().with_map(advice_map),
+            advice_inputs,
             foreign_account_inputs,
             auth_args: EMPTY_WORD,
         }
@@ -182,7 +184,7 @@ impl TransactionArgs {
             (script.root(), script_encoded),
         ];
 
-        self.advice_inputs.extend_map(new_elements);
+        self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
     }
 
     /// Populates the advice inputs with the specified note recipient details.
@@ -204,12 +206,12 @@ impl TransactionArgs {
 
     /// Extends the internal advice inputs' map with the provided key-value pairs.
     pub fn extend_advice_map<T: IntoIterator<Item = (Word, Vec<Felt>)>>(&mut self, iter: T) {
-        self.advice_inputs.extend_map(iter)
+        self.advice_inputs.map.extend(iter);
     }
 
     /// Extends the internal advice inputs' merkle store with the provided nodes.
     pub fn extend_merkle_store<I: Iterator<Item = InnerNodeInfo>>(&mut self, iter: I) {
-        self.advice_inputs.extend_merkle_store(iter)
+        self.advice_inputs.store.extend(iter);
     }
 
     /// Extends the advice inputs in self with the provided ones.

@@ -33,7 +33,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             # => [ASSETS_COMMITMENT, num_assets]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_COMMITMENT} 
+            push.{COMPUTED_ASSETS_COMMITMENT}
             assert_eqw.err="note {note_index} has incorrect assets hash"
             # => [num_assets]
 
@@ -88,7 +88,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -116,7 +116,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # => [RECIPIENT]
 
             # assert the correctness of the recipient
-            push.{RECIPIENT} 
+            push.{RECIPIENT}
             assert_eqw.err="note 0 has incorrect recipient"
             # => []
 
@@ -126,7 +126,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # => [METADATA]
 
             # assert the correctness of the metadata
-            push.{METADATA} 
+            push.{METADATA}
             assert_eqw.err="note 0 has incorrect metadata"
             # => []
         end
@@ -142,7 +142,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -215,7 +215,7 @@ fn test_get_assets() -> anyhow::Result<()> {
 
         begin
             {check_note_0}
-            
+
             {check_note_1}
 
             {check_note_2}
@@ -237,7 +237,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    tx_context.execute()?;
+    tx_context.execute_blocking()?;
 
     Ok(())
 }

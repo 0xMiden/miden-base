@@ -561,7 +561,7 @@ fn create_simple_account() -> anyhow::Result<()> {
     let tx = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute account-creating transaction")?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));

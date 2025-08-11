@@ -15,7 +15,6 @@ use miden_objects::{Word, ZERO};
 use miden_tx::{
     LocalTransactionProver,
     ProvingOptions,
-    TransactionProver,
     TransactionVerifier,
     TransactionVerifierError,
 };

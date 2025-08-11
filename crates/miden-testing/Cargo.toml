@@ -13,8 +13,7 @@ rust-version.workspace = true
 version                = "0.11.0"
 
 [features]
-async = ["miden-tx/async", "winter-maybe-async/async"]
-std   = ["miden-lib/std"]
+std = ["miden-lib/std"]
 
 [dependencies]
 # Workspace dependencies
@@ -27,21 +26,18 @@ miden-tx           = { features = ["testing"], workspace = true }
 vm-processor = { workspace = true }
 
 # External dependencies
-anyhow             = { default-features = false, version = "1.0" }
-async-trait        = "0.1"
-itertools          = { default-features = false, features = ["use_alloc"], version = "0.14" }
-rand               = { features = ["os_rng", "small_rng"], workspace = true }
-rand_chacha        = { default-features = false, version = "0.9" }
-thiserror          = { workspace = true }
-winter-maybe-async = { version = "0.13" }
-winterfell         = { version = "0.13" }
+anyhow      = { default-features = false, version = "1.0" }
+itertools   = { default-features = false, features = ["use_alloc"], version = "0.14" }
+rand        = { features = ["os_rng", "small_rng"], workspace = true }
+rand_chacha = { default-features = false, version = "0.9" }
+thiserror   = { workspace = true }
+# TODO: We should be able to remove this once we remove `TransactionContext::execute_blocking`
+tokio      = { features = ["macros", "rt"], workspace = true }
+winterfell = { version = "0.13" }
 
 [dev-dependencies]
 anyhow            = { features = ["backtrace", "std"], version = "1.0" }
 assert_matches    = { workspace = true }
 miden-objects     = { features = ["std"], workspace = true }
+rstest            = { version = "0.25" }
 winter-rand-utils = { version = "0.13" }
-
-[package.metadata.cargo-machete]
-# cargo machete flags async-trait as unused but it is used by winter-maybe-async with the async feature
-ignored = ["async-trait"]

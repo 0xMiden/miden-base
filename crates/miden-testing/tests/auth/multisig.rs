@@ -87,8 +87,8 @@ fn create_multisig_account(
 // TESTS
 // ================================================================================================
 
-#[test]
-fn test_multisig() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_multisig() -> anyhow::Result<()> {
     // ROLES
     // - 2 Approvers (multisig signers)
     // - 1 Multisig Contract
@@ -166,7 +166,7 @@ fn test_multisig() -> anyhow::Result<()> {
         .auth_args(salt)
         .build()?;
 
-    let tx_summary = match tx_context_init.execute().unwrap_err() {
+    let tx_summary = match tx_context_init.execute().await.unwrap_err() {
         TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
         error => panic!("expected abort with tx effects: {error:?}"),
     };
@@ -175,8 +175,8 @@ fn test_multisig() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary)?;
-    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary)?;
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
     // Populate advice map with signatures
     let mut advice_map = AdviceMap::default();
@@ -189,10 +189,11 @@ fn test_multisig() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .extend_input_notes(vec![input_note])
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
-        .extend_advice_map(advice_map)
+        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
         .auth_args(salt)
         .build()?
-        .execute()?;
+        .execute()
+        .await?;
 
     multisig_account.apply_delta(tx_context_execute.account_delta())?;
 
@@ -210,8 +211,8 @@ fn test_multisig() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     // Test 4 owners with threshold 2 - only 2 signatures should be needed
 
     // Setup keys and authenticators (4 approvers, but only 2 signers)
@@ -234,7 +235,7 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
         .auth_args(salt)
         .build()?;
 
-    let tx_summary = match tx_context_init.execute().unwrap_err() {
+    let tx_summary = match tx_context_init.execute().await.unwrap_err() {
         TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
         error => panic!("expected abort with tx effects: {error:?}"),
     };
@@ -243,8 +244,8 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary)?;
-    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary)?;
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
     // Populate advice map with only 2 signatures
     let mut advice_map = AdviceMap::default();
@@ -254,19 +255,20 @@ fn test_multisig_4_owners_threshold_2() -> anyhow::Result<()> {
     // Execute transaction with only 2 signatures - should succeed since threshold is 2
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .extend_advice_map(advice_map)
+        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
         .auth_args(salt)
         .build()?;
 
     tx_context_execute
         .execute()
+        .await
         .expect("Transaction should succeed with 2 out of 4 signatures");
 
     Ok(())
 }
 
-#[test]
-fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow::Result<()> {
     // Test 4 owners with threshold 2 - test different combinations of signers
     // This tests that any 2 of the 4 approvers can sign, not just the first 2
 
@@ -302,7 +304,7 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
             .auth_args(salt)
             .build()?;
 
-        let tx_summary = match tx_context_init.execute().unwrap_err() {
+        let tx_summary = match tx_context_init.execute().await.unwrap_err() {
             TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
             error => panic!("expected abort with tx effects: {error:?}"),
         };
@@ -312,9 +314,11 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
         let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
         let sig_1 = authenticators[*signer1_idx]
-            .get_signature(public_keys[*signer1_idx].into(), &tx_summary)?;
+            .get_signature(public_keys[*signer1_idx].into(), &tx_summary)
+            .await?;
         let sig_2 = authenticators[*signer2_idx]
-            .get_signature(public_keys[*signer2_idx].into(), &tx_summary)?;
+            .get_signature(public_keys[*signer2_idx].into(), &tx_summary)
+            .await?;
 
         // Populate advice map with signatures from the chosen signers
         let mut advice_map = AdviceMap::default();
@@ -324,11 +328,11 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
         // Execute transaction with signatures - should succeed for any combination
         let tx_context_execute = mock_chain
             .build_tx_context(multisig_account.id(), &[], &[])?
-            .extend_advice_map(advice_map)
+            .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
             .auth_args(salt)
             .build()?;
 
-        let executed_tx = tx_context_execute.execute().unwrap_or_else(|_| {
+        let executed_tx = tx_context_execute.execute().await.unwrap_or_else(|_| {
             panic!("Transaction should succeed with signers {signer1_idx} and {signer2_idx}")
         });
 
@@ -340,8 +344,8 @@ fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow:
     Ok(())
 }
 
-#[test]
-fn test_multisig_replay_protection() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Test 2/3 multisig where tx is executed, then attempted again (should fail on 2nd attempt)
 
     // Setup keys and authenticators (3 approvers, but only 2 signers)
@@ -365,7 +369,7 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
         .auth_args(salt)
         .build()?;
 
-    let tx_summary = match tx_context_init.execute().unwrap_err() {
+    let tx_summary = match tx_context_init.execute().await.unwrap_err() {
         TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
         error => panic!("expected abort with tx effects: {error:?}"),
     };
@@ -374,8 +378,8 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary)?;
-    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary)?;
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
     // Populate advice map with signatures
     let mut advice_map = AdviceMap::default();
@@ -385,11 +389,11 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Execute transaction with signatures - should succeed (first execution)
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .extend_advice_map(advice_map.clone())
+        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
         .auth_args(salt)
         .build()?;
 
-    let executed_tx = tx_context_execute.execute().expect("First transaction should succeed");
+    let executed_tx = tx_context_execute.execute().await.expect("First transaction should succeed");
 
     // Apply the transaction to the mock chain
     mock_chain.add_pending_executed_transaction(&executed_tx)?;
@@ -398,12 +402,12 @@ fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Now attempt to execute the same transaction again - should fail due to replay protection
     let tx_context_replay = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .extend_advice_map(advice_map)
+        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
         .auth_args(salt)
         .build()?;
 
     // This should fail - due to replay protection
-    let result = tx_context_replay.execute();
+    let result = tx_context_replay.execute().await;
     assert!(result.is_err(), "Second execution of the same transaction should fail");
 
     Ok(())
