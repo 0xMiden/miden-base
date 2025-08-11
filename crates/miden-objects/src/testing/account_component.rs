@@ -1,4 +1,3 @@
-use alloc::string::String;
 use alloc::vec::Vec;
 
 use crate::AccountError;
@@ -6,7 +5,6 @@ use crate::account::{AccountComponent, StorageSlot};
 use crate::assembly::diagnostics::NamedSource;
 use crate::assembly::{Assembler, Library};
 use crate::testing::account_code::MOCK_ACCOUNT_CODE;
-use crate::utils::sync::LazyLock;
 
 // ACCOUNT COMPONENT ASSEMBLY CODE
 // ================================================================================================
@@ -80,34 +78,6 @@ const NOOP_AUTH_CODE: &str = "
     end
 ";
 
-pub const ERR_WRONG_ARGS_MSG: &str = "auth procedure args are incorrect";
-
-static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
-    format!(
-        r#"
-        use.miden::account
-
-        const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
-
-        export.auth__conditional
-            # => [AUTH_ARGS]
-
-            # If [97, 98, 99] is passed as an argument, all good.
-            # Otherwise we error out.
-            push.97 assert_eq.err=WRONG_ARGS
-            push.98 assert_eq.err=WRONG_ARGS
-            push.99 assert_eq.err=WRONG_ARGS
-
-            # Last element is the incr_nonce_flag.
-            if.true
-                exec.account::incr_nonce drop
-            end
-            dropw dropw dropw dropw
-        end
-"#
-    )
-});
-
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
 /// The component defines an `auth__noop` procedure that does nothing (always succeeds).
@@ -126,34 +96,6 @@ impl NoopAuthComponent {
 
 impl From<NoopAuthComponent> for AccountComponent {
     fn from(mock_component: NoopAuthComponent) -> Self {
-        AccountComponent::new(mock_component.library, vec![])
-            .expect("component should be valid")
-            .with_supports_all_types()
-    }
-}
-
-/// Creates a mock authentication [`AccountComponent`] for testing purposes.
-///
-/// The component defines an `auth__conditional` procedure that conditionally succeeds and
-/// conditionally increments the nonce based on the authentication arguments.
-///
-/// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.
-/// In case it succeeds, it conditionally increments the nonce based on the fourth argument.
-pub struct ConditionalAuthComponent {
-    pub library: Library,
-}
-
-impl ConditionalAuthComponent {
-    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
-        let library = assembler
-            .assemble_library([CONDITIONAL_AUTH_CODE.as_str()])
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-        Ok(Self { library })
-    }
-}
-
-impl From<ConditionalAuthComponent> for AccountComponent {
-    fn from(mock_component: ConditionalAuthComponent) -> Self {
         AccountComponent::new(mock_component.library, vec![])
             .expect("component should be valid")
             .with_supports_all_types()

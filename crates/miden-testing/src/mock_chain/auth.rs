@@ -3,12 +3,12 @@
 use alloc::vec::Vec;
 
 use miden_lib::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{AccountComponent, AuthSecretKey};
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
-use miden_objects::testing::account_component::{ConditionalAuthComponent, NoopAuthComponent};
+use miden_objects::testing::account_component::NoopAuthComponent;
 use miden_tx::auth::BasicAuthenticator;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -94,11 +94,7 @@ impl Auth {
                 let component = NoopAuthComponent::new(assembler).unwrap();
                 (component.into(), None)
             },
-            Auth::Conditional => {
-                let assembler = TransactionKernel::assembler();
-                let component = ConditionalAuthComponent::new(assembler).unwrap();
-                (component.into(), None)
-            },
+            Auth::Conditional => (ConditionalAuthComponent.into(), None),
         }
     }
 }

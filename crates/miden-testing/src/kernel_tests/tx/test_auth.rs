@@ -2,10 +2,10 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::note_script_errors::ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT;
+use miden_lib::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder};
-use miden_objects::testing::account_component::{ConditionalAuthComponent, ERR_WRONG_ARGS_MSG};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_tx::TransactionExecutorError;
 
@@ -21,11 +21,10 @@ pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_
 /// the nonce is incremented (because of `incr_nonce_flag`).
 #[test]
 fn test_auth_procedure_args() -> anyhow::Result<()> {
-    let auth_component = ConditionalAuthComponent::new(TransactionKernel::testing_assembler())?;
     let account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         ONE,
-        auth_component,
+        ConditionalAuthComponent,
         TransactionKernel::testing_assembler(),
     );
 
@@ -50,11 +49,10 @@ fn test_auth_procedure_args() -> anyhow::Result<()> {
 /// (in this case [101, 102, 103]), the transaction should fail with an appropriate error message.
 #[test]
 fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
-    let auth_component = ConditionalAuthComponent::new(TransactionKernel::testing_assembler())?;
     let account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         ONE,
-        auth_component,
+        ConditionalAuthComponent,
         TransactionKernel::testing_assembler(),
     );
 
