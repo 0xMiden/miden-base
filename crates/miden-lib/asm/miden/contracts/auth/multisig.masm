@@ -48,7 +48,7 @@ const.NUM_OF_APPROVERS=124
 const.USED_FLAG=1
 
 # ERRORS
-const.TX_ALREADY_EXECUTED="tx hash exists in tx map"
+const.TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
@@ -219,6 +219,7 @@ proc.verify_signatures_loop
     # If signatures are non-existent the tx will fail here.
     if.true
         emit.UNAUTHORIZED_EVENT
+        push.1 assertz.err="insufficient number of signatures"
     end
     # => [MSG]
 
@@ -226,12 +227,27 @@ proc.verify_signatures_loop
     # => []
 end
 
-#! Multi Signature Authentication Component
+#! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
 #!
-#! OS:  [SALT]
-#! AS Map => {h(SIG_0, MSG): SIG_0, h(SIG_1, MSG): SIG_1, h(SIG_n, MSG): SIG_N}
+#! This procedure implements multi-signature authentication by:
+#! 1. Computing the transaction summary message that needs to be signed
+#! 2. Verifying signatures from multiple required signers against their public keys
+#! 3. Ensuring the minimum threshold of valid signatures is met
+#! 4. Implementing replay protection by tracking executed transactions
 #!
+#! The procedure first increments the account nonce, then computes and verifies signatures for
+#! the following message (in memory order):
+#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT,
+#!  OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
+#!
+#! Inputs:  [SALT]
 #! Outputs: []
+#!
+#! Invocation: call
+#!
+#! Panics if:
+#! - insufficient number of valid signatures (below threshold)
+#! - the same transaction has already been executed (replay protection)
 # main entrypoint ->
 export.auth__tx_rpo_falcon512_multisig
     exec.account::incr_nonce drop
