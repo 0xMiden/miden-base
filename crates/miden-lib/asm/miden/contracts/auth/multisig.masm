@@ -52,9 +52,8 @@ const.TX_ALREADY_EXECUTED="tx hash exists in tx map"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
-#! This procedure ensures that the same transaction cannot be executed multiple times by checking
-#! if the transaction message already exists in the executed transactions map. If it doesn't exist,
-#! it adds the transaction to the map to prevent future replay attacks.
+#! Panics if:
+#! - the same transaction has already been executed
 #!
 #! Inputs:  [MSG]
 #! Outputs: []
@@ -238,8 +237,7 @@ export.auth__tx_rpo_falcon512_multisig
     exec.account::incr_nonce drop
     # => [SALT]
 
-    # Computing transaction summary
-    # ______________________________________
+    # ------ Computing transaction summary ------
 
     exec.auth::create_tx_summary
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
@@ -254,8 +252,7 @@ export.auth__tx_rpo_falcon512_multisig
     mem_storew.MESSAGE dropw
     # => []
 
-    # Verifying owner signatures
-    # ______________________________________
+    # ------ Verifying owner signatures ------
 
     push.THRESHOLD_SLOT
     # => [index]
@@ -278,8 +275,7 @@ export.auth__tx_rpo_falcon512_multisig
     exec.verify_signatures_loop
     # => []
 
-    # Writing executed transaction MSG to map
-    # ______________________________________
+    # ------ Writing executed transaction MSG to map ------
 
     mem_loadw.MESSAGE
     # => [MSG]
