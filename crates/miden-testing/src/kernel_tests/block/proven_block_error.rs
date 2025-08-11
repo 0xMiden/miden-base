@@ -3,13 +3,14 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::testing::account_component::{AccountMockComponent, IncrNonceAuthComponent};
+use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, Felt, FieldElement, NullifierTreeError, Word};
@@ -254,9 +255,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let mut builder = MockChain::builder();
 
-    let assembler = TransactionKernel::testing_assembler();
-    let auth_component: AccountComponent =
-        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component: AccountComponent = IncrNonceAuthComponent.into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())

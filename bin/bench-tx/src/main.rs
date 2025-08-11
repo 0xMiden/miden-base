@@ -5,12 +5,12 @@ use std::path::Path;
 
 use anyhow::Context;
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::NoteType;
-use miden_objects::testing::account_component::IncrNonceAuthComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::transaction::TransactionMeasurements;
 use miden_objects::{Felt, FieldElement, Word};
@@ -64,13 +64,12 @@ fn main() -> anyhow::Result<()> {
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone()).unwrap();
 
     let tx_context = {
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            auth_component,
+            IncrNonceAuthComponent,
             assembler,
         );
 

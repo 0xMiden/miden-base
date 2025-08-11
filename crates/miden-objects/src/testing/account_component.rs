@@ -72,40 +72,6 @@ impl From<AccountMockComponent> for AccountComponent {
 // MOCK AUTH COMPONENTS
 // ================================================================================================
 
-/// Creates a mock authentication [`AccountComponent`] for testing purposes.
-///
-/// The component defines an `auth__basic` procedure that always increments the nonce by 1.
-pub struct IncrNonceAuthComponent {
-    pub library: Library,
-}
-
-impl IncrNonceAuthComponent {
-    /// Creates a new IncrNonceAuthComponent using the provided assembler.
-    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
-        let library = assembler
-            .assemble_library([INCR_NONCE_AUTH_CODE])
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-
-        Ok(Self { library })
-    }
-}
-
-impl From<IncrNonceAuthComponent> for AccountComponent {
-    fn from(mock_component: IncrNonceAuthComponent) -> Self {
-        AccountComponent::new(mock_component.library, vec![])
-            .expect("component should be valid")
-            .with_supports_all_types()
-    }
-}
-
-const INCR_NONCE_AUTH_CODE: &str = "
-    use.miden::account
-
-    export.auth__basic
-        exec.account::incr_nonce drop
-    end
-";
-
 const NOOP_AUTH_CODE: &str = "
     use.miden::account
 

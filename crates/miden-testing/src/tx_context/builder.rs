@@ -5,11 +5,12 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::Account;
 use miden_objects::assembly::Assembler;
 use miden_objects::note::{Note, NoteId};
-use miden_objects::testing::account_component::{IncrNonceAuthComponent, NoopAuthComponent};
+use miden_objects::testing::account_component::NoopAuthComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::transaction::{
     AccountInputs,
@@ -107,13 +108,11 @@ impl TransactionContextBuilder {
     pub fn with_existing_mock_account() -> Self {
         // Build standard account with normal assembler because the testing one already contains it
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component =
-            IncrNonceAuthComponent::new(assembler.clone()).expect("valid component");
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             Felt::ONE,
-            auth_component,
+            IncrNonceAuthComponent,
             assembler,
         );
 

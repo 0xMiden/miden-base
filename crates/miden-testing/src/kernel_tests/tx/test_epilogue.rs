@@ -7,6 +7,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
@@ -23,7 +24,6 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::{NoteTag, NoteType};
-use miden_objects::testing::account_component::IncrNonceAuthComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -101,8 +101,7 @@ fn test_epilogue() -> anyhow::Result<()> {
     )?;
 
     let assembler = TransactionKernel::assembler();
-    let auth_component: AccountComponent =
-        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component: AccountComponent = IncrNonceAuthComponent.into();
     let final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,

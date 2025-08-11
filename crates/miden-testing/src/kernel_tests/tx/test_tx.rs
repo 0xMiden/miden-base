@@ -12,6 +12,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
@@ -50,7 +51,6 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_component::IncrNonceAuthComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
@@ -1034,12 +1034,11 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone())?;
 
     let executor_account = Account::mock(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
         Felt::ONE,
-        auth_component,
+        IncrNonceAuthComponent,
         assembler,
     );
     let account_id = executor_account.id();
@@ -1577,9 +1576,8 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
     )?
     .with_supports_all_types();
 
-    let auth_component = IncrNonceAuthComponent::new(TransactionKernel::assembler())?.into();
     let account_code = AccountCode::from_components(
-        &[auth_component, component.clone()],
+        &[IncrNonceAuthComponent.into(), component.clone()],
         AccountType::RegularAccountUpdatableCode,
     )?;
 
