@@ -240,15 +240,27 @@ end
 #! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT,
 #!  OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
 #!
-#! Inputs:  [SALT]
-#! Outputs: []
+#! Inputs:
+#!   Operand stack: [SALT]
+#!   Advice map: {
+#!     h(SIG_0, MSG): SIG_0,
+#!     h(SIG_1, MSG): SIG_1,
+#!     h(SIG_n, MSG): SIG_n
+#!   }
+#! Outputs:
+#!   Operand stack: []
 #!
-#! Invocation: call
+#! Where:
+#! - SALT is the salt value used for transaction processing.
+#! - SIG_i is the signature from the i-th signer.
+#! - MSG is the transaction message being signed.
+#! - h(SIG_i, MSG) is the hash of the signature and message used as the advice map key.
 #!
 #! Panics if:
-#! - insufficient number of valid signatures (below threshold)
-#! - the same transaction has already been executed (replay protection)
-# main entrypoint ->
+#! - insufficient number of valid signatures (below threshold).
+#! - the same transaction has already been executed (replay protection).
+#!
+#! Invocation: call
 export.auth__tx_rpo_falcon512_multisig
     exec.account::incr_nonce drop
     # => [SALT]
@@ -288,7 +300,7 @@ export.auth__tx_rpo_falcon512_multisig
     drop drop drop
     # => [num_of_approvers, num_required_signatures]
 
-    exec.verify_signatures_loop
+    exec.verify_signatures
     # => []
 
     # ------ Writing executed transaction MSG to map ------
