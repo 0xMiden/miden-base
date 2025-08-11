@@ -4,7 +4,6 @@ use alloc::vec::Vec;
 
 use miden_lib::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{AccountComponent, AuthSecretKey};
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
@@ -88,12 +87,7 @@ impl Auth {
                 (component, Some(authenticator))
             },
             Auth::IncrNonce => (IncrNonceAuthComponent.into(), None),
-
-            Auth::Noop => {
-                let assembler = TransactionKernel::assembler();
-                let component = NoopAuthComponent::new(assembler).unwrap();
-                (component.into(), None)
-            },
+            Auth::Noop => (NoopAuthComponent.into(), None),
             Auth::Conditional => (ConditionalAuthComponent.into(), None),
         }
     }

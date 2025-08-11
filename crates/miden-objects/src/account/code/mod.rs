@@ -481,8 +481,7 @@ mod tests {
         let code2 = "export.bar sub end";
         let library2 = Assembler::default().assemble_library([code2]).unwrap();
 
-        let auth_component: AccountComponent =
-            NoopAuthComponent::new(Assembler::default()).unwrap().into();
+        let auth_component: AccountComponent = NoopAuthComponent.into();
 
         let component1 =
             AccountComponent::new(library1, vec![StorageSlot::Value(Word::empty()); 250])
@@ -514,11 +513,8 @@ mod tests {
 
     #[test]
     fn test_account_code_only_auth_component() {
-        let auth_component: AccountComponent =
-            NoopAuthComponent::new(Assembler::default()).unwrap().into();
-
         let err = AccountCode::from_components(
-            &[auth_component],
+            &[NoopAuthComponent.into()],
             AccountType::RegularAccountUpdatableCode,
         )
         .unwrap_err();
@@ -541,13 +537,8 @@ mod tests {
 
     #[test]
     fn test_account_code_multiple_auth_components() {
-        let auth_component1: AccountComponent =
-            NoopAuthComponent::new(Assembler::default()).unwrap().into();
-        let auth_component2: AccountComponent =
-            NoopAuthComponent::new(Assembler::default()).unwrap().into();
-
         let err = AccountCode::from_components(
-            &[auth_component1, auth_component2],
+            &[NoopAuthComponent.into(), NoopAuthComponent.into()],
             AccountType::RegularAccountUpdatableCode,
         )
         .unwrap_err();

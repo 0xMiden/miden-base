@@ -137,12 +137,11 @@ impl TransactionContextBuilder {
 
     pub fn with_noop_auth_account(nonce: Felt) -> Self {
         let assembler = TransactionKernel::testing_assembler();
-        let auth_component = NoopAuthComponent::new(assembler.clone()).expect("valid component");
 
         let account = Account::mock(
             ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
             nonce,
-            auth_component,
+            NoopAuthComponent,
             assembler,
         );
 

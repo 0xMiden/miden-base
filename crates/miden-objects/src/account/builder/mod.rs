@@ -337,7 +337,7 @@ mod tests {
         let storage_slot2 = 42;
 
         let (account, seed) = Account::builder([5; 32])
-            .with_auth_component(NoopAuthComponent::new(Assembler::default()).unwrap())
+            .with_auth_component(NoopAuthComponent)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
                 slot0: storage_slot1,
@@ -405,7 +405,7 @@ mod tests {
         let storage_slot0 = 25;
 
         let build_error = Account::builder([0xff; 32])
-            .with_auth_component(NoopAuthComponent::new(Assembler::default()).unwrap())
+            .with_auth_component(NoopAuthComponent)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_assets(AssetVault::mock().assets())
             .build()

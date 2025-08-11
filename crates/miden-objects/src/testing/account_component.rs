@@ -5,6 +5,7 @@ use crate::account::{AccountComponent, StorageSlot};
 use crate::assembly::diagnostics::NamedSource;
 use crate::assembly::{Assembler, Library};
 use crate::testing::account_code::MOCK_ACCOUNT_CODE;
+use crate::utils::sync::LazyLock;
 
 // ACCOUNT MOCK COMPONENT
 // ================================================================================================
@@ -59,7 +60,7 @@ impl From<AccountMockComponent> for AccountComponent {
     }
 }
 
-// MOCK AUTH COMPONENTS
+// NOOP AUTH COMPONENT
 // ================================================================================================
 
 const NOOP_AUTH_CODE: &str = "
@@ -70,25 +71,20 @@ const NOOP_AUTH_CODE: &str = "
     end
 ";
 
+static NOOP_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    Assembler::default()
+        .assemble_library([NOOP_AUTH_CODE])
+        .expect("noop auth code should be valid")
+});
+
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
 /// The component defines an `auth__noop` procedure that does nothing (always succeeds).
-pub struct NoopAuthComponent {
-    pub library: Library,
-}
-
-impl NoopAuthComponent {
-    pub fn new(assembler: Assembler) -> Result<Self, AccountError> {
-        let library = assembler
-            .assemble_library([NOOP_AUTH_CODE])
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-        Ok(Self { library })
-    }
-}
+pub struct NoopAuthComponent;
 
 impl From<NoopAuthComponent> for AccountComponent {
-    fn from(mock_component: NoopAuthComponent) -> Self {
-        AccountComponent::new(mock_component.library, vec![])
+    fn from(_: NoopAuthComponent) -> Self {
+        AccountComponent::new(NOOP_AUTH_LIBRARY.clone(), vec![])
             .expect("component should be valid")
             .with_supports_all_types()
     }
