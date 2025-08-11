@@ -107,7 +107,7 @@ end
 #!
 #! Inputs:  [num_of_approvers, num_required_signatures]
 #! Outputs: []
-proc.verify_signatures_loop
+proc.verify_signatures
     # => [num_of_approvers, num_required_signatures]
 
     dup mem_store.NUM_OF_APPROVERS
