@@ -57,7 +57,7 @@ const.TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was alre
 #!
 #! Inputs:  [MSG]
 #! Outputs: []
-proc.replay_protection.4
+proc.assert_new_tx.4
     # Store the message for later use.
     # ---------------------------------------------------------------------------------------------
 
@@ -296,7 +296,7 @@ export.auth__tx_rpo_falcon512_multisig
     mem_loadw.MESSAGE
     # => [MSG]
 
-    exec.replay_protection
+    exec.assert_new_tx
     # => []
 
     exec.sys::truncate_stack
