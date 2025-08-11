@@ -22,7 +22,7 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #!
 #! Inputs:  [AUTH_ARGS, pad(12)]
 #! Outputs: [pad(16)]
-export.auth__tx_rpo_falcon512_acl.2
+export.auth__tx_rpo_falcon512_procedure_acl.2
     dropw
     # => [pad(16)]
 
