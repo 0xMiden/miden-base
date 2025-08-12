@@ -14,10 +14,10 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
-use miden_testing::{Auth, MockChain};
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 use miden_tx::utils::word_to_masm_push_string;
 
-use crate::{assert_transaction_executor_error, prove_and_verify_transaction};
+use crate::prove_and_verify_transaction;
 
 /// We test the Pay to script with 2 assets to test the loop inside the script.
 /// So we create a note containing two assets that can only be consumed by the target account.
