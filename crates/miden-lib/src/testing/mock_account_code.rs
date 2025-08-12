@@ -16,7 +16,7 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     # Note: all account's export procedures below should be only called or dyncall'ed, so it
     # is assumed that the operand stack at the beginning of their execution is pad'ed and
-    # doesn't have any other valuable information.
+    # does not have any other valuable information.
 
     # Stack:  [index, VALUE_TO_SET, pad(11)]
     # Output: [PREVIOUS_STORAGE_VALUE, pad(12)]

@@ -64,7 +64,7 @@ macro_rules! assert_transaction_executor_error {
     };
 }
 
-// TEST HELPERS
+// TEST UTILITIES
 // ================================================================================================
 
 pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
