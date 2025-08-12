@@ -75,6 +75,7 @@ impl Address {
                 AccountStorageMode::Network => NoteTag::from_network_account_id(addr.id),
                 AccountStorageMode::Private | AccountStorageMode::Public => {
                     NoteTag::from_local_account_id(addr.id, addr.tag_len)
+                        .expect("AccountIdAddress validated that tag len does not exceed MAX_LOCAL_TAG_LENGTH bits")
                 },
             },
         }
