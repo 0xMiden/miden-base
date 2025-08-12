@@ -11,6 +11,7 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
 use miden_lib::utils::word_to_masm_push_string;
+use miden_objects::Felt;
 use miden_objects::account::{Account, AccountId, StorageMap};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
@@ -27,7 +28,6 @@ use miden_objects::testing::constants::{
     NON_FUNGIBLE_ASSET_DATA_2,
 };
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
-use vm_processor::{Felt, ONE};
 
 use crate::utils::create_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error};
@@ -196,7 +196,6 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
 fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        ONE,
         false,
     )
     .build()?;
@@ -315,7 +314,6 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        ONE,
         false,
     )
     .build()?;
@@ -452,7 +450,6 @@ fn test_burn_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
 fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ONE,
         false,
     )
     .build()?;
@@ -525,7 +522,6 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
 fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        ONE,
         false,
     )
     .build()?;
@@ -602,7 +598,6 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        ONE,
         false,
     )
     .build()?;
@@ -673,7 +668,6 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
     // Run code from a different non-fungible asset issuer
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
-        ONE,
         false,
     )
     .build()?;
@@ -711,7 +705,6 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
     // the map of issued assets.
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        ONE,
         false,
     )
     .build()?;
