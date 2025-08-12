@@ -23,55 +23,41 @@ const.PUBLIC_KEY_SLOT=0
 #! included to commit to the transaction creator's intended reference block of the transaction
 #! which determines the fee parameters and therefore the fee amount that is deducted.
 #!
-#! Inputs:  [AUTH_ARGS, pad(12)]
-#! Outputs: [pad(16)]
+#! Inputs:  [PUB_KEY]
+#! Outputs: []
 #!
-#! Invocation: call
-export.auth__tx_rpo_falcon512
-    # drop auth args
-    dropw
-    # => [pad(16)]
-
-    # Fetch public key from storage.
-    # ---------------------------------------------------------------------------------------------
-
-    # Get public key from account storage at pos 0 and verify signature
-    push.PUBLIC_KEY_SLOT exec.account::get_item
-
+#! Invocation: exec
+export.authenticate_transaction
     # Increment the account's nonce.
     # ---------------------------------------------------------------------------------------------
-
-    # this has to happen before computing the delta commitment, otherwise that procedure will abort
+    # This has to happen before computing the delta commitment, otherwise that procedure will abort
     push.0.0 exec.tx::get_block_number
     exec.account::incr_nonce
-    # => [[final_nonce, ref_block_num, 0, 0],  PUB_KEY, pad(16)]
+    # => [[final_nonce, ref_block_num, 0, 0], PUB_KEY]
 
     # Compute the message that is signed.
     # ---------------------------------------------------------------------------------------------
-
     exec.auth::create_tx_summary
-    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, PUB_KEY, pad(16)]
+    # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT, PUB_KEY]
     exec.auth::adv_insert_hqword
 
-    # the commitment to the tx summary is the message that is signed
+    # The commitment to the tx summary is the message that is signed
     exec.auth::hash_tx_summary
-    # OS => [MESSAGE, PUB_KEY, pad(16)]
+    # OS => [MESSAGE, PUB_KEY]
     # AS => []
 
     # Fetch signature from advice provider and verify.
     # ---------------------------------------------------------------------------------------------
-
-    # emit the authentication request event that pushes a signature for the message to the advice
-    # stack
+    # Emit the authentication request event that pushes a signature for the message to the advice stack
     emit.AUTH_REQUEST
     swapw
-    # OS => [PUB_KEY, MESSAGE, pad(16)]
+    # OS => [PUB_KEY, MESSAGE]
     # AS => [SIGNATURE]
 
     # Verify the signature against the public key and the message. The procedure gets as inputs the
     # hash of the public key and the message via the operand stack. The signature is provided via
     # the advice stack. The signature is valid if and only if the procedure returns.
     exec.rpo_falcon512::verify
-    # OS => [pad(16)]
+    # OS => []
     # AS => []
 end
