@@ -77,7 +77,7 @@ fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
     // Create a transaction script that calls the auth procedure
     let tx_script_source = "
         begin
-            call.::auth__basic
+            call.::auth__incr_nonce
         end
     ";
 

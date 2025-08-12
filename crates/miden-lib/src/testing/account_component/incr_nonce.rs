@@ -20,7 +20,7 @@ static INCR_NONCE_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth__basic` procedure that always increments the nonce by 1.
+/// The component defines an `auth__incr_nonce` procedure that always increments the nonce by 1.
 pub struct IncrNonceAuthComponent;
 
 impl From<IncrNonceAuthComponent> for AccountComponent {
