@@ -53,6 +53,7 @@ pub struct FailedNote {
 pub struct NoteConsumptionInfo {
     pub successful: Vec<Note>,
     pub failed: Vec<FailedNote>,
+    pub unattempted: Vec<Note>,
 }
 
 impl NoteConsumptionInfo {
@@ -62,8 +63,8 @@ impl NoteConsumptionInfo {
     }
 
     /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
-    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>) -> Self {
-        Self { successful, failed }
+    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>, unattempted: Vec<Note>) -> Self {
+        Self { successful, failed, unattempted }
     }
 }
 
@@ -417,9 +418,8 @@ where
                     return Err(error);
                 }
 
-                let ((last_note, last_note_interval), success_notes) = notes
-                    .split_last()
-                    .expect("notes vector should not be empty because we just checked");
+                let ((_failed_note, last_note_interval), success_notes) =
+                    notes.split_last().expect("notes vector is not empty because of earlier check");
 
                 // If the interval end of the last note is specified, then an error occurred after
                 // notes processing.
@@ -428,30 +428,16 @@ where
                 }
 
                 // Partition the input notes into successful and failed results.
-                let mut successful = Vec::with_capacity(success_notes.len());
-                let mut failed = Vec::with_capacity(1);
-                for (i, note) in input_notes.into_iter().enumerate() {
-                    if i < success_notes.len() {
-                        debug_assert_eq!(
-                            success_notes[i].0,
-                            note.id(),
-                            "notes should be processed in the same order as they appear in the input notes"
-                        );
-                        successful.push(note.into_note());
-                    } else {
-                        // This is the last (failed) note.
-                        debug_assert_eq!(
-                            *last_note,
-                            note.id(),
-                            "notes should be processed in the same order as they appear in the input notes"
-                        );
-                        failed.push(FailedNote { note: note.into_note(), error });
-                        break;
-                    }
-                }
+                let (successful, failed, unattempted) =
+                    split_at(input_notes.into_vec(), success_notes.len());
+                let successful =
+                    successful.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+                let failed = vec![FailedNote { error, note: failed.into_note() }];
+                let unattempted =
+                    unattempted.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
 
                 // Return information about all the consumed notes.
-                Ok(NoteConsumptionInfo::new(successful, failed))
+                Ok(NoteConsumptionInfo::new(successful, failed, unattempted))
             },
         }
     }
@@ -459,6 +445,25 @@ where
 
 // HELPER FUNCTIONS
 // ================================================================================================
+
+/// Splits a vector into three parts based on a given separator index.
+///
+/// # Safety
+///
+/// The caller must ensure that the provided `separator_index` is within the bounds of the input
+/// vector.
+fn split_at<T>(mut vec: Vec<T>, index: usize) -> (Vec<T>, T, Vec<T>) {
+    // Drain elements after separator into after vector
+    let after: Vec<T> = vec.drain(index + 1..).collect();
+
+    // Remove and get the separator
+    let separator = vec.pop().expect("provided separator index in bounds");
+
+    // vec now contains only the before part
+    let before = vec;
+
+    (before, separator, after)
+}
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
@@ -588,5 +593,29 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
             }
         },
         _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[rstest::rstest]
+    #[case::odd(vec![1, 2, 3, 4, 5], 2, vec![1, 2], 3, vec![4, 5])]
+    #[case::even(vec![1, 2, 3, 4, 5, 6], 2, vec![1, 2], 3, vec![4, 5, 6])]
+    #[case::start(vec![1, 2, 3, 4, 5], 0, vec![], 1, vec![2, 3, 4, 5])]
+    #[case::end(vec![1, 2, 3, 4, 5], 4, vec![1, 2, 3, 4], 5, vec![])]
+    #[test]
+    fn splitting(
+        #[case] input: Vec<u32>,
+        #[case] separator_index: usize,
+        #[case] start: Vec<u32>,
+        #[case] separator: u32,
+        #[case] end: Vec<u32>,
+    ) {
+        let (left, mid, right) = split_at(input, separator_index);
+        assert_eq!(left, start);
+        assert_eq!(mid, separator);
+        assert_eq!(right, end);
     }
 }

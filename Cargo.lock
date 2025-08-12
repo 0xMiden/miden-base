@@ -1319,6 +1319,7 @@ dependencies = [
  "miden-tx",
  "miden-verifier",
  "rand",
+ "rstest",
  "thiserror 2.0.12",
  "tokio",
 ]

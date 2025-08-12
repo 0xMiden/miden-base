@@ -38,3 +38,4 @@ anyhow         = { default-features = false, features = ["backtrace", "std"], ve
 assembly       = { workspace = true }
 assert_matches = { workspace = true }
 miden-tx       = { features = ["testing"], path = "." }
+rstest            = { version = "0.25" }
