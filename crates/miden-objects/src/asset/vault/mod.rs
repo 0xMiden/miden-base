@@ -189,7 +189,7 @@ impl AssetVault {
 
     // REMOVE ASSET
     // --------------------------------------------------------------------------------------------
-    /// Remove the specified asset from the vault.
+    /// Remove the specified asset from the vault and returns the asset that was just removed.
     ///
     /// # Errors
     /// - The fungible asset is not found in the vault.
@@ -208,7 +208,8 @@ impl AssetVault {
         }
     }
 
-    /// Remove the specified fungible asset from the vault.
+    /// Remove the specified fungible asset from the vault and returns the asset that was just
+    /// removed. If the final amount of the asset is zero, the asset is removed from the vault.
     ///
     /// # Errors
     /// - The asset is not found in the vault.
@@ -239,7 +240,8 @@ impl AssetVault {
         Ok(asset)
     }
 
-    /// Remove the specified non-fungible asset from the vault.
+    /// Remove the specified non-fungible asset from the vault and returns the asset that was just
+    /// removed.
     ///
     /// # Errors
     /// - The non-fungible asset is not found in the vault.
