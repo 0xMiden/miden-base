@@ -143,7 +143,8 @@ impl NoteTag {
         match account_id.storage_mode() {
             AccountStorageMode::Network => Self::from_network_account_id(account_id),
             AccountStorageMode::Private | AccountStorageMode::Public => {
-                Self::from_local_account_id(account_id, Self::DEFAULT_LOCAL_TAG_LENGTH)
+                // safe to unwrap since DEFAULT_LOCAL_TAG_LENGTH < MAX_LOCAL_TAG_LENGTH
+                Self::from_local_account_id(account_id, Self::DEFAULT_LOCAL_TAG_LENGTH).unwrap()
             },
         }
     }
@@ -155,7 +156,18 @@ impl NoteTag {
     /// - The two most significant bits are set to `0b11` to indicate a [LOCAL_ANY] tag.
     /// - The next `tag_len` bits are set to the most significant bits of the account ID prefix.
     /// - The remaining bits are set to zero.
-    pub(crate) fn from_local_account_id(account_id: AccountId, tag_len: u8) -> Self {
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `tag_len` is larger than [`NoteTag::MAX_LOCAL_TAG_LENGTH`].
+    pub(crate) fn from_local_account_id(
+        account_id: AccountId,
+        tag_len: u8,
+    ) -> Result<Self, NoteError> {
+        if tag_len > Self::MAX_LOCAL_TAG_LENGTH {
+            return Err(NoteError::NoteTagTagLengthTooLarge(tag_len));
+        }
+
         let prefix_id: u64 = account_id.prefix().into();
 
         // Shift the high bits of the account ID such that they are laid out as:
@@ -171,7 +183,7 @@ impl NoteTag {
         let high_bits = high_bits & (u32::MAX << (32 - 2 - tag_len));
 
         // Set the local execution tag in the two most significant bits.
-        Self::LocalAny(LOCAL_ANY | high_bits)
+        Ok(Self::LocalAny(LOCAL_ANY | high_bits))
     }
 
     /// Constructs a [`NoteTag::NetworkAccount`] from the specified `account_id`.
