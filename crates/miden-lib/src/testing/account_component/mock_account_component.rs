@@ -18,6 +18,20 @@ pub struct MockAccountComponent {
 }
 
 impl MockAccountComponent {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    pub fn with_empty_slots() -> Result<Self, AccountError> {
+        Self::new(vec![])
+    }
+
+    pub fn with_slots(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+        Self::new(storage_slots)
+    }
+
+    // HELPERS
+    // --------------------------------------------------------------------------------------------
+
     fn new(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
@@ -25,14 +39,6 @@ impl MockAccountComponent {
             .expect("too many storage slots");
 
         Ok(Self { storage_slots })
-    }
-
-    pub fn new_with_empty_slots() -> Result<Self, AccountError> {
-        Self::new(vec![])
-    }
-
-    pub fn new_with_slots(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
-        Self::new(storage_slots)
     }
 }
 

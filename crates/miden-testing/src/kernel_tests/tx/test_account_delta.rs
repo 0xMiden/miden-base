@@ -575,7 +575,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots())?)
+        .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots())?)
         .with_assets(account_assets)
         .build_existing()?;
 

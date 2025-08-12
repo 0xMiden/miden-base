@@ -65,7 +65,7 @@ fn build_mock_account(
 ) -> Account {
     let account_id = AccountId::try_from(account_id).unwrap();
     let mock_component =
-        MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots()).unwrap();
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).unwrap();
     let account = AccountBuilder::new([1; 32])
         .account_type(account_id.account_type())
         .with_auth_component(auth)

@@ -296,7 +296,7 @@ impl MockChainBuilder {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
             .with_component(
-                MockAccountComponent::new_with_empty_slots()
+                MockAccountComponent::with_empty_slots()
                     .context("failed to create mock component")?,
             );
 
@@ -340,7 +340,7 @@ impl MockChainBuilder {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
             .with_component(
-                MockAccountComponent::new_with_slots(slots.into_iter().collect())
+                MockAccountComponent::with_slots(slots.into_iter().collect())
                     .context("failed to create mock component")?,
             )
             .with_assets(assets);

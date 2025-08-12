@@ -560,7 +560,7 @@ fn create_simple_account() -> anyhow::Result<()> {
     let (account, seed) = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::new_with_empty_slots()?)
+        .with_component(MockAccountComponent::with_empty_slots()?)
         .build()?;
 
     let tx = TransactionContextBuilder::new(account)
@@ -607,7 +607,7 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
             .with_component(
-                MockAccountComponent::new_with_slots(vec![StorageSlot::Value(Word::from(
+                MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
                     [255u32; WORD_SIZE],
                 ))])
                 .unwrap(),
@@ -674,7 +674,7 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
     let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::FungibleFaucet)
         .with_auth_component(NoopAuthComponent)
-        .with_component(MockAccountComponent::new_with_empty_slots().unwrap())
+        .with_component(MockAccountComponent::with_empty_slots().unwrap())
         .build_existing()
         .expect("account should be valid");
     let (id, vault, mut storage, code, _nonce) = account.into_parts();
@@ -715,7 +715,7 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
     let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)
         .with_auth_component(NoopAuthComponent)
-        .with_component(MockAccountComponent::new_with_empty_slots().unwrap())
+        .with_component(MockAccountComponent::with_empty_slots().unwrap())
         .build_existing()
         .expect("account should be valid");
     let (id, vault, _storage, code, _nonce) = account.into_parts();

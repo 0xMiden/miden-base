@@ -54,7 +54,7 @@ fn setup_chain() -> TestSetup {
 fn generate_account(chain: &mut MockChainBuilder) -> Account {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Private)
-        .with_component(MockAccountComponent::new_with_empty_slots().unwrap());
+        .with_component(MockAccountComponent::with_empty_slots().unwrap());
     chain
         .add_account_from_builder(Auth::IncrNonce, account_builder, AccountState::Exists)
         .expect("failed to add pending account from builder")

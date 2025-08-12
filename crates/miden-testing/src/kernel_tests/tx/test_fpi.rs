@@ -90,7 +90,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            MockAccountComponent::new_with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
+            MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
         )
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
@@ -349,7 +349,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::new_with_empty_slots()?)
+        .with_component(MockAccountComponent::with_empty_slots()?)
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -544,7 +544,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
 
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::new_with_slots(vec![])?)
+        .with_component(MockAccountComponent::with_slots(vec![])?)
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -763,7 +763,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // ------ NATIVE ACCOUNT ---------------------------------------------------------------
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::new_with_slots(vec![])?)
+        .with_component(MockAccountComponent::with_slots(vec![])?)
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -955,7 +955,7 @@ fn test_nested_fpi_stack_overflow() {
             let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
                 .with_auth_component(Auth::IncrNonce)
                 .with_component(
-                    MockAccountComponent::new_with_slots(
+                    MockAccountComponent::with_slots(
                         vec![],
                     )
                     .unwrap(),
@@ -1074,7 +1074,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // ------ NATIVE ACCOUNT ---------------------------------------------------------------
     let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(MockAccountComponent::new_with_empty_slots().unwrap())
+        .with_component(MockAccountComponent::with_empty_slots().unwrap())
         .storage_mode(AccountStorageMode::Public)
         .build_existing()?;
 
@@ -1173,7 +1173,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
     let native_account = AccountBuilder::new([4; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            MockAccountComponent::new_with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
+            MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]).unwrap(),
         )
         .build_existing()?;
 

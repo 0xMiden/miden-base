@@ -43,7 +43,7 @@ fn setup_rpo_falcon_procedure_acl_test(
     let assembler = TransactionKernel::assembler();
 
     let component: AccountComponent =
-        MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots())
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots())
             .expect("failed to create mock component")
             .into();
 
@@ -88,7 +88,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // We need to get the authenticator separately for this test
     let component: AccountComponent =
-        MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots())
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots())
             .expect("failed to create mock component")
             .into();
 
