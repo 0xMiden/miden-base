@@ -214,6 +214,8 @@ pub enum AccountTreeError {
 
 #[derive(Debug, Error)]
 pub enum AddressError {
+    #[error("tag length {0} should be {expected} bits for network accounts", expected = crate::note::NoteTag::DEFAULT_NETWORK_TAG_LENGTH)]
+    CustomTagLengthNotAllowedForNetworkAccounts(u8),
     #[error("tag length {0} is too large, must be less than or equal to {max}", max = crate::note::NoteTag::MAX_LOCAL_TAG_LENGTH)]
     TagLengthTooLarge(u8),
 }

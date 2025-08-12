@@ -120,6 +120,8 @@ impl NoteTag {
     pub(crate) const MAX_USE_CASE_ID_EXPONENT: u8 = 14;
     // Creating a tag for local execution directly from AccountId defaults to using 14 bits.
     pub const DEFAULT_LOCAL_TAG_LENGTH: u8 = 14;
+    // Creating a tag for network accounts should always use 30 bits.
+    pub const DEFAULT_NETWORK_TAG_LENGTH: u8 = 30;
     /// The maximum number of bits that can be encoded into the tag for local accounts.
     pub const MAX_LOCAL_TAG_LENGTH: u8 = 30;
     // CONSTRUCTORS
@@ -139,19 +141,7 @@ impl NoteTag {
     ///   ID.
     pub fn from_account_id(account_id: AccountId) -> Self {
         match account_id.storage_mode() {
-            AccountStorageMode::Network => {
-                let prefix_id: u64 = account_id.prefix().into();
-
-                // Shift the high bits of the account ID such that they are laid out as:
-                // [34 zero bits | remaining high bits (30 bits)].
-                let high_bits = prefix_id >> 34;
-
-                // This is equivalent to the following layout, interpreted as a u32:
-                // [2 zero bits | remaining high bits (30 bits)].
-                // The two most significant zero bits match the tag we need for network
-                // execution.
-                Self::NetworkAccount(high_bits as u32)
-            },
+            AccountStorageMode::Network => Self::from_network_account_id(account_id),
             AccountStorageMode::Private | AccountStorageMode::Public => {
                 Self::from_local_account_id(account_id, Self::DEFAULT_LOCAL_TAG_LENGTH)
             },
@@ -165,7 +155,7 @@ impl NoteTag {
     /// - The two most significant bits are set to `0b11` to indicate a [LOCAL_ANY] tag.
     /// - The next `tag_len` bits are set to the most significant bits of the account ID prefix.
     /// - The remaining bits are set to zero.
-    fn from_local_account_id(account_id: AccountId, tag_len: u8) -> Self {
+    pub(crate) fn from_local_account_id(account_id: AccountId, tag_len: u8) -> Self {
         let prefix_id: u64 = account_id.prefix().into();
 
         // Shift the high bits of the account ID such that they are laid out as:
@@ -182,6 +172,25 @@ impl NoteTag {
 
         // Set the local execution tag in the two most significant bits.
         Self::LocalAny(LOCAL_ANY | high_bits)
+    }
+
+    /// Constructs a [`NoteTag::NetworkAccount`] from the specified `account_id`.
+    ///
+    /// The tag is constructed as follows:
+    ///
+    /// - The two most significant bits are set to `0b00` to indicate a [NETWORK_ACCOUNT] tag.
+    /// - The remaining bits are set to the 30 most significant bits of the account ID.
+    pub(crate) fn from_network_account_id(account_id: AccountId) -> Self {
+        let prefix_id: u64 = account_id.prefix().into();
+
+        // Shift the high bits of the account ID such that they are laid out as:
+        // [34 zero bits | remaining high bits (30 bits)].
+        let high_bits = prefix_id >> 34;
+
+        // This is equivalent to the following layout, interpreted as a u32:
+        // [2 zero bits | remaining high bits (30 bits)].
+        // The two most significant zero bits match the tag we need for network
+        Self::NetworkAccount(high_bits as u32)
     }
 
     /// Returns a new [`NoteTag::NetworkUseCase`] or [`NoteTag::LocalPublicAny`]
