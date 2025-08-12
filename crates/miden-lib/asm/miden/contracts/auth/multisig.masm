@@ -46,9 +46,6 @@ const.THRESHOLD=4
 const.TEMP_PK=8
 const.SUCCESSFUL_VERIFICATIONS=12
 
-# Global Memory Addresses
-const.MESSAGE=112
-
 # Executed Transaction Flag Constant
 const.USED_FLAG=1
 
@@ -260,28 +257,26 @@ export.auth__tx_rpo_falcon512_multisig
     exec.auth::hash_tx_summary
     # => [TX_SUMMARY_COMMITMENT]
 
-    mem_storew.MESSAGE
-    # => [TX_SUMMARY_COMMITMENT]
+    dupw
+    # => [TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     # ------ Verifying owner signatures ------
 
     push.THRESHOLD_CONFIG_SLOT
-    # => [index, TX_SUMMARY_COMMITMENT]
+    # => [index, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     exec.account::get_item
-    # => [0, 0, num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT]
+    # => [0, 0, num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     drop drop
-    # => [num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT]
+    # => [num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     exec.verify_signatures
-    # => []
+    # => [TX_SUMMARY_COMMITMENT]
 
     # ------ Writing executed transaction MSG to map ------
 
-    mem_loadw.MESSAGE
-    # => [MSG]
-
     exec.assert_new_tx
-    # => []
+    # => [TX_SUMMARY_COMMITMENT]
+
 end
