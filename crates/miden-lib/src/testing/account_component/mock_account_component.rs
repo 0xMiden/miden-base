@@ -8,11 +8,13 @@ use crate::testing::mock_account_code::MockAccountCodeExt;
 // ACCOUNT MOCK COMPONENT
 // ================================================================================================
 
-/// Creates a mock [`Library`] which can be used to assemble programs and as a library to create a
-/// mock [`AccountCode`](crate::account::AccountCode) interface. Transaction and note scripts that
-/// make use of this interface should be assembled with this.
+/// Creates a mock [`Library`](miden_objects::assembly::Library) which can be used to assemble
+/// programs and as a library to create a mock [`AccountCode`](miden_objects::account::AccountCode)
+/// interface. Transaction and note scripts that make use of this interface should be assembled with
+/// this.
 ///
-/// This component supports all [`AccountType`](crate::account::AccountType)s for testing purposes.
+/// This component supports all [`AccountType`](miden_objects::account::AccountType)s for testing
+/// purposes.
 pub struct MockAccountComponent {
     storage_slots: Vec<StorageSlot>,
 }

@@ -290,7 +290,7 @@ impl MockChainBuilder {
         Ok(account)
     }
 
-    /// Creates a new public account with an [`AccountMockComponent`] and registers the
+    /// Creates a new public account with an [`MockAccountComponent`] and registers the
     /// authenticator (if any).
     pub fn create_new_mock_account(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())
@@ -300,13 +300,13 @@ impl MockChainBuilder {
         self.add_account_from_builder(auth_method, account_builder, AccountState::New)
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, [], [])
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account_with_storage(
         &mut self,
@@ -316,7 +316,7 @@ impl MockChainBuilder {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, slots, [])
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account_with_assets(
         &mut self,
@@ -326,7 +326,7 @@ impl MockChainBuilder {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, [], assets)
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account_with_storage_and_assets(
         &mut self,

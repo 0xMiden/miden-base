@@ -105,7 +105,7 @@ impl TransactionContextBuilder {
     /// - Has a nonce of `1` (so it does not imply seed validation).
     /// - Has an ID of [`ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE`].
     /// - Has an account code based on an
-    ///   [miden_objects::testing::account_component::AccountMockComponent].
+    ///   [miden_lib::testing::account_component::MockAccountComponent].
     pub fn with_existing_mock_account() -> Self {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
