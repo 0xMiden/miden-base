@@ -35,10 +35,12 @@ use miden_objects::transaction::{
     ProvenTransaction,
     TransactionHeader,
     TransactionInputs,
+    TransactionWitness,
 };
 use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
+use miden_tx::{LocalTransactionProver, ProvingOptions};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use vm_processor::crypto::RpoRandomCoin;
@@ -46,7 +48,7 @@ use vm_processor::{DeserializationError, Word};
 use winterfell::ByteWriter;
 
 use super::note::MockChainNote;
-use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{MockChainBuilder, TransactionContextBuilder};
 
 // MOCK CHAIN
 // ================================================================================================
@@ -908,8 +910,10 @@ impl MockChain {
         let mut account = transaction.initial_account().clone();
         account.apply_delta(transaction.account_delta())?;
 
-        // This essentially transforms an executed tx into a proven tx with a dummy proof.
-        let proven_tx = ProvenTransaction::from_executed_transaction_mocked(transaction.clone());
+        // Transform the executed tx into a proven tx with a dummy proof.
+        let proven_tx = LocalTransactionProver::new(ProvingOptions::default())
+            .prove_dummy(TransactionWitness::from(transaction.clone()))
+            .context("failed to dummy-prove executed transaction into proven transaction")?;
 
         self.pending_transactions.push(proven_tx);
 

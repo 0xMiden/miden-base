@@ -50,8 +50,6 @@ impl LocalTransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        use miden_prover::Proof;
-
         let TransactionWitness { tx_inputs, account_delta, tx_outputs, .. } = tx_witness;
 
         self.build_proven_transaction(
@@ -61,7 +59,7 @@ impl LocalTransactionProver {
             tx_inputs.account(),
             tx_inputs.block_header().block_num(),
             tx_inputs.block_header().commitment(),
-            ExecutionProof::new(Proof::new_dummy(), Default::default()),
+            ExecutionProof::new_dummy(),
         )
     }
 
