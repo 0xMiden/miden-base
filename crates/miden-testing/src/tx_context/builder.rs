@@ -145,8 +145,8 @@ impl TransactionContextBuilder {
     }
 
     /// Initializes a [TransactionContextBuilder] with a mocked non-fungible faucet.
-    pub fn with_non_fungible_faucet(acct_id: u128,  empty_reserved_slot: bool) -> Self {
-        let account = Account::mock_non_fungible_faucet(acct_id, empty_reserved_slot);
+    pub fn with_non_fungible_faucet(acct_id: u128,  ) -> Self {
+        let account = Account::mock_non_fungible_faucet(acct_id,);
 
         Self { account, ..Self::default() }
     }

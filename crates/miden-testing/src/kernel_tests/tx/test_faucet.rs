@@ -194,11 +194,9 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
 
 #[test]
 fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
     let asset_vault_key = non_fungible_asset.vault_key();
@@ -312,11 +310,9 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 
 #[test]
 fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
@@ -448,11 +444,9 @@ fn test_burn_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
 
 #[test]
 fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)
+            .build()?;
 
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1).unwrap();
 
@@ -520,11 +514,9 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
 
 #[test]
 fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
     let burnt_asset_vault_key = non_fungible_asset_burnt.vault_key();
@@ -596,11 +588,9 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
 #[test]
 fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&[1, 2, 3]);
 
@@ -668,7 +658,6 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
     // Run code from a different non-fungible asset issuer
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
-        false,
     )
     .build()?;
 
@@ -703,11 +692,9 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
     // NON_FUNGIBLE_ASSET_DATA_2 is "issued" during the mock faucet creation, so it is already in
     // the map of issued assets.
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset_1 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
     let non_fungible_asset_2 = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);

@@ -56,7 +56,6 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
 fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        false,
     )
     .build()?;
 
@@ -92,7 +91,6 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         NonFungibleAsset::mock_issuer().into(),
-        false,
     )
     .build()?;
 
