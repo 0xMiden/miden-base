@@ -38,21 +38,21 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // account_get_vault_root
     word!("0x279b4a9e5adca07f01cadf8ecc1303fa3c670003a7a4e69f09506b070c4023df"),
     // account_add_asset
-    word!("0x227512638e90bff7c143e4ec090d528f49ad0eeeed637a637454245232f63459"),
+    word!("0x9045a12f75f4ce5e4736a5b32d9624f20f5ec0d001b38c46c5ce732b03e10c16"),
     // account_remove_asset
-    word!("0x8c9756d671b3d50362678b2485c9a50312a77f61a9777e7b5fbdaa4aa89d76a2"),
+    word!("0x9b2b8988d1a590c18b06de3c53ecef1d690f503761f4ebf19fbfa9fc25fc3bfb"),
     // account_get_balance
     word!("0xc3385953bc66def5211f53a3c44de8facfb4060abbb1c9708859c314268989e8"),
     // account_has_non_fungible_asset
     word!("0x4fea67ed25474d5494a23c5e1e06a93f8aa140d0a673c6e140e0d4f1dd8bd835"),
     // account_compute_delta_commitment
-    word!("0xd873da6595320a1a38623a3b9029835405508f62c6b2d5a0dda190e88b293679"),
+    word!("0x1efce4cf90e2bdfde8e9a7de513b0420382289ec5fa10a3045d0c8c2f0a9c6f9"),
     // account_was_procedure_called
     word!("0xe85f7a761f0d90e4d880239c4c1f349125d5a53db1e058a51c462b9442117ab6"),
     // faucet_mint_asset
-    word!("0x7ff32339f938718738e215395c6da5d1ca62c8f76912eb570e71762112854b80"),
+    word!("0x01ee25cc3793f31f3e01d8b762f1db9f4d612d2ca63994557045b64a2115825c"),
     // faucet_burn_asset
-    word!("0x395504c9941d3547ca14e014e6850c72a5cf1cb4bf81e27521ef90f6a50e5bb6"),
+    word!("0x19e13b9568d2cdd70cdb3d78b98d158dfbedee4f23d99d0962b69937035a8476"),
     // faucet_get_total_fungible_asset_issuance
     word!("0xcb8d62a7570d84250540a5acbadf2911942d343a29e737df6f0f0ee632eafd43"),
     // faucet_is_non_fungible_asset_issued
@@ -60,7 +60,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // note_get_assets_info
     word!("0xe191daee1d69fd3928353fb9802e1aa8b8a6efc217b4d64dad1eaddbdf2b50ba"),
     // note_add_asset
-    word!("0xb2c9c56be0d94ac3a0dd787ee12a4e5b9cc0d576f1e112ca0a6940e86f549e6f"),
+    word!("0xbcbb64e5fe9b2cc2d8b20926bdfa8de78bc0bfe9c52f5f9279bbfcd3649cd1ef"),
     // note_get_serial_number
     word!("0x59b3ea650232049bb333867841012c3694bd557fa199cd65655c0006edccc3ab"),
     // note_get_inputs_commitment_and_len

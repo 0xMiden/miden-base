@@ -1,3 +1,5 @@
+use vm_processor::ExecutionOptions;
+
 /// Depth of the account database tree.
 pub const ACCOUNT_TREE_DEPTH: u8 = 64;
 
@@ -23,7 +25,7 @@ pub const MAX_OUTPUT_NOTES_PER_TX: usize = MAX_INPUT_NOTES_PER_TX;
 pub const MIN_PROOF_SECURITY_LEVEL: u32 = 96;
 
 /// The maximum number of VM cycles a transaction is allowed to take.
-pub const MAX_TX_EXECUTION_CYCLES: u32 = 1 << 30;
+pub const MAX_TX_EXECUTION_CYCLES: u32 = ExecutionOptions::MAX_CYCLES;
 
 /// The minimum number of VM cycles a transaction needs to execute.
 pub const MIN_TX_EXECUTION_CYCLES: u32 = 1 << 12;

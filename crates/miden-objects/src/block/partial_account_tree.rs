@@ -159,12 +159,12 @@ impl PartialAccountTree {
         // Note that if the leaf is empty, that's fine. It means it is tracked by the partial SMT,
         // but no account ID is inserted yet.
         // Also note that the multiple variant cannot occur by construction of the tree.
-        if let Ok(SmtLeaf::Single((existing_key, _))) = self.smt.get_leaf(&key) {
-            if key != existing_key {
-                return Err(AccountTreeError::DuplicateIdPrefix {
-                    duplicate_prefix: account_id.prefix(),
-                });
-            }
+        if let Ok(SmtLeaf::Single((existing_key, _))) = self.smt.get_leaf(&key)
+            && key != existing_key
+        {
+            return Err(AccountTreeError::DuplicateIdPrefix {
+                duplicate_prefix: account_id.prefix(),
+            });
         }
 
         self.smt

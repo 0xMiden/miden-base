@@ -1,4 +1,4 @@
-use alloc::string::ToString;
+use alloc::string::{String, ToString};
 
 use miden_objects::account::{
     Account,
@@ -10,6 +10,7 @@ use miden_objects::account::{
 use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
 use miden_objects::utils::sync::LazyLock;
 use miden_objects::{AccountError, Word};
+use thiserror::Error;
 
 use super::AuthScheme;
 use crate::account::auth::AuthRpoFalcon512;
@@ -88,6 +89,18 @@ impl From<BasicWallet> for AccountComponent {
     }
 }
 
+// BASIC WALLET ERROR
+// ================================================================================================
+
+/// Basic wallet related errors.
+#[derive(Debug, Error)]
+pub enum BasicWalletError {
+    #[error("unsupported authentication scheme: {0}")]
+    UnsupportedAuthScheme(String),
+    #[error("account creation failed")]
+    AccountError(#[source] AccountError),
+}
+
 /// Creates a new account with basic wallet interface, the specified authentication scheme and the
 /// account storage type. Basic wallets can be specified to have either mutable or immutable code.
 ///
@@ -103,15 +116,20 @@ pub fn create_basic_wallet(
     auth_scheme: AuthScheme,
     account_type: AccountType,
     account_storage_mode: AccountStorageMode,
-) -> Result<(Account, Word), AccountError> {
+) -> Result<(Account, Word), BasicWalletError> {
     if matches!(account_type, AccountType::FungibleFaucet | AccountType::NonFungibleFaucet) {
-        return Err(AccountError::AssumptionViolated(
+        return Err(BasicWalletError::AccountError(AccountError::AssumptionViolated(
             "basic wallet accounts cannot have a faucet account type".to_string(),
-        ));
+        )));
     }
 
-    let auth_component: AuthRpoFalcon512 = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key),
+    let auth_component: AccountComponent = match auth_scheme {
+        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
+        AuthScheme::NoAuth => {
+            return Err(BasicWalletError::UnsupportedAuthScheme(
+                "basic wallets cannot be created with NoAuth authentication scheme".into(),
+            ));
+        },
     };
 
     let (account, account_seed) = AccountBuilder::new(init_seed)
@@ -119,7 +137,8 @@ pub fn create_basic_wallet(
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
         .with_component(BasicWallet)
-        .build()?;
+        .build()
+        .map_err(BasicWalletError::AccountError)?;
 
     Ok((account, account_seed))
 }

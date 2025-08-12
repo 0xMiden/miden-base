@@ -1,3 +1,4 @@
+use core::slice;
 use std::collections::BTreeMap;
 
 use miden_lib::account::interface::AccountInterface;
@@ -55,7 +56,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
 
     let expiration_delta = 10u16;
     let send_note_transaction_script = sender_account_interface.build_send_notes_script(
-        &[partial_note.clone()],
+        slice::from_ref(&partial_note),
         Some(expiration_delta),
         false,
     )?;
@@ -66,7 +67,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // assert that the removed asset is in the delta
     let mut removed_assets: BTreeMap<_, _> = executed_transaction
@@ -121,7 +122,7 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
 
     let expiration_delta = 10u16;
     let send_note_transaction_script = sender_account_interface.build_send_notes_script(
-        &[partial_note.clone()],
+        slice::from_ref(&partial_note),
         Some(expiration_delta),
         false,
     )?;
@@ -132,6 +133,6 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
     Ok(())
 }

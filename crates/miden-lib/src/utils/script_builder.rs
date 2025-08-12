@@ -1,8 +1,7 @@
 use alloc::string::String;
-use alloc::sync::Arc;
 
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Assembler, Library, LibraryPath, SourceManager};
+use miden_objects::assembly::{Assembler, Library, LibraryPath};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
@@ -215,17 +214,6 @@ impl ScriptBuilder {
     ) -> Result<Self, ScriptBuilderError> {
         self.link_module(module_path, module_code)?;
         Ok(self)
-    }
-
-    // UTILITIES
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the assembler's source manager.
-    ///
-    /// After script building, the source manager can be fetched and passed on to the VM
-    /// processor to make the source files available to create better error messages.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
-        self.assembler.source_manager()
     }
 
     // SCRIPT COMPILATION

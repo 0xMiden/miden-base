@@ -12,10 +12,10 @@ mod executor;
 pub use executor::{
     DataStore,
     ExecutionOptions,
+    FailedNote,
     MastForestStore,
-    NoteAccountExecution,
     NoteConsumptionChecker,
-    NoteInputsCheck,
+    NoteConsumptionInfo,
     TransactionExecutor,
     TransactionExecutorHost,
 };
@@ -28,7 +28,6 @@ pub use prover::{
     LocalTransactionProver,
     ProvingOptions,
     TransactionMastStore,
-    TransactionProver,
     TransactionProverHost,
 };
 

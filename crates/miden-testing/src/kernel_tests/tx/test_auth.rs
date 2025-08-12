@@ -38,7 +38,7 @@ fn test_auth_procedure_args() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).auth_args(auth_args.into()).build()?;
 
-    tx_context.execute().context("failed to execute transaction")?;
+    tx_context.execute_blocking().context("failed to execute transaction")?;
 
     Ok(())
 }
@@ -68,7 +68,7 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).auth_args(auth_args.into()).build()?;
 
-    let execution_result = tx_context.execute();
+    let execution_result = tx_context.execute_blocking();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) =
         execution_result.unwrap_err()
@@ -104,7 +104,7 @@ fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
 
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build()?;
 
-    let execution_result = tx_context.execute();
+    let execution_result = tx_context.execute_blocking();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) =
         execution_result.unwrap_err()

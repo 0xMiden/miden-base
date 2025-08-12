@@ -70,7 +70,7 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .extend_expected_output_notes(vec![OutputNote::Full(swap_note.clone())])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     sender_account
         .apply_delta(create_swap_note_tx.account_delta())
@@ -119,7 +119,7 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .build_tx_context(target_account.id(), &[swap_note.id()], &[])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     target_account
         .apply_delta(consume_swap_note_tx.account_delta())
@@ -145,7 +145,7 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     sender_account
         .apply_delta(consume_payback_tx.account_delta())
@@ -198,7 +198,7 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         .context("failed to build tx context")?
         .extend_expected_output_notes(vec![OutputNote::Full(payback_p2id_note)])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     target_account.apply_delta(consume_swap_note_tx.account_delta())?;
 
@@ -222,7 +222,7 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     sender_account.apply_delta(consume_payback_tx.account_delta())?;
 
@@ -273,7 +273,7 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
         .build_tx_context(matcher_account.id(), &[swap_note_1.id(), swap_note_2.id()], &[])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // VERIFY PAYBACK NOTES WERE CREATED CORRECTLY
     // --------------------------------------------------------------------------------------------

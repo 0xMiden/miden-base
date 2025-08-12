@@ -1,3 +1,5 @@
+use core::slice;
+
 use assert_matches::assert_matches;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
@@ -144,30 +146,34 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // Test 1: Transaction WITH authenticator calling trigger procedure 1 (should succeed)
     let tx_context_with_auth_1 = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(authenticator.clone())
         .tx_script(tx_script_trigger_1.clone())
         .build()?;
 
-    tx_context_with_auth_1.execute().expect("trigger 1 with auth should succeed");
+    tx_context_with_auth_1
+        .execute_blocking()
+        .expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(authenticator)
         .tx_script(tx_script_trigger_2)
         .build()?;
 
-    tx_context_with_auth_2.execute().expect("trigger 2 with auth should succeed");
+    tx_context_with_auth_2
+        .execute_blocking()
+        .expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_trigger_1)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute();
+    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
 
     assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
         execution_error
@@ -180,12 +186,14 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // Test 4: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     let tx_context_no_trigger = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger
+        .execute_blocking()
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,
@@ -214,12 +222,14 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
     // This tests that when allow_unauthorized_output_notes=true, transactions without
     // authenticators can still succeed even if they create output notes
     let tx_context_no_trigger = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger
+        .execute_blocking()
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,
@@ -248,12 +258,12 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
     // notes This should FAIL because allow_unauthorized_input_notes=false and we're consuming
     // input notes
     let tx_context_no_auth = mock_chain
-        .build_tx_context(account.id(), &[], &[note.clone()])?
+        .build_tx_context(account.id(), &[], slice::from_ref(&note))?
         .authenticator(None)
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute();
+    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
 
     // This should fail with MissingAuthenticator error because input notes are being consumed
     // and allow_unauthorized_input_notes is false

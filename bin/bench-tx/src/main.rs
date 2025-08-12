@@ -83,7 +83,8 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             .extend_input_notes(vec![input_note_1, input_note_2])
             .build()?
     };
-    let executed_transaction = tx_context.execute().context("failed to execute transaction")?;
+    let executed_transaction =
+        tx_context.execute_blocking().context("failed to execute transaction")?;
 
     Ok(executed_transaction.into())
 }
@@ -124,7 +125,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
         .authenticator(Some(falcon_auth))
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     Ok(executed_transaction.into())
 }

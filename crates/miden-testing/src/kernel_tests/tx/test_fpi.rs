@@ -58,7 +58,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         use.miden::account
 
         export.get_item_foreign
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
             exec.account::get_item
@@ -68,7 +68,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         end
 
         export.get_map_item_foreign
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
             exec.account::get_map_item
@@ -121,7 +121,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
     let code = format!(
         "
         use.std::sys
-        
+
         use.$kernel::prologue
         use.miden::tx
 
@@ -135,7 +135,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
             # push the index of desired storage item
             push.0
 
-            # get the hash of the `get_item_foreign` procedure of the foreign account 
+            # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
@@ -242,7 +242,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
             # push the index of desired storage item
             push.0
 
-            # get the hash of the `get_item_foreign` procedure of the foreign account 
+            # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
@@ -260,7 +260,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
             # push the index of desired storage item
             push.0
 
-            # get the hash of the `get_item_foreign` procedure of the foreign account 
+            # get the hash of the `get_item_foreign` procedure of the foreign account
             push.{get_item_foreign_hash}
 
             # push the foreign account ID
@@ -304,7 +304,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         use.miden::account
 
         export.get_item_foreign_1
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
             exec.account::get_item
@@ -317,7 +317,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         use.miden::account
 
         export.get_item_foreign_2
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
             exec.account::get_item
@@ -396,7 +396,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            ### Get the storage item at index 0 from the first account 
+            ### Get the storage item at index 0 from the first account
             # pad the stack for the `execute_foreign_procedure` execution
             padw padw padw push.0.0
             # => [pad(14)]
@@ -414,7 +414,7 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
             exec.tx::execute_foreign_procedure dropw
             # => []
 
-            ### Get the storage item at index 0 from the second account 
+            ### Get the storage item at index 0 from the second account
             # pad the stack for the `execute_foreign_procedure` execution
             padw padw padw push.0.0
             # => [pad(14)]
@@ -519,7 +519,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         use.miden::account
 
         export.get_item_foreign
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
             exec.account::get_item
@@ -529,7 +529,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         end
 
         export.get_map_item_foreign
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.2 drop
             exec.account::get_map_item
@@ -640,7 +640,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let _executed_transaction = tx_context.execute()?;
+    let _executed_transaction = tx_context.execute_blocking()?;
 
     Ok(())
 }
@@ -662,7 +662,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     let second_foreign_account_code_source = r#"
         use.miden::tx
         use.miden::account
-        
+
         use.std::sys
 
         export.second_account_foreign_proc
@@ -687,7 +687,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             # make sure that the resulting value equals 5
             dup push.5 assert_eq.err="value should have been 5"
 
-            # get the first element of the 0'th storage slot (it should be 1) and add it to the 
+            # get the first element of the 0'th storage slot (it should be 1) and add it to the
             # obtained foreign value.
             push.0 exec.account::get_item drop drop drop
             add
@@ -735,7 +735,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
             exec.tx::execute_foreign_procedure
             # => [storage_value]
 
-            # get the second element of the 0'th storage slot (it should be 2) and add it to the 
+            # get the second element of the 0'th storage slot (it should be 2) and add it to the
             # obtained foreign value.
             push.0 exec.account::get_item drop drop swap drop
             add
@@ -747,7 +747,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         end
 
         export.get_item_foreign
-            # make this foreign procedure unique to make sure that we invoke the procedure of the 
+            # make this foreign procedure unique to make sure that we invoke the procedure of the
             # foreign account, not the native one
             push.1 drop
             exec.account::get_item
@@ -798,14 +798,18 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
     // push the hashes of the foreign procedures and account IDs to the advice stack to be able to
     // call them dynamically.
     let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.extend_stack(*second_foreign_account.code().procedures()[1].mast_root());
-    advice_inputs.extend_stack([
+    advice_inputs
+        .stack
+        .extend(*second_foreign_account.code().procedures()[1].mast_root());
+    advice_inputs.stack.extend([
         second_foreign_account.id().suffix(),
         second_foreign_account.id().prefix().as_felt(),
     ]);
 
-    advice_inputs.extend_stack(*first_foreign_account.code().procedures()[2].mast_root());
-    advice_inputs.extend_stack([
+    advice_inputs
+        .stack
+        .extend(*first_foreign_account.code().procedures()[2].mast_root());
+    advice_inputs.stack.extend([
         first_foreign_account.id().suffix(),
         first_foreign_account.id().prefix().as_felt(),
     ]);
@@ -831,13 +835,13 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
             exec.tx::execute_foreign_procedure
             # => [storage_value]
-            
+
             # add 10 to the returning value
             add.10
 
             # assert that the resulting value equals 18
             push.18 assert_eq.err="sum should be 18"
-            # => []        
+            # => []
 
             exec.sys::truncate_stack
         end
@@ -857,7 +861,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let _executed_transaction = tx_context.execute()?;
+    let _executed_transaction = tx_context.execute_blocking()?;
     Ok(())
 }
 
@@ -1026,7 +1030,7 @@ fn test_nested_fpi_stack_overflow() {
                 .tx_script(tx_script)
                 .build().unwrap();
 
-            let err = tx_context.execute()
+            let err = tx_context.execute_blocking()
                 .unwrap_err();
 
             let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -1101,9 +1105,10 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
     // push the hash of the native procedure and native account IDs to the advice stack to be able
     // to call them dynamically.
     let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.extend_stack(*native_account.code().procedures()[3].mast_root());
+    advice_inputs.stack.extend(*native_account.code().procedures()[3].mast_root());
     advice_inputs
-        .extend_stack([native_account.id().suffix(), native_account.id().prefix().as_felt()]);
+        .stack
+        .extend([native_account.id().suffix(), native_account.id().prefix().as_felt()]);
 
     let code = format!(
         "
@@ -1144,7 +1149,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let err = tx_context.execute().unwrap_err();
+    let err = tx_context.execute_blocking().unwrap_err();
 
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
         panic!("unexpected error: {err}")

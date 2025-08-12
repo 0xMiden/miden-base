@@ -9,7 +9,6 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionInputs,
 };
-use miden_objects::utils::collections::KvMap;
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO};
 use thiserror::Error;
@@ -47,7 +46,11 @@ impl TransactionAdviceInputs {
         // Add the script's MAST forest's advice inputs
         if let Some(tx_script) = tx_args.tx_script() {
             inputs.extend_map(
-                tx_script.mast().advice_map().iter().map(|(key, values)| (*key, values.clone())),
+                tx_script
+                    .mast()
+                    .advice_map()
+                    .iter()
+                    .map(|(key, values)| (*key, values.to_vec())),
             );
         }
 
@@ -265,11 +268,11 @@ impl TransactionAdviceInputs {
         // This ensures that the advice map is available during the note script execution when it
         // calls the account's code that relies on the it's advice map data (data segments) loaded
         // into the advice provider
-        self.0.map.merge_advice_map(account.code().mast().advice_map()).map_err(
+        self.0.map.merge(account.code().mast().advice_map()).map_err(
             |((key, existing_val), incoming_val)| TransactionAdviceMapMismatch {
                 key,
-                existing_val,
-                incoming_val,
+                existing_val: existing_val.to_vec(),
+                incoming_val: incoming_val.to_vec(),
             },
         )?;
 
@@ -390,11 +393,11 @@ impl TransactionAdviceInputs {
                 },
             }
 
-            self.0.map.merge_advice_map(note.script().mast().advice_map()).map_err(
+            self.0.map.merge(note.script().mast().advice_map()).map_err(
                 |((key, existing_val), incoming_val)| TransactionAdviceMapMismatch {
                     key,
-                    existing_val,
-                    incoming_val,
+                    existing_val: existing_val.to_vec(),
+                    incoming_val: incoming_val.to_vec(),
                 },
             )?;
         }
@@ -408,22 +411,22 @@ impl TransactionAdviceInputs {
 
     /// Extends the map of values with the given argument, replacing previously inserted items.
     fn extend_map(&mut self, iter: impl IntoIterator<Item = (Word, Vec<Felt>)>) {
-        self.0.extend_map(iter);
+        self.0.map.extend(iter);
     }
 
     fn add_map_entry(&mut self, key: Word, values: Vec<Felt>) {
-        self.0.extend_map([(key, values)]);
+        self.0.map.extend([(key, values)]);
     }
 
     /// Extends the stack with the given elements.
     fn extend_stack(&mut self, iter: impl IntoIterator<Item = Felt>) {
-        self.0.extend_stack(iter);
+        self.0.stack.extend(iter);
     }
 
     /// Extends the [`MerkleStore`](miden_objects::crypto::merkle::MerkleStore) with the given
     /// nodes.
     fn extend_merkle_store(&mut self, iter: impl Iterator<Item = InnerNodeInfo>) {
-        self.0.extend_merkle_store(iter);
+        self.0.store.extend(iter);
     }
 }
 

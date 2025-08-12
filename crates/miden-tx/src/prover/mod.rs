@@ -1,12 +1,9 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountDelta};
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
     InputNote,
@@ -20,7 +17,6 @@ use miden_objects::transaction::{
 pub use miden_prover::ProvingOptions;
 use miden_prover::{ExecutionProof, prove};
 use vm_processor::Word;
-use winter_maybe_async::*;
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -31,32 +27,10 @@ pub use prover_host::TransactionProverHost;
 mod mast_store;
 pub use mast_store::TransactionMastStore;
 
-// TRANSACTION PROVER TRAIT
-// ================================================================================================
-
-/// The [TransactionProver] trait defines the interface that transaction witness objects use to
-/// prove transactions and generate a [ProvenTransaction].
-#[maybe_async_trait]
-pub trait TransactionProver {
-    /// Proves the provided transaction and returns a [ProvenTransaction].
-    ///
-    /// # Errors
-    /// - If the input note data in the transaction witness is corrupt.
-    /// - If the transaction program cannot be proven.
-    /// - If the transaction result is corrupt.
-    #[maybe_async]
-    fn prove(
-        &self,
-        tx_witness: TransactionWitness,
-    ) -> Result<ProvenTransaction, TransactionProverError>;
-}
-
 // LOCAL TRANSACTION PROVER
 // ------------------------------------------------------------------------------------------------
 
 /// Local Transaction prover is a stateless component which is responsible for proving transactions.
-///
-/// Local Transaction Prover implements the [TransactionProver] trait.
 pub struct LocalTransactionProver {
     mast_store: Arc<TransactionMastStore>,
     proof_options: ProvingOptions,
@@ -71,10 +45,8 @@ impl LocalTransactionProver {
         }
     }
 
-    #[maybe_async]
     #[cfg(any(feature = "testing", test))]
-    #[allow(dead_code)]
-    fn prove_dummy(
+    pub fn prove_dummy(
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
@@ -93,7 +65,6 @@ impl LocalTransactionProver {
         )
     }
 
-    // #[maybe_async]
     fn build_proven_transaction(
         &self,
         input_notes: &InputNotes<InputNote>,
@@ -149,10 +120,8 @@ impl Default for LocalTransactionProver {
     }
 }
 
-#[maybe_async_trait]
-impl TransactionProver for LocalTransactionProver {
-    #[maybe_async]
-    fn prove(
+impl LocalTransactionProver {
+    pub fn prove(
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
@@ -193,15 +162,13 @@ impl TransactionProver for LocalTransactionProver {
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        let source_manager = Arc::new(DefaultSourceManager::default());
-        let (stack_outputs, proof) = maybe_await!(prove(
+        let (stack_outputs, proof) = prove(
             &TransactionKernel::main(),
             stack_inputs,
             advice_inputs.clone(),
             &mut host,
             self.proof_options.clone(),
-            source_manager,
-        ))
+        )
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         let (account_delta, output_notes, _tx_progress) = host.into_parts();
