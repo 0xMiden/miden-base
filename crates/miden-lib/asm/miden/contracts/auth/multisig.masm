@@ -3,7 +3,6 @@ use.miden::auth
 use.miden::tx
 use.std::crypto::dsa::rpo_falcon512
 use.std::crypto::hashes::rpo
-use.std::sys
 use.std::word
 
 # CONSTANTS
@@ -29,7 +28,7 @@ const.UNAUTHORIZED_EVENT=131101
 
 # The slot in this component's storage layout where both the signature threshold
 # and number of approvers are stored as [0, 0, threshold, num_approvers].
-const.THRESHOLD_SLOT=0
+const.THRESHOLD_CONFIG_SLOT=0
 
 # The slot in this component's storage layout where the public keys map is stored.
 # Map entries: [0, 0, 0, key_index] => owner_public_key
@@ -39,12 +38,16 @@ const.PUBLIC_KEYS_MAP_SLOT=1
 # Map entries: transaction_message => [0, 0, 0, USED_FLAG]
 const.EXECUTED_TXS_SLOT=2
 
-# Runtime Memory Address Constants
-const.TEMP_PK=108
+# Memory Constants
+
+# Local Memory Addresses
+const.NUM_OF_APPROVERS=0
+const.THRESHOLD=4
+const.TEMP_PK=8
+const.SUCCESSFUL_VERIFICATIONS=12
+
+# Global Memory Addresses
 const.MESSAGE=112
-const.SUCCESSFUL_VERIFICATIONS=116
-const.THRESHOLD=120
-const.NUM_OF_APPROVERS=124
 
 # Executed Transaction Flag Constant
 const.USED_FLAG=1
@@ -110,59 +113,58 @@ end
 #! from the account storage map, and verifies their signatures against the transaction message.
 #! If any required signature is missing, it emits an UNAUTHORIZED_EVENT.
 #!
-#! Inputs:  [num_of_approvers, num_required_signatures]
+#! Inputs:  [num_of_approvers, num_required_signatures, MSG]
 #! Outputs: []
-proc.verify_signatures
-    # => [num_of_approvers, num_required_signatures]
-
-    dup mem_store.NUM_OF_APPROVERS
-    # => [num_of_approvers, num_required_signatures]
+proc.verify_signatures.16
+    dup loc_store.NUM_OF_APPROVERS
+    # => [num_of_approvers, num_required_signatures, MSG]
 
     swap
-    # => [num_required_signatures, num_of_approvers]
+    # => [num_required_signatures, num_of_approvers, MSG]
 
-    mem_store.THRESHOLD
-    # => [num_of_approvers]
+    loc_store.THRESHOLD
+    # => [num_of_approvers, MESSAGE]
 
-    padw mem_loadw.MESSAGE movup.4
+    # Initializing SUCCESSFUL_VERIFICATIONS local memory address to 0
+    push.0 loc_store.SUCCESSFUL_VERIFICATIONS
     # => [num_of_approvers, MESSAGE]
 
     # Counter `i` starts at `num_of_approvers` and counts down to 0
-    # => [i, MESSAGE]
+    # => [i, MSG]
 
     # Loop through required signers and verify signatures.
     # ---------------------------------------------------------------------------------------------
 
     dup neq.0
     while.true
-        # => [i, MESSAGE]
+        # => [i, MSG]
 
         # Fetch public key from storage map.
         # -----------------------------------------------------------------------------------------
 
         sub.1 dup push.0.0.0 push.PUBLIC_KEYS_MAP_SLOT
-        # => [owner_key_slot, [0, 0, 0, i-1], i-1, MESSAGE]
+        # => [owner_key_slot, [0, 0, 0, i-1], i-1, MSG]
 
         exec.account::get_map_item
-        # => [OWNER_PUB_KEY, i-1, MESSAGE]
+        # => [OWNER_PUB_KEY, i-1, MSG]
 
-        mem_storew.TEMP_PK
-        # => [OWNER_PUB_KEY, i-1, MESSAGE]
+        loc_storew.TEMP_PK
+        # => [OWNER_PUB_KEY, i-1, MSG]
 
         # Check if signature exists for this signer.
         # -----------------------------------------------------------------------------------------
 
         movup.4 movdn.8 swapw dupw movdnw.2
-        # => [MESSAGE, OWNER_PUB_KEY, MESSAGE, i-1]
+        # => [MSG, OWNER_PUB_KEY, MSG, i-1]
 
         hmerge
-        # => [SIG_KEY, MESSAGE, i-1]
+        # => [SIG_KEY, MSG, i-1]
 
         adv.has_mapkey
-        # => [SIG_KEY, MESSAGE, i-1]
+        # => [SIG_KEY, MSG, i-1]
 
         adv_push.1
-        # => [has_signature, SIG_KEY, MESSAGE, i-1]
+        # => [has_signature, SIG_KEY, MSG, i-1]
 
         # if h(msg, pk) => msg exists in AdviceMap check the signature
         if.true
@@ -172,7 +174,7 @@ proc.verify_signatures
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
-            padw mem_loadw.TEMP_PK
+            padw loc_loadw.TEMP_PK
             # => [PK, MSG, MSG, i-1]
 
             swapw
@@ -187,9 +189,9 @@ proc.verify_signatures
             exec.rpo_falcon512::verify
             # => [MSG, i-1]
 
-            mem_load.SUCCESSFUL_VERIFICATIONS
+            loc_load.SUCCESSFUL_VERIFICATIONS
             add.1
-            mem_store.SUCCESSFUL_VERIFICATIONS
+            loc_store.SUCCESSFUL_VERIFICATIONS
             # => [MSG, i-1]
 
         else
@@ -212,10 +214,10 @@ proc.verify_signatures
     drop
     # => [MSG]
 
-    mem_load.SUCCESSFUL_VERIFICATIONS
+    loc_load.SUCCESSFUL_VERIFICATIONS
     # => [num_verifications, MSG]
 
-    mem_load.THRESHOLD
+    loc_load.THRESHOLD
     # => [threshold, num_verifications, MSG]
 
     gte not
@@ -282,21 +284,19 @@ export.auth__tx_rpo_falcon512_multisig
     exec.auth::hash_tx_summary
     # => [TX_SUMMARY_COMMITMENT]
 
-    mem_storew.MESSAGE dropw
-    # => []
+    mem_storew.MESSAGE
+    # => [TX_SUMMARY_COMMITMENT]
 
     # ------ Verifying owner signatures ------
 
-    push.THRESHOLD_SLOT
-    # => [index]
+    push.THRESHOLD_CONFIG_SLOT
+    # => [index, TX_SUMMARY_COMMITMENT]
 
     exec.account::get_item
-    # => [0, 0, num_of_approvers, num_required_signatures]
+    # => [0, 0, num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT]
 
     drop drop
-    # => [num_of_approvers, num_required_signatures]
-
-    push.111 debug.stack drop
+    # => [num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT]
 
     exec.verify_signatures
     # => []
@@ -307,8 +307,5 @@ export.auth__tx_rpo_falcon512_multisig
     # => [MSG]
 
     exec.assert_new_tx
-    # => []
-
-    exec.sys::truncate_stack
     # => []
 end
