@@ -3,7 +3,7 @@ use crate::account::AccountId;
 use crate::note::NoteTag;
 
 /// A user-facing address in Miden.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Address {
     AccountId(AccountIdAddress),
 }
@@ -13,7 +13,7 @@ pub enum Address {
 /// The tag length preference lets the owner of the account choose their level of privacy. A higher
 /// tag length makes the account more uniquely identifiable and reduces privacy, while a shorter
 /// length increases privacy at the cost of matching more notes published onchain.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct AccountIdAddress {
     id: AccountId,
     tag_len: u8,
