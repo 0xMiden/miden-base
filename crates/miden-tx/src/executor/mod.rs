@@ -9,12 +9,7 @@ use miden_objects::assembly::SourceManager;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
-    AccountInputs,
-    ExecutedTransaction,
-    InputNote,
-    InputNotes,
-    TransactionArgs,
-    TransactionInputs,
+    AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs, TransactionInputs,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;
@@ -450,16 +445,16 @@ where
 ///
 /// # Safety
 ///
-/// The caller must ensure that the provided `separator_index` is within the bounds of the input
+/// The caller must ensure that the provided `index` is within the bounds of the input
 /// vector.
 fn split_at<T>(mut vec: Vec<T>, index: usize) -> (Vec<T>, T, Vec<T>) {
-    // Drain elements after separator into after vector
+    // Drain backwards from the index to the end of the vector.
     let after: Vec<T> = vec.drain(index + 1..).collect();
 
-    // Remove and get the separator
+    // Remove and get the separator.
     let separator = vec.pop().expect("provided separator index in bounds");
 
-    // vec now contains only the before part
+    // Input now contains only the before part.
     let before = vec;
 
     (before, separator, after)
