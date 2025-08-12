@@ -118,9 +118,9 @@ impl NoteTag {
     /// The exponent of the maximum allowed use case id. In other words, 2^exponent is the maximum
     /// allowed use case id.
     pub(crate) const MAX_USE_CASE_ID_EXPONENT: u8 = 14;
-    // Creating a tag for local execution directly from AccountId defaults to using 14 bits.
+    /// The default note tag length for an account ID with local execution.
     pub const DEFAULT_LOCAL_TAG_LENGTH: u8 = 14;
-    // Creating a tag for network accounts should always use 30 bits.
+    /// The default note tag length for an account ID with network execution.
     pub const DEFAULT_NETWORK_TAG_LENGTH: u8 = 30;
     /// The maximum number of bits that can be encoded into the tag for local accounts.
     pub const MAX_LOCAL_TAG_LENGTH: u8 = 30;
@@ -179,7 +179,7 @@ impl NoteTag {
         let high_bits = high_bits as u32;
 
         // Select the top `tag_len` bits of the account ID, i.e.:
-        // [2 zero bits | remaining high bits (tag_len bits) | 16 zero bits].
+        // [2 zero bits | remaining high bits (tag_len bits) | (30 - tag_len) zero bits].
         let high_bits = high_bits & (u32::MAX << (32 - 2 - tag_len));
 
         // Set the local execution tag in the two most significant bits.

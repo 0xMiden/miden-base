@@ -20,7 +20,7 @@ pub struct AccountIdAddress {
 }
 
 impl AccountIdAddress {
-    /// Creates a new account-id based address with the default tag length.
+    /// Creates a new account ID based address with the default tag length.
     ///
     /// The tag length defaults to [`NoteTag::DEFAULT_LOCAL_TAG_LENGTH`] for local, and
     /// [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
