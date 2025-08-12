@@ -358,7 +358,8 @@ impl TransactionKernel {
 
         // parse final account state
         let final_account_data = advice_inputs
-            .mapped_values(&final_account_commitment)
+            .map
+            .get(&final_account_commitment)
             .ok_or(TransactionOutputError::FinalAccountCommitmentMissingInAdviceMap)?;
 
         let account = parse_final_account_header(final_account_data)
@@ -389,7 +390,7 @@ impl TransactionKernel {
         advice_inputs: &AdviceInputs,
     ) -> Result<(Word, Word), TransactionOutputError> {
         let account_update_data =
-            advice_inputs.mapped_values(&account_update_commitment).ok_or_else(|| {
+            advice_inputs.map.get(&account_update_commitment).ok_or_else(|| {
                 TransactionOutputError::AccountUpdateCommitment(
                     "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
                 )
@@ -463,14 +464,19 @@ impl TransactionKernel {
     }
 
     /// Returns the testing assembler, and additionally contains the library for
-    /// [AccountCode::mock_library](miden_objects::account::AccountCode::mock_library), which is a
+    /// [`MockAccountCodeExt::mock_library`][mock_lib], which is a
     /// mock wallet used in tests.
+    ///
+    /// [mock_lib]: (crate::testing::mock_account_code::MockAccountCodeExt::mock_library)
     pub fn testing_assembler_with_mock_account() -> Assembler {
+        use miden_objects::account::AccountCode;
+
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
         let assembler = Self::testing_assembler().with_debug_mode(true);
-        let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
 
         assembler
-            .with_dynamic_library(library)
+            .with_dynamic_library(AccountCode::mock_library())
             .expect("failed to add mock account code")
     }
 }

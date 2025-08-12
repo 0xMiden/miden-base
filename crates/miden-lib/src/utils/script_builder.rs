@@ -1,8 +1,7 @@
 use alloc::string::String;
-use alloc::sync::Arc;
 
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Assembler, Library, LibraryPath, SourceManager};
+use miden_objects::assembly::{Assembler, Library, LibraryPath};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
@@ -217,17 +216,6 @@ impl ScriptBuilder {
         Ok(self)
     }
 
-    // UTILITIES
-    // --------------------------------------------------------------------------------------------
-
-    /// Returns the assembler's source manager.
-    ///
-    /// After script building, the source manager can be fetched and passed on to the VM
-    /// processor to make the source files available to create better error messages.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
-        self.assembler.source_manager()
-    }
-
     // SCRIPT COMPILATION
     // --------------------------------------------------------------------------------------------
 
@@ -294,11 +282,13 @@ impl ScriptBuilder {
     /// and is intended to replace scripts that were built with that assembler.
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_account_library() -> Result<Self, ScriptBuilderError> {
-        let builder = Self::with_kernel_library()?;
-        let mock_account_library =
-            miden_objects::account::AccountCode::mock_library(builder.assembler.clone());
+        use miden_objects::account::AccountCode;
 
-        builder.with_dynamically_linked_library(&mock_account_library)
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
+        let builder = Self::with_kernel_library()?;
+
+        builder.with_dynamically_linked_library(&AccountCode::mock_library())
     }
 }
 

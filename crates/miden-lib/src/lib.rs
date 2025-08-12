@@ -22,6 +22,9 @@ pub mod note;
 pub mod transaction;
 pub mod utils;
 
+#[cfg(any(feature = "testing", test))]
+pub mod testing;
+
 // RE-EXPORTS
 // ================================================================================================
 pub use miden_stdlib::StdLibrary;

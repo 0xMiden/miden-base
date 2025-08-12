@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -15,7 +15,6 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -66,7 +65,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[p2any_note.id()], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), ZERO);
@@ -85,7 +84,7 @@ fn delta_nonce() -> anyhow::Result<()> {
         .build_tx_context(account_id, &[], &[])
         .expect("failed to build tx context")
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
@@ -179,7 +178,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
         .expect("failed to build tx context")
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     let storage_values_delta = executed_tx
@@ -329,7 +328,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
         .build_tx_context(account_id, &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
     let maps_delta = executed_tx.account_delta().storage().maps();
 
@@ -436,7 +435,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -543,7 +542,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute transaction")?;
 
     let mut added_assets = executed_tx
@@ -576,10 +575,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_slots(
-            TransactionKernel::testing_assembler(),
-            AccountStorage::mock_storage_slots(),
-        )?)
+        .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
         .with_assets(account_assets)
         .build_existing()?;
 
@@ -663,7 +659,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         ## TRANSACTION SCRIPT
@@ -739,7 +735,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     // expected delta
     // --------------------------------------------------------------------------------------------
     // execute the transaction and get the witness
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     // nonce delta
     // --------------------------------------------------------------------------------------------
@@ -812,7 +808,10 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
     )?;
     let chain = builder.build()?;
 
-    let tx = chain.build_tx_context(account, &[input_note.id()], &[])?.build()?.execute()?;
+    let tx = chain
+        .build_tx_context(account, &[input_note.id()], &[])?
+        .build()?
+        .execute_blocking()?;
 
     assert!(tx.account_delta().vault().is_empty());
 
@@ -858,7 +857,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
-      use.test::account
+      use.mock::account
       use.miden::tx
 
       #! Inputs:  [index, VALUE]

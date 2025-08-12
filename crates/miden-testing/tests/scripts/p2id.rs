@@ -14,10 +14,10 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
-use miden_testing::{Auth, MockChain};
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 use miden_tx::utils::word_to_masm_push_string;
 
-use crate::{assert_transaction_executor_error, prove_and_verify_transaction};
+use crate::prove_and_verify_transaction;
 
 /// We test the Pay to script with 2 assets to test the loop inside the script.
 /// So we create a note containing two assets that can only be consumed by the target account.
@@ -51,7 +51,7 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(target_account.id(), &[note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // vault delta
     let target_account_after: Account = Account::from_parts(
@@ -75,7 +75,7 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
     let executed_transaction_2 = mock_chain
         .build_tx_context(malicious_account.id(), &[], &[note])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     // Check that we got the expected result - TransactionExecutorError
     assert_transaction_executor_error!(executed_transaction_2, ERR_P2ID_TARGET_ACCT_MISMATCH);
@@ -111,7 +111,7 @@ fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(target_account.clone(), &[note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // Apply delta to the target account to verify it is no longer new
     let target_account_after: Account = Account::from_parts(
@@ -158,7 +158,7 @@ fn prove_consume_multiple_notes() -> anyhow::Result<()> {
         .build_tx_context(account.id(), &[note_1.id(), note_2.id()], &[])?
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     account.apply_delta(executed_transaction.account_delta())?;
     let resulting_asset = account.vault().assets().next().unwrap();
@@ -268,7 +268,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     assert_eq!(executed_transaction.output_notes().num_notes(), 2);
 

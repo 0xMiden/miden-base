@@ -97,10 +97,10 @@ impl AccountProcedureIndexMap {
 
 fn build_account_procedure_map(
     code_commitment: Word,
-    adv_provider: &AdviceInputs,
+    advice_inputs: &AdviceInputs,
 ) -> Result<BTreeMap<Word, u8>, TransactionHostError> {
     // get the account procedures from the advice_map
-    let proc_data = adv_provider.mapped_values(&code_commitment).ok_or_else(|| {
+    let proc_data = advice_inputs.map.get(&code_commitment).ok_or_else(|| {
         TransactionHostError::AccountProcedureIndexMapError(
             "failed to read account procedure data from the advice provider".to_string(),
         )

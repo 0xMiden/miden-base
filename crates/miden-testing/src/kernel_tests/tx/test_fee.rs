@@ -19,7 +19,7 @@ fn create_account_with_fees() -> anyhow::Result<()> {
     let tx = chain
         .build_tx_context(account, &[fee_note.id()], &[])?
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute account-creating transaction")?;
 
     let expected_fee = tx.compute_fee();

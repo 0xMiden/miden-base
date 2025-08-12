@@ -6,6 +6,7 @@ use itertools::Itertools;
 use miden_lib::account::faucets::BasicFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
@@ -30,7 +31,6 @@ use miden_objects::block::{
     ProvenBlock,
 };
 use miden_objects::note::{Note, NoteDetails, NoteType};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
@@ -290,26 +290,23 @@ impl MockChainBuilder {
         Ok(account)
     }
 
-    /// Creates a new public account with an [`AccountMockComponent`] and registers the
+    /// Creates a new public account with an [`MockAccountComponent`] and registers the
     /// authenticator (if any).
     pub fn create_new_mock_account(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
-            .with_component(
-                AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())
-                    .context("failed to create mock component")?,
-            );
+            .with_component(MockAccountComponent::with_empty_slots());
 
         self.add_account_from_builder(auth_method, account_builder, AccountState::New)
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, [], [])
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account_with_storage(
         &mut self,
@@ -319,7 +316,7 @@ impl MockChainBuilder {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, slots, [])
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account_with_assets(
         &mut self,
@@ -329,7 +326,7 @@ impl MockChainBuilder {
         self.add_existing_mock_account_with_storage_and_assets(auth_method, [], assets)
     }
 
-    /// Adds an existing public account with an [`AccountMockComponent`] to the initial chain state
+    /// Adds an existing public account with an [`MockAccountComponent`] to the initial chain state
     /// and registers the authenticator (if any).
     pub fn add_existing_mock_account_with_storage_and_assets(
         &mut self,
@@ -339,13 +336,7 @@ impl MockChainBuilder {
     ) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
-            .with_component(
-                AccountMockComponent::new_with_slots(
-                    TransactionKernel::assembler(),
-                    slots.into_iter().collect(),
-                )
-                .context("failed to create mock component")?,
-            )
+            .with_component(MockAccountComponent::with_slots(slots.into_iter().collect()))
             .with_assets(assets);
 
         self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)

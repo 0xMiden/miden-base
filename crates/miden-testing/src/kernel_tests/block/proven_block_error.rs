@@ -3,16 +3,16 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::testing::account_component::{AccountMockComponent, IncrNonceAuthComponent};
 use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
 use miden_objects::vm::ExecutionProof;
-use miden_objects::{AccountTreeError, Felt, FieldElement, NullifierTreeError, Word};
+use miden_objects::{AccountTreeError, NullifierTreeError, Word};
 use winterfell::Proof;
 
 use super::utils::{
@@ -254,19 +254,13 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let mut builder = MockChain::builder();
 
-    let assembler = TransactionKernel::testing_assembler();
-    let auth_component: AccountComponent =
-        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
+    let auth_component: AccountComponent = IncrNonceAuthComponent.into();
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
-        .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::testing_assembler(),
-                vec![StorageSlot::Value(Word::from([5u32; 4]))],
-            )
-            .context("failed to create account mock component")?,
-        )
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
+            [5u32; 4],
+        ))]))
         .build()
         .context("failed to build account")?;
 
@@ -294,12 +288,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     );
     assert_eq!(account.init_commitment(), Word::empty());
 
-    let existing_account = Account::mock(
-        existing_id.into(),
-        Felt::ZERO,
-        auth_component,
-        TransactionKernel::testing_assembler(),
-    );
+    let existing_account = Account::mock(existing_id.into(), auth_component);
     builder.add_account(existing_account.clone())?;
     let mut mock_chain = builder.build()?;
 
@@ -311,7 +300,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .build()?;
-    let tx = tx_context.execute().context("failed to execute account creating tx")?;
+    let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
     let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
 
     let batch = generate_batch(&mut mock_chain, vec![tx]);
@@ -362,13 +351,9 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(
-            AccountMockComponent::new_with_slots(
-                TransactionKernel::testing_assembler(),
-                vec![StorageSlot::Value(Word::from([5u32; 4]))],
-            )
-            .context("failed to create account mock component")?,
-        )
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
+            [5u32; 4],
+        ))]))
         .build()
         .context("failed to build account")?;
 

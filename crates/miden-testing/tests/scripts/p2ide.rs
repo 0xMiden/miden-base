@@ -12,9 +12,7 @@ use miden_objects::account::Account;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{Note, NoteType};
-use miden_testing::{Auth, MockChain};
-
-use crate::assert_transaction_executor_error;
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 /// Test that the P2IDE note works like a regular P2ID note
 #[test]
@@ -35,7 +33,7 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let executed_transaction_1 = mock_chain
         .build_tx_context(malicious_account.id(), &[], slice::from_ref(&p2ide_note))?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(executed_transaction_1, ERR_P2IDE_RECLAIM_DISABLED);
 
@@ -43,7 +41,7 @@ fn p2ide_script_success_without_reclaim_or_timelock() -> anyhow::Result<()> {
     let executed_transaction_2 = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let target_account_after: Account = Account::from_parts(
         target_account.id(),
@@ -80,7 +78,7 @@ fn p2ide_script_success_timelock_unlock_before_reclaim_height() -> anyhow::Resul
     let executed_transaction_1 = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let target_account_after: Account = Account::from_parts(
         target_account.id(),
@@ -123,7 +121,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
             &[],
         )?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -136,7 +134,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
             &[],
         )?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -144,7 +142,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_DISABLED);
 
@@ -152,7 +150,7 @@ fn p2ide_script_timelocked_reclaim_disabled() -> anyhow::Result<()> {
     let final_tx = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let target_after = Account::from_parts(
         target_account.id(),
@@ -190,7 +188,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let executed_transaction_1 = mock_chain
         .build_tx_context_at(1, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(
         executed_transaction_1,
@@ -201,7 +199,7 @@ fn p2ide_script_reclaim_fails_before_timelock_expiry() -> anyhow::Result<()> {
     let executed_transaction_2 = mock_chain
         .build_tx_context_at(timelock_height, sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let sender_account_after: Account = Account::from_parts(
         sender_account.id(),
@@ -239,7 +237,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -247,7 +245,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let early_spend = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_spend, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -258,7 +256,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_RECLAIM_HEIGHT_NOT_REACHED);
 
@@ -269,7 +267,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let executed_transaction_1 = mock_chain
         .build_tx_context(malicious_account.id(), &[], slice::from_ref(&p2ide_note))?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(
         executed_transaction_1,
@@ -280,7 +278,7 @@ fn p2ide_script_reclaimable_timelockable() -> anyhow::Result<()> {
     let final_tx = mock_chain
         .build_tx_context(target_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let target_after = Account::from_parts(
         target_account.id(),
@@ -313,7 +311,7 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
     let early_reclaim = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute();
+        .execute_blocking();
 
     assert_transaction_executor_error!(early_reclaim, ERR_P2IDE_TIMELOCK_HEIGHT_NOT_REACHED);
 
@@ -324,7 +322,7 @@ fn p2ide_script_reclaim_success_after_timelock() -> anyhow::Result<()> {
     let final_tx = mock_chain
         .build_tx_context(sender_account.id(), &[p2ide_note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     let sender_after = Account::from_parts(
         sender_account.id(),

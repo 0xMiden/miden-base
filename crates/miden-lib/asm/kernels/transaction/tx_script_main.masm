@@ -1,4 +1,4 @@
-use.std::utils
+use.std::word
 
 use.$kernel::memory
 use.$kernel::prologue
@@ -50,7 +50,7 @@ proc.main
     # => [TX_SCRIPT_ROOT, tx_script_root_ptr]
 
     # return an error if the transaction script was not specified
-    exec.utils::is_empty_word assertz.err=ERR_TX_TRANSACTION_SCRIPT_IS_MISSING dropw
+    exec.word::eqz assertz.err=ERR_TX_TRANSACTION_SCRIPT_IS_MISSING
     # => [tx_script_root_ptr]
 
     # execute the transaction script

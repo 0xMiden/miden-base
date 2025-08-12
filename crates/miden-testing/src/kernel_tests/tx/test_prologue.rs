@@ -8,6 +8,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
+use miden_lib::testing::account_component::MockAccountComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
     ACCT_DB_ROOT_PTR,
@@ -15,6 +17,7 @@ use miden_lib::transaction::memory::{
     BLOCK_METADATA_PTR,
     BLOCK_NUMBER_IDX,
     CHAIN_COMMITMENT_PTR,
+    FAUCET_STORAGE_DATA_SLOT,
     FEE_PARAMETERS_PTR,
     INIT_ACCT_COMMITMENT_PTR,
     INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR,
@@ -67,24 +70,29 @@ use miden_objects::account::{
     AccountId,
     AccountIdVersion,
     AccountProcedureInfo,
+    AccountStorage,
     AccountStorageMode,
     AccountType,
+    StorageMap,
     StorageSlot,
 };
-use miden_objects::asset::FungibleAsset;
-use miden_objects::testing::account_component::AccountMockComponent;
+use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::FUNGIBLE_FAUCET_INITIAL_BALANCE;
-use miden_objects::transaction::{AccountInputs, TransactionArgs, TransactionScript};
-use miden_objects::{EMPTY_WORD, FieldElement, WORD_SIZE};
+use miden_objects::testing::noop_auth_component::NoopAuthComponent;
+use miden_objects::transaction::{
+    AccountInputs,
+    ExecutedTransaction,
+    TransactionArgs,
+    TransactionScript,
+};
+use miden_objects::{EMPTY_WORD, WORD_SIZE};
+use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, ExecutionError, Process, Word};
+use vm_processor::{AdviceInputs, Process, Word};
 
 use super::{Felt, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
@@ -95,17 +103,14 @@ use crate::{
     TransactionContext,
     TransactionContextBuilder,
     assert_execution_error,
+    assert_transaction_executor_error,
 };
 
 #[test]
 fn test_transaction_prologue() -> anyhow::Result<()> {
     let mut tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         let input_note_2 =
@@ -555,13 +560,13 @@ fn create_simple_account() -> anyhow::Result<()> {
     let (account, seed) = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_empty_slots(TransactionKernel::assembler())?)
+        .with_component(MockAccountComponent::with_empty_slots())
         .build()?;
 
     let tx = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute account-creating transaction")?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
@@ -578,35 +583,17 @@ fn create_simple_account() -> anyhow::Result<()> {
 /// Test helper which executes the prologue to check if the creation of the given `account` with its
 /// `seed` is valid in the context of the given `mock_chain`.
 pub fn create_account_test(
-    mock_chain: &MockChain,
     account: Account,
     seed: Word,
-) -> Result<Process, ExecutionError> {
-    let tx_inputs = mock_chain
-        .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
-        .unwrap();
-
-    let tx_context = TransactionContextBuilder::new(account)
+) -> Result<ExecutedTransaction, TransactionExecutorError> {
+    TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
-        .tx_inputs(tx_inputs)
         .build()
-        .unwrap();
-
-    let code = "
-  use.$kernel::prologue
-
-  begin
-      exec.prologue::prepare_transaction
-  end
-  ";
-
-    tx_context.execute_code(code)
+        .unwrap()
+        .execute_blocking()
 }
 
-pub fn create_multiple_accounts_test(
-    mock_chain: &MockChain,
-    storage_mode: AccountStorageMode,
-) -> anyhow::Result<()> {
+pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
     let mut accounts = Vec::new();
 
     for account_type in [
@@ -619,13 +606,9 @@ pub fn create_multiple_accounts_test(
             .account_type(account_type)
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
-            .with_component(
-                AccountMockComponent::new_with_slots(
-                    TransactionKernel::testing_assembler(),
-                    vec![StorageSlot::Value(Word::from([255u32; WORD_SIZE]))],
-                )
-                .unwrap(),
-            )
+            .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
+                [255u32; WORD_SIZE],
+            ))]))
             .build()
             .context("account build failed")?;
 
@@ -634,7 +617,7 @@ pub fn create_multiple_accounts_test(
 
     for (account, seed) in accounts {
         let account_type = account.account_type();
-        create_account_test(mock_chain, account, seed).context(format!(
+        create_account_test(account, seed).context(format!(
             "create_multiple_accounts_test test failed for account type {account_type}"
         ))?;
     }
@@ -645,13 +628,11 @@ pub fn create_multiple_accounts_test(
 /// Tests that a valid account of each storage mode can be created successfully.
 #[test]
 pub fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
-    let mock_chain = MockChain::new();
+    create_multiple_accounts_test(AccountStorageMode::Private)?;
 
-    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Private)?;
+    create_multiple_accounts_test(AccountStorageMode::Public)?;
 
-    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Public)?;
-
-    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Network)
+    create_multiple_accounts_test(AccountStorageMode::Network)
 }
 
 /// Takes an account with a placeholder ID and returns the same account but with its ID replaced
@@ -687,42 +668,58 @@ fn compute_valid_account_id(account: Account) -> (Account, Word) {
 /// slot fails.
 #[test]
 pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block()?;
+    let account = AccountBuilder::new([1; 32])
+        .account_type(AccountType::FungibleFaucet)
+        .with_auth_component(NoopAuthComponent)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .build_existing()
+        .expect("account should be valid");
+    let (id, vault, mut storage, code, _nonce) = account.into_parts();
 
-    let account = Account::mock_fungible_faucet(
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ZERO,
-        Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
-        TransactionKernel::assembler().with_debug_mode(true),
-    );
+    // Set the initial balance to a non-zero value manually, since the builder would not allow us to
+    // do that.
+    let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
+    storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
+    // Set the nonce to zero so this is considered a new account.
+    let account = Account::from_parts(id, vault, storage, code, ZERO);
+
     let (account, account_seed) = compute_valid_account_id(account);
 
-    let result = create_account_test(&mock_chain, account, account_seed);
+    let result = create_account_test(account, account_seed);
 
-    assert_execution_error!(result, ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY);
+    assert_transaction_executor_error!(
+        result,
+        ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY
+    );
 
     Ok(())
 }
 
-/// Tests that creating a non fungible faucet account with a non-empty SMT in its reserved slot
-/// fails.
+/// Tests that creating a non fungible faucet account with a non-empty storage map in its reserved
+/// slot fails.
 #[test]
 pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block()?;
+    // Create a storage map with a mock asset to make it non-empty.
+    let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+    let non_fungible_storage_map =
+        StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
+    let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
-    let account = Account::mock_non_fungible_faucet(
-        ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
-        ZERO,
-        false,
-        TransactionKernel::assembler().with_debug_mode(true),
-    );
+    let (account, _seed) = AccountBuilder::new([1; 32])
+        .account_type(AccountType::NonFungibleFaucet)
+        .with_auth_component(NoopAuthComponent)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .build()
+        .expect("account should be valid");
+    let (id, vault, _storage, code, nonce) = account.into_parts();
+
+    // Set the nonce to zero so this is considered a new account.
+    let account = Account::from_parts(id, vault, storage, code, nonce);
     let (account, account_seed) = compute_valid_account_id(account);
 
-    let result = create_account_test(&mock_chain, account, account_seed);
+    let result = create_account_test(account, account_seed);
 
-    assert_execution_error!(
+    assert_transaction_executor_error!(
         result,
         ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
     );

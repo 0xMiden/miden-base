@@ -103,7 +103,7 @@ use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 /// // The target account is a new account so we move it into the build_tx_context, since the
 /// // chain's committed accounts do not yet contain it.
 /// let tx_context = mock_chain.build_tx_context(target, &[note.id()], &[])?.build()?;
-/// let executed_transaction = tx_context.execute()?;
+/// let executed_transaction = tx_context.execute_blocking()?;
 /// # Ok(())
 /// # }
 /// ```
@@ -140,7 +140,7 @@ use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 /// let transaction = mock_chain
 ///     .build_tx_context(receiver.id(), &[note.id()], &[])?
 ///     .build()?
-///     .execute()?;
+///     .execute_blocking()?;
 ///
 /// // Add the transaction to the mock chain's "mempool" of pending transactions.
 /// mock_chain.add_pending_executed_transaction(&transaction);
@@ -1420,7 +1420,7 @@ mod tests {
         let tx = mock_chain
             .build_tx_context(TxContextInput::Account(account), &[], &[note_1])?
             .build()?
-            .execute()?;
+            .execute_blocking()?;
 
         mock_chain.add_pending_executed_transaction(&tx)?;
         mock_chain.prove_next_block()?;
@@ -1471,7 +1471,7 @@ mod tests {
                 .unwrap()
                 .build()
                 .unwrap()
-                .execute()
+                .execute_blocking()
                 .unwrap();
             chain.add_pending_executed_transaction(&tx).unwrap();
             chain.prove_next_block().unwrap();

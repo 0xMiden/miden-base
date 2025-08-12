@@ -1,12 +1,9 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 
 use miden_objects::account::{Account, AccountId};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::PartialBlockchain;
-use vm_processor::{MastForestStore, Word};
-use winter_maybe_async::*;
+use vm_processor::{FutureMaybeSend, MastForestStore, Word};
 
 use crate::DataStoreError;
 
@@ -15,7 +12,6 @@ use crate::DataStoreError;
 
 /// The [DataStore] trait defines the interface that transaction objects use to fetch data
 /// required for transaction execution.
-#[maybe_async_trait]
 pub trait DataStore: MastForestStore {
     /// Returns all the data required to execute a transaction against the account with the
     /// specified ID and consuming input notes created in blocks in the input `ref_blocks` set.
@@ -30,10 +26,11 @@ pub trait DataStore: MastForestStore {
     /// - The block with the specified number could not be found in the data store.
     /// - The combination of specified inputs resulted in a transaction input error.
     /// - The data store encountered some internal error
-    #[maybe_async]
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>;
+    ) -> impl FutureMaybeSend<
+        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+    >;
 }

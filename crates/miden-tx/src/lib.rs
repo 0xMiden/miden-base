@@ -28,7 +28,6 @@ pub use prover::{
     LocalTransactionProver,
     ProvingOptions,
     TransactionMastStore,
-    TransactionProver,
     TransactionProverHost,
 };
 

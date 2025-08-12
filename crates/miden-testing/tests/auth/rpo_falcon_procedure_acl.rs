@@ -1,6 +1,7 @@
 use core::slice;
 
 use assert_matches::assert_matches;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -11,7 +12,6 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::OutputNote;
@@ -24,7 +24,7 @@ use vm_processor::ExecutionError;
 // ================================================================================================
 
 const TX_SCRIPT_NO_TRIGGER: &str = r#"
-    use.test::account
+    use.mock::account
     begin
         call.account::account_procedure_1
         drop
@@ -42,18 +42,14 @@ fn setup_rpo_falcon_procedure_acl_test(
 ) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
     let assembler = TransactionKernel::assembler();
 
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
+    let component: AccountComponent =
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("test::account::get_item")
+        .get_procedure_root_by_name("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("test::account::set_item")
+        .get_procedure_root_by_name("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
@@ -89,19 +85,14 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     let (account, mut mock_chain, note) = setup_rpo_falcon_procedure_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
-    let assembler = TransactionKernel::assembler();
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
+    let component: AccountComponent =
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("test::account::get_item")
+        .get_procedure_root_by_name("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("test::account::set_item")
+        .get_procedure_root_by_name("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
@@ -116,7 +107,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let tx_script_with_trigger_1 = r#"
-        use.test::account
+        use.mock::account
 
         begin
             push.0
@@ -126,7 +117,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         "#;
 
     let tx_script_with_trigger_2 = r#"
-        use.test::account
+        use.mock::account
 
         begin
             push.1.2.3.4 push.0
@@ -151,7 +142,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1.clone())
         .build()?;
 
-    tx_context_with_auth_1.execute().expect("trigger 1 with auth should succeed");
+    tx_context_with_auth_1
+        .execute_blocking()
+        .expect("trigger 1 with auth should succeed");
 
     // Test 2: Transaction WITH authenticator calling trigger procedure 2 (should succeed)
     let tx_context_with_auth_2 = mock_chain
@@ -160,7 +153,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_2)
         .build()?;
 
-    tx_context_with_auth_2.execute().expect("trigger 2 with auth should succeed");
+    tx_context_with_auth_2
+        .execute_blocking()
+        .expect("trigger 2 with auth should succeed");
 
     // Test 3: Transaction WITHOUT authenticator calling trigger procedure (should fail)
     let tx_context_no_auth = mock_chain
@@ -169,7 +164,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_trigger_1)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute();
+    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
 
     assert_matches!(executed_tx_no_auth, Err(TransactionExecutorError::TransactionProgramExecutionFailed(
         execution_error
@@ -187,7 +182,9 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger
+        .execute_blocking()
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,
@@ -221,7 +218,9 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed = tx_context_no_trigger.execute().expect("no trigger, no auth should succeed");
+    let executed = tx_context_no_trigger
+        .execute_blocking()
+        .expect("no trigger, no auth should succeed");
     assert_eq!(
         executed.account_delta().nonce_delta(),
         Felt::ZERO,
@@ -255,7 +254,7 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
         .tx_script(tx_script_no_trigger)
         .build()?;
 
-    let executed_tx_no_auth = tx_context_no_auth.execute();
+    let executed_tx_no_auth = tx_context_no_auth.execute_blocking();
 
     // This should fail with MissingAuthenticator error because input notes are being consumed
     // and allow_unauthorized_input_notes is false

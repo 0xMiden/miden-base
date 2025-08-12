@@ -7,14 +7,10 @@ use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
-use miden_testing::{Auth, MockChain};
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 use miden_tx::utils::word_to_masm_push_string;
 
-use crate::{
-    assert_transaction_executor_error,
-    get_note_with_fungible_asset_and_script,
-    prove_and_verify_transaction,
-};
+use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transaction};
 
 // TESTS MINT FUNGIBLE ASSET
 // ================================================================================================
@@ -70,7 +66,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let executed_transaction = tx_context.execute()?;
+    let executed_transaction = tx_context.execute_blocking()?;
 
     prove_and_verify_transaction(executed_transaction.clone())?;
 
@@ -133,7 +129,7 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute();
+        .execute_blocking();
 
     // Execute the transaction and get the witness
     assert_transaction_executor_error!(
@@ -195,7 +191,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(faucet.id(), &[note.id()], &[])?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // Prove, serialize/deserialize and verify the transaction
     prove_and_verify_transaction(executed_transaction.clone())?;

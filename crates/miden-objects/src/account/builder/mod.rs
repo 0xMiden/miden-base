@@ -272,7 +272,7 @@ mod tests {
 
     use super::*;
     use crate::account::StorageSlot;
-    use crate::testing::account_component::NoopAuthComponent;
+    use crate::testing::noop_auth_component::NoopAuthComponent;
 
     const CUSTOM_CODE1: &str = "
           export.foo
@@ -337,7 +337,7 @@ mod tests {
         let storage_slot2 = 42;
 
         let (account, seed) = Account::builder([5; 32])
-            .with_auth_component(NoopAuthComponent::new(Assembler::default()).unwrap())
+            .with_auth_component(NoopAuthComponent)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
                 slot0: storage_slot1,
@@ -362,10 +362,10 @@ mod tests {
         assert_eq!(account.code.procedure_roots().count(), 3);
 
         let foo_root = CUSTOM_LIBRARY1.mast_forest()
-            [CUSTOM_LIBRARY1.get_export_node_id(CUSTOM_LIBRARY1.exports().next().unwrap())]
+            [CUSTOM_LIBRARY1.get_export_node_id(&CUSTOM_LIBRARY1.exports().next().unwrap().name)]
         .digest();
         let bar_root = CUSTOM_LIBRARY2.mast_forest()
-            [CUSTOM_LIBRARY2.get_export_node_id(CUSTOM_LIBRARY2.exports().next().unwrap())]
+            [CUSTOM_LIBRARY2.get_export_node_id(&CUSTOM_LIBRARY2.exports().next().unwrap().name)]
         .digest();
 
         let foo_procedure_info = &account
@@ -405,7 +405,7 @@ mod tests {
         let storage_slot0 = 25;
 
         let build_error = Account::builder([0xff; 32])
-            .with_auth_component(NoopAuthComponent::new(Assembler::default()).unwrap())
+            .with_auth_component(NoopAuthComponent)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_assets(AssetVault::mock().assets())
             .build()

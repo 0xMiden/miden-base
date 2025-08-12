@@ -67,7 +67,7 @@ fn test_send_note_script_basic_wallet() -> anyhow::Result<()> {
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // assert that the removed asset is in the delta
     let mut removed_assets: BTreeMap<_, _> = executed_transaction
@@ -133,6 +133,6 @@ fn test_send_note_script_basic_fungible_faucet() -> anyhow::Result<()> {
         .tx_script(send_note_transaction_script)
         .extend_expected_output_notes(vec![OutputNote::Full(note)])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
     Ok(())
 }

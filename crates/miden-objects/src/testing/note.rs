@@ -104,7 +104,9 @@ impl NoteBuilder {
     }
 
     pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        let source_manager = assembler.source_manager();
+        // TODO: SourceManager.
+        let source_manager = alloc::sync::Arc::new(crate::assembly::DefaultSourceManager::default())
+            as alloc::sync::Arc<dyn crate::assembly::SourceManager>;
         // Generate a unique file name from the note's serial number, which should be unique per
         // note. Only includes two elements in the file name which should be enough for the
         // uniqueness in the testing context and does not result in overly long file names which do
