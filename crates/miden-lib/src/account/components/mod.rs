@@ -38,8 +38,7 @@ static RPO_FALCON_512_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
         env!("OUT_DIR"),
         "/assets/account_components/rpo_falcon_512_acl.masl"
     ));
-    Library::read_from_bytes(bytes)
-        .expect("Shipped Rpo Falcon 512 ACL library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 ACL library is well-formed")
 });
 
 // Initialize the NoAuth library only once.

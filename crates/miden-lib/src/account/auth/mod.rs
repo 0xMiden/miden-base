@@ -7,8 +7,8 @@ use miden_objects::{AccountError, Word};
 
 use crate::account::components::{
     no_auth_library,
-    rpo_falcon_512_library,
     rpo_falcon_512_acl_library,
+    rpo_falcon_512_library,
 };
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
@@ -206,7 +206,9 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
 
         AccountComponent::new(rpo_falcon_512_acl_library(), storage_slots)
-            .expect("ACL auth component should satisfy the requirements of a valid account component")
+            .expect(
+                "ACL auth component should satisfy the requirements of a valid account component",
+            )
             .with_supports_all_types()
     }
 }
