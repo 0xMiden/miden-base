@@ -34,7 +34,6 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
 use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
-use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -48,6 +47,7 @@ use crate::{
     TransactionContextBuilder,
     TxContextInput,
     assert_execution_error,
+    assert_transaction_executor_error,
 };
 
 #[test]
@@ -927,11 +927,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::new(account.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let err = tx_context.execute_blocking().unwrap_err();
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        panic!("unexpected error")
-    };
-    assert_execution_error!(Err::<(), _>(err), TIMESTAMP_ERROR);
+    let result = tx_context.execute_blocking();
+    assert_transaction_executor_error!(result, TIMESTAMP_ERROR);
 
     // Consume note where lock timestamp matches the block timestamp.
     // ----------------------------------------------------------------------------------------

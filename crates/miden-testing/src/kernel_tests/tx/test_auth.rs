@@ -7,10 +7,9 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
-use miden_tx::TransactionExecutorError;
 
 use super::{Felt, ONE};
-use crate::{Auth, TransactionContextBuilder, assert_execution_error};
+use crate::{Auth, TransactionContextBuilder, assert_transaction_executor_error};
 
 pub const ERR_WRONG_ARGS: MasmError = MasmError::from_static_str(ERR_WRONG_ARGS_MSG);
 
@@ -60,13 +59,7 @@ fn test_auth_procedure_args_wrong_inputs() -> anyhow::Result<()> {
 
     let execution_result = tx_context.execute_blocking();
 
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) =
-        execution_result.unwrap_err()
-    else {
-        panic!("unexpected error type")
-    };
-
-    assert_execution_error!(Err::<(), _>(err), ERR_WRONG_ARGS);
+    assert_transaction_executor_error!(execution_result, ERR_WRONG_ARGS);
 
     Ok(())
 }
@@ -96,13 +89,10 @@ fn test_auth_procedure_called_from_wrong_context() -> anyhow::Result<()> {
 
     let execution_result = tx_context.execute_blocking();
 
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) =
-        execution_result.unwrap_err()
-    else {
-        panic!("unexpected error type")
-    };
-
-    assert_execution_error!(Err::<(), _>(err), ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT);
+    assert_transaction_executor_error!(
+        execution_result,
+        ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT
+    );
 
     Ok(())
 }

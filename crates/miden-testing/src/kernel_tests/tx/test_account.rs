@@ -47,7 +47,13 @@ use vm_processor::{EMPTY_WORD, ExecutionError, Word};
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
-use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
+use crate::{
+    Auth,
+    MockChain,
+    TransactionContextBuilder,
+    assert_execution_error,
+    assert_transaction_executor_error,
+};
 
 // ACCOUNT COMMITMENT TESTS
 // ================================================================================================
@@ -1217,17 +1223,12 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
         .build()
         .context("failed to build account")?;
 
-    let err = TransactionContextBuilder::new(account)
+    let result = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .build()?
-        .execute_blocking()
-        .unwrap_err();
+        .execute_blocking();
 
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
-    };
-
-    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
+    assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
 
     Ok(())
 }
@@ -1244,13 +1245,9 @@ fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     // modulus - 2.
     account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
 
-    let err = TransactionContextBuilder::new(account).build()?.execute_blocking().unwrap_err();
+    let result = TransactionContextBuilder::new(account).build()?.execute_blocking();
 
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        anyhow::bail!("expected TransactionExecutorError::TransactionProgramExecutionFailed");
-    };
-
-    assert_execution_error!(Err::<(), _>(err), ERR_ACCOUNT_NONCE_AT_MAX);
+    assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_AT_MAX);
 
     Ok(())
 }

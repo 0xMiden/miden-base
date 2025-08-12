@@ -34,14 +34,20 @@ use miden_objects::testing::constants::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{OutputNote, OutputNotes};
-use miden_tx::TransactionExecutorError;
 use rand::rng;
 use vm_processor::{Felt, ONE};
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::utils::{create_p2any_note, create_spawn_note};
-use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error};
+use crate::{
+    Auth,
+    MockChain,
+    TransactionContextBuilder,
+    TxContextInput,
+    assert_execution_error,
+    assert_transaction_executor_error,
+};
 
 #[test]
 fn test_epilogue() -> anyhow::Result<()> {
@@ -516,18 +522,13 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
 
     let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(code)?;
 
-    let err = TransactionContextBuilder::with_noop_auth_account()
+    let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)
         .build()?
-        .execute_blocking()
-        .unwrap_err();
+        .execute_blocking();
 
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        panic!("unexpected error")
-    };
-
-    assert_execution_error!(
-        Err::<(), _>(err),
+    assert_transaction_executor_error!(
+        result,
         ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED
     );
 
@@ -538,12 +539,9 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
 fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let err = tx_context.execute_blocking().expect_err("Expected execution to fail");
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        panic!("unexpected error")
-    };
+    let result = tx_context.execute_blocking();
 
-    assert_execution_error!(Err::<(), _>(err), ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
+    assert_transaction_executor_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
 
     Ok(())
 }
