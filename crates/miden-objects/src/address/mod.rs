@@ -69,7 +69,7 @@ impl AccountIdAddress {
 
 impl Address {
     /// Returns a note tag derived from this address.
-    pub fn get_note_tag(&self) -> NoteTag {
+    pub fn to_note_tag(&self) -> NoteTag {
         match self {
             Address::AccountId(addr) => match addr.id.storage_mode() {
                 AccountStorageMode::Network => NoteTag::from_network_account_id(addr.id),
