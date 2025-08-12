@@ -284,7 +284,7 @@ impl ScriptBuilder {
     pub fn with_mock_account_library() -> Result<Self, ScriptBuilderError> {
         use miden_objects::account::AccountCode;
 
-        use crate::testing::account_code::MockAccountCodeExt;
+        use crate::testing::mock_account_code::MockAccountCodeExt;
 
         let builder = Self::with_kernel_library()?;
 

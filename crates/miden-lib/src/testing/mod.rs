@@ -1,3 +1,3 @@
-pub mod account;
-pub mod account_code;
+pub mod mock_account;
+pub mod mock_account_code;
 pub mod account_component;

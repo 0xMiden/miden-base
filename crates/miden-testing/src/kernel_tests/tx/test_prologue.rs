@@ -8,7 +8,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{

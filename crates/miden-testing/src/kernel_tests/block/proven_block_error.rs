@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::{AccountMockComponent, IncrNonceAuthComponent};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};

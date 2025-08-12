@@ -6,7 +6,7 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;

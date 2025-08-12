@@ -5,7 +5,7 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::Account;

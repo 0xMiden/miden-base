@@ -469,7 +469,7 @@ impl TransactionKernel {
     pub fn testing_assembler_with_mock_account() -> Assembler {
         use miden_objects::account::AccountCode;
 
-        use crate::testing::account_code::MockAccountCodeExt;
+        use crate::testing::mock_account_code::MockAccountCodeExt;
 
         let assembler = Self::testing_assembler().with_debug_mode(true);
 

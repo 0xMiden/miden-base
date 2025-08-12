@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use miden_objects::AccountError;
 use miden_objects::account::{AccountCode, AccountComponent, StorageSlot};
 
-use crate::testing::account_code::MockAccountCodeExt;
+use crate::testing::mock_account_code::MockAccountCodeExt;
 
 // ACCOUNT MOCK COMPONENT
 // ================================================================================================

@@ -12,7 +12,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,

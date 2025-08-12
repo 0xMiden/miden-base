@@ -11,7 +11,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
     ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::AccountMockComponent;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;

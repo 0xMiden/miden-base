@@ -7,7 +7,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
-use miden_lib::testing::account::MockAccountExt;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
