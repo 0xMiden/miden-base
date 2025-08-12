@@ -17,6 +17,7 @@ use miden_lib::transaction::memory::{
     BLOCK_METADATA_PTR,
     BLOCK_NUMBER_IDX,
     CHAIN_COMMITMENT_PTR,
+    FAUCET_STORAGE_DATA_SLOT,
     FEE_PARAMETERS_PTR,
     INIT_ACCT_COMMITMENT_PTR,
     INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR,
@@ -75,12 +76,11 @@ use miden_objects::account::{
 };
 use miden_objects::asset::FungibleAsset;
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::constants::FUNGIBLE_FAUCET_INITIAL_BALANCE;
+use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{AccountInputs, TransactionArgs, TransactionScript};
 use miden_objects::{EMPTY_WORD, WORD_SIZE};
 use rand::{Rng, SeedableRng};
@@ -683,14 +683,22 @@ fn compute_valid_account_id(account: Account) -> (Account, Word) {
 /// slot fails.
 #[test]
 pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block()?;
+    let account = AccountBuilder::new([1; 32])
+        .account_type(AccountType::FungibleFaucet)
+        .with_auth_component(NoopAuthComponent)
+        .with_component(AccountMockComponent::new_with_empty_slots().unwrap())
+        .build_existing()
+        .expect("account should be valid");
+    let (id, vault, mut storage, code, _nonce) = account.into_parts();
 
-    let account = Account::mock_fungible_faucet(
-        ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ZERO,
-        Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
-    );
+    // Set the initial balance to a non-zero value manually, since the builder would not allow us to
+    // do that.
+    let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
+    storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
+    // Set the nonce to zero so this is considered a new account.
+    let account = Account::from_parts(id, vault, storage, code, ZERO);
+
+    let mock_chain = MockChain::new();
     let (account, account_seed) = compute_valid_account_id(account);
 
     let result = create_account_test(&mock_chain, account, account_seed);
