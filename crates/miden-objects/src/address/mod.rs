@@ -34,7 +34,7 @@ impl AccountIdAddress {
     }
 
     /// Returns the preferred tag length.
-    pub fn tag_len(&self) -> u8 {
+    pub fn note_tag_len(&self) -> u8 {
         self.tag_len
     }
 }
