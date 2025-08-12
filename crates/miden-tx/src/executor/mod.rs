@@ -422,7 +422,7 @@ where
                     return Err(error);
                 }
 
-                // Partition the input notes into successful and failed results.
+                // Partition the input notes into successful, failed, and unattempted results.
                 let (successful, failed, unattempted) =
                     split_at(input_notes.into_vec(), success_notes.len());
                 let successful =
@@ -454,7 +454,7 @@ fn split_at<T>(mut vec: Vec<T>, index: usize) -> (Vec<T>, T, Vec<T>) {
     // Remove and get the separator.
     let separator = vec.pop().expect("provided separator index in bounds");
 
-    // Input now contains only the before part.
+    // Input now contains only the part before the separator.
     let before = vec;
 
     (before, separator, after)
