@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::testing::account_component::{AccountMockComponent, IncrNonceAuthComponent};
+use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
@@ -259,7 +259,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
         .with_component(
-            AccountMockComponent::new_with_slots(vec![StorageSlot::Value(Word::from([5u32; 4]))])
+            MockAccountComponent::new_with_slots(vec![StorageSlot::Value(Word::from([5u32; 4]))])
                 .context("failed to create account mock component")?,
         )
         .build()
@@ -353,7 +353,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     let (account, _) = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(
-            AccountMockComponent::new_with_slots(vec![StorageSlot::Value(Word::from([5u32; 4]))])
+            MockAccountComponent::new_with_slots(vec![StorageSlot::Value(Word::from([5u32; 4]))])
                 .context("failed to create account mock component")?,
         )
         .build()

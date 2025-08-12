@@ -13,11 +13,11 @@ use crate::testing::mock_account_code::MockAccountCodeExt;
 /// make use of this interface should be assembled with this.
 ///
 /// This component supports all [`AccountType`](crate::account::AccountType)s for testing purposes.
-pub struct AccountMockComponent {
+pub struct MockAccountComponent {
     storage_slots: Vec<StorageSlot>,
 }
 
-impl AccountMockComponent {
+impl MockAccountComponent {
     fn new(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
@@ -36,8 +36,8 @@ impl AccountMockComponent {
     }
 }
 
-impl From<AccountMockComponent> for AccountComponent {
-    fn from(mock_component: AccountMockComponent) -> Self {
+impl From<MockAccountComponent> for AccountComponent {
+    fn from(mock_component: MockAccountComponent) -> Self {
         AccountComponent::new(AccountCode::mock_library(), mock_component.storage_slots)
           .expect("account mock component should satisfy the requirements of a valid account component")
           .with_supports_all_types()

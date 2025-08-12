@@ -13,7 +13,7 @@ use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word, ZERO};
 
-use crate::testing::account_component::AccountMockComponent;
+use crate::testing::account_component::MockAccountComponent;
 
 // MOCK ACCOUNT EXT
 // ================================================================================================
@@ -65,7 +65,7 @@ fn build_mock_account(
 ) -> Account {
     let account_id = AccountId::try_from(account_id).unwrap();
     let mock_component =
-        AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots()).unwrap();
+        MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots()).unwrap();
     let account = AccountBuilder::new([1; 32])
         .account_type(account_id.account_type())
         .with_auth_component(auth)

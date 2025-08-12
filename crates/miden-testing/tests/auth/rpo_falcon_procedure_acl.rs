@@ -1,7 +1,7 @@
 use core::slice;
 
 use assert_matches::assert_matches;
-use miden_lib::testing::account_component::AccountMockComponent;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -43,7 +43,7 @@ fn setup_rpo_falcon_procedure_acl_test(
     let assembler = TransactionKernel::assembler();
 
     let component: AccountComponent =
-        AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots())
+        MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots())
             .expect("failed to create mock component")
             .into();
 
@@ -88,7 +88,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 
     // We need to get the authenticator separately for this test
     let component: AccountComponent =
-        AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots())
+        MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots())
             .expect("failed to create mock component")
             .into();
 

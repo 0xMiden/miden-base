@@ -4,7 +4,7 @@ use std::vec::Vec;
 
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::testing::account_component::AccountMockComponent;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::block::{BlockInputs, ProposedBlock};
@@ -266,7 +266,7 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Public)
-        .with_component(AccountMockComponent::new_with_empty_slots().unwrap());
+        .with_component(MockAccountComponent::new_with_empty_slots().unwrap());
 
     let mut builder = MockChain::builder();
 

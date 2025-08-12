@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_lib::testing::account_component::AccountMockComponent;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -575,7 +575,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots())?)
+        .with_component(MockAccountComponent::new_with_slots(AccountStorage::mock_storage_slots())?)
         .with_assets(account_assets)
         .build_existing()?;
 
