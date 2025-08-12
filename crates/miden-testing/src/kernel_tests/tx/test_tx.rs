@@ -12,8 +12,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
@@ -364,11 +364,8 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 #[test]
 fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
@@ -793,11 +790,8 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
 #[test]
 fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
@@ -1032,11 +1026,8 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
 
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
-    let executor_account = Account::mock(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-        Felt::ONE,
-        IncrNonceAuthComponent,
-    );
+    let executor_account =
+        Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
     let account_id = executor_account.id();
 
     // removed assets

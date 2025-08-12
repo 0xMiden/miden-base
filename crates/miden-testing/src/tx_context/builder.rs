@@ -5,9 +5,10 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
+use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
 use miden_objects::assembly::Assembler;
 use miden_objects::note::{Note, NoteId};
@@ -21,7 +22,6 @@ use miden_objects::transaction::{
     TransactionScript,
 };
 use miden_objects::vm::AdviceMap;
-use miden_objects::{EMPTY_WORD, FieldElement};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::ChaCha20Rng;
@@ -107,11 +107,8 @@ impl TransactionContextBuilder {
     /// - Has an account code based on an
     ///   [miden_objects::testing::account_component::AccountMockComponent].
     pub fn with_existing_mock_account() -> Self {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            IncrNonceAuthComponent,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
         let assembler = TransactionKernel::testing_assembler_with_mock_account();
 
@@ -132,12 +129,10 @@ impl TransactionContextBuilder {
         }
     }
 
-    pub fn with_noop_auth_account(nonce: Felt) -> Self {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            nonce,
-            NoopAuthComponent,
-        );
+    /// Same as [`Self::with_existing_mock_account`] but with a [`NoopAuthComponent`].
+    pub fn with_noop_auth_account() -> Self {
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, NoopAuthComponent);
 
         Self::new(account)
     }

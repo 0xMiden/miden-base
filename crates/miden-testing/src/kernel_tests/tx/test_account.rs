@@ -11,8 +11,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS,
     ERR_FAUCET_INVALID_STORAGE_OFFSET,
 };
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::AccountMockComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::StarkField;
@@ -45,7 +45,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{EMPTY_WORD, ExecutionError, Word};
 
-use super::{Felt, ONE, StackInputs, ZERO};
+use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
 use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
@@ -54,8 +54,7 @@ use crate::{Auth, MockChain, TransactionContextBuilder, assert_execution_error};
 
 #[test]
 pub fn compute_current_commitment() -> miette::Result<()> {
-    let account =
-        Account::mock(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, ONE, Auth::IncrNonce);
+    let account = Account::mock(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
     // Precompute a commitment to a changed account so we can assert it during tx script execution.
     let mut account_clone = account.clone();

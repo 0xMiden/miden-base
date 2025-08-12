@@ -8,8 +8,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY,
     ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT,
 };
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::AccountMockComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
     ACCT_DB_ROOT_PTR,
@@ -82,7 +82,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::constants::FUNGIBLE_FAUCET_INITIAL_BALANCE;
 use miden_objects::transaction::{AccountInputs, TransactionArgs, TransactionScript};
-use miden_objects::{EMPTY_WORD, FieldElement, WORD_SIZE};
+use miden_objects::{EMPTY_WORD, WORD_SIZE};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use vm_processor::{AdviceInputs, ExecutionError, Process, Word};
@@ -101,11 +101,8 @@ use crate::{
 #[test]
 fn test_transaction_prologue() -> anyhow::Result<()> {
     let mut tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         let input_note_2 =

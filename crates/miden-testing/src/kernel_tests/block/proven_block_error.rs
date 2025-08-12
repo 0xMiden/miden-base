@@ -3,8 +3,8 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::{AccountMockComponent, IncrNonceAuthComponent};
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
 use miden_objects::asset::FungibleAsset;
@@ -12,7 +12,7 @@ use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
 use miden_objects::vm::ExecutionProof;
-use miden_objects::{AccountTreeError, Felt, FieldElement, NullifierTreeError, Word};
+use miden_objects::{AccountTreeError, NullifierTreeError, Word};
 use winterfell::Proof;
 
 use super::utils::{
@@ -289,7 +289,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     );
     assert_eq!(account.init_commitment(), Word::empty());
 
-    let existing_account = Account::mock(existing_id.into(), Felt::ZERO, auth_component);
+    let existing_account = Account::mock(existing_id.into(), auth_component);
     builder.add_account(existing_account.clone())?;
     let mut mock_chain = builder.build()?;
 

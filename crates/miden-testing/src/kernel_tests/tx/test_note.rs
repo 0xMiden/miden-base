@@ -33,7 +33,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
-use miden_objects::{EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word};
+use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
 use miden_tx::TransactionExecutorError;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
@@ -79,11 +79,8 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
 #[test]
 fn test_get_sender() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let input_note =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)

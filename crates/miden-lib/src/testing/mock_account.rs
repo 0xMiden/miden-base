@@ -11,7 +11,7 @@ use miden_objects::asset::{AssetVault, NonFungibleAsset};
 use miden_objects::testing::constants::{self};
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
-use miden_objects::{Felt, FieldElement, Word, ZERO};
+use miden_objects::{Felt, Word, ZERO};
 
 use crate::testing::account_component::AccountMockComponent;
 
@@ -20,8 +20,8 @@ use crate::testing::account_component::AccountMockComponent;
 
 /// Extension trait for [`Account`]s that return mocked accounts.
 pub trait MockAccountExt {
-    /// Creates an existing mock account with a defined number of assets and storage
-    fn mock(account_id: u128, nonce: Felt, auth: impl Into<AccountComponent>) -> Self;
+    /// Creates an existing mock account with the provided auth component.
+    fn mock(account_id: u128, auth: impl Into<AccountComponent>) -> Self;
     /// Creates a mock account with fungible faucet storage and the given account ID.
     fn mock_fungible_faucet(account_id: u128, nonce: Felt, initial_balance: Felt) -> Self;
     /// Creates a mock account with non-fungible faucet storage and the given account ID.
@@ -29,13 +29,7 @@ pub trait MockAccountExt {
 }
 
 impl MockAccountExt for Account {
-    fn mock(account_id: u128, nonce: Felt, auth: impl Into<AccountComponent>) -> Self {
-        let account_vault = if nonce == Felt::ZERO {
-            AssetVault::default()
-        } else {
-            AssetVault::mock()
-        };
-
+    fn mock(account_id: u128, auth: impl Into<AccountComponent>) -> Self {
         let account_id = AccountId::try_from(account_id).unwrap();
         let mock_component =
             AccountMockComponent::new_with_slots(AccountStorage::mock_storage_slots()).unwrap();
@@ -43,7 +37,7 @@ impl MockAccountExt for Account {
             .account_type(account_id.account_type())
             .with_auth_component(auth)
             .with_component(mock_component)
-            .with_assets(account_vault.assets())
+            .with_assets(AssetVault::mock().assets())
             .build_existing()
             .expect("account should be valid");
         let (_id, vault, storage, code, nonce) = account.into_parts();

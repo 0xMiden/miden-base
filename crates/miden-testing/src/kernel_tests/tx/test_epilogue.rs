@@ -7,7 +7,6 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
-use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
@@ -16,13 +15,8 @@ use miden_lib::transaction::memory::{
 };
 use miden_lib::transaction::{EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel};
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{
-    Account,
-    AccountComponent,
-    AccountDelta,
-    AccountStorageDelta,
-    AccountVaultDelta,
-};
+use miden_objects::Word;
+use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::{NoteTag, NoteType};
 use miden_objects::testing::account_id::{
@@ -40,7 +34,6 @@ use miden_objects::testing::constants::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{OutputNote, OutputNotes};
-use miden_objects::{FieldElement, Word};
 use miden_tx::TransactionExecutorError;
 use rand::rng;
 use vm_processor::{Felt, ONE};
@@ -52,12 +45,8 @@ use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_e
 
 #[test]
 fn test_epilogue() -> anyhow::Result<()> {
+    let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-        );
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
 
@@ -65,7 +54,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         let input_note_2 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
-        TransactionContextBuilder::new(account)
+        TransactionContextBuilder::new(account.clone())
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
             .build()?
@@ -100,12 +89,8 @@ fn test_epilogue() -> anyhow::Result<()> {
         TransactionKernel::testing_assembler_with_mock_account(),
     )?;
 
-    let auth_component: AccountComponent = IncrNonceAuthComponent.into();
-    let mut final_account = Account::mock(
-        tx_context.account().id().into(),
-        tx_context.account().nonce() + ONE,
-        auth_component,
-    );
+    // The final account is the initial account with the nonce incremented by one.
+    let mut final_account = account.clone();
     final_account.increment_nonce(ONE)?;
 
     let output_notes = OutputNotes::new(
@@ -162,11 +147,8 @@ fn test_epilogue() -> anyhow::Result<()> {
 #[test]
 fn test_compute_output_note_id() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
 
@@ -534,7 +516,7 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
 
     let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(code)?;
 
-    let err = TransactionContextBuilder::with_noop_auth_account(ONE)
+    let err = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)
         .build()?
         .execute_blocking()
@@ -554,7 +536,7 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
 
 #[test]
 fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build()?;
+    let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
     let err = tx_context.execute_blocking().expect_err("Expected execution to fail");
     let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
@@ -614,7 +596,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
         note_type = note_type as u8,
     );
 
-    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build()?;
+    let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
     let result = tx_context.execute_code(&tx_script_source).map(|_| ());
 

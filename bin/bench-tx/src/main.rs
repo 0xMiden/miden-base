@@ -5,15 +5,15 @@ use std::path::Path;
 
 use anyhow::Context;
 use miden_lib::note::create_p2id_note;
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::{Account, AccountId, AccountStorageMode, AccountType};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::transaction::TransactionMeasurements;
-use miden_objects::{Felt, FieldElement, Word};
+use miden_objects::{Felt, Word};
 use miden_testing::TransactionContextBuilder;
 use miden_testing::utils::create_p2any_note;
 
@@ -64,11 +64,8 @@ fn main() -> anyhow::Result<()> {
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            IncrNonceAuthComponent,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
