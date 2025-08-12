@@ -1,6 +1,6 @@
 use crate::AddressError;
-use crate::account::{AccountId, AccountStorageMode};
-use crate::note::{DEFAULT_LOCAL_TAG_LENGTH, MAX_LOCAL_TAG_LENGTH};
+use crate::account::AccountId;
+use crate::note::NoteTag;
 
 /// A user-facing address in Miden.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -21,11 +21,8 @@ impl AccountIdAddress {
     /// For local (both public and private) accounts, up to 30 bits can be encoded into the tag.
     /// If no `tag_len` is provided, it defaults to [`DEFAULT_LOCAL_TAG_LENGTH`].
     pub fn new(id: AccountId, tag_len: Option<u8>) -> Result<Self, AddressError> {
-        if id.storage_mode() == AccountStorageMode::Network {
-            return Err(AddressError::NetworkAddressesNotSupported);
-        }
-        let tag_len = tag_len.unwrap_or(DEFAULT_LOCAL_TAG_LENGTH);
-        if tag_len > MAX_LOCAL_TAG_LENGTH {
+        let tag_len = tag_len.unwrap_or(NoteTag::DEFAULT_LOCAL_TAG_LENGTH);
+        if tag_len > NoteTag::MAX_LOCAL_TAG_LENGTH {
             return Err(AddressError::TagLengthTooLarge(tag_len));
         }
         Ok(Self { id, tag_len })
@@ -39,5 +36,14 @@ impl AccountIdAddress {
     /// Returns the preferred tag length.
     pub fn tag_len(&self) -> u8 {
         self.tag_len
+    }
+}
+
+impl Address {
+    /// Returns a note tag derived from this address.
+    pub fn get_note_tag(&self) -> NoteTag {
+        match self {
+            Address::AccountId(addr) => NoteTag::from_account_id(addr.id()),
+        }
     }
 }

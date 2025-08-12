@@ -27,7 +27,7 @@ mod note_id;
 pub use note_id::NoteId;
 
 mod note_tag;
-pub use note_tag::{DEFAULT_LOCAL_TAG_LENGTH, MAX_LOCAL_TAG_LENGTH, NoteExecutionMode, NoteTag};
+pub use note_tag::{NoteExecutionMode, NoteTag};
 
 mod note_type;
 pub use note_type::NoteType;

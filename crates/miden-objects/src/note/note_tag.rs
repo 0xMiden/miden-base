@@ -13,7 +13,6 @@ use super::{
     Serializable,
 };
 use crate::account::AccountStorageMode;
-use crate::address::Address;
 
 // CONSTANTS
 // ================================================================================================
@@ -28,11 +27,6 @@ const NETWORK_PUBLIC_USECASE: u32 = 0x4000_0000;
 const LOCAL_PUBLIC_ANY: u32 = 0x8000_0000;
 // The 2 most significant bits are set to `0b11`.
 const LOCAL_ANY: u32 = 0xc000_0000;
-
-// Creating a tag for local use case directly from AccountId defaults to using 14 bits.
-pub const DEFAULT_LOCAL_TAG_LENGTH: u8 = 14;
-/// The maximum number of bits that can be encoded into the tag for local accounts.
-pub const MAX_LOCAL_TAG_LENGTH: u8 = 30;
 
 /// [super::Note]'s execution mode hints.
 ///
@@ -124,24 +118,12 @@ impl NoteTag {
     /// The exponent of the maximum allowed use case id. In other words, 2^exponent is the maximum
     /// allowed use case id.
     pub(crate) const MAX_USE_CASE_ID_EXPONENT: u8 = 14;
-
+    // Creating a tag for local execution directly from AccountId defaults to using 14 bits.
+    pub const DEFAULT_LOCAL_TAG_LENGTH: u8 = 14;
+    /// The maximum number of bits that can be encoded into the tag for local accounts.
+    pub const MAX_LOCAL_TAG_LENGTH: u8 = 30;
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
-
-    pub fn from_address(address: Address) -> Self {
-        match address {
-            Address::AccountId(addr) => {
-                let account_id = addr.id();
-                assert_ne!(
-                    account_id.storage_mode(),
-                    AccountStorageMode::Network,
-                    "Network addresses are not supported"
-                );
-
-                NoteTag::from_local_account_id(account_id, addr.tag_len())
-            },
-        }
-    }
 
     /// Returns a new [NoteTag::NetworkAccount] or [NoteTag::LocalAny] instantiated from the
     /// specified account ID.
@@ -171,7 +153,7 @@ impl NoteTag {
                 Self::NetworkAccount(high_bits as u32)
             },
             AccountStorageMode::Private | AccountStorageMode::Public => {
-                Self::from_local_account_id(account_id, DEFAULT_LOCAL_TAG_LENGTH)
+                Self::from_local_account_id(account_id, Self::DEFAULT_LOCAL_TAG_LENGTH)
             },
         }
     }
