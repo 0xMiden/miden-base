@@ -32,8 +32,22 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        self.0
-            .try_execute_notes(target_account_id, block_ref, input_notes, tx_args)
-            .await
+        let mut info = self
+            .0
+            .try_execute_notes(target_account_id, block_ref, input_notes, &tx_args)
+            .await?;
+
+        while !info.unattempted.is_empty() {
+            info = self
+                .0
+                .try_execute_notes(
+                    target_account_id,
+                    block_ref,
+                    InputNotes::<InputNote>::new_unchecked(info.unattempted),
+                    &tx_args,
+                )
+                .await?;
+        }
+        Ok(info)
     }
 }

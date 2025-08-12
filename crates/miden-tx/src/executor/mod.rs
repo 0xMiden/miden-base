@@ -48,7 +48,7 @@ pub struct FailedNote {
 pub struct NoteConsumptionInfo {
     pub successful: Vec<Note>,
     pub failed: Vec<FailedNote>,
-    pub unattempted: Vec<Note>,
+    pub unattempted: Vec<InputNote>,
 }
 
 impl NoteConsumptionInfo {
@@ -58,7 +58,11 @@ impl NoteConsumptionInfo {
     }
 
     /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
-    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>, unattempted: Vec<Note>) -> Self {
+    pub fn new(
+        successful: Vec<Note>,
+        failed: Vec<FailedNote>,
+        unattempted: Vec<InputNote>,
+    ) -> Self {
         Self { successful, failed, unattempted }
     }
 }
@@ -343,7 +347,7 @@ where
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
-        tx_args: TransactionArgs,
+        tx_args: &TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
         if notes.is_empty() {
             return Ok(NoteConsumptionInfo::default());
@@ -358,13 +362,13 @@ where
             .get_transaction_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-        validate_account_inputs(&tx_args, &ref_block)?;
+        validate_account_inputs(tx_args, &ref_block)?;
 
         // Prepare transaction inputs.
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+            TransactionKernel::prepare_inputs(&tx_inputs, tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
@@ -377,7 +381,7 @@ where
             input_notes.iter().map(|n| n.note().script()),
         );
         let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, tx_args, &advice_inputs)
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
         let mut host = TransactionExecutorHost::new(
             &tx_inputs.account().into(),
@@ -428,8 +432,6 @@ where
                 let successful =
                     successful.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
                 let failed = vec![FailedNote { error, note: failed.into_note() }];
-                let unattempted =
-                    unattempted.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
 
                 // Return information about all the consumed notes.
                 Ok(NoteConsumptionInfo::new(successful, failed, unattempted))
