@@ -16,16 +16,27 @@ pub struct AccountIdAddress {
 }
 
 impl AccountIdAddress {
-    /// Creates a new account-id based address with an optional tag length.
+    /// Creates a new account-id based address with the default tag length.
     ///
     /// For local (both public and private) accounts, up to 30 bits can be encoded into the tag.
-    /// If no `tag_len` is provided, it defaults to [`DEFAULT_LOCAL_TAG_LENGTH`].
-    pub fn new(id: AccountId, tag_len: Option<u8>) -> Result<Self, AddressError> {
-        let tag_len = tag_len.unwrap_or(NoteTag::DEFAULT_LOCAL_TAG_LENGTH);
+    /// The tag length defaults to [`DEFAULT_LOCAL_TAG_LENGTH`].
+    pub fn new(id: AccountId) -> Self {
+        Self {
+            id,
+            tag_len: NoteTag::DEFAULT_LOCAL_TAG_LENGTH,
+        }
+    }
+
+    /// Sets a custom tag length for the address.
+    ///
+    /// # Errors
+    /// Returns an error if the tag length exceeds [`MAX_LOCAL_TAG_LENGTH`].
+    pub fn with_tag_len(mut self, tag_len: u8) -> Result<Self, AddressError> {
         if tag_len > NoteTag::MAX_LOCAL_TAG_LENGTH {
             return Err(AddressError::TagLengthTooLarge(tag_len));
         }
-        Ok(Self { id, tag_len })
+        self.tag_len = tag_len;
+        Ok(self)
     }
 
     /// Returns the underlying account id.
