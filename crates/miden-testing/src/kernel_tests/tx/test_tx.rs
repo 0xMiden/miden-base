@@ -12,6 +12,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
@@ -50,7 +52,6 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_component::IncrNonceAuthComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
@@ -363,12 +364,8 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 #[test]
 fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
@@ -451,7 +448,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -562,7 +559,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -637,7 +634,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -722,7 +719,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         begin
@@ -793,12 +790,8 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
 #[test]
 fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
@@ -1033,15 +1026,8 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
 
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
-    let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone())?;
-
-    let executor_account = Account::mock(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-        Felt::ONE,
-        auth_component,
-        assembler,
-    );
+    let executor_account =
+        Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
     let account_id = executor_account.id();
 
     // removed assets
@@ -1113,7 +1099,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         "\
         use.miden::contracts::wallets::basic->wallet
         use.miden::tx
-        use.test::account
+        use.mock::account
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
@@ -1577,9 +1563,8 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
     )?
     .with_supports_all_types();
 
-    let auth_component = IncrNonceAuthComponent::new(TransactionKernel::assembler())?.into();
     let account_code = AccountCode::from_components(
-        &[auth_component, component.clone()],
+        &[IncrNonceAuthComponent.into(), component.clone()],
         AccountType::RegularAccountUpdatableCode,
     )?;
 

@@ -282,11 +282,13 @@ impl ScriptBuilder {
     /// and is intended to replace scripts that were built with that assembler.
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_account_library() -> Result<Self, ScriptBuilderError> {
-        let builder = Self::with_kernel_library()?;
-        let mock_account_library =
-            miden_objects::account::AccountCode::mock_library(builder.assembler.clone());
+        use miden_objects::account::AccountCode;
 
-        builder.with_dynamically_linked_library(&mock_account_library)
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
+        let builder = Self::with_kernel_library()?;
+
+        builder.with_dynamically_linked_library(&AccountCode::mock_library())
     }
 }
 

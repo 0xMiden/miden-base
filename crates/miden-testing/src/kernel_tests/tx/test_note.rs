@@ -6,6 +6,7 @@ use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
@@ -32,8 +33,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
-use miden_objects::{EMPTY_WORD, FieldElement, ONE, WORD_SIZE, Word};
-use miden_tx::TransactionExecutorError;
+use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
@@ -47,6 +47,7 @@ use crate::{
     TransactionContextBuilder,
     TxContextInput,
     assert_execution_error,
+    assert_transaction_executor_error,
 };
 
 #[test]
@@ -78,12 +79,8 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
 #[test]
 fn test_get_sender() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let input_note =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
@@ -930,11 +927,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::new(account.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let err = tx_context.execute_blocking().unwrap_err();
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        panic!("unexpected error")
-    };
-    assert_execution_error!(Err::<(), _>(err), TIMESTAMP_ERROR);
+    let result = tx_context.execute_blocking();
+    assert_transaction_executor_error!(result, TIMESTAMP_ERROR);
 
     // Consume note where lock timestamp matches the block timestamp.
     // ----------------------------------------------------------------------------------------

@@ -5,12 +5,15 @@ use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use anyhow::Context;
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
+use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
 use miden_objects::assembly::Assembler;
 use miden_objects::note::{Note, NoteId};
-use miden_objects::testing::account_component::{IncrNonceAuthComponent, NoopAuthComponent};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
+use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::transaction::{
     AccountInputs,
     OutputNote,
@@ -19,7 +22,6 @@ use miden_objects::transaction::{
     TransactionScript,
 };
 use miden_objects::vm::AdviceMap;
-use miden_objects::{EMPTY_WORD, FieldElement};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::ChaCha20Rng;
@@ -48,7 +50,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 ///
 /// let code = "
 /// use.$kernel::prologue
-/// use.test::account
+/// use.mock::account
 ///
 /// begin
 ///     exec.prologue::prepare_transaction
@@ -103,19 +105,10 @@ impl TransactionContextBuilder {
     /// - Has a nonce of `1` (so it does not imply seed validation).
     /// - Has an ID of [`ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE`].
     /// - Has an account code based on an
-    ///   [miden_objects::testing::account_component::AccountMockComponent].
+    ///   [miden_lib::testing::account_component::MockAccountComponent].
     pub fn with_existing_mock_account() -> Self {
-        // Build standard account with normal assembler because the testing one already contains it
-        let assembler = TransactionKernel::testing_assembler();
-        let auth_component =
-            IncrNonceAuthComponent::new(assembler.clone()).expect("valid component");
-
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            auth_component,
-            assembler,
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
         let assembler = TransactionKernel::testing_assembler_with_mock_account();
 
@@ -136,40 +129,24 @@ impl TransactionContextBuilder {
         }
     }
 
-    pub fn with_noop_auth_account(nonce: Felt) -> Self {
-        let assembler = TransactionKernel::testing_assembler();
-        let auth_component = NoopAuthComponent::new(assembler.clone()).expect("valid component");
-
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            nonce,
-            auth_component,
-            assembler,
-        );
+    /// Same as [`Self::with_existing_mock_account`] but with a [`NoopAuthComponent`].
+    pub fn with_noop_auth_account() -> Self {
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, NoopAuthComponent);
 
         Self::new(account)
     }
 
     /// Initializes a [TransactionContextBuilder] with a mocked fungible faucet.
-    pub fn with_fungible_faucet(acct_id: u128, nonce: Felt, initial_balance: Felt) -> Self {
-        let account = Account::mock_fungible_faucet(
-            acct_id,
-            nonce,
-            initial_balance,
-            TransactionKernel::testing_assembler(),
-        );
+    pub fn with_fungible_faucet(acct_id: u128, initial_balance: Felt) -> Self {
+        let account = Account::mock_fungible_faucet(acct_id, initial_balance);
 
         Self { account, ..Self::default() }
     }
 
     /// Initializes a [TransactionContextBuilder] with a mocked non-fungible faucet.
-    pub fn with_non_fungible_faucet(acct_id: u128, nonce: Felt, empty_reserved_slot: bool) -> Self {
-        let account = Account::mock_non_fungible_faucet(
-            acct_id,
-            nonce,
-            empty_reserved_slot,
-            TransactionKernel::testing_assembler(),
-        );
+    pub fn with_non_fungible_faucet(acct_id: u128) -> Self {
+        let account = Account::mock_non_fungible_faucet(acct_id);
 
         Self { account, ..Self::default() }
     }

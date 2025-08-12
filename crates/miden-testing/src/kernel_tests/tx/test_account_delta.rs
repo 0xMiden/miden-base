@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -15,7 +15,6 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -576,10 +575,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_slots(
-            TransactionKernel::testing_assembler(),
-            AccountStorage::mock_storage_slots(),
-        )?)
+        .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
         .with_assets(account_assets)
         .build_existing()?;
 
@@ -663,7 +659,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         ## TRANSACTION SCRIPT
@@ -861,7 +857,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
-      use.test::account
+      use.mock::account
       use.miden::tx
 
       #! Inputs:  [index, VALUE]

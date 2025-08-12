@@ -8,14 +8,13 @@ use miden_objects::testing::constants::{
     NON_FUNGIBLE_ASSET_DATA,
 };
 
-use super::{Felt, Hasher, ONE, Word};
+use super::{Felt, Hasher, Word};
 use crate::TransactionContextBuilder;
 
 #[test]
 fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
@@ -55,12 +54,9 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
 
 #[test]
 fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        ONE,
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
 
@@ -92,12 +88,9 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
 #[test]
 fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        ONE,
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
     let encoded = Word::from(non_fungible_asset);

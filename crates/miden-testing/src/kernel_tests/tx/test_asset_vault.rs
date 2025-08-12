@@ -141,7 +141,7 @@ fn test_add_fungible_asset_success() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -191,7 +191,7 @@ fn test_add_non_fungible_asset_fail_overflow() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -225,7 +225,7 @@ fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -270,7 +270,7 @@ fn test_add_non_fungible_asset_fail_duplicate() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -310,7 +310,7 @@ fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Result<(
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -358,7 +358,7 @@ fn test_remove_fungible_asset_fail_remove_too_much() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -397,7 +397,7 @@ fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Result<()> 
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -449,7 +449,7 @@ fn test_remove_inexisting_non_fungible_asset_fails() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -488,7 +488,7 @@ fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
