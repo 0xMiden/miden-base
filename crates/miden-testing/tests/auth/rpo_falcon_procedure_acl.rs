@@ -24,7 +24,7 @@ use vm_processor::ExecutionError;
 // ================================================================================================
 
 const TX_SCRIPT_NO_TRIGGER: &str = r#"
-    use.test::account
+    use.mock::account
     begin
         call.account::account_procedure_1
         drop
@@ -48,10 +48,10 @@ fn setup_rpo_falcon_procedure_acl_test(
             .into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("test::account::get_item")
+        .get_procedure_root_by_name("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("test::account::set_item")
+        .get_procedure_root_by_name("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
@@ -93,10 +93,10 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
             .into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("test::account::get_item")
+        .get_procedure_root_by_name("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("test::account::set_item")
+        .get_procedure_root_by_name("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
@@ -111,7 +111,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let tx_script_with_trigger_1 = r#"
-        use.test::account
+        use.mock::account
 
         begin
             push.0
@@ -121,7 +121,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         "#;
 
     let tx_script_with_trigger_2 = r#"
-        use.test::account
+        use.mock::account
 
         begin
             push.1.2.3.4 push.0

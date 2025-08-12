@@ -659,7 +659,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let tx_script_src = format!(
         "\
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         ## TRANSACTION SCRIPT
@@ -857,7 +857,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
-      use.test::account
+      use.mock::account
       use.miden::tx
 
       #! Inputs:  [index, VALUE]

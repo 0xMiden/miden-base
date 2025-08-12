@@ -249,7 +249,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.$kernel::epilogue
 
         {output_notes_data_procedure}
@@ -325,7 +325,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.$kernel::epilogue
 
         {output_notes_data_procedure}
@@ -467,7 +467,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.$kernel::epilogue
         use.$kernel::memory
 
@@ -501,7 +501,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 #[test]
 fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
     let code = "
-        use.test::account
+        use.mock::account
 
         begin
             push.91.92.93.94

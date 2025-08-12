@@ -50,7 +50,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 ///
 /// let code = "
 /// use.$kernel::prologue
-/// use.test::account
+/// use.mock::account
 ///
 /// begin
 ///     exec.prologue::prepare_transaction

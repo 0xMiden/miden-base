@@ -47,7 +47,7 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.test::account
+        use.mock::account
         use.$kernel::asset_vault
         use.$kernel::memory
         use.$kernel::prologue
@@ -105,7 +105,7 @@ fn test_mint_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -134,7 +134,7 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -167,7 +167,7 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -209,13 +209,13 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         use.$kernel::asset_vault
         use.$kernel::memory
         use.$kernel::prologue
-        use.test::account->test_account
+        use.mock::account->mock_account
 
         begin
             # mint asset
             exec.prologue::prepare_transaction
             push.{non_fungible_asset}
-            call.test_account::mint
+            call.mock_account::mint
 
             # assert the correct asset is returned
             push.{non_fungible_asset}
@@ -259,7 +259,7 @@ fn test_mint_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()>
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -288,7 +288,7 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -319,7 +319,7 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<(
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -360,7 +360,7 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     let code = format!(
         r#"
-        use.test::account
+        use.mock::account
         use.$kernel::asset_vault
         use.$kernel::memory
         use.$kernel::prologue
@@ -421,7 +421,7 @@ fn test_burn_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -453,7 +453,7 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -487,7 +487,7 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -527,7 +527,7 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
         use.$kernel::asset_vault
         use.$kernel::memory
         use.$kernel::prologue
-        use.test::account->test_account
+        use.mock::account->mock_account
 
         begin
             exec.prologue::prepare_transaction
@@ -552,7 +552,7 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             # burn the non-fungible asset
             push.{non_fungible_asset}
-            call.test_account::burn
+            call.mock_account::burn
 
             # assert the correct asset is returned
             push.{non_fungible_asset}
@@ -597,7 +597,7 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             # burn asset
@@ -627,7 +627,7 @@ fn test_burn_non_fungible_asset_fails_not_faucet_account() -> anyhow::Result<()>
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             # burn asset
@@ -664,7 +664,7 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             # burn asset

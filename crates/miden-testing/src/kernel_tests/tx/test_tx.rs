@@ -448,7 +448,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -559,7 +559,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -634,7 +634,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -719,7 +719,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         begin
@@ -1099,7 +1099,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         "\
         use.miden::contracts::wallets::basic->wallet
         use.miden::tx
-        use.test::account
+        use.mock::account
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]

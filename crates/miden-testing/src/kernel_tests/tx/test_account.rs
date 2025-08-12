@@ -67,7 +67,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
         r#"
         use.miden::prologue
         use.miden::account
-        use.test::account->test_account
+        use.mock::account->mock_account
 
         begin
             exec.account::get_initial_commitment
@@ -79,7 +79,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
             # => []
 
-            call.test_account::get_storage_commitment
+            call.mock_account::get_storage_commitment
             # => [STORAGE_COMMITMENT0, pad(12)]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT0]
@@ -90,7 +90,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             push.{key}
             push.2
             # => [slot_idx = 2, KEY, VALUE, pad(7)]
-            call.test_account::set_map_item
+            call.mock_account::set_map_item
             dropw dropw dropw dropw
             # => [STORAGE_COMMITMENT0]
 
@@ -103,7 +103,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT0]
 
             padw padw padw padw
-            call.test_account::get_storage_commitment
+            call.mock_account::get_storage_commitment
             # => [STORAGE_COMMITMENT1, pad(12), STORAGE_COMMITMENT0]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
@@ -404,7 +404,7 @@ fn test_get_map_item() -> miette::Result<()> {
                 # get the map item
                 push.{map_key}
                 push.{item_index}
-                call.::test::account::get_map_item
+                call.::mock::account::get_map_item
 
                 # truncate the stack
                 swapw dropw movup.4 drop
@@ -550,9 +550,9 @@ fn test_set_map_item() -> miette::Result<()> {
         "
         use.std::sys
 
-        use.test::account
+        use.mock::account
         use.$kernel::prologue
-        use.test::account->test_account
+        use.mock::account->mock_account
 
         begin
             exec.prologue::prepare_transaction
@@ -561,11 +561,11 @@ fn test_set_map_item() -> miette::Result<()> {
             push.{new_value}
             push.{new_key}
             push.{item_index}
-            call.test_account::set_map_item
+            call.mock_account::set_map_item
 
             # double check that on storage slot is indeed the new map
             push.{item_index}
-            call.test_account::get_item
+            call.mock_account::get_item
 
             # truncate the stack
             exec.sys::truncate_stack
@@ -902,13 +902,13 @@ fn test_get_storage_commitment() -> anyhow::Result<()> {
         r#"
         use.miden::account
         use.$kernel::prologue
-        use.test::account->test_account
+        use.mock::account->mock_account
 
         begin
             exec.prologue::prepare_transaction
 
             # get the current storage commitment
-            call.test_account::get_storage_commitment
+            call.mock_account::get_storage_commitment
             push.{expected_storage_commitment}
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
@@ -966,14 +966,14 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         r#"
         use.miden::account
         use.$kernel::prologue
-        use.test::account->test_account
+        use.mock::account->mock_account
 
         begin
             exec.prologue::prepare_transaction
 
             # add an asset to the account
             push.{fungible_asset}
-            call.test_account::add_asset dropw
+            call.mock_account::add_asset dropw
             # => []
 
             # get the current vault root
@@ -1069,29 +1069,29 @@ fn test_was_procedure_called() -> miette::Result<()> {
     // 4. Calls get_item **again**
     // 5. Checks that `was_procedure_called` returns `true`
     let tx_script_code = r#"
-        use.test::account->test_account
+        use.mock::account->mock_account
         use.miden::account
 
         begin
             # First check that get_item procedure hasn't been called yet
-            procref.test_account::get_item
+            procref.mock_account::get_item
             exec.account::was_procedure_called
             assertz.err="procedure should not have been called"
 
             # Call the procedure first time
             push.0
-            call.test_account::get_item dropw
+            call.mock_account::get_item dropw
             # => []
 
-            procref.test_account::get_item
+            procref.mock_account::get_item
             exec.account::was_procedure_called
             assert.err="procedure should have been called"
 
             # Call the procedure second time
             push.0
-            call.test_account::get_item dropw
+            call.mock_account::get_item dropw
 
-            procref.test_account::get_item
+            procref.mock_account::get_item
             exec.account::was_procedure_called
             assert.err="2nd call should not change the was_called flag"
         end

@@ -114,7 +114,7 @@ const MOCK_ACCOUNT_CODE: &str = "
 ";
 
 static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    let source = NamedSource::new("test::account", MOCK_ACCOUNT_CODE);
+    let source = NamedSource::new("mock::account", MOCK_ACCOUNT_CODE);
     TransactionKernel::assembler()
         .assemble_library([source])
         .expect("mock account code should be valid")
@@ -125,7 +125,7 @@ static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 /// Extension trait for [`AccountCode`] to access the mock library.
 pub trait MockAccountCodeExt {
-    /// Returns the [`Library`] of the mock account under the `test::account` namespace.
+    /// Returns the [`Library`] of the mock account under the `mock::account` namespace.
     ///
     /// This account interface wraps most account kernel APIs for testing purposes.
     fn mock_library() -> Library;
