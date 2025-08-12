@@ -449,7 +449,7 @@ where
 /// vector.
 fn split_at<T>(mut vec: Vec<T>, index: usize) -> (Vec<T>, T, Vec<T>) {
     // Drain backwards from the index to the end of the vector.
-    let after: Vec<T> = vec.drain(index + 1..).collect();
+    let after = vec.drain(index + 1..).collect::<Vec<T>>();
 
     // Remove and get the separator.
     let separator = vec.pop().expect("provided separator index in bounds");
