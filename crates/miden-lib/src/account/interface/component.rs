@@ -57,7 +57,7 @@ impl AccountComponentInterface {
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
-                "RPO Falcon512 Procedure ACL".to_string()
+                "RPO Falcon512 ACL".to_string()
             },
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec

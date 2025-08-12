@@ -34,9 +34,9 @@ const TX_SCRIPT_NO_TRIGGER: &str = r#"
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Sets up the basic components needed for RPO Falcon procedure ACL tests.
+/// Sets up the basic components needed for RPO Falcon ACL tests.
 /// Returns (account, mock_chain, note).
-fn setup_rpo_falcon_procedure_acl_test(
+fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
 ) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
@@ -53,7 +53,7 @@ fn setup_rpo_falcon_procedure_acl_test(
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
-    let (auth_component, _authenticator) = Auth::ProcedureAcl {
+    let (auth_component, _authenticator) = Auth::Acl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
         allow_unauthorized_output_notes,
         allow_unauthorized_input_notes,
@@ -81,8 +81,8 @@ fn setup_rpo_falcon_procedure_acl_test(
 }
 
 #[test]
-fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
-    let (account, mut mock_chain, note) = setup_rpo_falcon_procedure_acl_test(false, true)?;
+fn test_rpo_falcon_acl() -> anyhow::Result<()> {
+    let (account, mut mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
     let component: AccountComponent =
@@ -96,7 +96,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
-    let (_, authenticator) = Auth::ProcedureAcl {
+    let (_, authenticator) = Auth::Acl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
         allow_unauthorized_output_notes: false,
         allow_unauthorized_input_notes: true,
@@ -195,8 +195,8 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_procedure_acl_test(true, true)?;
+fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, true)?;
 
     // Verify the storage layout includes both authorization flags
     let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
@@ -231,8 +231,8 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
 }
 
 #[test]
-fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_procedure_acl_test(true, false)?;
+fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, false)?;
 
     // Verify the storage layout includes both flags
     let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");

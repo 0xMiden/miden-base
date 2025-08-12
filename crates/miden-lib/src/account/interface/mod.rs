@@ -16,7 +16,7 @@ use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
     rpo_falcon_512_library,
-    rpo_falcon_512_procedure_acl_library,
+    rpo_falcon_512_acl_library,
 };
 use crate::errors::ScriptBuilderError;
 use crate::note::well_known_note::WellKnownNote;
@@ -144,7 +144,7 @@ impl AccountInterface {
                 },
                 AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
                     component_proc_digests.extend(
-                        rpo_falcon_512_procedure_acl_library().mast_forest().procedure_digests(),
+                        rpo_falcon_512_acl_library().mast_forest().procedure_digests(),
                     );
                 },
                 AccountComponentInterface::Custom(custom_procs) => {
@@ -265,7 +265,7 @@ impl From<&Account> for AccountInterface {
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
             match interface {
-                // RpoFalcon512 and RpoFalcon512ProcedureAcl use the same RpoFalcon512 auth scheme
+                // RpoFalcon512 and RpoFalcon512Acl use the same RpoFalcon512 auth scheme
                 AccountComponentInterface::AuthRpoFalcon512(storage_index)
                 | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
                     auth.push(AuthScheme::RpoFalcon512 {
