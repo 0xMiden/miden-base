@@ -703,22 +703,18 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
     let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
     let non_fungible_storage_map =
         StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
-
-    // The component does not have any storage slots so we don't need to instantiate storage
-    // from the component. We also need to set the custom value for the storage map so we
-    // construct storage manually.
     let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
-    let account = AccountBuilder::new([1; 32])
+    let (account, _seed) = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)
         .with_auth_component(NoopAuthComponent)
         .with_component(MockAccountComponent::with_empty_slots())
-        .build_existing()
+        .build()
         .expect("account should be valid");
-    let (id, vault, _storage, code, _nonce) = account.into_parts();
+    let (id, vault, _storage, code, nonce) = account.into_parts();
 
     // Set the nonce to zero so this is considered a new account.
-    let account = Account::from_parts(id, vault, storage, code, ZERO);
+    let account = Account::from_parts(id, vault, storage, code, nonce);
     let (account, account_seed) = compute_valid_account_id(account);
 
     let result = create_account_test(account, account_seed);

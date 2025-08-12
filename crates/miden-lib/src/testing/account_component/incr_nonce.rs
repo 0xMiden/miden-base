@@ -7,7 +7,7 @@ use crate::transaction::TransactionKernel;
 const INCR_NONCE_AUTH_CODE: &str = "
     use.miden::account
 
-    export.auth__basic
+    export.auth__incr_nonce
         exec.account::incr_nonce drop
     end
 ";

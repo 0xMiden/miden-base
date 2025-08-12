@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 
-use miden_objects::AccountError;
-use miden_objects::account::{AccountCode, AccountComponent, StorageSlot};
+use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, StorageSlot};
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
@@ -32,7 +31,7 @@ impl MockAccountComponent {
     ///
     /// # Panics
     ///
-    /// Panics if the number of slots exceeds the maximum.
+    /// Panics if the number of slots exceeds [`AccountStorage::MAX_NUM_STORAGE_SLOTS`].
     pub fn with_slots(storage_slots: Vec<StorageSlot>) -> Self {
         Self::new(storage_slots)
     }
@@ -41,10 +40,10 @@ impl MockAccountComponent {
     // --------------------------------------------------------------------------------------------
 
     fn new(storage_slots: Vec<StorageSlot>) -> Self {
-        // Check that we have less than 256 storage slots.
-        u8::try_from(storage_slots.len())
-            .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))
-            .expect("too many storage slots");
+        debug_assert!(
+            storage_slots.len() <= AccountStorage::MAX_NUM_STORAGE_SLOTS,
+            "too many storage slots passed to MockAccountComponent"
+        );
 
         Self { storage_slots }
     }
