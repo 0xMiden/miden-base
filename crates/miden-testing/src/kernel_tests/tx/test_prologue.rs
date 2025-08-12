@@ -574,18 +574,9 @@ fn create_simple_account() -> anyhow::Result<()> {
 
 /// Test helper which executes the prologue to check if the creation of the given `account` with its
 /// `seed` is valid in the context of the given `mock_chain`.
-pub fn create_account_test(
-    mock_chain: &MockChain,
-    account: Account,
-    seed: Word,
-) -> Result<Process, ExecutionError> {
-    let tx_inputs = mock_chain
-        .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
-        .unwrap();
-
+pub fn create_account_test(account: Account, seed: Word) -> Result<Process, ExecutionError> {
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
-        .tx_inputs(tx_inputs)
         .build()
         .unwrap();
 
@@ -600,10 +591,7 @@ pub fn create_account_test(
     tx_context.execute_code(code)
 }
 
-pub fn create_multiple_accounts_test(
-    mock_chain: &MockChain,
-    storage_mode: AccountStorageMode,
-) -> anyhow::Result<()> {
+pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
     let mut accounts = Vec::new();
 
     for account_type in [
@@ -630,7 +618,7 @@ pub fn create_multiple_accounts_test(
 
     for (account, seed) in accounts {
         let account_type = account.account_type();
-        create_account_test(mock_chain, account, seed).context(format!(
+        create_account_test(account, seed).context(format!(
             "create_multiple_accounts_test test failed for account type {account_type}"
         ))?;
     }
@@ -641,13 +629,11 @@ pub fn create_multiple_accounts_test(
 /// Tests that a valid account of each storage mode can be created successfully.
 #[test]
 pub fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
-    let mock_chain = MockChain::new();
+    create_multiple_accounts_test(AccountStorageMode::Private)?;
 
-    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Private)?;
+    create_multiple_accounts_test(AccountStorageMode::Public)?;
 
-    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Public)?;
-
-    create_multiple_accounts_test(&mock_chain, AccountStorageMode::Network)
+    create_multiple_accounts_test(AccountStorageMode::Network)
 }
 
 /// Takes an account with a placeholder ID and returns the same account but with its ID replaced
@@ -698,10 +684,9 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
     // Set the nonce to zero so this is considered a new account.
     let account = Account::from_parts(id, vault, storage, code, ZERO);
 
-    let mock_chain = MockChain::new();
     let (account, account_seed) = compute_valid_account_id(account);
 
-    let result = create_account_test(&mock_chain, account, account_seed);
+    let result = create_account_test(account, account_seed);
 
     assert_execution_error!(result, ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY);
 
@@ -712,14 +697,11 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
 /// fails.
 #[test]
 pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()> {
-    let mut mock_chain = MockChain::new();
-    mock_chain.prove_next_block()?;
-
     let account =
         Account::mock_non_fungible_faucet(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET, ZERO, false);
     let (account, account_seed) = compute_valid_account_id(account);
 
-    let result = create_account_test(&mock_chain, account, account_seed);
+    let result = create_account_test(account, account_seed);
 
     assert_execution_error!(
         result,
