@@ -250,6 +250,7 @@ export.auth__tx_rpo_falcon512_multisig
     exec.auth::create_tx_summary
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 
+    # to build a tx_summary in the host, we need these four words in the advice provider
     exec.auth::adv_insert_hqword
     # => [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
 
