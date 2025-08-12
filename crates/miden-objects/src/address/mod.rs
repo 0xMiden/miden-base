@@ -68,19 +68,24 @@ impl AccountIdAddress {
     pub fn note_tag_len(&self) -> u8 {
         self.tag_len
     }
+
+    /// Returns a note tag derived from this address.
+    pub fn to_note_tag(&self) -> NoteTag {
+        match self.id.storage_mode() {
+            AccountStorageMode::Network => NoteTag::from_network_account_id(self.id),
+            AccountStorageMode::Private | AccountStorageMode::Public => {
+                NoteTag::from_local_account_id(self.id, self.tag_len)
+                    .expect("AccountIdAddress validated that tag len does not exceed MAX_LOCAL_TAG_LENGTH bits")
+            },
+        }
+    }
 }
 
 impl Address {
     /// Returns a note tag derived from this address.
     pub fn to_note_tag(&self) -> NoteTag {
         match self {
-            Address::AccountId(addr) => match addr.id.storage_mode() {
-                AccountStorageMode::Network => NoteTag::from_network_account_id(addr.id),
-                AccountStorageMode::Private | AccountStorageMode::Public => {
-                    NoteTag::from_local_account_id(addr.id, addr.tag_len)
-                        .expect("AccountIdAddress validated that tag len does not exceed MAX_LOCAL_TAG_LENGTH bits")
-                },
-            },
+            Address::AccountId(addr) => addr.to_note_tag(),
         }
     }
 }
