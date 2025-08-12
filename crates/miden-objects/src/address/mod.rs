@@ -22,8 +22,8 @@ pub struct AccountIdAddress {
 impl AccountIdAddress {
     /// Creates a new account-id based address with the default tag length.
     ///
-    /// The tag length defaults to [`DEFAULT_LOCAL_TAG_LENGTH`] for local, and
-    /// [`DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
+    /// The tag length defaults to [`NoteTag::DEFAULT_LOCAL_TAG_LENGTH`] for local, and
+    /// [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
     pub fn new(id: AccountId) -> Self {
         let tag_len = if id.storage_mode() == AccountStorageMode::Network {
             NoteTag::DEFAULT_NETWORK_TAG_LENGTH
@@ -41,8 +41,8 @@ impl AccountIdAddress {
     ///
     /// # Errors
     /// Returns an error if:
-    /// - The tag length exceeds [`MAX_LOCAL_TAG_LENGTH`] for local accounts.
-    /// - The tag length is not [`DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
+    /// - The tag length exceeds [`NoteTag::MAX_LOCAL_TAG_LENGTH`] for local accounts.
+    /// - The tag length is not [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
     pub fn with_tag_len(mut self, tag_len: u8) -> Result<Self, AddressError> {
         if self.id.storage_mode() == AccountStorageMode::Network {
             if tag_len != NoteTag::DEFAULT_NETWORK_TAG_LENGTH {
