@@ -7,8 +7,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
-use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
@@ -101,11 +101,12 @@ fn test_epilogue() -> anyhow::Result<()> {
     )?;
 
     let auth_component: AccountComponent = IncrNonceAuthComponent.into();
-    let final_account = Account::mock(
+    let mut final_account = Account::mock(
         tx_context.account().id().into(),
         tx_context.account().nonce() + ONE,
         auth_component,
     );
+    final_account.increment_nonce(ONE)?;
 
     let output_notes = OutputNotes::new(
         tx_context
