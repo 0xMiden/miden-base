@@ -70,13 +70,14 @@ use miden_objects::account::{
     AccountId,
     AccountIdVersion,
     AccountProcedureInfo,
+    AccountStorage,
     AccountStorageMode,
     AccountType,
+    StorageMap,
     StorageSlot,
 };
-use miden_objects::asset::FungibleAsset;
+use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
-    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
@@ -697,12 +698,30 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
     Ok(())
 }
 
-/// Tests that creating a non fungible faucet account with a non-empty SMT in its reserved slot
-/// fails.
+/// Tests that creating a non fungible faucet account with a non-empty storage map in its reserved
+/// slot fails.
 #[test]
 pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> anyhow::Result<()> {
-    let account =
-        Account::mock_non_fungible_faucet(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET, ZERO, false);
+    // Create a storage map with a mock asset to make it non-empty.
+    let asset = NonFungibleAsset::mock(&[1, 2, 3, 4]);
+    let non_fungible_storage_map =
+        StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
+
+    // The component does not have any storage slots so we don't need to instantiate storage
+    // from the component. We also need to set the custom value for the storage map so we
+    // construct storage manually.
+    let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
+
+    let account = AccountBuilder::new([1; 32])
+        .account_type(AccountType::NonFungibleFaucet)
+        .with_auth_component(NoopAuthComponent)
+        .with_component(AccountMockComponent::new_with_empty_slots().unwrap())
+        .build_existing()
+        .expect("account should be valid");
+    let (id, vault, _storage, code, _nonce) = account.into_parts();
+
+    // Set the nonce to zero so this is considered a new account.
+    let account = Account::from_parts(id, vault, storage, code, ZERO);
     let (account, account_seed) = compute_valid_account_id(account);
 
     let result = create_account_test(account, account_seed);
