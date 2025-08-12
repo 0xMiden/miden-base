@@ -2,9 +2,10 @@ use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_crypto::dsa::rpo_falcon512::PublicKey;
 use miden_crypto::merkle::InnerNodeInfo;
 
-use super::{AccountInputs, Felt, Word};
+use super::{AccountInputs, Felt, Hasher, Word};
 use crate::note::{NoteId, NoteRecipient};
 use crate::utils::serde::{
     ByteReader,
@@ -107,6 +108,13 @@ impl TransactionArgs {
     pub fn with_auth_args(mut self, auth_args: Word) -> Self {
         self.auth_args = auth_args;
         self
+    }
+
+    /// Adds the provided signature to the advice inputs.
+    pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Vec<Felt>) {
+        self.advice_inputs
+            .map
+            .insert(Hasher::merge(&[public_key.into(), message]), signature);
     }
 
     // PUBLIC ACCESSORS
