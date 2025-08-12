@@ -15,7 +15,6 @@ use crate::TransactionContextBuilder;
 fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;

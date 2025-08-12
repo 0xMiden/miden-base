@@ -11,7 +11,6 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
 use miden_lib::utils::word_to_masm_push_string;
-use miden_objects::FieldElement;
 use miden_objects::account::{Account, AccountId, StorageMap};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
@@ -40,7 +39,6 @@ use crate::{TransactionContextBuilder, assert_execution_error};
 fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
@@ -161,7 +159,6 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
 fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        Felt::ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
@@ -356,7 +353,6 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock_fungible_faucet(
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-            ONE,
             Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
         );
         let note = create_p2any_note(
@@ -491,7 +487,6 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
 fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
-        ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
@@ -767,7 +762,6 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
 fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
