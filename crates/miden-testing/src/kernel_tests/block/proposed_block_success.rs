@@ -266,7 +266,7 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Public)
-        .with_component(MockAccountComponent::with_empty_slots().unwrap());
+        .with_component(MockAccountComponent::with_empty_slots());
 
     let mut builder = MockChain::builder();
 

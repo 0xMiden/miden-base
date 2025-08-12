@@ -6,8 +6,6 @@ use crate::utils::sync::LazyLock;
 // ================================================================================================
 
 const NOOP_AUTH_CODE: &str = "
-    use.miden::account
-
     export.auth__noop
         push.0 drop
     end

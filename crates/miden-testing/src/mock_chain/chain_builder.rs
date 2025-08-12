@@ -295,10 +295,7 @@ impl MockChainBuilder {
     pub fn create_new_mock_account(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
-            .with_component(
-                MockAccountComponent::with_empty_slots()
-                    .context("failed to create mock component")?,
-            );
+            .with_component(MockAccountComponent::with_empty_slots());
 
         self.add_account_from_builder(auth_method, account_builder, AccountState::New)
     }
@@ -339,10 +336,7 @@ impl MockChainBuilder {
     ) -> anyhow::Result<Account> {
         let account_builder = Account::builder(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
-            .with_component(
-                MockAccountComponent::with_slots(slots.into_iter().collect())
-                    .context("failed to create mock component")?,
-            )
+            .with_component(MockAccountComponent::with_slots(slots.into_iter().collect()))
             .with_assets(assets);
 
         self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)

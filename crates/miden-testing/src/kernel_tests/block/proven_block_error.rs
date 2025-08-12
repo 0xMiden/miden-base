@@ -258,10 +258,9 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
-        .with_component(
-            MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from([5u32; 4]))])
-                .context("failed to create account mock component")?,
-        )
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
+            [5u32; 4],
+        ))]))
         .build()
         .context("failed to build account")?;
 
@@ -352,10 +351,9 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     let mut mock_chain = MockChain::new();
     let (account, _) = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
-        .with_component(
-            MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from([5u32; 4]))])
-                .context("failed to create account mock component")?,
-        )
+        .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
+            [5u32; 4],
+        ))]))
         .build()
         .context("failed to build account")?;
 

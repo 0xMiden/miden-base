@@ -22,25 +22,29 @@ impl MockAccountComponent {
     // --------------------------------------------------------------------------------------------
 
     /// Constructs a [`MockAccountComponent`] with empty storage.
-    pub fn with_empty_slots() -> Result<Self, AccountError> {
+    pub fn with_empty_slots() -> Self {
         Self::new(vec![])
     }
 
     /// Constructs a [`MockAccountComponent`] with the provided storage slots.
-    pub fn with_slots(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+    ///
+    /// # Panics
+    ///
+    /// Panics if the number of slots exceeds the maximum.
+    pub fn with_slots(storage_slots: Vec<StorageSlot>) -> Self {
         Self::new(storage_slots)
     }
 
     // HELPERS
     // --------------------------------------------------------------------------------------------
 
-    fn new(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
+    fn new(storage_slots: Vec<StorageSlot>) -> Self {
         // Check that we have less than 256 storage slots.
         u8::try_from(storage_slots.len())
             .map_err(|_| AccountError::StorageTooManySlots(storage_slots.len() as u64))
             .expect("too many storage slots");
 
-        Ok(Self { storage_slots })
+        Self { storage_slots }
     }
 }
 
