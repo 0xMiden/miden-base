@@ -165,7 +165,7 @@ impl NoteTag {
         tag_len: u8,
     ) -> Result<Self, NoteError> {
         if tag_len > Self::MAX_LOCAL_TAG_LENGTH {
-            return Err(NoteError::NoteTagTagLengthTooLarge(tag_len));
+            return Err(NoteError::NoteTagLengthTooLarge(tag_len));
         }
 
         let prefix_id: u64 = account_id.prefix().into();

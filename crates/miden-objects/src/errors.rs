@@ -399,8 +399,8 @@ pub enum AssetVaultError {
 
 #[derive(Debug, Error)]
 pub enum NoteError {
-    #[error("note tag tag length {0} exceeds the maximum of {max}", max = NoteTag::MAX_LOCAL_TAG_LENGTH)]
-    NoteTagTagLengthTooLarge(u8),
+    #[error("note tag length {0} exceeds the maximum of {max}", max = NoteTag::MAX_LOCAL_TAG_LENGTH)]
+    NoteTagLengthTooLarge(u8),
     #[error("duplicate fungible asset from issuer {0} in note")]
     DuplicateFungibleAsset(AccountId),
     #[error("duplicate non fungible asset {0} in note")]
