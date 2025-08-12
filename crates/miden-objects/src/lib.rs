@@ -7,13 +7,12 @@ extern crate alloc;
 extern crate std;
 
 pub mod account;
+pub mod address;
 pub mod asset;
 pub mod batch;
 pub mod block;
 pub mod note;
 pub mod transaction;
-
-pub mod address;
 
 #[cfg(any(feature = "testing", test))]
 pub mod testing;
