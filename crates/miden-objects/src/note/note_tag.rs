@@ -158,6 +158,13 @@ impl NoteTag {
         }
     }
 
+    /// Constructs a [`NoteTag::LocalAny`] from the given `account_id` and `tag_len`.
+    ///
+    /// The tag is constructed as follows:
+    ///
+    /// - The two most significant bits are set to `0b11` to indicate a [LOCAL_ANY] tag.
+    /// - The next `tag_len` bits are set to the most significant bits of the account ID prefix.
+    /// - The remaining bits are set to zero.
     fn from_local_account_id(account_id: AccountId, tag_len: u8) -> Self {
         let prefix_id: u64 = account_id.prefix().into();
 
