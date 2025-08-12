@@ -81,11 +81,17 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
-use miden_objects::transaction::{AccountInputs, TransactionArgs, TransactionScript};
+use miden_objects::transaction::{
+    AccountInputs,
+    ExecutedTransaction,
+    TransactionArgs,
+    TransactionScript,
+};
 use miden_objects::{EMPTY_WORD, WORD_SIZE};
+use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, ExecutionError, Process, Word};
+use vm_processor::{AdviceInputs, Process, Word};
 
 use super::{Felt, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
@@ -96,6 +102,7 @@ use crate::{
     TransactionContext,
     TransactionContextBuilder,
     assert_execution_error,
+    assert_transaction_executor_error,
 };
 
 #[test]
@@ -574,21 +581,15 @@ fn create_simple_account() -> anyhow::Result<()> {
 
 /// Test helper which executes the prologue to check if the creation of the given `account` with its
 /// `seed` is valid in the context of the given `mock_chain`.
-pub fn create_account_test(account: Account, seed: Word) -> Result<Process, ExecutionError> {
-    let tx_context = TransactionContextBuilder::new(account)
+pub fn create_account_test(
+    account: Account,
+    seed: Word,
+) -> Result<ExecutedTransaction, TransactionExecutorError> {
+    TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .build()
-        .unwrap();
-
-    let code = "
-  use.$kernel::prologue
-
-  begin
-      exec.prologue::prepare_transaction
-  end
-  ";
-
-    tx_context.execute_code(code)
+        .unwrap()
+        .execute_blocking()
 }
 
 pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
@@ -688,7 +689,10 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
 
     let result = create_account_test(account, account_seed);
 
-    assert_execution_error!(result, ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY);
+    assert_transaction_executor_error!(
+        result,
+        ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY
+    );
 
     Ok(())
 }
@@ -703,7 +707,7 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
 
     let result = create_account_test(account, account_seed);
 
-    assert_execution_error!(
+    assert_transaction_executor_error!(
         result,
         ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT
     );
