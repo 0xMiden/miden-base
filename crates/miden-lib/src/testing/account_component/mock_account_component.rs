@@ -21,10 +21,12 @@ impl MockAccountComponent {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
+    /// Constructs a [`MockAccountComponent`] with empty storage.
     pub fn with_empty_slots() -> Result<Self, AccountError> {
         Self::new(vec![])
     }
 
+    /// Constructs a [`MockAccountComponent`] with the provided storage slots.
     pub fn with_slots(storage_slots: Vec<StorageSlot>) -> Result<Self, AccountError> {
         Self::new(storage_slots)
     }
