@@ -30,17 +30,33 @@ pub trait MockAccountExt {
 
 impl MockAccountExt for Account {
     fn mock(account_id: u128, auth: impl Into<AccountComponent>) -> Self {
-        build_mock_account(account_id, auth, AssetVault::mock())
+        let account_id = AccountId::try_from(account_id).unwrap();
+        let account = AccountBuilder::new([1; 32])
+            .account_type(account_id.account_type())
+            .with_auth_component(auth)
+            .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
+            .with_assets(AssetVault::mock().assets())
+            .build_existing()
+            .expect("account should be valid");
+        let (_id, vault, storage, code, nonce) = account.into_parts();
+
+        Account::from_parts(account_id, vault, storage, code, nonce)
     }
 
     fn mock_fungible_faucet(account_id: u128, initial_balance: Felt) -> Self {
-        let account = build_mock_account(account_id, NoopAuthComponent, AssetVault::default());
-        let (id, vault, mut storage, code, nonce) = account.into_parts();
+        let account_id = AccountId::try_from(account_id).unwrap();
+        let account = AccountBuilder::new([1; 32])
+            .account_type(account_id.account_type())
+            .with_auth_component(NoopAuthComponent)
+            .with_component(MockFaucetComponent)
+            .build_existing()
+            .expect("account should be valid");
+        let (_id, vault, mut storage, code, nonce) = account.into_parts();
 
         let faucet_data_slot = Word::from([ZERO, ZERO, ZERO, initial_balance]);
         storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
 
-        Account::from_parts(id, vault, storage, code, nonce)
+        Account::from_parts(account_id, vault, storage, code, nonce)
     }
 
     fn mock_non_fungible_faucet(account_id: u128) -> Self {
@@ -48,7 +64,6 @@ impl MockAccountExt for Account {
         let account = AccountBuilder::new([1; 32])
             .account_type(account_id.account_type())
             .with_auth_component(NoopAuthComponent)
-            .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
             .with_component(MockFaucetComponent)
             .build_existing()
             .expect("account should be valid");
@@ -62,24 +77,4 @@ impl MockAccountExt for Account {
 
         Account::from_parts(account_id, vault, storage, code, nonce)
     }
-}
-
-/// Builds an existing account with the given auth component, account ID and asset vault.
-fn build_mock_account(
-    account_id: u128,
-    auth: impl Into<AccountComponent>,
-    vault: AssetVault,
-) -> Account {
-    let account_id = AccountId::try_from(account_id).unwrap();
-    let account = AccountBuilder::new([1; 32])
-        .account_type(account_id.account_type())
-        .with_auth_component(auth)
-        .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
-        .with_component(MockFaucetComponent)
-        .with_assets(vault.assets())
-        .build_existing()
-        .expect("account should be valid");
-    let (_id, vault, storage, code, nonce) = account.into_parts();
-
-    Account::from_parts(account_id, vault, storage, code, nonce)
 }

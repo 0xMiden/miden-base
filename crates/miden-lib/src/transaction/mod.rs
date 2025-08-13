@@ -463,7 +463,6 @@ impl TransactionKernel {
             .with_debug_mode(true)
     }
 
-    // TODO: Rename to `...with_mock_libraries` and update docs.
     /// Returns the testing assembler, and additionally contains the library for
     /// [`MockAccountCodeExt::mock_library`][mock_lib], which is a
     /// mock wallet used in tests.
