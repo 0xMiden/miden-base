@@ -288,7 +288,7 @@ impl ScriptBuilder {
 
         let builder = Self::with_kernel_library()?;
 
-        builder.with_dynamically_linked_library(&AccountCode::mock_library())
+        builder.with_dynamically_linked_library(&AccountCode::mock_account_library())
     }
 }
 

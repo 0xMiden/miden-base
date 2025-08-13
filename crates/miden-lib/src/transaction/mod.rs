@@ -476,7 +476,7 @@ impl TransactionKernel {
         let assembler = Self::testing_assembler().with_debug_mode(true);
 
         assembler
-            .with_dynamic_library(AccountCode::mock_library())
+            .with_dynamic_library(AccountCode::mock_account_library())
             .expect("failed to add mock account code")
     }
 }

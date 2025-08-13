@@ -4,7 +4,7 @@ use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, Stor
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
-// ACCOUNT MOCK COMPONENT
+// MOCK ACCOUNT COMPONENT
 // ================================================================================================
 
 /// Creates a mock [`Library`](miden_objects::assembly::Library) which can be used to assemble
@@ -51,8 +51,8 @@ impl MockAccountComponent {
 
 impl From<MockAccountComponent> for AccountComponent {
     fn from(mock_component: MockAccountComponent) -> Self {
-        AccountComponent::new(AccountCode::mock_library(), mock_component.storage_slots)
-          .expect("account mock component should satisfy the requirements of a valid account component")
+        AccountComponent::new(AccountCode::mock_account_library(), mock_component.storage_slots)
+          .expect("mock account component should satisfy the requirements of a valid account component")
           .with_supports_all_types()
     }
 }

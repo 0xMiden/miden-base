@@ -5,6 +5,24 @@ use miden_objects::utils::sync::LazyLock;
 
 use crate::transaction::TransactionKernel;
 
+const MOCK_FAUCET_CODE: &str = "
+    export.::miden::contracts::faucets::basic_fungible::distribute
+
+    # Stack:  [ASSET, pad(12)]
+    # Output: [ASSET, pad(12)]
+    export.mint
+        exec.faucet::mint
+        # => [ASSET, pad(12)]
+    end
+
+    # Stack:  [ASSET, pad(12)]
+    # Output: [ASSET, pad(12)]
+    export.burn
+        exec.faucet::burn
+        # => [ASSET, pad(12)]
+    end
+";
+
 const MOCK_ACCOUNT_CODE: &str = "
     use.miden::account
     use.miden::faucet
@@ -12,7 +30,6 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     export.::miden::contracts::wallets::basic::receive_asset
     export.::miden::contracts::wallets::basic::move_asset_to_note
-    export.::miden::contracts::faucets::basic_fungible::distribute
 
     # Note: all account's export procedures below should be only called or dyncall'ed, so it
     # is assumed that the operand stack at the beginning of their execution is pad'ed and
@@ -97,21 +114,14 @@ const MOCK_ACCOUNT_CODE: &str = "
         # truncate the stack
         swap drop
     end
-
-    # Stack:  [ASSET, pad(12)]
-    # Output: [ASSET, pad(12)]
-    export.mint
-        exec.faucet::mint
-        # => [ASSET, pad(12)]
-    end
-
-    # Stack:  [ASSET, pad(12)]
-    # Output: [ASSET, pad(12)]
-    export.burn
-        exec.faucet::burn
-        # => [ASSET, pad(12)]
-    end
 ";
+
+static MOCK_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let source = NamedSource::new("mock::faucet", MOCK_FAUCET_CODE);
+    TransactionKernel::assembler()
+        .assemble_library([source])
+        .expect("mock faucet code should be valid")
+});
 
 static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let source = NamedSource::new("mock::account", MOCK_ACCOUNT_CODE);
@@ -123,16 +133,25 @@ static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 // MOCK ACCOUNT CODE EXT
 // ================================================================================================
 
-/// Extension trait for [`AccountCode`] to access the mock library.
+/// Extension trait for [`AccountCode`] to access the mock libraries.
 pub trait MockAccountCodeExt {
     /// Returns the [`Library`] of the mock account under the `mock::account` namespace.
     ///
     /// This account interface wraps most account kernel APIs for testing purposes.
-    fn mock_library() -> Library;
+    fn mock_account_library() -> Library;
+
+    /// Returns the [`Library`] of the mock faucet under the `mock::faucet` namespace.
+    ///
+    /// This account interface wraps most faucet kernel APIs for testing purposes.
+    fn mock_faucet_library() -> Library;
 }
 
 impl MockAccountCodeExt for AccountCode {
-    fn mock_library() -> Library {
+    fn mock_account_library() -> Library {
         MOCK_ACCOUNT_LIBRARY.clone()
+    }
+
+    fn mock_faucet_library() -> Library {
+        MOCK_FAUCET_LIBRARY.clone()
     }
 }
