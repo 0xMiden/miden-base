@@ -26,8 +26,7 @@ fn create_account_with_fees() -> anyhow::Result<()> {
     assert_eq!(expected_fee, tx.fee().amount());
 
     // We expect that the new account contains the amount minus the paid fee.
-    let mut added_asset = FungibleAsset::new(chain.native_asset_id(), amount)?;
-    added_asset.sub(tx.fee().amount())?;
+    let added_asset = FungibleAsset::new(chain.native_asset_id(), amount)?.sub(tx.fee())?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
     // except for the nonce, the storage delta should be empty

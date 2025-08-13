@@ -30,7 +30,7 @@ pub enum Auth {
     /// Creates a [SecretKey] for the account, and creates a [BasicAuthenticator] used to
     /// authenticate the account with [AuthRpoFalcon512Acl]. Authentication will only be
     /// triggered if any of the procedures specified in the list are called during execution.
-    ProcedureAcl {
+    Acl {
         auth_trigger_procedures: Vec<Word>,
         allow_unauthorized_output_notes: bool,
         allow_unauthorized_input_notes: bool,
@@ -78,7 +78,7 @@ impl Auth {
 
                 (component, None)
             },
-            Auth::ProcedureAcl {
+            Auth::Acl {
                 auth_trigger_procedures,
                 allow_unauthorized_output_notes,
                 allow_unauthorized_input_notes,
