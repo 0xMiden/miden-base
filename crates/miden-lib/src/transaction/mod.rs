@@ -463,6 +463,7 @@ impl TransactionKernel {
             .with_debug_mode(true)
     }
 
+    // TODO: Rename to `...with_mock_libraries` and update docs.
     /// Returns the testing assembler, and additionally contains the library for
     /// [`MockAccountCodeExt::mock_library`][mock_lib], which is a
     /// mock wallet used in tests.
@@ -477,7 +478,9 @@ impl TransactionKernel {
 
         assembler
             .with_dynamic_library(AccountCode::mock_account_library())
-            .expect("failed to add mock account code")
+            .expect("failed to add mock account library")
+            .with_dynamic_library(AccountCode::mock_faucet_library())
+            .expect("failed to add mock faucet library")
     }
 }
 

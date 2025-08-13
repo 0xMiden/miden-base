@@ -6,7 +6,7 @@ use miden_objects::utils::sync::LazyLock;
 use crate::transaction::TransactionKernel;
 
 const MOCK_FAUCET_CODE: &str = "
-    export.::miden::contracts::faucets::basic_fungible::distribute
+    use.miden::faucet
 
     # Stack:  [ASSET, pad(12)]
     # Output: [ASSET, pad(12)]
@@ -25,7 +25,6 @@ const MOCK_FAUCET_CODE: &str = "
 
 const MOCK_ACCOUNT_CODE: &str = "
     use.miden::account
-    use.miden::faucet
     use.miden::tx
 
     export.::miden::contracts::wallets::basic::receive_asset

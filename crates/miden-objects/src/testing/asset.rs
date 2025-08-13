@@ -102,7 +102,9 @@ impl NonFungibleAsset {
     /// Returns the account ID of the issuer of [`NonFungibleAsset::mock()`]
     /// ([ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET]).
     pub fn mock_issuer() -> AccountId {
-        AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET).unwrap()
+        let id = AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET).unwrap();
+        std::println!("typ0 {}", id.account_type());
+        id
     }
 }
 

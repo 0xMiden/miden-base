@@ -13,7 +13,7 @@ use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word, ZERO};
 
-use crate::testing::account_component::MockAccountComponent;
+use crate::testing::account_component::{MockAccountComponent, MockFaucetComponent};
 
 // MOCK ACCOUNT EXT
 // ================================================================================================
@@ -44,8 +44,15 @@ impl MockAccountExt for Account {
     }
 
     fn mock_non_fungible_faucet(account_id: u128) -> Self {
-        let account = build_mock_account(account_id, NoopAuthComponent, AssetVault::default());
-        let (id, vault, _storage, code, nonce) = account.into_parts();
+        let account_id = AccountId::try_from(account_id).unwrap();
+        let account = AccountBuilder::new([1; 32])
+            .account_type(account_id.account_type())
+            .with_auth_component(NoopAuthComponent)
+            .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
+            .with_component(MockFaucetComponent)
+            .build_existing()
+            .expect("account should be valid");
+        let (_id, vault, _storage, code, nonce) = account.into_parts();
 
         let asset = NonFungibleAsset::mock(&constants::NON_FUNGIBLE_ASSET_DATA_2);
         let non_fungible_storage_map =
@@ -53,7 +60,7 @@ impl MockAccountExt for Account {
         let storage =
             AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
-        Account::from_parts(id, vault, storage, code, nonce)
+        Account::from_parts(account_id, vault, storage, code, nonce)
     }
 }
 
@@ -64,11 +71,11 @@ fn build_mock_account(
     vault: AssetVault,
 ) -> Account {
     let account_id = AccountId::try_from(account_id).unwrap();
-    let mock_component = MockAccountComponent::with_slots(AccountStorage::mock_storage_slots());
     let account = AccountBuilder::new([1; 32])
         .account_type(account_id.account_type())
         .with_auth_component(auth)
-        .with_component(mock_component)
+        .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
+        .with_component(MockFaucetComponent)
         .with_assets(vault.assets())
         .build_existing()
         .expect("account should be valid");
