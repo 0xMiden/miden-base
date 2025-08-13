@@ -35,7 +35,7 @@ const.THRESHOLD_CONFIG_SLOT=0
 const.PUBLIC_KEYS_MAP_SLOT=1
 
 # The slot in this component's storage layout where executed transactions are stored.
-# Map entries: transaction_message => [0, 0, 0, USED_FLAG]
+# Map entries: transaction_message => [0, 0, 0, is_executed]
 const.EXECUTED_TXS_SLOT=2
 
 # Memory Constants
@@ -43,40 +43,40 @@ const.EXECUTED_TXS_SLOT=2
 # Local Memory Addresses
 const.NUM_OF_APPROVERS=0
 const.THRESHOLD=4
-const.TEMP_PK=8
+const.CURRENT_PK=8
 const.SUCCESSFUL_VERIFICATIONS=12
 
 # Executed Transaction Flag Constant
-const.USED_FLAG=1
+const.IS_EXECUTED_FLAG=1
 
 # ERRORS
-const.TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
+const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
-#! Panics if:
-#! - the same transaction has already been executed
-#!
 #! Inputs:  [MSG]
 #! Outputs: []
+#!
+#! Panics if:
+#! - the same transaction has already been executed
 proc.assert_new_tx
-    push.0.0.0.USED_FLAG
-    # => [USED_FLAG, MSG]
+    push.IS_EXECUTED_FLAG.0.0.0
+    # => [[0, 0, 0, is_executed], MSG]
 
     swapw
-    # => [MSG, USED_FLAG]
+    # => [MSG, IS_EXECUTED_FLAG]
 
     push.EXECUTED_TXS_SLOT
-    # => [index, MSG, USED_FLAG]
+    # => [index, MSG, IS_EXECUTED_FLAG]
 
     # Set the key value pair in the map to mark transaction as executed
     exec.account::set_map_item
-    # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+    # => [OLD_MAP_ROOT, [0, 0, 0, is_executed]]
 
-    dropw padw
-    # => [EMPTY_WORD, OLD_MAP_VALUE]
+    dropw drop drop drop
+    # => [is_executed]
 
-    assert_eqw.err=TX_ALREADY_EXECUTED
+    assertz.err=ERR_TX_ALREADY_EXECUTED
     # => []
 end
 
@@ -86,14 +86,14 @@ end
 #! from the account storage map, and verifies their signatures against the transaction message.
 #! If any required signature is missing, it emits an UNAUTHORIZED_EVENT.
 #!
-#! Inputs:  [num_of_approvers, num_required_signatures, MSG]
+#! Inputs:  [num_of_approvers, threshold, MSG]
 #! Outputs: []
 proc.verify_signatures.16
     dup loc_store.NUM_OF_APPROVERS
-    # => [num_of_approvers, num_required_signatures, MSG]
+    # => [num_of_approvers, threshold, MSG]
 
     swap
-    # => [num_required_signatures, num_of_approvers, MSG]
+    # => [threshold, num_of_approvers, MSG]
 
     loc_store.THRESHOLD
     # => [num_of_approvers, MESSAGE]
@@ -121,7 +121,7 @@ proc.verify_signatures.16
         exec.account::get_map_item
         # => [OWNER_PUB_KEY, i-1, MSG]
 
-        loc_storew.TEMP_PK
+        loc_storew.CURRENT_PK
         # => [OWNER_PUB_KEY, i-1, MSG]
 
         # Check if signature exists for this signer.
@@ -147,7 +147,7 @@ proc.verify_signatures.16
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
-            padw loc_loadw.TEMP_PK
+            padw loc_loadw.CURRENT_PK
             # => [PK, MSG, MSG, i-1]
 
             swapw
@@ -267,10 +267,10 @@ export.auth__tx_rpo_falcon512_multisig
     # => [index, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     exec.account::get_item
-    # => [0, 0, num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
+    # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     drop drop
-    # => [num_of_approvers, num_required_signatures, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
+    # => [num_of_approvers, threshold, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
 
     exec.verify_signatures
     # => [TX_SUMMARY_COMMITMENT]
