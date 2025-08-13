@@ -23,12 +23,11 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::transaction::{TransactionEvent, TransactionKernel};
-use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_lib::utils::{AccountComponentBuilder, ScriptBuilder, word_to_masm_push_string};
 use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountCode,
-    AccountComponent,
     AccountId,
     AccountStorage,
     AccountStorageMode,
@@ -1295,10 +1294,10 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         abort_event = TransactionEvent::Unauthorized as u32
     );
 
-    let auth_component =
-        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])
-            .context("failed to compile auth component")?
-            .with_supports_all_types();
+    let auth_component = AccountComponentBuilder::default()
+        .with_supports_all_types()
+        .build(source_code)
+        .context("failed to compile auth component")?;
 
     let account = AccountBuilder::new([42; 32])
         .storage_mode(AccountStorageMode::Private)
@@ -1556,12 +1555,10 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
             end
         "#;
 
-    let component = AccountComponent::compile(
-        account_code_script,
-        TransactionKernel::assembler(),
-        vec![StorageSlot::Value(Word::default())],
-    )?
-    .with_supports_all_types();
+    let component = AccountComponentBuilder::new(true)
+        .with_storage_slot(StorageSlot::Value(Word::default()))
+        .build(account_code_script)?
+        .with_supports_all_types();
 
     let account_code = AccountCode::from_components(
         &[IncrNonceAuthComponent.into(), component.clone()],

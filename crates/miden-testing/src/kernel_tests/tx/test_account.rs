@@ -14,7 +14,7 @@ use miden_lib::errors::tx_kernel_errors::{
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::{AccountComponentBuilder, ScriptBuilder};
 use miden_objects::StarkField;
 use miden_objects::account::{
     Account,
@@ -672,22 +672,18 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let bar_write = find_procedure_digest_by_name("bar_write", &code2).unwrap();
     let bar_read = find_procedure_digest_by_name("bar_read", &code2).unwrap();
 
-    // Compile source code into components.
-    let component1 = AccountComponent::compile(
-        source_code_component1,
-        assembler.clone(),
-        vec![StorageSlot::Value(Word::empty())],
-    )
-    .unwrap()
-    .with_supported_type(AccountType::RegularAccountUpdatableCode);
+    // Build source code into components.
+    let component1 = AccountComponentBuilder::default()
+        .with_storage_slot(StorageSlot::Value(Word::empty()))
+        .with_supported_type(AccountType::RegularAccountUpdatableCode)
+        .build(source_code_component1)
+        .unwrap();
 
-    let component2 = AccountComponent::compile(
-        source_code_component2,
-        assembler.clone(),
-        vec![StorageSlot::Value(Word::empty())],
-    )
-    .unwrap()
-    .with_supported_type(AccountType::RegularAccountUpdatableCode);
+    let component2 = AccountComponentBuilder::default()
+        .with_storage_slot(StorageSlot::Value(Word::empty()))
+        .with_supported_type(AccountType::RegularAccountUpdatableCode)
+        .build(source_code_component2)
+        .unwrap();
 
     let mut account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -1209,9 +1205,9 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
         end
     ";
 
-    let faulty_auth_component =
-        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
-            .with_supports_all_types();
+    let faulty_auth_component = AccountComponentBuilder::default()
+        .with_supports_all_types()
+        .build(source_code)?;
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
         .with_component(MockAccountComponent::with_empty_slots())

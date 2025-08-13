@@ -1,9 +1,7 @@
 use alloc::string::ToString;
-use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, StorageSlot};
-use miden_objects::assembly::Assembler;
+use miden_objects::account::{AccountBuilder, AccountType};
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
@@ -22,15 +20,14 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE_2,
 };
-use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
+use miden_objects::{Felt, NoteError, Word, ZERO};
 
 use crate::account::auth::AuthRpoFalcon512;
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{AccountInterface, NoteAccountCompatibility};
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
-use crate::transaction::TransactionKernel;
-use crate::utils::ScriptBuilder;
+use crate::utils::{AccountComponentBuilder, ScriptBuilder};
 
 // DEFAULT NOTES
 // ================================================================================================
@@ -142,13 +139,10 @@ fn test_custom_account_default_note() {
         export.basic::receive_asset
     ";
 
-    let account_component = AccountComponent::compile(
-        account_custom_code_source,
-        TransactionKernel::testing_assembler(),
-        vec![],
-    )
-    .unwrap()
-    .with_supports_all_types();
+    let account_component = AccountComponentBuilder::default()
+        .build(account_custom_code_source)
+        .unwrap()
+        .with_supports_all_types();
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
@@ -425,14 +419,14 @@ fn test_custom_account_custom_notes() {
         end
     ";
 
-    let account_component = AccountComponent::compile_with_path(
-        account_custom_code_source,
-        TransactionKernel::testing_assembler(),
-        vec![],
-        "test::account::component_1",
-    )
-    .unwrap()
-    .with_supports_all_types();
+    let account_component = AccountComponentBuilder::with_kernel_library()
+        .unwrap()
+        .build(NamedSource::new(
+            "test::account::component_1",
+            account_custom_code_source.to_string(),
+        ))
+        .unwrap()
+        .with_supports_all_types();
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
@@ -538,14 +532,14 @@ fn test_custom_account_multiple_components_custom_notes() {
         end
     ";
 
-    let custom_component = AccountComponent::compile_with_path(
-        account_custom_code_source,
-        TransactionKernel::testing_assembler(),
-        vec![],
-        "test::account::component_1",
-    )
-    .unwrap()
-    .with_supports_all_types();
+    let custom_component = AccountComponentBuilder::with_kernel_library()
+        .unwrap()
+        .build(NamedSource::new(
+            "test::account::component_1",
+            account_custom_code_source.to_string(),
+        ))
+        .unwrap()
+        .with_supports_all_types();
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let target_account = AccountBuilder::new(mock_seed)
@@ -652,48 +646,6 @@ fn test_custom_account_multiple_components_custom_notes() {
         NoteAccountCompatibility::No,
         target_account_interface.is_compatible_with(&incompatible_custom_note)
     );
-}
-
-// HELPER TRAIT
-// ================================================================================================
-
-/// [AccountComponentExt] is a helper trait which only implements the `compile_with_path` procedure
-/// for testing purposes.
-trait AccountComponentExt {
-    fn compile_with_path(
-        source_code: impl ToString,
-        assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
-        library_path: impl AsRef<str>,
-    ) -> Result<AccountComponent, AccountError>;
-}
-
-impl AccountComponentExt for AccountComponent {
-    /// Returns a new [`AccountComponent`] whose library is compiled from the provided `source_code`
-    /// using the specified `assembler`, `library_path`, and with the given `storage_slots`.
-    ///
-    /// All procedures exported from the provided code will become members of the account's public
-    /// interface when added to an [`AccountCode`](crate::account::AccountCode), and could be called
-    /// using the provided library path.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - the compilation of the provided source code fails.
-    /// - The number of storage slots exceeds 255.
-    fn compile_with_path(
-        source_code: impl ToString,
-        assembler: Assembler,
-        storage_slots: Vec<StorageSlot>,
-        library_path: impl AsRef<str>,
-    ) -> Result<Self, AccountError> {
-        let source = NamedSource::new(library_path, source_code.to_string());
-        let library = assembler
-            .assemble_library([source])
-            .map_err(AccountError::AccountComponentAssemblyError)?;
-
-        Self::new(library, storage_slots)
-    }
 }
 
 fn get_mock_auth_component() -> AuthRpoFalcon512 {

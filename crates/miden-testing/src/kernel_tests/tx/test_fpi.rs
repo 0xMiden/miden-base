@@ -7,7 +7,6 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_FOREIGN_ACCOUNT_MAX_NUMBER_EXCEEDED,
 };
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::{
     ACCOUNT_DATA_LENGTH,
     ACCT_CODE_COMMITMENT_OFFSET,
@@ -20,12 +19,11 @@ use miden_lib::transaction::memory::{
     NUM_ACCT_PROCEDURES_OFFSET,
     NUM_ACCT_STORAGE_SLOTS_OFFSET,
 };
-use miden_lib::utils::ScriptBuilder;
+use miden_lib::utils::{AccountComponentBuilder, ScriptBuilder};
 use miden_objects::FieldElement;
 use miden_objects::account::{
     Account,
     AccountBuilder,
-    AccountComponent,
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
@@ -74,12 +72,10 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         end
     ";
 
-    let foreign_account_component = AccountComponent::compile(
-        foreign_account_code_source,
-        TransactionKernel::testing_assembler(),
-        storage_slots.clone(),
-    )?
-    .with_supports_all_types();
+    let foreign_account_component = AccountComponentBuilder::default()
+        .with_storage_slots(storage_slots.clone())
+        .build(foreign_account_code_source)?
+        .with_supports_all_types();
 
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -320,19 +316,15 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
         end
     ";
 
-    let foreign_account_component_1 = AccountComponent::compile(
-        foreign_account_code_source_1,
-        TransactionKernel::testing_assembler(),
-        storage_slots_1.clone(),
-    )?
-    .with_supports_all_types();
+    let foreign_account_component_1 = AccountComponentBuilder::with_kernel_library()?
+        .with_storage_slots(storage_slots_1.clone())
+        .build(foreign_account_code_source_1)?
+        .with_supports_all_types();
 
-    let foreign_account_component_2 = AccountComponent::compile(
-        foreign_account_code_source_2,
-        TransactionKernel::testing_assembler(),
-        storage_slots_2.clone(),
-    )?
-    .with_supports_all_types();
+    let foreign_account_component_2 = AccountComponentBuilder::with_kernel_library()?
+        .with_storage_slots(storage_slots_2.clone())
+        .build(foreign_account_code_source_2)?
+        .with_supports_all_types();
 
     let foreign_account_1 = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -527,12 +519,10 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         end
     ";
 
-    let foreign_account_component = AccountComponent::compile(
-        foreign_account_code_source,
-        TransactionKernel::testing_assembler(),
-        storage_slots,
-    )?
-    .with_supports_all_types();
+    let foreign_account_component = AccountComponentBuilder::with_kernel_library()?
+        .with_storage_slots(storage_slots)
+        .build(foreign_account_code_source)?
+        .with_supports_all_types();
 
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -687,12 +677,10 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         end
     "#;
 
-    let second_foreign_account_component = AccountComponent::compile(
-        second_foreign_account_code_source,
-        TransactionKernel::testing_assembler(),
-        storage_slots,
-    )?
-    .with_supports_all_types();
+    let second_foreign_account_component = AccountComponentBuilder::with_kernel_library()?
+        .with_storage_slots(storage_slots)
+        .build(second_foreign_account_code_source)?
+        .with_supports_all_types();
 
     let second_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -745,12 +733,10 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         end
     "#;
 
-    let first_foreign_account_component = AccountComponent::compile(
-        first_foreign_account_code_source,
-        TransactionKernel::testing_assembler(),
-        storage_slots,
-    )?
-    .with_supports_all_types();
+    let first_foreign_account_component = AccountComponentBuilder::with_kernel_library()?
+        .with_storage_slots(storage_slots)
+        .build(first_foreign_account_code_source)?
+        .with_supports_all_types();
 
     let first_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -884,13 +870,12 @@ fn test_nested_fpi_stack_overflow() {
         ";
 
             let storage_slots = vec![AccountStorage::mock_item_0().slot];
-            let last_foreign_account_component = AccountComponent::compile(
-                last_foreign_account_code_source,
-                TransactionKernel::testing_assembler(),
-                storage_slots,
-            )
-            .unwrap()
-            .with_supports_all_types();
+            let last_foreign_account_component = AccountComponentBuilder::with_kernel_library()
+                .unwrap()
+                .with_storage_slots(storage_slots)
+                .build(last_foreign_account_code_source)
+                .unwrap()
+                .with_supports_all_types();
 
             let last_foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
                 .with_auth_component(Auth::IncrNonce)
@@ -931,13 +916,11 @@ fn test_nested_fpi_stack_overflow() {
                     next_foreign_prefix = next_account.id().prefix().as_felt(),
                 );
 
-                let foreign_account_component = AccountComponent::compile(
-                    foreign_account_code_source,
-                    TransactionKernel::testing_assembler(),
-                    vec![],
-                )
-                .unwrap()
-                .with_supports_all_types();
+                let foreign_account_component = AccountComponentBuilder::with_kernel_library()
+                    .unwrap()
+                    .build(foreign_account_code_source)
+                    .unwrap()
+                    .with_supports_all_types();
 
                 let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
                     .with_auth_component(Auth::IncrNonce)
@@ -1048,12 +1031,9 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         end
     ";
 
-    let foreign_account_component = AccountComponent::compile(
-        foreign_account_code_source,
-        TransactionKernel::testing_assembler(),
-        vec![],
-    )?
-    .with_supports_all_types();
+    let foreign_account_component = AccountComponentBuilder::with_kernel_library()?
+        .build(foreign_account_code_source)?
+        .with_supports_all_types();
 
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
@@ -1143,12 +1123,10 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         end
     ";
 
-    let foreign_account_component = AccountComponent::compile(
-        foreign_account_code_source,
-        TransactionKernel::testing_assembler(),
-        vec![AccountStorage::mock_item_0().slot],
-    )?
-    .with_supports_all_types();
+    let foreign_account_component = AccountComponentBuilder::with_kernel_library()?
+        .with_storage_slot(AccountStorage::mock_item_0().slot)
+        .build(foreign_account_code_source)?
+        .with_supports_all_types();
 
     let mut foreign_account = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)

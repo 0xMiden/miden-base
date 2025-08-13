@@ -74,6 +74,10 @@ impl AccountComponent {
     /// Returns an error if:
     /// - the compilation of the provided source code fails.
     /// - The number of storage slots exceeds 255.
+    #[deprecated(
+        since = "0.7.0",
+        note = "Use AccountComponentBuilder::new().with_storage_slots(storage_slots).build(source_code) instead"
+    )]
     pub fn compile(
         source_code: impl Parse,
         assembler: Assembler,
