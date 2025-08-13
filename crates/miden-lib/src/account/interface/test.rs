@@ -144,7 +144,7 @@ fn test_custom_account_default_note() {
 
     let account_component = AccountComponent::compile(
         account_custom_code_source,
-        TransactionKernel::testing_assembler(),
+        TransactionKernel::with_kernel_library(),
         vec![],
     )
     .unwrap()
@@ -427,7 +427,7 @@ fn test_custom_account_custom_notes() {
 
     let account_component = AccountComponent::compile_with_path(
         account_custom_code_source,
-        TransactionKernel::testing_assembler(),
+        TransactionKernel::with_kernel_library(),
         vec![],
         "test::account::component_1",
     )
@@ -540,7 +540,7 @@ fn test_custom_account_multiple_components_custom_notes() {
 
     let custom_component = AccountComponent::compile_with_path(
         account_custom_code_source,
-        TransactionKernel::testing_assembler(),
+        TransactionKernel::with_kernel_library(),
         vec![],
         "test::account::component_1",
     )

@@ -135,7 +135,7 @@ impl TransactionContext {
     ///
     /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::testing_assembler();
+        let assembler = TransactionKernel::with_kernel_library();
         self.execute_code_with_assembler(code, assembler)
     }
 

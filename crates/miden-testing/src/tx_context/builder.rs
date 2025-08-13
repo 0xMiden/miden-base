@@ -81,7 +81,7 @@ pub struct TransactionContextBuilder {
 impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
         Self {
-            assembler: TransactionKernel::testing_assembler_with_mock_account(),
+            assembler: TransactionKernel::with_mock_libraries(),
             account,
             account_seed: None,
             input_notes: Vec::new(),
@@ -110,7 +110,7 @@ impl TransactionContextBuilder {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
-        let assembler = TransactionKernel::testing_assembler_with_mock_account();
+        let assembler = TransactionKernel::with_mock_libraries();
 
         Self {
             assembler: assembler.clone(),

@@ -134,7 +134,7 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
     NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
         .code(code)
-        .build(&TransactionKernel::testing_assembler_with_mock_account())
+        .build(&TransactionKernel::with_mock_libraries())
         .expect("generated note script should compile")
 }
 
@@ -147,7 +147,7 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
 
     Ok(note)
 }

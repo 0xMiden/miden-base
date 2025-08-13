@@ -708,7 +708,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
         UPDATED_MAP_KEY = word_to_masm_push_string(&updated_map_key),
     );
 
-    let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_src)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_src)?;
 
     // Create the input note that carries the assets that we will assert later
     let input_note = {
@@ -851,7 +851,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
         code = code.as_ref()
     );
 
-    ScriptBuilder::with_mock_account_library()?
+    ScriptBuilder::with_mock_libraries()?
         .compile_tx_script(&code)
         .context("failed to compile tx script")
 }
