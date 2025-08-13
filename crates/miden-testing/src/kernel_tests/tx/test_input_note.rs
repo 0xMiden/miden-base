@@ -77,7 +77,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         ),
     );
 
-    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(
@@ -135,7 +135,7 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         METADATA = word_to_masm_push_string(&p2id_note_1_asset.metadata().into()),
     );
 
-    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
@@ -226,7 +226,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         check_note_2 = check_assets_code(2, 8, &p2id_note_2_assets),
     );
 
-    let tx_script = ScriptBuilder::with_kernel_library()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
 
     let tx_context = mock_chain
         .build_tx_context(

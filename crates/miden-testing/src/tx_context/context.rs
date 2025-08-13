@@ -131,7 +131,8 @@ impl TransactionContext {
         .execute_program(program)
     }
 
-    /// Executes arbitrary code with a testing assembler ([TransactionKernel::testing_assembler()]).
+    /// Executes arbitrary code with a kernel library assembler
+    /// ([`TransactionKernel::with_kernel_library`]).
     ///
     /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {

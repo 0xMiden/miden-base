@@ -266,29 +266,21 @@ impl ScriptBuilder {
     // TESTING CONVENIENCE FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a [`ScriptBuilder`] with the transaction kernel as a library.
-    ///
-    /// Assembling scripts with this library is equivalent to assembling with
-    /// [`TransactionKernel::with_kernel_library`]. See its documentaion for more details.
-    #[cfg(any(feature = "testing", test))]
-    pub fn with_kernel_library() -> Result<Self, ScriptBuilderError> {
-        let kernel_library = TransactionKernel::kernel_as_library();
-        Self::default().with_dynamically_linked_library(&kernel_library)
-    }
-
     /// Returns a [`ScriptBuilder`] with the mock account and faucet libraries.
     ///
-    /// Assembling scripts with these libraries is equivalent to assembling with
-    /// [`TransactionKernel::with_mock_libraries`]. See its documentaion for more details.
+    /// This script builder includes the [`MockAccountCodeExt::mock_account_library`][account_lib]
+    /// and [`MockAccountCodeExt::mock_faucet_library`][faucet_lib], which are the standard
+    /// testing account libraries.
+    ///
+    /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
+    /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_libraries() -> Result<Self, ScriptBuilderError> {
         use miden_objects::account::AccountCode;
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        let builder = Self::with_kernel_library()?;
-
-        builder
+        Self::default()
             .with_dynamically_linked_library(&AccountCode::mock_account_library())?
             .with_dynamically_linked_library(&AccountCode::mock_faucet_library())
     }

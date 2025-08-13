@@ -466,11 +466,12 @@ impl TransactionKernel {
     /// Returns an [`Assembler`] with the mock account and faucet libraries.
     ///
     /// This assembler is the same as [`TransactionKernel::with_kernel_library`] but additionally
-    /// includes the [`MockAccountCodeExt::mock_account_library`][account_lib] and
-    /// [`MockAccountCodeExt::mock_faucet_library`][faucet_lib].
+    /// includes the [`MockAccountCodeExt::mock_account_library`][account_lib]
+    /// and [`MockAccountCodeExt::mock_faucet_library`][faucet_lib], which are the standard
+    /// testing account libraries.
     ///
-    /// [account_lib]: (crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library)
-    /// [faucet_lib]: (crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library)
+    /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
+    /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
     pub fn with_mock_libraries() -> Assembler {
         use miden_objects::account::AccountCode;
 
