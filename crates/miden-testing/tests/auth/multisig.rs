@@ -100,24 +100,19 @@ async fn test_multisig() -> anyhow::Result<()> {
     let multisig_starting_balance = 10u64;
     let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
 
-    let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
-        .unwrap()
-        .build()
-        .unwrap();
-
-    // Create input note for the transaction
     let input_note_asset = FungibleAsset::mock(5);
-    let input_note = create_p2id_note(
+    let mut mock_chain_builder =
+        MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
+
+    // Create input note for the transaction using add_p2id_note
+    let input_note = mock_chain_builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
         multisig_account.id(),
-        vec![input_note_asset],
+        &[input_note_asset.into()],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([3u32; 4])),
     )?;
 
-    mock_chain.add_pending_note(OutputNote::Full(input_note.clone()));
-    mock_chain.prove_next_block()?;
+    let mut mock_chain = mock_chain_builder.build().unwrap();
 
     // Create output note for the transaction
     let output_note_asset = FungibleAsset::mock(7);

@@ -274,18 +274,18 @@ impl AuthMultisigRpoFalcon512 {
     /// Creates a new [`AuthMultisigRpoFalcon512`] component with the given `threshold` and
     /// list of approver public keys.
     ///
-    /// # Panics
-    /// Panics if threshold is greater than the number of approvers.
+    /// # Errors
+    /// Returns an error if threshold is 0 or greater than the number of approvers.
     pub fn new(threshold: u32, approvers: Vec<PublicKey>) -> Result<Self, AccountError> {
         if threshold == 0 {
             return Err(AccountError::AssumptionViolated(
-                "Threshold must be at least 1".to_string(),
+                "threshold must be at least 1".to_string(),
             ));
         }
 
         if threshold > approvers.len() as u32 {
             return Err(AccountError::AssumptionViolated(
-                "Threshold cannot be greater than number of approvers".to_string(),
+                "threshold cannot be greater than number of approvers".to_string(),
             ));
         }
 
@@ -562,7 +562,7 @@ mod tests {
 
         // Test threshold = 0 (should fail)
         let result = AuthMultisigRpoFalcon512::new(0, approvers.clone());
-        assert!(result.unwrap_err().to_string().contains("Threshold must be at least 1"));
+        assert!(result.unwrap_err().to_string().contains("threshold must be at least 1"));
 
         // Test threshold > number of approvers (should fail)
         let result = AuthMultisigRpoFalcon512::new(2, approvers);
@@ -570,7 +570,7 @@ mod tests {
             result
                 .unwrap_err()
                 .to_string()
-                .contains("Threshold cannot be greater than number of approvers")
+                .contains("threshold cannot be greater than number of approvers")
         );
     }
 }

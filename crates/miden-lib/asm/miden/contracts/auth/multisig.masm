@@ -139,7 +139,7 @@ proc.verify_signatures.16
         adv_push.1
         # => [has_signature, SIG_KEY, MSG, i-1]
 
-        # if h(msg, pk) => msg exists in AdviceMap check the signature
+        # if SIG_KEY => SIGNATURE exists in AdviceMap check the signature
         if.true
             dropw dupw
             # => [MSG, MSG, i-1]
@@ -157,7 +157,8 @@ proc.verify_signatures.16
             emit.AUTH_REQUEST
 
             swapw
-            # => [PK, MSG, MSG, i-1]
+            # OS => [PUB_KEY, MSG, MSG, i-1]
+            # AS => [SIGNATURE]
 
             exec.rpo_falcon512::verify
             # => [MSG, i-1]
@@ -193,7 +194,7 @@ proc.verify_signatures.16
     loc_load.THRESHOLD
     # => [threshold, num_verifications, MSG]
 
-    gte not
+    lt
     # => [is_unauthorized, MSG]
 
     # If signatures are non-existent the tx will fail here.
