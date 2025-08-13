@@ -50,7 +50,9 @@ const.SUCCESSFUL_VERIFICATIONS=12
 const.USED_FLAG=1
 
 # ERRORS
-const.TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
+# =================================================================================================
+
+const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
 
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
