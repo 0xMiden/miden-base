@@ -21,7 +21,7 @@ const.UNAUTHORIZED_EVENT=131101
 # ┌─────────────────────────────┬──────────┬──────────────┐
 # │    THRESHOLD & APPROVERS    │ PUB KEYS │ EXECUTED TXS │
 # │ [0, 0, threshold,           │   (map)  │    (map)     │
-# │    num_approvers] (slot)    │          │              │
+# │    num_approvers] (value)   │          │              │
 # ├─────────────────────────────┼──────────┼──────────────┤
 # │              0              │    1     │      2       │
 # └─────────────────────────────┴──────────┴──────────────┘
