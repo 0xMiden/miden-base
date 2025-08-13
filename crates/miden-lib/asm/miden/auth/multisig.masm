@@ -35,7 +35,7 @@ const.THRESHOLD_CONFIG_SLOT=0
 const.PUBLIC_KEYS_MAP_SLOT=1
 
 # The slot in this component's storage layout where executed transactions are stored.
-# Map entries: transaction_message => [0, 0, 0, USED_FLAG]
+# Map entries: MSG => [0, 0, 0, is_executed]
 const.EXECUTED_TXS_SLOT=2
 
 # Memory Constants
