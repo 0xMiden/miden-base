@@ -84,12 +84,17 @@ fn create_multisig_account(
 // TESTS
 // ================================================================================================
 
+/// Tests basic 2-of-2 multisig functionality with note creation.
+///
+/// This test verifies that a multisig account with 2 approvers and threshold 2
+/// can successfully execute a transaction that creates an output note when both
+/// required signatures are provided.
+///
+/// **Roles:**
+/// - 2 Approvers (multisig signers)
+/// - 1 Multisig Contract
 #[tokio::test]
-async fn test_multisig() -> anyhow::Result<()> {
-    // ROLES
-    // - 2 Approvers (multisig signers)
-    // - 1 Multisig Contract
-
+async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     // Setup keys and authenticators
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
@@ -166,11 +171,16 @@ async fn test_multisig() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// Tests 2-of-4 multisig with all possible signer combinations.
+///
+/// This test verifies that a multisig account with 4 approvers and threshold 2
+/// can successfully execute transactions when signed by any 2 of the 4 approvers.
+/// It tests all 6 possible combinations of 2 signers to ensure the multisig
+/// implementation correctly validates signatures from any valid subset.
+///
+/// **Tested combinations:** (0,1), (0,2), (0,3), (1,2), (1,3), (2,3)
 #[tokio::test]
-async fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> anyhow::Result<()> {
-    // Test 4 owners with threshold 2 - test different combinations of signers
-    // This tests that any 2 of the 4 approvers can sign, not just the first 2
-
+async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
     // Setup keys and authenticators (4 approvers, all 4 can sign)
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(4, 4)?;
 
@@ -241,10 +251,18 @@ async fn test_multisig_4_owners_threshold_2_different_signer_combinations() -> a
     Ok(())
 }
 
+/// Tests multisig replay protection to prevent transaction re-execution.
+///
+/// This test verifies that a 2-of-3 multisig account properly prevents replay attacks
+/// by rejecting attempts to execute the same transaction twice. The first execution
+/// should succeed with valid signatures, but the second attempt with identical
+/// parameters should fail with ERR_TX_ALREADY_EXECUTED.
+///
+/// **Roles:**
+/// - 3 Approvers (2 signers required)
+/// - 1 Multisig Contract
 #[tokio::test]
 async fn test_multisig_replay_protection() -> anyhow::Result<()> {
-    // Test 2/3 multisig where tx is executed, then attempted again (should fail on 2nd attempt)
-
     // Setup keys and authenticators (3 approvers, but only 2 signers)
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(3, 2)?;
 

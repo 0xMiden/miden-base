@@ -232,7 +232,9 @@ end
 #!   Operand stack: []
 #!
 #! Where:
-#! - SALT is the salt value used for transaction processing.
+#! - SALT is a cryptographically random nonce that enables multiple concurrent
+#!   multisig transactions while maintaining replay protection. Each transaction
+#!   must use a unique SALT value to ensure transaction uniqueness.
 #! - SIG_i is the signature from the i-th signer.
 #! - MSG is the transaction message being signed.
 #! - h(SIG_i, MSG) is the hash of the signature and message used as the advice map key.
