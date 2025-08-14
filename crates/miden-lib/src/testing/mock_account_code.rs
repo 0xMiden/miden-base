@@ -137,20 +137,16 @@ pub trait MockAccountCodeExt {
     /// Returns the [`Library`] of the mock account under the `mock::account` namespace.
     ///
     /// This account interface wraps most account kernel APIs for testing purposes.
-    fn mock_account_library() -> Library;
-
-    /// Returns the [`Library`] of the mock faucet under the `mock::faucet` namespace.
-    ///
-    /// This account interface wraps most faucet kernel APIs for testing purposes.
-    fn mock_faucet_library() -> Library;
-}
-
-impl MockAccountCodeExt for AccountCode {
     fn mock_account_library() -> Library {
         MOCK_ACCOUNT_LIBRARY.clone()
     }
 
+    /// Returns the [`Library`] of the mock faucet under the `mock::faucet` namespace.
+    ///
+    /// This account interface wraps most faucet kernel APIs for testing purposes.
     fn mock_faucet_library() -> Library {
         MOCK_FAUCET_LIBRARY.clone()
     }
 }
+
+impl MockAccountCodeExt for AccountCode {}

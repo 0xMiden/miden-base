@@ -22,15 +22,7 @@ use crate::testing::account_component::{MockAccountComponent, MockFaucetComponen
 /// Extension trait for [`Account`]s that return mocked accounts.
 pub trait MockAccountExt {
     /// Creates an existing mock account with the provided auth component.
-    fn mock(account_id: u128, auth: impl Into<AccountComponent>) -> Self;
-    /// Creates a mock account with fungible faucet storage and the given account ID.
-    fn mock_fungible_faucet(account_id: u128, initial_balance: Felt) -> Self;
-    /// Creates a mock account with non-fungible faucet storage and the given account ID.
-    fn mock_non_fungible_faucet(account_id: u128) -> Self;
-}
-
-impl MockAccountExt for Account {
-    fn mock(account_id: u128, auth: impl Into<AccountComponent>) -> Self {
+    fn mock(account_id: u128, auth: impl Into<AccountComponent>) -> Account {
         let account_id = AccountId::try_from(account_id).unwrap();
         let account = AccountBuilder::new([1; 32])
             .account_type(account_id.account_type())
@@ -44,7 +36,8 @@ impl MockAccountExt for Account {
         Account::from_parts(account_id, vault, storage, code, nonce)
     }
 
-    fn mock_fungible_faucet(account_id: u128, initial_balance: Felt) -> Self {
+    /// Creates a mock account with fungible faucet storage and the given account ID.
+    fn mock_fungible_faucet(account_id: u128, initial_balance: Felt) -> Account {
         let account_id = AccountId::try_from(account_id).unwrap();
         assert_eq!(account_id.account_type(), AccountType::FungibleFaucet);
 
@@ -62,7 +55,8 @@ impl MockAccountExt for Account {
         Account::from_parts(account_id, vault, storage, code, nonce)
     }
 
-    fn mock_non_fungible_faucet(account_id: u128) -> Self {
+    /// Creates a mock account with non-fungible faucet storage and the given account ID.
+    fn mock_non_fungible_faucet(account_id: u128) -> Account {
         let account_id = AccountId::try_from(account_id).unwrap();
         assert_eq!(account_id.account_type(), AccountType::NonFungibleFaucet);
 
@@ -83,3 +77,5 @@ impl MockAccountExt for Account {
         Account::from_parts(account_id, vault, storage, code, nonce)
     }
 }
+
+impl MockAccountExt for Account {}
