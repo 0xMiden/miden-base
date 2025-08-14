@@ -355,7 +355,7 @@ impl FeeParameters {
 
     /// Convenience to convert to an asset for direct consumption in test scope.
     #[cfg(feature = "testing")]
-    pub fn to_fee_asset(&self) -> std::result::Result<FungibleAsset, AssetError> {
+    pub fn to_fee_asset(&self) -> Result<FungibleAsset, AssetError> {
         FungibleAsset::new(self.native_asset_id, u64::from(self.verification_base_fee))
     }
 }
