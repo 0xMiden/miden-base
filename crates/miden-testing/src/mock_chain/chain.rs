@@ -8,7 +8,7 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AuthSecretKey, StorageSlot};
-use miden_objects::asset::Asset;
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::{
     AccountTree,
@@ -254,6 +254,19 @@ impl MockChain {
         debug_assert_eq!(chain.committed_accounts.len(), chain.account_tree.num_accounts());
 
         Ok(chain)
+    }
+
+    /// Construct the fee asset for consumption.
+    pub fn fee_asset(&self) -> anyhow::Result<FungibleAsset> {
+        let genesis_block = self.blocks.last().ok_or_else(|| {
+            anyhow::anyhow!("Must have at least a genesis block to determine a fee")
+        })?;
+        let fee = genesis_block
+            .header()
+            .fee_parameters()
+            .to_fee_asset()
+            .context("Fee asset can be constructed from the latest block")?;
+        Ok(fee)
     }
 
     // PUBLIC ACCESSORS

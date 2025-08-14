@@ -1,7 +1,10 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+#[cfg(feature = "testing")]
+use crate::AssetError;
 use crate::account::{AccountId, AccountType};
+use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::utils::serde::{
     ByteReader,
@@ -348,6 +351,12 @@ impl FeeParameters {
     /// Returns the base fee capturing the cost for the verification of a transaction.
     pub fn verification_base_fee(&self) -> u32 {
         self.verification_base_fee
+    }
+
+    /// Convenience to convert to an asset for direct consumption in test scope.
+    #[cfg(feature = "testing")]
+    pub fn to_fee_asset(&self) -> std::result::Result<FungibleAsset, AssetError> {
+        FungibleAsset::new(self.native_asset_id, u64::from(self.verification_base_fee))
     }
 }
 
