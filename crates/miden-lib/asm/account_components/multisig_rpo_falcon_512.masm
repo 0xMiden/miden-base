@@ -1,5 +1,3 @@
-# The MASM code of the RPO Falcon 512 authentication Account Component.
-#
-# See the `RpoFalcon512` Rust type's documentation for more details.
+# The MASM code of the Multi-Signature RPO Falcon 512 Authentication Component.
 
-export.::miden::contracts::auth::multisig::auth__tx_rpo_falcon512_multisig
+export.::miden::auth::multisig::auth__tx_rpo_falcon512_multisig
