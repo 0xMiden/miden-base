@@ -7,7 +7,9 @@ use.$kernel::memory
 # ERRORS
 # =================================================================================================
 
-const.ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the get_balance procedure can only be called on a fungible faucet"
+const.ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="get_balance can only be called on a fungible asset"
+
+const.ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET="peek_balance can only be called on a fungible asset"
 
 const.ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET="the has_non_fungible_asset procedure can only be called on a non-fungible faucet"
 
@@ -39,7 +41,8 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 #!
 #! Where:
 #! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
-#! - faucet_id_prefix is the prefix of the faucet id of the fungible asset of interest.
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
 #! - balance is the vault balance of the fungible asset.
 #!
 #! Panics if:
@@ -47,10 +50,10 @@ const.INVERSE_FUNGIBLE_BITMASK_U32=0xffffffdf # last byte: 0b1101_1111
 export.get_balance
     # assert that the faucet id is a fungible faucet
     dup exec.account_id::is_fungible_faucet
-    assert.err=ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET
+    assert.err=ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
     # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
 
-    # get the asset vault root
+    # load the asset vault root from memory
     padw movup.6 mem_loadw
     # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
 
@@ -61,6 +64,59 @@ export.get_balance
     # lookup asset
     exec.smt::get swapw dropw
     # => [ASSET]
+
+    # extract asset balance (ASSET[0])
+    drop drop drop
+    # => [balance]
+end
+
+#! Returns the _peeked_ balance of a fungible asset associated with the provided faucet_id.
+#!
+#! WARNING: Peeked means the balance is loaded from the advice provider, which is susceptible to
+#! manipulation from a malicious host. Therefore this should only be used when the inclusion of the
+#! peeked balance is verified at a later point.
+#!
+#! To get the verified balance, use get_balance.
+#!
+#! Inputs:  [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+#! Outputs: [balance]
+#!
+#! Where:
+#! - vault_root_ptr is a pointer to the memory location at which the vault root is stored.
+#! - faucet_id_{prefix, suffix} are the prefix and suffix felts of the faucet id of the fungible
+#!   asset of interest.
+#! - balance is the vault balance of the fungible asset.
+#!
+#! Panics if:
+#! - the asset is not a fungible asset.
+export.peek_balance
+    # assert that the faucet id is a fungible faucet
+    dup exec.account_id::is_fungible_faucet
+    assert.err=ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET
+    # => [faucet_id_prefix, faucet_id_suffix, vault_root_ptr]
+
+    # load the asset vault root from memory
+    padw movup.6 mem_loadw
+    # => [ASSET_VAULT_ROOT, faucet_id_prefix, faucet_id_suffix]
+
+    # prepare the vault key for fungible asset lookup (pad least significant elements with zeros)
+    push.0.0 movup.7 movup.7
+    # => [faucet_id_prefix, faucet_id_suffix, 0, 0, ASSET_VAULT_ROOT]
+    # => [ASSET_KEY, ASSET_VAULT_ROOT]
+
+    # lookup asset
+    adv.push_smtpeek
+    # OS => [ASSET_KEY, ASSET_VAULT_ROOT]
+    # AS => [ASSET]
+
+    dropw
+    # OS => [ASSET_VAULT_ROOT]
+    # AS => [ASSET]
+
+    # this overwrites the vault root
+    adv_loadw
+    # OS => [ASSET]
+    # AS => []
 
     # extract asset balance (ASSET[0])
     drop drop drop
