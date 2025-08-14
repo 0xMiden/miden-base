@@ -14,9 +14,13 @@ use miden_objects::note::{
     NoteRecipient,
     NoteTag,
     NoteType,
+    PartialNote,
+    PaymentRecipient,
 };
+use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, NoteError, Word};
 use utils::build_swap_tag;
+use vm_processor::ZERO;
 use well_known_note::WellKnownNote;
 
 pub mod utils;
@@ -156,4 +160,44 @@ pub fn create_swap_note<R: FeltRng>(
     let payback_note = NoteDetails::new(payback_assets, payback_recipient);
 
     Ok((note, payback_note))
+}
+
+pub fn create_payment_request_expected_note_details<R: FeltRng>(
+    target: AccountId,
+    assets: Vec<Asset>,
+    reclaim_height: Option<BlockNumber>,
+    timelock_height: Option<BlockNumber>,
+    rng: &mut R,
+) -> Result<NoteDetails, NoteError> {
+    let serial_num = rng.draw_word();
+    let recipient =
+        utils::build_p2ide_recipient(target, reclaim_height, timelock_height, serial_num)?;
+
+    let vault = NoteAssets::new(assets)?;
+
+    Ok(NoteDetails::new(vault, recipient))
+}
+
+/// Generates an output note to fulfil a payment request.
+///
+/// The returned output note can be either full or partial, depending on [`PaymentRecipient`].
+pub fn create_payment_request_output_note(
+    sender: AccountId,
+    recipient: PaymentRecipient,
+    assets: Vec<Asset>,
+    tag: NoteTag,
+    note_type: NoteType,
+) -> Result<OutputNote, NoteError> {
+    let metadata = NoteMetadata::new(sender, note_type, tag, NoteExecutionHint::always(), ZERO)?;
+    let vault = NoteAssets::new(assets)?;
+    match recipient {
+        PaymentRecipient::Full(recipient) => {
+            let note = Note::new(vault, metadata, recipient);
+            Ok(OutputNote::Full(note))
+        },
+        PaymentRecipient::Anonymous(commitment) => {
+            let note = PartialNote::new(metadata, commitment, vault);
+            Ok(OutputNote::Partial(note))
+        },
+    }
 }

@@ -42,7 +42,7 @@ mod partial;
 pub use partial::PartialNote;
 
 mod recipient;
-pub use recipient::NoteRecipient;
+pub use recipient::{NoteRecipient, PaymentRecipient};
 
 mod script;
 pub use script::NoteScript;

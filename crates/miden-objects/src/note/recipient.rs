@@ -15,6 +15,17 @@ use super::{
     Word,
 };
 
+/// A recipient that can be used to create a payment note.
+///
+/// This is a wrapper around a [`NoteRecipient`] that can be used to create a payment note.
+/// It can be either a full recipient with a serial number and a script, or an anonymous
+/// recipient with just a commitment.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum PaymentRecipient {
+    Full(NoteRecipient),
+    Anonymous(Word),
+}
+
 /// Value that describes under which condition a note can be consumed.
 ///
 /// The recipient is not an account address, instead it is a value that describes when a note

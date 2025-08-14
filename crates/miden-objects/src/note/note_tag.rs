@@ -1,6 +1,8 @@
 use core::fmt;
 
 use miden_crypto::Felt;
+// TODO this doesn't have to be `FeltRng`, could just be `RngCore`
+use miden_crypto::rand::FeltRng;
 
 use super::{
     AccountId,
@@ -222,6 +224,12 @@ impl NoteTag {
         let payload_bits = payload as u32;
 
         Ok(Self::LocalAny(LOCAL_ANY | use_case_bits | payload_bits))
+    }
+
+    /// Creates a randomly generated tag.
+    pub fn for_payment_request<R: FeltRng>(rng: &mut R) -> Self {
+        let tag = rng.next_u32();
+        Self::LocalAny(LOCAL_ANY | tag)
     }
 
     // PUBLIC ACCESSORS
