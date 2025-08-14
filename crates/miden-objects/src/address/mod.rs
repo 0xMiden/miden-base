@@ -9,6 +9,15 @@ pub enum Address {
     AccountId(AccountIdAddress),
 }
 
+impl Address {
+    /// Returns a note tag derived from this address.
+    pub fn to_note_tag(&self) -> NoteTag {
+        match self {
+            Address::AccountId(addr) => addr.to_note_tag(),
+        }
+    }
+}
+
 /// Address that targets a specific `AccountId` with an explicit tag length preference.
 ///
 /// The tag length preference determines how many bits of the account ID are encoded into
@@ -78,15 +87,6 @@ impl AccountIdAddress {
                 NoteTag::from_local_account_id(self.id, self.tag_len)
                     .expect("AccountIdAddress validated that tag len does not exceed MAX_LOCAL_TAG_LENGTH bits")
             },
-        }
-    }
-}
-
-impl Address {
-    /// Returns a note tag derived from this address.
-    pub fn to_note_tag(&self) -> NoteTag {
-        match self {
-            Address::AccountId(addr) => addr.to_note_tag(),
         }
     }
 }
