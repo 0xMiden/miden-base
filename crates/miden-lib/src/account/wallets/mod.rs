@@ -1,7 +1,11 @@
 use alloc::string::String;
 
 use miden_objects::account::{
-    Account, AccountBuilder, AccountComponent, AccountStorageMode, AccountType,
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountStorageMode,
+    AccountType,
 };
 use miden_objects::assembly::{ProcedureName, QualifiedProcedureName};
 use miden_objects::utils::sync::LazyLock;

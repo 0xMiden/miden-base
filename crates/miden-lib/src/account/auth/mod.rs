@@ -5,7 +5,9 @@ use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::{
-    no_auth_library, rpo_falcon_512_acl_library, rpo_falcon_512_library,
+    no_auth_library,
+    rpo_falcon_512_acl_library,
+    rpo_falcon_512_library,
 };
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
