@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
@@ -6,9 +5,7 @@ use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
 use crate::account::components::{
-    no_auth_library,
-    rpo_falcon_512_acl_library,
-    rpo_falcon_512_library,
+    no_auth_library, rpo_falcon_512_acl_library, rpo_falcon_512_library,
 };
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
@@ -166,8 +163,8 @@ impl AuthRpoFalcon512Acl {
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if config.auth_trigger_procedures.len() > max_procedures {
-            return Err(AccountError::AssumptionViolated(
-                "Cannot track more than {max_procedures} procedures (account limit)".to_string(),
+            return Err(AccountError::other(
+                "Cannot track more than {max_procedures} procedures (account limit)",
             ));
         }
 

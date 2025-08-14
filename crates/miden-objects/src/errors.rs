@@ -18,26 +18,16 @@ use super::crypto::merkle::MerkleError;
 use super::note::NoteId;
 use super::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, Word};
 use crate::account::{
-    AccountCode,
-    AccountIdPrefix,
-    AccountStorage,
-    AccountType,
-    AddressType,
-    StorageValueName,
-    StorageValueNameError,
-    TemplateTypeError,
+    AccountCode, AccountIdPrefix, AccountStorage, AccountType, AddressType, StorageValueName,
+    StorageValueNameError, TemplateTypeError,
 };
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
 use crate::transaction::TransactionId;
 use crate::{
-    ACCOUNT_UPDATE_MAX_SIZE,
-    MAX_ACCOUNTS_PER_BATCH,
-    MAX_INPUT_NOTES_PER_BATCH,
-    MAX_INPUT_NOTES_PER_TX,
-    MAX_INPUTS_PER_NOTE,
-    MAX_OUTPUT_NOTES_PER_TX,
+    ACCOUNT_UPDATE_MAX_SIZE, MAX_ACCOUNTS_PER_BATCH, MAX_INPUT_NOTES_PER_BATCH,
+    MAX_INPUT_NOTES_PER_TX, MAX_INPUTS_PER_NOTE, MAX_OUTPUT_NOTES_PER_TX,
 };
 
 // ACCOUNT COMPONENT TEMPLATE ERROR
@@ -155,8 +145,33 @@ pub enum AccountError {
     },
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
-    #[error("assumption violated: {0}")]
-    AssumptionViolated(String),
+    #[error("{error_msg}")]
+    Other {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on AccountError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl AccountError {
+    /// Creates a custom error using the [`AccountError::Other`] variant from an error message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { error_msg: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`AccountError::Other`] variant from an error message and
+    /// a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // ACCOUNT ID ERROR
