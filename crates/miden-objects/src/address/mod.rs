@@ -1,6 +1,7 @@
 use crate::AddressError;
 use crate::account::{AccountId, AccountStorageMode};
 use crate::note::NoteTag;
+use miden_crypto::encryption::PublicEncryptionKey;
 
 /// A user-facing address in Miden.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -17,6 +18,7 @@ pub enum Address {
 pub struct AccountIdAddress {
     id: AccountId,
     tag_len: u8,
+    encryption_key: Option<PublicEncryptionKey>,
 }
 
 impl AccountIdAddress {
@@ -31,7 +33,13 @@ impl AccountIdAddress {
             NoteTag::DEFAULT_LOCAL_TAG_LENGTH
         };
 
-        Self { id, tag_len }
+        Self { id, tag_len, encryption_key: None }
+    }
+
+    /// Sets the encryption key for the address.
+    pub fn with_encryption_key(mut self, encryption_key: PublicEncryptionKey) -> Self {
+        self.encryption_key = Some(encryption_key);
+        self
     }
 
     /// Sets a custom tag length for the address.
