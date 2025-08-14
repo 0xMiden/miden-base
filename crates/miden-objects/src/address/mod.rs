@@ -18,6 +18,12 @@ impl Address {
     }
 }
 
+impl From<AccountIdAddress> for Address {
+    fn from(addr: AccountIdAddress) -> Self {
+        Address::AccountId(addr)
+    }
+}
+
 /// Address that targets a specific `AccountId` with an explicit tag length preference.
 ///
 /// The tag length preference determines how many bits of the account ID are encoded into
