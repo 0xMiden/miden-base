@@ -3,6 +3,7 @@ use crate::account::{AccountId, AccountStorageMode};
 use crate::note::NoteTag;
 
 /// A user-facing address in Miden.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum Address {
     AccountId(AccountIdAddress),
