@@ -437,6 +437,7 @@ export.finalize_transaction.8
     # ------ Assert that account was changed or notes were consumed ------
 
     # check if the account delta commitment is the EMPTY_WORD, which is the case when the delta
+    # is empty, i.e. the account did not change in this transaction
     dupw exec.word::eqz
     # => [is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
