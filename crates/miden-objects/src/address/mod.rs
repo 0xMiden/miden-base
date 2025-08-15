@@ -287,12 +287,14 @@ impl TryFrom<[u8; AccountIdAddress::SERIALIZED_SIZE]> for AccountIdAddress {
 
 #[cfg(test)]
 mod tests {
-    use bech32::Hrp;
+    use assert_matches::assert_matches;
+    use bech32::{Bech32, Hrp, NoChecksum};
 
     use super::*;
     use crate::account::AccountType;
-    use crate::testing::account_id::AccountIdBuilder;
+    use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
+    /// Tests that an account ID address can be encoded and decoded.
     #[test]
     fn address_bech32_encode_decode_roundtrip() {
         // We use this to check that encoding does not panic even when using the longest possible
@@ -339,5 +341,86 @@ mod tests {
                 assert_eq!(account_id_address.note_tag_len(), decoded_account_id.note_tag_len());
             }
         }
+    }
+
+    /// Tests that an invalid checksum returns an error.
+    #[test]
+    fn bech32_invalid_checksum() {
+        let network_id = NetworkId::Mainnet;
+        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        let address = Address::from(AccountIdAddress::new(account_id));
+
+        let bech32_string = address.to_bech32(network_id);
+        let mut invalid_bech32_1 = bech32_string.clone();
+        invalid_bech32_1.remove(0);
+        let mut invalid_bech32_2 = bech32_string.clone();
+        invalid_bech32_2.remove(7);
+
+        let error = Address::from_bech32(&invalid_bech32_1).unwrap_err();
+        assert_matches!(error, AddressError::Bech32DecodeError(Bech32Error::DecodeError(_)));
+
+        let error = Address::from_bech32(&invalid_bech32_2).unwrap_err();
+        assert_matches!(error, AddressError::Bech32DecodeError(Bech32Error::DecodeError(_)));
+    }
+
+    /// Tests that an unknown address type returns an error.
+    #[test]
+    fn bech32_unknown_address_type() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        let account_id_address = AccountIdAddress::new(account_id);
+        let mut id_address_bytes = <[u8; _]>::from(account_id_address).to_vec();
+
+        // Set invalid address type.
+        id_address_bytes.insert(0, 250);
+
+        let invalid_bech32 =
+            bech32::encode::<Bech32m>(NetworkId::Mainnet.into_hrp(), &id_address_bytes).unwrap();
+
+        let error = Address::from_bech32(&invalid_bech32).unwrap_err();
+        assert_matches!(
+            error,
+            AddressError::Bech32DecodeError(Bech32Error::UnknownAddressType(250))
+        );
+    }
+
+    /// Tests that a bech32 using a disallowed checksum returns an error.
+    #[test]
+    fn bech32_invalid_other_checksum() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        let account_id_address = AccountIdAddress::new(account_id);
+        let mut id_address_bytes = <[u8; _]>::from(account_id_address).to_vec();
+        id_address_bytes.insert(0, AddressType::AccountId as u8);
+
+        // Use Bech32 instead of Bech32m which is disallowed.
+        let invalid_bech32_regular =
+            bech32::encode::<Bech32>(NetworkId::Mainnet.into_hrp(), &id_address_bytes).unwrap();
+        let error = Address::from_bech32(&invalid_bech32_regular).unwrap_err();
+        assert_matches!(error, AddressError::Bech32DecodeError(Bech32Error::DecodeError(_)));
+
+        // Use no checksum instead of Bech32m which is disallowed.
+        let invalid_bech32_no_checksum =
+            bech32::encode::<NoChecksum>(NetworkId::Mainnet.into_hrp(), &id_address_bytes).unwrap();
+        let error = Address::from_bech32(&invalid_bech32_no_checksum).unwrap_err();
+        assert_matches!(error, AddressError::Bech32DecodeError(Bech32Error::DecodeError(_)));
+    }
+
+    /// Tests that a bech32 string encoding data of an unexpected length returns an error.
+    #[test]
+    fn bech32_invalid_length() {
+        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
+        let account_id_address = AccountIdAddress::new(account_id);
+        let mut id_address_bytes = <[u8; _]>::from(account_id_address).to_vec();
+        id_address_bytes.insert(0, AddressType::AccountId as u8);
+        // Add one byte to make the length invalid.
+        id_address_bytes.push(5);
+
+        let invalid_bech32 =
+            bech32::encode::<Bech32m>(NetworkId::Mainnet.into_hrp(), &id_address_bytes).unwrap();
+
+        let error = Address::from_bech32(&invalid_bech32).unwrap_err();
+        assert_matches!(
+            error,
+            AddressError::Bech32DecodeError(Bech32Error::InvalidDataLength { .. })
+        );
     }
 }
