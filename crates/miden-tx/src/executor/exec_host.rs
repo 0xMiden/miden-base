@@ -110,6 +110,7 @@ where
             mast_store,
             scripts_mast_store,
             acct_procedure_index_map,
+            source_manager,
         );
 
         Self {
@@ -230,10 +231,9 @@ where
         &self,
         location: &Location,
     ) -> (SourceSpan, Option<Arc<SourceFile>>) {
-        // TODO: Replace with proper call to source manager once the host owns it.
-        let stub_source_manager = DefaultSourceManager::default();
-        let maybe_file = stub_source_manager.get_by_uri(location.uri());
-        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        let source_manager = self.base_host.source_manager().as_ref();
+        let maybe_file = source_manager.get_by_uri(location.uri());
+        let span = source_manager.location_to_span(location.clone()).unwrap_or_default();
         (span, maybe_file)
     }
 }

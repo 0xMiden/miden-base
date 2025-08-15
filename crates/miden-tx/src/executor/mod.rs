@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
-use miden_objects::assembly::SourceManager;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -83,6 +83,7 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
     exec_options: ExecutionOptions,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
@@ -95,7 +96,11 @@ where
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
     /// [TransactionAuthenticator].
-    pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
+    pub fn new(
+        data_store: &'store STORE,
+        authenticator: Option<&'auth AUTH>,
+        source_manager: Arc<dyn SourceManagerSync>,
+    ) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
         Self {
@@ -108,6 +113,7 @@ where
                 false,
             )
             .expect("Must not fail while max cycles is more than min trace length"),
+            source_manager,
         }
     }
 
@@ -120,11 +126,17 @@ where
         data_store: &'store STORE,
         authenticator: Option<&'auth AUTH>,
         exec_options: ExecutionOptions,
+        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
         validate_num_cycles(exec_options.expected_cycles())?;
 
-        Ok(Self { data_store, authenticator, exec_options })
+        Ok(Self {
+            data_store,
+            authenticator,
+            exec_options,
+            source_manager,
+        })
     }
 
     /// Puts the [TransactionExecutor] into debug mode.
@@ -159,13 +171,6 @@ where
     /// the reference block of the transaction and the set of headers from the blocks in which the
     /// provided `notes` were created. Then, it executes the transaction program and creates an
     /// [`ExecutedTransaction`].
-    ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
     /// # Errors:
     ///
@@ -251,13 +256,6 @@ where
     /// Executes an arbitrary script against the given account and returns the stack state at the
     /// end of execution.
     ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
-    ///
     /// # Errors:
     /// Returns an error if:
     /// - If required data can not be fetched from the [DataStore].
@@ -307,6 +305,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -327,13 +326,6 @@ where
     /// Validates input notes, transaction inputs, and account inputs before executing the
     /// transaction with specified notes. Keeps track and returns both successfully consumed notes
     /// as well as notes that failed to be consumed.
-    ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
     /// # Errors:
     /// Returns an error if:
@@ -389,6 +381,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
         let advice_inputs = advice_inputs.into_advice_inputs();
 

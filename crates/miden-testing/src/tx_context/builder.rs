@@ -2,6 +2,7 @@
 // ================================================================================================
 
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
@@ -10,7 +11,8 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
-use miden_objects::assembly::Assembler;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::assembly::{Assembler, default_source_manager_arc_dyn};
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -243,13 +245,13 @@ impl TransactionContextBuilder {
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        // TODO: SourceManager.
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
+        self.build_with_source_manager(default_source_manager_arc_dyn())
+    }
 
+    pub fn build_with_source_manager(
+        self,
+        source_manager: Arc<dyn SourceManagerSync>,
+    ) -> anyhow::Result<TransactionContext> {
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {

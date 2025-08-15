@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
-use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
+use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
 use miden_objects::assembly::{Assembler, SourceManager};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
@@ -55,7 +55,7 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
-    pub(super) source_manager: Arc<dyn SourceManager + Send + Sync>,
+    pub(super) source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl TransactionContext {
@@ -149,7 +149,8 @@ impl TransactionContext {
         let authenticator = self.authenticator();
 
         let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
+        let tx_executor =
+            TransactionExecutor::new(&self, authenticator, source_manager).with_debug_mode();
 
         tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }
@@ -195,7 +196,7 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
         Arc::clone(&self.source_manager)
     }
 }

@@ -1,8 +1,9 @@
 use alloc::borrow::ToOwned;
+use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::SourceManager;
-use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
+use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
 use vm_processor::{
     AdviceInputs,
     DefaultHost,
@@ -48,16 +49,13 @@ impl<H: SyncHost> CodeExecutor<H> {
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
-    pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library()
-            .with_debug_mode(true)
-            .with_source_manager(sourcemanager);
-        // TODO: SourceManager.
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<dyn miden_objects::assembly::SourceManager>;
+    pub fn run(
+        self,
+        code: &str,
+        source_manager: Arc<dyn SourceManagerSync>,
+    ) -> Result<Process, ExecutionError> {
+        let assembler = TransactionKernel::with_kernel_library().with_debug_mode(true);
 
-        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file =
             source_manager.load(SourceLanguage::Masm, Uri::new("_user_code"), code.to_owned());

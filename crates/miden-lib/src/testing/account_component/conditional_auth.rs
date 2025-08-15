@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use miden_objects::account::AccountComponent;
-use miden_objects::assembly::Library;
+use miden_objects::assembly::{Library, default_source_manager_arc_dyn};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::transaction::TransactionKernel;
@@ -35,7 +35,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 });
 
 static CONDITIONAL_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    TransactionKernel::assembler()
+    TransactionKernel::assembler(default_source_manager_arc_dyn())
         .assemble_library([CONDITIONAL_AUTH_CODE.as_str()])
         .expect("conditional auth code should be valid")
 });

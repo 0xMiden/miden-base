@@ -3,6 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
@@ -150,10 +151,7 @@ impl TransactionKernel {
 
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
     /// Miden stdlib as well as with miden-lib.
-    pub fn assembler() -> Assembler {
-        let source_manager: Arc<dyn SourceManager + Send + Sync> =
-            Arc::new(DefaultSourceManager::default());
-
+    pub fn assembler(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
         source_manager_ext::load_masm_source_files(&source_manager);
 
@@ -446,8 +444,9 @@ impl TransactionKernel {
     /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
     /// from the kernel library to test them individually.
     pub fn with_kernel_library() -> Assembler {
-        let source_manager: Arc<dyn SourceManager + Send + Sync> =
-            Arc::new(DefaultSourceManager::default());
+        use miden_objects::assembly::default_source_manager_arc_dyn;
+
+        let source_manager: Arc<dyn SourceManagerSync> = default_source_manager_arc_dyn();
         let kernel_library = Self::kernel_as_library();
 
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
@@ -490,7 +489,6 @@ impl TransactionKernel {
 #[cfg(all(any(feature = "testing", test), feature = "std"))]
 mod source_manager_ext {
     use std::path::{Path, PathBuf};
-    use std::sync::Arc;
     use std::vec::Vec;
     use std::{fs, io};
 
@@ -503,7 +501,7 @@ mod source_manager_ext {
     /// This source manager is passed to the [`super::TransactionKernel::assembler`] from which it
     /// can be passed on to the VM processor. If an error occurs, the sources can be used to provide
     /// a pointer to the failed location.
-    pub fn load_masm_source_files(source_manager: &Arc<dyn SourceManager + Send + Sync>) {
+    pub fn load_masm_source_files(source_manager: &dyn SourceManager) {
         if let Err(err) = load(source_manager) {
             // Stringifying the error is not ideal (we may loose some source errors) but this
             // should never really error anyway.
@@ -512,7 +510,7 @@ mod source_manager_ext {
     }
 
     /// Implements the logic of the above function with error handling.
-    fn load(source_manager: &Arc<dyn SourceManager + Send + Sync>) -> io::Result<()> {
+    fn load(source_manager: &dyn SourceManager) -> io::Result<()> {
         for file in get_masm_files(concat!(env!("OUT_DIR"), "/asm"))? {
             source_manager.load_file(&file).map_err(io::Error::other)?;
         }

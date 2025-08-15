@@ -1,6 +1,6 @@
 use miden_objects::account::AccountCode;
-use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::assembly::{Library, default_source_manager_arc_dyn};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::transaction::TransactionKernel;
@@ -117,14 +117,14 @@ const MOCK_ACCOUNT_CODE: &str = "
 
 static MOCK_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let source = NamedSource::new("mock::faucet", MOCK_FAUCET_CODE);
-    TransactionKernel::assembler()
+    TransactionKernel::assembler(default_source_manager_arc_dyn())
         .assemble_library([source])
         .expect("mock faucet code should be valid")
 });
 
 static MOCK_ACCOUNT_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let source = NamedSource::new("mock::account", MOCK_ACCOUNT_CODE);
-    TransactionKernel::assembler()
+    TransactionKernel::assembler(default_source_manager_arc_dyn())
         .assemble_library([source])
         .expect("mock account code should be valid")
 });

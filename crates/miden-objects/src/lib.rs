@@ -55,7 +55,10 @@ pub use vm_core::prettier::PrettyPrint;
 pub use vm_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO};
 
 pub mod assembly {
+    use std::sync::Arc;
+
     pub use assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
+    use assembly::debuginfo::SourceManagerSync;
     pub use assembly::{
         Assembler,
         DefaultSourceManager,
@@ -73,6 +76,10 @@ pub mod assembly {
         diagnostics,
         mast,
     };
+
+    pub fn default_source_manager_arc_dyn() -> Arc<dyn SourceManagerSync> {
+        Arc::new(DefaultSourceManager::default())
+    }
 }
 
 pub mod crypto {
