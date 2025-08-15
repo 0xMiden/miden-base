@@ -1,6 +1,6 @@
 use miden_objects::account::AccountCode;
+use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Library, default_source_manager_arc_dyn};
 use miden_objects::utils::sync::LazyLock;
 
 use crate::transaction::TransactionKernel;

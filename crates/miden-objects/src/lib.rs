@@ -55,7 +55,7 @@ pub use vm_core::prettier::PrettyPrint;
 pub use vm_core::{EMPTY_WORD, Felt, FieldElement, ONE, StarkField, WORD_SIZE, ZERO};
 
 pub mod assembly {
-    use std::sync::Arc;
+    use alloc::sync::Arc;
 
     pub use assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
     use assembly::debuginfo::SourceManagerSync;

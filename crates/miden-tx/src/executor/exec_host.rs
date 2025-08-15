@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::assembly::debuginfo::Location;
+use miden_objects::assembly::debuginfo::{Location, SourceManagerSync};
 use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::FeeParameters;

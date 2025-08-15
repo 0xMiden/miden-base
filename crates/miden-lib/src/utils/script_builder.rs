@@ -1,7 +1,7 @@
 use alloc::string::String;
 
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Assembler, Library, LibraryPath, default_source_manager_arc_dyn};
+use miden_objects::assembly::{Assembler, Library, LibraryPath};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
