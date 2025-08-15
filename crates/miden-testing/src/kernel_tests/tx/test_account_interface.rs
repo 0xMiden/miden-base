@@ -6,6 +6,7 @@ use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountId};
+use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::{
@@ -62,8 +63,12 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(
+        &tx_context,
+        None,
+        default_source_manager_arc_dyn(),
+    )
+    .with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -100,8 +105,12 @@ async fn check_note_consumability_custom_notes_success(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(
+        &tx_context,
+        None,
+        default_source_manager_arc_dyn(),
+    )
+    .with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -177,8 +186,12 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(
+        &tx_context,
+        None,
+        default_source_manager_arc_dyn(),
+    )
+    .with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker

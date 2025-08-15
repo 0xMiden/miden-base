@@ -35,7 +35,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 });
 
 static CONDITIONAL_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    TransactionKernel::assembler(default_source_manager_arc_dyn())
+    TransactionKernel::assembler()
         .assemble_library([CONDITIONAL_AUTH_CODE.as_str()])
         .expect("conditional auth code should be valid")
 });

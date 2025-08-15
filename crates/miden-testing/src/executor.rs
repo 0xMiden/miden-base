@@ -2,8 +2,8 @@ use alloc::borrow::ToOwned;
 use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::assembly::SourceManager;
 use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
+use miden_objects::assembly::{SourceManager, default_source_manager_arc_dyn};
 use vm_processor::{
     AdviceInputs,
     DefaultHost,
@@ -49,7 +49,11 @@ impl<H: SyncHost> CodeExecutor<H> {
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
-    pub fn run(
+    pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
+        Self::run_with_source_manager(self, code, default_source_manager_arc_dyn())
+    }
+
+    pub fn run_with_source_manager(
         self,
         code: &str,
         source_manager: Arc<dyn SourceManagerSync>,

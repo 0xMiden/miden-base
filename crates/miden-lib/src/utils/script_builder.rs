@@ -84,7 +84,7 @@ impl ScriptBuilder {
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
-        let assembler = TransactionKernel::assembler(default_source_manager_arc_dyn()) // TODO do we need to expose this to the caller?
+        let assembler = TransactionKernel::assembler() // TODO do we need to expose this to the caller?
             .with_debug_mode(in_debug_mode);
         Self { assembler }
     }

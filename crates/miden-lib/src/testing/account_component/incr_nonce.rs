@@ -13,7 +13,7 @@ const INCR_NONCE_AUTH_CODE: &str = "
 ";
 
 static INCR_NONCE_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
-    TransactionKernel::assembler(default_source_manager_arc_dyn())
+    TransactionKernel::assembler()
         .assemble_library([INCR_NONCE_AUTH_CODE])
         .expect("incr nonce code should be valid")
 });
