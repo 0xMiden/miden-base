@@ -1,4 +1,4 @@
-use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtProof};
+use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf};
 use vm_core::utils::{Deserializable, Serializable};
 
 use super::AssetVault;
@@ -10,22 +10,13 @@ use crate::asset::Asset;
 /// Partial vault is used to provide verifiable access to specific assets in a vault
 /// without the need to provide the full vault data. It contains all required data for loading
 /// vault data into the transaction kernel for transaction execution.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PartialVault {
     /// An SMT with a partial view into an account's full [`AssetVault`].
     partial_smt: PartialSmt,
 }
 
 impl PartialVault {
-    // CONSTRUCTORS
-    // --------------------------------------------------------------------------------------------
-
-    // TODO: Do we need this constructor? It does not validate that the SMT contains valid Assets.
-    /// Returns a new instance of partial vault with the specified root and vault proofs.
-    pub fn new(partial_smt: PartialSmt) -> Self {
-        PartialVault { partial_smt }
-    }
-
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -67,15 +58,6 @@ impl PartialVault {
                 Some(Asset::try_from(word).expect("partial vault should only track valid assets"))
             }
         })
-    }
-
-    // MUTATORS
-    // --------------------------------------------------------------------------------------------
-
-    // TODO: Do we need this method? It does not validate that the added value is a valid Asset.
-    /// Adds an [`SmtProof`] to this [`PartialVault`].
-    pub fn add(&mut self, proof: SmtProof) -> Result<(), MerkleError> {
-        self.partial_smt.add_proof(proof)
     }
 }
 
