@@ -151,9 +151,7 @@ impl TransactionContext {
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
 
-        tx_executor
-            .execute_transaction(account_id, block_num, notes, tx_args, source_manager)
-            .await
+        tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }
 
     /// Executes the transaction through a [TransactionExecutor]

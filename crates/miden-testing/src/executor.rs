@@ -49,7 +49,9 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library().with_debug_mode(true);
+        let assembler = TransactionKernel::with_kernel_library()
+            .with_debug_mode(true)
+            .with_source_manager(sourcemanager);
         // TODO: SourceManager.
         let source_manager =
             alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())

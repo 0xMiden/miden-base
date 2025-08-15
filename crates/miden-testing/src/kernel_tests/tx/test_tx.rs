@@ -176,7 +176,6 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
             BlockNumber::from(1),
             InputNotes::new(vec![input_note]).unwrap(),
             TransactionArgs::default(),
-            source_manager,
         )
         .await;
 
@@ -1425,14 +1424,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
 
     let stack_outputs = executor
-        .execute_tx_view_script(
-            account_id,
-            block_ref,
-            tx_script,
-            advice_inputs,
-            Vec::default(),
-            source_manager,
-        )
+        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs, Vec::default())
         .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);
