@@ -515,7 +515,7 @@ proc.process_account_data
     # => [INITIAL_ACCOUNT_COMMITMENT, ACCOUNT_COMMITMENT]
 
     # It is a new account if the global input INITIAL_ACCOUNT_COMMITMENT was set to EMPTY_WORD.
-    exec.word::eqz 
+    exec.word::eqz
     # => [is_new, ACCOUNT_COMMITMENT]
 
     # process conditional logic depending on whether the account is new or existing
