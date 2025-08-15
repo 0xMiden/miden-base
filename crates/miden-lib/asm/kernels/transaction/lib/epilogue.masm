@@ -25,6 +25,9 @@ const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been call
 # Event emitted to signal that the compute_fee procedure has obtained the current number of cycles.
 const.EPILOGUE_AFTER_TX_FEE_COMPUTED=131097
 
+# Event emitted to signal that the fee was computed.
+const.EPILOGUE_TX_FEE_COMPUTED=131098
+
 # The number of cycles the epilogue is estimated to take after compute_fee has been executed.
 # This is _estimated_ using the transaction measurements on ExecutedTransaction.
 # This should be replaced with a way to _calculate_ the number of cycles that the epilogue will incur
@@ -312,6 +315,9 @@ proc.compute_and_remove_fee
 
     # build the native asset from the fee amount
     exec.build_native_fee_asset
+    # => [FEE_ASSET]
+
+    emit.EPILOGUE_TX_FEE_COMPUTED
     # => [FEE_ASSET]
 
     # remove the fee from the native account's vault

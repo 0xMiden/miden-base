@@ -112,12 +112,20 @@ where
 
         match self.base_host.handle_event(process, transaction_event)? {
             TransactionEventHandling::Unhandled(event_data) => {
-                // The base host should have handled this event since the signature should be
-                // present in the advice map. We match on the event_data here so that if a new
+                // We match on the event_data here so that if a new
                 // variant is added to the enum, this fails compilation and we can adapt
                 // accordingly.
-                let TransactionEventData::AuthRequest { .. } = event_data;
-                Err(EventError::from("base host should have handled auth request event"))
+                match event_data {
+                    // The base host should have handled this event since the signature should be
+                    // present in the advice map.
+                    TransactionEventData::AuthRequest { .. } => {
+                        Err(EventError::from("base host should have handled auth request event"))
+                    },
+                    // We don't track enough information to handle this event. Since this just
+                    // improves error messages for users and the error should not be relevant during
+                    // proving, we ignore it.
+                    TransactionEventData::TransactionFeeComputed { .. } => Ok(Vec::new()),
+                }
             },
             TransactionEventHandling::Handled(mutations) => Ok(mutations),
         }

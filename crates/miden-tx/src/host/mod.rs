@@ -25,7 +25,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
 use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::asset::Asset;
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -263,6 +263,7 @@ where
                 self.tx_progress.epilogue_after_tx_fee_computed(process.clk());
                 Ok(TransactionEventHandling::Handled(vec![]))
             }
+            TransactionEvent::EpilogueTxFeeComputed => self.on_tx_fee_computed(process),
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
@@ -357,6 +358,26 @@ where
         }
 
         TransactionKernelError::Unauthorized(Box::new(tx_summary))
+    }
+
+    /// Extracts all necessary data to handle [`TransactionEvent::EpilogueTxFeeComputed`].
+    ///
+    /// Expected stack state:
+    ///
+    /// ```text
+    /// [FEE_ASSET]
+    /// ```
+    fn on_tx_fee_computed(
+        &self,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let fee_asset = process.get_stack_word(0);
+        let fee_asset = FungibleAsset::try_from(fee_asset)
+            .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
+
+        Ok(TransactionEventHandling::Unhandled(
+            TransactionEventData::TransactionFeeComputed { fee_asset },
+        ))
     }
 
     /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
@@ -556,7 +577,7 @@ where
         })?;
 
         self.account_delta
-            .vault_delta()
+            .vault_delta_mut()
             .add_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaAddAssetFailed)?;
         Ok(())
@@ -578,7 +599,7 @@ where
         })?;
 
         self.account_delta
-            .vault_delta()
+            .vault_delta_mut()
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
         Ok(())
@@ -727,5 +748,10 @@ pub(super) enum TransactionEventData {
         /// The signing inputs that summarize what is being signed. The commitment to these inputs
         /// is the message that is being signed.
         signing_inputs: SigningInputs,
+    },
+    /// The data necessary to handle a transaction fee computed event.
+    TransactionFeeComputed {
+        /// The fee asset extracted from the stack.
+        fee_asset: FungibleAsset,
     },
 }
