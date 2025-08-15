@@ -160,7 +160,7 @@ where
         &self,
         fee_asset: FungibleAsset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // Compute the current balance of the native asset in the account based on the intial value
+        // Compute the current balance of the native asset in the account based on the initial value
         // and the delta.
         let current_native_asset = {
             let native_asset_amount_delta = self
