@@ -281,7 +281,7 @@ impl AccountId {
     ///
     /// The encoding of an account ID into bech32 is done as follows:
     /// - Convert the account ID into its `[u8; 15]` data format.
-    /// - Insert the address type [`AddressType::AccountId`] byte at index 0, shifting all other
+    /// - Insert the address type `AddressType::AccountId` byte at index 0, shifting all other
     ///   elements to the right.
     /// - Choose an HRP, defined as a [`NetworkId`], for example [`NetworkId::Mainnet`] whose string
     ///   representation is `mm`.
