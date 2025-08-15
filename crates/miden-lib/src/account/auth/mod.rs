@@ -165,9 +165,9 @@ impl AuthRpoFalcon512Acl {
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if config.auth_trigger_procedures.len() > max_procedures {
-            return Err(AccountError::other(
-                "Cannot track more than {max_procedures} procedures (account limit)",
-            ));
+            return Err(AccountError::other(format!(
+                "Cannot track more than {max_procedures} procedures (account limit)"
+            )));
         }
 
         Ok(Self { public_key, config })
