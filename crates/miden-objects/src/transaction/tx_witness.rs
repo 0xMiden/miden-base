@@ -27,15 +27,12 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 /// and tx outputs; account codes and a subset of that data in advice inputs).
 /// We should optimize it to contain only the minimum data required for executing/proving the
 /// transaction.
+#[cfg(not(any(feature = "testing", test)))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionWitness {
     pub tx_inputs: TransactionInputs,
     pub tx_args: TransactionArgs,
     pub advice_witness: AdviceInputs,
-    #[cfg(any(feature = "testing", test))]
-    pub account_delta: AccountDelta,
-    #[cfg(any(feature = "testing", test))]
-    pub tx_outputs: TransactionOutputs,
 }
 
 // SERIALIZATION
@@ -55,14 +52,26 @@ impl Deserializable for TransactionWitness {
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
 
+        #[cfg(not(any(feature = "testing", test)))]
+        return Ok(Self { tx_inputs, tx_args, advice_witness });
+
+        #[cfg(any(feature = "testing", test))]
         Ok(Self {
             tx_inputs,
             tx_args,
             advice_witness,
-            #[cfg(any(feature = "testing", test))]
             account_delta: AccountDelta::read_from(source)?,
-            #[cfg(any(feature = "testing", test))]
             tx_outputs: TransactionOutputs::read_from(source)?,
         })
     }
+}
+
+#[cfg(any(feature = "testing", test))]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TransactionWitness {
+    pub tx_inputs: TransactionInputs,
+    pub tx_args: TransactionArgs,
+    pub advice_witness: AdviceInputs,
+    pub account_delta: AccountDelta,
+    pub tx_outputs: TransactionOutputs,
 }
