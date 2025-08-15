@@ -22,11 +22,11 @@ use crate::account::{
     AccountIdPrefix,
     AccountStorage,
     AccountType,
-    AddressType,
     StorageValueName,
     StorageValueNameError,
     TemplateTypeError,
 };
+use crate::address::AddressType;
 use crate::batch::BatchId;
 use crate::block::BlockNumber;
 use crate::note::{NoteAssets, NoteExecutionHint, NoteTag, NoteType, Nullifier};
@@ -218,6 +218,10 @@ pub enum AddressError {
     CustomTagLengthNotAllowedForNetworkAccounts(u8),
     #[error("tag length {0} is too large, must be less than or equal to {max}", max = crate::note::NoteTag::MAX_LOCAL_TAG_LENGTH)]
     TagLengthTooLarge(u8),
+    #[error("failed to decode account ID")]
+    AccountIdDecodeError(#[source] AccountIdError),
+    #[error("failed to decode bech32 string into an address")]
+    Bech32DecodeError(#[source] Bech32Error),
 }
 
 // BECH32 ERROR

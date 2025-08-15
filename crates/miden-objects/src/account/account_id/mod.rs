@@ -9,9 +9,6 @@ mod seed;
 mod network_id;
 pub use network_id::NetworkId;
 
-mod address_type;
-pub use address_type::AddressType;
-
 mod account_type;
 pub use account_type::AccountType;
 
@@ -493,8 +490,8 @@ mod tests {
     use bech32::{Bech32, Bech32m, Hrp, NoChecksum};
 
     use super::*;
-    use crate::account::account_id::address_type::AddressType;
     use crate::account::account_id::v0::{extract_storage_mode, extract_type, extract_version};
+    use crate::address::AddressType;
     use crate::errors::Bech32Error;
     use crate::testing::account_id::{
         ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,

@@ -16,9 +16,9 @@ use crate::account::account_id::account_type::{
     REGULAR_ACCOUNT_IMMUTABLE_CODE,
     REGULAR_ACCOUNT_UPDATABLE_CODE,
 };
-use crate::account::account_id::address_type::AddressType;
 use crate::account::account_id::storage_mode::{NETWORK, PRIVATE, PUBLIC};
 use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};
+use crate::address::AddressType;
 use crate::errors::{AccountIdError, Bech32Error};
 use crate::utils::{ByteReader, Deserializable, DeserializationError, Serializable};
 use crate::{AccountError, EMPTY_WORD, Felt, Hasher, Word};

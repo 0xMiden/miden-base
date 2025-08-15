@@ -17,7 +17,6 @@ pub use account_id::{
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
-    AddressType,
     NetworkId,
 };
 
