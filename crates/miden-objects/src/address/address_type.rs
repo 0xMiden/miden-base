@@ -9,12 +9,12 @@ use crate::errors::Bech32Error;
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 #[repr(u8)]
 pub enum AddressType {
-    AccountId = Self::ACCOUNT_ID_ADDRESS,
+    AccountId = Self::ACCOUNT_ID,
 }
 
 impl AddressType {
     // Constants for internal use only.
-    const ACCOUNT_ID_ADDRESS: u8 = 0;
+    const ACCOUNT_ID: u8 = 0;
 }
 
 impl TryFrom<u8> for AddressType {
@@ -23,7 +23,7 @@ impl TryFrom<u8> for AddressType {
     /// Decodes an [`AddressType`] from its byte representation.
     fn try_from(byte: u8) -> Result<Self, Self::Error> {
         match byte {
-            Self::ACCOUNT_ID_ADDRESS => Ok(Self::AccountId),
+            Self::ACCOUNT_ID => Ok(Self::AccountId),
             other => Err(AddressError::Bech32DecodeError(Bech32Error::UnknownAddressType(other))),
         }
     }
