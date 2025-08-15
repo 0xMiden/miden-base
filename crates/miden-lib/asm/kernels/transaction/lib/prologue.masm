@@ -1,6 +1,7 @@
 use.std::mem
 use.std::collections::mmr
 use.std::crypto::hashes::rpo
+use.std::word
 
 use.$kernel::account
 use.$kernel::account_id
@@ -375,8 +376,7 @@ proc.validate_new_account
 
         if.true
             # assert the fungible faucet reserved slot is initialized correctly (EMPTY_WORD)
-            # TODO: Switch to standard library implementation when available (miden-vm/#1483)
-            exec.is_empty_word_dropped not
+            exec.word::eqz not
             assertz.err=ERR_PROLOGUE_NEW_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_EMPTY
             # => []
 
@@ -419,20 +419,6 @@ proc.validate_new_account
     # ---------------------------------------------------------------------------------------------
     exec.account::validate_procedure_metadata
     # => []
-end
-
-#! Returns whether the input word is equal to EMPTY_WORD as a boolean value.
-#!
-#! This procedure drops the input word.
-#!
-#! Inputs:  [INPUT_WORD]
-#! Outputs: [is_empty]
-#!
-#! Where:
-#! - INPUT_WORD is the word is compared with EMPTY_WORD.
-#! - is_empty is a boolean value that is 1 if INPUT_WORD is equal to EMPTY_WORD, and 0 otherwise.
-proc.is_empty_word_dropped
-    eq.0 swap eq.0 and swap eq.0 and swap eq.0 and
 end
 
 #! Saves the account data to memory and validates it.
