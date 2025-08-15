@@ -510,12 +510,12 @@ proc.process_account_data
     # Validate the account
     # ---------------------------------------------------------------------------------------------
 
-    # It is a new account if the global input INITIAL_ACCOUNT_COMMITMENT was set to EMPTY_WORD.
-    padw exec.memory::get_init_account_commitment eqw
-    # => [is_new, INITIAL_ACCOUNT_COMMITMENT, EMPTY_WORD, ACCOUNT_COMMITMENT]
+    # Push EMPTY_WORD and get initial account commitment
+    padw exec.memory::get_init_account_commitment
+    # => [INITIAL_ACCOUNT_COMMITMENT, EMPTY_WORD, ACCOUNT_COMMITMENT]
 
-    # clean the stack
-    movdn.8 dropw dropw
+    # It is a new account if the global input INITIAL_ACCOUNT_COMMITMENT was set to EMPTY_WORD.
+    exec.word::eq 
     # => [is_new, ACCOUNT_COMMITMENT]
 
     # process conditional logic depending on whether the account is new or existing
