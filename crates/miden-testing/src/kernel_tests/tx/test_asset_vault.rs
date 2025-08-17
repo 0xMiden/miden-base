@@ -7,7 +7,6 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
 };
 use miden_lib::transaction::{TransactionKernel, memory};
-use miden_lib::utils::word_to_masm_push_string;
 use miden_objects::AssetVaultError;
 use miden_objects::account::AccountId;
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
@@ -147,7 +146,7 @@ fn test_has_non_fungible_asset() -> anyhow::Result<()> {
             swap drop
         end
         ",
-        non_fungible_asset_key = word_to_masm_push_string(&non_fungible_asset.into())
+        non_fungible_asset_key = Word::from(non_fungible_asset)
     );
 
     let process =
@@ -186,7 +185,7 @@ fn test_add_fungible_asset_success() -> anyhow::Result<()> {
             swapw dropw
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&add_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(add_fungible_asset)
     );
 
     let process =
@@ -231,7 +230,7 @@ fn test_add_non_fungible_asset_fail_overflow() -> anyhow::Result<()> {
             call.account::add_asset
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&add_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(add_fungible_asset)
     );
 
     let process =
@@ -266,7 +265,7 @@ fn test_add_non_fungible_asset_success() -> anyhow::Result<()> {
             swapw dropw
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&add_non_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(add_non_fungible_asset)
     );
 
     let process =
@@ -306,7 +305,7 @@ fn test_add_non_fungible_asset_fail_duplicate() -> anyhow::Result<()> {
             call.account::add_asset
         end
         ",
-        NON_FUNGIBLE_ASSET = word_to_masm_push_string(&non_fungible_asset.into())
+        NON_FUNGIBLE_ASSET = Word::from(non_fungible_asset)
     );
 
     let process =
@@ -347,7 +346,7 @@ fn test_remove_fungible_asset_success_no_balance_remaining() -> anyhow::Result<(
             swapw dropw
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&remove_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
     let process =
@@ -390,7 +389,7 @@ fn test_remove_fungible_asset_fail_remove_too_much() -> anyhow::Result<()> {
             call.account::remove_asset
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&remove_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
     let process =
@@ -430,7 +429,7 @@ fn test_remove_fungible_asset_success_balance_remaining() -> anyhow::Result<()> 
             swapw dropw
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&remove_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(remove_fungible_asset)
     );
 
     let process =
@@ -477,7 +476,7 @@ fn test_remove_inexisting_non_fungible_asset_fails() -> anyhow::Result<()> {
             call.account::remove_asset
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&non_existent_non_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(non_existent_non_fungible_asset)
     );
 
     let process =
@@ -517,7 +516,7 @@ fn test_remove_non_fungible_asset_success() -> anyhow::Result<()> {
             swapw dropw
         end
         ",
-        FUNGIBLE_ASSET = word_to_masm_push_string(&non_fungible_asset.into())
+        FUNGIBLE_ASSET = Word::from(non_fungible_asset)
     );
 
     let process =

@@ -80,8 +80,6 @@ pub mod crypto {
 }
 
 pub mod utils {
-    use alloc::string::String;
-
     pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
     pub use miden_crypto::word::parse_hex_string_as_word;
     pub use miden_utils_sync as sync;
@@ -95,20 +93,6 @@ pub mod utils {
             DeserializationError,
             Serializable,
         };
-    }
-
-    /// Converts a word into a string of the word's field elements separated by periods, which can
-    /// be used on a MASM `push` instruction to push the word onto the stack.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use miden_objects::{Word, Felt, utils::word_to_masm_push_string};
-    /// let word = Word::from([1, 2, 3, 4u32]);
-    /// assert_eq!(word_to_masm_push_string(&word), "1.2.3.4");
-    /// ```
-    pub fn word_to_masm_push_string(word: &super::Word) -> String {
-        format!("{}.{}.{}.{}", word[0], word[1], word[2], word[3])
     }
 }
 

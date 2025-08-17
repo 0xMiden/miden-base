@@ -14,7 +14,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::transaction::OutputNote;
 
-use super::{Felt, TestSetup, setup_test, word_to_masm_push_string};
+use super::{Felt, TestSetup, setup_test};
 use crate::{Auth, MockChain};
 
 /// This test creates an output note and then adds some assets into it checking the assets info on
@@ -140,19 +140,17 @@ fn test_get_asset_info() -> anyhow::Result<()> {
         end
         "#,
         // output note
-        RECIPIENT = word_to_masm_push_string(&output_note_1.recipient().digest()),
+        RECIPIENT = output_note_1.recipient().digest(),
         note_execution_hint = Felt::from(output_note_1.metadata().execution_hint()),
         note_type = NoteType::Public as u8,
         tag = output_note_1.metadata().tag(),
-        asset_0 = word_to_masm_push_string(&fungible_asset_0.into()),
+        asset_0 = Word::from(fungible_asset_0),
         // first data request
-        COMPUTED_ASSETS_COMMITMENT_0 =
-            word_to_masm_push_string(&output_note_0.assets().commitment()),
+        COMPUTED_ASSETS_COMMITMENT_0 = output_note_0.assets().commitment(),
         assets_number_0 = output_note_0.assets().num_assets(),
         // second data request
-        asset_1 = word_to_masm_push_string(&fungible_asset_1.into()),
-        COMPUTED_ASSETS_COMMITMENT_1 =
-            word_to_masm_push_string(&output_note_1.assets().commitment()),
+        asset_1 = Word::from(fungible_asset_1),
+        COMPUTED_ASSETS_COMMITMENT_1 = output_note_1.assets().commitment(),
         assets_number_1 = output_note_1.assets().num_assets(),
     );
 
@@ -225,8 +223,8 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
         end
         "#,
         output_note = create_output_note(&output_note),
-        RECIPIENT = word_to_masm_push_string(&output_note.recipient().digest()),
-        METADATA = word_to_masm_push_string(&output_note.metadata().into()),
+        RECIPIENT = output_note.recipient().digest(),
+        METADATA = Word::from(output_note.metadata()),
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
@@ -292,7 +290,7 @@ fn test_get_assets() -> anyhow::Result<()> {
                     add.4
                     # => [dest_ptr+4, note_index]
                 "#,
-                NOTE_ASSET = word_to_masm_push_string(&asset.into()),
+                NOTE_ASSET = Word::from(*asset),
                 asset_index = asset_index,
                 note_index = note_index,
             ));
@@ -367,7 +365,7 @@ fn create_output_note(note: &Note) -> String {
         call.tx::create_note
         # => [note_idx]
     ",
-        RECIPIENT = word_to_masm_push_string(&note.recipient().digest()),
+        RECIPIENT = note.recipient().digest(),
         note_execution_hint = Felt::from(note.metadata().execution_hint()),
         note_type = note.metadata().note_type() as u8,
         tag = Felt::from(note.metadata().tag()),
@@ -382,7 +380,7 @@ fn create_output_note(note: &Note) -> String {
             dropw
             # => [note_idx]
         ",
-            asset = word_to_masm_push_string(&asset.into())
+            asset = Word::from(*asset)
         ));
     }
 

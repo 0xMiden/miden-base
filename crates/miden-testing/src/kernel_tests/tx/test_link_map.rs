@@ -6,7 +6,6 @@ use std::string::String;
 use anyhow::Context;
 use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
 use miden_tx::LinkMap;
-use miden_tx::utils::word_to_masm_push_string;
 use rand::seq::IteratorRandom;
 use vm_processor::{ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_value;
@@ -173,14 +172,14 @@ fn insertion() -> anyhow::Result<()> {
           # => []
       end
     "#,
-        entry0_key = word_to_masm_push_string(&entry0_key),
-        entry0_value = word_to_masm_push_string(&entry0_value),
-        entry1_key = word_to_masm_push_string(&entry1_key),
-        entry1_value = word_to_masm_push_string(&entry1_value),
-        entry2_key = word_to_masm_push_string(&entry2_key),
-        entry2_value = word_to_masm_push_string(&entry2_value),
-        entry3_key = word_to_masm_push_string(&entry3_key),
-        entry3_value = word_to_masm_push_string(&entry3_value),
+        entry0_key = entry0_key,
+        entry0_value = entry0_value,
+        entry1_key = entry1_key,
+        entry1_value = entry1_value,
+        entry2_key = entry2_key,
+        entry2_value = entry2_value,
+        entry3_key = entry3_key,
+        entry3_value = entry3_value,
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
@@ -407,8 +406,8 @@ fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
         push.{expected_value}
         assert_eq.err="failed for procedure {proc_name} with keys {key0:?}, {key1:?}"
       "#,
-            KEY_0 = word_to_masm_push_string(&key0),
-            KEY_1 = word_to_masm_push_string(&key1),
+            KEY_0 = key0,
+            KEY_1 = key1,
             proc_name = procedure_name,
             expected_value = expected as u8
         );
@@ -493,9 +492,9 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                   push.{expected_is_new_key}
                   assert_eq.err="is_new_key returned by link_map::set for {key} did not match expected value {expected_is_new_key}"
                 "#,
-                    key = word_to_masm_push_string(&Word::from(key)),
-                    value0 = word_to_masm_push_string(&value0),
-                    value1 = word_to_masm_push_string(&value1),
+                    key = Word::from(key),
+                    value0 = value0,
+                    value1 = value1,
                     expected_is_new_key = is_new_key as u8,
                 );
 
@@ -524,9 +523,9 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
                   push.{expected_value1}
                   assert_eqw.err="value1 returned from get is not the expected value: {expected_value1}"
                 "#,
-                    key = word_to_masm_push_string(&Word::from(key)),
-                    expected_value0 = word_to_masm_push_string(&expected_value0),
-                    expected_value1 = word_to_masm_push_string(&expected_value1),
+                    key = Word::from(key),
+                    expected_value0 = expected_value0,
+                    expected_value1 = expected_value1,
                     expected_contains_key = expected_contains_key as u8
                 );
 
@@ -591,9 +590,9 @@ fn execute_link_map_test(operations: Vec<TestOperation>) -> anyhow::Result<()> {
 
                       # => [next_iter]
                   "#,
-                        control_key = word_to_masm_push_string(&Word::from(*control_key)),
-                        control_value0 = word_to_masm_push_string(control_value0),
-                        control_value1 = word_to_masm_push_string(control_value1),
+                        control_key = Word::from(*control_key),
+                        control_value0 = *control_value0,
+                        control_value1 = *control_value1,
                         control_has_next = if control_iter.peek().is_some() { ONE } else { ZERO },
                     ));
                 }

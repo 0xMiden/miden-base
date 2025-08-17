@@ -20,7 +20,6 @@ use miden_objects::testing::account_id::{
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, NoteError, Word};
 use miden_testing::{Auth, MockChain};
-use miden_tx::utils::word_to_masm_push_string;
 
 use crate::prove_and_verify_transaction;
 
@@ -55,10 +54,10 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
             dropw dropw dropw dropw
         end
         ",
-        recipient = word_to_masm_push_string(&swap_note.recipient().digest()),
+        recipient = swap_note.recipient().digest(),
         note_type = NoteType::Public as u8,
         tag = Felt::from(swap_note.metadata().tag()),
-        asset = word_to_masm_push_string(&offered_asset.into()),
+        asset = Word::from(offered_asset),
         note_execution_hint = Felt::from(swap_note.metadata().execution_hint())
     );
 

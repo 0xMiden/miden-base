@@ -23,7 +23,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::transaction::{TransactionEvent, TransactionKernel};
-use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -218,7 +218,7 @@ fn test_create_note() -> anyhow::Result<()> {
             swapdw dropw dropw
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         note_execution_hint = Felt::from(NoteExecutionHint::after_block(23.into()).unwrap()),
         tag = tag,
@@ -311,7 +311,7 @@ fn note_creation_script(tag: Felt) -> String {
                 dropw dropw
             end
             ",
-        recipient = word_to_masm_push_string(&Word::from([0, 1, 2, 3u32])),
+        recipient = Word::from([0, 1, 2, 3u32]),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
         aux = Felt::ZERO,
@@ -344,7 +344,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         end
         ",
         tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
-        recipient = word_to_masm_push_string(&Word::from([0, 1, 2, 3u32])),
+        recipient = Word::from([0, 1, 2, 3u32]),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
         aux = Felt::ZERO,
@@ -494,19 +494,19 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         ",
         PUBLIC_NOTE = NoteType::Public as u8,
         NOTE_EXECUTION_HINT_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        recipient_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
+        recipient_1 = output_note_1.recipient().digest(),
         tag_1 = output_note_1.metadata().tag(),
         aux_1 = output_note_1.metadata().aux(),
-        asset_1 = word_to_masm_push_string(&Word::from(
+        asset_1 = Word::from(
             **output_note_1.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
-        )),
-        recipient_2 = word_to_masm_push_string(&output_note_2.recipient().digest()),
+        ),
+        recipient_2 = output_note_2.recipient().digest(),
         NOTE_EXECUTION_HINT_2 = Felt::from(output_note_2.metadata().execution_hint()),
         tag_2 = output_note_2.metadata().tag(),
         aux_2 = output_note_2.metadata().aux(),
-        asset_2 = word_to_masm_push_string(&Word::from(
+        asset_2 = Word::from(
             **output_note_2.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
-        )),
+        ),
     );
 
     let process =
@@ -578,11 +578,11 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             swapdw dropw dropw
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         NOTE_EXECUTION_HINT = Felt::from(NoteExecutionHint::always()),
         tag = tag,
-        asset = word_to_masm_push_string(&asset),
+        asset = asset,
     );
 
     let process =
@@ -659,13 +659,13 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             swapdw dropw drop drop drop
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         tag = tag,
-        asset = word_to_masm_push_string(&asset),
-        asset_2 = word_to_masm_push_string(&asset_2),
-        asset_3 = word_to_masm_push_string(&asset_3),
-        nft = word_to_masm_push_string(&non_fungible_asset_encoded),
+        asset = asset,
+        asset_2 = asset_2,
+        asset_3 = asset_3,
+        nft = non_fungible_asset_encoded,
     );
 
     let process =
@@ -738,12 +738,12 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             repeat.5 dropw end
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         aux = Felt::new(0),
         tag = tag,
-        nft = word_to_masm_push_string(&encoded),
+        nft = encoded,
     );
 
     let process =
@@ -838,7 +838,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
         end
         ",
         script_root = input_note_1.script().clone().root(),
-        output_serial_no = word_to_masm_push_string(&output_serial_no),
+        output_serial_no = output_serial_no,
         PUBLIC_NOTE = NoteType::Public as u8,
         tag = tag,
         execution_hint = Felt::from(NoteExecutionHint::after_block(2.into()).unwrap()),
@@ -1168,12 +1168,12 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
             # => []
         end
     ",
-        REMOVED_ASSET_1 = word_to_masm_push_string(&Word::from(removed_asset_1)),
-        REMOVED_ASSET_2 = word_to_masm_push_string(&Word::from(removed_asset_2)),
-        REMOVED_ASSET_3 = word_to_masm_push_string(&Word::from(removed_asset_3)),
-        REMOVED_ASSET_4 = word_to_masm_push_string(&Word::from(removed_asset_4)),
-        RECIPIENT2 = word_to_masm_push_string(&expected_output_note_2.recipient().digest()),
-        RECIPIENT3 = word_to_masm_push_string(&expected_output_note_3.recipient().digest()),
+        REMOVED_ASSET_1 = Word::from(removed_asset_1),
+        REMOVED_ASSET_2 = Word::from(removed_asset_2),
+        REMOVED_ASSET_3 = Word::from(removed_asset_3),
+        REMOVED_ASSET_4 = Word::from(removed_asset_4),
+        RECIPIENT2 = expected_output_note_2.recipient().digest(),
+        RECIPIENT3 = expected_output_note_3.recipient().digest(),
         NOTETYPE1 = note_type1 as u8,
         NOTETYPE2 = note_type2 as u8,
         NOTETYPE3 = note_type3 as u8,
@@ -1463,8 +1463,8 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
             push.{value} assert_eqw
         end
         ",
-        key = word_to_masm_push_string(&tx_script_input_key),
-        value = word_to_masm_push_string(&tx_script_input_value)
+        key = tx_script_input_key,
+        value = tx_script_input_value
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;

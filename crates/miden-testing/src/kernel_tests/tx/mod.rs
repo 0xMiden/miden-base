@@ -11,7 +11,6 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_lib::utils::word_to_masm_push_string;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{Note, NoteType};
@@ -95,8 +94,8 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
     );
 
     for (idx, note) in notes.iter().enumerate() {
-        let metadata = word_to_masm_push_string(&note.metadata().into());
-        let recipient = word_to_masm_push_string(&note.recipient().digest());
+        let metadata = Word::from(note.metadata());
+        let recipient = note.recipient().digest();
         let assets = prepare_assets(note.assets());
         let num_assets = assets.len();
         let note_offset = (idx as u32) * NOTE_MEM_SIZE;
@@ -108,16 +107,16 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
                 # populate note {idx}
                 push.{metadata}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_METADATA_OFFSET} add add mem_storew dropw
-    
+
                 push.{recipient}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_RECIPIENT_OFFSET} add add mem_storew dropw
-    
+
                 push.{num_assets}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_NUM_ASSETS_OFFSET} add add mem_store
 
                 push.1 # dirty flag should be `1` by default
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_DIRTY_FLAG_OFFSET} add add mem_store
-    
+
                 push.{first_asset}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_ASSETS_OFFSET} add add mem_storew dropw
                 ",
