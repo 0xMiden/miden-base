@@ -81,7 +81,7 @@ pub struct TransactionContextBuilder {
 impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
         Self {
-            assembler: TransactionKernel::testing_assembler_with_mock_account(),
+            assembler: TransactionKernel::with_mock_libraries(),
             account,
             account_seed: None,
             input_notes: Vec::new(),
@@ -110,7 +110,7 @@ impl TransactionContextBuilder {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
-        let assembler = TransactionKernel::testing_assembler_with_mock_account();
+        let assembler = TransactionKernel::with_mock_libraries();
 
         Self {
             assembler: assembler.clone(),
@@ -140,15 +140,13 @@ impl TransactionContextBuilder {
     /// Initializes a [TransactionContextBuilder] with a mocked fungible faucet.
     pub fn with_fungible_faucet(acct_id: u128, initial_balance: Felt) -> Self {
         let account = Account::mock_fungible_faucet(acct_id, initial_balance);
-
-        Self { account, ..Self::default() }
+        Self::new(account)
     }
 
     /// Initializes a [TransactionContextBuilder] with a mocked non-fungible faucet.
     pub fn with_non_fungible_faucet(acct_id: u128) -> Self {
         let account = Account::mock_non_fungible_faucet(acct_id);
-
-        Self { account, ..Self::default() }
+        Self::new(account)
     }
 
     /// Returns a clone of the assembler.

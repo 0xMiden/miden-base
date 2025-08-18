@@ -127,13 +127,13 @@ fn test_rpo_falcon_acl() -> anyhow::Result<()> {
         "#;
 
     let tx_script_trigger_1 =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_with_trigger_1)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_with_trigger_1)?;
 
     let tx_script_trigger_2 =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_with_trigger_2)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_with_trigger_2)?;
 
     let tx_script_no_trigger =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
 
     // Test 1: Transaction WITH authenticator calling trigger procedure 1 (should succeed)
     let tx_context_with_auth_1 = mock_chain
@@ -207,7 +207,7 @@ fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<
     assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
 
     let tx_script_no_trigger =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
 
     // Test: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     // This tests that when allow_unauthorized_output_notes=true, transactions without
@@ -243,7 +243,7 @@ fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Resul
     assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
 
     let tx_script_no_trigger =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
 
     // Test: Transaction WITHOUT authenticator calling non-trigger procedure but consuming input
     // notes This should FAIL because allow_unauthorized_input_notes=false and we're consuming

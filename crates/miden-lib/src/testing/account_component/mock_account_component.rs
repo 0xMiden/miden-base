@@ -4,16 +4,19 @@ use miden_objects::account::{AccountCode, AccountComponent, AccountStorage, Stor
 
 use crate::testing::mock_account_code::MockAccountCodeExt;
 
-// ACCOUNT MOCK COMPONENT
+// MOCK ACCOUNT COMPONENT
 // ================================================================================================
 
-/// Creates a mock [`Library`](miden_objects::assembly::Library) which can be used to assemble
-/// programs and as a library to create a mock [`AccountCode`](miden_objects::account::AccountCode)
-/// interface. Transaction and note scripts that make use of this interface should be assembled with
-/// this.
+/// A mock account component for use in tests.
+///
+/// It uses the [`MockAccountCodeExt::mock_account_library`][account_lib] and allows for an
+/// arbitrary number of storage slots (within the overall limit) so anything can be set for testing
+/// purposes.
 ///
 /// This component supports all [`AccountType`](miden_objects::account::AccountType)s for testing
 /// purposes.
+///
+/// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
 pub struct MockAccountComponent {
     storage_slots: Vec<StorageSlot>,
 }
@@ -51,8 +54,8 @@ impl MockAccountComponent {
 
 impl From<MockAccountComponent> for AccountComponent {
     fn from(mock_component: MockAccountComponent) -> Self {
-        AccountComponent::new(AccountCode::mock_library(), mock_component.storage_slots)
-          .expect("account mock component should satisfy the requirements of a valid account component")
+        AccountComponent::new(AccountCode::mock_account_library(), mock_component.storage_slots)
+          .expect("mock account component should satisfy the requirements of a valid account component")
           .with_supports_all_types()
     }
 }

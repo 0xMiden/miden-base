@@ -911,7 +911,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
         .code(code.clone())
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
 
     builder.add_note(OutputNote::Full(timelock_note.clone()));
 
