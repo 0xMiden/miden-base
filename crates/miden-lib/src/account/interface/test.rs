@@ -869,12 +869,6 @@ fn test_account_interface_get_auth_scheme() {
         _ => panic!("Expected NoAuth auth scheme"),
     }
 
-    // Test AccountInterface.get_auth_scheme() method with account that has no auth components
-    // (This is a theoretical case since accounts typically need auth components)
-    let mock_seed = Word::from([4, 5, 6, 7u32]).as_bytes();
-    let basic_account = AccountBuilder::new(mock_seed).with_component(BasicWallet).build_existing();
-
-    // This should fail to build since accounts need auth components, but if it were possible,
-    // get_auth_scheme should return None
-    // For now, we'll skip this test case since it's not a valid scenario
+    // Note: We don't test the case where an account has no auth components because
+    // accounts are required to have auth components in the current system design
 }
