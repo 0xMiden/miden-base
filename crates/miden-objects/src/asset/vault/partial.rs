@@ -1,10 +1,12 @@
+use alloc::string::ToString;
+
 use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtProof};
-use vm_core::utils::{Deserializable, Serializable};
 
 use super::AssetVault;
 use crate::Word;
 use crate::asset::Asset;
 use crate::errors::PartialAssetVaultError;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 /// A partial representation of an [`AssetVault`], containing only proofs for a subset of assets.
 ///
@@ -134,18 +136,17 @@ impl From<&AssetVault> for PartialVault {
 }
 
 impl Serializable for PartialVault {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
         target.write(&self.partial_smt)
     }
 }
 
 impl Deserializable for PartialVault {
-    fn read_from<R: vm_core::utils::ByteReader>(
-        source: &mut R,
-    ) -> Result<Self, vm_processor::DeserializationError> {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let vault_partial_smt = source.read()?;
 
-        Ok(PartialVault { partial_smt: vault_partial_smt })
+        PartialVault::new(vault_partial_smt)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
