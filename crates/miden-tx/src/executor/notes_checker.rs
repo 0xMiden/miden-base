@@ -75,7 +75,7 @@ where
             let successful_count = execution_result.successful.len();
 
             if successful_count == candidate_notes.len() {
-                // All full set of successful notes has been found.
+                // A full set of successful notes has been found.
                 return Ok(NoteConsumptionInfo::new(execution_result.successful, failed_notes));
             } else if successful_count == 0 {
                 // All notes failed, make no further attempts.
