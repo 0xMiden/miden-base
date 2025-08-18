@@ -419,6 +419,19 @@ pub enum AssetVaultError {
     SubtractFungibleAssetBalanceError(#[source] AssetError),
 }
 
+// PARTIAL ASSET VAULT ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum PartialAssetVaultError {
+    #[error("provided SMT entry {entry} is not a valid asset")]
+    InvalidAssetInSmt { entry: Word, source: AssetError },
+    #[error("expected asset vault key to be {expected} but it was {actual}")]
+    VaultKeyMismatch { expected: Word, actual: Word },
+    #[error("failed to add asset proof")]
+    FailedToAddProof(#[source] MerkleError),
+}
+
 // NOTE ERROR
 // ================================================================================================
 
