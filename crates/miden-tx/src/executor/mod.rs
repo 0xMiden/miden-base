@@ -9,7 +9,12 @@ use miden_objects::assembly::SourceManager;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
-    AccountInputs, ExecutedTransaction, InputNote, InputNotes, TransactionArgs, TransactionInputs,
+    AccountInputs,
+    ExecutedTransaction,
+    InputNote,
+    InputNotes,
+    TransactionArgs,
+    TransactionInputs,
     TransactionScript,
 };
 use miden_objects::vm::StackOutputs;
@@ -48,7 +53,6 @@ pub struct FailedNote {
 pub struct NoteConsumptionInfo {
     pub successful: Vec<Note>,
     pub failed: Vec<FailedNote>,
-    pub unattempted: Vec<InputNote>,
 }
 
 impl NoteConsumptionInfo {
@@ -58,12 +62,8 @@ impl NoteConsumptionInfo {
     }
 
     /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
-    pub fn new(
-        successful: Vec<Note>,
-        failed: Vec<FailedNote>,
-        unattempted: Vec<InputNote>,
-    ) -> Self {
-        Self { successful, failed, unattempted }
+    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>) -> Self {
+        Self { successful, failed }
     }
 }
 
@@ -427,14 +427,14 @@ where
                 }
 
                 // Partition the input notes into successful, failed, and unattempted results.
-                let (successful, failed, unattempted) =
+                let (successful, failed, _unattempted) =
                     split_at(input_notes.into_vec(), success_notes.len());
                 let successful =
                     successful.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
                 let failed = vec![FailedNote { error, note: failed.into_note() }];
 
                 // Return information about all the consumed notes.
-                Ok(NoteConsumptionInfo::new(successful, failed, unattempted))
+                Ok(NoteConsumptionInfo::new(successful, failed))
             },
         }
     }
