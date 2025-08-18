@@ -93,9 +93,9 @@ where
             // SAFETY: We requested a fungible vault key, so if Some is returned, it should be a
             // fungible asset.
             // A returned error means the vault does not track or does not contain the asset.
-            // However, since in practice, the partial vault represents the entire
-            // account vault, we can assume the second case.
-            // A returned None means the asset isn't tracked.
+            // However, since in practice, the partial vault represents the entire account vault,
+            // we can assume the second case. A returned None means the asset's amount is
+            // zero.
             // So in both Err and None cases, use the default native_asset with amount 0.
             account
                 .vault()
