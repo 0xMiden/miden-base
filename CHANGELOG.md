@@ -69,6 +69,7 @@
 - [BREAKING] Split `AccountCode::mock_library` into an account and faucet library ([#1732](https://github.com/0xMiden/miden-base/pull/1732), [#1733](https://github.com/0xMiden/miden-base/pull/1733)).
 - [BREAKING] Refactor `AccountError::AssumptionViolated` into `AccountError::Other` ([#1743](https://github.com/0xMiden/miden-base/pull/1743)).
 - [BREAKING] Remove `PartialVault::{new, add}` to guarantee the vault tracks valid assets ([#1747](https://github.com/0xMiden/miden-base/pull/1747)).
+- [BREAKING] Change owner of `Arc<dyn SourceManagerSync` and unify usage over manualy `+Send` `+Sync` bounds ([#1749](https://github.com/0xMiden/miden-base/pull/1749)).
 
 ## 0.10.1 (2025-08-02)
 
