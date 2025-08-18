@@ -55,7 +55,7 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        let mut candidate_notes = input_notes.into_vec();
+        let mut candidate_notes = input_notes.clone().into_vec();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -74,6 +74,7 @@ where
                 .await?;
             let successful_count = execution_result.successful.len();
 
+            // Determine the next step based on successful and/or failed notes.
             if successful_count == candidate_notes.len() {
                 // A full set of successful notes has been found.
                 return Ok(NoteConsumptionInfo::new(execution_result.successful, failed_notes));
