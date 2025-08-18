@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
@@ -166,9 +165,9 @@ impl AuthRpoFalcon512Acl {
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if config.auth_trigger_procedures.len() > max_procedures {
-            return Err(AccountError::AssumptionViolated(
-                "Cannot track more than {max_procedures} procedures (account limit)".to_string(),
-            ));
+            return Err(AccountError::other(format!(
+                "Cannot track more than {max_procedures} procedures (account limit)"
+            )));
         }
 
         Ok(Self { public_key, config })

@@ -7,6 +7,7 @@ use.$kernel::note
 use.$kernel::tx
 
 use.std::crypto::hashes::rpo
+use.std::word
 
 # ERRORS
 # =================================================================================================
@@ -437,18 +438,16 @@ export.finalize_transaction.8
 
     # check if the account delta commitment is the EMPTY_WORD, which is the case when the delta
     # is empty, i.e. the account did not change in this transaction
-    # TODO: Use std::word in the future (#1658).
-    padw eqw movdn.4 dropw
+    exec.word::testz
     # => [is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     # assert that if the delta commitment is empty, the transaction had input notes,
     # otherwise this transaction is considered empty, which is not allowed
-    exec.memory::get_input_notes_commitment padw
-    # => [EMPTY_WORD, INPUT_NOTES_COMMITMENT, is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
+    exec.memory::get_input_notes_commitment
+    # => [INPUT_NOTES_COMMITMENT, is_delta_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     # if the input notes commitment is an empty word there were no input notes in this transaction
-    # TODO: Use std::word in the future (#1658).
-    eqw movdn.8 dropw dropw and
+    exec.word::eqz and
     # => [is_delta_commitment_and_input_notes_commitment_empty, ACCOUNT_DELTA_COMMITMENT, FINAL_ACCOUNT_COMMITMENT]
 
     # assert that either the account was changed or notes were consumed

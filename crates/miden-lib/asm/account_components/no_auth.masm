@@ -1,4 +1,5 @@
 use.miden::account
+use.std::word
 
 #! Increment the nonce only if the account commitment has changed
 #!
@@ -19,8 +20,7 @@ export.auth__no_auth
     exec.account::compute_current_commitment
     # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
 
-    # TODO: use std::word::eq when it becomes available
-    eqw not movdn.8 dropw dropw
+    exec.word::eq not
     # => [has_account_state_changed, pad(16)]
 
     # if the account has been updated, increment the nonce

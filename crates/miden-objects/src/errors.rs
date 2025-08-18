@@ -155,8 +155,33 @@ pub enum AccountError {
     },
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
-    #[error("assumption violated: {0}")]
-    AssumptionViolated(String),
+    #[error("{error_msg}")]
+    Other {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on AccountError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl AccountError {
+    /// Creates a custom error using the [`AccountError::Other`] variant from an error message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { error_msg: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`AccountError::Other`] variant from an error message and
+    /// a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // ACCOUNT ID ERROR
@@ -207,6 +232,17 @@ pub enum AccountTreeError {
     InvalidAccountIdPrefix(#[source] AccountIdError),
     #[error("account witness merkle path depth {0} does not match AccountTree::DEPTH")]
     WitnessMerklePathDepthDoesNotMatchAccountTreeDepth(usize),
+}
+
+// ADDRESS ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum AddressError {
+    #[error("tag length {0} should be {expected} bits for network accounts", expected = crate::note::NoteTag::DEFAULT_NETWORK_TAG_LENGTH)]
+    CustomTagLengthNotAllowedForNetworkAccounts(u8),
+    #[error("tag length {0} is too large, must be less than or equal to {max}", max = crate::note::NoteTag::MAX_LOCAL_TAG_LENGTH)]
+    TagLengthTooLarge(u8),
 }
 
 // BECH32 ERROR
@@ -388,6 +424,8 @@ pub enum AssetVaultError {
 
 #[derive(Debug, Error)]
 pub enum NoteError {
+    #[error("note tag length {0} exceeds the maximum of {max}", max = NoteTag::MAX_LOCAL_TAG_LENGTH)]
+    NoteTagLengthTooLarge(u8),
     #[error("duplicate fungible asset from issuer {0} in note")]
     DuplicateFungibleAsset(AccountId),
     #[error("duplicate non fungible asset {0} in note")]
