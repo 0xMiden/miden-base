@@ -14,7 +14,7 @@ use.std::word
 const.AUTH_REQUEST=131087
 
 # The event emitted when a signature is not found for a required signer.
-const.UNAUTHORIZED_EVENT=131101
+const.UNAUTHORIZED_EVENT=131102
 
 # Storage Layout Constants
 #
