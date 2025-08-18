@@ -26,16 +26,16 @@ const.UNAUTHORIZED_EVENT=131101
 # └─────────────────────────────┴──────────┴──────────────┘
 
 # The slot in this component's storage layout where both the signature threshold
-# and number of approvers are stored as [0, 0, threshold, num_approvers].
+# and number of approvers are stored as [threshold, num_approvers, 0, 0].
 # The threshold is guaranteed to be less than or equal to num_approvers.
 const.THRESHOLD_CONFIG_SLOT=0
 
 # The slot in this component's storage layout where the public keys map is stored.
-# Map entries: [0, 0, 0, key_index] => owner_public_key
+# Map entries: [key_index, 0, 0, 0] => owner_public_key
 const.PUBLIC_KEYS_MAP_SLOT=1
 
 # The slot in this component's storage layout where executed transactions are stored.
-# Map entries: transaction_message => [0, 0, 0, is_executed]
+# Map entries: transaction_message => [is_executed, 0, 0, 0]
 const.EXECUTED_TXS_SLOT=2
 
 # Memory Constants
@@ -87,7 +87,7 @@ end
 #! If any required signature is missing, it emits an UNAUTHORIZED_EVENT.
 #!
 #! Inputs:  [num_of_approvers, threshold, MSG]
-#! Outputs: []
+#! Outputs: [MSG]
 proc.verify_signatures.16
     dup loc_store.NUM_OF_APPROVERS
     # => [num_of_approvers, threshold, MSG]
@@ -143,7 +143,10 @@ proc.verify_signatures.16
         if.true
             # => [SIG_KEY, MSG, i-1]
 
-            repeat.4 dup.7 end swapw
+            dupw.1
+            # => [MSG, SIG_KEY, MSG, i-1]
+
+            swapw
             # => [SIG_KEY, MSG, MSG, i-1]
 
             # Verify the signature against the public key and message.
@@ -169,7 +172,6 @@ proc.verify_signatures.16
             add.1
             loc_store.SUCCESSFUL_VERIFICATIONS
             # => [MSG, i-1]
-
         else
             dropw
             # => [MSG, i-1]
@@ -205,9 +207,6 @@ proc.verify_signatures.16
         push.0 assert.err="insufficient number of signatures"
     end
     # => [MSG]
-
-    dropw
-    # => []
 end
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
@@ -263,19 +262,16 @@ export.auth__tx_rpo_falcon512_multisig
     exec.auth::hash_tx_summary
     # => [TX_SUMMARY_COMMITMENT]
 
-    dupw
-    # => [TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
-
     # ------ Verifying owner signatures ------
 
     push.THRESHOLD_CONFIG_SLOT
-    # => [index, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
+    # => [index, TX_SUMMARY_COMMITMENT]
 
     exec.account::get_item
-    # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
+    # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop
-    # => [num_of_approvers, threshold, TX_SUMMARY_COMMITMENT, TX_SUMMARY_COMMITMENT]
+    # => [num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
 
     exec.verify_signatures
     # => [TX_SUMMARY_COMMITMENT]
@@ -284,5 +280,4 @@ export.auth__tx_rpo_falcon512_multisig
 
     exec.assert_new_tx
     # => [TX_SUMMARY_COMMITMENT]
-
 end
