@@ -208,7 +208,7 @@ impl AccountIdAddress {
         // Encode the address type into index 0.
         data[0] = AddressType::AccountId as u8;
         // Encode the 16 account ID address bytes into 1..17.
-        data[1..17].copy_from_slice(&id_bytes);
+        data[1..].copy_from_slice(&id_bytes);
 
         // SAFETY: Encoding panics if the total length of the hrp + data (encoded in GF(32)) + the
         // separator + the checksum exceeds Bech32m::CODE_LENGTH, which is 1023.
