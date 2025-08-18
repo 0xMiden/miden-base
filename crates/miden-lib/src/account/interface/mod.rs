@@ -6,7 +6,6 @@ use alloc::vec::Vec;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountCode, AccountId, AccountIdPrefix, AccountType};
 use miden_objects::assembly::mast::{MastForest, MastNode, MastNodeId};
-use miden_objects::crypto::dsa::rpo_falcon512;
 use miden_objects::note::{Note, NoteScript, PartialNote};
 use miden_objects::transaction::TransactionScript;
 use thiserror::Error;
@@ -15,6 +14,7 @@ use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
+    no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
 };
@@ -111,6 +111,30 @@ impl AccountInterface {
         &self.components
     }
 
+    /// Returns the authentication scheme used by this account, if any.
+    ///
+    /// This method searches through the account's component interfaces to find an authentication
+    /// component and returns its associated authentication scheme.
+    ///
+    /// # Returns
+    /// * `Some(AuthScheme)` - If the account has an authentication component
+    /// * `None` - If the account has no authentication components
+    ///
+    /// # Note
+    /// If the account has multiple authentication components, this method returns the first one
+    /// found.
+    pub fn get_auth_scheme(
+        &self,
+        storage: &miden_objects::account::AccountStorage,
+    ) -> Option<AuthScheme> {
+        for component in &self.components {
+            if let Some(auth_scheme) = component.get_auth_scheme(storage) {
+                return Some(auth_scheme);
+            }
+        }
+        None
+    }
+
     /// Returns [NoteAccountCompatibility::Maybe] if the provided note is compatible with the
     /// current [AccountInterface], and [NoteAccountCompatibility::No] otherwise.
     pub fn is_compatible_with(&self, note: &Note) -> NoteAccountCompatibility {
@@ -145,6 +169,10 @@ impl AccountInterface {
                 AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
+                },
+                AccountComponentInterface::AuthNoAuth => {
+                    component_proc_digests
+                        .extend(no_auth_library().mast_forest().procedure_digests());
                 },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
@@ -263,20 +291,8 @@ impl From<&Account> for AccountInterface {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
-            match interface {
-                // RpoFalcon512 and RpoFalcon512Acl use the same RpoFalcon512 auth scheme
-                AccountComponentInterface::AuthRpoFalcon512(storage_index)
-                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
-                    auth.push(AuthScheme::RpoFalcon512 {
-                        pub_key: rpo_falcon512::PublicKey::new(
-                            account
-                                .storage()
-                                .get_item(*storage_index)
-                                .expect("invalid storage index of the public key"),
-                        ),
-                    })
-                },
-                _ => {},
+            if let Some(auth_scheme) = interface.get_auth_scheme(account.storage()) {
+                auth.push(auth_scheme);
             }
         });
 

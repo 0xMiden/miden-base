@@ -35,6 +35,11 @@ pub enum AccountComponentInterface {
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
     AuthRpoFalcon512Acl(u8),
+    /// Exposes procedures from the [`NoAuth`][crate::account::auth::NoAuth] module.
+    ///
+    /// This authentication scheme provides no cryptographic authentication and only increments
+    /// the nonce if the account state has actually changed during transaction execution.
+    AuthNoAuth,
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -56,6 +61,7 @@ impl AccountComponentInterface {
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
+            AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()
@@ -64,6 +70,37 @@ impl AccountComponentInterface {
                     .join(", ");
                 format!("Custom([{result}])")
             },
+        }
+    }
+
+    /// Returns the authentication scheme associated with this component interface, if any.
+    ///
+    /// This method extracts the authentication scheme from the component interface by examining
+    /// the account storage at the appropriate storage index for authentication components.
+    ///
+    /// # Arguments
+    /// * `storage` - The account storage to read authentication data from
+    ///
+    /// # Returns
+    /// * `Some(AuthScheme)` - If this is an authentication component interface
+    /// * `None` - If this is not an authentication component interface
+    pub fn get_auth_scheme(
+        &self,
+        storage: &miden_objects::account::AccountStorage,
+    ) -> Option<crate::AuthScheme> {
+        match self {
+            AccountComponentInterface::AuthRpoFalcon512(storage_index)
+            | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
+                Some(crate::AuthScheme::RpoFalcon512 {
+                    pub_key: miden_objects::crypto::dsa::rpo_falcon512::PublicKey::new(
+                        storage
+                            .get_item(*storage_index)
+                            .expect("invalid storage index of the public key"),
+                    ),
+                })
+            },
+            AccountComponentInterface::AuthNoAuth => Some(crate::AuthScheme::NoAuth),
+            _ => None,
         }
     }
 

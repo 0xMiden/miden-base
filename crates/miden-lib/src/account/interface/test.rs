@@ -24,9 +24,14 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
-use crate::account::auth::AuthRpoFalcon512;
+use crate::AuthScheme;
+use crate::account::auth::{AuthRpoFalcon512, NoAuth};
 use crate::account::faucets::BasicFungibleFaucet;
-use crate::account::interface::{AccountInterface, NoteAccountCompatibility};
+use crate::account::interface::{
+    AccountComponentInterface,
+    AccountInterface,
+    NoteAccountCompatibility,
+};
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
 use crate::transaction::TransactionKernel;
@@ -699,4 +704,177 @@ impl AccountComponentExt for AccountComponent {
 fn get_mock_auth_component() -> AuthRpoFalcon512 {
     let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
     AuthRpoFalcon512::new(mock_public_key)
+}
+
+// GET AUTH SCHEME TESTS
+// ================================================================================================
+
+#[test]
+fn test_get_auth_scheme_rpo_falcon512() {
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create wallet account");
+
+    let wallet_account_interface = AccountInterface::from(&wallet_account);
+
+    // Find the RpoFalcon512 component interface
+    let rpo_falcon_component = wallet_account_interface
+        .components()
+        .iter()
+        .find(|component| matches!(component, AccountComponentInterface::AuthRpoFalcon512(_)))
+        .expect("should have RpoFalcon512 component");
+
+    // Test get_auth_scheme method
+    let auth_scheme = rpo_falcon_component.get_auth_scheme(wallet_account.storage());
+    assert!(auth_scheme.is_some());
+
+    match auth_scheme.unwrap() {
+        AuthScheme::RpoFalcon512 { pub_key } => {
+            assert_eq!(pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+        },
+        _ => panic!("Expected RpoFalcon512 auth scheme"),
+    }
+}
+
+#[test]
+fn test_get_auth_scheme_no_auth() {
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let no_auth_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(NoAuth)
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create no-auth account");
+
+    let no_auth_account_interface = AccountInterface::from(&no_auth_account);
+
+    // Find the NoAuth component interface
+    let no_auth_component = no_auth_account_interface
+        .components()
+        .iter()
+        .find(|component| matches!(component, AccountComponentInterface::AuthNoAuth))
+        .expect("should have NoAuth component");
+
+    // Test get_auth_scheme method
+    let auth_scheme = no_auth_component.get_auth_scheme(no_auth_account.storage());
+    assert!(auth_scheme.is_some());
+
+    match auth_scheme.unwrap() {
+        AuthScheme::NoAuth => {
+            // Expected case
+        },
+        _ => panic!("Expected NoAuth auth scheme"),
+    }
+}
+
+#[test]
+fn test_get_auth_scheme_non_auth_component() {
+    // Test that non-auth components return None
+    let basic_wallet_component = AccountComponentInterface::BasicWallet;
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create wallet account");
+
+    let auth_scheme = basic_wallet_component.get_auth_scheme(wallet_account.storage());
+    assert!(auth_scheme.is_none());
+}
+
+#[test]
+fn test_account_interface_from_account_uses_get_auth_scheme() {
+    // Test that the From<&Account> implementation correctly uses get_auth_scheme
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create wallet account");
+
+    let wallet_account_interface = AccountInterface::from(&wallet_account);
+
+    // Should have exactly one auth scheme
+    assert_eq!(wallet_account_interface.auth().len(), 1);
+
+    match &wallet_account_interface.auth()[0] {
+        AuthScheme::RpoFalcon512 { pub_key } => {
+            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+        },
+        _ => panic!("Expected RpoFalcon512 auth scheme"),
+    }
+
+    // Test with NoAuth
+    let no_auth_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(NoAuth)
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create no-auth account");
+
+    let no_auth_account_interface = AccountInterface::from(&no_auth_account);
+
+    // Should have exactly one auth scheme
+    assert_eq!(no_auth_account_interface.auth().len(), 1);
+
+    match &no_auth_account_interface.auth()[0] {
+        AuthScheme::NoAuth => {
+            // Expected case
+        },
+        _ => panic!("Expected NoAuth auth scheme"),
+    }
+}
+
+#[test]
+fn test_account_interface_get_auth_scheme() {
+    // Test AccountInterface.get_auth_scheme() method with RpoFalcon512
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create wallet account");
+
+    let wallet_account_interface = AccountInterface::from(&wallet_account);
+
+    // Test get_auth_scheme method on AccountInterface
+    let auth_scheme = wallet_account_interface.get_auth_scheme(wallet_account.storage());
+    assert!(auth_scheme.is_some());
+
+    match auth_scheme.unwrap() {
+        AuthScheme::RpoFalcon512 { pub_key } => {
+            assert_eq!(pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+        },
+        _ => panic!("Expected RpoFalcon512 auth scheme"),
+    }
+
+    // Test AccountInterface.get_auth_scheme() method with NoAuth
+    let no_auth_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(NoAuth)
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create no-auth account");
+
+    let no_auth_account_interface = AccountInterface::from(&no_auth_account);
+
+    // Test get_auth_scheme method on AccountInterface
+    let auth_scheme = no_auth_account_interface.get_auth_scheme(no_auth_account.storage());
+    assert!(auth_scheme.is_some());
+
+    match auth_scheme.unwrap() {
+        AuthScheme::NoAuth => {
+            // Expected case
+        },
+        _ => panic!("Expected NoAuth auth scheme"),
+    }
+
+    // Test AccountInterface.get_auth_scheme() method with account that has no auth components
+    // (This is a theoretical case since accounts typically need auth components)
+    let mock_seed = Word::from([4, 5, 6, 7u32]).as_bytes();
+    let basic_account = AccountBuilder::new(mock_seed).with_component(BasicWallet).build_existing();
+
+    // This should fail to build since accounts need auth components, but if it were possible,
+    // get_auth_scheme should return None
+    // For now, we'll skip this test case since it's not a valid scenario
 }
