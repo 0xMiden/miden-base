@@ -21,7 +21,7 @@ impl PartialVault {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a new instance of a partial vault with the specified root and vault proofs.
+    /// Returns a new instance of a partial vault from the provided partial SMT.
     ///
     /// # Errors
     ///
