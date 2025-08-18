@@ -3,6 +3,7 @@ use vm_core::utils::{Deserializable, Serializable};
 
 use super::AssetVault;
 use crate::Word;
+use crate::asset::Asset;
 
 /// A partial representation of an [`AssetVault`], containing only proofs for a subset of assets.
 ///
@@ -19,6 +20,7 @@ impl PartialVault {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
+    // TODO: Do we need this constructor? It does not validate that the SMT contains valid Assets.
     /// Returns a new instance of partial vault with the specified root and vault proofs.
     pub fn new(partial_smt: PartialSmt) -> Self {
         PartialVault { partial_smt }
@@ -47,9 +49,30 @@ impl PartialVault {
         self.partial_smt.leaves().map(|(_, leaf)| leaf)
     }
 
+    /// Returns the [`Asset`] associated with the given `vault_key`.
+    ///
+    /// The return value is `None` if the asset does not exist in the vault.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the key is not tracked by this partial SMT.
+    pub fn get(&self, vault_key: Word) -> Result<Option<Asset>, MerkleError> {
+        self.partial_smt.get_value(&vault_key).map(|word| {
+            if word.is_empty() {
+                None
+            } else {
+                // SAFETY: If this returned a non-empty word, then it should be a valid asset,
+                // because the vault should only track valid ones.
+                Some(Asset::try_from(word).expect("partial vault should only track valid assets"))
+            }
+        })
+    }
+
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
+    // TODO: Do we need this method? It does not validate that the added value is a valid Asset.
     /// Adds an [`SmtProof`] to this [`PartialVault`].
     pub fn add(&mut self, proof: SmtProof) -> Result<(), MerkleError> {
         self.partial_smt.add_proof(proof)

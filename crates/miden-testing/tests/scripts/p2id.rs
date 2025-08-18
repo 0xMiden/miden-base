@@ -14,10 +14,9 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
-use miden_testing::{Auth, MockChain};
-use miden_tx::utils::word_to_masm_push_string;
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
-use crate::{assert_transaction_executor_error, prove_and_verify_transaction};
+use crate::prove_and_verify_transaction;
 
 /// We test the Pay to script with 2 assets to test the loop inside the script.
 /// So we create a note containing two assets that can only be consumed by the target account.
@@ -245,15 +244,15 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
                 dropw dropw dropw dropw
             end
             ",
-        recipient_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
+        recipient_1 = output_note_1.recipient().digest(),
         note_type_1 = NoteType::Public as u8,
         tag_1 = Felt::from(output_note_1.metadata().tag()),
-        asset_1 = word_to_masm_push_string(&FungibleAsset::mock(10).into()),
+        asset_1 = Word::from(FungibleAsset::mock(10)),
         note_execution_hint_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        recipient_2 = word_to_masm_push_string(&output_note_2.recipient().digest()),
+        recipient_2 = output_note_2.recipient().digest(),
         note_type_2 = NoteType::Public as u8,
         tag_2 = Felt::from(output_note_2.metadata().tag()),
-        asset_2 = word_to_masm_push_string(&FungibleAsset::mock(5).into()),
+        asset_2 = Word::from(FungibleAsset::mock(5)),
         note_execution_hint_2 = Felt::from(output_note_2.metadata().execution_hint())
     );
 

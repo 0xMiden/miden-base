@@ -2,10 +2,9 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::Felt;
 use miden_objects::account::{AccountId, AccountProcedureInfo};
 use miden_objects::note::PartialNote;
-use miden_objects::utils::word_to_masm_push_string;
+use miden_objects::{Felt, Word};
 
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
@@ -56,9 +55,7 @@ impl AccountComponentInterface {
                 "Basic Fungible Faucet".to_string()
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
-            AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
-                "RPO Falcon512 Procedure ACL".to_string()
-            },
+            AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()
@@ -170,7 +167,7 @@ impl AccountComponentInterface {
                 push.{note_type}
                 push.{aux}
                 push.{tag}\n",
-                recipient = word_to_masm_push_string(&partial_note.recipient_digest()),
+                recipient = partial_note.recipient_digest(),
                 note_type = Felt::from(partial_note.metadata().note_type()),
                 execution_hint = Felt::from(partial_note.metadata().execution_hint()),
                 aux = partial_note.metadata().aux(),
@@ -209,7 +206,7 @@ impl AccountComponentInterface {
                         body.push_str(&format!(
                             "push.{asset}
                             call.::miden::contracts::wallets::basic::move_asset_to_note dropw\n",
-                            asset = word_to_masm_push_string(&asset.into())
+                            asset = Word::from(*asset)
                         ));
                         // stack => [note_idx]
                     }

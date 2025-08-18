@@ -12,6 +12,8 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT,
 };
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::account_component::IncrNonceAuthComponent;
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     NUM_OUTPUT_NOTES_PTR,
@@ -21,7 +23,7 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_SECTION_OFFSET,
 };
 use miden_lib::transaction::{TransactionEvent, TransactionKernel};
-use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -50,7 +52,6 @@ use miden_objects::note::{
     NoteTag,
     NoteType,
 };
-use miden_objects::testing::account_component::IncrNonceAuthComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
@@ -217,16 +218,14 @@ fn test_create_note() -> anyhow::Result<()> {
             swapdw dropw dropw
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         note_execution_hint = Felt::from(NoteExecutionHint::after_block(23.into()).unwrap()),
         tag = tag,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        &tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
     assert_eq!(
         process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -275,7 +274,7 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
         tx_context
             .execute_code_with_assembler(
                 &note_creation_script(invalid_tag),
-                TransactionKernel::testing_assembler()
+                TransactionKernel::with_kernel_library()
             )
             .is_err()
     );
@@ -284,7 +283,7 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
         tx_context
             .execute_code_with_assembler(
                 &note_creation_script(valid_tag),
-                TransactionKernel::testing_assembler()
+                TransactionKernel::with_kernel_library()
             )
             .is_ok()
     );
@@ -312,7 +311,7 @@ fn note_creation_script(tag: Felt) -> String {
                 dropw dropw
             end
             ",
-        recipient = word_to_masm_push_string(&Word::from([0, 1, 2, 3u32])),
+        recipient = Word::from([0, 1, 2, 3u32]),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
         aux = Felt::ZERO,
@@ -345,16 +344,14 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         end
         ",
         tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
-        recipient = word_to_masm_push_string(&Word::from([0, 1, 2, 3u32])),
+        recipient = Word::from([0, 1, 2, 3u32]),
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         PUBLIC_NOTE = NoteType::Public as u8,
         aux = Felt::ZERO,
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    );
+    let process =
+        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
 
     assert_execution_error!(process, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
     Ok(())
@@ -363,12 +360,8 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 #[test]
 fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
@@ -451,7 +444,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -501,25 +494,23 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         ",
         PUBLIC_NOTE = NoteType::Public as u8,
         NOTE_EXECUTION_HINT_1 = Felt::from(output_note_1.metadata().execution_hint()),
-        recipient_1 = word_to_masm_push_string(&output_note_1.recipient().digest()),
+        recipient_1 = output_note_1.recipient().digest(),
         tag_1 = output_note_1.metadata().tag(),
         aux_1 = output_note_1.metadata().aux(),
-        asset_1 = word_to_masm_push_string(&Word::from(
+        asset_1 = Word::from(
             **output_note_1.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
-        )),
-        recipient_2 = word_to_masm_push_string(&output_note_2.recipient().digest()),
+        ),
+        recipient_2 = output_note_2.recipient().digest(),
         NOTE_EXECUTION_HINT_2 = Felt::from(output_note_2.metadata().execution_hint()),
         tag_2 = output_note_2.metadata().tag(),
         aux_2 = output_note_2.metadata().aux(),
-        asset_2 = word_to_masm_push_string(&Word::from(
+        asset_2 = Word::from(
             **output_note_2.assets().iter().take(1).collect::<Vec<_>>().first().unwrap()
-        )),
+        ),
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        &tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
     assert_eq!(
         process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -562,7 +553,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -587,17 +578,15 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             swapdw dropw dropw
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         NOTE_EXECUTION_HINT = Felt::from(NoteExecutionHint::always()),
         tag = tag,
-        asset = word_to_masm_push_string(&asset),
+        asset = asset,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        &tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
     assert_eq!(
         process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -637,7 +626,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         use.miden::tx
 
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
 
         begin
             exec.prologue::prepare_transaction
@@ -670,19 +659,17 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             swapdw dropw drop drop drop
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         tag = tag,
-        asset = word_to_masm_push_string(&asset),
-        asset_2 = word_to_masm_push_string(&asset_2),
-        asset_3 = word_to_masm_push_string(&asset_3),
-        nft = word_to_masm_push_string(&non_fungible_asset_encoded),
+        asset = asset,
+        asset_2 = asset_2,
+        asset_3 = asset_3,
+        nft = non_fungible_asset_encoded,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        &tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
     assert_eq!(
         process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -722,7 +709,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         begin
@@ -751,18 +738,16 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             repeat.5 dropw end
         end
         ",
-        recipient = word_to_masm_push_string(&recipient),
+        recipient = recipient,
         PUBLIC_NOTE = NoteType::Public as u8,
         execution_hint_always = Felt::from(NoteExecutionHint::always()),
         aux = Felt::new(0),
         tag = tag,
-        nft = word_to_masm_push_string(&encoded),
+        nft = encoded,
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    );
+    let process =
+        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
 
     assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     Ok(())
@@ -793,12 +778,8 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
 #[test]
 fn test_build_recipient_hash() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
@@ -857,17 +838,15 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
         end
         ",
         script_root = input_note_1.script().clone().root(),
-        output_serial_no = word_to_masm_push_string(&output_serial_no),
+        output_serial_no = output_serial_no,
         PUBLIC_NOTE = NoteType::Public as u8,
         tag = tag,
         execution_hint = Felt::from(NoteExecutionHint::after_block(2.into()).unwrap()),
         aux = aux,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        &tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
     assert_eq!(
         process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -910,10 +889,8 @@ fn test_block_procedures() -> anyhow::Result<()> {
         end
         ";
 
-    let process = &tx_context.execute_code_with_assembler(
-        code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        &tx_context.execute_code_with_assembler(code, TransactionKernel::with_mock_libraries())?;
 
     assert_eq!(
         process.stack.get_word(0),
@@ -997,6 +974,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
             scripts_mast_store,
             acct_procedure_index_map,
             None,
+            tx_inputs.block_header().fee_parameters(),
         )
     };
     let advice_inputs = advice_inputs.into_advice_inputs();
@@ -1033,15 +1011,8 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
 
 #[test]
 fn executed_transaction_output_notes() -> anyhow::Result<()> {
-    let assembler = TransactionKernel::testing_assembler();
-    let auth_component = IncrNonceAuthComponent::new(assembler.clone())?;
-
-    let executor_account = Account::mock(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-        Felt::ONE,
-        auth_component,
-        assembler,
-    );
+    let executor_account =
+        Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
     let account_id = executor_account.id();
 
     // removed assets
@@ -1113,7 +1084,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
         "\
         use.miden::contracts::wallets::basic->wallet
         use.miden::tx
-        use.test::account
+        use.mock::account
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
         # Outputs: [note_idx]
@@ -1197,12 +1168,12 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
             # => []
         end
     ",
-        REMOVED_ASSET_1 = word_to_masm_push_string(&Word::from(removed_asset_1)),
-        REMOVED_ASSET_2 = word_to_masm_push_string(&Word::from(removed_asset_2)),
-        REMOVED_ASSET_3 = word_to_masm_push_string(&Word::from(removed_asset_3)),
-        REMOVED_ASSET_4 = word_to_masm_push_string(&Word::from(removed_asset_4)),
-        RECIPIENT2 = word_to_masm_push_string(&expected_output_note_2.recipient().digest()),
-        RECIPIENT3 = word_to_masm_push_string(&expected_output_note_3.recipient().digest()),
+        REMOVED_ASSET_1 = Word::from(removed_asset_1),
+        REMOVED_ASSET_2 = Word::from(removed_asset_2),
+        REMOVED_ASSET_3 = Word::from(removed_asset_3),
+        REMOVED_ASSET_4 = Word::from(removed_asset_4),
+        RECIPIENT2 = expected_output_note_2.recipient().digest(),
+        RECIPIENT3 = expected_output_note_3.recipient().digest(),
         NOTETYPE1 = note_type1 as u8,
         NOTETYPE2 = note_type2 as u8,
         NOTETYPE3 = note_type3 as u8,
@@ -1492,8 +1463,8 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
             push.{value} assert_eqw
         end
         ",
-        key = word_to_masm_push_string(&tx_script_input_key),
-        value = word_to_masm_push_string(&tx_script_input_value)
+        key = tx_script_input_key,
+        value = tx_script_input_value
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;
@@ -1577,9 +1548,8 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
     )?
     .with_supports_all_types();
 
-    let auth_component = IncrNonceAuthComponent::new(TransactionKernel::assembler())?.into();
     let account_code = AccountCode::from_components(
-        &[auth_component, component.clone()],
+        &[IncrNonceAuthComponent.into(), component.clone()],
         AccountType::RegularAccountUpdatableCode,
     )?;
 

@@ -1,4 +1,3 @@
-use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
@@ -7,8 +6,8 @@ use miden_objects::{AccountError, Word};
 
 use crate::account::components::{
     no_auth_library,
+    rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
-    rpo_falcon_512_procedure_acl_library,
 };
 
 /// An [`AccountComponent`] implementing the RpoFalcon512 signature scheme for authentication of
@@ -166,9 +165,9 @@ impl AuthRpoFalcon512Acl {
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
         if config.auth_trigger_procedures.len() > max_procedures {
-            return Err(AccountError::AssumptionViolated(
-                "Cannot track more than {max_procedures} procedures (account limit)".to_string(),
-            ));
+            return Err(AccountError::other(format!(
+                "Cannot track more than {max_procedures} procedures (account limit)"
+            )));
         }
 
         Ok(Self { public_key, config })
@@ -205,8 +204,10 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         // Safe to unwrap because we know that the map keys are unique.
         storage_slots.push(StorageSlot::Map(StorageMap::with_entries(map_entries).unwrap()));
 
-        AccountComponent::new(rpo_falcon_512_procedure_acl_library(), storage_slots)
-            .expect("Procedure ACL auth component should satisfy the requirements of a valid account component")
+        AccountComponent::new(rpo_falcon_512_acl_library(), storage_slots)
+            .expect(
+                "ACL auth component should satisfy the requirements of a valid account component",
+            )
             .with_supports_all_types()
     }
 }
@@ -337,7 +338,7 @@ mod tests {
 
     /// Test ACL component with no procedures and both authorization flags set to false
     #[test]
-    fn test_rpo_falcon_512_procedure_acl_no_procedures() {
+    fn test_rpo_falcon_512_acl_no_procedures() {
         test_acl_component(AclTestConfig {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
@@ -348,7 +349,7 @@ mod tests {
 
     /// Test ACL component with two procedures and both authorization flags set to false
     #[test]
-    fn test_rpo_falcon_512_procedure_acl_with_two_procedures() {
+    fn test_rpo_falcon_512_acl_with_two_procedures() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: false,
@@ -359,7 +360,7 @@ mod tests {
 
     /// Test ACL component with no procedures and allow_unauthorized_output_notes set to true
     #[test]
-    fn test_rpo_falcon_512_procedure_acl_with_allow_unauthorized_output_notes() {
+    fn test_rpo_falcon_512_acl_with_allow_unauthorized_output_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: false,
             allow_unauthorized_output_notes: true,
@@ -370,7 +371,7 @@ mod tests {
 
     /// Test ACL component with two procedures and allow_unauthorized_output_notes set to true
     #[test]
-    fn test_rpo_falcon_512_procedure_acl_with_procedures_and_allow_unauthorized_output_notes() {
+    fn test_rpo_falcon_512_acl_with_procedures_and_allow_unauthorized_output_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
@@ -381,7 +382,7 @@ mod tests {
 
     /// Test ACL component with no procedures and allow_unauthorized_input_notes set to true
     #[test]
-    fn test_rpo_falcon_512_procedure_acl_with_allow_unauthorized_input_notes() {
+    fn test_rpo_falcon_512_acl_with_allow_unauthorized_input_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: false,
             allow_unauthorized_output_notes: false,
@@ -392,7 +393,7 @@ mod tests {
 
     /// Test ACL component with two procedures and both authorization flags set to true
     #[test]
-    fn test_rpo_falcon_512_procedure_acl_with_both_allow_flags() {
+    fn test_rpo_falcon_512_acl_with_both_allow_flags() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: true,

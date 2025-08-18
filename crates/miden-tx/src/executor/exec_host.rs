@@ -8,6 +8,8 @@ use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
+use miden_objects::asset::FungibleAsset;
+use miden_objects::block::FeeParameters;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::{Felt, Hasher, Word};
 use vm_processor::{
@@ -56,6 +58,9 @@ where
     /// transaction without having to regenerate the signature or requiring access to the
     /// authenticator that produced it.
     generated_signatures: BTreeMap<Word, Vec<Felt>>,
+
+    /// The balance of the native asset in the account at the beginning of transaction execution.
+    initial_native_asset: FungibleAsset,
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
@@ -74,7 +79,31 @@ where
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
+        fee_parameters: &FeeParameters,
     ) -> Self {
+        // TODO: Once we have lazy account loading, this should be loaded in on_tx_fee_computed to
+        // avoid the use of PartialVault entirely, which in the future, may or may not track
+        // all assets in the account at this point. Here we assume it does track _all_ assets of the
+        // account.
+        let initial_native_asset = {
+            let native_asset = FungibleAsset::new(fee_parameters.native_asset_id(), 0)
+                .expect("native asset ID should be a valid fungible faucet ID");
+
+            // Map Asset to FungibleAsset.
+            // SAFETY: We requested a fungible vault key, so if Some is returned, it should be a
+            // fungible asset.
+            // A returned error means the vault does not track or does not contain the asset.
+            // However, since in practice, the partial vault represents the entire account vault,
+            // we can assume the second case. A returned None means the asset's amount is
+            // zero.
+            // So in both Err and None cases, use the default native_asset with amount 0.
+            account
+                .vault()
+                .get(native_asset.vault_key())
+                .map(|asset| asset.map(|asset| asset.unwrap_fungible()).unwrap_or(native_asset))
+                .unwrap_or(native_asset)
+        };
+
         let base_host = TransactionBaseHost::new(
             account,
             input_notes,
@@ -87,6 +116,7 @@ where
             base_host,
             authenticator,
             generated_signatures: BTreeMap::new(),
+            initial_native_asset,
         }
     }
 
@@ -122,6 +152,55 @@ where
         self.generated_signatures.insert(signature_key, signature.clone());
 
         Ok(vec![AdviceMutation::extend_stack(signature)])
+    }
+
+    /// Handles the [`TransactionEvent::EpilogueTxFeeComputed`] and returns an error if the account
+    /// cannot pay the fee.
+    fn on_tx_fee_computed(
+        &self,
+        fee_asset: FungibleAsset,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        // Compute the current balance of the native asset in the account based on the initial value
+        // and the delta.
+        let current_native_asset = {
+            let native_asset_amount_delta = self
+                .base_host
+                .account_delta_tracker()
+                .vault_delta()
+                .fungible()
+                .amount(&self.initial_native_asset.faucet_id())
+                .unwrap_or(0);
+
+            // SAFETY: Initial native asset faucet ID should be a fungible faucet and amount should
+            // be less than MAX_AMOUNT as checked by the account delta.
+            let native_asset_delta = FungibleAsset::new(
+                self.initial_native_asset.faucet_id(),
+                native_asset_amount_delta.unsigned_abs(),
+            )
+            .expect("faucet ID and amount should be valid");
+
+            // SAFETY: These computations are essentially the same as the ones executed by the
+            // transaction kernel, which should have aborted if they weren't valid.
+            if native_asset_amount_delta > 0 {
+                self.initial_native_asset
+                    .add(native_asset_delta)
+                    .expect("transaction kernel should ensure amounts do not exceed MAX_AMOUNT")
+            } else {
+                self.initial_native_asset
+                    .sub(native_asset_delta)
+                    .expect("transaction kernel should ensure amount is not negative")
+            }
+        };
+
+        // Return an error if the balance in the account does not cover the fee.
+        if current_native_asset.amount() < fee_asset.amount() {
+            return Err(TransactionKernelError::InsufficientFee {
+                account_balance: current_native_asset.amount(),
+                tx_fee: fee_asset.amount(),
+            });
+        }
+
+        Ok(Vec::new())
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -189,6 +268,9 @@ where
                     .on_auth_requested(pub_key_hash, signing_inputs)
                     .await
                     .map_err(EventError::from),
+                TransactionEventData::TransactionFeeComputed { fee_asset } => {
+                    self.on_tx_fee_computed(fee_asset).map_err(EventError::from)
+                },
             }
         }
     }

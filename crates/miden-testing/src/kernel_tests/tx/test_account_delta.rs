@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 use std::string::String;
 
 use anyhow::Context;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -15,7 +15,6 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::{Note, NoteExecutionHint, NoteTag, NoteType};
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -35,7 +34,6 @@ use miden_objects::testing::constants::{
 use miden_objects::testing::storage::{STORAGE_INDEX_0, STORAGE_INDEX_2};
 use miden_objects::transaction::TransactionScript;
 use miden_objects::{EMPTY_WORD, Felt, LexicographicWord, Word, ZERO};
-use miden_tx::utils::word_to_masm_push_string;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
@@ -166,12 +164,12 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
       end
       ",
         // Set slot 0 to some other value initially.
-        tmp_slot_0_value = word_to_masm_push_string(&slot_0_tmp_value),
-        final_slot_0_value = word_to_masm_push_string(&slot_0_final_value),
-        final_slot_1_value = word_to_masm_push_string(&slot_1_final_value),
-        final_slot_2_value = word_to_masm_push_string(&slot_2_final_value),
-        tmp_slot_3_value = word_to_masm_push_string(&slot_3_tmp_value),
-        final_slot_3_value = word_to_masm_push_string(&slot_3_final_value),
+        tmp_slot_0_value = slot_0_tmp_value,
+        final_slot_0_value = slot_0_final_value,
+        final_slot_1_value = slot_1_final_value,
+        final_slot_2_value = slot_2_final_value,
+        tmp_slot_3_value = slot_3_tmp_value,
+        final_slot_3_value = slot_3_final_value,
     ))?;
 
     let executed_tx = mock_chain
@@ -308,21 +306,21 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           # => []
       end
       ",
-        key0 = word_to_masm_push_string(&key0),
-        key1 = word_to_masm_push_string(&key1),
-        key2 = word_to_masm_push_string(&key2),
-        key3 = word_to_masm_push_string(&key3),
-        key4 = word_to_masm_push_string(&key4),
-        key5 = word_to_masm_push_string(&key5),
-        key0_value = word_to_masm_push_string(&key0_final_value),
-        key1_tmp_value = word_to_masm_push_string(&key1_tmp_value),
-        key1_value = word_to_masm_push_string(&key1_final_value),
-        key2_value = word_to_masm_push_string(&key2_final_value),
-        key3_value = word_to_masm_push_string(&key3_final_value),
-        key4_tmp_value = word_to_masm_push_string(&key4_tmp_value),
-        key4_value = word_to_masm_push_string(&key4_final_value),
-        key5_tmp_value = word_to_masm_push_string(&key5_tmp_value),
-        key5_value = word_to_masm_push_string(&key5_final_value),
+        key0 = key0,
+        key1 = key1,
+        key2 = key2,
+        key3 = key3,
+        key4 = key4,
+        key5 = key5,
+        key0_value = key0_final_value,
+        key1_tmp_value = key1_tmp_value,
+        key1_value = key1_final_value,
+        key2_value = key2_final_value,
+        key3_value = key3_final_value,
+        key4_tmp_value = key4_tmp_value,
+        key4_value = key4_final_value,
+        key5_tmp_value = key5_tmp_value,
+        key5_value = key5_final_value,
     ))?;
 
     let executed_tx = mock_chain
@@ -426,10 +424,10 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
         # => []
     end
     ",
-        asset0 = word_to_masm_push_string(&removed_asset0.into()),
-        asset1 = word_to_masm_push_string(&removed_asset1.into()),
-        asset2 = word_to_masm_push_string(&removed_asset2.into()),
-        asset3 = word_to_masm_push_string(&removed_asset3.into()),
+        asset0 = Word::from(removed_asset0),
+        asset1 = Word::from(removed_asset1),
+        asset2 = Word::from(removed_asset2),
+        asset3 = Word::from(removed_asset3),
     ))?;
 
     let executed_tx = mock_chain
@@ -534,9 +532,9 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
         # => []
     end
     ",
-        asset1 = word_to_masm_push_string(&asset1.into()),
-        asset2 = word_to_masm_push_string(&asset2.into()),
-        asset3 = word_to_masm_push_string(&asset3.into()),
+        asset1 = Word::from(asset1),
+        asset2 = Word::from(asset2),
+        asset3 = Word::from(asset3),
     ))?;
 
     let executed_tx = mock_chain
@@ -576,10 +574,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
-        .with_component(AccountMockComponent::new_with_slots(
-            TransactionKernel::testing_assembler(),
-            AccountStorage::mock_storage_slots(),
-        )?)
+        .with_component(MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()))
         .with_assets(account_assets)
         .build_existing()?;
 
@@ -657,13 +652,13 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             NOTETYPE = note_types[i] as u8,
             aux = aux_array[i],
             tag = tags[i],
-            REMOVED_ASSET = word_to_masm_push_string(&Word::from(removed_assets[i]))
+            REMOVED_ASSET = Word::from(removed_assets[i])
         ));
     }
 
     let tx_script_src = format!(
         "\
-        use.test::account
+        use.mock::account
         use.miden::tx
 
         ## TRANSACTION SCRIPT
@@ -707,12 +702,12 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             dropw dropw dropw dropw
         end
     ",
-        UPDATED_SLOT_VALUE = word_to_masm_push_string(&updated_slot_value),
-        UPDATED_MAP_VALUE = word_to_masm_push_string(&updated_map_value),
-        UPDATED_MAP_KEY = word_to_masm_push_string(&updated_map_key),
+        UPDATED_SLOT_VALUE = updated_slot_value,
+        UPDATED_MAP_VALUE = updated_map_value,
+        UPDATED_MAP_KEY = updated_map_key,
     );
 
-    let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_src)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_src)?;
 
     // Create the input note that carries the assets that we will assert later
     let input_note = {
@@ -855,13 +850,13 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
         code = code.as_ref()
     );
 
-    ScriptBuilder::with_mock_account_library()?
+    ScriptBuilder::with_mock_libraries()?
         .compile_tx_script(&code)
         .context("failed to compile tx script")
 }
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
-      use.test::account
+      use.mock::account
       use.miden::tx
 
       #! Inputs:  [index, VALUE]

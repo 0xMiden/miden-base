@@ -20,3 +20,18 @@ export.get_fungible_asset_max_amount
     push.FUNGIBLE_ASSET_MAX_AMOUNT
     # => [fungible_asset_max_amount]
 end
+
+#! Returns the balance of the given fungible asset.
+#!
+#! Note: Assumes that the given asset is fungible and does NOT validate it.
+#!
+#! Inputs:  [ASSET]
+#! Outputs: [balance]
+#!
+#! Where:
+#! - ASSET is the fungible asset from which to extract the balance.
+#! - balance is the amount of the fungible asset.
+export.get_balance_from_fungible_asset
+    drop drop drop
+    # => [balance]
+end

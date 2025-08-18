@@ -166,10 +166,10 @@ const.GET_OPERATION_ABSENT_AT_HEAD=1
 # =================================================================================================
 
 # Event emitted when an entry is set.
-const.LINK_MAP_SET_EVENT=131099
+const.LINK_MAP_SET_EVENT=131100
 
 # Event emitted when an entry is fetched.
-const.LINK_MAP_GET_EVENT=131100
+const.LINK_MAP_GET_EVENT=131101
 
 # LINK MAP PROCEDURES
 # =================================================================================================

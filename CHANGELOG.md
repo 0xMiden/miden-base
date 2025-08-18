@@ -24,6 +24,10 @@
 - Add `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
 - [BREAKING] Make transaction execution and transaction authentication asynchronous ([#1699](https://github.com/0xMiden/miden-base/pull/1699)).
 - [BREAKING] Consolidate to a single async interface and drop `#[maybe_async]` usage ([#1666](https://github.com/0xMiden/miden-base/pull/#1666)).
+- Add `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713), [#1750](https://github.com/0xMiden/miden-base/pull/1750)).
+- [BREAKING] Return dedicated insufficient fee error from transaction host if account balance is too low ([#1744](https://github.com/0xMiden/miden-base/pull/#1744)).
+- Add `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713)).
+- Add `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
 
 ### Changes
 
@@ -58,11 +62,15 @@
 - [BREAKING] Update `NoteConsumptionChecker::check_notes_consumability` and `TransactionExecutor::try_execute_notes` to return `NoteConsumptionInfo` containing lists of `Note` rather than `NoteId` ([#1680](https://github.com/0xMiden/miden-base/pull/1680)).
 - Refactor epilogue to run as much code as possible before fees are computed ([#1698](https://github.com/0xMiden/miden-base/pull/1698)).
 - [BREAKING] Remove note script utils and rename `note::add_note_assets_to_account` to `note::add_assets_to_account` ([#1694](https://github.com/0xMiden/miden-base/pull/1694)).
+- [BREAKING] Move `IncrNonceAuthComponent`, `ConditionalAuthComponent` and `AccountMockComponent` to `miden-lib` ([#1722](https://github.com/0xMiden/miden-base/pull/1722)).
 - Refactor `contracts::auth::basic` into a reusable library procedure `auth::rpo_falcon512` ([#1712](https://github.com/0xMiden/miden-base/pull/1712)).
+- [BREAKING] Refactored `FungibleAsset::sub` to be more similar to `FungibleAsset::add` ([#1720](https://github.com/0xMiden/miden-base/pull/1720)).
+- [BREAKING] Split `AccountCode::mock_library` into an account and faucet library ([#1732](https://github.com/0xMiden/miden-base/pull/1732), [#1733](https://github.com/0xMiden/miden-base/pull/1733)).
+- [BREAKING] Refactor `AccountError::AssumptionViolated` into `AccountError::Other` ([#1743](https://github.com/0xMiden/miden-base/pull/1743)).
 
 ## 0.10.1 (2025-08-02)
 
-- Added `NoAuth` component to the set of standard components ([#1620]([(https://github.com/0xMiden/miden-base/pull/1620](https://github.com/0xMiden/miden-base/pull/1620)))). 
+- Added `NoAuth` component to the set of standard components ([#1620](https://github.com/0xMiden/miden-base/pull/1620)).
 
 ## 0.10.0 (2025-07-08)
 
@@ -116,8 +124,8 @@
 - Defined the commitment to an empty account delta as `EMPTY_WORD` ([#1528](https://github.com/0xMiden/miden-base/pull/1528)).
 - [BREAKING] Renamed `account_get_current_commitment` to `account_compute_current_commitment` and include the latest storage commitment in the returned commitment ([#1529](https://github.com/0xMiden/miden-base/pull/1529)).
 - [BREAKING] Remove `create_note` from `BasicWallet`, expose it and `add_asset_to_note` in `miden::tx` ([#1525](https://github.com/0xMiden/miden-base/pull/1525)).
-- Add a new auth component `RpoFalcon512ProcedureAcl` (#1531).
-- [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512ProcedureAcl` for authentication (#1531).
+- Add a new auth component `RpoFalcon512Acl` ([#1531](https://github.com/0xMiden/miden-base/pull/1531)).
+- [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512Acl` for authentication ([#1531](https://github.com/0xMiden/miden-base/pull/1531)).
 - Introduce `MockChain` methods for executing at an older block (#1541).
 
 ### Fixes
