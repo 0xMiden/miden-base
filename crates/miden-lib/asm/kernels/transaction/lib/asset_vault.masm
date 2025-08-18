@@ -65,8 +65,8 @@ export.get_balance
     exec.smt::get swapw dropw
     # => [ASSET]
 
-    # extract asset balance (ASSET[0])
-    drop drop drop
+    # extract the asset's balance
+    exec.::$kernel::util::asset::get_balance_from_fungible_asset
     # => [balance]
 end
 
@@ -118,8 +118,8 @@ export.peek_balance
     # OS => [ASSET]
     # AS => []
 
-    # extract asset balance (ASSET[0])
-    drop drop drop
+    # extract the asset's balance
+    exec.::$kernel::util::asset::get_balance_from_fungible_asset
     # => [balance]
 end
 
