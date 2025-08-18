@@ -35,6 +35,17 @@ pub struct TransactionWitness {
     pub advice_witness: AdviceInputs,
 }
 
+/// Please see the docs for the non-testing variant.
+#[cfg(any(feature = "testing", test))]
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TransactionWitness {
+    pub tx_inputs: TransactionInputs,
+    pub tx_args: TransactionArgs,
+    pub advice_witness: AdviceInputs,
+    pub account_delta: AccountDelta,
+    pub tx_outputs: TransactionOutputs,
+}
+
 // SERIALIZATION
 // ================================================================================================
 
@@ -43,6 +54,12 @@ impl Serializable for TransactionWitness {
         self.tx_inputs.write_into(target);
         self.tx_args.write_into(target);
         self.advice_witness.write_into(target);
+
+        #[cfg(not(any(feature = "testing", test)))]
+        {
+            self.account_delta.write_into(target);
+            self.tx_outputs.write_into(target);
+        }
     }
 }
 
@@ -53,25 +70,19 @@ impl Deserializable for TransactionWitness {
         let advice_witness = AdviceInputs::read_from(source)?;
 
         #[cfg(not(any(feature = "testing", test)))]
-        return Ok(Self { tx_inputs, tx_args, advice_witness });
+        {
+            Ok(Self { tx_inputs, tx_args, advice_witness })
+        }
 
         #[cfg(any(feature = "testing", test))]
-        Ok(Self {
-            tx_inputs,
-            tx_args,
-            advice_witness,
-            account_delta: AccountDelta::read_from(source)?,
-            tx_outputs: TransactionOutputs::read_from(source)?,
-        })
+        {
+            Ok(Self {
+                tx_inputs,
+                tx_args,
+                advice_witness,
+                account_delta: AccountDelta::read_from(source)?,
+                tx_outputs: TransactionOutputs::read_from(source)?,
+            })
+        }
     }
-}
-
-#[cfg(any(feature = "testing", test))]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TransactionWitness {
-    pub tx_inputs: TransactionInputs,
-    pub tx_args: TransactionArgs,
-    pub advice_witness: AdviceInputs,
-    pub account_delta: AccountDelta,
-    pub tx_outputs: TransactionOutputs,
 }
