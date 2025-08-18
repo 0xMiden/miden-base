@@ -74,6 +74,12 @@ pub enum TransactionKernelError {
     AccountStorageSlotsNumMissing(u32),
     #[error("account nonce can only be incremented once")]
     NonceCanOnlyIncrementOnce,
+    #[error("failed to convert fee asset into fungible asset")]
+    FailedToConvertFeeAsset(#[source] AssetError),
+    #[error(
+        "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
+    )]
+    InsufficientFee { account_balance: u64, tx_fee: u64 },
     /// This variant signals that a signature over the contained commitments is required, but
     /// missing.
     #[error("transaction requires a signature")]

@@ -41,7 +41,7 @@ pub struct MeasurementsPrinter {
     note_execution: BTreeMap<String, usize>,
     tx_script_processing: usize,
     epilogue: usize,
-    after_tx_fee_computed_cycles: usize,
+    after_tx_cycles_obtained: usize,
 }
 
 impl From<TransactionMeasurements> for MeasurementsPrinter {
@@ -58,7 +58,7 @@ impl From<TransactionMeasurements> for MeasurementsPrinter {
             note_execution: note_execution_map,
             tx_script_processing: tx_measurements.tx_script_processing,
             epilogue: tx_measurements.epilogue,
-            after_tx_fee_computed_cycles: tx_measurements.after_tx_fee_computed_cycles,
+            after_tx_cycles_obtained: tx_measurements.after_tx_cycles_obtained,
         }
     }
 }
