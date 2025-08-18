@@ -7,7 +7,6 @@ use miden_objects::asset::Asset;
 use miden_objects::note::Note;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::testing::storage::prepare_assets;
-use miden_tx::utils::word_to_masm_push_string;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
 use vm_processor::Felt;
@@ -88,10 +87,10 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
             code_body.push_str(
                 "
                 # add first asset
-                
+
                 padw dup.4 mem_loadw
                 padw swapw padw padw swapdw
-                call.wallet::receive_asset      
+                call.wallet::receive_asset
                 dropw movup.12
                 # => [dest_ptr, pad(12)]
                 ",
@@ -170,7 +169,7 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
               push.{aux}
               push.{tag}
               call.tx::create_note\n",
-            recipient = word_to_masm_push_string(&note.recipient().digest()),
+            recipient = note.recipient().digest(),
             hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
             aux = note.metadata().aux(),

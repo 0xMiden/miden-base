@@ -155,8 +155,33 @@ pub enum AccountError {
     },
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
-    #[error("assumption violated: {0}")]
-    AssumptionViolated(String),
+    #[error("{error_msg}")]
+    Other {
+        error_msg: Box<str>,
+        // thiserror will return this when calling Error::source on AccountError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl AccountError {
+    /// Creates a custom error using the [`AccountError::Other`] variant from an error message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { error_msg: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`AccountError::Other`] variant from an error message and
+    /// a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            error_msg: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // ACCOUNT ID ERROR

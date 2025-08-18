@@ -9,7 +9,7 @@ use miden_lib::errors::tx_kernel_errors::{
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::NATIVE_ACCT_STORAGE_SLOTS_SECTION_PTR;
-use miden_lib::utils::{ScriptBuilder, word_to_masm_push_string};
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -233,8 +233,8 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             dropw
         end
         "#,
-        non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into()),
-        asset_vault_key = word_to_masm_push_string(&StorageMap::hash_key(asset_vault_key)),
+        non_fungible_asset = Word::from(non_fungible_asset),
+        asset_vault_key = StorageMap::hash_key(asset_vault_key),
     );
 
     tx_context
@@ -262,7 +262,7 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
             call.faucet::mint
         end
         ",
-        non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into())
+        non_fungible_asset = Word::from(non_fungible_asset)
     );
 
     let process =
@@ -318,7 +318,7 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<(
             call.faucet::mint
         end
         ",
-        non_fungible_asset = word_to_masm_push_string(&non_fungible_asset.into())
+        non_fungible_asset = Word::from(non_fungible_asset)
     );
 
     let process =
@@ -369,7 +369,7 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 
             push.{suffix}.{prefix}
             exec.asset_vault::get_balance
-            
+
             push.{final_input_vault_asset_amount} assert_eq.err="vault balance does not match expected balance"
         end
         "#,
@@ -554,8 +554,8 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             dropw
         end
         "#,
-        non_fungible_asset = word_to_masm_push_string(&non_fungible_asset_burnt.into()),
-        burnt_asset_vault_key = word_to_masm_push_string(&burnt_asset_vault_key),
+        non_fungible_asset = Word::from(non_fungible_asset_burnt),
+        burnt_asset_vault_key = burnt_asset_vault_key,
     );
 
     tx_context
@@ -584,7 +584,7 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
             call.faucet::burn
         end
         ",
-        non_fungible_asset = word_to_masm_push_string(&non_fungible_asset_burnt.into())
+        non_fungible_asset = Word::from(non_fungible_asset_burnt)
     );
 
     let process =
@@ -643,7 +643,7 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
             call.faucet::burn
         end
         ",
-        non_fungible_asset = word_to_masm_push_string(&non_fungible_asset_burnt.into())
+        non_fungible_asset = Word::from(non_fungible_asset_burnt)
     );
 
     let process =
@@ -690,8 +690,8 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
             eq.0 assert.err="non fungible asset data should have been issued"
         end
         "#,
-        non_fungible_asset_1 = word_to_masm_push_string(&non_fungible_asset_1.into()),
-        non_fungible_asset_2 = word_to_masm_push_string(&non_fungible_asset_2.into()),
+        non_fungible_asset_1 = Word::from(non_fungible_asset_1),
+        non_fungible_asset_2 = Word::from(non_fungible_asset_2),
     );
 
     tx_context

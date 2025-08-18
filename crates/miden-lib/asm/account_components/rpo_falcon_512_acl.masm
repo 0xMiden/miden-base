@@ -4,6 +4,7 @@
 
 use.miden::account
 use.miden::tx
+use.std::word
 
 # CONSTANTS
 # ================================================================================================
@@ -133,7 +134,7 @@ export.auth__tx_rpo_falcon512_acl.2
         exec.account::compute_current_commitment
         # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
 
-        eqw not movdn.8 dropw dropw
+        exec.word::eq not
         # => [has_account_state_changed, pad(16)]
 
         if.true

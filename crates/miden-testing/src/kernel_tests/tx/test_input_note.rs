@@ -4,7 +4,7 @@ use miden_lib::utils::ScriptBuilder;
 use miden_objects::Word;
 use miden_objects::note::Note;
 
-use super::{TestSetup, setup_test, word_to_masm_push_string};
+use super::{TestSetup, setup_test};
 use crate::TxContextInput;
 
 /// Check that the assets number and assets commitment obtained from the
@@ -43,7 +43,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             # => []
         "#,
             note_index = note_index,
-            COMPUTED_ASSETS_COMMITMENT = word_to_masm_push_string(&assets_commitment),
+            COMPUTED_ASSETS_COMMITMENT = assets_commitment,
             assets_number = assets_number,
         )
     }
@@ -131,8 +131,8 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
             # => []
         end
     "#,
-        RECIPIENT = word_to_masm_push_string(&p2id_note_1_asset.recipient().digest()),
-        METADATA = word_to_masm_push_string(&p2id_note_1_asset.metadata().into()),
+        RECIPIENT = p2id_note_1_asset.recipient().digest(),
+        METADATA = Word::from(p2id_note_1_asset.metadata()),
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
@@ -197,7 +197,7 @@ fn test_get_assets() -> anyhow::Result<()> {
                     add.4
                     # => [dest_ptr+4, note_index]
                 "#,
-                NOTE_ASSET = word_to_masm_push_string(&asset.into()),
+                NOTE_ASSET = Word::from(*asset),
                 asset_index = asset_index,
                 note_index = note_index,
             ));

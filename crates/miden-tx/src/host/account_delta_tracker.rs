@@ -44,8 +44,13 @@ impl AccountDeltaTracker {
         self.nonce_delta += Felt::ONE;
     }
 
-    /// Get a mutable reference to the current vault delta
-    pub fn vault_delta(&mut self) -> &mut AccountVaultDelta {
+    /// Returns a reference to the vault delta.
+    pub fn vault_delta(&self) -> &AccountVaultDelta {
+        &self.vault
+    }
+
+    /// Returns a mutable reference to the vault delta.
+    pub fn vault_delta_mut(&mut self) -> &mut AccountVaultDelta {
         &mut self.vault
     }
 
