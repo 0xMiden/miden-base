@@ -259,8 +259,8 @@ where
                 self.tx_progress.start_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::EpilogueAfterTxFeeComputed => {
-                self.tx_progress.epilogue_after_tx_fee_computed(process.clk());
+            TransactionEvent::EpilogueTxCyclesObtained => {
+                self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
                 Ok(TransactionEventHandling::Handled(vec![]))
             }
             TransactionEvent::EpilogueTxFeeComputed => self.on_tx_fee_computed(process),
