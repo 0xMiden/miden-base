@@ -328,6 +328,8 @@ impl From<AuthMultisigRpoFalcon512> for AccountComponent {
 
 #[cfg(test)]
 mod tests {
+    use alloc::string::ToString;
+
     use miden_objects::Word;
     use miden_objects::account::AccountBuilder;
 
