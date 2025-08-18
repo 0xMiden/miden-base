@@ -150,22 +150,14 @@ mod tests {
             let init_nonce = Felt::new(1);
             let word = Word::default();
             let storage_slot = StorageSlot::Value(word);
-            let account = build_account(vec![asset_0], init_nonce, vec![storage_slot]);
-            account
+            build_account(vec![asset_0], init_nonce, vec![storage_slot])
         };
 
         let block_header = {
             let chain_commitment = partial_blockchain.peaks().hash_peaks();
             let note_root = Word::default();
             let tx_kernel_commitment = Word::default();
-            let header = BlockHeader::mock(
-                0,
-                Some(chain_commitment),
-                Some(note_root),
-                &[],
-                tx_kernel_commitment,
-            );
-            header
+            BlockHeader::mock(0, Some(chain_commitment), Some(note_root), &[], tx_kernel_commitment)
         };
 
         let account_id = AccountId::try_from(ACCOUNT_ID_PRIVATE_SENDER).unwrap();
@@ -173,10 +165,7 @@ mod tests {
             let storage_delta = AccountStorageDelta::new();
             let vault_delta = AccountVaultDelta::default();
 
-            let delta =
-                AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO)
-                    .unwrap();
-            delta
+            AccountDelta::new(account_id, storage_delta.clone(), vault_delta.clone(), ZERO).unwrap()
         };
 
         let tx_inputs = TransactionInputs::new(
@@ -220,14 +209,13 @@ mod tests {
             )
             .unwrap();
 
-            let tx_outputs = TransactionOutputs {
+            TransactionOutputs {
                 account: account_header,
                 account_delta_commitment: Word::default(),
                 output_notes: OutputNotes::new(vec![OutputNote::Full(mock_note)]).unwrap(),
                 fee: offered_asset,
                 expiration_block_num: BlockNumber::default(),
-            };
-            tx_outputs
+            }
         };
 
         let witness = TransactionWitness {
