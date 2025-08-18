@@ -277,14 +277,12 @@ impl AuthMultisigRpoFalcon512 {
     /// Returns an error if threshold is 0 or greater than the number of approvers.
     pub fn new(threshold: u32, approvers: Vec<PublicKey>) -> Result<Self, AccountError> {
         if threshold == 0 {
-            return Err(AccountError::AssumptionViolated(
-                "threshold must be at least 1".to_string(),
-            ));
+            return Err(AccountError::other("threshold must be at least 1"));
         }
 
         if threshold > approvers.len() as u32 {
-            return Err(AccountError::AssumptionViolated(
-                "threshold cannot be greater than number of approvers".to_string(),
+            return Err(AccountError::other(
+                "threshold cannot be greater than number of approvers",
             ));
         }
 
