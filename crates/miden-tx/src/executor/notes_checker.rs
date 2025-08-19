@@ -56,30 +56,13 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        // Identify well-known notes and try to execute them first.
-        let (well_known_notes, notes) = input_notes
-            .into_vec()
-            .into_iter()
-            .partition(|note| WellKnownNote::from_note(note.note()).is_some());
-        let well_known_execution_result = self
-            .0
-            .try_execute_notes(
-                target_account_id,
-                block_ref,
-                InputNotes::<InputNote>::new_unchecked(well_known_notes),
-                &tx_args,
-            )
-            .await?;
+        // Ensure well-known notes are ordered first.
+        let mut notes = input_notes.into_vec();
+        notes.sort_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
 
         // Attempt to find an executable set from the remaining notes.
-        let mut execution_result = self
-            .find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
-            .await?;
-
-        // Join the results.
-        execution_result.successful.extend(well_known_execution_result.successful);
-        execution_result.failed.extend(well_known_execution_result.failed);
-        Ok(execution_result)
+        self.find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
+            .await
     }
 
     /// Finds a set of executable notes and eliminates failed notes from the list in the process.
