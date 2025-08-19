@@ -817,6 +817,42 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
     Ok(())
 }
 
+/// Tests that executing a transaction with an empty transaction script produces a helpful error
+/// message. This test reproduces the bug where empty transaction scripts result in cryptic
+/// AssemblyError messages.
+#[test]
+fn empty_transaction_script_error_message() -> anyhow::Result<()> {
+    use std::println;
+
+    let mut _builder = MockChain::builder();
+    let _account = _builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let _chain = _builder.build()?;
+
+    // Try to compile an empty transaction script - this should fail with a cryptic error
+    let result = ScriptBuilder::with_mock_libraries()?.compile_tx_script("");
+
+    // The compilation should fail with a helpful error message
+    match result {
+        Err(e) => {
+            let error_string = format!("{:?}", e);
+            // Check that the error contains a helpful message about empty transaction script
+            // Currently this will show the cryptic AssemblyError, but after our fix it should be
+            // clearer
+            println!("Current error message: {}", error_string);
+
+            // Check that we get the improved error message about empty transaction script
+            assert!(error_string.contains("empty transaction script"));
+        },
+        Ok(_) => {
+            panic!(
+                "Expected transaction script compilation to fail with empty script, but it succeeded"
+            );
+        },
+    }
+
+    Ok(())
+}
+
 // TEST HELPERS
 // ================================================================================================
 

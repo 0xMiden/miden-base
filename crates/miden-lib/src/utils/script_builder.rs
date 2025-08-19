@@ -1,4 +1,5 @@
 use alloc::string::String;
+use core::fmt;
 
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, Library, LibraryPath};
@@ -7,6 +8,24 @@ use miden_objects::transaction::TransactionScript;
 
 use crate::errors::ScriptBuilderError;
 use crate::transaction::TransactionKernel;
+
+// EMPTY SCRIPT ERROR
+// ================================================================================================
+
+/// Error type for empty transaction scripts
+#[derive(Debug)]
+struct EmptyScriptError;
+
+impl fmt::Display for EmptyScriptError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "transaction script cannot be empty - it must contain at least a 'begin...end' block"
+        )
+    }
+}
+
+impl core::error::Error for EmptyScriptError {}
 
 // SCRIPT BUILDER
 // ================================================================================================
@@ -229,13 +248,24 @@ impl ScriptBuilder {
     /// # Errors
     /// Returns an error if:
     /// - The transaction script compilation fails
+    /// - The transaction script is empty
     pub fn compile_tx_script(
         self,
         tx_script: impl AsRef<str>,
     ) -> Result<TransactionScript, ScriptBuilderError> {
+        let tx_script_str = tx_script.as_ref();
+
+        // Check for empty transaction script and provide a helpful error message
+        if tx_script_str.trim().is_empty() {
+            return Err(ScriptBuilderError::build_error_with_source(
+                "empty transaction script",
+                EmptyScriptError,
+            ));
+        }
+
         let assembler = self.assembler;
 
-        let program = assembler.assemble_program(tx_script.as_ref()).map_err(|err| {
+        let program = assembler.assemble_program(tx_script_str).map_err(|err| {
             ScriptBuilderError::build_error_with_report("failed to compile transaction script", err)
         })?;
         Ok(TransactionScript::new(program))
