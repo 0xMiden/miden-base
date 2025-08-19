@@ -18,7 +18,7 @@ use crate::account::StorageMap;
 /// A partial storage map carries only the Merkle authentication data a transaction will need.
 /// Every included entry pairs a value with its proof, letting the transaction kernel verify reads
 /// (and prepare writes) without needing the complete tree.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PartialStorageMap {
     partial_smt: PartialSmt,
 }

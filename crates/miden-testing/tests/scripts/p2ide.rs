@@ -12,9 +12,7 @@ use miden_objects::account::Account;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{Note, NoteType};
-use miden_testing::{Auth, MockChain};
-
-use crate::assert_transaction_executor_error;
+use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
 
 /// Test that the P2IDE note works like a regular P2ID note
 #[test]

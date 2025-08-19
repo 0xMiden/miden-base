@@ -31,7 +31,7 @@ const.TX_SCRIPT_PROCESSING_END=131095
 # Event emitted to signal that an execution of the transaction epilogue has started.
 const.EPILOGUE_START=131096
 # Event emitted to signal that an execution of the transaction epilogue has ended.
-const.EPILOGUE_END=131098
+const.EPILOGUE_END=131099
 
 # MAIN
 # =================================================================================================

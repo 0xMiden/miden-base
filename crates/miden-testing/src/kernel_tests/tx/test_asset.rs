@@ -1,4 +1,3 @@
-use miden_lib::utils::word_to_masm_push_string;
 use miden_objects::account::AccountId;
 use miden_objects::asset::NonFungibleAsset;
 use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
@@ -8,14 +7,13 @@ use miden_objects::testing::constants::{
     NON_FUNGIBLE_ASSET_DATA,
 };
 
-use super::{Felt, Hasher, ONE, Word};
+use super::{Felt, Hasher, Word};
 use crate::TransactionContextBuilder;
 
 #[test]
 fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-        ONE,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
     )
     .build()?;
@@ -55,12 +53,9 @@ fn test_create_fungible_asset_succeeds() -> anyhow::Result<()> {
 
 #[test]
 fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        ONE,
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
     let non_fungible_asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA);
 
@@ -80,8 +75,7 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
             swapw dropw
         end
         ",
-        non_fungible_asset_data_hash =
-            word_to_masm_push_string(&Hasher::hash(&NON_FUNGIBLE_ASSET_DATA)),
+        non_fungible_asset_data_hash = Hasher::hash(&NON_FUNGIBLE_ASSET_DATA),
     );
 
     let process = &tx_context.execute_code(&code)?;
@@ -92,33 +86,29 @@ fn test_create_non_fungible_asset_succeeds() -> anyhow::Result<()> {
 
 #[test]
 fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
-        NonFungibleAsset::mock_issuer().into(),
-        ONE,
-        false,
-    )
-    .build()?;
+    let tx_context =
+        TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
+            .build()?;
 
-    let non_fungible_asset = NonFungibleAsset::mock(&[1, 2, 3]);
-    let encoded = Word::from(non_fungible_asset);
+    let non_fungible_asset = Word::from(NonFungibleAsset::mock(&[1, 2, 3]));
 
     let code = format!(
         "
         use.$kernel::asset
 
         begin
-            push.{asset} 
+            push.{asset}
             exec.asset::validate_non_fungible_asset
 
             # truncate the stack
             swapw dropw
         end
         ",
-        asset = word_to_masm_push_string(&encoded)
+        asset = non_fungible_asset
     );
 
     let process = &tx_context.execute_code(&code)?;
 
-    assert_eq!(process.stack.get_word(0), encoded);
+    assert_eq!(process.stack.get_word(0), non_fungible_asset);
     Ok(())
 }

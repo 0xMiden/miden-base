@@ -4,9 +4,10 @@
 
 use.miden::account
 use.miden::tx
+use.std::word
 
 # CONSTANTS
-# =================================================================================================
+# ================================================================================================
 
 # The slot in this component's storage layout where the public key is stored.
 const.PUBLIC_KEY_SLOT=0
@@ -31,7 +32,7 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export.auth__tx_rpo_falcon512_procedure_acl.2
+export.auth__tx_rpo_falcon512_acl.2
     dropw
     # => [pad(16)]
 
@@ -133,7 +134,7 @@ export.auth__tx_rpo_falcon512_procedure_acl.2
         exec.account::compute_current_commitment
         # => [CURRENT_COMMITMENT, INITIAL_COMMITMENT, pad(16)]
 
-        eqw not movdn.8 dropw dropw
+        exec.word::eq not
         # => [has_account_state_changed, pad(16)]
 
         if.true

@@ -1,4 +1,4 @@
-use alloc::string::{String, ToString};
+use alloc::string::String;
 
 use miden_objects::account::{
     Account,
@@ -118,8 +118,8 @@ pub fn create_basic_wallet(
     account_storage_mode: AccountStorageMode,
 ) -> Result<(Account, Word), BasicWalletError> {
     if matches!(account_type, AccountType::FungibleFaucet | AccountType::NonFungibleFaucet) {
-        return Err(BasicWalletError::AccountError(AccountError::AssumptionViolated(
-            "basic wallet accounts cannot have a faucet account type".to_string(),
+        return Err(BasicWalletError::AccountError(AccountError::other(
+            "basic wallet accounts cannot have a faucet account type",
         )));
     }
 

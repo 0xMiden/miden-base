@@ -1,6 +1,7 @@
 use core::slice;
 
 use assert_matches::assert_matches;
+use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -11,7 +12,6 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::testing::account_component::AccountMockComponent;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::OutputNote;
@@ -24,7 +24,7 @@ use vm_processor::ExecutionError;
 // ================================================================================================
 
 const TX_SCRIPT_NO_TRIGGER: &str = r#"
-    use.test::account
+    use.mock::account
     begin
         call.account::account_procedure_1
         drop
@@ -34,30 +34,26 @@ const TX_SCRIPT_NO_TRIGGER: &str = r#"
 // HELPER FUNCTIONS
 // ================================================================================================
 
-/// Sets up the basic components needed for RPO Falcon procedure ACL tests.
+/// Sets up the basic components needed for RPO Falcon ACL tests.
 /// Returns (account, mock_chain, note).
-fn setup_rpo_falcon_procedure_acl_test(
+fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
 ) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
     let assembler = TransactionKernel::assembler();
 
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
+    let component: AccountComponent =
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("test::account::get_item")
+        .get_procedure_root_by_name("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("test::account::set_item")
+        .get_procedure_root_by_name("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
-    let (auth_component, _authenticator) = Auth::ProcedureAcl {
+    let (auth_component, _authenticator) = Auth::Acl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
         allow_unauthorized_output_notes,
         allow_unauthorized_input_notes,
@@ -85,27 +81,22 @@ fn setup_rpo_falcon_procedure_acl_test(
 }
 
 #[test]
-fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
-    let (account, mut mock_chain, note) = setup_rpo_falcon_procedure_acl_test(false, true)?;
+fn test_rpo_falcon_acl() -> anyhow::Result<()> {
+    let (account, mut mock_chain, note) = setup_rpo_falcon_acl_test(false, true)?;
 
     // We need to get the authenticator separately for this test
-    let assembler = TransactionKernel::assembler();
-    let component: AccountComponent = AccountMockComponent::new_with_slots(
-        assembler.clone(),
-        AccountStorage::mock_storage_slots(),
-    )
-    .expect("failed to create mock component")
-    .into();
+    let component: AccountComponent =
+        MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
     let get_item_proc_root = component
-        .get_procedure_root_by_name("test::account::get_item")
+        .get_procedure_root_by_name("mock::account::get_item")
         .expect("get_item procedure should exist");
     let set_item_proc_root = component
-        .get_procedure_root_by_name("test::account::set_item")
+        .get_procedure_root_by_name("mock::account::set_item")
         .expect("set_item procedure should exist");
     let auth_trigger_procedures = vec![get_item_proc_root, set_item_proc_root];
 
-    let (_, authenticator) = Auth::ProcedureAcl {
+    let (_, authenticator) = Auth::Acl {
         auth_trigger_procedures: auth_trigger_procedures.clone(),
         allow_unauthorized_output_notes: false,
         allow_unauthorized_input_notes: true,
@@ -116,7 +107,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
     mock_chain.prove_next_block()?;
 
     let tx_script_with_trigger_1 = r#"
-        use.test::account
+        use.mock::account
 
         begin
             push.0
@@ -126,7 +117,7 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         "#;
 
     let tx_script_with_trigger_2 = r#"
-        use.test::account
+        use.mock::account
 
         begin
             push.1.2.3.4 push.0
@@ -136,13 +127,13 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
         "#;
 
     let tx_script_trigger_1 =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_with_trigger_1)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_with_trigger_1)?;
 
     let tx_script_trigger_2 =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(tx_script_with_trigger_2)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_with_trigger_2)?;
 
     let tx_script_no_trigger =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
 
     // Test 1: Transaction WITH authenticator calling trigger procedure 1 (should succeed)
     let tx_context_with_auth_1 = mock_chain
@@ -204,8 +195,8 @@ fn test_rpo_falcon_procedure_acl() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_procedure_acl_test(true, true)?;
+fn test_rpo_falcon_acl_with_allow_unauthorized_output_notes() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, true)?;
 
     // Verify the storage layout includes both authorization flags
     let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
@@ -216,7 +207,7 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
     assert_eq!(slot_1, Word::from([2u32, 1, 1, 0]));
 
     let tx_script_no_trigger =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
 
     // Test: Transaction WITHOUT authenticator calling non-trigger procedure (should succeed)
     // This tests that when allow_unauthorized_output_notes=true, transactions without
@@ -240,8 +231,8 @@ fn test_rpo_falcon_procedure_acl_with_allow_unauthorized_output_notes() -> anyho
 }
 
 #[test]
-fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
-    let (account, mock_chain, note) = setup_rpo_falcon_procedure_acl_test(true, false)?;
+fn test_rpo_falcon_acl_with_disallow_unauthorized_input_notes() -> anyhow::Result<()> {
+    let (account, mock_chain, note) = setup_rpo_falcon_acl_test(true, false)?;
 
     // Verify the storage layout includes both flags
     let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
@@ -252,7 +243,7 @@ fn test_rpo_falcon_procedure_acl_with_disallow_unauthorized_input_notes() -> any
     assert_eq!(slot_1, Word::from([2u32, 1, 0, 0]));
 
     let tx_script_no_trigger =
-        ScriptBuilder::with_mock_account_library()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
+        ScriptBuilder::with_mock_libraries()?.compile_tx_script(TX_SCRIPT_NO_TRIGGER)?;
 
     // Test: Transaction WITHOUT authenticator calling non-trigger procedure but consuming input
     // notes This should FAIL because allow_unauthorized_input_notes=false and we're consuming

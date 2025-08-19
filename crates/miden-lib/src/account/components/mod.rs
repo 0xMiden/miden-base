@@ -32,20 +32,28 @@ static BASIC_FUNGIBLE_FAUCET_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped Basic Fungible Faucet library is well-formed")
 });
 
-// Initialize the Rpo Falcon 512 Procedure ACL library only once.
-static RPO_FALCON_512_PROCEDURE_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+// Initialize the Rpo Falcon 512 ACL library only once.
+static RPO_FALCON_512_ACL_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
-        "/assets/account_components/rpo_falcon_512_procedure_acl.masl"
+        "/assets/account_components/rpo_falcon_512_acl.masl"
     ));
-    Library::read_from_bytes(bytes)
-        .expect("Shipped Rpo Falcon 512 Procedure ACL library is well-formed")
+    Library::read_from_bytes(bytes).expect("Shipped Rpo Falcon 512 ACL library is well-formed")
 });
 
 // Initialize the NoAuth library only once.
 static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/account_components/no_auth.masl"));
     Library::read_from_bytes(bytes).expect("Shipped NoAuth library is well-formed")
+});
+
+// Initialize the Multisig Rpo Falcon 512 library only once.
+static MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/multisig_rpo_falcon_512.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
 });
 
 /// Returns the Basic Wallet Library.
@@ -63,14 +71,19 @@ pub fn rpo_falcon_512_library() -> Library {
     RPO_FALCON_512_LIBRARY.clone()
 }
 
-/// Returns the Rpo Falcon 512 Procedure ACL Library.
-pub fn rpo_falcon_512_procedure_acl_library() -> Library {
-    RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.clone()
+/// Returns the Rpo Falcon 512 ACL Library.
+pub fn rpo_falcon_512_acl_library() -> Library {
+    RPO_FALCON_512_ACL_LIBRARY.clone()
 }
 
 /// Returns the NoAuth Library.
 pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
+}
+
+/// Returns the Multisig Library.
+pub fn multisig_library() -> Library {
+    MULTISIG_LIBRARY.clone()
 }
 
 // WELL KNOWN COMPONENTS
@@ -81,7 +94,8 @@ pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
     RpoFalcon512,
-    RpoFalcon512ProcedureAcl,
+    RpoFalcon512Acl,
+    RpoFalconMultisig,
 }
 
 impl WellKnownComponent {
@@ -92,7 +106,8 @@ impl WellKnownComponent {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
             Self::RpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
-            Self::RpoFalcon512ProcedureAcl => RPO_FALCON_512_PROCEDURE_ACL_LIBRARY.mast_forest(),
+            Self::RpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.mast_forest(),
+            Self::RpoFalconMultisig => MULTISIG_LIBRARY.mast_forest(),
         };
 
         forest.procedure_digests()
@@ -127,8 +142,10 @@ impl WellKnownComponent {
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
                 Self::RpoFalcon512 => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
-                Self::RpoFalcon512ProcedureAcl => component_interface_vec
+                Self::RpoFalcon512Acl => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
+                Self::RpoFalconMultisig => component_interface_vec
+                    .push(AccountComponentInterface::AuthRpoFalconMultisig(storage_offset)),
             }
         }
     }
@@ -142,6 +159,7 @@ impl WellKnownComponent {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::RpoFalcon512.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalcon512ProcedureAcl.extract_component(procedures_map, component_interface_vec);
+        Self::RpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
+        Self::RpoFalconMultisig.extract_component(procedures_map, component_interface_vec);
     }
 }

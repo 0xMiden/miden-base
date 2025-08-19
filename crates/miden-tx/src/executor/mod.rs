@@ -225,6 +225,7 @@ where
             script_mast_store,
             acct_procedure_index_map,
             self.authenticator,
+            tx_inputs.block_header().fee_parameters(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -309,6 +310,7 @@ where
             scripts_mast_store,
             acct_procedure_index_map,
             self.authenticator,
+            tx_inputs.block_header().fee_parameters(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -390,6 +392,7 @@ where
             scripts_mast_store,
             acct_procedure_index_map,
             self.authenticator,
+            tx_inputs.block_header().fee_parameters(),
         );
         let advice_inputs = advice_inputs.into_advice_inputs();
 
