@@ -275,53 +275,6 @@ impl AccountId {
         }
     }
 
-    /// Encodes the [`AccountId`] into a [bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) string.
-    ///
-    /// # Encoding
-    ///
-    /// The encoding of an account ID into bech32 is done as follows:
-    /// - Convert the account ID into its `[u8; 15]` data format.
-    /// - Insert the address type `AddressType::AccountId` byte at index 0, shifting all other
-    ///   elements to the right.
-    /// - Choose an HRP, defined as a [`NetworkId`], for example [`NetworkId::Mainnet`] whose string
-    ///   representation is `mm`.
-    /// - Encode the resulting HRP together with the data into a bech32 string using the
-    ///   [`bech32::Bech32m`] checksum algorithm.
-    ///
-    /// This is an example of an account ID in hex and bech32 representations:
-    ///
-    /// ```text
-    /// hex:    0x140fa04a1e61fc100000126ef8f1d6
-    /// bech32: mm1qq2qlgz2reslcyqqqqfxa7836chrjcvk
-    /// ```
-    ///
-    /// ## Rationale
-    ///
-    /// Having the address type at the very beginning is so that it can be decoded to detect the
-    /// type of the address without having to decode the entire data. Moreover, choosing the
-    /// address type as a multiple of 8 means the first character of the bech32 string after the
-    /// `1` separator will be different for every address type. This makes the type of the address
-    /// conveniently human-readable.
-    ///
-    /// The only allowed checksum algorithm is [`Bech32m`](bech32::Bech32m) due to being the best
-    /// available checksum algorithm with no known weaknesses (unlike [`Bech32`](bech32::Bech32)).
-    /// No checksum is also not allowed since the intended use of bech32 is to have error
-    /// detection capabilities.
-    pub fn to_bech32(&self, network_id: NetworkId) -> String {
-        match self {
-            AccountId::V0(account_id_v0) => account_id_v0.to_bech32(network_id),
-        }
-    }
-
-    /// Decodes a [bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) string into an [`AccountId`].
-    ///
-    /// See [`AccountId::to_bech32`] for details on the format. The procedure for decoding the
-    /// bech32 data into the ID consists of the inverse operations of encoding.
-    pub fn from_bech32(bech32_string: &str) -> Result<(NetworkId, Self), AccountIdError> {
-        AccountIdV0::from_bech32(bech32_string)
-            .map(|(network_id, account_id)| (network_id, AccountId::V0(account_id)))
-    }
-
     /// Returns the [`AccountIdPrefix`] of this ID.
     ///
     /// The prefix of an account ID is guaranteed to be unique.
@@ -486,13 +439,8 @@ impl Deserializable for AccountId {
 
 #[cfg(test)]
 mod tests {
-    use assert_matches::assert_matches;
-    use bech32::{Bech32, Bech32m, Hrp, NoChecksum};
 
     use super::*;
-    use crate::account::account_id::v0::{extract_storage_mode, extract_type, extract_version};
-    use crate::address::AddressType;
-    use crate::errors::Bech32Error;
     use crate::testing::account_id::{
         ACCOUNT_ID_NETWORK_NON_FUNGIBLE_FAUCET,
         ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -522,126 +470,5 @@ mod tests {
                 "failed in {idx}"
             );
         }
-    }
-
-    #[test]
-    fn bech32_encode_decode_roundtrip() {
-        // We use this to check that encoding does not panic even when using the longest possible
-        // HRP.
-        let longest_possible_hrp =
-            "01234567890123456789012345678901234567890123456789012345678901234567890123456789012";
-        assert_eq!(longest_possible_hrp.len(), 83);
-
-        for network_id in [
-            NetworkId::Mainnet,
-            NetworkId::Custom(Hrp::parse("custom").unwrap()),
-            NetworkId::Custom(Hrp::parse(longest_possible_hrp).unwrap()),
-        ] {
-            for (idx, account_id) in [
-                ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-                ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
-                ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-                ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
-                ACCOUNT_ID_PRIVATE_SENDER,
-            ]
-            .into_iter()
-            .enumerate()
-            {
-                let account_id = AccountId::try_from(account_id).unwrap();
-
-                let bech32_string = account_id.to_bech32(network_id);
-                let (decoded_network_id, decoded_account_id) =
-                    AccountId::from_bech32(&bech32_string).unwrap();
-
-                assert_eq!(network_id, decoded_network_id, "network id failed in {idx}");
-                assert_eq!(account_id, decoded_account_id, "account id failed in {idx}");
-
-                let (_, data) = bech32::decode(&bech32_string).unwrap();
-
-                // Raw bech32 data should contain the address type as the first byte.
-                assert_eq!(data[0], AddressType::AccountId as u8);
-
-                // Raw bech32 data should contain the metadata byte at index 8.
-                assert_eq!(extract_version(data[8] as u64).unwrap(), account_id.version());
-                assert_eq!(extract_type(data[8] as u64), account_id.account_type());
-                assert_eq!(
-                    extract_storage_mode(data[8] as u64).unwrap(),
-                    account_id.storage_mode()
-                );
-            }
-        }
-    }
-
-    #[test]
-    fn bech32_invalid_checksum() {
-        let network_id = NetworkId::Mainnet;
-        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-
-        let bech32_string = account_id.to_bech32(network_id);
-        let mut invalid_bech32_1 = bech32_string.clone();
-        invalid_bech32_1.remove(0);
-        let mut invalid_bech32_2 = bech32_string.clone();
-        invalid_bech32_2.remove(7);
-
-        let error = AccountId::from_bech32(&invalid_bech32_1).unwrap_err();
-        assert_matches!(error, AccountIdError::Bech32DecodeError(Bech32Error::DecodeError(_)));
-
-        let error = AccountId::from_bech32(&invalid_bech32_2).unwrap_err();
-        assert_matches!(error, AccountIdError::Bech32DecodeError(Bech32Error::DecodeError(_)));
-    }
-
-    #[test]
-    fn bech32_invalid_address_type() {
-        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let mut id_bytes = account_id.to_bytes();
-
-        // Set invalid address type.
-        id_bytes.insert(0, 16);
-
-        let invalid_bech32 =
-            bech32::encode::<Bech32m>(NetworkId::Mainnet.into_hrp(), &id_bytes).unwrap();
-
-        let error = AccountId::from_bech32(&invalid_bech32).unwrap_err();
-        assert_matches!(
-            error,
-            AccountIdError::Bech32DecodeError(Bech32Error::UnknownAddressType(16))
-        );
-    }
-
-    #[test]
-    fn bech32_invalid_other_checksum() {
-        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let mut id_bytes = account_id.to_bytes();
-        id_bytes.insert(0, AddressType::AccountId as u8);
-
-        // Use Bech32 instead of Bech32m which is disallowed.
-        let invalid_bech32_regular =
-            bech32::encode::<Bech32>(NetworkId::Mainnet.into_hrp(), &id_bytes).unwrap();
-        let error = AccountId::from_bech32(&invalid_bech32_regular).unwrap_err();
-        assert_matches!(error, AccountIdError::Bech32DecodeError(Bech32Error::DecodeError(_)));
-
-        // Use no checksum instead of Bech32m which is disallowed.
-        let invalid_bech32_no_checksum =
-            bech32::encode::<NoChecksum>(NetworkId::Mainnet.into_hrp(), &id_bytes).unwrap();
-        let error = AccountId::from_bech32(&invalid_bech32_no_checksum).unwrap_err();
-        assert_matches!(error, AccountIdError::Bech32DecodeError(Bech32Error::DecodeError(_)));
-    }
-
-    #[test]
-    fn bech32_invalid_length() {
-        let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let mut id_bytes = account_id.to_bytes();
-        id_bytes.insert(0, AddressType::AccountId as u8);
-        // Add one byte to make the length invalid.
-        id_bytes.push(5);
-
-        let invalid_bech32 =
-            bech32::encode::<Bech32m>(NetworkId::Mainnet.into_hrp(), &id_bytes).unwrap();
-
-        let error = AccountId::from_bech32(&invalid_bech32).unwrap_err();
-        assert_matches!(
-            error,
-            AccountIdError::Bech32DecodeError(Bech32Error::InvalidDataLength { .. })
-        );
     }
 }
