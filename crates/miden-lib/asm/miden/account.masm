@@ -384,8 +384,8 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: exec
-export.compute_current_storage_commitment
-    exec.kernel_proc_offsets::account_compute_current_storage_commitment_offset
+export.compute_storage_commitment
+    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
     # => [offset]
 
     # pad the stack

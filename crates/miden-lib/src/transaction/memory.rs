@@ -91,19 +91,12 @@ pub const OUTPUT_VAULT_ROOT_PTR: MemoryAddress = 16;
 /// The memory address at which the native account's new code commitment is stored.
 pub const NEW_CODE_ROOT_PTR: MemoryAddress = 20;
 
-/// The memory address at which the dirty flag of the commitment of the current state of native
-/// account code is stored.
-///
-/// This binary flag specifies whether the commitment is outdated: it holds 1 if some changes were
-/// made to the account code since the last re-computation, and 0 otherwise.
-pub const CURR_NATIVE_ACCT_CODE_COMMITMENT_DIRTY_FLAG_PTR: MemoryAddress = 24;
-
-/// The memory address at which the dirty flag of the commitment of the current state of native
-/// account storage is stored.
+/// The memory address at which the dirty flag of the storage commitment of the native account is
+/// stored.
 ///
 /// This binary flag specifies whether the commitment is outdated: it holds 1 if some changes were
 /// made to the account storage since the last re-computation, and 0 otherwise.
-pub const CURR_NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR: MemoryAddress = 25;
+pub const CURR_NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR: MemoryAddress = 24;
 
 /// The memory address at which the transaction expiration block number is stored.
 pub const TX_EXPIRATION_BLOCK_NUM_PTR: MemoryAddress = 28;

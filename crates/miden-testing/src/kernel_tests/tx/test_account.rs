@@ -85,7 +85,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
             # => []
 
-            call.mock_account::compute_current_storage_commitment
+            call.mock_account::compute_storage_commitment
             # => [STORAGE_COMMITMENT0, pad(12)]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT0]
@@ -109,7 +109,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT0]
 
             padw padw padw padw
-            call.mock_account::compute_current_storage_commitment
+            call.mock_account::compute_storage_commitment
             # => [STORAGE_COMMITMENT1, pad(12), STORAGE_COMMITMENT0]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
@@ -895,16 +895,16 @@ fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 }
 
 /// This test creates an account with mock storage slots and calls the
-/// `compute_current_storage_commitment` procedure each time the storage is updated.
+/// `compute_storage_commitment` procedure each time the storage is updated.
 ///
-/// Namely, we invoke the `mock_account::compute_current_storage_commitment` procedure:
+/// Namely, we invoke the `mock_account::compute_storage_commitment` procedure:
 /// - Right after the account creation.
 /// - After updating the 0'th storage slot.
 /// - Right after the previous call to make sure it returns the same commitment from the cached
 ///   data.
 /// - After updating the 1'st storage slot.
 #[test]
-fn test_compute_current_storage_commitment() -> anyhow::Result<()> {
+fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
     let mut account_clone = tx_context.account().clone();
     let account_storage = account_clone.storage_mut();
@@ -927,7 +927,7 @@ fn test_compute_current_storage_commitment() -> anyhow::Result<()> {
             exec.prologue::prepare_transaction
 
             # assert the correctness of the initial storage commitment
-            call.mock_account::compute_current_storage_commitment
+            call.mock_account::compute_storage_commitment
             push.{init_storage_commitment}
             assert_eqw.err="storage commitment at the beginning of the transaction is not equal to the expected one"
 
@@ -937,13 +937,13 @@ fn test_compute_current_storage_commitment() -> anyhow::Result<()> {
             # => []
 
             # assert the correctness of the storage commitment after the 0'th slot was updated
-            call.mock_account::compute_current_storage_commitment
+            call.mock_account::compute_storage_commitment
             push.{storage_commitment_0}
             assert_eqw.err="storage commitment after the 0'th slot was updated is not equal to the expected one"
 
             # get the storage commitment once more to get the cached data and assert that this data 
             # didn't change
-            call.mock_account::compute_current_storage_commitment
+            call.mock_account::compute_storage_commitment
             push.{storage_commitment_0}
             assert_eqw.err="storage commitment should remain the same"
 
@@ -953,7 +953,7 @@ fn test_compute_current_storage_commitment() -> anyhow::Result<()> {
             # => []
 
             # assert the correctness of the storage commitment after the 1'st slot was updated
-            call.mock_account::compute_current_storage_commitment
+            call.mock_account::compute_storage_commitment
             push.{storage_commitment_1}
             assert_eqw.err="storage commitment after the 1'st slot was updated is not equal to the expected one"
         end

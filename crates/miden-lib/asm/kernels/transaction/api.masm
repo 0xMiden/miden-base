@@ -282,13 +282,13 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: dynexec
-export.account_compute_current_storage_commitment
+export.account_compute_storage_commitment
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin drop drop
     # => [pad(16)]
 
     # compute the account storage commitment
-    exec.account::compute_current_storage_commitment
+    exec.account::compute_storage_commitment
     # => [STORAGE_COMMITMENT, pad(16)]
 
     # truncate the stack
