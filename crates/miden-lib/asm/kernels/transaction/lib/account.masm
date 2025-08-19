@@ -315,15 +315,18 @@ export.memory::get_init_account_storage_commitment->get_initial_storage_commitme
 #! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
 export.memory::get_init_account_code_commitment->get_initial_code_commitment
 
-#! Gets the code commitment of the current account.
+#! Computes the code commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
 #!
 #! Where:
-#! - CODE_COMMITMENT is the commitment of the account code.
-export.get_code_commitment
-    # get the code commitment
+#! - CODE_COMMITMENT is the current commitment of the account code.
+export.compute_code_commitment
+    # recompute the code commitment (if outdated) and store it in the memory
+    exec.recompute_code_commitment
+
+    # return the code commitment
     exec.memory::get_acct_code_commitment
     # => [CODE_COMMITMENT]
 end
@@ -1316,6 +1319,69 @@ proc.recompute_storage_commitment
         # update the storage commitment dirty flag
         push.0 
         exec.memory::set_native_account_storage_commitment_dirty_flag
+        # => []
+    end
+end
+
+#! Computes the account code commitment by hashing the procedures data and updates the code
+#! commitment in memory to the newly computed code commitment.
+#!
+#! Inputs:  []
+#! Outputs: []
+proc.recompute_code_commitment
+    # First we should determine whether the code commitment should be recomputed. We should do so
+    # if the current account is native and the code commitment is outdated (the dirty flag equals
+    # 1). Otherwise the commitment value is guaranteed to be up-to-date.
+    exec.memory::get_recompute_code_commitment_flag
+    # => [should_recompute_code_commitment]
+
+    if.true
+        # get number of account procedures
+        exec.memory::get_num_account_procedures
+        # => [num_procedures]
+
+        # check if there are any procedures
+        dup neq.0
+        # => [has_procedures, num_procedures]
+
+        # only loop and hash over procedures if there are any
+        if.true
+            # setup start and end ptr
+            mul.8 exec.memory::get_acct_procedures_section_ptr dup movdn.2 add swap
+            # => [start_ptr, end_ptr]
+
+            # pad stack to read and hash from memory
+            padw padw padw
+            # => [PAD, PAD, PAD, start_ptr, end_ptr]
+
+            # hash elements from memory
+            exec.rpo::absorb_double_words_from_memory
+            # => [PERM, PERM, PERM, start_ptr, end_ptr]
+
+            # extract the digest
+            exec.rpo::squeeze_digest
+            # => [DIGEST, end_ptr, end_ptr]
+
+            # clean stack
+            movup.4 drop movup.4 drop
+            # => [DIGEST]
+
+            # set new account code commitment
+            exec.memory::set_acct_code_commitment dropw
+            # => []
+        else
+            # if no procedures left in the account, set the code commitment to the EMPTY_WORD
+            padw exec.memory::set_acct_code_commitment
+            # => [EMPTY_WORD, num_procedures]
+
+            # clear the stack
+            dropw drop
+            # => []
+        end
+
+        # update the code commitment dirty flag
+        push.0 
+        exec.memory::set_native_account_code_commitment_dirty_flag
         # => []
     end
 end

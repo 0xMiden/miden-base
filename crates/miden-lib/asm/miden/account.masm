@@ -325,7 +325,7 @@ export.get_initial_code_commitment
     # => [INIT_CODE_COMMITMENT]
 end
 
-#! Gets the account code commitment of the current account.
+#! Computes the latest account code commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
@@ -334,8 +334,8 @@ end
 #! - CODE_COMMITMENT is the commitment of the account code.
 #!
 #! Invocation: exec
-export.get_code_commitment
-    exec.kernel_proc_offsets::account_get_code_commitment_offset
+export.compute_code_commitment
+    exec.kernel_proc_offsets::account_compute_code_commitment_offset
     # => [offset]
 
     # pad the stack

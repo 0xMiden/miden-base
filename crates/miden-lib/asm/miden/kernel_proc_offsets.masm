@@ -15,7 +15,7 @@ const.ACCOUNT_INCR_NONCE_OFFSET=4                     # mutator
 
 # Code
 const.ACCOUNT_GET_INITIAL_CODE_COMMITMENT_OFFSET=5
-const.ACCOUNT_GET_CODE_COMMITMENT_OFFSET=6
+const.ACCOUNT_COMPUTE_CODE_COMMITMENT_OFFSET=6
 
 # Storage
 const.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET=7
@@ -180,16 +180,16 @@ export.account_get_initial_code_commitment_offset
     push.ACCOUNT_GET_INITIAL_CODE_COMMITMENT_OFFSET
 end
 
-#! Returns the offset of the `account_get_code_commitment` kernel procedure.
+#! Returns the offset of the `account_compute_code_commitment` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_get_code_commitment` kernel procedure required to get
-#!   the address where this procedure is stored.
-export.account_get_code_commitment_offset
-    push.ACCOUNT_GET_CODE_COMMITMENT_OFFSET
+#! - proc_offset is the offset of the `account_compute_code_commitment` kernel procedure required to
+#!   get the address where this procedure is stored.
+export.account_compute_code_commitment_offset
+    push.ACCOUNT_COMPUTE_CODE_COMMITMENT_OFFSET
 end
 
 #! Returns the offset of the `account_get_initial_storage_commitment` kernel procedure.

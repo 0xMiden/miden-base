@@ -231,7 +231,7 @@ export.account_get_initial_code_commitment
     # => [INIT_CODE_COMMITMENT, pad(12)]
 end
 
-#! Gets the account code commitment of the current account.
+#! Computes the latest account code commitment of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [CODE_COMMITMENT, pad(12)]
@@ -240,13 +240,13 @@ end
 #! - CODE_COMMITMENT is the commitment of the account code.
 #!
 #! Invocation: dynexec
-export.account_get_code_commitment
+export.account_compute_code_commitment
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin drop drop
     # => [pad(16)]
 
-    # get the account code commitment
-    exec.account::get_code_commitment
+    # compute the account code commitment
+    exec.account::compute_code_commitment
     # => [CODE_COMMITMENT, pad(16)]
 
     # truncate the stack
