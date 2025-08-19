@@ -1,12 +1,12 @@
-mod address_type;
+mod r#type;
 
-mod address_interface;
+mod interface;
 use alloc::string::{String, ToString};
 
-pub use address_interface::AddressInterface;
-pub use address_type::AddressType;
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
+pub use interface::AddressInterface;
+pub use r#type::AddressType;
 
 use crate::AddressError;
 use crate::account::{AccountId, AccountStorageMode, NetworkId};
