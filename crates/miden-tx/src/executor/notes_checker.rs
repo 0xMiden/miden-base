@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 
+use miden_lib::note::well_known_note::WellKnownNote;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
@@ -26,7 +27,7 @@ where
     }
 
     /// Checks whether some set of the provided input notes could be consumed by the provided
-    /// account by executing the transaction using an iterative elimination strategy.
+    /// account by executing the transaction with varying combination of notes.
     ///
     /// This function attempts to find the maximum set of notes that can be successfully executed
     /// together by the target account.
@@ -55,7 +56,44 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        let mut candidate_notes = input_notes.clone().into_vec();
+        // Identify well-known notes and try to execute them first.
+        let (well_known_notes, notes) = input_notes
+            .into_vec()
+            .into_iter()
+            .partition(|note| WellKnownNote::from_note(note.note()).is_some());
+        let well_known_execution_result = self
+            .0
+            .try_execute_notes(
+                target_account_id,
+                block_ref,
+                InputNotes::<InputNote>::new_unchecked(well_known_notes),
+                &tx_args,
+            )
+            .await?;
+
+        // Attempt to find an executable set from the remaining notes.
+        let mut execution_result = self
+            .find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
+            .await?;
+
+        // Join the results.
+        execution_result.successful.extend(well_known_execution_result.successful);
+        execution_result.failed.extend(well_known_execution_result.failed);
+        Ok(execution_result)
+    }
+
+    /// Finds a set of executable notes and eliminates failed notes from the list in the process.
+    ///
+    /// The result contains some combination of the input notes partitioned by whether they
+    /// succeeded or failed to execute.
+    async fn find_executable_notes_by_elimination(
+        &self,
+        target_account_id: AccountId,
+        block_ref: BlockNumber,
+        notes: Vec<InputNote>,
+        tx_args: TransactionArgs,
+    ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
+        let mut candidate_notes = notes;
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
