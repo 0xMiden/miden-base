@@ -41,18 +41,32 @@ const.OUTPUT_VAULT_ROOT_PTR=16
 # The memory address at which the native account's new code commitment is stored.
 const.NEW_CODE_ROOT_PTR=20
 
+# The memory address at which the dirty flag of the commitment of the current state of native
+# account code is stored. 
+#
+# This binary flag specifies whether the commitment is outdated: it holds 1 if some changes were 
+# made to the account code since the last re-computation, and 0 otherwise.
+const.CURR_NATIVE_ACCT_CODE_COMMITMENT_DIRTY_FLAG_PTR=24
+
+# The memory address at which the dirty flag of the commitment of the current state of native 
+# account storage is stored. 
+# 
+# This binary flag specifies whether the commitment is outdated: it holds 1 if some changes were 
+# made to the account storage since the last re-computation, and 0 otherwise.
+const.CURR_NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR=25
+
 # The memory address at which the absolute expiration block number is stored.
-const.TX_EXPIRATION_BLOCK_NUM_PTR=24
+const.TX_EXPIRATION_BLOCK_NUM_PTR=28
 
 # The memory address at which the pointer to the account stack element containing the pointer to the
 # currently accessing account data is stored.
-const.ACCOUNT_STACK_TOP_PTR=28
+const.ACCOUNT_STACK_TOP_PTR=32
 
 # Pointer to the first element on the account stack.
-const.MIN_ACCOUNT_STACK_PTR=29
+const.MIN_ACCOUNT_STACK_PTR=33
 
 # Pointer to the last element on the account stack.
-const.MAX_ACCOUNT_STACK_PTR=92
+const.MAX_ACCOUNT_STACK_PTR=96
 
 # GLOBAL INPUTS
 # -------------------------------------------------------------------------------------------------
@@ -1173,6 +1187,45 @@ end
 #! - CODE_COMMITMENT is the new account code commitment.
 export.set_new_acct_code_commitment
     mem_storew.NEW_CODE_ROOT_PTR
+end
+
+#! Sets the dirty flag for the native account storage commitment.
+#!
+#! This binary flag specifies whether the storage commitment stored in the native account data is
+#! outdated.
+#!
+#! Inputs:  [dirty_flag]
+#! Outputs: []
+#!
+#! Where:
+#! - dirty_flag is the flag indicating whether the storage commitment is outdated.
+export.set_native_account_storage_commitment_dirty_flag
+    push.CURR_NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR mem_store
+    # => []
+end
+
+#! Returns the flag indicating whether the account storage commitment should be recomputed.
+#!
+#! This flag equals 1 if the current account is native and the storage commitment is outdated.
+#!
+#! Inputs:  []
+#! Outputs: [should_recompute_storage_commitment_flag]
+#!
+#! Where:
+#! - should_recompute_storage_commitment_flag is the flag indicating whether the storage commitment 
+#!   should be recomputed.
+export.get_recompute_storage_commitment_flag
+    # get the is_native_account flag
+    exec.is_native_account
+    # => [is_native_account]
+
+    # get the storage commitment dirty flag
+    mem_load.CURR_NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR
+    # => [dirty_flag, is_native_account]
+
+    # commitment should be recomputed only if the account is native and the commitment is outdated
+    and
+    # => [should_recompute_storage_commitment_flag]
 end
 
 #! Sets the transaction expiration block number.

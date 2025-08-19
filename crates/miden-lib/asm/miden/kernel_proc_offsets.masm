@@ -19,7 +19,7 @@ const.ACCOUNT_GET_CODE_COMMITMENT_OFFSET=6
 
 # Storage
 const.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET=7
-const.ACCOUNT_GET_STORAGE_COMMITMENT_OFFSET=8
+const.ACCOUNT_COMPUTE_CURRENT_STORAGE_COMMITMENT_OFFSET=8
 const.ACCOUNT_GET_ITEM_OFFSET=9
 const.ACCOUNT_SET_ITEM_OFFSET=10
 const.ACCOUNT_GET_MAP_ITEM_OFFSET=11
@@ -204,16 +204,16 @@ export.account_get_initial_storage_commitment_offset
     push.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET
 end
 
-#! Returns the offset of the `account_get_storage_commitment` kernel procedure.
+#! Returns the offset of the `account_compute_current_storage_commitment` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_get_storage_commitment` kernel procedure required to
-#!   get the address where this procedure is stored.
-export.account_get_storage_commitment_offset
-    push.ACCOUNT_GET_STORAGE_COMMITMENT_OFFSET
+#! - proc_offset is the offset of the `account_compute_current_storage_commitment` kernel procedure
+#!   required to get the address where this procedure is stored.
+export.account_compute_current_storage_commitment_offset
+    push.ACCOUNT_COMPUTE_CURRENT_STORAGE_COMMITMENT_OFFSET
 end
 
 #! Returns the offset of the `account_get_item` kernel procedure.

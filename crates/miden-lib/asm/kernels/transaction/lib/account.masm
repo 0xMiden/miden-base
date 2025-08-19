@@ -200,16 +200,9 @@ end
 #! Where:
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 export.compute_current_commitment
-    exec.memory::is_native_account
-    # => [is_native_account]
-
-    # first compute the latest storage commitment
-    # since foreign accounts do not change during transaction execution, this step can be skipped
-    # for them
-    if.true
-        exec.compute_current_storage_commitment
-        # => []
-    end
+    # recompute the account storage commitment
+    exec.recompute_current_storage_commitment
+    # => []
 
     # prepare the stack for computing the account commitment
     exec.memory::get_current_account_data_ptr padw padw padw
@@ -335,15 +328,18 @@ export.get_code_commitment
     # => [CODE_COMMITMENT]
 end
 
-#! Gets the storage commitment of the current account.
+#! Computes the current storage commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
 #!
 #! Where:
-#! - STORAGE_COMMITMENT is the commitment of the account storage.
-export.get_storage_commitment
-    # get the storage commitment
+#! - STORAGE_COMMITMENT is the current commitment of the account storage.
+export.compute_current_storage_commitment
+    # recompute the storage commitment and store it in the memory
+    exec.recompute_current_storage_commitment
+
+    # return the storage commitment
     exec.memory::get_acct_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
@@ -513,6 +509,11 @@ export.set_item
     exec.set_item_raw
     # => [OLD_VALUE, VALUE, index]
 
+    # update the storage commitment dirty flag
+    push.1
+    exec.memory::set_native_account_storage_commitment_dirty_flag
+    # => [OLD_VALUE, VALUE, index]
+
     # emit event to signal that an account storage item is being updated
     swapw movup.8
     emit.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT drop dropw
@@ -611,6 +612,11 @@ export.set_map_item.12
     # set the NEW_VALUE under HASHED_KEY in the tree
     # note smt::set expects the stack to be [NEW_VALUE, HASHED_KEY, OLD_ROOT]
     swapw exec.smt::set
+    # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
+
+    # update the storage commitment dirty flag
+    push.1
+    exec.memory::set_native_account_storage_commitment_dirty_flag
     # => [OLD_MAP_VALUE, NEW_ROOT, KEY, NEW_VALUE]
 
     # store OLD_MAP_VALUE and NEW_ROOT until the end of the procedure
@@ -1265,43 +1271,56 @@ end
 #!
 #! Inputs:  []
 #! Outputs: []
-proc.compute_current_storage_commitment
-    # get number of storage slots
-    exec.memory::get_num_storage_slots
-    # => [num_storage_slots]
+proc.recompute_current_storage_commitment
+    # First we should determine whether the storage commitment should be recomputed. We should do so
+    # if the current account is native and the storage commitment is outdated (the dirty flag equals
+    # 1). Otherwise we commitment value is guaranteed to be up-to-date.
+    exec.memory::get_recompute_storage_commitment_flag
+    # => [should_recompute_storage_commitment]
 
-    # check if there are storage slots
-    dup neq.0
-    # => [storage_slots_is_not_empty, num_storage_slots]
-
-    # only loop and hash over storage if there are storage slots
     if.true
-        # setup start and end ptr
-        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
-        # => [start_ptr, end_ptr]
+        # get number of storage slots
+        exec.memory::get_num_storage_slots
+        # => [num_storage_slots]
 
-        # pad stack to read and hash from memory
-        padw padw padw
-        # => [PAD, PAD, PAD, start_ptr, end_ptr]
+        # check if there are storage slots
+        dup neq.0
+        # => [storage_slots_is_not_empty, num_storage_slots]
 
-        # hash elements from memory
-        exec.rpo::absorb_double_words_from_memory
-        # => [PERM, PERM, PERM, start_ptr, end_ptr]
+        # only loop and hash over storage if there are storage slots
+        if.true
+            # setup start and end ptr
+            mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
+            # => [start_ptr, end_ptr]
 
-        # extract the digest
-        exec.rpo::squeeze_digest
-        # => [DIGEST, end_ptr, end_ptr]
+            # pad stack to read and hash from memory
+            padw padw padw
+            # => [PAD, PAD, PAD, start_ptr, end_ptr]
 
-        # clean stack
-        movup.4 drop movup.4 drop
-        # => [DIGEST]
+            # hash elements from memory
+            exec.rpo::absorb_double_words_from_memory
+            # => [PERM, PERM, PERM, start_ptr, end_ptr]
 
-        # set new account storage commitment
-        exec.memory::set_acct_storage_commitment dropw
-        # => []
-    else
-        # drop number of storage slots
-        drop
+            # extract the digest
+            exec.rpo::squeeze_digest
+            # => [DIGEST, end_ptr, end_ptr]
+
+            # clean stack
+            movup.4 drop movup.4 drop
+            # => [DIGEST]
+
+            # set new account storage commitment
+            exec.memory::set_acct_storage_commitment dropw
+            # => []
+        else
+            # drop number of storage slots
+            drop
+            # => []
+        end
+
+        # update the storage commitment dirty flag
+        push.0 
+        exec.memory::set_native_account_storage_commitment_dirty_flag
         # => []
     end
 end
