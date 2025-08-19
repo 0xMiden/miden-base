@@ -1,6 +1,9 @@
 mod address_type;
+
+mod address_interface;
 use alloc::string::{String, ToString};
 
+pub use address_interface::AddressInterface;
 pub use address_type::AddressType;
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
@@ -118,6 +121,7 @@ impl Address {
 pub struct AccountIdAddress {
     id: AccountId,
     tag_len: u8,
+    interface: AddressInterface,
 }
 
 impl AccountIdAddress {
@@ -125,7 +129,7 @@ impl AccountIdAddress {
     // --------------------------------------------------------------------------------------------
 
     /// The serialized size of an [`AccountIdAddress`] in bytes.
-    pub const SERIALIZED_SIZE: usize = AccountId::SERIALIZED_SIZE + 1;
+    pub const SERIALIZED_SIZE: usize = AccountId::SERIALIZED_SIZE + 2;
 
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
@@ -134,14 +138,14 @@ impl AccountIdAddress {
     ///
     /// The tag length defaults to [`NoteTag::DEFAULT_LOCAL_TAG_LENGTH`] for local, and
     /// [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
-    pub fn new(id: AccountId) -> Self {
+    pub fn new(id: AccountId, interface: AddressInterface) -> Self {
         let tag_len = if id.storage_mode() == AccountStorageMode::Network {
             NoteTag::DEFAULT_NETWORK_TAG_LENGTH
         } else {
             NoteTag::DEFAULT_LOCAL_TAG_LENGTH
         };
 
-        Self { id, tag_len }
+        Self { id, tag_len, interface }
     }
 
     // PUBLIC MUTATORS
@@ -151,9 +155,10 @@ impl AccountIdAddress {
     /// are encoded into [`NoteTag`]s.
     ///
     /// For local (both public and private) accounts, up to 30 bits can be encoded into the tag.
-    /// For network accounts, the tag length should always be set to 30 bits.
+    /// For network accounts, the tag length must be set to 30 bits.
     ///
     /// # Errors
+    ///
     /// Returns an error if:
     /// - The tag length exceeds [`NoteTag::MAX_LOCAL_TAG_LENGTH`] for local accounts.
     /// - The tag length is not [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`] for network accounts.
@@ -179,6 +184,8 @@ impl AccountIdAddress {
     }
 
     /// Returns the preferred tag length.
+    ///
+    /// This is guaranteed to be in range `0..=30`.
     pub fn note_tag_len(&self) -> u8 {
         self.tag_len
     }
@@ -207,13 +214,13 @@ impl AccountIdAddress {
         let mut data = [0; Self::SERIALIZED_SIZE + 1];
         // Encode the address type into index 0.
         data[0] = AddressType::AccountId as u8;
-        // Encode the 16 account ID address bytes into 1..17.
+        // Encode the 17 account ID address bytes into 1..18.
         data[1..].copy_from_slice(&id_bytes);
 
         // SAFETY: Encoding panics if the total length of the hrp + data (encoded in GF(32)) + the
         // separator + the checksum exceeds Bech32m::CODE_LENGTH, which is 1023.
-        // The total 17 bytes of data we encode result in (17 bytes * 8 bits / 5 bits per base32
-        // symbol) = 28 characters. The hrp is at most 83 in length, so we are guaranteed to be
+        // The total 18 bytes of data we encode result in (18 bytes * 8 bits / 5 bits per base32
+        // symbol) = 29 characters. The hrp is at most 83 in length, so we are guaranteed to be
         // below the limit.
         bech32::encode::<Bech32m>(network_id.into_hrp(), &data)
             .expect("code length of bech32 should not be exceeded")
@@ -259,8 +266,21 @@ impl From<AccountIdAddress> for [u8; AccountIdAddress::SERIALIZED_SIZE] {
         let encoded_account_id_address = <[u8; 15]>::from(account_id_address.id);
         result[..15].copy_from_slice(&encoded_account_id_address);
 
-        // Encode the tag length into index 15.
-        result[15] = account_id_address.tag_len;
+        let interface = account_id_address.interface as u16;
+        debug_assert_eq!(
+            interface >> 11,
+            0,
+            "address interface should have its upper 5 bits unset"
+        );
+
+        // The interface takes up 11 bits and the tag length 5 bits, so we can merge them together.
+        let tag_len = (account_id_address.tag_len as u16) << 11;
+        let encoded = tag_len | interface;
+        let encoded: [u8; 2] = encoded.to_be_bytes();
+
+        // Encode the interface and tag length into 15..17.
+        result[15] = encoded[0];
+        result[16] = encoded[1];
 
         result
     }
@@ -276,9 +296,13 @@ impl TryFrom<[u8; AccountIdAddress::SERIALIZED_SIZE]> for AccountIdAddress {
             .expect("we should have sliced off exactly 15 bytes");
         let account_id =
             AccountId::try_from(account_id_bytes).map_err(AddressError::AccountIdDecodeError)?;
-        let tag_len = bytes[15];
 
-        Self::new(account_id).with_tag_len(tag_len)
+        let interface_tag_len = u16::from_be_bytes([bytes[15], bytes[16]]);
+        let tag_len = (interface_tag_len >> 11) as u8;
+        let interface = interface_tag_len & 0b0000_0111_1111_1111;
+        let interface = AddressInterface::try_from(interface)?;
+
+        Self::new(account_id, interface).with_tag_len(tag_len)
     }
 }
 
@@ -326,7 +350,8 @@ mod tests {
             .into_iter()
             .enumerate()
             {
-                let account_id_address = AccountIdAddress::new(account_id);
+                let account_id_address =
+                    AccountIdAddress::new(account_id, AddressInterface::BasicWallet);
                 let address = Address::from(account_id_address);
 
                 let bech32_string = address.to_bech32(network_id);
@@ -348,7 +373,8 @@ mod tests {
     fn bech32_invalid_checksum() {
         let network_id = NetworkId::Mainnet;
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let address = Address::from(AccountIdAddress::new(account_id));
+        let address =
+            Address::from(AccountIdAddress::new(account_id, AddressInterface::BasicWallet));
 
         let bech32_string = address.to_bech32(network_id);
         let mut invalid_bech32_1 = bech32_string.clone();
@@ -367,7 +393,7 @@ mod tests {
     #[test]
     fn bech32_unknown_address_type() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let account_id_address = AccountIdAddress::new(account_id);
+        let account_id_address = AccountIdAddress::new(account_id, AddressInterface::BasicWallet);
         let mut id_address_bytes = <[u8; _]>::from(account_id_address).to_vec();
 
         // Set invalid address type.
@@ -387,7 +413,7 @@ mod tests {
     #[test]
     fn bech32_invalid_other_checksum() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let account_id_address = AccountIdAddress::new(account_id);
+        let account_id_address = AccountIdAddress::new(account_id, AddressInterface::BasicWallet);
         let mut id_address_bytes = <[u8; _]>::from(account_id_address).to_vec();
         id_address_bytes.insert(0, AddressType::AccountId as u8);
 
@@ -408,7 +434,7 @@ mod tests {
     #[test]
     fn bech32_invalid_length() {
         let account_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-        let account_id_address = AccountIdAddress::new(account_id);
+        let account_id_address = AccountIdAddress::new(account_id, AddressInterface::BasicWallet);
         let mut id_address_bytes = <[u8; _]>::from(account_id_address).to_vec();
         id_address_bytes.insert(0, AddressType::AccountId as u8);
         // Add one byte to make the length invalid.
