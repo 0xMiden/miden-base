@@ -10,11 +10,15 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+    ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_tx::{
-    FailedNote, NoteConsumptionChecker, NoteConsumptionInfo, TransactionExecutor,
+    FailedNote,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
+    TransactionExecutor,
     TransactionExecutorError,
 };
 use rand::{Rng, SeedableRng};
@@ -152,6 +156,15 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
         &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
+    let successful_note_3 = create_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        vec![FungibleAsset::mock(250)],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new(Word::from([3u32; 4])),
+    )?;
+
     let tx_context = mock_chain
         .build_tx_context(
             TxContextInput::Account(account),
@@ -161,6 +174,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                 successful_note_1.clone(),
                 failing_note_2.clone(),
                 failing_note_1.clone(),
+                successful_note_3.clone(),
             ],
         )?
         .build()?;
@@ -216,8 +230,8 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                 );
                 // Successful notes.
                 assert_eq!(
-                    [successful[0].id(), successful[1].id()],
-                    [successful_note_2.id(), successful_note_1.id()]
+                    [successful[0].id(), successful[1].id(), successful[2].id()],
+                    [successful_note_2.id(), successful_note_1.id(), successful_note_3.id()],
                 );
             }
     );
