@@ -13,7 +13,6 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::{Felt, FieldElement, Word};
-use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
@@ -61,8 +60,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::new(&tx_context, tx_context.authenticator()).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -103,8 +101,7 @@ async fn check_note_consumability_custom_notes_success(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::new(&tx_context, tx_context.authenticator()).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -180,8 +177,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let executor = TransactionExecutor::new(&tx_context, tx_context.authenticator()).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
