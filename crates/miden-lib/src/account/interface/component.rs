@@ -3,9 +3,11 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountId, AccountProcedureInfo};
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::PartialNote;
 use miden_objects::{Felt, Word};
 
+use crate::AuthScheme;
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
 
@@ -39,7 +41,7 @@ pub enum AccountComponentInterface {
     ///
     /// This authentication scheme provides no cryptographic authentication and only increments
     /// the nonce if the account state has actually changed during transaction execution.
-    AuthNoAuth,
+    AuthNone,
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -61,7 +63,7 @@ impl AccountComponentInterface {
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
-            AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
+            AccountComponentInterface::AuthNone => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()
@@ -84,22 +86,34 @@ impl AccountComponentInterface {
     /// # Returns
     /// * `Some(AuthScheme)` - If this is an authentication component interface
     /// * `None` - If this is not an authentication component interface
+    ///
+    /// # Limitations
+    /// Currently, this method only detects known authentication schemes. For custom authentication
+    /// components, it would return `None` even if they are authentication components.
+    ///
+    /// # Future Improvements
+    /// A more generic approach could be implemented where:
+    /// - `from_procedures` returns `(Vec<Self>, Word)` with the auth procedure MAST root
+    /// - Callers pass a generic `T: AccountAuthComponent where AccountAuthComponent:
+    ///   TryFrom<&AccountStorage>`
+    /// - This would allow detection and extraction of custom auth components without knowing their
+    ///   layout
     pub fn get_auth_scheme(
         &self,
         storage: &miden_objects::account::AccountStorage,
-    ) -> Option<crate::AuthScheme> {
+    ) -> Option<AuthScheme> {
         match self {
             AccountComponentInterface::AuthRpoFalcon512(storage_index)
             | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
-                Some(crate::AuthScheme::RpoFalcon512 {
-                    pub_key: miden_objects::crypto::dsa::rpo_falcon512::PublicKey::new(
+                Some(AuthScheme::RpoFalcon512 {
+                    pub_key: PublicKey::new(
                         storage
                             .get_item(*storage_index)
                             .expect("invalid storage index of the public key"),
                     ),
                 })
             },
-            AccountComponentInterface::AuthNoAuth => Some(crate::AuthScheme::NoAuth),
+            AccountComponentInterface::AuthNone => Some(AuthScheme::NoAuth),
             _ => None,
         }
     }

@@ -130,7 +130,7 @@ impl WellKnownComponent {
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
                 Self::RpoFalcon512Acl => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
-                Self::NoAuth => component_interface_vec.push(AccountComponentInterface::AuthNoAuth),
+                Self::NoAuth => component_interface_vec.push(AccountComponentInterface::AuthNone),
             }
         }
     }

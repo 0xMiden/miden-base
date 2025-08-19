@@ -111,30 +111,6 @@ impl AccountInterface {
         &self.components
     }
 
-    /// Returns the authentication scheme used by this account, if any.
-    ///
-    /// This method searches through the account's component interfaces to find an authentication
-    /// component and returns its associated authentication scheme.
-    ///
-    /// # Returns
-    /// * `Some(AuthScheme)` - If the account has an authentication component
-    /// * `None` - If the account has no authentication components
-    ///
-    /// # Note
-    /// If the account has multiple authentication components, this method returns the first one
-    /// found.
-    pub fn get_auth_scheme(
-        &self,
-        storage: &miden_objects::account::AccountStorage,
-    ) -> Option<AuthScheme> {
-        for component in &self.components {
-            if let Some(auth_scheme) = component.get_auth_scheme(storage) {
-                return Some(auth_scheme);
-            }
-        }
-        None
-    }
-
     /// Returns [NoteAccountCompatibility::Maybe] if the provided note is compatible with the
     /// current [AccountInterface], and [NoteAccountCompatibility::No] otherwise.
     pub fn is_compatible_with(&self, note: &Note) -> NoteAccountCompatibility {
@@ -170,7 +146,7 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthNoAuth => {
+                AccountComponentInterface::AuthNone => {
                     component_proc_digests
                         .extend(no_auth_library().mast_forest().procedure_digests());
                 },
