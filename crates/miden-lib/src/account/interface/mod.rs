@@ -15,6 +15,7 @@ use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
+    multisig_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
 };
@@ -146,6 +147,10 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::AuthRpoFalconMultisig(_) => {
+                    component_proc_digests
+                        .extend(multisig_library().mast_forest().procedure_digests());
+                },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
                         .extend(custom_procs.iter().map(|info| *info.mast_root()));
@@ -264,9 +269,11 @@ impl From<&Account> for AccountInterface {
         let mut auth = Vec::new();
         components.iter().for_each(|interface| {
             match interface {
-                // RpoFalcon512 and RpoFalcon512Acl use the same RpoFalcon512 auth scheme
+                // RpoFalcon512, RpoFalcon512Acl, and RpoFalconMultisig use the same RpoFalcon512
+                // auth scheme
                 AccountComponentInterface::AuthRpoFalcon512(storage_index)
-                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
+                | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index)
+                | AccountComponentInterface::AuthRpoFalconMultisig(storage_index) => {
                     auth.push(AuthScheme::RpoFalcon512 {
                         pub_key: rpo_falcon512::PublicKey::new(
                             account

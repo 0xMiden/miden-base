@@ -41,10 +41,10 @@ const.EXECUTED_TXS_SLOT=2
 # Memory Constants
 
 # Local Memory Addresses
-const.NUM_OF_APPROVERS=0
-const.PUB_KEY_MAP_IDX=4
-const.CURRENT_PK=8
-const.SUCCESSFUL_VERIFICATIONS=12
+const.NUM_OF_APPROVERS_LOC=0
+const.PUB_KEY_MAP_IDX_LOC=4
+const.CURRENT_PK_LOC=8
+const.SUCCESSFUL_VERIFICATIONS_LOC=12
 
 # Executed Transaction Flag Constant
 const.IS_EXECUTED_FLAG=[1, 0, 0, 0]
@@ -89,11 +89,11 @@ end
 #! Inputs:  [pub_key_slot_idx, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
 proc.verify_signatures.16
-    loc_store.PUB_KEY_MAP_IDX
+    loc_store.PUB_KEY_MAP_IDX_LOC
     # => [num_of_approvers, MSG]
 
     # Initializing SUCCESSFUL_VERIFICATIONS local memory address to 0
-    push.0 loc_store.SUCCESSFUL_VERIFICATIONS
+    push.0 loc_store.SUCCESSFUL_VERIFICATIONS_LOC
     # => [num_of_approvers, MSG]
 
     # Counter `i` starts at `num_of_approvers` and counts down to 0
@@ -109,13 +109,13 @@ proc.verify_signatures.16
         # Fetch public key from storage map.
         # -----------------------------------------------------------------------------------------
 
-        sub.1 dup push.0.0.0 loc_load.PUB_KEY_MAP_IDX
+        sub.1 dup push.0.0.0 loc_load.PUB_KEY_MAP_IDX_LOC
         # => [owner_key_slot, [0, 0, 0, i-1], i-1, MSG]
 
         exec.account::get_map_item
         # => [OWNER_PUB_KEY, i-1, MSG]
 
-        loc_storew.CURRENT_PK
+        loc_storew.CURRENT_PK_LOC
         # => [OWNER_PUB_KEY, i-1, MSG]
 
         # Check if signature exists for this signer.
@@ -146,7 +146,7 @@ proc.verify_signatures.16
             # Verify the signature against the public key and message.
             # -----------------------------------------------------------------------------------------
 
-            loc_loadw.CURRENT_PK
+            loc_loadw.CURRENT_PK_LOC
             # => [PK, MSG, MSG, i-1]
 
             swapw
@@ -162,9 +162,9 @@ proc.verify_signatures.16
             exec.rpo_falcon512::verify
             # => [MSG, i-1]
 
-            loc_load.SUCCESSFUL_VERIFICATIONS
+            loc_load.SUCCESSFUL_VERIFICATIONS_LOC
             add.1
-            loc_store.SUCCESSFUL_VERIFICATIONS
+            loc_store.SUCCESSFUL_VERIFICATIONS_LOC
             # => [MSG, i-1]
         else
             dropw
@@ -180,13 +180,13 @@ proc.verify_signatures.16
     end
     # => [i-1, MSG]
 
-    # Check number of successful signature verifications
+    # Return successful signature verifications along with MSG
     # -----------------------------------------------------------------------------------------
 
     drop
     # => [MSG]
 
-    loc_load.SUCCESSFUL_VERIFICATIONS
+    loc_load.SUCCESSFUL_VERIFICATIONS_LOC
     # => [num_verified_signatures, MSG]
 end
 
@@ -197,11 +197,6 @@ end
 #! 2. Verifying signatures from multiple required signers against their public keys
 #! 3. Ensuring the minimum threshold of valid signatures is met
 #! 4. Implementing replay protection by tracking executed transactions
-#!
-#! The procedure first increments the account nonce, then computes and verifies signatures for
-#! the following message (in memory order):
-#! [ACCOUNT_DELTA_COMMITMENT, INPUT_NOTES_COMMITMENT,
-#!  OUTPUT_NOTES_COMMITMENT, [0, 0, ref_block_num, final_nonce]]
 #!
 #! Inputs:
 #!   Operand stack: [SALT]
