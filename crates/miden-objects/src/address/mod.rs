@@ -192,7 +192,8 @@ impl AccountIdAddress {
 
     /// Returns the preferred tag length.
     ///
-    /// This is guaranteed to be in range `0..=30`.
+    /// This is guaranteed to be in range `0..=30` (e.g. the maximum of
+    /// [`NoteTag::MAX_LOCAL_TAG_LENGTH`] and [`NoteTag::DEFAULT_NETWORK_TAG_LENGTH`]).
     pub fn note_tag_len(&self) -> u8 {
         self.tag_len
     }
