@@ -60,7 +60,7 @@ where
         let mut notes = input_notes.into_vec();
         notes.sort_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
 
-        // Attempt to find an executable set from the remaining notes.
+        // Attempt to find an executable set of notes.
         self.find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
             .await
     }
