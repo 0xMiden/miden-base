@@ -14,6 +14,7 @@ use crate::AuthScheme;
 use crate::account::components::{
     basic_fungible_faucet_library,
     basic_wallet_library,
+    multisig_library,
     no_auth_library,
     rpo_falcon_512_acl_library,
     rpo_falcon_512_library,
@@ -146,10 +147,13 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
+                AccountComponentInterface::AuthRpoFalconMultisig(_) => {
+                    component_proc_digests
+                        .extend(multisig_library().mast_forest().procedure_digests());
+                },
                 AccountComponentInterface::AuthNone => {
                     component_proc_digests
                         .extend(no_auth_library().mast_forest().procedure_digests());
-                },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
                         .extend(custom_procs.iter().map(|info| *info.mast_root()));

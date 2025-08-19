@@ -47,6 +47,15 @@ static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     Library::read_from_bytes(bytes).expect("Shipped NoAuth library is well-formed")
 });
 
+// Initialize the Multisig Rpo Falcon 512 library only once.
+static MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(
+        env!("OUT_DIR"),
+        "/assets/account_components/multisig_rpo_falcon_512.masl"
+    ));
+    Library::read_from_bytes(bytes).expect("Shipped Multisig Rpo Falcon 512 library is well-formed")
+});
+
 /// Returns the Basic Wallet Library.
 pub fn basic_wallet_library() -> Library {
     BASIC_WALLET_LIBRARY.clone()
@@ -72,6 +81,11 @@ pub fn no_auth_library() -> Library {
     NO_AUTH_LIBRARY.clone()
 }
 
+/// Returns the Multisig Library.
+pub fn multisig_library() -> Library {
+    MULTISIG_LIBRARY.clone()
+}
+
 // WELL KNOWN COMPONENTS
 // ================================================================================================
 
@@ -81,6 +95,7 @@ pub enum WellKnownComponent {
     BasicFungibleFaucet,
     RpoFalcon512,
     RpoFalcon512Acl,
+    RpoFalconMultisig,
     NoAuth,
 }
 
@@ -93,6 +108,7 @@ impl WellKnownComponent {
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
             Self::RpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
             Self::RpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.mast_forest(),
+            Self::RpoFalconMultisig => MULTISIG_LIBRARY.mast_forest(),
             Self::NoAuth => NO_AUTH_LIBRARY.mast_forest(),
         };
 
@@ -130,6 +146,8 @@ impl WellKnownComponent {
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
                 Self::RpoFalcon512Acl => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
+                Self::RpoFalconMultisig => component_interface_vec
+                    .push(AccountComponentInterface::AuthRpoFalconMultisig(storage_offset)),
                 Self::NoAuth => component_interface_vec.push(AccountComponentInterface::AuthNone),
             }
         }
@@ -145,6 +163,7 @@ impl WellKnownComponent {
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
         Self::RpoFalcon512.extract_component(procedures_map, component_interface_vec);
         Self::RpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
+        Self::RpoFalconMultisig.extract_component(procedures_map, component_interface_vec);
         Self::NoAuth.extract_component(procedures_map, component_interface_vec);
     }
 }

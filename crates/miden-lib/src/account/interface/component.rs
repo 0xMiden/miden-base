@@ -37,6 +37,10 @@ pub enum AccountComponentInterface {
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
     AuthRpoFalcon512Acl(u8),
+    /// Exposes procedures from the multisig RpoFalcon512 authentication module.
+    ///
+    /// Internal value holds the storage slot index where the multisig configuration is stored.
+    AuthRpoFalconMultisig(u8),
     /// Exposes procedures from the [`NoAuth`][crate::account::auth::NoAuth] module.
     ///
     /// This authentication scheme provides no cryptographic authentication and only increments
@@ -63,6 +67,9 @@ impl AccountComponentInterface {
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
+            AccountComponentInterface::AuthRpoFalconMultisig(_) => {
+                "RPO Falcon512 Multisig".to_string()
+            },
             AccountComponentInterface::AuthNone => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
