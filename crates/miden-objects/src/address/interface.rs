@@ -17,6 +17,7 @@ use crate::AddressError;
 #[repr(u16)]
 #[non_exhaustive]
 pub enum AddressInterface {
+    /// The basic wallet interface.
     BasicWallet = Self::BASIC_WALLET,
 }
 
