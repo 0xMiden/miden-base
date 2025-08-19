@@ -10,15 +10,11 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
-    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-    ACCOUNT_ID_SENDER,
+    ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_tx::{
-    FailedNote,
-    NoteConsumptionChecker,
-    NoteConsumptionInfo,
-    TransactionExecutor,
+    FailedNote, NoteConsumptionChecker, NoteConsumptionInfo, TransactionExecutor,
     TransactionExecutorError,
 };
 use rand::{Rng, SeedableRng};
@@ -164,7 +160,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                 successful_note_2.clone(),
                 successful_note_1.clone(),
                 failing_note_2.clone(),
-                failing_note_1,
+                failing_note_1.clone(),
             ],
         )?
         .build()?;
@@ -188,8 +184,9 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
             failed,
             ..
         } => {
+                // First failing note.
                 assert_matches!(
-                    failed.first().expect("failed notes should exist"),
+                    failed.first().expect("first failed notes should exist"),
                     FailedNote {
                         note,
                         error: TransactionExecutorError::TransactionProgramExecutionFailed(
@@ -202,6 +199,22 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                         );
                     }
                 );
+                // Second failing note.
+                assert_matches!(
+                    failed.get(1).expect("second failed note should exist"),
+                    FailedNote {
+                        note,
+                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. }),
+                        ..
+                    } => {
+                        assert_eq!(
+                            note.id(),
+                            failing_note_1.id(),
+                        );
+                    }
+                );
+                // Successful notes.
                 assert_eq!(
                     [successful[0].id(), successful[1].id()],
                     [successful_note_2.id(), successful_note_1.id()]
