@@ -28,6 +28,13 @@ impl Address {
         }
     }
 
+    /// Returns the [`AddressInterface`] of the account to which the address points.
+    pub fn interface(&self) -> AddressInterface {
+        match self {
+            Address::AccountId(account_id_address) => account_id_address.interface(),
+        }
+    }
+
     /// Encodes the [`Address`] into a [bech32](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki) string.
     ///
     /// ## Encoding
@@ -110,7 +117,7 @@ impl Address {
 // ACCOUNT ID ADDRESS
 // ================================================================================================
 
-/// Address that targets a specific `AccountId` with an explicit tag length preference.
+/// An [`Address`] that targets a specific [`AccountId`] with an explicit tag length preference.
 ///
 /// The tag length preference determines how many bits of the account ID are encoded into
 /// [`NoteTag`]s of notes targeted to this address. This lets the owner of the account choose
@@ -188,6 +195,11 @@ impl AccountIdAddress {
     /// This is guaranteed to be in range `0..=30`.
     pub fn note_tag_len(&self) -> u8 {
         self.tag_len
+    }
+
+    /// Returns the [`AddressInterface`] of the account to which the address points.
+    pub fn interface(&self) -> AddressInterface {
+        self.interface
     }
 
     /// Returns a note tag derived from this address.
