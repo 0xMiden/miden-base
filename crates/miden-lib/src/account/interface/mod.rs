@@ -154,6 +154,7 @@ impl AccountInterface {
                 AccountComponentInterface::AuthNone => {
                     component_proc_digests
                         .extend(no_auth_library().mast_forest().procedure_digests());
+                },
                 AccountComponentInterface::Custom(custom_procs) => {
                     component_proc_digests
                         .extend(custom_procs.iter().map(|info| *info.mast_root()));
