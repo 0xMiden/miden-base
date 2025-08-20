@@ -442,8 +442,8 @@ fn validate_components_support_account_type(
 mod tests {
     use alloc::vec::Vec;
 
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
     use miden_crypto::utils::{Deserializable, Serializable};
     use miden_crypto::{Felt, Word};
 

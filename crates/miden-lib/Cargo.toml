@@ -16,7 +16,7 @@ version                = "0.11.0"
 
 [features]
 default         = ["std"]
-std             = ["assembly/std", "miden-objects/std", "miden-processor/std", "miden-stdlib/std"]
+std             = ["miden-assembly/std", "miden-objects/std", "miden-processor/std", "miden-stdlib/std"]
 testing         = ["miden-objects/testing"]
 with-debug-info = ["miden-stdlib/with-debug-info"]
 
@@ -27,10 +27,10 @@ miden-stdlib    = { workspace = true }
 thiserror       = { workspace = true }
 
 [build-dependencies]
-assembly     = { workspace = true }
-miden-stdlib = { workspace = true }
-regex        = { version = "1.11" }
-walkdir      = { version = "2.5" }
+miden-assembly = { workspace = true }
+miden-stdlib   = { workspace = true }
+regex          = { version = "1.11" }
+walkdir        = { version = "2.5" }
 
 [dev-dependencies]
 anyhow          = "1.0"

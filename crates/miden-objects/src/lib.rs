@@ -55,8 +55,8 @@ pub use miden_crypto::word;
 pub use miden_crypto::word::{LexicographicWord, Word, WordError};
 
 pub mod assembly {
-    pub use assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
-    pub use assembly::{
+    pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
+    pub use miden_assembly::{
         Assembler,
         DefaultSourceManager,
         KernelLibrary,

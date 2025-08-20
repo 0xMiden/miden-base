@@ -35,6 +35,6 @@ tokio     = { features = ["rt"], workspace = true }
 
 [dev-dependencies]
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
-assembly       = { workspace = true }
 assert_matches = { workspace = true }
+miden-assembly = { workspace = true }
 miden-tx       = { features = ["testing"], path = "." }

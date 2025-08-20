@@ -1,7 +1,7 @@
 // ACCOUNT CODE
 // ================================================================================================
 
-use assembly::Assembler;
+use miden_assembly::Assembler;
 
 use crate::account::{AccountCode, AccountComponent, AccountType};
 use crate::testing::noop_auth_component::NoopAuthComponent;

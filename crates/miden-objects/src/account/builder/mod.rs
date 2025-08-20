@@ -266,8 +266,8 @@ impl AccountBuilder {
 mod tests {
     use std::sync::LazyLock;
 
-    use assembly::{Assembler, Library};
     use assert_matches::assert_matches;
+    use miden_assembly::{Assembler, Library};
     use miden_core::FieldElement;
 
     use super::*;

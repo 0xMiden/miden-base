@@ -377,7 +377,7 @@ mod tests {
     use core::error::Error;
     use core::panic;
 
-    use assembly::Assembler;
+    use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
     use miden_core::{EMPTY_WORD, Felt, Word};
     use semver::Version;

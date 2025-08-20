@@ -448,8 +448,8 @@ pub(crate) fn procedures_as_elements(procedures: &[AccountProcedureInfo]) -> Vec
 #[cfg(test)]
 mod tests {
 
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
     use miden_core::Word;
 
     use super::{AccountCode, Deserializable, Serializable};
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_account_component_multiple_auth_procedures() {
-        use assembly::Assembler;
+        use miden_assembly::Assembler;
 
         let code_with_multiple_auth = "
             use.miden::account

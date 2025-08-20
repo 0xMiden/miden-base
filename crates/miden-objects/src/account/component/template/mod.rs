@@ -3,7 +3,7 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use assembly::Library;
+use miden_assembly::Library;
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_processor::DeserializationError;
 use semver::Version;
@@ -109,7 +109,7 @@ impl Deserializable for AccountComponentTemplate {
 /// #     AccountComponent, AccountComponentMetadata, StorageEntry,
 /// #     StorageValueName,
 /// #     AccountComponentTemplate, FeltRepresentation, WordRepresentation, TemplateType},
-/// #     assembly::Assembler, Felt};
+/// #     miden_assembly::Assembler, Felt};
 /// # use miden_objects::account::InitStorageData;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let first_felt = FeltRepresentation::from(Felt::new(0u64));
@@ -330,8 +330,8 @@ mod tests {
     use std::collections::BTreeSet;
     use std::string::ToString;
 
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
     use miden_core::utils::{Deserializable, Serializable};
     use miden_core::{Felt, FieldElement};
     use semver::Version;

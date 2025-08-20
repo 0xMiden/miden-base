@@ -1,8 +1,8 @@
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use assembly::Assembler;
-use assembly::debuginfo::{SourceLanguage, Uri};
+use miden_assembly::Assembler;
+use miden_assembly::debuginfo::{SourceLanguage, Uri};
 use rand::Rng;
 
 use crate::account::AccountId;
