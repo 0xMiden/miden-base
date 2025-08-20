@@ -20,10 +20,10 @@ use alloc::string::{String, ToString};
 use core::fmt;
 
 pub use id_version::AccountIdVersion;
+use miden_core::Felt;
+use miden_core::utils::{ByteReader, Deserializable, Serializable};
 use miden_crypto::utils::hex_to_bytes;
-use vm_core::Felt;
-use vm_core::utils::{ByteReader, Deserializable, Serializable};
-use vm_processor::DeserializationError;
+use miden_processor::DeserializationError;
 
 use crate::errors::AccountIdError;
 use crate::{AccountError, Word};
@@ -458,7 +458,7 @@ impl fmt::Display for AccountId {
 // ================================================================================================
 
 impl Serializable for AccountId {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         match self {
             AccountId::V0(account_id) => {
                 account_id.write_into(target);

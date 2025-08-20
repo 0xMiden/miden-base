@@ -22,10 +22,10 @@ use miden_objects::transaction::{
     TransactionScript,
 };
 use miden_objects::vm::AdviceMap;
+use miden_processor::{AdviceInputs, Felt, Word};
 use miden_tx::TransactionMastStore;
 use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, Felt, Word};
 
 use super::TransactionContext;
 use crate::{MockChain, MockChainNote};

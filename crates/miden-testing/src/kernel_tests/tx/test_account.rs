@@ -40,10 +40,10 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
+use miden_processor::{EMPTY_WORD, ExecutionError, Word};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{EMPTY_WORD, ExecutionError, Word};
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;

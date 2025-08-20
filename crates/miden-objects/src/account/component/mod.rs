@@ -3,7 +3,7 @@ use alloc::vec::Vec;
 
 use assembly::ast::QualifiedProcedureName;
 use assembly::{Assembler, Library, Parse};
-use vm_processor::MastForest;
+use miden_processor::MastForest;
 
 mod template;
 pub use template::*;

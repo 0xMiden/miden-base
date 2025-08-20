@@ -37,12 +37,12 @@ use miden_objects::transaction::{
     TransactionInputs,
 };
 use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
+use miden_processor::crypto::RpoRandomCoin;
+use miden_processor::{DeserializationError, Word};
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
-use vm_processor::crypto::RpoRandomCoin;
-use vm_processor::{DeserializationError, Word};
 use winterfell::ByteWriter;
 
 use super::note::MockChainNote;

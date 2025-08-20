@@ -96,10 +96,10 @@ impl Deserializable for AccountInputs {
 mod tests {
     use alloc::vec::Vec;
 
+    use miden_core::Felt;
+    use miden_core::utils::{Deserializable, Serializable};
     use miden_crypto::merkle::MerklePath;
-    use vm_core::Felt;
-    use vm_core::utils::{Deserializable, Serializable};
-    use vm_processor::SMT_DEPTH;
+    use miden_processor::SMT_DEPTH;
 
     use crate::account::{Account, AccountCode, AccountId, AccountStorage};
     use crate::asset::AssetVault;

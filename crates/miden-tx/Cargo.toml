@@ -15,8 +15,8 @@ version                = "0.11.0"
 [features]
 concurrent = ["miden-prover/concurrent", "std"]
 default    = ["std"]
-std        = ["miden-lib/std", "miden-objects/std", "miden-prover/std", "miden-verifier/std", "vm-processor/std"]
-testing    = ["miden-lib/testing", "miden-objects/testing", "vm-processor/testing"]
+std        = ["miden-lib/std", "miden-objects/std", "miden-processor/std", "miden-prover/std", "miden-verifier/std"]
+testing    = ["miden-lib/testing", "miden-objects/testing", "miden-processor/testing"]
 
 [dependencies]
 # Workspace dependencies
@@ -24,9 +24,9 @@ miden-lib     = { workspace = true }
 miden-objects = { workspace = true }
 
 # Miden dependencies
-miden-prover   = { workspace = true }
-miden-verifier = { workspace = true }
-vm-processor   = { workspace = true }
+miden-processor = { workspace = true }
+miden-prover    = { workspace = true }
+miden-verifier  = { workspace = true }
 
 # External dependencies
 rand      = { workspace = true }

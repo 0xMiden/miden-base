@@ -3,7 +3,7 @@ use alloc::borrow::ToOwned;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::SourceManager;
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use vm_processor::{
+use miden_processor::{
     AdviceInputs,
     DefaultHost,
     ExecutionError,

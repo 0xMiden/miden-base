@@ -12,7 +12,7 @@ use miden_objects::asset::FungibleAsset;
 use miden_objects::block::FeeParameters;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::{Felt, Hasher, Word};
-use vm_processor::{
+use miden_processor::{
     AdviceMutation,
     AsyncHost,
     BaseHost,

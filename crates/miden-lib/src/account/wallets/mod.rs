@@ -151,7 +151,7 @@ mod tests {
 
     use miden_objects::crypto::dsa::rpo_falcon512;
     use miden_objects::{ONE, Word};
-    use vm_processor::utils::{Deserializable, Serializable};
+    use miden_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
     use crate::account::wallets::BasicWallet;

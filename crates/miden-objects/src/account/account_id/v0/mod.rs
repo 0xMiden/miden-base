@@ -377,7 +377,7 @@ impl TryFrom<u128> for AccountIdV0 {
 // ================================================================================================
 
 impl Serializable for AccountIdV0 {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         let bytes: [u8; 15] = (*self).into();
         bytes.write_into(target);
     }
