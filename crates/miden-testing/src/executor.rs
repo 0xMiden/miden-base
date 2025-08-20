@@ -1,5 +1,4 @@
 use alloc::borrow::ToOwned;
-use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::SourceManager;
@@ -50,32 +49,31 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::testing_assembler().with_debug_mode(true);
-        let source_manager = assembler.source_manager();
+        let assembler = TransactionKernel::with_kernel_library().with_debug_mode(true);
+        // TODO: SourceManager.
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<dyn miden_objects::assembly::SourceManager>;
 
+        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file =
             source_manager.load(SourceLanguage::Masm, Uri::new("_user_code"), code.to_owned());
         let program = assembler.assemble_program(virtual_source_file).unwrap();
 
-        self.execute_program(program, source_manager)
+        self.execute_program(program)
     }
 
     /// Executes the provided [`Program`] and returns the [`Process`] state.
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
-    pub fn execute_program(
-        mut self,
-        program: Program,
-        source_manager: Arc<dyn SourceManager>,
-    ) -> Result<Process, ExecutionError> {
+    pub fn execute_program(mut self, program: Program) -> Result<Process, ExecutionError> {
         let mut process = Process::new_debug(
             program.kernel().clone(),
             self.stack_inputs.unwrap_or_default(),
             self.advice_inputs,
-        )
-        .with_source_manager(source_manager);
+        );
         process.execute(&program, &mut self.host)?;
 
         Ok(process)
@@ -87,7 +85,7 @@ impl CodeExecutor<DefaultHost> {
         let mut host = DefaultHost::default();
 
         let test_lib = TransactionKernel::kernel_as_library();
-        host.load_mast_forest(test_lib.mast_forest().clone()).unwrap();
+        host.load_library(test_lib.mast_forest()).unwrap();
 
         CodeExecutor::new(host)
     }

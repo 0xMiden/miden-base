@@ -2,17 +2,19 @@ use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::sync::Arc;
+use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountHeader, AccountVaultDelta};
+use miden_objects::assembly::SourceManager;
 use miden_objects::{Felt, Word};
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
     AdviceInputs,
+    AdviceMutation,
     BaseHost,
     ContextId,
-    ErrorContext,
-    ExecutionError,
+    EventError,
     MastForest,
     MastForestStore,
     ProcessState,
@@ -59,50 +61,54 @@ impl MockHost {
 
     fn on_push_account_procedure_index(
         &mut self,
-        process: &mut ProcessState,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
-        let proc_idx = self
-            .acct_procedure_index_map
-            .get_proc_index(process)
-            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
-        process.advice_provider_mut().push_stack(Felt::from(proc_idx));
-        Ok(())
+        process: &ProcessState,
+    ) -> Result<Vec<AdviceMutation>, EventError> {
+        let proc_idx = self.acct_procedure_index_map.get_proc_index(process).map_err(Box::new)?;
+        Ok(vec![AdviceMutation::ExtendStack { values: vec![Felt::from(proc_idx)] }])
     }
 }
 
-impl BaseHost for MockHost {}
-
-impl SyncHost for MockHost {
+impl BaseHost for MockHost {
     fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
         self.mast_store.get(node_digest)
     }
 
+    fn get_label_and_source_file(
+        &self,
+        location: &miden_objects::assembly::debuginfo::Location,
+    ) -> (
+        miden_objects::assembly::debuginfo::SourceSpan,
+        Option<Arc<miden_objects::assembly::SourceFile>>,
+    ) {
+        // TODO: SourceManager: Replace with proper call to source manager once the host owns it.
+        let stub_source_manager = miden_objects::assembly::DefaultSourceManager::default();
+        let maybe_file = stub_source_manager.get_by_uri(location.uri());
+        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        (span, maybe_file)
+    }
+}
+
+impl SyncHost for MockHost {
     fn on_event(
         &mut self,
-        process: &mut ProcessState,
+        process: &ProcessState,
         event_id: u32,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
-        let event = TransactionEvent::try_from(event_id)
-            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+    ) -> Result<Vec<AdviceMutation>, EventError> {
+        let event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         if process.ctx() != ContextId::root() {
-            return Err(ExecutionError::event_error(
-                Box::new(TransactionEventError::NotRootContext(event_id)),
-                err_ctx,
-            ));
+            return Err(Box::new(TransactionEventError::NotRootContext(event_id)));
         }
 
-        match event {
+        let advice_mutations = match event {
             TransactionEvent::AccountPushProcedureIndex => {
-                self.on_push_account_procedure_index(process, err_ctx)
+                self.on_push_account_procedure_index(process)
             },
             TransactionEvent::LinkMapSetEvent => LinkMap::handle_set_event(process),
             TransactionEvent::LinkMapGetEvent => LinkMap::handle_get_event(process),
-            _ => Ok(()),
+            _ => Ok(Vec::new()),
         }?;
 
-        Ok(())
+        Ok(advice_mutations)
     }
 }

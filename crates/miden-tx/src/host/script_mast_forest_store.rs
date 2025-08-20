@@ -25,7 +25,7 @@ impl ScriptMastForestStore {
     ) -> Self {
         let mut mast_store = ScriptMastForestStore {
             mast_forests: BTreeMap::new(),
-            advice_map: AdviceMap::new(),
+            advice_map: AdviceMap::default(),
         };
 
         for note_script in note_scripts {

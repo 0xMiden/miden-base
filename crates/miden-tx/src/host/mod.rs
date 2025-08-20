@@ -1,4 +1,5 @@
 mod account_delta_tracker;
+
 use account_delta_tracker::AccountDeltaTracker;
 
 mod storage_delta_tracker;
@@ -24,7 +25,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
 use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::asset::Asset;
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -38,15 +39,17 @@ use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
 pub use tx_progress::TransactionProgress;
 use vm_processor::{
+    AdviceMutation,
     ContextId,
-    ErrorContext,
+    EventError,
     ExecutionError,
     Felt,
     MastForest,
     MastForestStore,
-    MemoryError,
     ProcessState,
 };
+
+use crate::auth::SigningInputs;
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -163,127 +166,122 @@ where
 
     /// Handles the given [`TransactionEvent`], for example by updating the account delta or pushing
     /// requested advice to the advice stack.
-    pub fn handle_event(
+    pub(super) fn handle_event(
         &mut self,
-        process: &mut ProcessState,
+        process: &ProcessState,
         transaction_event: TransactionEvent,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
+    ) -> Result<TransactionEventHandling, EventError> {
         // Privileged events can only be emitted from the root context.
         if process.ctx() != ContextId::root() && transaction_event.is_privileged() {
-            return Err(ExecutionError::event_error(
-                Box::new(TransactionEventError::NotRootContext(transaction_event as u32)),
-                err_ctx,
-            ));
+            return Err(Box::new(TransactionEventError::NotRootContext(transaction_event as u32)));
         }
 
-        match transaction_event {
-            TransactionEvent::AccountVaultBeforeAddAsset => Ok(()),
+        let advice_mutations = match transaction_event {
+            TransactionEvent::AccountVaultBeforeAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountVaultAfterAddAsset => {
-                self.on_account_vault_after_add_asset(process)
+                self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeRemoveAsset => Ok(()),
+            TransactionEvent::AccountVaultBeforeRemoveAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountVaultAfterRemoveAsset => {
-                self.on_account_vault_after_remove_asset(process)
+                self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountStorageBeforeSetItem => Ok(()),
+            TransactionEvent::AccountStorageBeforeSetItem => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountStorageAfterSetItem => {
-                self.on_account_storage_after_set_item(process)
+                self.on_account_storage_after_set_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountStorageBeforeSetMapItem => Ok(()),
+            TransactionEvent::AccountStorageBeforeSetMapItem => Ok(TransactionEventHandling::Handled(Vec::new())),
             TransactionEvent::AccountStorageAfterSetMapItem => {
-                self.on_account_storage_after_set_map_item(process)
+                self.on_account_storage_after_set_map_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountBeforeIncrementNonce => {
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::AccountAfterIncrementNonce => {
-                self.on_account_after_increment_nonce()
+                self.on_account_after_increment_nonce().map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountPushProcedureIndex => {
-                self.on_account_push_procedure_index(process)
+                self.on_account_push_procedure_index(process).map(TransactionEventHandling::Handled)
             },
 
-            TransactionEvent::NoteBeforeCreated => Ok(()),
-            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process),
+            TransactionEvent::NoteBeforeCreated => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::NoteAfterCreated => self.on_note_after_created(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
 
-            TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process),
-            TransactionEvent::NoteAfterAddAsset => Ok(()),
+            TransactionEvent::NoteBeforeAddAsset => self.on_note_before_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::NoteAfterAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
 
             TransactionEvent::AuthRequest => self.on_auth_requested(process),
 
             TransactionEvent::PrologueStart => {
                 self.tx_progress.start_prologue(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::PrologueEnd => {
                 self.tx_progress.end_prologue(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::NotesProcessingStart => {
                 self.tx_progress.start_notes_processing(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::NotesProcessingEnd => {
                 self.tx_progress.end_notes_processing(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::NoteExecutionStart => {
-                let note_id = Self::get_current_note_id(process,err_ctx)?.expect(
+                let note_id = Self::get_current_note_id(process)?.expect(
                     "Note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 );
                 self.tx_progress.start_note_execution(process.clk(), note_id);
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
             TransactionEvent::NoteExecutionEnd => {
                 self.tx_progress.end_note_execution(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::TxScriptProcessingStart => {
                 self.tx_progress.start_tx_script_processing(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
             TransactionEvent::TxScriptProcessingEnd => {
                 self.tx_progress.end_tx_script_processing(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
 
             TransactionEvent::EpilogueStart => {
                 self.tx_progress.start_epilogue(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
-            TransactionEvent::EpilogueAfterTxFeeComputed => {
-                self.tx_progress.epilogue_after_tx_fee_computed(process.clk());
-                Ok(())
+            TransactionEvent::EpilogueTxCyclesObtained => {
+                self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
+                Ok(TransactionEventHandling::Handled(vec![]))
             }
+            TransactionEvent::EpilogueTxFeeComputed => self.on_tx_fee_computed(process),
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
-                Ok(())
+                Ok(TransactionEventHandling::Handled(Vec::new()))
             }
             TransactionEvent::LinkMapSetEvent => {
-                LinkMap::handle_set_event(process)?;
-                Ok(())
+                return LinkMap::handle_set_event(process).map(TransactionEventHandling::Handled);
             },
             TransactionEvent::LinkMapGetEvent => {
-                LinkMap::handle_get_event(process)?;
-                Ok(())
+                return LinkMap::handle_get_event(process).map(TransactionEventHandling::Handled);
             },
             TransactionEvent::Unauthorized => {
               // Note: This always returns an error to abort the transaction.
               Err(self.on_unauthorized(process))
             }
         }
-        .map_err(|err| ExecutionError::event_error(Box::new(err),err_ctx))?;
+        .map_err(EventError::from)?;
 
-        Ok(())
+        Ok(advice_mutations)
     }
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
@@ -291,25 +289,43 @@ where
     /// Expected stack state: `[MESSAGE, PUB_KEY]`
     ///
     /// The signature is fetched from the advice map using `hash(PUB_KEY, MESSAGE)` as the key. If
-    /// the signature not present in the advice map, an error is returned.
-    pub fn on_auth_requested(
-        &mut self,
-        process: &mut ProcessState,
-    ) -> Result<(), TransactionKernelError> {
-        let msg = process.get_stack_word(0);
-        let pub_key = process.get_stack_word(1);
+    /// not present in the advice map [`TransactionEventHandling::Unhandled`] is returned with the
+    /// data required to request a signature from a
+    /// [`TransactionAuthenticator`](crate::auth::TransactionAuthenticator).
+    fn on_auth_requested(
+        &self,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let message = process.get_stack_word(0);
+        let pub_key_hash = process.get_stack_word(1);
+        let signature_key = Hasher::merge(&[pub_key_hash, message]);
 
-        let signature_key = Hasher::merge(&[pub_key, msg]);
+        let tx_summary = self.build_tx_summary(process, message)?;
 
-        let signature = process
+        if message != tx_summary.to_commitment() {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "transaction summary doesn't commit to the expected message".into(),
+            ));
+        }
+
+        let signing_inputs = SigningInputs::TransactionSummary(Box::new(tx_summary));
+
+        if let Some(signature) = process
             .advice_provider()
             .get_mapped_values(&signature_key)
-            .map_err(|_| TransactionKernelError::MissingAuthenticator)?
-            .to_vec();
+            .map(|slice| slice.to_vec())
+        {
+            return Ok(TransactionEventHandling::Handled(vec![AdviceMutation::extend_stack(
+                signature,
+            )]));
+        }
 
-        process.advice_provider_mut().stack.extend(signature);
-
-        Ok(())
+        // If the signature is not present in the advice map, extract the necessary data to handle
+        // the event at a later point.
+        Ok(TransactionEventHandling::Unhandled(TransactionEventData::AuthRequest {
+            pub_key_hash,
+            signing_inputs,
+        }))
     }
 
     /// Aborts the transaction by building the
@@ -327,7 +343,7 @@ where
     /// ```text
     /// MESSAGE -> [SALT, OUTPUT_NOTES_COMMITMENT, INPUT_NOTES_COMMITMENT, ACCOUNT_DELTA_COMMITMENT]
     /// ```
-    fn on_unauthorized(&self, process: &mut ProcessState) -> TransactionKernelError {
+    fn on_unauthorized(&self, process: &ProcessState) -> TransactionKernelError {
         let msg = process.get_stack_word(0);
 
         let tx_summary = match self.build_tx_summary(process, msg) {
@@ -342,6 +358,26 @@ where
         }
 
         TransactionKernelError::Unauthorized(Box::new(tx_summary))
+    }
+
+    /// Extracts all necessary data to handle [`TransactionEvent::EpilogueTxFeeComputed`].
+    ///
+    /// Expected stack state:
+    ///
+    /// ```text
+    /// [FEE_ASSET]
+    /// ```
+    fn on_tx_fee_computed(
+        &self,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let fee_asset = process.get_stack_word(0);
+        let fee_asset = FungibleAsset::try_from(fee_asset)
+            .map_err(TransactionKernelError::FailedToConvertFeeAsset)?;
+
+        Ok(TransactionEventHandling::Unhandled(
+            TransactionEventData::TransactionFeeComputed { fee_asset },
+        ))
     }
 
     /// Creates a new [OutputNoteBuilder] from the data on the operand stack and stores it into the
@@ -402,11 +438,10 @@ where
     /// Expected stack state: [PROC_ROOT, ...]
     fn on_account_push_procedure_index(
         &mut self,
-        process: &mut ProcessState,
-    ) -> Result<(), TransactionKernelError> {
+        process: &ProcessState,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process)?;
-        process.advice_provider_mut().push_stack(Felt::from(proc_idx));
-        Ok(())
+        Ok(vec![AdviceMutation::ExtendStack { values: vec![Felt::from(proc_idx)] }])
     }
 
     /// Handles the increment nonce event by incrementing the nonce delta by one.
@@ -542,7 +577,7 @@ where
         })?;
 
         self.account_delta
-            .vault_delta()
+            .vault_delta_mut()
             .add_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaAddAssetFailed)?;
         Ok(())
@@ -564,7 +599,7 @@ where
         })?;
 
         self.account_delta
-            .vault_delta()
+            .vault_delta_mut()
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
         Ok(())
@@ -579,10 +614,7 @@ where
     /// # Errors
     /// Returns an error if the address of the currently executing input note is invalid (e.g.,
     /// greater than `u32::MAX`).
-    fn get_current_note_id(
-        process: &ProcessState,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<Option<NoteId>, ExecutionError> {
+    fn get_current_note_id(process: &ProcessState) -> Result<Option<NoteId>, EventError> {
         // get the note address in `Felt` or return `None` if the address hasn't been accessed
         // previously.
         let note_address_felt = match process.get_mem_value(process.ctx(), CURRENT_INPUT_NOTE_PTR) {
@@ -590,10 +622,9 @@ where
             None => return Ok(None),
         };
         // convert note address into u32
-        let note_address: u32 = note_address_felt.try_into().map_err(|_| {
-            ExecutionError::MemoryError(MemoryError::address_out_of_bounds(
-                note_address_felt.as_int(),
-                err_ctx,
+        let note_address = u32::try_from(note_address_felt).map_err(|_| {
+            EventError::from(format!(
+                "failed to convert {note_address_felt} into a memory address (u32)"
             ))
         })?;
         // if `note_address` == 0 note execution has ended and there is no valid note address
@@ -629,9 +660,11 @@ where
         process: &ProcessState,
         msg: Word,
     ) -> Result<TransactionSummary, TransactionKernelError> {
-        let commitments = process.advice_provider().get_mapped_values(&msg).map_err(|err| {
-            TransactionKernelError::TransactionSummaryConstructionFailed(Box::new(err))
-        })?;
+        let Some(commitments) = process.advice_provider().get_mapped_values(&msg) else {
+            return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
+                "Expected message to exist in advice provider".into(),
+            ));
+        };
 
         if commitments.len() != 16 {
             return Err(TransactionKernelError::TransactionSummaryConstructionFailed(
@@ -694,4 +727,31 @@ pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
         commitments[start + 2],
         commitments[start + 3],
     ])
+}
+
+/// Indicates whether a [`TransactionEvent`] was handled or not.
+///
+/// If it is unhandled, the necessary data to handle it is returned.
+#[derive(Debug)]
+pub(super) enum TransactionEventHandling {
+    Unhandled(TransactionEventData),
+    Handled(Vec<AdviceMutation>),
+}
+
+/// The data necessary to handle an [`TransactionEvent`].
+#[derive(Debug, Clone)]
+pub(super) enum TransactionEventData {
+    /// The data necessary to handle an auth request.
+    AuthRequest {
+        /// The hash of the public key for which a signature was requested.
+        pub_key_hash: Word,
+        /// The signing inputs that summarize what is being signed. The commitment to these inputs
+        /// is the message that is being signed.
+        signing_inputs: SigningInputs,
+    },
+    /// The data necessary to handle a transaction fee computed event.
+    TransactionFeeComputed {
+        /// The fee asset extracted from the stack.
+        fee_asset: FungibleAsset,
+    },
 }

@@ -116,15 +116,25 @@ impl FungibleAsset {
         Ok(Self { faucet_id: self.faucet_id, amount })
     }
 
-    /// Subtracts the specified amount from this asset and returns the resulting asset.
+    /// Subtracts a fungible asset from another and returns the result.
     ///
     /// # Errors
-    /// Returns an error if this asset's amount is smaller than the requested amount.
-    pub fn sub(&mut self, amount: u64) -> Result<Self, AssetError> {
-        self.amount = self.amount.checked_sub(amount).ok_or(
+    /// Returns an error if:
+    /// - The assets were not issued by the same faucet.
+    /// - The final amount would be negative.
+    #[allow(clippy::should_implement_trait)]
+    pub fn sub(self, other: Self) -> Result<Self, AssetError> {
+        if self.faucet_id != other.faucet_id {
+            return Err(AssetError::FungibleAssetInconsistentFaucetIds {
+                original_issuer: self.faucet_id,
+                other_issuer: other.faucet_id,
+            });
+        }
+
+        let amount = self.amount.checked_sub(other.amount).ok_or(
             AssetError::FungibleAssetAmountNotSufficient {
                 minuend: self.amount,
-                subtrahend: amount,
+                subtrahend: other.amount,
             },
         )?;
 

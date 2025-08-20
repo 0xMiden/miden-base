@@ -1,6 +1,4 @@
 use alloc::borrow::ToOwned;
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::sync::Arc;
@@ -29,8 +27,15 @@ use miden_tx::{
     TransactionMastStore,
 };
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, ExecutionError, MastForest, MastForestStore, Process, Word};
-use winter_maybe_async::*;
+use vm_processor::{
+    AdviceInputs,
+    ExecutionError,
+    FutureMaybeSend,
+    MastForest,
+    MastForestStore,
+    Process,
+    Word,
+};
 
 use crate::MockHost;
 use crate::executor::CodeExecutor;
@@ -86,8 +91,13 @@ impl TransactionContext {
 
         let test_lib = TransactionKernel::kernel_as_library();
 
-        let source_manager = assembler.source_manager();
+        let source_manager =
+            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
+                as alloc::sync::Arc<
+                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
+                >;
 
+        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
         let virtual_source_file = source_manager.load(
             SourceLanguage::Masm,
@@ -118,21 +128,20 @@ impl TransactionContext {
         ))
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)
-        .execute_program(program, source_manager)
+        .execute_program(program)
     }
 
-    /// Executes arbitrary code with a testing assembler ([TransactionKernel::testing_assembler()]).
+    /// Executes arbitrary code with a kernel library assembler
+    /// ([`TransactionKernel::with_kernel_library`]).
     ///
     /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::testing_assembler();
+        let assembler = TransactionKernel::with_kernel_library();
         self.execute_code_with_assembler(code, assembler)
     }
 
     /// Executes the transaction through a [TransactionExecutor]
-    #[allow(clippy::arc_with_non_send_sync)]
-    #[maybe_async]
-    pub fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
+    pub async fn execute(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let account_id = self.account().id();
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
@@ -142,13 +151,21 @@ impl TransactionContext {
         let source_manager = Arc::clone(&self.source_manager);
         let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
 
-        maybe_await!(tx_executor.execute_transaction(
-            account_id,
-            block_num,
-            notes,
-            tx_args,
-            source_manager
-        ))
+        tx_executor
+            .execute_transaction(account_id, block_num, notes, tx_args, source_manager)
+            .await
+    }
+
+    /// Executes the transaction through a [TransactionExecutor]
+    ///
+    /// TODO: This is a temporary workaround to avoid having to update each test to use tokio::test.
+    /// Eventually we should get rid of this method and use tokio::test + execute, but for the POC
+    /// stage this is easier.
+    pub fn execute_blocking(self) -> Result<ExecutedTransaction, TransactionExecutorError> {
+        tokio::runtime::Builder::new_current_thread()
+            .build()
+            .unwrap()
+            .block_on(self.execute())
     }
 
     pub fn account(&self) -> &Account {
@@ -185,18 +202,17 @@ impl TransactionContext {
     }
 }
 
-#[maybe_async_trait]
 impl DataStore for TransactionContext {
-    #[maybe_async]
     fn get_transaction_inputs(
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError> {
+    ) -> impl FutureMaybeSend<
+        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+    > {
         assert_eq!(account_id, self.account().id());
         let (account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
-
-        Ok((account, seed, header, mmr))
+        async move { Ok((account, seed, header, mmr)) }
     }
 }
 

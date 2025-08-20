@@ -1,5 +1,5 @@
 use alloc::collections::BTreeMap;
-use alloc::string::String;
+use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
 use miden_crypto::EMPTY_WORD;
@@ -14,7 +14,6 @@ use crate::account::{
     StorageSlot,
 };
 use crate::note::NoteAssets;
-use crate::utils::word_to_masm_push_string;
 
 // ACCOUNT STORAGE DELTA BUILDER
 // ================================================================================================
@@ -141,8 +140,7 @@ pub fn prepare_assets(note_assets: &NoteAssets) -> Vec<String> {
     let mut assets = Vec::new();
     for &asset in note_assets.iter() {
         let asset_word: Word = asset.into();
-        let asset_str = word_to_masm_push_string(&asset_word);
-        assets.push(asset_str);
+        assets.push(asset_word.to_string());
     }
     assets
 }

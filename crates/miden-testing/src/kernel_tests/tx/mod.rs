@@ -11,7 +11,6 @@ use miden_lib::transaction::memory::{
     OUTPUT_NOTE_RECIPIENT_OFFSET,
     OUTPUT_NOTE_SECTION_OFFSET,
 };
-use miden_lib::utils::word_to_masm_push_string;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{Note, NoteType};
@@ -43,30 +42,6 @@ mod test_note;
 mod test_output_note;
 mod test_prologue;
 mod test_tx;
-
-// HELPER MACROS
-// ================================================================================================
-
-#[macro_export]
-macro_rules! assert_execution_error {
-    ($execution_result:expr, $expected_err:expr) => {
-        match $execution_result {
-            Err(vm_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg }) => {
-                if let Some(ref msg) = err_msg {
-                  assert_eq!(msg.as_ref(), $expected_err.message(), "error messages did not match");
-                }
-
-                assert_eq!(
-                    err_code, $expected_err.code(),
-                    "Execution failed on assertion with an unexpected error (Actual code: {}, msg: {}, Expected code: {}).",
-                    err_code, err_msg.as_ref().map(|string| string.as_ref()).unwrap_or("<no message>"), $expected_err,
-                );
-            },
-            Ok(_) => panic!("Execution was unexpectedly successful"),
-            Err(err) => panic!("Execution error was not as expected: {err}"),
-        }
-    };
-}
 
 // HELPER FUNCTIONS
 // ================================================================================================
@@ -119,8 +94,8 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
     );
 
     for (idx, note) in notes.iter().enumerate() {
-        let metadata = word_to_masm_push_string(&note.metadata().into());
-        let recipient = word_to_masm_push_string(&note.recipient().digest());
+        let metadata = Word::from(note.metadata());
+        let recipient = note.recipient().digest();
         let assets = prepare_assets(note.assets());
         let num_assets = assets.len();
         let note_offset = (idx as u32) * NOTE_MEM_SIZE;
@@ -132,16 +107,16 @@ pub fn create_mock_notes_procedure(notes: &[Note]) -> String {
                 # populate note {idx}
                 push.{metadata}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_METADATA_OFFSET} add add mem_storew dropw
-    
+
                 push.{recipient}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_RECIPIENT_OFFSET} add add mem_storew dropw
-    
+
                 push.{num_assets}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_NUM_ASSETS_OFFSET} add add mem_store
 
                 push.1 # dirty flag should be `1` by default
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_DIRTY_FLAG_OFFSET} add add mem_store
-    
+
                 push.{first_asset}
                 push.{OUTPUT_NOTE_SECTION_OFFSET}.{note_offset}.{OUTPUT_NOTE_ASSETS_OFFSET} add add mem_storew dropw
                 ",

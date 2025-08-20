@@ -20,7 +20,6 @@ use miden_objects::testing::account_id::{
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, NoteError, Word};
 use miden_testing::{Auth, MockChain};
-use miden_tx::utils::word_to_masm_push_string;
 
 use crate::prove_and_verify_transaction;
 
@@ -55,10 +54,10 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
             dropw dropw dropw dropw
         end
         ",
-        recipient = word_to_masm_push_string(&swap_note.recipient().digest()),
+        recipient = swap_note.recipient().digest(),
         note_type = NoteType::Public as u8,
         tag = Felt::from(swap_note.metadata().tag()),
-        asset = word_to_masm_push_string(&offered_asset.into()),
+        asset = Word::from(offered_asset),
         note_execution_hint = Felt::from(swap_note.metadata().execution_hint())
     );
 
@@ -70,7 +69,7 @@ pub fn prove_send_swap_note() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .extend_expected_output_notes(vec![OutputNote::Full(swap_note.clone())])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     sender_account
         .apply_delta(create_swap_note_tx.account_delta())
@@ -119,7 +118,7 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .build_tx_context(target_account.id(), &[swap_note.id()], &[])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     target_account
         .apply_delta(consume_swap_note_tx.account_delta())
@@ -145,7 +144,7 @@ fn consume_swap_note_private_payback_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     sender_account
         .apply_delta(consume_payback_tx.account_delta())
@@ -198,7 +197,7 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         .context("failed to build tx context")?
         .extend_expected_output_notes(vec![OutputNote::Full(payback_p2id_note)])
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     target_account.apply_delta(consume_swap_note_tx.account_delta())?;
 
@@ -222,7 +221,7 @@ fn consume_swap_note_public_payback_note() -> anyhow::Result<()> {
         .build_tx_context(sender_account.id(), &[], &[full_payback_note])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     sender_account.apply_delta(consume_payback_tx.account_delta())?;
 
@@ -273,7 +272,7 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
         .build_tx_context(matcher_account.id(), &[swap_note_1.id(), swap_note_2.id()], &[])
         .context("failed to build tx context")?
         .build()?
-        .execute()?;
+        .execute_blocking()?;
 
     // VERIFY PAYBACK NOTES WERE CREATED CORRECTLY
     // --------------------------------------------------------------------------------------------

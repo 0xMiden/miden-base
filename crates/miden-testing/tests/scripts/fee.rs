@@ -25,15 +25,14 @@ fn prove_account_creation_with_fees() -> anyhow::Result<()> {
     let tx = chain
         .build_tx_context(account, &[fee_note.id()], &[])?
         .build()?
-        .execute()
+        .execute_blocking()
         .context("failed to execute account-creating transaction")?;
 
     let expected_fee = tx.compute_fee();
     assert_eq!(expected_fee, tx.fee().amount());
 
     // We expect that the new account contains the amount minus the paid fee.
-    let mut added_asset = FungibleAsset::new(chain.native_asset_id(), amount)?;
-    added_asset.sub(tx.fee().amount())?;
+    let added_asset = FungibleAsset::new(chain.native_asset_id(), amount)?.sub(tx.fee())?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
     // except for the nonce, the storage delta should be empty

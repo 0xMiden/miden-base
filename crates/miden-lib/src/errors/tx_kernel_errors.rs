@@ -218,6 +218,8 @@ pub const ERR_PROLOGUE_PROVIDED_INPUT_ASSETS_INFO_DOES_NOT_MATCH_ITS_COMMITMENT:
 /// Error Message: "verification base fee must fit into a u32"
 pub const ERR_PROLOGUE_VERIFICATION_BASE_FEE_MUST_BE_U32: MasmError = MasmError::from_static_str("verification base fee must fit into a u32");
 
+/// Error Message: "failed to approve multisig transaction as it was already executed"
+pub const ERR_TX_ALREADY_EXECUTED: MasmError = MasmError::from_static_str("failed to approve multisig transaction as it was already executed");
 /// Error Message: "transaction expiration block delta must be within 0x1 and 0xFFFF"
 pub const ERR_TX_INVALID_EXPIRATION_DELTA: MasmError = MasmError::from_static_str("transaction expiration block delta must be within 0x1 and 0xFFFF");
 /// Error Message: "number of output notes in the transaction exceeds the maximum limit of 1024"
@@ -231,13 +233,15 @@ pub const ERR_VAULT_ADD_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID: MasmError =
 pub const ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW: MasmError = MasmError::from_static_str("failed to remove the fungible asset from the vault since the amount of the asset in the vault is less than the amount to remove");
 /// Error Message: "adding the fungible asset to the vault would exceed the max amount of 9223372036854775807"
 pub const ERR_VAULT_FUNGIBLE_MAX_AMOUNT_EXCEEDED: MasmError = MasmError::from_static_str("adding the fungible asset to the vault would exceed the max amount of 9223372036854775807");
-/// Error Message: "the get_balance procedure can only be called on a fungible faucet"
-pub const ERR_VAULT_GET_BALANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET: MasmError = MasmError::from_static_str("the get_balance procedure can only be called on a fungible faucet");
+/// Error Message: "get_balance can only be called on a fungible asset"
+pub const ERR_VAULT_GET_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET: MasmError = MasmError::from_static_str("get_balance can only be called on a fungible asset");
 /// Error Message: "the has_non_fungible_asset procedure can only be called on a non-fungible faucet"
 pub const ERR_VAULT_HAS_NON_FUNGIBLE_ASSET_PROC_CAN_BE_CALLED_ONLY_WITH_NON_FUNGIBLE_ASSET: MasmError = MasmError::from_static_str("the has_non_fungible_asset procedure can only be called on a non-fungible faucet");
 /// Error Message: "the non-fungible asset already exists in the asset vault"
 pub const ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS: MasmError = MasmError::from_static_str("the non-fungible asset already exists in the asset vault");
 /// Error Message: "failed to remove non-existent non-fungible asset from the vault"
 pub const ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND: MasmError = MasmError::from_static_str("failed to remove non-existent non-fungible asset from the vault");
+/// Error Message: "peek_balance can only be called on a fungible asset"
+pub const ERR_VAULT_PEEK_BALANCE_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_ASSET: MasmError = MasmError::from_static_str("peek_balance can only be called on a fungible asset");
 /// Error Message: "failed to remove fungible asset from the asset vault due to the initial value being invalid"
 pub const ERR_VAULT_REMOVE_FUNGIBLE_ASSET_FAILED_INITIAL_VALUE_INVALID: MasmError = MasmError::from_static_str("failed to remove fungible asset from the asset vault due to the initial value being invalid");

@@ -2,10 +2,9 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::Felt;
 use miden_objects::account::{AccountId, AccountProcedureInfo};
 use miden_objects::note::PartialNote;
-use miden_objects::utils::word_to_masm_push_string;
+use miden_objects::{Felt, Word};
 
 use crate::account::components::WellKnownComponent;
 use crate::account::interface::AccountInterfaceError;
@@ -36,6 +35,10 @@ pub enum AccountComponentInterface {
     /// Internal value holds the storage slot index where the public key for the RpoFalcon512
     /// authentication scheme is stored.
     AuthRpoFalcon512Acl(u8),
+    /// Exposes procedures from the multisig RpoFalcon512 authentication module.
+    ///
+    /// Internal value holds the storage slot index where the multisig configuration is stored.
+    AuthRpoFalconMultisig(u8),
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -56,8 +59,9 @@ impl AccountComponentInterface {
                 "Basic Fungible Faucet".to_string()
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
-            AccountComponentInterface::AuthRpoFalcon512Acl(_) => {
-                "RPO Falcon512 Procedure ACL".to_string()
+            AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
+            AccountComponentInterface::AuthRpoFalconMultisig(_) => {
+                "RPO Falcon512 Multisig".to_string()
             },
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
@@ -170,7 +174,7 @@ impl AccountComponentInterface {
                 push.{note_type}
                 push.{aux}
                 push.{tag}\n",
-                recipient = word_to_masm_push_string(&partial_note.recipient_digest()),
+                recipient = partial_note.recipient_digest(),
                 note_type = Felt::from(partial_note.metadata().note_type()),
                 execution_hint = Felt::from(partial_note.metadata().execution_hint()),
                 aux = partial_note.metadata().aux(),
@@ -209,7 +213,7 @@ impl AccountComponentInterface {
                         body.push_str(&format!(
                             "push.{asset}
                             call.::miden::contracts::wallets::basic::move_asset_to_note dropw\n",
-                            asset = word_to_masm_push_string(&asset.into())
+                            asset = Word::from(*asset)
                         ));
                         // stack => [note_idx]
                     }

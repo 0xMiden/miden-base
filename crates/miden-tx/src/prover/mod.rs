@@ -1,11 +1,8 @@
-#[cfg(feature = "async")]
-use alloc::boxed::Box;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::Asset;
 use miden_objects::transaction::{
     OutputNote,
@@ -15,7 +12,6 @@ use miden_objects::transaction::{
 };
 pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
-use winter_maybe_async::*;
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
@@ -26,32 +22,10 @@ pub use prover_host::TransactionProverHost;
 mod mast_store;
 pub use mast_store::TransactionMastStore;
 
-// TRANSACTION PROVER TRAIT
-// ================================================================================================
-
-/// The [TransactionProver] trait defines the interface that transaction witness objects use to
-/// prove transactions and generate a [ProvenTransaction].
-#[maybe_async_trait]
-pub trait TransactionProver {
-    /// Proves the provided transaction and returns a [ProvenTransaction].
-    ///
-    /// # Errors
-    /// - If the input note data in the transaction witness is corrupt.
-    /// - If the transaction program cannot be proven.
-    /// - If the transaction result is corrupt.
-    #[maybe_async]
-    fn prove(
-        &self,
-        tx_witness: TransactionWitness,
-    ) -> Result<ProvenTransaction, TransactionProverError>;
-}
-
 // LOCAL TRANSACTION PROVER
 // ------------------------------------------------------------------------------------------------
 
 /// Local Transaction prover is a stateless component which is responsible for proving transactions.
-///
-/// Local Transaction Prover implements the [TransactionProver] trait.
 pub struct LocalTransactionProver {
     mast_store: Arc<TransactionMastStore>,
     proof_options: ProvingOptions,
@@ -76,13 +50,14 @@ impl Default for LocalTransactionProver {
     }
 }
 
-#[maybe_async_trait]
-impl TransactionProver for LocalTransactionProver {
-    #[maybe_async]
-    fn prove(
+impl LocalTransactionProver {
+    pub fn prove(
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
+        let mast_store = self.mast_store.clone();
+        let proof_options = self.proof_options.clone();
+
         let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
 
         let account = tx_inputs.account();
@@ -114,7 +89,7 @@ impl TransactionProver for LocalTransactionProver {
             TransactionProverHost::new(
                 &account.into(),
                 input_notes.clone(),
-                self.mast_store.as_ref(),
+                mast_store.as_ref(),
                 script_mast_store,
                 acct_procedure_index_map,
             )
@@ -122,18 +97,13 @@ impl TransactionProver for LocalTransactionProver {
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        // For the prover, we assume that the transaction witness was successfully executed and so
-        // there is no need to provide the actual source manager, as it is only used to improve
-        // error quality. So we simply pass an empty one.
-        let source_manager = Arc::new(DefaultSourceManager::default());
-        let (stack_outputs, proof) = maybe_await!(prove(
+        let (stack_outputs, proof) = prove(
             &TransactionKernel::main(),
             stack_inputs,
             advice_inputs.clone(),
             &mut host,
-            self.proof_options.clone(),
-            source_manager
-        ))
+            proof_options,
+        )
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         // extract transaction outputs and process transaction data
@@ -146,8 +116,8 @@ impl TransactionProver for LocalTransactionProver {
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
 
         // Because the fee asset is removed from the vault after the commitment is computed in the
-        // kernel, we have to *add* it to the delta before compute the commitment against which the
-        // transaction is proven.
+        // kernel, we have to *add* it to the delta before computing the commitment against which
+        // the transaction is proven.
         // Note that the fee asset is a transaction output and so is part of the proof. The delta
         // without the added fee asset can still be validated by repeating this process.
         account_delta

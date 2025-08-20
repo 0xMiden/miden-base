@@ -46,13 +46,14 @@ const TX_SCRIPT_PROCESSING_START: u32 = 0x2_0016; // 131094
 const TX_SCRIPT_PROCESSING_END: u32 = 0x2_0017; // 131095
 
 const EPILOGUE_START: u32 = 0x2_0018; // 131096
-const EPILOGUE_AFTER_TX_FEE_COMPUTED: u32 = 0x2_0019; // 131097
-const EPILOGUE_END: u32 = 0x2_001a; // 131098
+const EPILOGUE_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
+const EPILOGUE_TX_FEE_COMPUTED: u32 = 0x2_001a; // 131098
+const EPILOGUE_END: u32 = 0x2_001b; // 131099
 
-const LINK_MAP_SET_EVENT: u32 = 0x2_001b; // 131099
-const LINK_MAP_GET_EVENT: u32 = 0x2_001c; // 131100
+const LINK_MAP_SET_EVENT: u32 = 0x2_001c; // 131100
+const LINK_MAP_GET_EVENT: u32 = 0x2_001d; // 131101
 
-const UNAUTHORIZED_EVENT: u32 = 0x2_001d; // 131101
+const UNAUTHORIZED_EVENT: u32 = 0x2_001e; // 131102
 
 /// Events which may be emitted by a transaction kernel.
 ///
@@ -102,7 +103,8 @@ pub enum TransactionEvent {
     TxScriptProcessingEnd = TX_SCRIPT_PROCESSING_END,
 
     EpilogueStart = EPILOGUE_START,
-    EpilogueAfterTxFeeComputed = EPILOGUE_AFTER_TX_FEE_COMPUTED,
+    EpilogueTxCyclesObtained = EPILOGUE_TX_CYCLES_OBTAINED,
+    EpilogueTxFeeComputed = EPILOGUE_TX_FEE_COMPUTED,
     EpilogueEnd = EPILOGUE_END,
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
@@ -182,7 +184,8 @@ impl TryFrom<u32> for TransactionEvent {
             TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
-            EPILOGUE_AFTER_TX_FEE_COMPUTED => Ok(TransactionEvent::EpilogueAfterTxFeeComputed),
+            EPILOGUE_TX_CYCLES_OBTAINED => Ok(TransactionEvent::EpilogueTxCyclesObtained),
+            EPILOGUE_TX_FEE_COMPUTED => Ok(TransactionEvent::EpilogueTxFeeComputed),
             EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),

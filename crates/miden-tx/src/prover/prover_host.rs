@@ -5,11 +5,13 @@ use alloc::vec::Vec;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::assembly::debuginfo::Location;
+use miden_objects::assembly::{SourceFile, SourceSpan};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use vm_processor::{
+    AdviceMutation,
     BaseHost,
-    ErrorContext,
-    ExecutionError,
+    EventError,
     MastForest,
     MastForestStore,
     ProcessState,
@@ -17,7 +19,13 @@ use vm_processor::{
 };
 
 use crate::AccountProcedureIndexMap;
-use crate::host::{ScriptMastForestStore, TransactionBaseHost, TransactionProgress};
+use crate::host::{
+    ScriptMastForestStore,
+    TransactionBaseHost,
+    TransactionEventData,
+    TransactionEventHandling,
+    TransactionProgress,
+};
 
 /// The transaction prover host is responsible for handling [`SyncHost`] requests made by the
 /// transaction kernel during proving.
@@ -72,9 +80,7 @@ where
 // HOST IMPLEMENTATION
 // ================================================================================================
 
-impl<STORE> BaseHost for TransactionProverHost<'_, STORE> where STORE: MastForestStore {}
-
-impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
+impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
@@ -82,15 +88,46 @@ where
         self.base_host.get_mast_forest(procedure_root)
     }
 
+    fn get_label_and_source_file(
+        &self,
+        _location: &Location,
+    ) -> (SourceSpan, Option<Arc<SourceFile>>) {
+        // For the prover, we assume that the transaction witness is a successfully executed
+        // transaction and so there should be no need to provide the actual source manager, as it
+        // is only used to improve error message quality which we shouldn't run into here.
+        (SourceSpan::UNKNOWN, None)
+    }
+}
+
+impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
+where
+    STORE: MastForestStore,
+{
     fn on_event(
         &mut self,
-        process: &mut ProcessState,
+        process: &ProcessState,
         event_id: u32,
-        err_ctx: &impl ErrorContext,
-    ) -> Result<(), ExecutionError> {
-        let transaction_event = TransactionEvent::try_from(event_id)
-            .map_err(|err| ExecutionError::event_error(Box::new(err), err_ctx))?;
+    ) -> Result<Vec<AdviceMutation>, EventError> {
+        let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
-        self.base_host.handle_event(process, transaction_event, err_ctx)
+        match self.base_host.handle_event(process, transaction_event)? {
+            TransactionEventHandling::Unhandled(event_data) => {
+                // We match on the event_data here so that if a new
+                // variant is added to the enum, this fails compilation and we can adapt
+                // accordingly.
+                match event_data {
+                    // The base host should have handled this event since the signature should be
+                    // present in the advice map.
+                    TransactionEventData::AuthRequest { .. } => {
+                        Err(EventError::from("base host should have handled auth request event"))
+                    },
+                    // We don't track enough information to handle this event. Since this just
+                    // improves error messages for users and the error should not be relevant during
+                    // proving, we ignore it.
+                    TransactionEventData::TransactionFeeComputed { .. } => Ok(Vec::new()),
+                }
+            },
+            TransactionEventHandling::Handled(mutations) => Ok(mutations),
+        }
     }
 }

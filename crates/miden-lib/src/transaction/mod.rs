@@ -358,7 +358,8 @@ impl TransactionKernel {
 
         // parse final account state
         let final_account_data = advice_inputs
-            .mapped_values(&final_account_commitment)
+            .map
+            .get(&final_account_commitment)
             .ok_or(TransactionOutputError::FinalAccountCommitmentMissingInAdviceMap)?;
 
         let account = parse_final_account_header(final_account_data)
@@ -389,7 +390,7 @@ impl TransactionKernel {
         advice_inputs: &AdviceInputs,
     ) -> Result<(Word, Word), TransactionOutputError> {
         let account_update_data =
-            advice_inputs.mapped_values(&account_update_commitment).ok_or_else(|| {
+            advice_inputs.map.get(&account_update_commitment).ok_or_else(|| {
                 TransactionOutputError::AccountUpdateCommitment(
                     "failed to find ACCOUNT_UPDATE_COMMITMENT in advice map".into(),
                 )
@@ -437,14 +438,14 @@ impl TransactionKernel {
             .expect("failed to deserialize transaction kernel library")
     }
 
-    /// Contains code to get an instance of the [Assembler] that should be used in tests.
+    /// Returns an [`Assembler`] with the transaction kernel as a library.
     ///
-    /// This assembler is similar to the assembler used to assemble the kernel and transactions,
-    /// with the difference that it also includes an extra library on the namespace of `kernel`.
-    /// The `kernel` library is added separately because even though the library (`api.masm`) and
-    /// the kernel binary (`main.masm`) include this code, it is not exposed explicitly. By adding
-    /// it separately, we can expose procedures from `/lib` and test them individually.
-    pub fn testing_assembler() -> Assembler {
+    /// This assembler is the same as [`TransactionKernel::assembler`] but additionally includes the
+    /// kernel library on the namespace of `$kernel`. The `$kernel` library is added separately
+    /// because even though the library (`api.masm`) and the kernel binary (`main.masm`) include
+    /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
+    /// from the kernel library to test them individually.
+    pub fn with_kernel_library() -> Assembler {
         let source_manager: Arc<dyn SourceManager + Send + Sync> =
             Arc::new(DefaultSourceManager::default());
         let kernel_library = Self::kernel_as_library();
@@ -462,16 +463,27 @@ impl TransactionKernel {
             .with_debug_mode(true)
     }
 
-    /// Returns the testing assembler, and additionally contains the library for
-    /// [AccountCode::mock_library](miden_objects::account::AccountCode::mock_library), which is a
-    /// mock wallet used in tests.
-    pub fn testing_assembler_with_mock_account() -> Assembler {
-        let assembler = Self::testing_assembler().with_debug_mode(true);
-        let library = miden_objects::account::AccountCode::mock_library(assembler.clone());
+    /// Returns an [`Assembler`] with the mock account and faucet libraries.
+    ///
+    /// This assembler is the same as [`TransactionKernel::with_kernel_library`] but additionally
+    /// includes the [`MockAccountCodeExt::mock_account_library`][account_lib]
+    /// and [`MockAccountCodeExt::mock_faucet_library`][faucet_lib], which are the standard
+    /// testing account libraries.
+    ///
+    /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
+    /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
+    pub fn with_mock_libraries() -> Assembler {
+        use miden_objects::account::AccountCode;
+
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
+        let assembler = Self::with_kernel_library().with_debug_mode(true);
 
         assembler
-            .with_dynamic_library(library)
-            .expect("failed to add mock account code")
+            .with_dynamic_library(AccountCode::mock_account_library())
+            .expect("failed to add mock account library")
+            .with_dynamic_library(AccountCode::mock_faucet_library())
+            .expect("failed to add mock faucet library")
     }
 }
 

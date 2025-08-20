@@ -7,6 +7,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME,
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
+use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
@@ -14,16 +15,10 @@ use miden_lib::transaction::memory::{
 };
 use miden_lib::transaction::{EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel};
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{
-    Account,
-    AccountComponent,
-    AccountDelta,
-    AccountStorageDelta,
-    AccountVaultDelta,
-};
+use miden_objects::Word;
+use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::{NoteTag, NoteType};
-use miden_objects::testing::account_component::IncrNonceAuthComponent;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
@@ -39,25 +34,25 @@ use miden_objects::testing::constants::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{OutputNote, OutputNotes};
-use miden_objects::{FieldElement, Word};
-use miden_tx::TransactionExecutorError;
 use rand::rng;
 use vm_processor::{Felt, ONE};
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::utils::{create_p2any_note, create_spawn_note};
-use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput, assert_execution_error};
+use crate::{
+    Auth,
+    MockChain,
+    TransactionContextBuilder,
+    TxContextInput,
+    assert_execution_error,
+    assert_transaction_executor_error,
+};
 
 #[test]
 fn test_epilogue() -> anyhow::Result<()> {
+    let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
 
@@ -65,7 +60,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         let input_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
         let input_note_2 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
-        TransactionContextBuilder::new(account)
+        TransactionContextBuilder::new(account.clone())
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
             .build()?
@@ -95,20 +90,12 @@ fn test_epilogue() -> anyhow::Result<()> {
         "
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process =
+        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
-    let assembler = TransactionKernel::assembler();
-    let auth_component: AccountComponent =
-        IncrNonceAuthComponent::new(assembler.clone()).unwrap().into();
-    let final_account = Account::mock(
-        tx_context.account().id().into(),
-        tx_context.account().nonce() + ONE,
-        auth_component,
-        assembler,
-    );
+    // The final account is the initial account with the nonce incremented by one.
+    let mut final_account = account.clone();
+    final_account.increment_nonce(ONE)?;
 
     let output_notes = OutputNotes::new(
         tx_context
@@ -164,12 +151,8 @@ fn test_epilogue() -> anyhow::Result<()> {
 #[test]
 fn test_compute_output_note_id() -> anyhow::Result<()> {
     let tx_context = {
-        let account = Account::mock(
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
-            Felt::ONE,
-            Auth::IncrNonce,
-            TransactionKernel::testing_assembler(),
-        );
+        let account =
+            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let output_note_1 =
             create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
 
@@ -205,10 +188,8 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
             "
         );
 
-        let process = &tx_context.execute_code_with_assembler(
-            &code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )?;
+        let process = &tx_context
+            .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
         assert_eq!(
             note.assets().commitment(),
@@ -249,10 +230,10 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
 
     let output_note_1 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_1])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
     let output_note_2 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_2])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
 
     let input_note = create_spawn_note(account.id(), vec![&output_note_1, &output_note_2])?;
 
@@ -270,7 +251,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.$kernel::epilogue
 
         {output_notes_data_procedure}
@@ -286,10 +267,8 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         "
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    );
+    let process =
+        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
     assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
 }
@@ -319,13 +298,13 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
 
     let output_note_1 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_1])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
     let output_note_2 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_2])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
     let output_note_3 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_3])
-        .build(&TransactionKernel::testing_assembler_with_mock_account())?;
+        .build(&TransactionKernel::with_mock_libraries())?;
 
     let input_note = create_spawn_note(
         ACCOUNT_ID_SENDER.try_into()?,
@@ -346,7 +325,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.$kernel::epilogue
 
         {output_notes_data_procedure}
@@ -362,10 +341,8 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         "
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    );
+    let process =
+        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
 
     assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
@@ -404,10 +381,8 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             .replace("{value_2}", &v2.to_string())
             .replace("{min_value}", &v2.min(v1).to_string());
 
-        let process = &tx_context.execute_code_with_assembler(
-            code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        )?;
+        let process = &tx_context
+            .execute_code_with_assembler(code, TransactionKernel::with_mock_libraries())?;
 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
@@ -435,10 +410,8 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     for value in test_values {
         let code = &code_template.replace("{value_1}", &value.to_string());
-        let process = tx_context.execute_code_with_assembler(
-            code,
-            TransactionKernel::testing_assembler_with_mock_account(),
-        );
+        let process =
+            tx_context.execute_code_with_assembler(code, TransactionKernel::with_mock_libraries());
 
         assert_execution_error!(process, ERR_TX_INVALID_EXPIRATION_DELTA);
     }
@@ -468,10 +441,8 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     end
     ";
 
-    let process = &tx_context.execute_code_with_assembler(
-        code_template,
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    let process = &tx_context
+        .execute_code_with_assembler(code_template, TransactionKernel::with_mock_libraries())?;
 
     // Default value should be equal to u32::max, set in the prologue
     assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32, u32::MAX);
@@ -488,7 +459,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.test::account
+        use.mock::account
         use.$kernel::epilogue
         use.$kernel::memory
 
@@ -511,10 +482,8 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
         "
     );
 
-    tx_context.execute_code_with_assembler(
-        code.as_str(),
-        TransactionKernel::testing_assembler_with_mock_account(),
-    )?;
+    tx_context
+        .execute_code_with_assembler(code.as_str(), TransactionKernel::with_mock_libraries())?;
     Ok(())
 }
 
@@ -522,7 +491,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 #[test]
 fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
     let code = "
-        use.test::account
+        use.mock::account
 
         begin
             push.91.92.93.94
@@ -535,20 +504,15 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
         end
         ";
 
-    let tx_script = ScriptBuilder::with_mock_account_library()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
-    let err = TransactionContextBuilder::with_noop_auth_account(ONE)
+    let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)
         .build()?
-        .execute()
-        .unwrap_err();
+        .execute_blocking();
 
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        panic!("unexpected error")
-    };
-
-    assert_execution_error!(
-        Err::<(), _>(err),
+    assert_transaction_executor_error!(
+        result,
         ERR_ACCOUNT_DELTA_NONCE_MUST_BE_INCREMENTED_IF_VAULT_OR_STORAGE_CHANGED
     );
 
@@ -557,14 +521,11 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
 
 #[test]
 fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build()?;
+    let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let err = tx_context.execute().expect_err("Expected execution to fail");
-    let TransactionExecutorError::TransactionProgramExecutionFailed(err) = err else {
-        panic!("unexpected error")
-    };
+    let result = tx_context.execute_blocking();
 
-    assert_execution_error!(Err::<(), _>(err), ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
+    assert_transaction_executor_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
 
     Ok(())
 }
@@ -617,7 +578,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
         note_type = note_type as u8,
     );
 
-    let tx_context = TransactionContextBuilder::with_noop_auth_account(ONE).build()?;
+    let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
     let result = tx_context.execute_code(&tx_script_source).map(|_| ());
 
