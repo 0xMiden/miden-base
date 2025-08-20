@@ -168,7 +168,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
     let source_manager = tx_context.source_manager();
 
-    let tx_executor = TransactionExecutor::new(&tx_context, tx_context.authenticator());
+    let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
     // Try to execute with block_ref==1
     let error = tx_executor
         .execute_transaction(
@@ -1422,7 +1422,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let advice_inputs = tx_context.tx_args().advice_inputs().clone();
 
-    let executor = TransactionExecutor::new(&tx_context, tx_context.authenticator());
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
 
     let stack_outputs = executor
         .execute_tx_view_script(
