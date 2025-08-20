@@ -327,10 +327,6 @@ end
 
 #! Gets the account code commitment of the current account.
 #!
-#! Notice that this procedure always returns the latest commitment, but it doesn't actually always 
-#! recompute it: recomputation is performed only if the account's storage has been changed,
-#! otherwise the cached value is returned.
-#!
 #! Inputs:  []
 #! Outputs: [CODE_COMMITMENT]
 #!
@@ -380,6 +376,10 @@ export.get_initial_storage_commitment
 end
 
 #! Computes the latest account storage commitment of the current account.
+#!
+#! Notice that this procedure always returns the latest commitment, but it doesn't actually always 
+#! recompute it: recomputation is performed only if the account's storage has been changed,
+#! otherwise the cached value is returned.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
