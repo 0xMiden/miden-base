@@ -109,7 +109,7 @@ impl Deserializable for AccountComponentTemplate {
 /// #     AccountComponent, AccountComponentMetadata, StorageEntry,
 /// #     StorageValueName,
 /// #     AccountComponentTemplate, FeltRepresentation, WordRepresentation, TemplateType},
-/// #     miden_assembly::Assembler, Felt};
+/// #     assembly::Assembler, Felt};
 /// # use miden_objects::account::InitStorageData;
 /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
 /// let first_felt = FeltRepresentation::from(Felt::new(0u64));
