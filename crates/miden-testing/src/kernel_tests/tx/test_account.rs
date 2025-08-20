@@ -899,10 +899,10 @@ fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 ///
 /// Namely, we invoke the `mock_account::compute_storage_commitment` procedure:
 /// - Right after the account creation.
-/// - After updating the 0'th storage slot.
+/// - After updating the 0th storage slot (value slot).
 /// - Right after the previous call to make sure it returns the same commitment from the cached
 ///   data.
-/// - After updating the 1'st storage slot.
+/// - After updating the 2nd storage slot (map slot).
 #[test]
 fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
@@ -914,8 +914,12 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
     account_storage.set_item(0, [9, 10, 11, 12].map(Felt::new).into())?;
     let storage_commitment_0 = account_storage.commitment();
 
-    account_storage.set_item(1, [13, 14, 15, 16].map(Felt::new).into())?;
-    let storage_commitment_1 = account_storage.commitment();
+    account_storage.set_map_item(
+        2,
+        [101, 102, 103, 104].map(Felt::new).into(),
+        [5, 6, 7, 8].map(Felt::new).into(),
+    )?;
+    let storage_commitment_2 = account_storage.commitment();
 
     let code = format!(
         r#"
@@ -931,15 +935,15 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
             push.{init_storage_commitment}
             assert_eqw.err="storage commitment at the beginning of the transaction is not equal to the expected one"
 
-            # update the 0'th storage slot
+            # update the 0th (value) storage slot
             push.9.10.11.12.0
             call.mock_account::set_item dropw drop
             # => []
 
-            # assert the correctness of the storage commitment after the 0'th slot was updated
+            # assert the correctness of the storage commitment after the 0th slot was updated
             call.mock_account::compute_storage_commitment
             push.{storage_commitment_0}
-            assert_eqw.err="storage commitment after the 0'th slot was updated is not equal to the expected one"
+            assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
 
             # get the storage commitment once more to get the cached data and assert that this data 
             # didn't change
@@ -947,15 +951,15 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
             push.{storage_commitment_0}
             assert_eqw.err="storage commitment should remain the same"
 
-            # update the 1'st storage slot
-            push.13.14.15.16.1
-            call.mock_account::set_item dropw drop
+            # update the 2nd (map) storage slot
+            push.5.6.7.8.101.102.103.104.2 # [idx, KEY, VALUE]
+            call.mock_account::set_map_item dropw dropw
             # => []
 
-            # assert the correctness of the storage commitment after the 1'st slot was updated
+            # assert the correctness of the storage commitment after the 2nd slot was updated
             call.mock_account::compute_storage_commitment
-            push.{storage_commitment_1}
-            assert_eqw.err="storage commitment after the 1'st slot was updated is not equal to the expected one"
+            push.{storage_commitment_2}
+            assert_eqw.err="storage commitment after the 2nd slot was updated is not equal to the expected one"
         end
         "#,
     );

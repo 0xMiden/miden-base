@@ -10,7 +10,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
-    word!("0x21a86a0495a0984ac530cd7d5e14126b75de3c68554ebf2104c8327f9840bd81"),
+    word!("0x5d3758f4ce60f8d489594a874f36811e8d0287af1d9fee9a82776e01b0d18319"),
     // account_get_id
     word!("0xc42de24ac12ee6edfc090f79c2e4abce896ba95dec2bd781794d7d22062b1063"),
     // account_get_nonce
@@ -24,7 +24,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // account_get_initial_storage_commitment
     word!("0x5932cb0394cc85330e65e4c0325bb869ec1d08b295c310f7375076a98b143d57"),
     // account_compute_storage_commitment
-    word!("0xd822b35ac9b213d7471a63835f5ae7a1089b6686d154dccd7d0b252514d6d39b"),
+    word!("0xf980f805cefb4c14f6321ac2b7b25ebbb03296db7be322b7bcc4aa3081f88146"),
     // account_get_item
     word!("0x96dea0174db0c63ecc59685a94bb708baa42494503feb31b4f589d92a78c7445"),
     // account_set_item
@@ -98,7 +98,7 @@ pub const KERNEL0_PROCEDURES: [Word; 49] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x5bc6bfafddfedf4aa8eae9c0ed43fb3d7d1fdfd0f864feaa1a73ad11e0be3cab"),
+    word!("0x86e95788b9f8990f31a60899ac4aa9f7aeaa6ddbd7d9fb99f36a0be0b156274c"),
     // tx_end_foreign_context
     word!("0xc91404440384adc5ece0771f1c096c2a46eac56648d7361854b9da3b917305e5"),
     // tx_get_expiration_delta

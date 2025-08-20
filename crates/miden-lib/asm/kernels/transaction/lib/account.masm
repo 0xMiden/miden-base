@@ -200,8 +200,8 @@ end
 #! Where:
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 export.compute_current_commitment
-    # recompute the account storage commitment
-    exec.recompute_storage_commitment
+    # if outdated, recompute the storage commitment and store it in the memory
+    exec.refresh_storage_commitment
     # => []
 
     # prepare the stack for computing the account commitment
@@ -336,8 +336,8 @@ end
 #! Where:
 #! - STORAGE_COMMITMENT is the current commitment of the account storage.
 export.compute_storage_commitment
-    # recompute the storage commitment (if outdated) and store it in the memory
-    exec.recompute_storage_commitment
+    # if outdated, recompute the storage commitment and store it in the memory
+    exec.refresh_storage_commitment
 
     # return the storage commitment
     exec.memory::get_acct_storage_commitment
@@ -1092,7 +1092,7 @@ proc.set_item_raw
     swap mul.8 add mem_storew
     # => [NEW_VALUE, OLD_VALUE]
 
-    # update the storage commitment dirty flag
+    # update the storage commitment dirty flag, indicating that the commitment is outdated
     push.1
     exec.memory::set_native_account_storage_commitment_dirty_flag
     # => [NEW_VALUE, OLD_VALUE]
@@ -1261,12 +1261,17 @@ proc.hash_map_key
     # => [HASHED_KEY]
 end
 
-#! Computes the account storage commitment by hashing the storage slots and updates the storage
-#! commitment in memory to the newly computed storage commitment.
+#! Makes the account storage commitment up-to-date.
+#!
+#! Depending on whether the storage has been updated, this procedure does the following:
+#! - If the storage commitment is outdated (account's storage has been changed), this commitment is 
+#!   recomputed by hashing the storage slots. Then this newly computed storage commitment updates 
+#!   the storage commitment in memory.
+#! - If the storage commitment is up-to-date, the the commitment value stored in memory is returned.
 #!
 #! Inputs:  []
 #! Outputs: []
-proc.recompute_storage_commitment
+proc.refresh_storage_commitment
     # First we should determine whether the storage commitment should be recomputed. We should do so
     # if the current account is native and the storage commitment is outdated (the dirty flag equals
     # 1). Otherwise the commitment value is guaranteed to be up-to-date.
@@ -1274,46 +1279,38 @@ proc.recompute_storage_commitment
     # => [should_recompute_storage_commitment]
 
     if.true
+        # dirty flag being equal 1 ensures that we have at least one storage slot, so we have to 
+        # hash the storage anyway
+
         # get number of storage slots
         exec.memory::get_num_storage_slots
         # => [num_storage_slots]
 
-        # check if there are storage slots
-        dup neq.0
-        # => [has_storage_slots, num_storage_slots]
+        # setup start and end ptr
+        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
+        # => [start_ptr, end_ptr]
 
-        # only loop and hash over storage if there are storage slots
-        if.true
-            # setup start and end ptr
-            mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
-            # => [start_ptr, end_ptr]
+        # pad stack to read and hash from memory
+        padw padw padw
+        # => [PAD, PAD, PAD, start_ptr, end_ptr]
 
-            # pad stack to read and hash from memory
-            padw padw padw
-            # => [PAD, PAD, PAD, start_ptr, end_ptr]
+        # hash elements from memory
+        exec.rpo::absorb_double_words_from_memory
+        # => [PERM, PERM, PERM, start_ptr, end_ptr]
 
-            # hash elements from memory
-            exec.rpo::absorb_double_words_from_memory
-            # => [PERM, PERM, PERM, start_ptr, end_ptr]
+        # extract the digest
+        exec.rpo::squeeze_digest
+        # => [DIGEST, end_ptr, end_ptr]
 
-            # extract the digest
-            exec.rpo::squeeze_digest
-            # => [DIGEST, end_ptr, end_ptr]
+        # clean stack
+        movup.4 drop movup.4 drop
+        # => [DIGEST]
 
-            # clean stack
-            movup.4 drop movup.4 drop
-            # => [DIGEST]
+        # set new account storage commitment
+        exec.memory::set_acct_storage_commitment dropw
+        # => []
 
-            # set new account storage commitment
-            exec.memory::set_acct_storage_commitment dropw
-            # => []
-        else
-            # drop number of storage slots
-            drop
-            # => []
-        end
-
-        # update the storage commitment dirty flag
+        # update the storage commitment dirty flag, indicating that the commitment is up-to-date
         push.0 
         exec.memory::set_native_account_storage_commitment_dirty_flag
         # => []
