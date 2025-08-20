@@ -1182,45 +1182,6 @@ export.set_new_acct_code_commitment
     mem_storew.NEW_CODE_ROOT_PTR
 end
 
-#! Sets the dirty flag for the native account storage commitment.
-#!
-#! This binary flag specifies whether the storage commitment stored in the native account data is
-#! outdated.
-#!
-#! Inputs:  [dirty_flag]
-#! Outputs: []
-#!
-#! Where:
-#! - dirty_flag is the flag indicating whether the storage commitment is outdated.
-export.set_native_account_storage_commitment_dirty_flag
-    push.NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR mem_store
-    # => []
-end
-
-#! Returns the flag indicating whether the account storage commitment should be recomputed.
-#!
-#! This flag equals 1 if the current account is native and the storage commitment is outdated.
-#!
-#! Inputs:  []
-#! Outputs: [should_recompute_storage_commitment]
-#!
-#! Where:
-#! - should_recompute_storage_commitment is the flag indicating whether the storage commitment
-#!   should be recomputed.
-export.get_recompute_storage_commitment_flag
-    # get the is_native_account flag
-    exec.is_native_account
-    # => [is_native_account]
-
-    # get the storage commitment dirty flag
-    mem_load.NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR
-    # => [dirty_flag, is_native_account]
-
-    # commitment should be recomputed only if the account is native and the commitment is outdated
-    and
-    # => [should_recompute_storage_commitment]
-end
-
 #! Sets the transaction expiration block number.
 #!
 #! Inputs:  [tx_expiration_block_num]
@@ -1326,6 +1287,45 @@ end
 export.set_acct_storage_commitment
     exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_storew
+end
+
+#! Sets the dirty flag for the native account storage commitment.
+#!
+#! This binary flag specifies whether the storage commitment stored in the native account data is
+#! outdated.
+#!
+#! Inputs:  [dirty_flag]
+#! Outputs: []
+#!
+#! Where:
+#! - dirty_flag is the flag indicating whether the storage commitment is outdated.
+export.set_native_account_storage_commitment_dirty_flag
+    push.NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR mem_store
+    # => []
+end
+
+#! Returns the flag indicating whether the account storage commitment should be recomputed.
+#!
+#! This flag equals 1 if the current account is native and the storage commitment is outdated.
+#!
+#! Inputs:  []
+#! Outputs: [should_recompute_storage_commitment]
+#!
+#! Where:
+#! - should_recompute_storage_commitment is the flag indicating whether the storage commitment
+#!   should be recomputed.
+export.get_recompute_storage_commitment_flag
+    # get the is_native_account flag
+    exec.is_native_account
+    # => [is_native_account]
+
+    # get the storage commitment dirty flag
+    mem_load.NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR
+    # => [dirty_flag, is_native_account]
+
+    # commitment should be recomputed only if the account is native and the commitment is outdated
+    and
+    # => [should_recompute_storage_commitment]
 end
 
 #! Returns the number of storage slots contained in the account storage.
