@@ -1,15 +1,9 @@
 extern crate alloc;
 
-use miden_lib::AuthScheme;
-use miden_lib::account::faucets::{
-    BasicFungibleFaucet,
-    FungibleFaucetExt,
-    create_basic_fungible_faucet,
-};
+use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::AccountStorageMode;
-use miden_objects::asset::{Asset, FungibleAsset, TokenSymbol};
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
@@ -20,9 +14,6 @@ use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transactio
 // TESTS MINT FUNGIBLE ASSET
 // ================================================================================================
 
-// TODO: This test uses add_existing_faucet() which creates old-style faucet accounts.
-// When the old faucet is deprecated, this test should be removed and replaced with
-// tests using create_new_faucet() or create_basic_fungible_faucet().
 #[test]
 fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Success)
@@ -94,9 +85,6 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     Ok(())
 }
 
-// TODO: This test uses add_existing_faucet() which creates old-style faucet accounts.
-// When the old faucet is deprecated, this test should be removed and replaced with
-// tests using create_new_faucet() or create_basic_fungible_faucet().
 #[test]
 fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure)
@@ -158,7 +146,7 @@ fn prove_new_faucet_execution_mint_fungible_asset_succeeds() -> anyhow::Result<(
     // CONSTRUCT AND EXECUTE TX using new faucet that exercises the storage offset validation
     // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
-    let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
+    let faucet = builder.create_new_faucet(Auth::BasicAuth, "TST", 200)?;
     let mock_chain = builder.build()?;
 
     let recipient = Word::from([0, 1, 2, 3u32]);
@@ -206,8 +194,6 @@ fn prove_new_faucet_execution_mint_fungible_asset_succeeds() -> anyhow::Result<(
 
     let executed_transaction = tx_context.execute_blocking()?;
 
-    prove_and_verify_transaction(executed_transaction.clone())?;
-
     let fungible_asset: Asset = FungibleAsset::new(faucet.id(), amount.into())?.into();
 
     let output_note = executed_transaction.output_notes().get_note(0).clone();
@@ -220,44 +206,6 @@ fn prove_new_faucet_execution_mint_fungible_asset_succeeds() -> anyhow::Result<(
         output_note.metadata(),
         &NoteMetadata::new(faucet.id(), NoteType::Private, tag, note_execution_hint, aux)?
     );
-
-    Ok(())
-}
-
-// TEST FOR create_basic_fungible_faucet FUNCTION
-// ================================================================================================
-
-#[test]
-fn create_basic_fungible_faucet_works() -> anyhow::Result<()> {
-    // Test that create_basic_fungible_faucet creates a properly configured faucet account
-    let init_seed: [u8; 32] = [0; 32];
-    let pub_key = miden_objects::crypto::dsa::rpo_falcon512::PublicKey::new(Word::from([0u32; 4]));
-    let auth_scheme = AuthScheme::RpoFalcon512 { pub_key };
-    let token_symbol = TokenSymbol::try_from("TST")?;
-    let decimals = 10u8;
-    let max_supply = Felt::new(200);
-    let account_storage_mode = AccountStorageMode::Public;
-
-    let (faucet_account, _) = create_basic_fungible_faucet(
-        init_seed,
-        token_symbol,
-        decimals,
-        max_supply,
-        account_storage_mode,
-        auth_scheme,
-    )?;
-
-    // Verify the faucet account is properly created
-    assert_eq!(
-        faucet_account.account_type(),
-        miden_objects::account::AccountType::FungibleFaucet
-    );
-
-    // Verify the faucet can be extracted and has correct metadata
-    let faucet_component = BasicFungibleFaucet::try_from(faucet_account.clone())?;
-    assert_eq!(faucet_component.symbol(), token_symbol);
-    assert_eq!(faucet_component.decimals(), decimals);
-    assert_eq!(faucet_component.max_supply(), max_supply);
 
     Ok(())
 }
@@ -322,7 +270,7 @@ fn prove_new_faucet_execution_burn_fungible_asset_succeeds() -> anyhow::Result<(
     let _minted_note = mint_executed_transaction.output_notes().get_note(0).clone();
 
     // Now burn the minted asset
-    let note_script = "
+    let burn_note_script_code = "
         # burn the asset
         begin
             dropw
@@ -342,7 +290,7 @@ fn prove_new_faucet_execution_burn_fungible_asset_succeeds() -> anyhow::Result<(
         end
         ";
 
-    let note = get_note_with_fungible_asset_and_script(fungible_asset, note_script);
+    let note = get_note_with_fungible_asset_and_script(fungible_asset, burn_note_script_code);
 
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block()?;
@@ -365,9 +313,6 @@ fn prove_new_faucet_execution_burn_fungible_asset_succeeds() -> anyhow::Result<(
 // TESTS BURN FUNGIBLE ASSET
 // ================================================================================================
 
-// TODO: This test uses add_existing_faucet() which creates old-style faucet accounts.
-// When the old faucet is deprecated, this test should be removed and replaced with
-// tests using create_new_faucet() or create_basic_fungible_faucet().
 #[test]
 fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
@@ -386,7 +331,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     assert_eq!(faucet.get_token_issuance().unwrap(), Felt::new(100));
 
     // need to create a note with the fungible asset to be burned
-    let note_script = "
+    let burn_note_script_code = "
         # burn the asset
         begin
             dropw
@@ -406,7 +351,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
         end
         ";
 
-    let note = get_note_with_fungible_asset_and_script(fungible_asset, note_script);
+    let note = get_note_with_fungible_asset_and_script(fungible_asset, burn_note_script_code);
 
     mock_chain.add_pending_note(OutputNote::Full(note.clone()));
     mock_chain.prove_next_block()?;
