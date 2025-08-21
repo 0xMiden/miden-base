@@ -18,6 +18,7 @@ use miden_objects::account::{
     AccountType,
     StorageMap,
 };
+use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -80,7 +81,10 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     );
 
     let process = &tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
+        .execute_code_with_assembler(
+            &code,
+            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        )
         .unwrap();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE + FUNGIBLE_ASSET_AMOUNT;
@@ -115,7 +119,8 @@ fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
+        .compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -148,8 +153,10 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
         asset = Word::from(FungibleAsset::mock(5))
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
     Ok(())
@@ -168,7 +175,8 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     ",
         asset = Word::from(FungibleAsset::mock(FungibleAsset::MAX_AMOUNT))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
+        .compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_fungible_faucet(
         FungibleAsset::mock_issuer().into(),
@@ -238,7 +246,10 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     );
 
     tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
+        .execute_code_with_assembler(
+            &code,
+            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        )
         .unwrap();
     Ok(())
 }
@@ -265,8 +276,10 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
         non_fungible_asset = Word::from(non_fungible_asset)
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
     Ok(())
@@ -288,7 +301,8 @@ fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
+        .compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -321,8 +335,10 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<(
         non_fungible_asset = Word::from(non_fungible_asset)
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED);
     Ok(())
@@ -379,7 +395,10 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     );
 
     let process = &tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
+        .execute_code_with_assembler(
+            &code,
+            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        )
         .unwrap();
 
     let expected_final_storage_amount = FUNGIBLE_FAUCET_INITIAL_BALANCE - FUNGIBLE_ASSET_AMOUNT;
@@ -414,7 +433,8 @@ fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
+        .compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -450,8 +470,10 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
         suffix = faucet_id.suffix(),
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
     Ok(())
@@ -483,8 +505,10 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
         saturating_amount = CONSUMED_ASSET_1_AMOUNT + 1
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_VAULT_FUNGIBLE_ASSET_AMOUNT_LESS_THAN_AMOUNT_TO_WITHDRAW);
     Ok(())
@@ -559,7 +583,10 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     );
 
     tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
+        .execute_code_with_assembler(
+            &code,
+            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        )
         .unwrap();
     Ok(())
 }
@@ -587,8 +614,10 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
         non_fungible_asset = Word::from(non_fungible_asset_burnt)
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND);
     Ok(())
@@ -610,7 +639,8 @@ fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
+        .compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -646,8 +676,10 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
         non_fungible_asset = Word::from(non_fungible_asset_burnt)
     );
 
-    let process =
-        tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries());
+    let process = tx_context.execute_code_with_assembler(
+        &code,
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+    );
 
     assert_execution_error!(process, ERR_FAUCET_NON_FUNGIBLE_ASSET_TO_BURN_NOT_FOUND);
     Ok(())
@@ -695,7 +727,10 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
     );
 
     tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
+        .execute_code_with_assembler(
+            &code,
+            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        )
         .unwrap();
     Ok(())
 }
@@ -731,7 +766,10 @@ fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
     );
 
     tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
+        .execute_code_with_assembler(
+            &code,
+            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        )
         .unwrap();
     Ok(())
 }
@@ -747,7 +785,7 @@ fn setup_non_faucet_account() -> anyhow::Result<Account> {
     let faucet_component = AccountComponent::compile(
         "export.::miden::faucet::mint
          export.::miden::faucet::burn",
-        TransactionKernel::with_mock_libraries(),
+        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
         vec![],
     )?
     .with_supported_type(AccountType::RegularAccountUpdatableCode);

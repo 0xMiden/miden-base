@@ -83,9 +83,10 @@ pub struct TransactionContextBuilder {
 
 impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
+        let source_manager = default_source_manager_arc_dyn();
         Self {
-            assembler: TransactionKernel::with_mock_libraries(),
-            source_manager: default_source_manager_arc_dyn(),
+            assembler: TransactionKernel::with_mock_libraries(source_manager.clone()),
+            source_manager,
             account,
             account_seed: None,
             input_notes: Vec::new(),
@@ -114,11 +115,11 @@ impl TransactionContextBuilder {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
-        let assembler = TransactionKernel::with_mock_libraries();
-
+        let source_manager = default_source_manager_arc_dyn();
+        let assembler = TransactionKernel::with_mock_libraries(source_manager.clone());
         Self {
-            assembler: assembler.clone(),
-            source_manager: default_source_manager_arc_dyn(), // FIXME must be used
+            assembler,
+            source_manager,
             account,
             account_seed: None,
             authenticator: None,

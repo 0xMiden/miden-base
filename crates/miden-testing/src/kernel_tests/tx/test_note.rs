@@ -11,7 +11,9 @@ use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
+use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
+use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -909,7 +911,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
         .code(code.clone())
-        .build(&TransactionKernel::with_mock_libraries())?;
+        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
 
     builder.add_note(OutputNote::Full(timelock_note.clone()));
 
@@ -992,5 +994,28 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .build()?;
 
     tx_context.execute_blocking()?;
+    Ok(())
+}
+
+#[test]
+pub fn test_error_messages_use_source_manager() -> miette::Result<()> {
+    use alloc::string::ToString;
+
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+
+    let code = "
+        begin
+            push.3 mem_loadw
+        end
+        ";
+
+    let Err(err) = tx_context
+        .execute_code(code)
+        .map_err(|err| PrintDiagnostic::new(err).to_string())
+    else {
+        panic!("expected error");
+    };
+    std::println!("{}", err);
+
     Ok(())
 }

@@ -474,13 +474,12 @@ impl TransactionKernel {
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
-    pub fn with_mock_libraries() -> Assembler {
+    pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
         use miden_objects::account::AccountCode;
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        let assembler =
-            Self::with_kernel_library(default_source_manager_arc_dyn()).with_debug_mode(true);
+        let assembler = Self::with_kernel_library(source_manager).with_debug_mode(true);
 
         assembler
             .with_dynamic_library(AccountCode::mock_account_library())
