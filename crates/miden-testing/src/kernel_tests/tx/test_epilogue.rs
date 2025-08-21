@@ -521,8 +521,7 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
         end
         ";
 
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
-        .compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)

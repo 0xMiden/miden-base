@@ -292,14 +292,12 @@ impl ScriptBuilder {
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
     #[cfg(any(feature = "testing", test))]
-    pub fn with_mock_libraries(
-        source_manager: alloc::sync::Arc<dyn SourceManagerSync>,
-    ) -> Result<Self, ScriptBuilderError> {
+    pub fn with_mock_libraries() -> Result<Self, ScriptBuilderError> {
         use miden_objects::account::AccountCode;
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        Self::with_source_manager(source_manager)
+        Self::with_source_manager(default_source_manager_arc_dyn())
             .with_dynamically_linked_library(&AccountCode::mock_account_library())?
             .with_dynamically_linked_library(&AccountCode::mock_faucet_library())
     }

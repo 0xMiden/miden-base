@@ -126,7 +126,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
     );
 
     let tx_context_builder = TransactionContextBuilder::new(account);
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())
+    let tx_script = ScriptBuilder::with_mock_libraries()
         .into_diagnostic()?
         .compile_tx_script(tx_script)
         .into_diagnostic()?;

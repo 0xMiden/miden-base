@@ -119,8 +119,7 @@ fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
-        .compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -175,8 +174,7 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     ",
         asset = Word::from(FungibleAsset::mock(FungibleAsset::MAX_AMOUNT))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
-        .compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::with_fungible_faucet(
         FungibleAsset::mock_issuer().into(),
@@ -301,8 +299,7 @@ fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
-        .compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -433,8 +430,7 @@ fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
-        .compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
@@ -639,8 +635,7 @@ fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
       ",
         asset = Word::from(FungibleAsset::mock(50))
     );
-    let tx_script = ScriptBuilder::with_mock_libraries(default_source_manager_arc_dyn())?
-        .compile_tx_script(code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
 
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
