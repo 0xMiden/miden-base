@@ -229,6 +229,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();

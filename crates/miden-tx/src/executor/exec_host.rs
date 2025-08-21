@@ -7,7 +7,7 @@ use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::{Location, SourceManagerSync};
-use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
+use miden_objects::assembly::{SourceFile, SourceSpan};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::FeeParameters;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
@@ -80,6 +80,7 @@ where
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
         fee_parameters: &FeeParameters,
+        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         // TODO: Once we have lazy account loading, this should be loaded in on_tx_fee_computed to
         // avoid the use of PartialVault entirely, which in the future, may or may not track
