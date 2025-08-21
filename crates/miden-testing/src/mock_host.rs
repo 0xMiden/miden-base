@@ -42,7 +42,25 @@ impl MockHost {
         account: AccountHeader,
         advice_inputs: &AdviceInputs,
         mast_store: Rc<TransactionMastStore>,
+        foreign_code_commitments: BTreeSet<Word>,
+    ) -> Self {
+        Self::new_with_source_manager(
+            account,
+            advice_inputs,
+            mast_store,
+            foreign_code_commitments,
+            default_source_manager_arc_dyn(),
+        )
+    }
+
+    /// Returns a new [MockHost] instance with the provided
+    /// [AdviceInputs](vm_processor::AdviceInputs) and [`SourceManagerSync`] implementation.
+    pub fn new_with_source_manager(
+        account: AccountHeader,
+        advice_inputs: &AdviceInputs,
+        mast_store: Rc<TransactionMastStore>,
         mut foreign_code_commitments: BTreeSet<Word>,
+        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
         let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs);
@@ -50,7 +68,7 @@ impl MockHost {
         Self {
             acct_procedure_index_map: proc_index_map.unwrap(),
             mast_store,
-            source_manager: default_source_manager_arc_dyn(),
+            source_manager,
         }
     }
 
