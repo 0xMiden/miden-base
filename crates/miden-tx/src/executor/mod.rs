@@ -92,6 +92,18 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     exec_options: ExecutionOptions,
 }
 
+/// The result of trying to execute a transaction.
+pub enum TransactionExecutionAttempt {
+    Successful,
+    NoteFailed {
+        failed_note_index: usize,
+        error: TransactionExecutorError,
+    },
+    EpilogueFailed {
+        error: TransactionExecutorError,
+    },
+}
+
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
 where
     STORE: DataStore + 'store + Sync,
@@ -361,9 +373,9 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
-    ) -> Result<Option<(usize, TransactionExecutorError)>, TransactionExecutorError> {
+    ) -> Result<TransactionExecutionAttempt, TransactionExecutorError> {
         if notes.is_empty() {
-            return Ok(None);
+            return Ok(TransactionExecutionAttempt::Successful);
         }
 
         // Validate input notes.
@@ -417,7 +429,7 @@ where
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
         match result {
-            Ok(_) => Ok(None),
+            Ok(_) => Ok(TransactionExecutionAttempt::Successful),
             Err(error) => {
                 let notes = host.tx_progress().note_execution();
 
@@ -433,12 +445,12 @@ where
                 // If the interval end of the last note is specified, then an error occurred after
                 // notes processing.
                 if last_note_interval.end().is_some() {
-                    return Err(error);
+                    Ok(TransactionExecutionAttempt::EpilogueFailed { error })
+                } else {
+                    // Return the index of the failed note.
+                    let failed_note_index = success_notes.len();
+                    Ok(TransactionExecutionAttempt::NoteFailed { failed_note_index, error })
                 }
-
-                // Return the index of the failed note.
-                let failed_index = success_notes.len();
-                Ok(Some((failed_index, error)))
             },
         }
     }

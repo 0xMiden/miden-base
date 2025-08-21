@@ -5,7 +5,7 @@ use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
 
-use super::{FailedNote, NoteConsumptionInfo, TransactionExecutor};
+use super::{FailedNote, NoteConsumptionInfo, TransactionExecutionAttempt, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
 use crate::{DataStore, TransactionExecutorError};
 
@@ -95,8 +95,13 @@ where
                 )
                 .await?
             {
-                Some((failed_note_index, error)) => {
-                    // A note failed to execute.
+                TransactionExecutionAttempt::Successful => {
+                    // A full set of successful notes has been found.
+                    let successful =
+                        candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+                    return Ok(NoteConsumptionInfo::new(successful, failed_notes));
+                },
+                TransactionExecutionAttempt::NoteFailed { failed_note_index, error } => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
                     failed_notes.push(FailedNote::new(failed_note, error));
@@ -107,11 +112,8 @@ where
                     }
                     // Continue and process the next set of candidates.
                 },
-                None => {
-                    // A full set of successful notes has been found.
-                    let successful =
-                        candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
-                    return Ok(NoteConsumptionInfo::new(successful, failed_notes));
+                TransactionExecutionAttempt::EpilogueFailed { error: _error } => {
+                    todo!();
                 },
             }
         }
