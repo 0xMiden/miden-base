@@ -32,7 +32,7 @@ fn create_account_with_fees() -> anyhow::Result<()> {
     let expected_fee = tx.compute_fee();
     assert_eq!(expected_fee, tx.fee().amount());
 
-    // We expect that the new account contains the amount minus the paid fee.
+    // We expect that the new account contains the note_amount minus the paid fee.
     let added_asset = FungibleAsset::new(chain.native_asset_id(), note_amount)?.sub(tx.fee())?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
