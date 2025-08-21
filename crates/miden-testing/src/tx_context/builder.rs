@@ -66,6 +66,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// ```
 pub struct TransactionContextBuilder {
     assembler: Assembler,
+    source_manager: Arc<dyn SourceManagerSync>,
     account: Account,
     account_seed: Option<Word>,
     advice_inputs: AdviceInputs,
@@ -84,6 +85,7 @@ impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
         Self {
             assembler: TransactionKernel::with_mock_libraries(),
+            source_manager: default_source_manager_arc_dyn(),
             account,
             account_seed: None,
             input_notes: Vec::new(),
@@ -116,6 +118,7 @@ impl TransactionContextBuilder {
 
         Self {
             assembler: assembler.clone(),
+            source_manager: default_source_manager_arc_dyn(), // FIXME must be used
             account,
             account_seed: None,
             authenticator: None,
@@ -240,18 +243,16 @@ impl TransactionContextBuilder {
         self
     }
 
+    pub fn source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        self.build_with_source_manager(default_source_manager_arc_dyn())
-    }
-
-    pub fn build_with_source_manager(
-        self,
-        source_manager: Arc<dyn SourceManagerSync>,
-    ) -> anyhow::Result<TransactionContext> {
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
@@ -312,7 +313,7 @@ impl TransactionContextBuilder {
             mast_store,
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
-            source_manager,
+            source_manager: self.source_manager,
         })
     }
 }
