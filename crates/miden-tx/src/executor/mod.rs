@@ -47,6 +47,13 @@ pub struct FailedNote {
     pub error: TransactionExecutorError,
 }
 
+impl FailedNote {
+    /// Constructs a new `FailedNote`.
+    pub fn new(note: Note, error: TransactionExecutorError) -> Self {
+        Self { note, error }
+    }
+}
+
 /// Contains information about the successful and failed consumption of notes.
 #[derive(Default, Debug)]
 #[non_exhaustive]
@@ -339,6 +346,10 @@ where
     /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
     /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
+    /// # Returns:
+    /// - An index into the input notes for the note that failed execution along with the associated
+    ///   error.
+    ///
     /// # Errors:
     /// Returns an error if:
     /// - If required data can not be fetched from the [`DataStore`].
@@ -350,10 +361,11 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
-    ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
+    ) -> Result<Option<(usize, TransactionExecutorError)>, TransactionExecutorError> {
         if notes.is_empty() {
-            return Ok(NoteConsumptionInfo::default());
+            return Ok(None);
         }
+
         // Validate input notes.
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -372,6 +384,7 @@ where
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, tx_args, None)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
@@ -403,14 +416,8 @@ where
             .await
             .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
 
-        let (_, _, _, _, input_notes) = tx_inputs.into_parts();
         match result {
-            Ok(_) => {
-                // Return all the input notes as successful.
-                Ok(NoteConsumptionInfo::new_successful(
-                    input_notes.into_iter().map(|note| note.into_note()).collect::<Vec<_>>(),
-                ))
-            },
+            Ok(_) => Ok(None),
             Err(error) => {
                 let notes = host.tx_progress().note_execution();
 
@@ -429,15 +436,9 @@ where
                     return Err(error);
                 }
 
-                // Partition the input notes into successful, failed, and unattempted results.
-                let (successful, failed, _unattempted) =
-                    split_at(input_notes.into_vec(), success_notes.len());
-                let successful =
-                    successful.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
-                let failed = vec![FailedNote { error, note: failed.into_note() }];
-
-                // Return information about all the consumed notes.
-                Ok(NoteConsumptionInfo::new(successful, failed))
+                // Return the index of the failed note.
+                let failed_index = success_notes.len();
+                Ok(Some((failed_index, error)))
             },
         }
     }
@@ -445,25 +446,6 @@ where
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-/// Splits a vector into three parts based on a given separator index.
-///
-/// # Safety
-///
-/// The caller must ensure that the provided `index` is within the bounds of the input
-/// vector.
-fn split_at<T>(mut vec: Vec<T>, index: usize) -> (Vec<T>, T, Vec<T>) {
-    // Drain backwards from the index to the end of the vector.
-    let after = vec.drain(index + 1..).collect::<Vec<T>>();
-
-    // Remove and get the separator.
-    let separator = vec.pop().expect("provided separator index in bounds");
-
-    // Input now contains only the part before the separator.
-    let before = vec;
-
-    (before, separator, after)
-}
 
 /// Creates a new [ExecutedTransaction] from the provided data.
 fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenticator + Sync>(
@@ -593,29 +575,5 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
             }
         },
         _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[rstest::rstest]
-    #[case::odd(vec![1, 2, 3, 4, 5], 2, vec![1, 2], 3, vec![4, 5])]
-    #[case::even(vec![1, 2, 3, 4, 5, 6], 2, vec![1, 2], 3, vec![4, 5, 6])]
-    #[case::start(vec![1, 2, 3, 4, 5], 0, vec![], 1, vec![2, 3, 4, 5])]
-    #[case::end(vec![1, 2, 3, 4, 5], 4, vec![1, 2, 3, 4], 5, vec![])]
-    #[test]
-    fn splitting(
-        #[case] input: Vec<u32>,
-        #[case] separator_index: usize,
-        #[case] start: Vec<u32>,
-        #[case] separator: u32,
-        #[case] end: Vec<u32>,
-    ) {
-        let (left, mid, right) = split_at(input, separator_index);
-        assert_eq!(left, start);
-        assert_eq!(mid, separator);
-        assert_eq!(right, end);
     }
 }

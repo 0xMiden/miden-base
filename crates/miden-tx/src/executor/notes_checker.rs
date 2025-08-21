@@ -5,7 +5,7 @@ use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
 
-use super::{NoteConsumptionInfo, TransactionExecutor};
+use super::{FailedNote, NoteConsumptionInfo, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
 use crate::{DataStore, TransactionExecutorError};
 
@@ -84,7 +84,7 @@ where
         // further reduced.
         loop {
             // Execute the candidate notes.
-            let execution_result = self
+            match self
                 .0
                 .try_execute_notes(
                     target_account_id,
@@ -92,29 +92,26 @@ where
                     InputNotes::<InputNote>::new_unchecked(candidate_notes.clone()),
                     &tx_args,
                 )
-                .await?;
-            let successful_count = execution_result.successful.len();
+                .await?
+            {
+                // A note failed to execute.
+                Some((failed_note_index, error)) => {
+                    // SAFETY: Failed note index is in bounds of the candidate notes.
+                    let failed_note = candidate_notes.remove(failed_note_index).into_note();
+                    failed_notes.push(FailedNote::new(failed_note, error));
 
-            // Determine the next step based on successful and/or failed notes.
-            if successful_count == candidate_notes.len() {
-                // A full set of successful notes has been found.
-                return Ok(NoteConsumptionInfo::new(execution_result.successful, failed_notes));
-            } else if successful_count == 0 {
-                // All notes failed, make no further attempts.
-                failed_notes.extend(execution_result.failed);
-                return Ok(NoteConsumptionInfo::new(Vec::new(), failed_notes));
-            } else {
-                // Some notes succeeded and some failed.
-
-                // Remove the failed notes from the candidate list.
-                let failed_range =
-                    successful_count..successful_count + execution_result.failed.len();
-                candidate_notes.drain(failed_range);
-
-                // Record the failed notes.
-                failed_notes.extend(execution_result.failed);
-
-                // Continue with the remaining candidate notes.
+                    // End if there are no more candidates.
+                    if candidate_notes.is_empty() {
+                        return Ok(NoteConsumptionInfo::new(Vec::new(), failed_notes));
+                    }
+                    // Continue and process next set of candidates.
+                },
+                None => {
+                    // A full set of successful notes has been found.
+                    let successful =
+                        candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+                    return Ok(NoteConsumptionInfo::new(successful, failed_notes));
+                },
             }
         }
     }
