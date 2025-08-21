@@ -7,8 +7,8 @@
       "0xc52584ba513fd5eaaec47234263a1b20ce4d848488430e577dbdd6d9254d5bae": 1275
     },
     "tx_script_processing": 39,
-    "epilogue": 2368,
-    "after_tx_cycles_obtained": 1205
+    "epilogue": 1663,
+    "after_tx_cycles_obtained": 500
   },
   "p2id": {
     "prologue": 2779,
@@ -17,7 +17,7 @@
       "0xb3044cb915c500d7678047e7f6cdfc9581efd8ebd07ff1977ef86f7072c51463": 1620
     },
     "tx_script_processing": 39,
-    "epilogue": 63153,
-    "after_tx_cycles_obtained": 1187
+    "epilogue": 62466,
+    "after_tx_cycles_obtained": 500
   }
 }
