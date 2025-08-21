@@ -6,7 +6,6 @@ use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::SourceManager;
-use miden_objects::asset::Asset;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -26,7 +25,11 @@ pub use vm_processor::{ExecutionOptions, MastForestStore};
 
 use super::TransactionExecutorError;
 use crate::auth::TransactionAuthenticator;
-use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
+use crate::host::{
+    AccountProcedureIndexMap,
+    ScriptMastForestStore,
+    compute_pre_fee_delta_commitment,
+};
 
 mod exec_host;
 pub use exec_host::TransactionExecutorHost;
@@ -472,37 +475,27 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (mut account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
+    let (mut post_fee_account_delta, output_notes, generated_signatures, tx_progress) =
+        host.into_parts();
 
     let tx_outputs =
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
-    // Because the fee asset is removed from the vault after the commitment is computed in the
-    // kernel, we have to *add* it to the delta before checking that both delta commitments
-    // match.
-    account_delta
-        .vault_mut()
-        .add_asset(Asset::from(tx_outputs.fee))
-        .map_err(TransactionExecutorError::FailedToMutateAccountDeltaWithFee)?;
+    // Compute the delta commitment of the delta before the fee was removed.
+    let pre_fee_delta_commitment =
+        compute_pre_fee_delta_commitment(&mut post_fee_account_delta, tx_outputs.fee)
+            .map_err(TransactionExecutorError::ComputePreFeeDelta)?;
 
-    let initial_account = tx_inputs.account();
-    let final_account = &tx_outputs.account;
-
-    let host_delta_commitment = account_delta.to_commitment();
-    if tx_outputs.account_delta_commitment != host_delta_commitment {
+    if tx_outputs.account_delta_commitment != pre_fee_delta_commitment {
         return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
             in_kernel_commitment: tx_outputs.account_delta_commitment,
-            host_commitment: host_delta_commitment,
+            host_commitment: pre_fee_delta_commitment,
         });
     }
 
-    // Now that we have validated the delta, we revert the above changes to get back the actual
-    // account delta of the transaction.
-    account_delta
-        .vault_mut()
-        .remove_asset(Asset::from(tx_outputs.fee))
-        .map_err(TransactionExecutorError::FailedToMutateAccountDeltaWithFee)?;
+    let initial_account = tx_inputs.account();
+    let final_account = &tx_outputs.account;
 
     if initial_account.id() != final_account.id() {
         return Err(TransactionExecutorError::InconsistentAccountId {
@@ -513,10 +506,10 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 
     // make sure nonce delta was computed correctly
     let nonce_delta = final_account.nonce() - initial_account.nonce();
-    if nonce_delta != account_delta.nonce_delta() {
+    if nonce_delta != post_fee_account_delta.nonce_delta() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
             expected: nonce_delta,
-            actual: account_delta.nonce_delta(),
+            actual: post_fee_account_delta.nonce_delta(),
         });
     }
 
@@ -526,7 +519,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     Ok(ExecutedTransaction::new(
         tx_inputs,
         tx_outputs,
-        account_delta,
+        post_fee_account_delta,
         tx_args,
         advice_inputs,
         tx_progress.into(),

@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::asset::Asset;
 use miden_objects::transaction::{
     OutputNote,
     ProvenTransaction,
@@ -14,7 +13,11 @@ pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
 
 use super::TransactionProverError;
-use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
+use crate::host::{
+    AccountProcedureIndexMap,
+    ScriptMastForestStore,
+    compute_pre_fee_delta_commitment,
+};
 
 mod prover_host;
 pub use prover_host::TransactionProverHost;
@@ -106,8 +109,10 @@ impl LocalTransactionProver {
         )
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
-        // extract transaction outputs and process transaction data
-        let (mut account_delta, output_notes, _tx_progress) = host.into_parts();
+        // Extract transaction outputs and process transaction data.
+        // Note that the account delta already contains the removed transaction fee, so it is the
+        // full delta of the transaction.
+        let (mut post_fee_account_delta, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
@@ -120,25 +125,16 @@ impl LocalTransactionProver {
         // the transaction is proven.
         // Note that the fee asset is a transaction output and so is part of the proof. The delta
         // without the added fee asset can still be validated by repeating this process.
-        account_delta
-            .vault_mut()
-            .add_asset(Asset::from(tx_outputs.fee))
-            .map_err(TransactionProverError::FailedToMutateAccountDeltaWithFee)?;
-
-        let account_delta_commitment = account_delta.to_commitment();
-
-        // Now that we have computed the commitment of the delta with the fee, we revert the above
-        // changes to get back the actual account delta of the transaction.
-        account_delta
-            .vault_mut()
-            .remove_asset(Asset::from(tx_outputs.fee))
-            .map_err(TransactionProverError::FailedToMutateAccountDeltaWithFee)?;
+        // Compute the delta commitment of the delta before the fee was removed.
+        let pre_fee_delta_commitment =
+            compute_pre_fee_delta_commitment(&mut post_fee_account_delta, tx_outputs.fee)
+                .map_err(TransactionProverError::ComputePreFeeDelta)?;
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),
             account.init_commitment(),
             tx_outputs.account.commitment(),
-            account_delta_commitment,
+            pre_fee_delta_commitment,
             ref_block_num,
             ref_block_commitment,
             tx_outputs.fee,
@@ -154,12 +150,12 @@ impl LocalTransactionProver {
                 let account_update_details = if account.is_new() {
                     let mut account = account.clone();
                     account
-                        .apply_delta(&account_delta)
+                        .apply_delta(&post_fee_account_delta)
                         .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
 
                     AccountUpdateDetails::New(account)
                 } else {
-                    AccountUpdateDetails::Delta(account_delta)
+                    AccountUpdateDetails::Delta(post_fee_account_delta)
                 };
 
                 builder.account_update_details(account_update_details)
