@@ -61,6 +61,6 @@ assert_matches = { workspace = true }
 criterion      = { default-features = false, features = ["html_reports"], version = "0.5" }
 miden-objects  = { features = ["testing"], path = "." }
 pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.14" }
-rstest         = { version = "0.25" }
+rstest         = { workspace = true }
 tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }
