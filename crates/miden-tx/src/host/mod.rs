@@ -160,7 +160,7 @@ where
         self.output_notes.values().cloned().map(|builder| builder.build()).collect()
     }
 
-    /// The source manager in used by the transaction host.
+    /// The source manager in use by the transaction host.
     pub fn source_manager(&self) -> &Arc<dyn SourceManagerSync> {
         &self.source_manager
     }
