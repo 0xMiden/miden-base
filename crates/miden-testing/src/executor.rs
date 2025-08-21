@@ -58,7 +58,8 @@ impl<H: SyncHost> CodeExecutor<H> {
         code: &str,
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library().with_debug_mode(true);
+        let assembler =
+            TransactionKernel::with_kernel_library(source_manager.clone()).with_debug_mode(true);
 
         // Virtual file name should be unique.
         let virtual_source_file =

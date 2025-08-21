@@ -29,8 +29,8 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_objects::assembly::{Library, default_source_manager_arc_dyn};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -599,7 +599,7 @@ fn test_set_map_item() -> miette::Result<()> {
 #[test]
 fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
-    let assembler = TransactionKernel::with_kernel_library();
+    let assembler = TransactionKernel::with_kernel_library(default_source_manager_arc_dyn());
 
     // The following code will execute the following logic that will be asserted during the test:
     //

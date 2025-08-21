@@ -449,10 +449,7 @@ impl TransactionKernel {
     /// because even though the library (`api.masm`) and the kernel binary (`main.masm`) include
     /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
     /// from the kernel library to test them individually.
-    pub fn with_kernel_library() -> Assembler {
-        use miden_objects::assembly::default_source_manager_arc_dyn;
-
-        let source_manager: Arc<dyn SourceManagerSync> = default_source_manager_arc_dyn();
+    pub fn with_kernel_library(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
         let kernel_library = Self::kernel_as_library();
 
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
@@ -482,7 +479,8 @@ impl TransactionKernel {
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        let assembler = Self::with_kernel_library().with_debug_mode(true);
+        let assembler =
+            Self::with_kernel_library(default_source_manager_arc_dyn()).with_debug_mode(true);
 
         assembler
             .with_dynamic_library(AccountCode::mock_account_library())

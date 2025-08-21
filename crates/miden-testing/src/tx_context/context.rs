@@ -91,15 +91,8 @@ impl TransactionContext {
 
         let test_lib = TransactionKernel::kernel_as_library();
 
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
-
-        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
-        let virtual_source_file = source_manager.load(
+        let virtual_source_file = self.source_manager.load(
             SourceLanguage::Masm,
             Uri::new("_tx_context_code"),
             code.to_owned(),
@@ -136,7 +129,7 @@ impl TransactionContext {
     ///
     /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library();
+        let assembler = TransactionKernel::with_kernel_library(self.source_manager.clone());
         self.execute_code_with_assembler(code, assembler)
     }
 

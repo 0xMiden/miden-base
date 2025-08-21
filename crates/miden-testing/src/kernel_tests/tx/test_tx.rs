@@ -277,7 +277,7 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
         tx_context
             .execute_code_with_assembler(
                 &note_creation_script(invalid_tag),
-                TransactionKernel::with_kernel_library()
+                TransactionKernel::with_kernel_library(default_source_manager_arc_dyn())
             )
             .is_err()
     );
@@ -286,7 +286,7 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
         tx_context
             .execute_code_with_assembler(
                 &note_creation_script(valid_tag),
-                TransactionKernel::with_kernel_library()
+                TransactionKernel::with_kernel_library(default_source_manager_arc_dyn())
             )
             .is_ok()
     );

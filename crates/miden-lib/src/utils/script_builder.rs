@@ -1,7 +1,8 @@
 use alloc::string::String;
 
+use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Assembler, Library, LibraryPath};
+use miden_objects::assembly::{Assembler, Library, LibraryPath, default_source_manager_arc_dyn};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
@@ -84,7 +85,22 @@ impl ScriptBuilder {
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
-        let assembler = TransactionKernel::assembler() // TODO do we need to expose this to the caller?
+        let source_manager = default_source_manager_arc_dyn();
+        Self::new_with_source_manager(in_debug_mode, source_manager)
+    }
+
+    /// Creates a new ScriptBuilder with the specified debug mode.
+    ///
+    /// This creates a basic assembler using `TransactionKernel::assembler()`.
+    ///
+    /// # Arguments
+    /// * `in_debug_mode` - Whether to enable debug mode in the assembler
+    /// * `source_manager` - The source manager to use with the internal `Assembler`
+    pub fn new_with_source_manager(
+        in_debug_mode: bool,
+        source_manager: alloc::sync::Arc<dyn SourceManagerSync>,
+    ) -> Self {
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager) // TODO do we need to expose this to the caller?
             .with_debug_mode(in_debug_mode);
         Self { assembler }
     }
