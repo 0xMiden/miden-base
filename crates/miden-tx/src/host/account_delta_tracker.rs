@@ -1,6 +1,5 @@
 use miden_objects::account::{AccountDelta, AccountId, AccountStorageHeader, AccountVaultDelta};
-use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::{AccountDeltaError, Felt, FieldElement, Word, ZERO};
+use miden_objects::{Felt, FieldElement, ZERO};
 
 use crate::host::storage_delta_tracker::StorageDeltaTracker;
 
@@ -74,37 +73,4 @@ impl AccountDeltaTracker {
         AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta)
             .expect("account delta created in delta tracker should be valid")
     }
-}
-
-/// Returns the pre-fee commitment.
-///
-/// This is the account delta commitment before the fee was removed from the account vault in
-/// the epilogue. This is the commitment of the delta that the transaction outputs on the stack
-/// as part of ACCOUNT_UPDATE_COMMITMENT.
-///
-/// This takes &mut self because it temporarily adds the provided asset to the vault and then
-/// removes it again, so the function is guaranteed to leave the delta effectively untouched.
-///
-/// # Errors
-///
-/// Returns `None` if:
-/// - adding or removing the provided fee to the vault fails.
-pub(crate) fn compute_pre_fee_delta_commitment(
-    account_delta: &mut AccountDelta,
-    fee: FungibleAsset,
-) -> Result<Word, AccountDeltaError> {
-    let fee = Asset::from(fee);
-
-    // Because the fee asset is removed from the vault after the commitment is computed in the
-    // tx kernel, we have to *add* it to the post-fee delta (self) before computing the pre-fee
-    // commitment.
-    account_delta.vault_mut().add_asset(fee)?;
-
-    let pre_fee_commitment = account_delta.to_commitment();
-
-    // Now that we have computed the commitment of the pre-feedelta, we revert the above changes
-    // to get back the actual account delta of the transaction.
-    account_delta.vault_mut().remove_asset(fee)?;
-
-    Ok(pre_fee_commitment)
 }

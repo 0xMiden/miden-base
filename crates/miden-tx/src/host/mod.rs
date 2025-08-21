@@ -1,7 +1,6 @@
 mod account_delta_tracker;
 
 use account_delta_tracker::AccountDeltaTracker;
-pub(crate) use account_delta_tracker::compute_pre_fee_delta_commitment;
 
 mod storage_delta_tracker;
 

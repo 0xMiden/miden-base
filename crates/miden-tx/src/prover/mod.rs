@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
+use miden_objects::asset::Asset;
 use miden_objects::transaction::{
     OutputNote,
     ProvenTransaction,
@@ -13,11 +14,7 @@ pub use miden_prover::ProvingOptions;
 use miden_prover::prove;
 
 use super::TransactionProverError;
-use crate::host::{
-    AccountProcedureIndexMap,
-    ScriptMastForestStore,
-    compute_pre_fee_delta_commitment,
-};
+use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod prover_host;
 pub use prover_host::TransactionProverHost;
@@ -110,9 +107,9 @@ impl LocalTransactionProver {
         .map_err(TransactionProverError::TransactionProgramExecutionFailed)?;
 
         // Extract transaction outputs and process transaction data.
-        // Note that the account delta already contains the removed transaction fee, so it is the
-        // full delta of the transaction.
-        let (mut post_fee_account_delta, output_notes, _tx_progress) = host.into_parts();
+        // Note that the account delta does not contain the removed transaction fee, so it is the
+        // "pre-fee" delta of the transaction.
+        let (pre_fee_account_delta, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
@@ -120,15 +117,9 @@ impl LocalTransactionProver {
         // erase private note information (convert private full notes to just headers)
         let output_notes: Vec<_> = tx_outputs.output_notes.iter().map(OutputNote::shrink).collect();
 
-        // Because the fee asset is removed from the vault after the commitment is computed in the
-        // kernel, we have to *add* it to the delta before computing the commitment against which
-        // the transaction is proven.
-        // Note that the fee asset is a transaction output and so is part of the proof. The delta
-        // without the added fee asset can still be validated by repeating this process.
-        // Compute the delta commitment of the delta before the fee was removed.
-        let pre_fee_delta_commitment =
-            compute_pre_fee_delta_commitment(&mut post_fee_account_delta, tx_outputs.fee)
-                .map_err(TransactionProverError::ComputePreFeeDelta)?;
+        // Compute the commitment of the pre-fee delta, which goes into the proven transaction,
+        // since it is the output of the transaction and so is needed for proof verification.
+        let pre_fee_delta_commitment = pre_fee_account_delta.to_commitment();
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),
@@ -143,6 +134,13 @@ impl LocalTransactionProver {
         )
         .add_input_notes(input_notes)
         .add_output_notes(output_notes);
+
+        // The full transaction delta is the pre fee delta with the fee asset removed.
+        let mut post_fee_account_delta = pre_fee_account_delta;
+        post_fee_account_delta
+            .vault_mut()
+            .remove_asset(Asset::from(tx_outputs.fee))
+            .map_err(TransactionProverError::RemoveFeeAssetFromDelta)?;
 
         // If the account is on-chain, add the update details.
         let builder = match account.is_onchain() {

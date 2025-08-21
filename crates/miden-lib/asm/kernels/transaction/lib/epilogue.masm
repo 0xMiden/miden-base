@@ -302,9 +302,20 @@ proc.compute_and_remove_fee
     # => [FEE_ASSET]
 
     # remove the fee from the native account's vault
-    # note that this modifies the vault delta of the account, but for all purposes, this is ignored
-    # because the account delta commitment is computed *before* this procedure.
-    exec.account::remove_asset_from_vault
+    # note that this deliberately does not use account::remove_asset_from_vault, because that
+    # procedure modifies the vault delta of the account. That is undesirable because it does not
+    # take a constant number of cycles, which makes it much harder to calculate the number of
+    # cycles the kernel takes after computing the fee. It is also unnecessary, because the delta
+    # commitment has already been computed and so any modifications done to the delta at this point
+    # are essentially ignored.
+
+    # fetch the vault root
+    exec.memory::get_acct_vault_root_ptr movdn.4
+    # => [FEE_ASSET, acct_vault_root_ptr]
+
+    # remove the asset from the account vault
+    exec.asset_vault::remove_asset
+    # => [FEE_ASSET]
 end
 
 # TRANSACTION EPILOGUE PROCEDURE
