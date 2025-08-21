@@ -77,6 +77,11 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
+    ///
+    /// # Note
+    ///
+    /// The `Assembler` passed _must_ use the same `SourceManager` as passed to
+    /// `TransactionContext`.
     pub fn execute_code_with_assembler(
         &self,
         code: &str,
@@ -129,7 +134,8 @@ impl TransactionContext {
     ///
     /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library(self.source_manager.clone());
+        let assembler = TransactionKernel::with_kernel_library(self.source_manager.clone())
+            .with_debug_mode(true);
         self.execute_code_with_assembler(code, assembler)
     }
 

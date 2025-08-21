@@ -1,8 +1,9 @@
 use alloc::string::{String, ToString};
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use assembly::Assembler;
-use assembly::debuginfo::{SourceLanguage, Uri};
+use assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
+use assembly::{Assembler, DefaultSourceManager};
 use rand::Rng;
 
 use crate::account::AccountId;
@@ -36,6 +37,7 @@ pub struct NoteBuilder {
     tag: NoteTag,
     code: String,
     aux: Felt,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl NoteBuilder {
@@ -58,6 +60,7 @@ impl NoteBuilder {
             tag: NoteTag::from_account_id(sender),
             code: DEFAULT_NOTE_CODE.to_string(),
             aux: ZERO,
+            source_manager: Arc::new(DefaultSourceManager::default()),
         }
     }
 
@@ -103,15 +106,18 @@ impl NoteBuilder {
         self
     }
 
+    /// Note: this must be the same `source_manager` as used with `Assembler`.
+    pub fn source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
+    }
+
     pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
-        // TODO: SourceManager.
-        let source_manager = alloc::sync::Arc::new(crate::assembly::DefaultSourceManager::default())
-            as alloc::sync::Arc<dyn crate::assembly::SourceManager>;
         // Generate a unique file name from the note's serial number, which should be unique per
         // note. Only includes two elements in the file name which should be enough for the
         // uniqueness in the testing context and does not result in overly long file names which do
         // not render well in all situations.
-        let virtual_source_file = source_manager.load(
+        let virtual_source_file = self.source_manager.load(
             SourceLanguage::Masm,
             Uri::new(format!(
                 "note_{:x}{:x}",

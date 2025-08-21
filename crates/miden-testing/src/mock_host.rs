@@ -6,7 +6,8 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountHeader, AccountVaultDelta};
-use miden_objects::assembly::SourceManager;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::assembly::{SourceManager, default_source_manager_arc_dyn};
 use miden_objects::{Felt, Word};
 use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 use vm_processor::{
@@ -31,6 +32,7 @@ use vm_processor::{
 pub struct MockHost {
     acct_procedure_index_map: AccountProcedureIndexMap,
     mast_store: Rc<TransactionMastStore>,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl MockHost {
@@ -48,6 +50,7 @@ impl MockHost {
         Self {
             acct_procedure_index_map: proc_index_map.unwrap(),
             mast_store,
+            source_manager: default_source_manager_arc_dyn(),
         }
     }
 
@@ -80,10 +83,8 @@ impl BaseHost for MockHost {
         miden_objects::assembly::debuginfo::SourceSpan,
         Option<Arc<miden_objects::assembly::SourceFile>>,
     ) {
-        // TODO: SourceManager: Replace with proper call to source manager once the host owns it.
-        let stub_source_manager = miden_objects::assembly::DefaultSourceManager::default();
-        let maybe_file = stub_source_manager.get_by_uri(location.uri());
-        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        let maybe_file = self.source_manager.get_by_uri(location.uri());
+        let span = self.source_manager.location_to_span(location.clone()).unwrap_or_default();
         (span, maybe_file)
     }
 }
