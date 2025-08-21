@@ -74,8 +74,8 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     # Stack:  [pad(16)]
     # Output: [CODE_COMMITMENT, pad(12)]
-    export.get_storage_commitment
-        exec.account::get_storage_commitment
+    export.compute_storage_commitment
+        exec.account::compute_storage_commitment
         # => [STORAGE_COMMITMENT, pad(16)]
 
         swapw dropw

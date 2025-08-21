@@ -85,7 +85,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
             # => []
 
-            call.mock_account::get_storage_commitment
+            call.mock_account::compute_storage_commitment
             # => [STORAGE_COMMITMENT0, pad(12)]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT0]
@@ -109,7 +109,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT0]
 
             padw padw padw padw
-            call.mock_account::get_storage_commitment
+            call.mock_account::compute_storage_commitment
             # => [STORAGE_COMMITMENT1, pad(12), STORAGE_COMMITMENT0]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
@@ -870,12 +870,9 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 }
 
 #[test]
-fn test_get_storage_commitment() -> anyhow::Result<()> {
+fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let account = tx_context.account().clone();
-
-    // get the initial storage commitment
     let code = format!(
         r#"
         use.miden::account
@@ -890,9 +887,39 @@ fn test_get_storage_commitment() -> anyhow::Result<()> {
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
         "#,
-        expected_storage_commitment = &account.storage().commitment(),
+        expected_storage_commitment = &tx_context.account().storage().commitment(),
     );
     tx_context.execute_code(&code)?;
+
+    Ok(())
+}
+
+/// This test creates an account with mock storage slots and calls the
+/// `compute_storage_commitment` procedure each time the storage is updated.
+///
+/// Namely, we invoke the `mock_account::compute_storage_commitment` procedure:
+/// - Right after the account creation.
+/// - After updating the 0th storage slot (value slot).
+/// - Right after the previous call to make sure it returns the same commitment from the cached
+///   data.
+/// - After updating the 2nd storage slot (map slot).
+#[test]
+fn test_compute_storage_commitment() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+    let mut account_clone = tx_context.account().clone();
+    let account_storage = account_clone.storage_mut();
+
+    let init_storage_commitment = account_storage.commitment();
+
+    account_storage.set_item(0, [9, 10, 11, 12].map(Felt::new).into())?;
+    let storage_commitment_0 = account_storage.commitment();
+
+    account_storage.set_map_item(
+        2,
+        [101, 102, 103, 104].map(Felt::new).into(),
+        [5, 6, 7, 8].map(Felt::new).into(),
+    )?;
+    let storage_commitment_2 = account_storage.commitment();
 
     let code = format!(
         r#"
@@ -903,13 +930,38 @@ fn test_get_storage_commitment() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # get the current storage commitment
-            call.mock_account::get_storage_commitment
-            push.{expected_storage_commitment}
-            assert_eqw.err="actual storage commitment is not equal to the expected one"
+            # assert the correctness of the initial storage commitment
+            call.mock_account::compute_storage_commitment
+            push.{init_storage_commitment}
+            assert_eqw.err="storage commitment at the beginning of the transaction is not equal to the expected one"
+
+            # update the 0th (value) storage slot
+            push.9.10.11.12.0
+            call.mock_account::set_item dropw drop
+            # => []
+
+            # assert the correctness of the storage commitment after the 0th slot was updated
+            call.mock_account::compute_storage_commitment
+            push.{storage_commitment_0}
+            assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
+
+            # get the storage commitment once more to get the cached data and assert that this data 
+            # didn't change
+            call.mock_account::compute_storage_commitment
+            push.{storage_commitment_0}
+            assert_eqw.err="storage commitment should remain the same"
+
+            # update the 2nd (map) storage slot
+            push.5.6.7.8.101.102.103.104.2 # [idx, KEY, VALUE]
+            call.mock_account::set_map_item dropw dropw
+            # => []
+
+            # assert the correctness of the storage commitment after the 2nd slot was updated
+            call.mock_account::compute_storage_commitment
+            push.{storage_commitment_2}
+            assert_eqw.err="storage commitment after the 2nd slot was updated is not equal to the expected one"
         end
         "#,
-        expected_storage_commitment = &account.storage().commitment(),
     );
     tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 

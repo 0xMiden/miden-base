@@ -375,10 +375,11 @@ export.get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT]
 end
 
-#! Gets the account storage commitment of the current account.
+#! Computes the latest account storage commitment of the current account.
 #!
-#! Note that this commitment may not reflect the changes made to storage. The commitment is
-#! recomputed when `account_compute_current_commitment` is called.
+#! Notice that this procedure always returns the latest commitment, but it doesn't actually always 
+#! recompute it: recomputation is performed only if the account's storage has been changed,
+#! otherwise the cached value is returned.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
@@ -387,8 +388,8 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: exec
-export.get_storage_commitment
-    exec.kernel_proc_offsets::account_get_storage_commitment_offset
+export.compute_storage_commitment
+    exec.kernel_proc_offsets::account_compute_storage_commitment_offset
     # => [offset]
 
     # pad the stack
