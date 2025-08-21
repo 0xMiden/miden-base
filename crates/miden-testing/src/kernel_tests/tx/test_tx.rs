@@ -1436,6 +1436,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
         .with_statically_linked_library(&library)?
         .compile_tx_script(source)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
+        .with_source_manager(source_manager.clone())
         .tx_script(tx_script.clone())
         .build()?;
     let account_id = tx_context.account().id();
