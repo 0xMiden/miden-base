@@ -194,6 +194,12 @@ end
 
 #! Computes the account commitment of the current account.
 #!
+#! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire 
+#! account. Assuming that the storage commitment is current, computing account commitment is 
+#! relatively cheap — essentially is consists of just 2 permutations of the hash function and takes
+#! relatively small number of cycles, so it would not be worth adding a separate caching mechanism 
+#! for this.
+#!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]
 #!
@@ -1263,11 +1269,10 @@ end
 
 #! Makes the account storage commitment up-to-date.
 #!
-#! Depending on whether the storage has been updated, this procedure does the following:
-#! - If the storage commitment is outdated (account's storage has been changed), this commitment is 
-#!   recomputed by hashing the storage slots. Then this newly computed storage commitment updates 
-#!   the storage commitment in memory.
-#! - If the storage commitment is up-to-date, the the commitment value stored in memory is returned.
+#! Notice that the account storage commitment got updated only if it is outdated: if the account 
+#! storage changes, its commitment will be recomputed by hashing the storage slots. Then this newly
+#! computed storage commitment updates the storage commitment in memory. If the storage commitment
+#! is up-to-date, this procedure does nothing. 
 #!
 #! Inputs:  []
 #! Outputs: []
