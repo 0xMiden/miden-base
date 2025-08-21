@@ -475,6 +475,8 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
+    // Note that the account delta already contains the removed transaction fee, so it is the
+    // full delta of the transaction.
     let (mut post_fee_account_delta, output_notes, generated_signatures, tx_progress) =
         host.into_parts();
 
