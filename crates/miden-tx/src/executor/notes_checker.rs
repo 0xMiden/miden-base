@@ -58,7 +58,8 @@ where
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
         // Ensure well-known notes are ordered first.
         let mut notes = input_notes.into_vec();
-        notes.sort_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
+        notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
+        let notes = InputNotes::<InputNote>::new_unchecked(notes);
 
         // Attempt to find an executable set of notes.
         self.find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
@@ -73,10 +74,10 @@ where
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
-        notes: Vec<InputNote>,
+        notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        let mut candidate_notes = notes;
+        let mut candidate_notes = notes.into_vec();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -94,8 +95,8 @@ where
                 )
                 .await?
             {
-                // A note failed to execute.
                 Some((failed_note_index, error)) => {
+                    // A note failed to execute.
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
                     failed_notes.push(FailedNote::new(failed_note, error));
@@ -104,7 +105,7 @@ where
                     if candidate_notes.is_empty() {
                         return Ok(NoteConsumptionInfo::new(Vec::new(), failed_notes));
                     }
-                    // Continue and process next set of candidates.
+                    // Continue and process the next set of candidates.
                 },
                 None => {
                     // A full set of successful notes has been found.
