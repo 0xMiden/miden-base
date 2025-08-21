@@ -72,6 +72,7 @@ use crate::transaction::TransactionKernel;
 #[derive(Clone)]
 pub struct ScriptBuilder {
     assembler: Assembler,
+    source_manager: alloc::sync::Arc<dyn SourceManagerSync>,
 }
 
 impl ScriptBuilder {
@@ -86,9 +87,9 @@ impl ScriptBuilder {
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
         let source_manager = default_source_manager_arc_dyn();
-        let assembler = TransactionKernel::assembler_with_source_manager(source_manager)
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
             .with_debug_mode(in_debug_mode);
-        Self { assembler }
+        Self { assembler, source_manager }
     }
 
     /// Creates a new ScriptBuilder with the specified debug mode.
@@ -100,9 +101,9 @@ impl ScriptBuilder {
     /// # Arguments
     /// * `source_manager` - The source manager to use with the internal `Assembler`
     pub fn with_source_manager(source_manager: alloc::sync::Arc<dyn SourceManagerSync>) -> Self {
-        let assembler =
-            TransactionKernel::assembler_with_source_manager(source_manager).with_debug_mode(true);
-        Self { assembler }
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
+            .with_debug_mode(true);
+        Self { assembler, source_manager }
     }
 
     // LIBRARY MANAGEMENT
@@ -278,6 +279,14 @@ impl ScriptBuilder {
             ScriptBuilderError::build_error_with_report("failed to compile note script", err)
         })?;
         Ok(NoteScript::new(program))
+    }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Access the [`Assembler`]'s [`SourceManager`].
+    pub fn source_manager(&self) -> alloc::sync::Arc<dyn SourceManagerSync> {
+        self.source_manager.clone()
     }
 
     // TESTING CONVENIENCE FUNCTIONS
