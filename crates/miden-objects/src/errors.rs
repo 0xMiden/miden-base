@@ -362,7 +362,7 @@ pub enum AssetError {
       max_amount = FungibleAsset::MAX_AMOUNT
     )]
     FungibleAssetAmountTooBig(u64),
-    #[error("subtracting {subtrahend} from fungible asset amount {minuend} would overflow")]
+    #[error("subtracting {subtrahend} from fungible asset amount {minuend} would underflow")]
     FungibleAssetAmountNotSufficient { minuend: u64, subtrahend: u64 },
     #[error("fungible asset word {0} does not contain expected ZERO at word index 1")]
     FungibleAssetExpectedZero(Word),
