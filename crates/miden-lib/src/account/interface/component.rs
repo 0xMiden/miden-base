@@ -40,12 +40,12 @@ pub enum AccountComponentInterface {
     /// Exposes procedures from the multisig RpoFalcon512 authentication module.
     ///
     /// Internal value holds the storage slot index where the multisig configuration is stored.
-    AuthRpoFalconMultisig(u8),
+    AuthRpoFalcon512Multisig(u8),
     /// Exposes procedures from the [`NoAuth`][crate::account::auth::NoAuth] module.
     ///
     /// This authentication scheme provides no cryptographic authentication and only increments
     /// the nonce if the account state has actually changed during transaction execution.
-    AuthNone,
+    AuthNoAuth,
     /// A non-standard, custom interface which exposes the contained procedures.
     ///
     /// Custom interface holds procedures which are not part of some standard interface which is
@@ -67,10 +67,10 @@ impl AccountComponentInterface {
             },
             AccountComponentInterface::AuthRpoFalcon512(_) => "RPO Falcon512".to_string(),
             AccountComponentInterface::AuthRpoFalcon512Acl(_) => "RPO Falcon512 ACL".to_string(),
-            AccountComponentInterface::AuthRpoFalconMultisig(_) => {
+            AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
                 "RPO Falcon512 Multisig".to_string()
             },
-            AccountComponentInterface::AuthNone => "No Auth".to_string(),
+            AccountComponentInterface::AuthNoAuth => "No Auth".to_string(),
             AccountComponentInterface::Custom(proc_info_vec) => {
                 let result = proc_info_vec
                     .iter()
@@ -79,6 +79,72 @@ impl AccountComponentInterface {
                     .join(", ");
                 format!("Custom([{result}])")
             },
+        }
+    }
+
+    /// Returns true if this component interface is an authentication component.
+    pub fn is_auth_component(&self) -> bool {
+        matches!(
+            self,
+            AccountComponentInterface::AuthRpoFalcon512(_)
+                | AccountComponentInterface::AuthRpoFalcon512Acl(_)
+                | AccountComponentInterface::AuthRpoFalcon512Multisig(_)
+                | AccountComponentInterface::AuthNoAuth
+        )
+    }
+
+    /// Returns the authentication schemes associated with this component interface.
+    ///
+    /// This method extracts all authentication schemes from the component interface by examining
+    /// the account storage at the appropriate storage indices for authentication components.
+    ///
+    /// # Arguments
+    /// * `storage` - The account storage to read authentication data from
+    ///
+    /// # Returns
+    /// * `Vec<AuthScheme>` - Vector of authentication schemes for this component
+    ///
+    /// # Limitations
+    /// Currently, this method only detects known authentication schemes. For custom authentication
+    /// components, it would return an empty vector even if they are authentication components.
+    ///
+    /// # Future Improvements
+    /// A more generic approach could be implemented where:
+    /// - `from_procedures` returns `(Vec<Self>, Word)` with the auth procedure MAST root
+    /// - Callers pass a generic `T: AccountAuthComponent where AccountAuthComponent:
+    ///   TryFrom<&AccountStorage>`
+    /// - This would allow detection and extraction of custom auth components without knowing their
+    ///   layout
+    pub fn get_auth_schemes(
+        &self,
+        storage: &miden_objects::account::AccountStorage,
+    ) -> Vec<AuthScheme> {
+        match self {
+            AccountComponentInterface::AuthRpoFalcon512(storage_index)
+            | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
+                vec![AuthScheme::RpoFalcon512 {
+                    pub_key: PublicKey::new(
+                        storage
+                            .get_item(*storage_index)
+                            .expect("invalid storage index of the public key"),
+                    ),
+                }]
+            },
+            AccountComponentInterface::AuthRpoFalcon512Multisig(storage_index) => {
+                // TODO: Implement proper multisig auth scheme extraction
+                // For now, we need to determine how to extract multisig configuration from storage
+                // This might require reading multiple storage slots for the multisig setup
+                // In the future, this could return multiple AuthSchemes for different signers
+                vec![AuthScheme::RpoFalcon512 {
+                    pub_key: PublicKey::new(
+                        storage
+                            .get_item(*storage_index)
+                            .expect("invalid storage index of the multisig configuration"),
+                    ),
+                }]
+            },
+            AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
+            _ => vec![],
         }
     }
 
@@ -94,35 +160,15 @@ impl AccountComponentInterface {
     /// * `Some(AuthScheme)` - If this is an authentication component interface
     /// * `None` - If this is not an authentication component interface
     ///
-    /// # Limitations
-    /// Currently, this method only detects known authentication schemes. For custom authentication
-    /// components, it would return `None` even if they are authentication components.
-    ///
-    /// # Future Improvements
-    /// A more generic approach could be implemented where:
-    /// - `from_procedures` returns `(Vec<Self>, Word)` with the auth procedure MAST root
-    /// - Callers pass a generic `T: AccountAuthComponent where AccountAuthComponent:
-    ///   TryFrom<&AccountStorage>`
-    /// - This would allow detection and extraction of custom auth components without knowing their
-    ///   layout
+    /// # Deprecated
+    /// This method is deprecated in favor of `get_auth_schemes()` which can return multiple
+    /// authentication schemes from a single component.
+    #[deprecated(since = "0.11.0", note = "Use get_auth_schemes() instead")]
     pub fn get_auth_scheme(
         &self,
         storage: &miden_objects::account::AccountStorage,
     ) -> Option<AuthScheme> {
-        match self {
-            AccountComponentInterface::AuthRpoFalcon512(storage_index)
-            | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
-                Some(AuthScheme::RpoFalcon512 {
-                    pub_key: PublicKey::new(
-                        storage
-                            .get_item(*storage_index)
-                            .expect("invalid storage index of the public key"),
-                    ),
-                })
-            },
-            AccountComponentInterface::AuthNone => Some(AuthScheme::NoAuth),
-            _ => None,
-        }
+        self.get_auth_schemes(storage).into_iter().next()
     }
 
     /// Creates a vector of [AccountComponentInterface] instances. This vector specifies the

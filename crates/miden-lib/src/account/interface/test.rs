@@ -727,11 +727,13 @@ fn test_get_auth_scheme_rpo_falcon512() {
         .find(|component| matches!(component, AccountComponentInterface::AuthRpoFalcon512(_)))
         .expect("should have RpoFalcon512 component");
 
-    // Test get_auth_scheme method
-    let auth_scheme = rpo_falcon_component.get_auth_scheme(wallet_account.storage()).unwrap();
+    // Test get_auth_schemes method
+    let auth_schemes = rpo_falcon_component.get_auth_schemes(wallet_account.storage());
+    assert_eq!(auth_schemes.len(), 1);
+    let auth_scheme = &auth_schemes[0];
     match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -752,11 +754,13 @@ fn test_get_auth_scheme_no_auth() {
     let no_auth_component = no_auth_account_interface
         .components()
         .iter()
-        .find(|component| matches!(component, AccountComponentInterface::AuthNone))
+        .find(|component| matches!(component, AccountComponentInterface::AuthNoAuth))
         .expect("should have NoAuth component");
 
-    // Test get_auth_scheme method
-    let auth_scheme = no_auth_component.get_auth_scheme(no_auth_account.storage()).unwrap();
+    // Test get_auth_schemes method
+    let auth_schemes = no_auth_component.get_auth_schemes(no_auth_account.storage());
+    assert_eq!(auth_schemes.len(), 1);
+    let auth_scheme = &auth_schemes[0];
     match auth_scheme {
         AuthScheme::NoAuth => {},
         _ => panic!("Expected NoAuth auth scheme"),
@@ -774,8 +778,8 @@ fn test_get_auth_scheme_non_auth_component() {
         .build_existing()
         .expect("failed to create wallet account");
 
-    let auth_scheme = basic_wallet_component.get_auth_scheme(wallet_account.storage());
-    assert!(auth_scheme.is_none());
+    let auth_schemes = basic_wallet_component.get_auth_schemes(wallet_account.storage());
+    assert!(auth_schemes.is_empty());
 }
 
 /// Test that the From<&Account> implementation correctly uses get_auth_scheme

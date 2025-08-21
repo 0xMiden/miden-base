@@ -48,7 +48,7 @@ static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 });
 
 // Initialize the Multisig Rpo Falcon 512 library only once.
-static MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
         "/assets/account_components/multisig_rpo_falcon_512.masl"
@@ -83,7 +83,7 @@ pub fn no_auth_library() -> Library {
 
 /// Returns the Multisig Library.
 pub fn multisig_library() -> Library {
-    MULTISIG_LIBRARY.clone()
+    RPO_FALCON_512_MULTISIG_LIBRARY.clone()
 }
 
 // WELL KNOWN COMPONENTS
@@ -93,10 +93,10 @@ pub fn multisig_library() -> Library {
 pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
-    RpoFalcon512,
-    RpoFalcon512Acl,
-    RpoFalconMultisig,
-    NoAuth,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512Multisig,
+    AuthNoAuth,
 }
 
 impl WellKnownComponent {
@@ -106,10 +106,10 @@ impl WellKnownComponent {
         let forest = match self {
             Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
             Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
-            Self::RpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
-            Self::RpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.mast_forest(),
-            Self::RpoFalconMultisig => MULTISIG_LIBRARY.mast_forest(),
-            Self::NoAuth => NO_AUTH_LIBRARY.mast_forest(),
+            Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
+            Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.mast_forest(),
+            Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.mast_forest(),
+            Self::AuthNoAuth => NO_AUTH_LIBRARY.mast_forest(),
         };
 
         forest.procedure_digests()
@@ -142,13 +142,15 @@ impl WellKnownComponent {
                 },
                 Self::BasicFungibleFaucet => component_interface_vec
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
-                Self::RpoFalcon512 => component_interface_vec
+                Self::AuthRpoFalcon512 => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
-                Self::RpoFalcon512Acl => component_interface_vec
+                Self::AuthRpoFalcon512Acl => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
-                Self::RpoFalconMultisig => component_interface_vec
-                    .push(AccountComponentInterface::AuthRpoFalconMultisig(storage_offset)),
-                Self::NoAuth => component_interface_vec.push(AccountComponentInterface::AuthNone),
+                Self::AuthRpoFalcon512Multisig => component_interface_vec
+                    .push(AccountComponentInterface::AuthRpoFalcon512Multisig(storage_offset)),
+                Self::AuthNoAuth => {
+                    component_interface_vec.push(AccountComponentInterface::AuthNoAuth)
+                },
             }
         }
     }
@@ -161,9 +163,9 @@ impl WellKnownComponent {
     ) {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalcon512.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalconMultisig.extract_component(procedures_map, component_interface_vec);
-        Self::NoAuth.extract_component(procedures_map, component_interface_vec);
+        Self::AuthRpoFalcon512.extract_component(procedures_map, component_interface_vec);
+        Self::AuthRpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
+        Self::AuthRpoFalcon512Multisig.extract_component(procedures_map, component_interface_vec);
+        Self::AuthNoAuth.extract_component(procedures_map, component_interface_vec);
     }
 }

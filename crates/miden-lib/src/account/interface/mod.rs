@@ -147,11 +147,11 @@ impl AccountInterface {
                     component_proc_digests
                         .extend(rpo_falcon_512_acl_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthRpoFalconMultisig(_) => {
+                AccountComponentInterface::AuthRpoFalcon512Multisig(_) => {
                     component_proc_digests
                         .extend(multisig_library().mast_forest().procedure_digests());
                 },
-                AccountComponentInterface::AuthNone => {
+                AccountComponentInterface::AuthNoAuth => {
                     component_proc_digests
                         .extend(no_auth_library().mast_forest().procedure_digests());
                 },
@@ -271,11 +271,15 @@ impl From<&Account> for AccountInterface {
     fn from(account: &Account) -> Self {
         let components = AccountComponentInterface::from_procedures(account.code().procedures());
         let mut auth = Vec::new();
-        components.iter().for_each(|interface| {
-            if let Some(auth_scheme) = interface.get_auth_scheme(account.storage()) {
-                auth.push(auth_scheme);
+
+        // Find the auth component and extract all auth schemes from it
+        // An account should have only one auth component
+        for component in components.iter() {
+            if component.is_auth_component() {
+                auth = component.get_auth_schemes(account.storage());
+                break;
             }
-        });
+        }
 
         Self {
             account_id: account.id(),
