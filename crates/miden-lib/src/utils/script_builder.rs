@@ -86,22 +86,22 @@ impl ScriptBuilder {
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
         let source_manager = default_source_manager_arc_dyn();
-        Self::new_with_source_manager(in_debug_mode, source_manager)
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager)
+            .with_debug_mode(in_debug_mode);
+        Self { assembler }
     }
 
     /// Creates a new ScriptBuilder with the specified debug mode.
     ///
     /// This creates a basic assembler using `TransactionKernel::assembler()`.
     ///
+    /// The source manager is.
+    ///
     /// # Arguments
-    /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     /// * `source_manager` - The source manager to use with the internal `Assembler`
-    pub fn new_with_source_manager(
-        in_debug_mode: bool,
-        source_manager: alloc::sync::Arc<dyn SourceManagerSync>,
-    ) -> Self {
-        let assembler = TransactionKernel::assembler_with_source_manager(source_manager) // TODO do we need to expose this to the caller?
-            .with_debug_mode(in_debug_mode);
+    pub fn with_source_manager(source_manager: alloc::sync::Arc<dyn SourceManagerSync>) -> Self {
+        let assembler =
+            TransactionKernel::assembler_with_source_manager(source_manager).with_debug_mode(true);
         Self { assembler }
     }
 

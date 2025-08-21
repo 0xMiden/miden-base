@@ -77,6 +77,7 @@ pub mod assembly {
         mast,
     };
 
+    // TODO move to `DefaultSourceManager::arc_dyn_default()`
     pub fn default_source_manager_arc_dyn() -> Arc<dyn SourceManagerSync> {
         Arc::new(DefaultSourceManager::default())
     }
