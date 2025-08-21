@@ -29,11 +29,16 @@ const.EPILOGUE_AFTER_TX_CYCLES_OBTAINED=131097
 # Event emitted to signal that the fee was computed.
 const.EPILOGUE_TX_FEE_COMPUTED=131098
 
+# An additional number of cyclces to account for the number of cycles that smt::set will take when
+# removing the computed fee from the asset vault.
+# Theoretically, this can safely be set to worst_case_cycles - best_case_cycles of smt::set. That's
+# because we can assume that the measured number of cycles already contains at least the best case
+# number of cycles, and so we only need to add the difference.
+const.SMT_SET_ADDITIONAL_CYCLES=250
+
 # The number of cycles the epilogue is estimated to take after compute_fee has been executed.
 # This is _estimated_ using the transaction measurements on ExecutedTransaction.
-# This should be replaced with a way to _calculate_ the number of cycles that the epilogue will incur
-# after compute_fee.
-const.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES=1200
+const.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES=500+SMT_SET_ADDITIONAL_CYCLES
 
 # OUTPUT NOTES PROCEDURES
 # =================================================================================================
@@ -314,7 +319,7 @@ proc.compute_and_remove_fee
     # => [FEE_ASSET, acct_vault_root_ptr]
 
     # remove the asset from the account vault
-    exec.asset_vault::remove_asset
+    exec.asset_vault::remove_fungible_asset
     # => [FEE_ASSET]
 end
 
