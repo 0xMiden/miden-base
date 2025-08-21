@@ -61,6 +61,8 @@ where
 
     /// The balance of the native asset in the account at the beginning of transaction execution.
     initial_native_asset: FungibleAsset,
+
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
@@ -111,7 +113,6 @@ where
             mast_store,
             scripts_mast_store,
             acct_procedure_index_map,
-            source_manager,
         );
 
         Self {
@@ -119,6 +120,7 @@ where
             authenticator,
             generated_signatures: BTreeMap::new(),
             initial_native_asset,
+            source_manager,
         }
     }
 
@@ -232,7 +234,7 @@ where
         &self,
         location: &Location,
     ) -> (SourceSpan, Option<Arc<SourceFile>>) {
-        let source_manager = self.base_host.source_manager().as_ref();
+        let source_manager = self.source_manager.as_ref();
         let maybe_file = source_manager.get_by_uri(location.uri());
         let span = source_manager.location_to_span(location.clone()).unwrap_or_default();
         (span, maybe_file)

@@ -3,7 +3,6 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::transaction::{
     OutputNote,
     ProvenTransaction,
@@ -92,7 +91,6 @@ impl LocalTransactionProver {
                 mast_store.as_ref(),
                 script_mast_store,
                 acct_procedure_index_map,
-                default_source_manager_arc_dyn(), // FIXME
             )
         };
 

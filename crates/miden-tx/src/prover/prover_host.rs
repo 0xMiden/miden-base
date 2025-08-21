@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::Word;
 use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::assembly::debuginfo::{Location, SourceManagerSync};
+use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceSpan};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use vm_processor::{
@@ -51,7 +51,6 @@ where
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
-        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         let base_host = TransactionBaseHost::new(
             account,
@@ -59,7 +58,6 @@ where
             mast_store,
             scripts_mast_store,
             acct_procedure_index_map,
-            source_manager,
         );
 
         Self { base_host }

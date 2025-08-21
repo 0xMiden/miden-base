@@ -25,7 +25,6 @@ use alloc::vec::Vec;
 use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
 use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
@@ -85,9 +84,6 @@ pub struct TransactionBaseHost<'store, STORE> {
     ///
     /// The progress is updated event handlers.
     tx_progress: TransactionProgress,
-
-    /// The source manager to use.
-    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl<'store, STORE> TransactionBaseHost<'store, STORE>
@@ -104,7 +100,6 @@ where
         mast_store: &'store STORE,
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
-        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         Self {
             mast_store,
@@ -117,7 +112,6 @@ where
             output_notes: BTreeMap::default(),
             input_notes,
             tx_progress: TransactionProgress::default(),
-            source_manager,
         }
     }
 
@@ -158,11 +152,6 @@ where
     /// are tracked by this host.
     pub fn build_output_notes(&self) -> Vec<OutputNote> {
         self.output_notes.values().cloned().map(|builder| builder.build()).collect()
-    }
-
-    /// The source manager in use by the transaction host.
-    pub fn source_manager(&self) -> &Arc<dyn SourceManagerSync> {
-        &self.source_manager
     }
 
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
