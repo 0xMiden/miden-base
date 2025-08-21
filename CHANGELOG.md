@@ -70,6 +70,8 @@
 - [BREAKING] Refactor `AccountError::AssumptionViolated` into `AccountError::Other` ([#1743](https://github.com/0xMiden/miden-base/pull/1743)).
 - [BREAKING] Remove `PartialVault::{new, add}` to guarantee the vault tracks valid assets ([#1747](https://github.com/0xMiden/miden-base/pull/1747)).
 - [BREAKING] Update `account::get_storage_commitment` procedure to `account::compute_storage_commitment`([#1763](https://github.com/0xMiden/miden-base/pull/1763)).
+- Implement caching for the account storage commitment (([#1763](https://github.com/0xMiden/miden-base/pull/1763))).
+- [BREAKING] Merge the current and initial account code commitment procedures into one ([#1776](https://github.com/0xMiden/miden-base/pull/1776)).
 
 ## 0.10.1 (2025-08-02)
 
