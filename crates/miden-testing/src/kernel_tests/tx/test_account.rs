@@ -143,36 +143,6 @@ pub fn compute_current_commitment() -> miette::Result<()> {
     Ok(())
 }
 
-// ACCOUNT CODE TESTS
-// ================================================================================================
-
-// TODO: add the current code commitment obtainment once we will have updatable code
-#[test]
-pub fn test_get_code_commitment() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
-    let account = tx_context.account();
-
-    let code = format!(
-        r#"
-        use.$kernel::prologue
-        use.$kernel::account
-        begin
-            exec.prologue::prepare_transaction
-
-            # get the initial code commitment
-            exec.account::get_initial_code_commitment
-            push.{expected_code_commitment}
-            assert_eqw.err="actual code commitment is not equal to the expected one"
-        end
-        "#,
-        expected_code_commitment = account.code().commitment()
-    );
-
-    tx_context.execute_code(&code)?;
-
-    Ok(())
-}
-
 // ACCOUNT ID TESTS
 // ================================================================================================
 
@@ -348,6 +318,36 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
             "Rust and MASM is_faucet diverged for account_id {account_id}"
         );
     }
+
+    Ok(())
+}
+
+// ACCOUNT CODE TESTS
+// ================================================================================================
+
+// TODO: update this test once the ability to change the account code will be implemented
+#[test]
+pub fn test_compute_code_commitment() -> miette::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+    let account = tx_context.account();
+
+    let code = format!(
+        r#"
+        use.$kernel::prologue
+        use.mock::account->mock_account
+
+        begin
+            exec.prologue::prepare_transaction
+            # get the code commitment
+            call.mock_account::get_code_commitment
+            push.{expected_code_commitment}
+            assert_eqw.err="actual code commitment is not equal to the expected one"
+        end
+        "#,
+        expected_code_commitment = account.code().commitment()
+    );
+
+    tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
 
     Ok(())
 }

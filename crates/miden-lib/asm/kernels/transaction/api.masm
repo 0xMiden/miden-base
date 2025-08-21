@@ -212,25 +212,6 @@ export.account_incr_nonce
     # => [final_nonce, pad(15)]
 end
 
-#! Returns the code commitment of the native account at the beginning of the transaction.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [INIT_CODE_COMMITMENT, pad(12)]
-#!
-#! Where:
-#! - INIT_CODE_COMMITMENT is the initial account code commitment.
-#!
-#! Invocation: dynexec
-export.account_get_initial_code_commitment
-    # get the initial account code commitment
-    exec.account::get_initial_code_commitment
-    # => [INIT_CODE_COMMITMENT, pad(16)]
-
-    # truncate the stack
-    swapw dropw
-    # => [INIT_CODE_COMMITMENT, pad(12)]
-end
-
 #! Gets the account code commitment of the current account.
 #!
 #! Inputs:  [pad(16)]

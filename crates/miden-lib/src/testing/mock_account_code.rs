@@ -67,8 +67,12 @@ const MOCK_ACCOUNT_CODE: &str = "
 
     # Stack:  [pad(16)]
     # Output: [CODE_COMMITMENT, pad(12)]
-    export.get_code
+    export.get_code_commitment
         exec.account::get_code_commitment
+        # => [CODE_COMMITMENT, pad(16)]
+
+        # truncate the stack
+        swapw dropw
         # => [CODE_COMMITMENT, pad(12)]
     end
 

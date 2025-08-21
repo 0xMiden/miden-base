@@ -312,15 +312,6 @@ export.memory::get_init_account_vault_root->get_initial_vault_root
 #! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
 export.memory::get_init_account_storage_commitment->get_initial_storage_commitment
 
-#! Returns the code commitment of the native account at the beginning of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
-#!
-#! Where:
-#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
-export.memory::get_init_account_code_commitment->get_initial_code_commitment
-
 #! Gets the code commitment of the current account.
 #!
 #! Inputs:  []
@@ -328,11 +319,7 @@ export.memory::get_init_account_code_commitment->get_initial_code_commitment
 #!
 #! Where:
 #! - CODE_COMMITMENT is the commitment of the account code.
-export.get_code_commitment
-    # get the code commitment
-    exec.memory::get_acct_code_commitment
-    # => [CODE_COMMITMENT]
-end
+export.memory::get_acct_code_commitment->get_code_commitment
 
 #! Computes the storage commitment of the current account.
 #!
