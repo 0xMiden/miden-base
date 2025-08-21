@@ -20,7 +20,6 @@ use miden_lib::transaction::memory::{
     FAUCET_STORAGE_DATA_SLOT,
     FEE_PARAMETERS_PTR,
     INIT_ACCT_COMMITMENT_PTR,
-    INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR,
     INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR,
     INIT_NATIVE_ACCT_VAULT_ROOT_PTR,
     INIT_NONCE_PTR,
@@ -204,12 +203,6 @@ fn global_input_memory_assertions(process: &Process, inputs: &TransactionContext
         process.get_kernel_mem_word(INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR),
         inputs.account().storage().commitment(),
         "The initial native account storage commitment should be stored at the INIT_ACCT_STORAGE_COMMITMENT_PTR"
-    );
-
-    assert_eq!(
-        process.get_kernel_mem_word(INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR),
-        inputs.account().code().commitment(),
-        "The initial native account code commitment should be stored at the INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR"
     );
 
     assert_eq!(

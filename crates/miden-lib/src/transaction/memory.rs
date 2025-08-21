@@ -137,14 +137,6 @@ pub const INIT_NATIVE_ACCT_VAULT_ROOT_PTR: MemoryAddress = 416;
 /// The memory address at which the initial storage commitment of the native account is stored.
 pub const INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR: MemoryAddress = 420;
 
-/// The memory address at which the initial code commitment of the native account is stored.
-///
-/// It points to the code commitment stored in the native account data block because the account's
-/// code cannot be changed during the user code execution. Only in the epilogue the code commitment
-/// can be updated. So, the initial code commitment will be equal to the native account code
-/// commitment whenever it is called by a user.
-pub const INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = NATIVE_ACCT_CODE_COMMITMENT_PTR;
-
 /// The memory address at which the input notes commitment is stored.
 pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 424;
 
