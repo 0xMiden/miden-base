@@ -1,5 +1,6 @@
 use alloc::vec::Vec;
 use std::borrow::ToOwned;
+use std::collections::HashSet;
 
 use itertools::Itertools;
 use miden_lib::note::well_known_note::WellKnownNote;
@@ -115,38 +116,94 @@ where
                     // Continue and process the next set of candidates.
                 },
                 TransactionExecutionAttempt::EpilogueFailed { error: _error } => {
-                    let note_permutations: Vec<Vec<_>> = (1..=candidate_notes.len())
-                        .flat_map(|k| candidate_notes.clone().into_iter().permutations(k))
-                        .collect();
-                    let mut successful = Vec::new();
-                    for notes in note_permutations {
-                        if successful.len() == candidate_notes.len() {
-                            return Ok(NoteConsumptionInfo::new(successful, failed_notes));
-                        }
-                        match self
-                            .0
-                            .try_execute_notes(
-                                target_account_id,
-                                block_ref,
-                                InputNotes::<InputNote>::new_unchecked(notes.clone()),
-                                &tx_args,
-                            )
-                            .await
-                        {
-                            Ok(TransactionExecutionAttempt::Successful) => {
-                                if notes.len() > successful.len() {
-                                    successful = notes
-                                        .into_iter()
-                                        .map(InputNote::into_note)
-                                        .collect::<Vec<_>>();
-                                }
-                            },
-                            // All failures are ignored.
-                            _ => {},
-                        };
-                    }
+                    return self
+                        .find_largest_executable_combination(
+                            target_account_id,
+                            block_ref,
+                            candidate_notes,
+                            failed_notes,
+                            &tx_args,
+                        )
+                        .await;
                 },
             }
         }
+    }
+
+    /// Finds the largest possible combination of notes that can execute successfully together.
+    ///
+    /// This method incrementally tries combinations of increasing size (1 note, 2 notes, 3 notes,
+    /// etc.) and builds upon previously successful combinations to find the maximum executable
+    /// set.
+    async fn find_largest_executable_combination(
+        &self,
+        target_account_id: AccountId,
+        block_ref: BlockNumber,
+        candidate_notes: Vec<InputNote>,
+        mut failed_notes: Vec<FailedNote>,
+        tx_args: &TransactionArgs,
+    ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
+        let mut successful_input_notes: Vec<InputNote> = Vec::new();
+        let mut remaining_notes = candidate_notes.clone();
+
+        // Iterate by note count: try 1 note, then 2, then 3, etc.
+        for size in 1..=candidate_notes.len() {
+            // Can't build a combination of size N without at least N-1 successful notes.
+            if successful_input_notes.len() < size - 1 {
+                break;
+            }
+
+            // Try adding each remaining note to the current successful combination.
+            let mut found_successful = None;
+            for (idx, note) in remaining_notes.iter().enumerate() {
+                let mut test_notes = successful_input_notes.clone();
+                test_notes.push(note.clone());
+
+                match self
+                    .0
+                    .try_execute_notes(
+                        target_account_id,
+                        block_ref,
+                        InputNotes::<InputNote>::new_unchecked(test_notes.clone()),
+                        tx_args,
+                    )
+                    .await
+                {
+                    Ok(TransactionExecutionAttempt::Successful) => {
+                        successful_input_notes = test_notes;
+                        found_successful = Some(idx);
+                        break;
+                    },
+                    _ => {
+                        // This combination failed, continue to next.
+                    },
+                };
+            }
+
+            // Remove the successful note for next iteration.
+            if let Some(idx) = found_successful {
+                remaining_notes.remove(idx);
+            }
+        }
+
+        // Convert successful InputNotes to Notes.
+        let successful =
+            successful_input_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+
+        // Update failed_notes with notes that weren't included in successful combination
+        let successful_note_ids = successful.iter().map(|note| note.id()).collect::<HashSet<_>>();
+        let newly_failed: Vec<_> = candidate_notes
+            .into_iter()
+            .filter(|input_note| !successful_note_ids.contains(&input_note.note().id()))
+            .map(|input_note| {
+                FailedNote::new(
+                    input_note.into_note(),
+                    TransactionExecutorError::DiscardedDuringRetry,
+                )
+            })
+            .collect();
+        failed_notes.extend(newly_failed);
+
+        Ok(NoteConsumptionInfo::new(successful, failed_notes))
     }
 }
