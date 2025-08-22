@@ -1371,6 +1371,8 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
+        AuthScheme::Multisig { .. } => panic!("Expected RpoFalcon512 auth scheme, got Multisig"),
+        AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
     };
 
     // This is in an internal detail of the tx executor host, but this is the easiest way to check

@@ -2,10 +2,10 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
-use miden_objects::account::{AccountId, AccountProcedureInfo};
+use miden_objects::account::{AccountId, AccountProcedureInfo, AccountStorage};
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::PartialNote;
-use miden_objects::{Felt, Word};
+use miden_objects::{Felt, FieldElement, Word};
 
 use crate::AuthScheme;
 use crate::account::components::WellKnownComponent;
@@ -93,32 +93,49 @@ impl AccountComponentInterface {
         )
     }
 
+    /// Extracts authentication scheme from a multisig component.
+    pub(crate) fn extract_multisig_auth_scheme(
+        storage: &AccountStorage,
+        storage_index: u8,
+    ) -> AuthScheme {
+        // Read the multisig configuration from the config slot
+        // Format: [threshold, num_approvers, 0, 0]
+        let config = storage
+            .get_item(storage_index)
+            .expect("invalid storage index of the multisig configuration");
+
+        let threshold = config[0].as_int() as u32;
+        let num_approvers = config[1].as_int() as u8;
+
+        // The public keys are stored in a map at the next slot (storage_index + 1)
+        let pub_keys_map_slot = storage_index + 1;
+
+        let mut pub_keys = Vec::new();
+
+        // Read each public key from the map
+        for key_index in 0..num_approvers {
+            let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
+
+            match storage.get_map_item(pub_keys_map_slot, map_key.into()) {
+                Ok(pub_key_word) => {
+                    pub_keys.push(PublicKey::new(pub_key_word));
+                },
+                Err(_) => {
+                    // If we can't read a public key, panic with a clear error message
+                    panic!(
+                        "Failed to read public key {} from multisig configuration at storage index {}. \
+                        This indicates corrupted multisig storage or incorrect storage layout.",
+                        key_index, storage_index
+                    );
+                },
+            }
+        }
+
+        AuthScheme::Multisig { threshold, pub_keys }
+    }
+
     /// Returns the authentication schemes associated with this component interface.
-    ///
-    /// This method extracts all authentication schemes from the component interface by examining
-    /// the account storage at the appropriate storage indices for authentication components.
-    ///
-    /// # Arguments
-    /// * `storage` - The account storage to read authentication data from
-    ///
-    /// # Returns
-    /// * `Vec<AuthScheme>` - Vector of authentication schemes for this component
-    ///
-    /// # Limitations
-    /// Currently, this method only detects known authentication schemes. For custom authentication
-    /// components, it would return an empty vector even if they are authentication components.
-    ///
-    /// # Future Improvements
-    /// A more generic approach could be implemented where:
-    /// - `from_procedures` returns `(Vec<Self>, Word)` with the auth procedure MAST root
-    /// - Callers pass a generic `T: AccountAuthComponent where AccountAuthComponent:
-    ///   TryFrom<&AccountStorage>`
-    /// - This would allow detection and extraction of custom auth components without knowing their
-    ///   layout
-    pub fn get_auth_schemes(
-        &self,
-        storage: &miden_objects::account::AccountStorage,
-    ) -> Vec<AuthScheme> {
+    pub fn get_auth_schemes(&self, storage: &AccountStorage) -> Vec<AuthScheme> {
         match self {
             AccountComponentInterface::AuthRpoFalcon512(storage_index)
             | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
@@ -131,44 +148,11 @@ impl AccountComponentInterface {
                 }]
             },
             AccountComponentInterface::AuthRpoFalcon512Multisig(storage_index) => {
-                // TODO: Implement proper multisig auth scheme extraction
-                // For now, we need to determine how to extract multisig configuration from storage
-                // This might require reading multiple storage slots for the multisig setup
-                // In the future, this could return multiple AuthSchemes for different signers
-                vec![AuthScheme::RpoFalcon512 {
-                    pub_key: PublicKey::new(
-                        storage
-                            .get_item(*storage_index)
-                            .expect("invalid storage index of the multisig configuration"),
-                    ),
-                }]
+                vec![Self::extract_multisig_auth_scheme(storage, *storage_index)]
             },
             AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
-            _ => vec![],
+            _ => vec![], // Non-auth components return empty vector
         }
-    }
-
-    /// Returns the authentication scheme associated with this component interface, if any.
-    ///
-    /// This method extracts the authentication scheme from the component interface by examining
-    /// the account storage at the appropriate storage index for authentication components.
-    ///
-    /// # Arguments
-    /// * `storage` - The account storage to read authentication data from
-    ///
-    /// # Returns
-    /// * `Some(AuthScheme)` - If this is an authentication component interface
-    /// * `None` - If this is not an authentication component interface
-    ///
-    /// # Deprecated
-    /// This method is deprecated in favor of `get_auth_schemes()` which can return multiple
-    /// authentication schemes from a single component.
-    #[deprecated(since = "0.11.0", note = "Use get_auth_schemes() instead")]
-    pub fn get_auth_scheme(
-        &self,
-        storage: &miden_objects::account::AccountStorage,
-    ) -> Option<AuthScheme> {
-        self.get_auth_schemes(storage).into_iter().next()
     }
 
     /// Creates a vector of [AccountComponentInterface] instances. This vector specifies the

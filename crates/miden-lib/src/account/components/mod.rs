@@ -115,7 +115,7 @@ impl WellKnownComponent {
         forest.procedure_digests()
     }
 
-    /// Checks whether all procedures from the current component are present in the procedures map
+    /// Checks whether procedures from the current component are present in the procedures map
     /// and if so it removes these procedures from this map and pushes the corresponding component
     /// interface to the component interface vector.
     fn extract_component(
@@ -123,12 +123,25 @@ impl WellKnownComponent {
         procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
-        if self
-            .procedure_digests()
-            .all(|proc_digest| procedures_map.contains_key(&proc_digest))
-        {
-            // `storage_offset` is guaranteed to be overwritten because `Self::procedure_digests`
-            // will return at least one digest.
+        // Determine if this component should be extracted based on procedure matching
+        let can_extract = if matches!(self, Self::AuthRpoFalcon512Multisig) {
+            // Special case for multisig: The multisig library contains both private procedures
+            // (like `assert_new_tx`) and exported procedures (like
+            // `auth__tx_rpo_falcon512_multisig`). However, account components only
+            // include exported procedures. So we use partial matching - if ANY of the
+            // library procedures are found in the account, we consider it a multisig
+            // component match.
+            self.procedure_digests()
+                .any(|proc_digest| procedures_map.contains_key(&proc_digest))
+        } else {
+            // For all other components, require exact matching - ALL library procedures
+            // must be present in the account for it to be considered a match.
+            self.procedure_digests()
+                .all(|proc_digest| procedures_map.contains_key(&proc_digest))
+        };
+
+        if can_extract {
+            // Extract the storage offset from any matching procedure
             let mut storage_offset = 0u8;
             self.procedure_digests().for_each(|component_procedure| {
                 if let Some(proc_info) = procedures_map.remove(&component_procedure) {
@@ -136,6 +149,7 @@ impl WellKnownComponent {
                 }
             });
 
+            // Create the appropriate component interface
             match self {
                 Self::BasicWallet => {
                     component_interface_vec.push(AccountComponentInterface::BasicWallet)

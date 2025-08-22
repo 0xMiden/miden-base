@@ -2,7 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::account::{AccountBuilder, AccountComponent, AccountType, StorageSlot};
+use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountType, StorageSlot};
 use miden_objects::assembly::Assembler;
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
@@ -25,7 +25,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
-use crate::account::auth::{AuthRpoFalcon512, NoAuth};
+use crate::account::auth::{AuthMultisigRpoFalcon512, AuthRpoFalcon512, NoAuth};
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
     AccountComponentInterface,
@@ -861,4 +861,84 @@ fn test_account_interface_get_auth_scheme() {
 
     // Note: We don't test the case where an account has no auth components because
     // accounts are required to have auth components in the current system design
+}
+
+fn get_public_keys_from_account(account: &Account) -> Vec<Word> {
+    let mut pub_keys = vec![];
+    let interface: AccountInterface = account.into();
+
+    for auth in interface.auth() {
+        match auth {
+            AuthScheme::NoAuth => {},
+            AuthScheme::RpoFalcon512 { pub_key } => pub_keys.push(Word::from(*pub_key)),
+            AuthScheme::Multisig { pub_keys: multisig_keys, .. } => {
+                for key in multisig_keys {
+                    pub_keys.push(Word::from(*key));
+                }
+            },
+            AuthScheme::Unknown => {},
+        }
+    }
+
+    pub_keys
+}
+
+#[test]
+fn test_public_key_extraction_regular_account() {
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let wallet_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(get_mock_auth_component())
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create wallet account");
+
+    // Test public key extraction like miden-client would do
+    let pub_keys = get_public_keys_from_account(&wallet_account);
+
+    assert_eq!(pub_keys.len(), 1);
+    assert_eq!(pub_keys[0], Word::from([0, 1, 2, 3u32]));
+}
+
+#[test]
+fn test_public_key_extraction_multisig_account() {
+    // Create test public keys
+    let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
+    let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
+    let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
+    let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
+    let threshold = 2u32;
+
+    // Create multisig component
+    let multisig_component = AuthMultisigRpoFalcon512::new(threshold, approvers.clone())
+        .expect("multisig component creation failed");
+
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let multisig_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(multisig_component)
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create multisig account");
+
+    let pub_keys = get_public_keys_from_account(&multisig_account);
+
+    assert_eq!(pub_keys.len(), 3);
+    assert_eq!(pub_keys[0], Word::from([1u32, 0, 0, 0]));
+    assert_eq!(pub_keys[1], Word::from([2u32, 0, 0, 0]));
+    assert_eq!(pub_keys[2], Word::from([3u32, 0, 0, 0]));
+}
+
+#[test]
+fn test_public_key_extraction_no_auth_account() {
+    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
+    let no_auth_account = AccountBuilder::new(mock_seed)
+        .with_auth_component(NoAuth)
+        .with_component(BasicWallet)
+        .build_existing()
+        .expect("failed to create no-auth account");
+
+    // Test public key extraction
+    let pub_keys = get_public_keys_from_account(&no_auth_account);
+
+    // NoAuth should not contribute any public keys
+    assert_eq!(pub_keys.len(), 0);
 }
