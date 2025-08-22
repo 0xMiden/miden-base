@@ -1,5 +1,7 @@
 use alloc::vec::Vec;
+use std::borrow::ToOwned;
 
+use itertools::Itertools;
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
@@ -77,7 +79,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        let mut candidate_notes = notes.into_vec();
+        let mut candidate_notes = notes.clone().into_vec();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -113,7 +115,41 @@ where
                     // Continue and process the next set of candidates.
                 },
                 TransactionExecutionAttempt::EpilogueFailed { error: _error } => {
-                    todo!();
+                    let note_permutations: Vec<Vec<_>> = (1..=candidate_notes.len())
+                        .flat_map(|k| candidate_notes.clone().into_iter().permutations(k))
+                        .collect();
+                    let mut successful = Vec::new();
+                    for mut notes in note_permutations {
+                        match self
+                            .0
+                            .try_execute_notes(
+                                target_account_id,
+                                block_ref,
+                                InputNotes::<InputNote>::new_unchecked(notes.clone()),
+                                &tx_args,
+                            )
+                            .await
+                        {
+                            Ok(TransactionExecutionAttempt::Successful) => {
+                                if notes.len() > successful.len() {
+                                    successful = notes;
+                                }
+                            },
+                            Ok(TransactionExecutionAttempt::NoteFailed {
+                                failed_note_index,
+                                ..
+                            }) => {
+                                let len = failed_note_index;
+                                if len > successful.len() {
+                                    // SAFETY: Failed note index is within bounds of notes.
+                                    notes.truncate(len);
+                                    successful = notes;
+                                }
+                            },
+                            // All other failures are ignored.
+                            _ => {},
+                        };
+                    }
                 },
             }
         }
