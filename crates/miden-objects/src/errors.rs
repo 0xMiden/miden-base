@@ -490,6 +490,8 @@ pub enum NoteError {
     TooManyInputs(usize),
     #[error("note tag requires a public note but the note is of type {0}")]
     PublicNoteRequired(NoteType),
+    #[error("Note execution mode can not be converted using integer {0}")]
+    UnknownNoteExecutionMode(u8),
     #[error("{error_msg}")]
     Other {
         error_msg: Box<str>,

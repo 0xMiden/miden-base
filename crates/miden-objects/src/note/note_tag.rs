@@ -44,6 +44,26 @@ pub enum NoteExecutionMode {
     Local = LOCAL_EXECUTION,
 }
 
+impl TryFrom<u8> for NoteExecutionMode {
+    type Error = crate::errors::NoteError;
+
+    fn try_from(value: u8) -> Result<Self, Self::Error> {
+        Ok(match value {
+            NETWORK_EXECUTION => Self::Network,
+            LOCAL_EXECUTION => Self::Local,
+            _ => return Err(NoteError::UnknownNoteExecutionMode(value)),
+        })
+    }
+}
+
+impl TryFrom<i32> for NoteExecutionMode {
+    type Error = crate::errors::NoteError;
+
+    fn try_from(value: i32) -> Result<Self, Self::Error> {
+        u8::try_from(value).unwrap_or(u8::MAX).try_into()
+    }
+}
+
 // NOTE TAG
 // ================================================================================================
 
