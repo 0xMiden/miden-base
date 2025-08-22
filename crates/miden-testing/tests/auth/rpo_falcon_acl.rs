@@ -41,8 +41,7 @@ fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
 ) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
-    let source_manager = default_source_manager_arc_dyn();
-    let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
+    let assembler = TransactionKernel::assembler();
 
     let component: AccountComponent =
         MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
