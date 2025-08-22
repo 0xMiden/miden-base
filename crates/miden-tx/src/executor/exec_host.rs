@@ -62,6 +62,8 @@ where
     /// The balance of the native asset in the account at the beginning of transaction execution.
     initial_native_asset: FungibleAsset,
 
+    /// The source manager to track source code file span information, improving any masm related
+    /// error messages.
     source_manager: Arc<dyn SourceManagerSync>,
 }
 
