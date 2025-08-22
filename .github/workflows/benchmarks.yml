@@ -1,0 +1,36 @@
+name: Benchmarks
+
+on:
+  schedule:
+    - cron: "0 0 * * 0"   # Every Sunday at 00:00 UTC
+  workflow_dispatch:       # Allow manual trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: "benchmarks @ ${{ github.ref }}"
+  cancel-in-progress: true
+
+jobs:
+  run-benchmarks:
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/next'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@main
+      - uses: Swatinem/rust-cache@v2
+        with:
+          save-if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/next' }}
+      - name: Update Rust toolchain
+        run: rustup update --no-self-update
+      - name: Run benchmarks
+        run: cargo bench --all
+      # Optional: upload Criterion output as an artifact for later inspection
+      - name: Upload benchmark reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-reports
+          path: |
+            target/criterion/**/*
+            !target/criterion/**/debug
