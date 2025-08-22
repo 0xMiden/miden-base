@@ -11,7 +11,7 @@ use miden_objects::note::{
     NoteScript,
     PartialNote,
 };
-use vm_processor::AdviceProvider;
+use miden_processor::AdviceProvider;
 
 use super::{Felt, OutputNote, TransactionKernelError, Word};
 

@@ -6,9 +6,16 @@ use std::io::{self};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
-use assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
-use assembly::utils::Serializable;
-use assembly::{Assembler, DefaultSourceManager, KernelLibrary, Library, LibraryNamespace, Report};
+use miden_assembly::diagnostics::{IntoDiagnostic, Result, WrapErr};
+use miden_assembly::utils::Serializable;
+use miden_assembly::{
+    Assembler,
+    DefaultSourceManager,
+    KernelLibrary,
+    Library,
+    LibraryNamespace,
+    Report,
+};
 use regex::Regex;
 use walkdir::WalkDir;
 
@@ -153,7 +160,7 @@ fn compile_tx_kernel(source_dir: &Path, target_dir: &Path) -> Result<Assembler> 
     let output_file = target_dir.join("tx_kernel").with_extension(Library::LIBRARY_EXTENSION);
     kernel_lib.write_to_file(output_file).into_diagnostic()?;
 
-    let assembler = build_assembler(Some(kernel_lib))?;
+    let assembler = build_assembler(Some(kernel_lib))?.with_debug_mode(true);
 
     // assemble the kernel program and write it to the "tx_kernel.masb" file
     let mut main_assembler = assembler.clone();

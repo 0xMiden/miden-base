@@ -128,7 +128,7 @@ impl Account {
     /// Creates an account's [`AccountCode`] and [`AccountStorage`] from the provided components.
     ///
     /// This merges all libraries of the components into a single
-    /// [`MastForest`](vm_processor::MastForest) to produce the [`AccountCode`]. For each
+    /// [`MastForest`](miden_processor::MastForest) to produce the [`AccountCode`]. For each
     /// procedure in the resulting forest, the storage offset and size are set so that the
     /// procedure can only access the storage slots of the component in which it was defined and
     /// each component's storage offset is the total number of slots in the previous components.
@@ -165,7 +165,7 @@ impl Account {
     /// - The first component doesn't contain exactly one authentication procedure.
     /// - Other components contain authentication procedures.
     /// - The number of [`StorageSlot`]s of all components exceeds 255.
-    /// - [`MastForest::merge`](vm_processor::MastForest::merge) fails on all libraries.
+    /// - [`MastForest::merge`](miden_processor::MastForest::merge) fails on all libraries.
     pub(super) fn initialize_from_components(
         account_type: AccountType,
         components: &[AccountComponent],
@@ -442,8 +442,8 @@ fn validate_components_support_account_type(
 mod tests {
     use alloc::vec::Vec;
 
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
     use miden_crypto::utils::{Deserializable, Serializable};
     use miden_crypto::{Felt, Word};
 

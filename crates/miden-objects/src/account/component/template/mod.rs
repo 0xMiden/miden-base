@@ -3,10 +3,10 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::str::FromStr;
 
-use assembly::Library;
+use miden_assembly::Library;
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_processor::DeserializationError;
 use semver::Version;
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_processor::DeserializationError;
 
 use super::AccountType;
 use crate::errors::AccountComponentTemplateError;
@@ -60,16 +60,16 @@ impl AccountComponentTemplate {
 }
 
 impl Serializable for AccountComponentTemplate {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.metadata);
         target.write(&self.library);
     }
 }
 
 impl Deserializable for AccountComponentTemplate {
-    fn read_from<R: vm_core::utils::ByteReader>(
+    fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
-    ) -> Result<Self, vm_processor::DeserializationError> {
+    ) -> Result<Self, miden_processor::DeserializationError> {
         // Read and deserialize the configuration from a TOML string.
         let metadata: AccountComponentMetadata = source.read()?;
         let library = Library::read_from(source)?;
@@ -330,11 +330,11 @@ mod tests {
     use std::collections::BTreeSet;
     use std::string::ToString;
 
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
+    use miden_core::utils::{Deserializable, Serializable};
+    use miden_core::{Felt, FieldElement};
     use semver::Version;
-    use vm_core::utils::{Deserializable, Serializable};
-    use vm_core::{Felt, FieldElement};
 
     use super::FeltRepresentation;
     use crate::AccountError;

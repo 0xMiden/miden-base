@@ -3,14 +3,14 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 
-use assembly::Report;
-use assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_assembly::Report;
+use miden_assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_core::Felt;
+use miden_core::mast::MastForestError;
 use miden_crypto::merkle::MmrError;
 use miden_crypto::utils::HexParseError;
+use miden_processor::DeserializationError;
 use thiserror::Error;
-use vm_core::Felt;
-use vm_core::mast::MastForestError;
-use vm_processor::DeserializationError;
 
 use super::account::AccountId;
 use super::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
@@ -241,6 +241,8 @@ pub enum AddressError {
     CustomTagLengthNotAllowedForNetworkAccounts(u8),
     #[error("tag length {0} is too large, must be less than or equal to {max}", max = crate::note::NoteTag::MAX_LOCAL_TAG_LENGTH)]
     TagLengthTooLarge(u8),
+    #[error("unknown address interface `{0}`")]
+    UnknownAddressInterface(u16),
     #[error("failed to decode account ID")]
     AccountIdDecodeError(#[source] AccountIdError),
     #[error("failed to decode bech32 string into an address")]
@@ -358,7 +360,7 @@ pub enum AssetError {
       max_amount = FungibleAsset::MAX_AMOUNT
     )]
     FungibleAssetAmountTooBig(u64),
-    #[error("subtracting {subtrahend} from fungible asset amount {minuend} would overflow")]
+    #[error("subtracting {subtrahend} from fungible asset amount {minuend} would underflow")]
     FungibleAssetAmountNotSufficient { minuend: u64, subtrahend: u64 },
     #[error("fungible asset word {0} does not contain expected ZERO at word index 1")]
     FungibleAssetExpectedZero(Word),

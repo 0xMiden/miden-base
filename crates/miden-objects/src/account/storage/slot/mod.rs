@@ -1,6 +1,6 @@
-use vm_core::EMPTY_WORD;
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_processor::DeserializationError;
+use miden_core::EMPTY_WORD;
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_processor::DeserializationError;
 
 use super::map::EMPTY_STORAGE_MAP_ROOT;
 use super::{StorageMap, Word};
@@ -121,7 +121,7 @@ impl Deserializable for StorageSlot {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::utils::{Deserializable, Serializable};
+    use miden_core::utils::{Deserializable, Serializable};
 
     use crate::account::AccountStorage;
 

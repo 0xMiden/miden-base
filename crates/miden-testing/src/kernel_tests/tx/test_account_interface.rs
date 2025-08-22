@@ -14,6 +14,8 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::note::NoteBuilder;
+use miden_processor::ExecutionError;
+use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
     FailedNote,
@@ -24,8 +26,6 @@ use miden_tx::{
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::ExecutionError;
-use vm_processor::crypto::RpoRandomCoin;
 
 use crate::utils::create_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};

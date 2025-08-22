@@ -1,8 +1,8 @@
 use alloc::collections::BTreeSet;
 
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_crypto::merkle::{Forest, Mmr, MmrError, MmrPeaks, MmrProof, PartialMmr};
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_processor::DeserializationError;
+use miden_processor::DeserializationError;
 
 use crate::Word;
 use crate::block::BlockNumber;

@@ -4,12 +4,12 @@ use alloc::string::{String, ToString};
 use core::error::Error;
 use core::fmt::{self, Display};
 
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_core::{Felt, Word};
 use miden_crypto::dsa::rpo_falcon512::{self};
 use miden_crypto::word::parse_hex_string_as_word;
+use miden_processor::DeserializationError;
 use thiserror::Error;
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_core::{Felt, Word};
-use vm_processor::DeserializationError;
 
 use crate::asset::TokenSymbol;
 use crate::utils::sync::LazyLock;

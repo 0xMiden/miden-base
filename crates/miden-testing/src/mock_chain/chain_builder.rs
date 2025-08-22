@@ -34,8 +34,8 @@ use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
 use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, Word, ZERO};
+use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
-use vm_processor::crypto::RpoRandomCoin;
 
 use crate::mock_chain::chain::AccountCredentials;
 use crate::utils::{create_p2any_note, create_spawn_note};

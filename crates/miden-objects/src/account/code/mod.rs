@@ -2,8 +2,8 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use vm_core::mast::MastForest;
-use vm_core::prettier::PrettyPrint;
+use miden_core::mast::MastForest;
+use miden_core::prettier::PrettyPrint;
 
 use super::{
     AccountError,
@@ -297,8 +297,8 @@ impl Deserializable for AccountCode {
 // ================================================================================================
 
 impl PrettyPrint for AccountCode {
-    fn render(&self) -> vm_core::prettier::Document {
-        use vm_core::prettier::*;
+    fn render(&self) -> miden_core::prettier::Document {
+        use miden_core::prettier::*;
         let mut partial = Document::Empty;
         let len_procedures = self.num_procedures();
 
@@ -448,9 +448,9 @@ pub(crate) fn procedures_as_elements(procedures: &[AccountProcedureInfo]) -> Vec
 #[cfg(test)]
 mod tests {
 
-    use assembly::Assembler;
     use assert_matches::assert_matches;
-    use vm_core::Word;
+    use miden_assembly::Assembler;
+    use miden_core::Word;
 
     use super::{AccountCode, Deserializable, Serializable};
     use crate::AccountError;
@@ -548,7 +548,7 @@ mod tests {
 
     #[test]
     fn test_account_component_multiple_auth_procedures() {
-        use assembly::Assembler;
+        use miden_assembly::Assembler;
 
         let code_with_multiple_auth = "
             use.miden::account

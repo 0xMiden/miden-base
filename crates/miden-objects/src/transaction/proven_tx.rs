@@ -644,8 +644,8 @@ mod tests {
     use alloc::collections::BTreeMap;
 
     use anyhow::Context;
+    use miden_core::utils::Deserializable;
     use miden_verifier::ExecutionProof;
-    use vm_core::utils::Deserializable;
     use winter_air::proof::Proof;
     use winter_rand_utils::rand_value;
 

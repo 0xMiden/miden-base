@@ -273,10 +273,7 @@ export.account_get_initial_storage_commitment
     # => [INIT_STORAGE_COMMITMENT, pad(12)]
 end
 
-#! Gets the account storage commitment of the current account.
-#!
-#! Note that this commitment may not reflect the changes made to storage. The commitment is
-#! recomputed when `account_compute_current_commitment` is called.
+#! Computes the latest account storage commitment of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [STORAGE_COMMITMENT, pad(12)]
@@ -285,13 +282,13 @@ end
 #! - STORAGE_COMMITMENT is the commitment of the account storage.
 #!
 #! Invocation: dynexec
-export.account_get_storage_commitment
+export.account_compute_storage_commitment
     # authenticate that the procedure invocation originates from the account context
     exec.authenticate_account_origin drop drop
     # => [pad(16)]
 
-    # get the account storage commitment
-    exec.account::get_storage_commitment
+    # compute the account storage commitment
+    exec.account::compute_storage_commitment
     # => [STORAGE_COMMITMENT, pad(16)]
 
     # truncate the stack

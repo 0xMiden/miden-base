@@ -18,6 +18,15 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionInputs,
 };
+use miden_processor::{
+    AdviceInputs,
+    ExecutionError,
+    FutureMaybeSend,
+    MastForest,
+    MastForestStore,
+    Process,
+    Word,
+};
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::{
     DataStore,
@@ -27,15 +36,6 @@ use miden_tx::{
     TransactionMastStore,
 };
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{
-    AdviceInputs,
-    ExecutionError,
-    FutureMaybeSend,
-    MastForest,
-    MastForestStore,
-    Process,
-    Word,
-};
 
 use crate::MockHost;
 use crate::executor::CodeExecutor;

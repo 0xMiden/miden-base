@@ -89,10 +89,10 @@ use miden_objects::transaction::{
     TransactionScript,
 };
 use miden_objects::{EMPTY_WORD, WORD_SIZE};
+use miden_processor::{AdviceInputs, Process, Word};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, Process, Word};
 
 use super::{Felt, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;

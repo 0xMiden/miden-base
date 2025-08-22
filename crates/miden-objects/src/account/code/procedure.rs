@@ -1,9 +1,9 @@
 use alloc::string::ToString;
 use alloc::sync::Arc;
 
-use vm_core::mast::MastForest;
-use vm_core::prettier::PrettyPrint;
-use vm_processor::{MastNode, MastNodeId};
+use miden_core::mast::MastForest;
+use miden_core::prettier::PrettyPrint;
+use miden_processor::{MastNode, MastNodeId};
 
 use super::Felt;
 use crate::utils::serde::{
@@ -197,8 +197,8 @@ impl PrintableProcedure {
 }
 
 impl PrettyPrint for PrintableProcedure {
-    fn render(&self) -> vm_core::prettier::Document {
-        use vm_core::prettier::*;
+    fn render(&self) -> miden_core::prettier::Document {
+        use miden_core::prettier::*;
 
         indent(
             4,
@@ -214,8 +214,8 @@ impl PrettyPrint for PrintableProcedure {
 #[cfg(test)]
 mod tests {
 
+    use miden_core::Felt;
     use miden_crypto::utils::{Deserializable, Serializable};
-    use vm_core::Felt;
 
     use crate::account::{AccountCode, AccountProcedureInfo};
 

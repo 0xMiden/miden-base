@@ -276,7 +276,7 @@ impl Default for PartialBlockchain {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use vm_core::utils::{Deserializable, Serializable};
+    use miden_core::utils::{Deserializable, Serializable};
 
     use super::PartialBlockchain;
     use crate::alloc::vec::Vec;

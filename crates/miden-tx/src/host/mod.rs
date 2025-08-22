@@ -37,8 +37,7 @@ use miden_objects::transaction::{
 };
 use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
-pub use tx_progress::TransactionProgress;
-use vm_processor::{
+use miden_processor::{
     AdviceMutation,
     ContextId,
     EventError,
@@ -48,6 +47,7 @@ use vm_processor::{
     MastForestStore,
     ProcessState,
 };
+pub use tx_progress::TransactionProgress;
 
 use crate::auth::SigningInputs;
 

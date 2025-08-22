@@ -10,7 +10,7 @@ use miden_objects::note::NoteInclusionProof;
 use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 use miden_objects::transaction::{OutputNote, ProvenTransaction};
 use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
-use vm_processor::crypto::MerklePath;
+use miden_processor::crypto::MerklePath;
 
 use super::utils::{
     TestSetup,
