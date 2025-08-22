@@ -245,6 +245,7 @@ impl TransactionContextBuilder {
     }
 
     pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        // TODO <https://github.com/0xMiden/miden-base/issues/1779>
         self.source_manager = source_manager.clone();
         self.assembler = TransactionKernel::with_mock_libraries(source_manager.clone());
         self
