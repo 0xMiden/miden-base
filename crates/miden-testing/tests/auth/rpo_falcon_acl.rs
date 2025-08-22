@@ -12,7 +12,6 @@ use miden_objects::account::{
     AccountStorageMode,
     AccountType,
 };
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::OutputNote;

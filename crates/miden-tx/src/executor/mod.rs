@@ -6,6 +6,7 @@ use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -17,14 +18,14 @@ use miden_objects::transaction::{
     TransactionInputs,
     TransactionScript,
 };
-use miden_objects::vm::StackOutputs;
-use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
+use miden_objects::{MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
+use miden_prover::StackOutputs;
 use vm_processor::fast::FastProcessor;
 use vm_processor::{AdviceInputs, ExecutionError, StackInputs};
-pub use vm_processor::{ExecutionOptions, MastForestStore};
+pub use vm_processor::{ExecutionOptions, Felt, MastForestStore};
 
 use super::TransactionExecutorError;
-use crate::auth::TransactionAuthenticator;
+use crate::auth::{TransactionAuthenticator, UnreachableAuth};
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod exec_host;
@@ -82,30 +83,26 @@ impl NoteConsumptionInfo {
 pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
+    // TODO FIXME figure out when this became dead code
+    #[allow(dead_code)]
     exec_options: ExecutionOptions,
     source_manager: Arc<dyn SourceManagerSync>,
 }
 
-impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
-where
-    STORE: DataStore + 'store + Sync,
-    AUTH: TransactionAuthenticator + 'auth + Sync,
-{
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
+pub struct TransactionExecutorBuilder<'store, 'auth, STORE, AUTH> {
+    data_store: &'store STORE,
+    authenticator: Option<&'auth AUTH>,
+    source_manager: Option<Arc<dyn SourceManagerSync>>,
+    exec_options: ExecutionOptions,
+}
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
-    /// [TransactionAuthenticator].
-    pub fn new(
-        data_store: &'store STORE,
-        authenticator: Option<&'auth AUTH>,
-        source_manager: Arc<dyn SourceManagerSync>,
-    ) -> Self {
+impl<'store, STORE> TransactionExecutorBuilder<'store, 'static, STORE, UnreachableAuth> {
+    pub fn new(data_store: &'store STORE) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
-
-        Self {
+        TransactionExecutorBuilder {
             data_store,
-            authenticator,
+            authenticator: None,
+            source_manager: None,
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,
@@ -113,7 +110,38 @@ where
                 false,
             )
             .expect("Must not fail while max cycles is more than min trace length"),
+        }
+    }
+}
+
+impl<'store, 'auth, STORE, AUTH> TransactionExecutorBuilder<'store, 'auth, STORE, AUTH> {
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the source manager from the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
+    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
+    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = Some(source_manager);
+        self
+    }
+
+    /// Add an authentificator to the transaction executor.
+    ///
+    /// By default none is used.
+    pub fn with_authenticator<'a, A>(
+        self,
+        authenticator: impl Into<Option<&'a A>>,
+    ) -> TransactionExecutorBuilder<'store, 'a, STORE, A> {
+        let Self {
+            data_store, source_manager, exec_options, ..
+        } = self;
+
+        TransactionExecutorBuilder {
+            data_store,
+            authenticator: authenticator.into(),
             source_manager,
+            exec_options,
         }
     }
 
@@ -123,20 +151,14 @@ where
     /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
     /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
-        data_store: &'store STORE,
-        authenticator: Option<&'auth AUTH>,
+        mut self,
         exec_options: ExecutionOptions,
-        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
         validate_num_cycles(exec_options.expected_cycles())?;
 
-        Ok(Self {
-            data_store,
-            authenticator,
-            exec_options,
-            source_manager,
-        })
+        self.exec_options = exec_options;
+        Ok(self)
     }
 
     /// Puts the [TransactionExecutor] into debug mode.
@@ -159,6 +181,46 @@ where
         self
     }
 
+    /// Construct the `TransactionExecutor`.
+    pub fn build(self) -> TransactionExecutor<'store, 'auth, STORE, AUTH> {
+        let Self {
+            data_store,
+            authenticator,
+            source_manager,
+            exec_options,
+        } = self;
+        let source_manager = source_manager.unwrap_or_else(default_source_manager_arc_dyn);
+
+        TransactionExecutor {
+            data_store,
+            authenticator,
+            exec_options,
+            source_manager,
+        }
+    }
+}
+
+impl<'store, STORE> TransactionExecutor<'store, 'static, STORE, UnreachableAuth>
+where
+    STORE: DataStore + 'store + Sync,
+{
+    // CONSTRUCTOR
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
+    /// [TransactionAuthenticator].
+    pub fn builder(
+        data_store: &'store STORE,
+    ) -> TransactionExecutorBuilder<'store, 'static, STORE, UnreachableAuth> {
+        TransactionExecutorBuilder::<'store, 'static, STORE, UnreachableAuth>::new(data_store)
+    }
+}
+
+impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
+where
+    STORE: DataStore + 'store + Sync,
+    AUTH: TransactionAuthenticator + 'auth + Sync,
+{
     // TRANSACTION EXECUTION
     // --------------------------------------------------------------------------------------------
 
