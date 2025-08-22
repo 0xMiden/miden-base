@@ -119,7 +119,10 @@ where
                         .flat_map(|k| candidate_notes.clone().into_iter().permutations(k))
                         .collect();
                     let mut successful = Vec::new();
-                    for mut notes in note_permutations {
+                    for notes in note_permutations {
+                        if successful.len() == candidate_notes.len() {
+                            return Ok(NoteConsumptionInfo::new(successful, failed_notes));
+                        }
                         match self
                             .0
                             .try_execute_notes(
@@ -132,21 +135,13 @@ where
                         {
                             Ok(TransactionExecutionAttempt::Successful) => {
                                 if notes.len() > successful.len() {
-                                    successful = notes;
+                                    successful = notes
+                                        .into_iter()
+                                        .map(InputNote::into_note)
+                                        .collect::<Vec<_>>();
                                 }
                             },
-                            Ok(TransactionExecutionAttempt::NoteFailed {
-                                failed_note_index,
-                                ..
-                            }) => {
-                                let len = failed_note_index;
-                                if len > successful.len() {
-                                    // SAFETY: Failed note index is within bounds of notes.
-                                    notes.truncate(len);
-                                    successful = notes;
-                                }
-                            },
-                            // All other failures are ignored.
+                            // All failures are ignored.
                             _ => {},
                         };
                     }
