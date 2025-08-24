@@ -17,9 +17,9 @@ use miden_objects::{
     TransactionOutputError,
     Word,
 };
+use miden_processor::ExecutionError;
 use miden_verifier::VerificationError;
 use thiserror::Error;
-use vm_processor::ExecutionError;
 
 // TRANSACTION EXECUTOR ERROR
 // ================================================================================================

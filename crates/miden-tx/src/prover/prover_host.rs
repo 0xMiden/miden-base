@@ -8,7 +8,7 @@ use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceSpan};
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
-use vm_processor::{
+use miden_processor::{
     AdviceMutation,
     BaseHost,
     EventError,

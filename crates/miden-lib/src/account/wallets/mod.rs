@@ -13,7 +13,7 @@ use miden_objects::{AccountError, Word};
 use thiserror::Error;
 
 use super::AuthScheme;
-use crate::account::auth::AuthRpoFalcon512;
+use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig};
 use crate::account::components::basic_wallet_library;
 
 // BASIC WALLET
@@ -125,9 +125,19 @@ pub fn create_basic_wallet(
 
     let auth_component: AccountComponent = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
+        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
+            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
+                .map_err(BasicWalletError::AccountError)?
+                .into()
+        },
         AuthScheme::NoAuth => {
             return Err(BasicWalletError::UnsupportedAuthScheme(
                 "basic wallets cannot be created with NoAuth authentication scheme".into(),
+            ));
+        },
+        AuthScheme::Unknown => {
+            return Err(BasicWalletError::UnsupportedAuthScheme(
+                "basic wallets cannot be created with Unknown authentication scheme".into(),
             ));
         },
     };
@@ -151,7 +161,7 @@ mod tests {
 
     use miden_objects::crypto::dsa::rpo_falcon512;
     use miden_objects::{ONE, Word};
-    use vm_processor::utils::{Deserializable, Serializable};
+    use miden_processor::utils::{Deserializable, Serializable};
 
     use super::{Account, AccountStorageMode, AccountType, AuthScheme, create_basic_wallet};
     use crate::account::wallets::BasicWallet;

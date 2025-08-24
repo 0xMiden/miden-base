@@ -166,8 +166,8 @@ impl Deserializable for AccountStorageHeader {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::Felt;
-    use vm_core::utils::{Deserializable, Serializable};
+    use miden_core::Felt;
+    use miden_core::utils::{Deserializable, Serializable};
 
     use super::AccountStorageHeader;
     use crate::Word;

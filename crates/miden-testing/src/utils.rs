@@ -7,9 +7,9 @@ use miden_objects::asset::Asset;
 use miden_objects::note::Note;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::testing::storage::prepare_assets;
+use miden_processor::Felt;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
-use vm_processor::Felt;
 
 // HELPER MACROS
 // ================================================================================================
@@ -18,7 +18,7 @@ use vm_processor::Felt;
 macro_rules! assert_execution_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
-            Err(vm_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg }) => {
+            Err(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg }) => {
                 if let Some(ref msg) = err_msg {
                   assert_eq!(msg.as_ref(), $expected_err.message(), "error messages did not match");
                 }
@@ -40,7 +40,7 @@ macro_rules! assert_transaction_executor_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
             Err(miden_tx::TransactionExecutorError::TransactionProgramExecutionFailed(
-                vm_processor::ExecutionError::FailedAssertion {
+                miden_processor::ExecutionError::FailedAssertion {
                     label: _,
                     source_file: _,
                     clk: _,

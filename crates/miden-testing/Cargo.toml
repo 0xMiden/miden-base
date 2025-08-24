@@ -23,7 +23,7 @@ miden-objects      = { features = ["testing"], workspace = true }
 miden-tx           = { features = ["testing"], workspace = true }
 
 # Miden dependencies
-vm-processor = { workspace = true }
+miden-processor = { workspace = true }
 
 # External dependencies
 anyhow      = { default-features = false, version = "1.0" }

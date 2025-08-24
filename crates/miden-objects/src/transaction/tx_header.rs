@@ -1,6 +1,6 @@
 use alloc::vec::Vec;
 
-use vm_processor::DeserializationError;
+use miden_processor::DeserializationError;
 
 use crate::Word;
 use crate::note::NoteId;

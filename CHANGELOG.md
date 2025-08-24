@@ -29,6 +29,7 @@
 - [BREAKING] Return dedicated insufficient fee error from transaction host if account balance is too low ([#1744](https://github.com/0xMiden/miden-base/pull/#1744)).
 - Add `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713)).
 - Add `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
+- Add `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
 
 ### Changes
 
@@ -66,10 +67,14 @@
 - [BREAKING] Move `IncrNonceAuthComponent`, `ConditionalAuthComponent` and `AccountMockComponent` to `miden-lib` ([#1722](https://github.com/0xMiden/miden-base/pull/1722)).
 - Refactor `contracts::auth::basic` into a reusable library procedure `auth::rpo_falcon512` ([#1712](https://github.com/0xMiden/miden-base/pull/1712)).
 - [BREAKING] Refactored `FungibleAsset::sub` to be more similar to `FungibleAsset::add` ([#1720](https://github.com/0xMiden/miden-base/pull/1720)).
+- Update `NoteConsumptionChecker::check_notes_consumability` to use iterative elimination strategy to find a set of executable notes ([#1721](https://github.com/0xMiden/miden-base/pull/1721)).
 - [BREAKING] Split `AccountCode::mock_library` into an account and faucet library ([#1732](https://github.com/0xMiden/miden-base/pull/1732), [#1733](https://github.com/0xMiden/miden-base/pull/1733)).
 - [BREAKING] Refactor `AccountError::AssumptionViolated` into `AccountError::Other` ([#1743](https://github.com/0xMiden/miden-base/pull/1743)).
 - [BREAKING] Remove `PartialVault::{new, add}` to guarantee the vault tracks valid assets ([#1747](https://github.com/0xMiden/miden-base/pull/1747)).
-- Update `NoteConsumptionChecker::check_notes_consumability` to use iterative elimination strategy to find a set of executable notes ([#1721](https://github.com/0xMiden/miden-base/pull/1721)).
+- [BREAKING] Remove account ID bech32 encoding. Use `Address::{from_bech32, to_bech32}` instead ([#1762](https://github.com/0xMiden/miden-base/pull/1762)).
+- [BREAKING] Update `account::get_storage_commitment` procedure to `account::compute_storage_commitment`([#1763](https://github.com/0xMiden/miden-base/pull/1763)).
+- Implement caching for the account storage commitment (([#1763](https://github.com/0xMiden/miden-base/pull/1763))).
+- [BREAKING] Merge the current and initial account code commitment procedures into one ([#1776](https://github.com/0xMiden/miden-base/pull/1776)).
 
 ## 0.10.1 (2025-08-02)
 

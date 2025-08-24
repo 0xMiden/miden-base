@@ -357,8 +357,8 @@ impl Deserializable for InputNote {
 #[cfg(test)]
 mod input_notes_tests {
     use anyhow::Context;
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
 
     use super::InputNotes;
     use crate::TransactionInputError;

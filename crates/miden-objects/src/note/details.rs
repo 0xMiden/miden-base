@@ -1,4 +1,4 @@
-use vm_processor::DeserializationError;
+use miden_processor::DeserializationError;
 
 use super::{NoteAssets, NoteId, NoteInputs, NoteRecipient, NoteScript, Nullifier};
 use crate::Word;

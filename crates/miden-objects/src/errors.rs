@@ -3,14 +3,14 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 
-use assembly::Report;
-use assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_assembly::Report;
+use miden_assembly::diagnostics::reporting::PrintDiagnostic;
+use miden_core::Felt;
+use miden_core::mast::MastForestError;
 use miden_crypto::merkle::MmrError;
 use miden_crypto::utils::HexParseError;
+use miden_processor::DeserializationError;
 use thiserror::Error;
-use vm_core::Felt;
-use vm_core::mast::MastForestError;
-use vm_processor::DeserializationError;
 
 use super::account::AccountId;
 use super::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
@@ -205,8 +205,6 @@ pub enum AccountIdError {
     AccountIdSuffixMostSignificantBitMustBeZero,
     #[error("least significant byte of account ID suffix must be zero")]
     AccountIdSuffixLeastSignificantByteMustBeZero,
-    #[error("failed to decode bech32 string into account ID")]
-    Bech32DecodeError(#[source] Bech32Error),
 }
 
 // ACCOUNT TREE ERROR
@@ -362,7 +360,7 @@ pub enum AssetError {
       max_amount = FungibleAsset::MAX_AMOUNT
     )]
     FungibleAssetAmountTooBig(u64),
-    #[error("subtracting {subtrahend} from fungible asset amount {minuend} would overflow")]
+    #[error("subtracting {subtrahend} from fungible asset amount {minuend} would underflow")]
     FungibleAssetAmountNotSufficient { minuend: u64, subtrahend: u64 },
     #[error("fungible asset word {0} does not contain expected ZERO at word index 1")]
     FungibleAssetExpectedZero(Word),

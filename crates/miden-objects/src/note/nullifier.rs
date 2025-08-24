@@ -90,7 +90,7 @@ impl Nullifier {
 
     #[cfg(any(feature = "testing", test))]
     pub fn dummy(n: u64) -> Self {
-        use vm_core::FieldElement;
+        use miden_core::FieldElement;
 
         Self(Word::new([Felt::ZERO, Felt::ZERO, Felt::ZERO, Felt::new(n)]))
     }

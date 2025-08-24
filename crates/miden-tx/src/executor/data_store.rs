@@ -3,7 +3,7 @@ use alloc::collections::BTreeSet;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::PartialBlockchain;
-use vm_processor::{FutureMaybeSend, MastForestStore, Word};
+use miden_processor::{FutureMaybeSend, MastForestStore, Word};
 
 use crate::DataStoreError;
 

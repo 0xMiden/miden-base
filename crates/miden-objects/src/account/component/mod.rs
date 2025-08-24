@@ -1,9 +1,9 @@
 use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
-use assembly::ast::QualifiedProcedureName;
-use assembly::{Assembler, Library, Parse};
-use vm_processor::MastForest;
+use miden_assembly::ast::QualifiedProcedureName;
+use miden_assembly::{Assembler, Library, Parse};
+use miden_processor::MastForest;
 
 mod template;
 pub use template::*;

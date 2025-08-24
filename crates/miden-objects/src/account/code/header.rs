@@ -1,10 +1,10 @@
 use alloc::vec::Vec;
 
-use vm_core::{
+use miden_core::{
     Felt,
     utils::{Deserializable, Serializable},
 };
-use vm_processor::Digest;
+use miden_processor::Digest;
 
 use super::{AccountCode, build_procedure_commitment, procedures_as_elements};
 use crate::account::AccountProcedureInfo;
@@ -65,15 +65,15 @@ impl From<AccountCode> for AccountCodeHeader {
 }
 
 impl Serializable for AccountCodeHeader {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.procedures);
     }
 }
 
 impl Deserializable for AccountCodeHeader {
-    fn read_from<R: vm_core::utils::ByteReader>(
+    fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
-    ) -> Result<Self, vm_processor::DeserializationError> {
+    ) -> Result<Self, miden_processor::DeserializationError> {
         let procedures: Vec<AccountProcedureInfo> = source.read()?;
         let commitment = build_procedure_commitment(&procedures);
 

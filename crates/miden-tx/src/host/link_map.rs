@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 use miden_objects::{Felt, LexicographicWord, Word, ZERO};
-use vm_processor::{AdviceMutation, ContextId, EventError, ProcessState};
+use miden_processor::{AdviceMutation, ContextId, EventError, ProcessState};
 
 // LINK MAP
 // ================================================================================================

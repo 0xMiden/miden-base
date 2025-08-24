@@ -34,9 +34,9 @@ use miden_objects::account::{
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::AccountInputs;
+use miden_processor::{AdviceInputs, Felt};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{AdviceInputs, Felt};
 
 use super::{Process, Word, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;

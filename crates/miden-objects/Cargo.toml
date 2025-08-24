@@ -22,24 +22,24 @@ bench = false
 [features]
 default = ["std"]
 std = [
-  "assembly/std",
   "dep:serde",
   "dep:toml",
+  "miden-assembly/std",
+  "miden-core/std",
   "miden-crypto/std",
+  "miden-processor/std",
   "miden-verifier/std",
-  "vm-core/std",
-  "vm-processor/std",
 ]
 testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils"]
 
 [dependencies]
 # Miden dependencies
-assembly          = { workspace = true }
+miden-assembly    = { workspace = true }
+miden-core        = { workspace = true }
 miden-crypto      = { workspace = true }
+miden-processor   = { workspace = true }
 miden-utils-sync  = { workspace = true }
 miden-verifier    = { workspace = true }
-vm-core           = { workspace = true }
-vm-processor      = { workspace = true }
 winter-rand-utils = { optional = true, version = "0.13" }
 
 # External dependencies

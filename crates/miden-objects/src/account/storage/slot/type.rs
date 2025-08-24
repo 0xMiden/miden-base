@@ -79,7 +79,7 @@ impl Deserializable for StorageSlotType {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::utils::{Deserializable, Serializable};
+    use miden_core::utils::{Deserializable, Serializable};
 
     use crate::account::StorageSlotType;
 

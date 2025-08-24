@@ -5,9 +5,9 @@ use std::string::String;
 
 use anyhow::Context;
 use miden_objects::{EMPTY_WORD, LexicographicWord, Word};
+use miden_processor::{ONE, ProcessState, ZERO};
 use miden_tx::LinkMap;
 use rand::seq::IteratorRandom;
-use vm_processor::{ONE, ProcessState, ZERO};
 use winter_rand_utils::rand_value;
 
 use crate::TransactionContextBuilder;
