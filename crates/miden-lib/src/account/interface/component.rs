@@ -83,6 +83,8 @@ impl AccountComponentInterface {
     }
 
     /// Returns true if this component interface is an authentication component.
+    ///
+    /// TODO: currently this can identify only standard auth components
     pub fn is_auth_component(&self) -> bool {
         matches!(
             self,
@@ -91,47 +93,6 @@ impl AccountComponentInterface {
                 | AccountComponentInterface::AuthRpoFalcon512Multisig(_)
                 | AccountComponentInterface::AuthNoAuth
         )
-    }
-
-    /// Extracts authentication scheme from a multisig component.
-    pub(crate) fn extract_multisig_auth_scheme(
-        storage: &AccountStorage,
-        storage_index: u8,
-    ) -> AuthScheme {
-        // Read the multisig configuration from the config slot
-        // Format: [threshold, num_approvers, 0, 0]
-        let config = storage
-            .get_item(storage_index)
-            .expect("invalid storage index of the multisig configuration");
-
-        let threshold = config[0].as_int() as u32;
-        let num_approvers = config[1].as_int() as u8;
-
-        // The public keys are stored in a map at the next slot (storage_index + 1)
-        let pub_keys_map_slot = storage_index + 1;
-
-        let mut pub_keys = Vec::new();
-
-        // Read each public key from the map
-        for key_index in 0..num_approvers {
-            let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
-
-            match storage.get_map_item(pub_keys_map_slot, map_key.into()) {
-                Ok(pub_key_word) => {
-                    pub_keys.push(PublicKey::new(pub_key_word));
-                },
-                Err(_) => {
-                    // If we can't read a public key, panic with a clear error message
-                    panic!(
-                        "Failed to read public key {} from multisig configuration at storage index {}. \
-                        This indicates corrupted multisig storage or incorrect storage layout.",
-                        key_index, storage_index
-                    );
-                },
-            }
-        }
-
-        AuthScheme::Multisig { threshold, pub_keys }
     }
 
     /// Returns the authentication schemes associated with this component interface.
@@ -148,7 +109,7 @@ impl AccountComponentInterface {
                 }]
             },
             AccountComponentInterface::AuthRpoFalcon512Multisig(storage_index) => {
-                vec![Self::extract_multisig_auth_scheme(storage, *storage_index)]
+                vec![extract_multisig_auth_scheme(storage, *storage_index)]
             },
             AccountComponentInterface::AuthNoAuth => vec![AuthScheme::NoAuth],
             _ => vec![], // Non-auth components return empty vector
@@ -312,4 +273,45 @@ impl AccountComponentInterface {
 
         Ok(body)
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Extracts authentication scheme from a multisig component.
+fn extract_multisig_auth_scheme(storage: &AccountStorage, storage_index: u8) -> AuthScheme {
+    // Read the multisig configuration from the config slot
+    // Format: [threshold, num_approvers, 0, 0]
+    let config = storage
+        .get_item(storage_index)
+        .expect("invalid storage index of the multisig configuration");
+
+    let threshold = config[0].as_int() as u32;
+    let num_approvers = config[1].as_int() as u8;
+
+    // The public keys are stored in a map at the next slot (storage_index + 1)
+    let pub_keys_map_slot = storage_index + 1;
+
+    let mut pub_keys = Vec::new();
+
+    // Read each public key from the map
+    for key_index in 0..num_approvers {
+        let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
+
+        match storage.get_map_item(pub_keys_map_slot, map_key.into()) {
+            Ok(pub_key_word) => {
+                pub_keys.push(PublicKey::new(pub_key_word));
+            },
+            Err(_) => {
+                // If we can't read a public key, panic with a clear error message
+                panic!(
+                    "Failed to read public key {} from multisig configuration at storage index {}. \
+                        This indicates corrupted multisig storage or incorrect storage layout.",
+                    key_index, storage_index
+                );
+            },
+        }
+    }
+
+    AuthScheme::RpoFalcon512Multisig { threshold, pub_keys }
 }

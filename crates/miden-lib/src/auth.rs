@@ -11,7 +11,7 @@ pub enum AuthScheme {
     RpoFalcon512 { pub_key: rpo_falcon512::PublicKey },
     /// A multi-signature authentication scheme using RPO Falcon512 signatures.
     /// Requires a threshold number of signatures from the provided public keys.
-    Multisig {
+    RpoFalcon512Multisig {
         threshold: u32,
         pub_keys: Vec<rpo_falcon512::PublicKey>,
     },

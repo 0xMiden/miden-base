@@ -100,19 +100,24 @@ pub enum WellKnownComponent {
 }
 
 impl WellKnownComponent {
-    /// Returns the iterator over procedure digests, containing digests of all procedures provided
-    /// by the current component.
+    /// Returns the iterator over digests of all procedures exported from the component.
     pub fn procedure_digests(&self) -> impl Iterator<Item = Word> {
-        let forest = match self {
-            Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
-            Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
-            Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
-            Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.mast_forest(),
-            Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.mast_forest(),
-            Self::AuthNoAuth => NO_AUTH_LIBRARY.mast_forest(),
+        let library = match self {
+            Self::BasicWallet => BASIC_WALLET_LIBRARY.as_ref(),
+            Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
+            Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.as_ref(),
+            Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.as_ref(),
+            Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.as_ref(),
+            Self::AuthNoAuth => NO_AUTH_LIBRARY.as_ref(),
         };
 
-        forest.procedure_digests()
+        library.exports().map(|export| {
+            library
+                .mast_forest()
+                .get_node_by_id(export.node)
+                .expect("export node not in the forest")
+                .digest()
+        })
     }
 
     /// Checks whether procedures from the current component are present in the procedures map
@@ -124,23 +129,10 @@ impl WellKnownComponent {
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
         // Determine if this component should be extracted based on procedure matching
-        let can_extract = if matches!(self, Self::AuthRpoFalcon512Multisig) {
-            // Special case for multisig: The multisig library contains both private procedures
-            // (like `assert_new_tx`) and exported procedures (like
-            // `auth__tx_rpo_falcon512_multisig`). However, account components only
-            // include exported procedures. So we use partial matching - if ANY of the
-            // library procedures are found in the account, we consider it a multisig
-            // component match.
-            self.procedure_digests()
-                .any(|proc_digest| procedures_map.contains_key(&proc_digest))
-        } else {
-            // For all other components, require exact matching - ALL library procedures
-            // must be present in the account for it to be considered a match.
-            self.procedure_digests()
-                .all(|proc_digest| procedures_map.contains_key(&proc_digest))
-        };
-
-        if can_extract {
+        if self
+            .procedure_digests()
+            .all(|proc_digest| procedures_map.contains_key(&proc_digest))
+        {
             // Extract the storage offset from any matching procedure
             let mut storage_offset = 0u8;
             self.procedure_digests().for_each(|component_procedure| {

@@ -13,7 +13,7 @@ use miden_objects::{AccountError, Word};
 use thiserror::Error;
 
 use super::AuthScheme;
-use crate::account::auth::{AuthMultisigRpoFalcon512, AuthRpoFalcon512};
+use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig};
 use crate::account::components::basic_wallet_library;
 
 // BASIC WALLET
@@ -125,8 +125,8 @@ pub fn create_basic_wallet(
 
     let auth_component: AccountComponent = match auth_scheme {
         AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
-        AuthScheme::Multisig { threshold, pub_keys } => {
-            AuthMultisigRpoFalcon512::new(threshold, pub_keys)
+        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
+            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
                 .map_err(BasicWalletError::AccountError)?
                 .into()
         },

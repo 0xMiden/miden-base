@@ -18,9 +18,9 @@ use thiserror::Error;
 use super::AuthScheme;
 use super::interface::{AccountComponentInterface, AccountInterface};
 use crate::account::auth::{
-    AuthMultisigRpoFalcon512,
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
+    AuthRpoFalcon512Multisig,
 };
 use crate::account::components::basic_fungible_faucet_library;
 use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
@@ -293,8 +293,8 @@ pub fn create_basic_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
-        AuthScheme::Multisig { threshold, pub_keys } => {
-            AuthMultisigRpoFalcon512::new(threshold, pub_keys)
+        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
+            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
                 .map_err(FungibleFaucetError::AccountError)?
                 .into()
         },

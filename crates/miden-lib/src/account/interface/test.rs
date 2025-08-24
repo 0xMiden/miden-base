@@ -25,7 +25,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
-use crate::account::auth::{AuthMultisigRpoFalcon512, AuthRpoFalcon512, NoAuth};
+use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig, NoAuth};
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
     AccountComponentInterface,
@@ -871,7 +871,7 @@ fn get_public_keys_from_account(account: &Account) -> Vec<Word> {
         match auth {
             AuthScheme::NoAuth => {},
             AuthScheme::RpoFalcon512 { pub_key } => pub_keys.push(Word::from(*pub_key)),
-            AuthScheme::Multisig { pub_keys: multisig_keys, .. } => {
+            AuthScheme::RpoFalcon512Multisig { pub_keys: multisig_keys, .. } => {
                 for key in multisig_keys {
                     pub_keys.push(Word::from(*key));
                 }
@@ -909,7 +909,7 @@ fn test_public_key_extraction_multisig_account() {
     let threshold = 2u32;
 
     // Create multisig component
-    let multisig_component = AuthMultisigRpoFalcon512::new(threshold, approvers.clone())
+    let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
         .expect("multisig component creation failed");
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
