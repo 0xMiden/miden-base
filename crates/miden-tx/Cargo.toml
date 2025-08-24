@@ -32,7 +32,6 @@ miden-verifier  = { workspace = true }
 rand      = { workspace = true }
 thiserror = { workspace = true }
 tokio     = { features = ["rt"], workspace = true }
-itertools   = { version = "0.14" }
 
 [dev-dependencies]
 anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }

@@ -16,7 +16,6 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::note::NoteBuilder;
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
-use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
