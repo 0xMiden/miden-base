@@ -58,6 +58,10 @@ pub enum TransactionExecutorError {
     },
     #[error("expected account nonce delta to be {expected}, found {actual}")]
     InconsistentAccountNonceDelta { expected: Felt, actual: Felt },
+    #[error(
+        "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
+    )]
+    InsufficientFee { account_balance: u64, tx_fee: u64 },
     #[error("account witness provided for account ID {0} is invalid")]
     InvalidAccountWitness(AccountId, #[source] SmtProofError),
     #[error(

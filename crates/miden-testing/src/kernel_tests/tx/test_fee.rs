@@ -1,6 +1,5 @@
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::errors::TransactionKernelError;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
@@ -74,8 +73,8 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
         execution_error
     ) => {
         assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
-            let kernel_error = error.downcast_ref::<TransactionKernelError>().unwrap();
-            assert_matches!(kernel_error, TransactionKernelError::InsufficientFee {
+            let kernel_error = error.downcast_ref::<TransactionExecutorError>().unwrap();
+            assert_matches!(kernel_error, TransactionExecutorError::InsufficientFee {
                 account_balance,
                 tx_fee: _
             } => {
