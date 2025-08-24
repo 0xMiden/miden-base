@@ -1,20 +1,60 @@
-use alloc::string::ToString;
+use alloc::string::{String, ToString};
 use core::str::FromStr;
 
 use bech32::Hrp;
 
 use crate::errors::NetworkIdError;
 
+/// A wrapper around HRP for custom network identifiers.
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+pub struct CustomHrp {
+    hrp_string: String,
+}
+
+impl CustomHrp {
+    /// Creates a new `CustomHrp` from a string.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the string is not a valid HRP according to bech32 rules
+    pub fn new(s: &str) -> Result<Self, NetworkIdError> {
+        Hrp::parse(s)
+            .map(|_| CustomHrp { hrp_string: s.to_string() })
+            .map_err(|source| NetworkIdError::NetworkIdParseError(source.to_string().into()))
+    }
+
+    /// Returns the string representation of this custom HRP.
+    pub fn as_str(&self) -> &str {
+        &self.hrp_string
+    }
+
+    /// Converts this `CustomHrp` to a `bech32::Hrp`.
+    pub(crate) fn to_bech32_hrp(&self) -> Hrp {
+        Hrp::parse(&self.hrp_string).expect("CustomHrp should always contain valid HRP")
+    }
+
+    /// Creates a `CustomHrp` from a `bech32::Hrp`.
+    pub(crate) fn from_bech32_hrp(hrp: Hrp) -> Self {
+        CustomHrp { hrp_string: hrp.to_string() }
+    }
+}
+
+impl core::fmt::Display for CustomHrp {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str(&self.hrp_string)
+    }
+}
+
 // This is essentially a wrapper around [`bech32::Hrp`] but that type does not actually appear in
 // the public API since that crate does not have a stable release.
 
 /// The identifier of a Miden network.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub enum NetworkId {
     Mainnet,
     Testnet,
     Devnet,
-    Custom(Hrp),
+    Custom(CustomHrp),
 }
 
 impl NetworkId {
@@ -43,7 +83,7 @@ impl NetworkId {
             NetworkId::MAINNET => NetworkId::Mainnet,
             NetworkId::TESTNET => NetworkId::Testnet,
             NetworkId::DEVNET => NetworkId::Devnet,
-            _ => NetworkId::Custom(hrp),
+            _ => NetworkId::Custom(CustomHrp::from_bech32_hrp(hrp)),
         }
     }
 
@@ -59,7 +99,7 @@ impl NetworkId {
                 Hrp::parse(NetworkId::TESTNET).expect("testnet hrp should be valid")
             },
             NetworkId::Devnet => Hrp::parse(NetworkId::DEVNET).expect("devnet hrp should be valid"),
-            NetworkId::Custom(custom) => custom,
+            NetworkId::Custom(custom) => custom.to_bech32_hrp(),
         }
     }
 

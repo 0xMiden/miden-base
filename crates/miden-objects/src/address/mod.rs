@@ -325,10 +325,10 @@ impl TryFrom<[u8; AccountIdAddress::SERIALIZED_SIZE]> for AccountIdAddress {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use bech32::{Bech32, Hrp, NoChecksum};
+    use bech32::{Bech32, NoChecksum};
 
     use super::*;
-    use crate::account::AccountType;
+    use crate::account::{AccountType, CustomHrp};
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
     /// Tests that an account ID address can be encoded and decoded.
@@ -343,8 +343,8 @@ mod tests {
         let rng = &mut rand::rng();
         for network_id in [
             NetworkId::Mainnet,
-            NetworkId::Custom(Hrp::parse("custom").unwrap()),
-            NetworkId::Custom(Hrp::parse(longest_possible_hrp).unwrap()),
+            NetworkId::Custom(CustomHrp::new("custom").unwrap()),
+            NetworkId::Custom(CustomHrp::new(longest_possible_hrp).unwrap()),
         ] {
             for (idx, account_id) in [
                 AccountIdBuilder::new()
@@ -367,7 +367,7 @@ mod tests {
                     AccountIdAddress::new(account_id, AddressInterface::BasicWallet);
                 let address = Address::from(account_id_address);
 
-                let bech32_string = address.to_bech32(network_id);
+                let bech32_string = address.to_bech32(network_id.clone());
                 let (decoded_network_id, decoded_address) =
                     Address::from_bech32(&bech32_string).unwrap();
 
