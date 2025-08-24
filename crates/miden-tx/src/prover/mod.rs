@@ -15,8 +15,7 @@ use miden_objects::transaction::{
     TransactionWitness,
 };
 pub use miden_prover::ProvingOptions;
-use miden_prover::{ExecutionProof, prove};
-use vm_processor::Word;
+use miden_prover::{ExecutionProof, Word, prove};
 
 use super::TransactionProverError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};

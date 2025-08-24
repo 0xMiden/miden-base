@@ -169,23 +169,31 @@ impl ExecutedTransaction {
     // --------------------------------------------------------------------------------------------
 
     /// Returns individual components of this transaction.
+    #[cfg(not(any(feature = "testing", test)))]
     pub fn into_parts(
         self,
     ) -> (AccountDelta, TransactionOutputs, TransactionWitness, TransactionMeasurements) {
-        #[cfg(any(feature = "testing", test))]
+        let tx_witness = TransactionWitness {
+            tx_inputs: self.tx_inputs,
+            tx_args: self.tx_args,
+            advice_witness: self.advice_witness.clone(),
+        };
+
+        (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
+    }
+}
+
+#[cfg(any(feature = "testing", test))]
+impl ExecutedTransaction {
+    pub fn into_parts(
+        self,
+    ) -> (AccountDelta, TransactionOutputs, TransactionWitness, TransactionMeasurements) {
         let tx_witness = TransactionWitness {
             tx_inputs: self.tx_inputs,
             tx_args: self.tx_args,
             advice_witness: self.advice_witness.clone(),
             account_delta: self.account_delta.clone(),
             tx_outputs: self.tx_outputs.clone(),
-        };
-
-        #[cfg(not(any(feature = "testing", test)))]
-        let tx_witness = TransactionWitness {
-            tx_inputs: self.tx_inputs,
-            tx_args: self.tx_args,
-            advice_witness: self.advice_witness.clone(),
         };
 
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
