@@ -4,11 +4,53 @@ use alloc::vec::Vec;
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
+use miden_objects::note::Note;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
 
-use super::{FailedNote, NoteConsumptionInfo, TransactionExecutionAttempt, TransactionExecutor};
+use super::{TransactionExecutionAttempt, TransactionExecutor};
 use crate::auth::TransactionAuthenticator;
 use crate::{DataStore, TransactionExecutorError};
+
+// NOTE CONSUMPTION INFO
+// ================================================================================================
+
+/// Represents a failed note consumption.
+#[derive(Debug)]
+#[non_exhaustive]
+pub struct FailedNote {
+    pub note: Note,
+    pub error: TransactionExecutorError,
+}
+
+impl FailedNote {
+    /// Constructs a new `FailedNote`.
+    pub fn new(note: Note, error: TransactionExecutorError) -> Self {
+        Self { note, error }
+    }
+}
+
+/// Contains information about the successful and failed consumption of notes.
+#[derive(Default, Debug)]
+#[non_exhaustive]
+pub struct NoteConsumptionInfo {
+    pub successful: Vec<Note>,
+    pub failed: Vec<FailedNote>,
+}
+
+impl NoteConsumptionInfo {
+    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful notes.
+    pub fn new_successful(successful: Vec<Note>) -> Self {
+        Self { successful, ..Default::default() }
+    }
+
+    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
+    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>) -> Self {
+        Self { successful, failed }
+    }
+}
+
+// NOTE CONSUMPTION CHECKER
+// ================================================================================================
 
 /// This struct performs input notes check against provided target account.
 ///

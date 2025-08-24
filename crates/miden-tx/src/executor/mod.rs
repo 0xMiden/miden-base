@@ -7,7 +7,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::SourceManager;
 use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::note::{Note, NoteScript};
+use miden_objects::note::NoteScript;
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
@@ -34,44 +34,21 @@ mod data_store;
 pub use data_store::DataStore;
 
 mod notes_checker;
-pub use notes_checker::NoteConsumptionChecker;
+pub use notes_checker::{FailedNote, NoteConsumptionChecker, NoteConsumptionInfo};
 
-// NOTE CONSUMPTION INFO
+// TRANSACTION EXECUTION ATTEMPT
 // ================================================================================================
 
-/// Represents a failed note consumption.
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct FailedNote {
-    pub note: Note,
-    pub error: TransactionExecutorError,
-}
-
-impl FailedNote {
-    /// Constructs a new `FailedNote`.
-    pub fn new(note: Note, error: TransactionExecutorError) -> Self {
-        Self { note, error }
-    }
-}
-
-/// Contains information about the successful and failed consumption of notes.
-#[derive(Default, Debug)]
-#[non_exhaustive]
-pub struct NoteConsumptionInfo {
-    pub successful: Vec<Note>,
-    pub failed: Vec<FailedNote>,
-}
-
-impl NoteConsumptionInfo {
-    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful notes.
-    pub fn new_successful(successful: Vec<Note>) -> Self {
-        Self { successful, ..Default::default() }
-    }
-
-    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
-    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>) -> Self {
-        Self { successful, failed }
-    }
+/// The result of trying to execute a transaction.
+pub enum TransactionExecutionAttempt {
+    Successful,
+    NoteFailed {
+        failed_note_index: usize,
+        error: TransactionExecutorError,
+    },
+    EpilogueFailed {
+        error: TransactionExecutorError,
+    },
 }
 
 // TRANSACTION EXECUTOR
@@ -90,18 +67,6 @@ pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
     exec_options: ExecutionOptions,
-}
-
-/// The result of trying to execute a transaction.
-pub enum TransactionExecutionAttempt {
-    Successful,
-    NoteFailed {
-        failed_note_index: usize,
-        error: TransactionExecutorError,
-    },
-    EpilogueFailed {
-        error: TransactionExecutorError,
-    },
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
