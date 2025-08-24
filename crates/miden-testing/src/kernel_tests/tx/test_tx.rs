@@ -35,7 +35,6 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
@@ -166,7 +165,6 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Attempt to execute a transaction against reference block 1 with the note created in block 11
     // - which should fail.
     let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
-    let source_manager = tx_context.source_manager();
 
     let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
     // Try to execute with block_ref==1
@@ -176,7 +174,6 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
             BlockNumber::from(1),
             InputNotes::new(vec![input_note]).unwrap(),
             TransactionArgs::default(),
-            source_manager,
         )
         .await;
 
@@ -1400,7 +1397,6 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    let source_manager = Arc::new(DefaultSourceManager::default());
     let assembler = TransactionKernel::assembler();
 
     let library = assembler.assemble_library([source]).unwrap();
@@ -1429,14 +1425,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None);
 
     let stack_outputs = executor
-        .execute_tx_view_script(
-            account_id,
-            block_ref,
-            tx_script,
-            advice_inputs,
-            Vec::default(),
-            source_manager,
-        )
+        .execute_tx_view_script(account_id, block_ref, tx_script, advice_inputs, Vec::default())
         .await?;
 
     assert_eq!(stack_outputs[..3], [Felt::new(7), Felt::new(2), ONE]);

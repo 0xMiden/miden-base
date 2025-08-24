@@ -2,12 +2,14 @@ use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_lib::note::well_known_note::WellKnownNote;
+use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::block::BlockNumber;
 use miden_objects::note::Note;
 use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
+use miden_processor::fast::FastProcessor;
 
-use super::{TransactionExecutionAttempt, TransactionExecutor};
+use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;
 use crate::{DataStore, TransactionExecutorError};
 
@@ -47,6 +49,19 @@ impl NoteConsumptionInfo {
     pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>) -> Self {
         Self { successful, failed }
     }
+}
+
+// TRANSACTION EXECUTION ATTEMPT
+// ================================================================================================
+
+/// The result of trying to execute a transaction.
+pub enum TransactionExecutionAttempt {
+    Successful,
+    NoteFailed {
+        failed_note_index: usize,
+        error: TransactionExecutorError,
+    },
+    EpilogueFailed,
 }
 
 // NOTE CONSUMPTION CHECKER
@@ -109,6 +124,9 @@ where
             .await
     }
 
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
+
     /// Finds a set of executable notes and eliminates failed notes from the list in the process.
     ///
     /// The result contains some combination of the input notes partitioned by whether they
@@ -129,7 +147,6 @@ where
         loop {
             // Execute the candidate notes.
             match self
-                .0
                 .try_execute_notes(
                     target_account_id,
                     block_ref,
@@ -155,7 +172,7 @@ where
                     }
                     // Continue and process the next set of candidates.
                 },
-                TransactionExecutionAttempt::EpilogueFailed(_) => {
+                TransactionExecutionAttempt::EpilogueFailed => {
                     return self
                         .find_largest_executable_combination(
                             target_account_id,
@@ -200,7 +217,6 @@ where
                 test_notes.push(note.clone());
 
                 match self
-                    .0
                     .try_execute_notes(
                         target_account_id,
                         block_ref,
@@ -245,5 +261,78 @@ where
         failed_notes.extend(newly_failed);
 
         Ok(NoteConsumptionInfo::new(successful, failed_notes))
+    }
+
+    /// Validates input notes, transaction inputs, and account inputs before executing the
+    /// transaction with specified notes. Keeps track and returns both successfully consumed notes
+    /// as well as notes that failed to be consumed.
+    ///
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the source manager from the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
+    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
+    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
+    ///
+    /// # Returns:
+    /// - An index into the input notes for the note that failed execution along with the associated
+    ///   error.
+    ///
+    /// # Errors:
+    /// Returns an error if:
+    /// - If required data can not be fetched from the [`DataStore`].
+    /// - If the transaction host can not be created from the provided values.
+    /// - If the execution of the provided program fails on the stage other than note execution.
+    async fn try_execute_notes(
+        &self,
+        account_id: AccountId,
+        block_ref: BlockNumber,
+        notes: InputNotes<InputNote>,
+        tx_args: &TransactionArgs,
+    ) -> Result<TransactionExecutionAttempt, TransactionExecutorError> {
+        if notes.is_empty() {
+            return Ok(TransactionExecutionAttempt::Successful);
+        }
+
+        // TODO: ideally, we should prepare the inputs only once for the while note consumption
+        // check (rather than doing this every time when we try to execute some subset of notes),
+        // but we currently cannot do this because transaction preparation includes input notes;
+        // we should refactor the preparation process to separate input note preparation from the
+        // rest, and then we can prepare the rest of the inputs once for the whole check
+        let (mut host, _, stack_inputs, advice_inputs) =
+            self.0.prepare_transaction(account_id, block_ref, notes, tx_args, None).await?;
+
+        let processor =
+            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
+        let result = processor
+            .execute(&TransactionKernel::main(), &mut host)
+            .await
+            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
+
+        match result {
+            Ok(_) => Ok(TransactionExecutionAttempt::Successful),
+            Err(error) => {
+                let notes = host.tx_progress().note_execution();
+
+                // Empty notes vector means that we didn't process the notes, so an error
+                // occurred.
+                if notes.is_empty() {
+                    return Err(error);
+                }
+
+                let ((_failed_note, last_note_interval), success_notes) =
+                    notes.split_last().expect("notes vector is not empty because of earlier check");
+
+                // If the interval end of the last note is specified, then an error occurred after
+                // notes processing.
+                if last_note_interval.end().is_some() {
+                    Ok(TransactionExecutionAttempt::EpilogueFailed)
+                } else {
+                    // Return the index of the failed note.
+                    let failed_note_index = success_notes.len();
+                    Ok(TransactionExecutionAttempt::NoteFailed { failed_note_index, error })
+                }
+            },
+        }
     }
 }
