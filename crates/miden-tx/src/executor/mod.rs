@@ -46,9 +46,7 @@ pub enum TransactionExecutionAttempt {
         failed_note_index: usize,
         error: TransactionExecutorError,
     },
-    EpilogueFailed {
-        error: TransactionExecutorError,
-    },
+    EpilogueFailed(TransactionExecutorError),
 }
 
 // TRANSACTION EXECUTOR
@@ -410,7 +408,7 @@ where
                 // If the interval end of the last note is specified, then an error occurred after
                 // notes processing.
                 if last_note_interval.end().is_some() {
-                    Ok(TransactionExecutionAttempt::EpilogueFailed { error })
+                    Ok(TransactionExecutionAttempt::EpilogueFailed(error))
                 } else {
                     // Return the index of the failed note.
                     let failed_note_index = success_notes.len();

@@ -155,7 +155,7 @@ where
                     }
                     // Continue and process the next set of candidates.
                 },
-                TransactionExecutionAttempt::EpilogueFailed { error: _error } => {
+                TransactionExecutionAttempt::EpilogueFailed(_) => {
                     return self
                         .find_largest_executable_combination(
                             target_account_id,
