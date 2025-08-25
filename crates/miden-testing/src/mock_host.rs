@@ -36,40 +36,29 @@ pub struct MockHost {
 }
 
 impl MockHost {
-    /// Returns a new [MockHost] instance with the provided
-    /// [AdviceInputs](miden_processor::AdviceInputs).
+    /// Returns a new [`MockHost`] instance with the provided [`AdviceInputs`].
     pub fn new(
         account: AccountHeader,
         advice_inputs: &AdviceInputs,
         mast_store: Rc<TransactionMastStore>,
-        foreign_code_commitments: BTreeSet<Word>,
-    ) -> Self {
-        Self::new_with_source_manager(
-            account,
-            advice_inputs,
-            mast_store,
-            foreign_code_commitments,
-            default_source_manager_arc_dyn(),
-        )
-    }
-
-    /// Returns a new [MockHost] instance with the provided
-    /// [AdviceInputs](vm_processor::AdviceInputs) and [`SourceManagerSync`] implementation.
-    pub fn new_with_source_manager(
-        account: AccountHeader,
-        advice_inputs: &AdviceInputs,
-        mast_store: Rc<TransactionMastStore>,
         mut foreign_code_commitments: BTreeSet<Word>,
-        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
-        let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs);
+        let account_procedure_index_map =
+            AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs)
+                .expect("account procedure index map should be valid");
 
         Self {
-            acct_procedure_index_map: proc_index_map.unwrap(),
+            acct_procedure_index_map: account_procedure_index_map,
             mast_store,
-            source_manager,
+            source_manager: default_source_manager_arc_dyn(),
         }
+    }
+
+    /// Sets the provided [`SourceManagerSync`] on the host.
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
     }
 
     /// Consumes `self` and returns the advice provider and account vault delta.

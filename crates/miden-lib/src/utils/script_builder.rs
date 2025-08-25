@@ -284,7 +284,7 @@ impl ScriptBuilder {
     // ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Access the [`Assembler`]'s [`SourceManager`].
+    /// Access the [`Assembler`]'s [`SourceManagerSync`].
     pub fn source_manager(&self) -> alloc::sync::Arc<dyn SourceManagerSync> {
         self.source_manager.clone()
     }
