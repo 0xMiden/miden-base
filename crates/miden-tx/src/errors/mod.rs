@@ -21,6 +21,24 @@ use miden_processor::ExecutionError;
 use miden_verifier::VerificationError;
 use thiserror::Error;
 
+// NOTE EXECUTION ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum NoteExecutionError {
+    #[error("transaction preparation failed: {0}")]
+    TransactionPreparationFailed(#[source] TransactionExecutorError),
+    #[error("transaction execution prologue failed: {0}")]
+    PrologueExecutionFailed(#[source] TransactionExecutorError),
+    #[error("transaction execution epilogue failed: {0}")]
+    EpilogueExecutionFailed(#[source] TransactionExecutorError),
+    #[error("transaction note execution failed on note index {failed_note_index}: {error}")]
+    NoteExecutionFailed {
+        failed_note_index: usize,
+        error: TransactionExecutorError,
+    },
+}
+
 // TRANSACTION EXECUTOR ERROR
 // ================================================================================================
 
