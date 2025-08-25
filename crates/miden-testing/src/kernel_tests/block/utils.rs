@@ -3,6 +3,7 @@ use std::vec;
 use std::vec::Vec;
 
 use miden_lib::note::create_p2id_note;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
@@ -12,7 +13,6 @@ use miden_objects::block::BlockNumber;
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::{Note, NoteId, NoteTag, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{
     ExecutedTransaction,
     OutputNote,

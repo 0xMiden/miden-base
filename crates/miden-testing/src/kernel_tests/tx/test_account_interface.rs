@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use assert_matches::assert_matches;
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountId};
@@ -14,7 +15,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::note::NoteBuilder;
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::{

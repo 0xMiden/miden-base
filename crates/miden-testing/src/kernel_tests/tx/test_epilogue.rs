@@ -8,6 +8,7 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_TX_INVALID_EXPIRATION_DELTA,
 };
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::memory::{
     NOTE_MEM_SIZE,
     OUTPUT_NOTE_ASSET_COMMITMENT_OFFSET,
@@ -33,7 +34,6 @@ use miden_objects::testing::constants::{
     CONSUMED_ASSET_2_AMOUNT,
     CONSUMED_ASSET_3_AMOUNT,
 };
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{OutputNote, OutputNotes};
 use miden_processor::{Felt, ONE};
 use rand::rng;

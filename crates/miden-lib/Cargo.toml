@@ -17,14 +17,18 @@ version                = "0.11.0"
 [features]
 default         = ["std"]
 std             = ["miden-assembly/std", "miden-objects/std", "miden-processor/std", "miden-stdlib/std"]
-testing         = ["miden-objects/testing"]
+testing         = ["dep:rand", "miden-objects/testing"]
 with-debug-info = ["miden-stdlib/with-debug-info"]
 
 [dependencies]
+# Miden dependencies
 miden-objects   = { workspace = true }
 miden-processor = { workspace = true }
 miden-stdlib    = { workspace = true }
-thiserror       = { workspace = true }
+
+# External dependencies
+rand      = { optional = true, workspace = true }
+thiserror = { workspace = true }
 
 [build-dependencies]
 miden-assembly = { workspace = true }

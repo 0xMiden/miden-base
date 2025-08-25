@@ -7,6 +7,7 @@ use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
@@ -33,7 +34,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
 use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
 use rand::SeedableRng;

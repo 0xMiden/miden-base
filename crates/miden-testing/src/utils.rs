@@ -1,12 +1,12 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::AccountId;
 use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::asset::Asset;
 use miden_objects::note::Note;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
 use rand::SeedableRng;

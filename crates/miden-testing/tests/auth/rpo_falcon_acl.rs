@@ -2,6 +2,7 @@ use core::slice;
 
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
@@ -13,7 +14,6 @@ use miden_objects::account::{
     AccountType,
 };
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_processor::ExecutionError;
