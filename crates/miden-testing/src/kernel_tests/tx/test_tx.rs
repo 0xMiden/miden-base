@@ -955,7 +955,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
             acct_procedure_index_map,
             None,
             tx_inputs.block_header().fee_parameters(),
-            default_source_manager_arc_dyn(),
+            Arc::new(DefaultSourceManager::default()),
         )
     };
     let advice_inputs = advice_inputs.into_advice_inputs();
