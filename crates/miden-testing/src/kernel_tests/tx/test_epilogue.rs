@@ -235,10 +235,12 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
 
     let output_note_1 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_1])
-        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
     let output_note_2 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_2])
-        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
 
     let input_note = create_spawn_note(account.id(), vec![&output_note_1, &output_note_2])?;
 
@@ -305,13 +307,16 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
 
     let output_note_1 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_1])
-        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
     let output_note_2 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_2])
-        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
     let output_note_3 = NoteBuilder::new(account.id(), rng())
         .add_assets([fungible_asset_3])
-        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
 
     let input_note = create_spawn_note(
         ACCOUNT_ID_SENDER.try_into()?,

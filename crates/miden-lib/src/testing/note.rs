@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
 use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
-use miden_objects::assembly::{Assembler, DefaultSourceManager};
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::Asset;
 use miden_objects::note::{
     Note,
@@ -21,6 +21,8 @@ use miden_objects::testing::note::DEFAULT_NOTE_CODE;
 use miden_objects::{Felt, NoteError, Word, ZERO};
 use rand::Rng;
 
+use crate::transaction::TransactionKernel;
+
 // NOTE BUILDER
 // ================================================================================================
 
@@ -35,6 +37,7 @@ pub struct NoteBuilder {
     tag: NoteTag,
     code: String,
     aux: Felt,
+    dyn_libraries: Vec<Library>,
     source_manager: Arc<dyn SourceManagerSync>,
 }
 
@@ -58,6 +61,7 @@ impl NoteBuilder {
             tag: NoteTag::from_account_id(sender),
             code: DEFAULT_NOTE_CODE.to_string(),
             aux: ZERO,
+            dyn_libraries: Vec::new(),
             source_manager: Arc::new(DefaultSourceManager::default()),
         }
     }
@@ -104,13 +108,22 @@ impl NoteBuilder {
         self
     }
 
-    /// Note: this must be the same `source_manager` as used with `Assembler`.
+    /// Extends the set of dynamically linked libraries that are passed to the assembler at
+    /// build-time.
+    pub fn dynamically_linked_libraries(
+        mut self,
+        dyn_libraries: impl IntoIterator<Item = Library>,
+    ) -> Self {
+        self.dyn_libraries.extend(dyn_libraries);
+        self
+    }
+
     pub fn source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
         self.source_manager = source_manager;
         self
     }
 
-    pub fn build(self, assembler: &Assembler) -> Result<Note, NoteError> {
+    pub fn build(self) -> Result<Note, NoteError> {
         // Generate a unique file name from the note's serial number, which should be unique per
         // note. Only includes two elements in the file name which should be enough for the
         // uniqueness in the testing context and does not result in overly long file names which do
@@ -124,6 +137,15 @@ impl NoteBuilder {
             )),
             self.code,
         );
+
+        let mut assembler = TransactionKernel::assembler_with_source_manager(self.source_manager)
+            .with_debug_mode(true);
+        for dyn_library in self.dyn_libraries {
+            assembler
+                .link_dynamic_library(dyn_library)
+                .expect("library should link successfully");
+        }
+
         let code = assembler
             .clone()
             .with_debug_mode(true)

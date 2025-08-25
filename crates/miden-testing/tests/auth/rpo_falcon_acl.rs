@@ -3,7 +3,7 @@ use core::slice;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::{TransactionKernel, TransactionKernelError};
+use miden_lib::transaction::TransactionKernelError;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -40,8 +40,6 @@ fn setup_rpo_falcon_acl_test(
     allow_unauthorized_output_notes: bool,
     allow_unauthorized_input_notes: bool,
 ) -> anyhow::Result<(miden_objects::account::Account, MockChain, miden_objects::note::Note)> {
-    let assembler = TransactionKernel::assembler();
-
     let component: AccountComponent =
         MockAccountComponent::with_slots(AccountStorage::mock_storage_slots()).into();
 
@@ -74,7 +72,7 @@ fn setup_rpo_falcon_acl_test(
     // Create a mock note to consume (needed to make the transaction non-empty)
     let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
     let note = NoteBuilder::new(sender_id, &mut rand::rng())
-        .build(&assembler)
+        .build()
         .expect("failed to create mock note");
 
     Ok((account, mock_chain, note))

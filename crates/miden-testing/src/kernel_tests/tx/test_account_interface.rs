@@ -129,19 +129,24 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
+    let source_manager = default_source_manager_arc_dyn();
     let failing_note_1 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.1 drop push.0 div end")
-    .build(&TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()))?;
+    .source_manager(source_manager.clone())
+    .dynamically_linked_libraries([TransactionKernel::kernel_as_library()])
+    .build()?;
 
     let failing_note_2 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.2 drop push.0 div end")
-    .build(&TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()))?;
+    .source_manager(source_manager.clone())
+    .dynamically_linked_libraries([TransactionKernel::kernel_as_library()])
+    .build()?;
 
     let successful_note_1 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),

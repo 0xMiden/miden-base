@@ -3,6 +3,8 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
+#[cfg(any(feature = "testing", test))]
+use miden_objects::assembly::Library;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{Assembler, KernelLibrary, default_source_manager_arc_dyn};
 use miden_objects::asset::FungibleAsset;
@@ -442,6 +444,15 @@ impl TransactionKernel {
             .expect("failed to deserialize transaction kernel library")
     }
 
+    /// Returns the mock account and faucet libraries.
+    pub fn mock_libraries() -> Vec<Library> {
+        use miden_objects::account::AccountCode;
+
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
+        vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()]
+    }
+
     /// Returns an [`Assembler`] with the transaction kernel as a library.
     ///
     /// This assembler is the same as [`TransactionKernel::assembler`] but additionally includes the
@@ -475,17 +486,15 @@ impl TransactionKernel {
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
     pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
-        use miden_objects::account::AccountCode;
+        let mut assembler = Self::with_kernel_library(source_manager).with_debug_mode(true);
 
-        use crate::testing::mock_account_code::MockAccountCodeExt;
-
-        let assembler = Self::with_kernel_library(source_manager).with_debug_mode(true);
+        for library in Self::mock_libraries() {
+            assembler
+                .link_dynamic_library(library)
+                .expect("failed to add mock account libraries");
+        }
 
         assembler
-            .with_dynamic_library(AccountCode::mock_account_library())
-            .expect("failed to add mock account library")
-            .with_dynamic_library(AccountCode::mock_faucet_library())
-            .expect("failed to add mock faucet library")
     }
 }
 

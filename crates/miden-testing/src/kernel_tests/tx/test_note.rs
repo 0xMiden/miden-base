@@ -12,7 +12,6 @@ use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::asset::FungibleAsset;
@@ -911,7 +910,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
         .code(code.clone())
-        .build(&TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()))?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
 
     builder.add_note(OutputNote::Full(timelock_note.clone()));
 
