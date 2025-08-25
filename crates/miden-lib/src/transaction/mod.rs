@@ -3,10 +3,10 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
-use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::{Assembler, KernelLibrary};
 #[cfg(any(feature = "testing", test))]
-use miden_objects::assembly::{DefaultSourceManager, Library};
+use miden_objects::assembly::Library;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
