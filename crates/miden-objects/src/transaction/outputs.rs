@@ -333,24 +333,17 @@ fn build_output_notes_commitment(notes: &[OutputNote]) -> Word {
 
 #[cfg(test)]
 mod output_notes_tests {
-    use anyhow::Context;
     use assert_matches::assert_matches;
-    use miden_assembly::Assembler;
+    use crate::Word;
 
     use super::OutputNotes;
     use crate::TransactionOutputError;
-    use crate::account::AccountId;
-    use crate::testing::account_id::ACCOUNT_ID_SENDER;
-    use crate::testing::note::NoteBuilder;
+    use crate::note::Note;
     use crate::transaction::OutputNote;
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {
-        let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
-
-        let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
-            .build(&Assembler::default())
-            .context("failed to create mock note")?;
+        let mock_note = Note::mock_noop(Word::empty());
         let mock_note_id = mock_note.id();
         let mock_note_clone = mock_note.clone();
 

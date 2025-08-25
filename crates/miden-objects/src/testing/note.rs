@@ -2,12 +2,12 @@ use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
+use miden_assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
+use miden_assembly::{Assembler, DefaultSourceManager};
 use rand::Rng;
 
 use crate::account::AccountId;
-use crate::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
-use crate::assembly::{Assembler, DefaultSourceManager};
-use crate::asset::Asset;
+use crate::asset::{Asset, FungibleAsset};
 use crate::note::{
     Note,
     NoteAssets,
@@ -19,9 +19,32 @@ use crate::note::{
     NoteTag,
     NoteType,
 };
+use crate::testing::account_id::ACCOUNT_ID_SENDER;
 use crate::{Felt, NoteError, Word, ZERO};
 
 pub const DEFAULT_NOTE_CODE: &str = "begin nop end";
+
+impl Note {
+    /// Returns a note with no-op code and one asset.
+    pub fn mock_noop(serial_num: Word) -> Note {
+        let sender_id = ACCOUNT_ID_SENDER.try_into().unwrap();
+        let note_script = NoteScript::mock();
+        let assets =
+            NoteAssets::new(vec![FungibleAsset::mock(200)]).expect("note assets should be valid");
+        let metadata = NoteMetadata::new(
+            sender_id,
+            NoteType::Private,
+            NoteTag::from_account_id(sender_id),
+            NoteExecutionHint::Always,
+            ZERO,
+        )
+        .unwrap();
+        let inputs = NoteInputs::new(Vec::new()).unwrap();
+        let recipient = NoteRecipient::new(serial_num, note_script, inputs);
+
+        Note::new(assets, metadata, recipient)
+    }
+}
 
 // NOTE BUILDER
 // ================================================================================================
