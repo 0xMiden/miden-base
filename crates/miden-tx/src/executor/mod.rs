@@ -115,15 +115,17 @@ where
         }
     }
 
-    /// Adds the specified [TransactionAuthenticator] to the executor.
+    /// Adds the specified [TransactionAuthenticator] to the executor and returns the resulting
+    /// executor.
     ///
     /// This will overwrite any previously set authenticator.
+    #[must_use]
     pub fn with_authenticator(mut self, authenticator: &'auth AUTH) -> Self {
         self.authenticator = Some(authenticator);
         self
     }
 
-    /// Adds the specified source manager to the executor.
+    /// Adds the specified source manager to the executor and returns the resulting executor.
     ///
     /// The `source_manager` is used to map potential errors back to their source code. To get the
     /// most value out of it, use the same source manager as was used with the
@@ -131,12 +133,14 @@ where
     /// that should be debugged, e.g. account components, note scripts or transaction scripts.
     ///
     /// This will overwrite any previously set source manager.
+    #[must_use]
     pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
         self.source_manager = source_manager;
         self
     }
 
-    /// Sets the [ExecutionOptions] for the executor to the provided options.
+    /// Sets the [ExecutionOptions] for the executor to the provided options and returns the
+    /// resulting executor.
     ///
     /// # Errors
     /// Returns an error if the specified cycle values (`max_cycles` and `expected_cycles`) in
@@ -153,21 +157,24 @@ where
         Ok(self)
     }
 
-    /// Puts the [TransactionExecutor] into debug mode.
+    /// Puts the [TransactionExecutor] into debug mode and returns the resulting executor.
     ///
     /// When transaction executor is in debug mode, all transaction-related code (note scripts,
     /// account code) will be compiled and executed in debug mode. This will ensure that all debug
     /// instructions present in the original source code are executed.
+    #[must_use]
     pub fn with_debug_mode(mut self) -> Self {
         self.exec_options = self.exec_options.with_debugging(true);
         self
     }
 
-    /// Enables tracing for the created instance of [TransactionExecutor].
+    /// Enables tracing for the created instance of [TransactionExecutor] and returns the resulting
+    /// executor.
     ///
     /// When tracing is enabled, the executor will receive tracing events as various stages of the
     /// transaction kernel complete. This enables collecting basic stats about how long different
     /// stages of transaction execution take.
+    #[must_use]
     pub fn with_tracing(mut self) -> Self {
         self.exec_options = self.exec_options.with_tracing();
         self
