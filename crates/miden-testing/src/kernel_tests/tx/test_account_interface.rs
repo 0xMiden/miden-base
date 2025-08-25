@@ -16,10 +16,12 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::note::NoteBuilder;
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
+use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
+    NoteExecutionError,
     TransactionExecutor,
     TransactionExecutorError,
 };
@@ -118,7 +120,7 @@ async fn check_note_consumability_custom_notes_success(
 }
 
 #[tokio::test]
-async fn check_note_consumability_failure() -> anyhow::Result<()> {
+async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
     let mock_chain = builder.build()?;
@@ -236,5 +238,42 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                 );
             }
     );
+    Ok(())
+}
+
+#[tokio::test]
+async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let mock_chain = builder.build()?;
+
+    let successful_note = create_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        vec![FungibleAsset::mock(10)],
+        NoteType::Public,
+        Default::default(),
+        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
+    )?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::Account(account), &[], &[successful_note.clone()])?
+        .build()?;
+
+    let input_notes = tx_context.input_notes().clone();
+    let account_id = tx_context.account().id();
+    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let tx_args = tx_context.tx_args().clone();
+
+    // Use an auth that fails in order to force an epilogue failure.
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
+
+    let execution_check_result = notes_checker
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .await;
+
+    assert_matches!(execution_check_result, Err(NoteExecutionError::EpilogueExecutionFailed(_)));
     Ok(())
 }
