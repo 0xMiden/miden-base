@@ -347,10 +347,7 @@ pub fn test_compute_code_commitment() -> miette::Result<()> {
         expected_code_commitment = account.code().commitment()
     );
 
-    tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -421,12 +418,7 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let process = &tx_context
-            .execute_code_with_assembler(
-                &code,
-                TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-            )
-            .unwrap();
+        let process = &tx_context.execute_code(&code)?;
 
         assert_eq!(
             value,
@@ -581,12 +573,7 @@ fn test_set_map_item() -> miette::Result<()> {
         new_value = &new_value,
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(
-            &code,
-            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-        )
-        .unwrap();
+    let process = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value);
@@ -972,10 +959,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
         end
         "#,
     );
-    tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -1042,10 +1026,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         fungible_asset = Word::from(&fungible_asset),
         expected_vault_root = &account.vault().root(),
     );
-    tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }

@@ -18,7 +18,6 @@ use miden_lib::transaction::{EXPIRATION_BLOCK_ELEMENT_IDX, TransactionKernel};
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountDelta, AccountStorageDelta, AccountVaultDelta};
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::{NoteTag, NoteType};
 use miden_objects::testing::account_id::{
@@ -91,10 +90,7 @@ fn test_epilogue() -> anyhow::Result<()> {
         "
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = tx_context.execute_code(&code)?;
 
     // The final account is the initial account with the nonce incremented by one.
     let mut final_account = account.clone();
@@ -191,10 +187,7 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
             "
         );
 
-        let process = &tx_context.execute_code_with_assembler(
-            &code,
-            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-        )?;
+        let process = &tx_context.execute_code(&code)?;
 
         assert_eq!(
             note.assets().commitment(),
@@ -274,10 +267,8 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         "
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    );
+    let process = tx_context.execute_code(&code);
+
     assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
 }
@@ -353,10 +344,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         "
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    );
+    let process = tx_context.execute_code(&code);
 
     assert_execution_error!(process, ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME);
     Ok(())
@@ -395,10 +383,7 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
             .replace("{value_2}", &v2.to_string())
             .replace("{min_value}", &v2.min(v1).to_string());
 
-        let process = &tx_context.execute_code_with_assembler(
-            code,
-            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-        )?;
+        let process = &tx_context.execute_code(code)?;
 
         // Expiry block should be set to transaction's block + the stored expiration delta
         // (which can only decrease, not increase)
@@ -426,10 +411,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
     for value in test_values {
         let code = &code_template.replace("{value_1}", &value.to_string());
-        let process = tx_context.execute_code_with_assembler(
-            code,
-            TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-        );
+        let process = tx_context.execute_code(code);
 
         assert_execution_error!(process, ERR_TX_INVALID_EXPIRATION_DELTA);
     }
@@ -459,10 +441,7 @@ fn test_no_expiration_delta_set() -> anyhow::Result<()> {
     end
     ";
 
-    let process = &tx_context.execute_code_with_assembler(
-        code_template,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(code_template)?;
 
     // Default value should be equal to u32::max, set in the prologue
     assert_eq!(process.stack.get(EXPIRATION_BLOCK_ELEMENT_IDX).as_int() as u32, u32::MAX);
@@ -502,10 +481,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
         "
     );
 
-    tx_context.execute_code_with_assembler(
-        code.as_str(),
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    tx_context.execute_code(code.as_str())?;
     Ok(())
 }
 

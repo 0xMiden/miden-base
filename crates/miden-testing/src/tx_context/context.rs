@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
+use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -62,10 +62,11 @@ impl TransactionContext {
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [Process].
     ///
-    /// The code is compiled with the assembler attached to this context and executed with advice
-    /// inputs constructed from the data stored in the context. The program is run on a [MockHost]
-    /// which is loaded with the procedures exposed by the transaction kernel, and also individual
-    /// kernel functions (not normally exposed).
+    /// The code is compiled with the assembler returned by
+    /// [`TransactionKernel::with_mock_libraries`] and executed with advice inputs constructed from
+    /// the data stored in the context. The program is run on a [`MockHost`] which is loaded with
+    /// the procedures exposed by the transaction kernel, and also individual kernel functions (not
+    /// normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
@@ -83,19 +84,13 @@ impl TransactionContext {
     /// The `Assembler` passed _must_ use the same `SourceManager` as passed to
     /// `TransactionContext`, otherwise errors will only be available in a truncated
     /// form. See [issue #1779 in miden-base](<https://github.com/0xMiden/miden-base/issues/1779>).
-    pub fn execute_code_with_assembler(
-        &self,
-        code: &str,
-        assembler: Assembler,
-    ) -> Result<Process, ExecutionError> {
+    pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
             &self.tx_args,
             Some(self.advice_inputs.clone()),
         )
         .expect("error initializing transaction inputs");
-
-        let test_lib = TransactionKernel::kernel_as_library();
 
         // Virtual file name should be unique.
         let virtual_source_file = self.source_manager.load(
@@ -104,6 +99,8 @@ impl TransactionContext {
             code.to_owned(),
         );
 
+        let assembler = TransactionKernel::with_mock_libraries(self.source_manager.clone())
+            .with_debug_mode(true);
         let program = assembler
             .with_debug_mode(true)
             .assemble_program(virtual_source_file)
@@ -112,7 +109,7 @@ impl TransactionContext {
         let mast_store = Rc::new(TransactionMastStore::new());
 
         mast_store.insert(program.mast_forest().clone());
-        mast_store.insert(test_lib.mast_forest().clone());
+        mast_store.insert(TransactionKernel::kernel_as_library().mast_forest().clone());
         mast_store.load_account_code(self.account().code());
         for acc_inputs in self.tx_args.foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
@@ -129,16 +126,6 @@ impl TransactionContext {
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)
         .execute_program(program)
-    }
-
-    /// Executes arbitrary code with a kernel library assembler
-    /// ([`TransactionKernel::with_kernel_library`]).
-    ///
-    /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
-    pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library(self.source_manager.clone())
-            .with_debug_mode(true);
-        self.execute_code_with_assembler(code, assembler)
     }
 
     /// Executes the transaction through a [TransactionExecutor]

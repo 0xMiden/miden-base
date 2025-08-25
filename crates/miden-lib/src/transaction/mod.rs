@@ -439,18 +439,18 @@ impl TransactionKernel {
     const KERNEL_TESTING_LIB_BYTES: &'static [u8] =
         include_bytes!(concat!(env!("OUT_DIR"), "/assets/kernels/kernel_library.masl"));
 
-    pub fn kernel_as_library() -> miden_objects::assembly::Library {
-        miden_objects::assembly::Library::read_from_bytes(Self::KERNEL_TESTING_LIB_BYTES)
+    pub fn kernel_as_library() -> Library {
+        Library::read_from_bytes(Self::KERNEL_TESTING_LIB_BYTES)
             .expect("failed to deserialize transaction kernel library")
     }
 
     /// Returns the mock account and faucet libraries.
-    pub fn mock_libraries() -> Vec<Library> {
+    pub fn mock_libraries() -> impl Iterator<Item = Library> {
         use miden_objects::account::AccountCode;
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()]
+        vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()].into_iter()
     }
 
     /// Returns an [`Assembler`] with the transaction kernel as a library.

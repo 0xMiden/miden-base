@@ -224,10 +224,7 @@ fn test_create_note() -> anyhow::Result<()> {
         tag = tag,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(&code)?;
 
     assert_eq!(
         process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -272,23 +269,11 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
     let valid_tag: Felt = NoteTag::for_local_use_case(0, 0).unwrap().into();
 
     // Test invalid tag
-    assert!(
-        tx_context
-            .execute_code_with_assembler(
-                &note_creation_script(invalid_tag),
-                TransactionKernel::with_kernel_library(default_source_manager_arc_dyn())
-            )
-            .is_err()
-    );
+    assert!(tx_context.execute_code(&note_creation_script(invalid_tag)).is_err());
+
     // Test valid tag
-    assert!(
-        tx_context
-            .execute_code_with_assembler(
-                &note_creation_script(valid_tag),
-                TransactionKernel::with_kernel_library(default_source_manager_arc_dyn())
-            )
-            .is_ok()
-    );
+    assert!(tx_context.execute_code(&note_creation_script(valid_tag)).is_ok());
+
     Ok(())
 }
 
@@ -352,10 +337,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
         aux = Felt::ZERO,
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    );
+    let process = tx_context.execute_code(&code);
 
     assert_execution_error!(process, ERR_TX_NUMBER_OF_OUTPUT_NOTES_EXCEEDS_LIMIT);
     Ok(())
@@ -513,10 +495,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         ),
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(&code)?;
 
     assert_eq!(
         process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -591,10 +570,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
         asset = asset,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(&code)?;
 
     assert_eq!(
         process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -676,10 +652,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
         nft = non_fungible_asset_encoded,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(&code)?;
 
     assert_eq!(
         process.get_kernel_mem_word(OUTPUT_NOTE_SECTION_OFFSET + OUTPUT_NOTE_ASSETS_OFFSET),
@@ -756,10 +729,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
         nft = encoded,
     );
 
-    let process = tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    );
+    let process = tx_context.execute_code(&code);
 
     assert_execution_error!(process, ERR_NON_FUNGIBLE_ASSET_ALREADY_EXISTS);
     Ok(())
@@ -857,10 +827,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
         aux = aux,
     );
 
-    let process = &tx_context.execute_code_with_assembler(
-        &code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(&code)?;
 
     assert_eq!(
         process.get_kernel_mem_word(NUM_OUTPUT_NOTES_PTR),
@@ -903,10 +870,7 @@ fn test_block_procedures() -> anyhow::Result<()> {
         end
         ";
 
-    let process = &tx_context.execute_code_with_assembler(
-        code,
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
-    )?;
+    let process = &tx_context.execute_code(code)?;
 
     assert_eq!(
         process.stack.get_word(0),
