@@ -33,6 +33,9 @@ use crate::host::{
     TransactionProgress,
 };
 
+// TRANSACTION EXECUTOR HOST
+// ================================================================================================
+
 /// The transaction executor host is responsible for handling [`FutureMaybeSend`] requests made by
 /// the transaction kernel during execution. In particular, it responds to signature generation
 /// requests by forwarding the request to the contained [`TransactionAuthenticator`].
