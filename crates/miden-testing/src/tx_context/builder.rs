@@ -10,8 +10,8 @@ use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -81,9 +81,8 @@ pub struct TransactionContextBuilder {
 
 impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
-        let source_manager = default_source_manager_arc_dyn();
         Self {
-            source_manager,
+            source_manager: Arc::new(DefaultSourceManager::default()),
             account,
             account_seed: None,
             input_notes: Vec::new(),

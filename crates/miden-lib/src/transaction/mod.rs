@@ -3,10 +3,10 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
-#[cfg(any(feature = "testing", test))]
-use miden_objects::assembly::Library;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::{Assembler, KernelLibrary, default_source_manager_arc_dyn};
+use miden_objects::assembly::{Assembler, KernelLibrary};
+#[cfg(any(feature = "testing", test))]
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
@@ -154,7 +154,7 @@ impl TransactionKernel {
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
     /// Miden stdlib as well as with miden-lib.
     pub fn assembler() -> Assembler {
-        Self::assembler_with_source_manager(default_source_manager_arc_dyn())
+        Self::assembler_with_source_manager(Arc::new(DefaultSourceManager::default()))
     }
 
     /// Returns a new assembler instantiated with the transaction kernel and loaded with the

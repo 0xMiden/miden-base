@@ -55,8 +55,6 @@ pub use miden_crypto::word;
 pub use miden_crypto::word::{LexicographicWord, Word, WordError};
 
 pub mod assembly {
-    use alloc::sync::Arc;
-
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
     pub use miden_assembly::debuginfo::SourceManagerSync;
     pub use miden_assembly::{
@@ -76,11 +74,6 @@ pub mod assembly {
         diagnostics,
         mast,
     };
-
-    // TODO move to `DefaultSourceManager::arc_dyn_default()`
-    pub fn default_source_manager_arc_dyn() -> Arc<dyn SourceManagerSync> {
-        Arc::new(DefaultSourceManager::default())
-    }
 }
 
 pub mod crypto {

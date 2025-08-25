@@ -1,8 +1,9 @@
 use alloc::borrow::ToOwned;
+use alloc::sync::Arc;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::default_source_manager_arc_dyn;
+use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
 use miden_processor::{
     AdviceInputs,
     DefaultHost,
@@ -49,7 +50,7 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
-        let source_manager = default_source_manager_arc_dyn();
+        let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
         let assembler =
             TransactionKernel::with_kernel_library(source_manager.clone()).with_debug_mode(true);
 

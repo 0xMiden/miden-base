@@ -1,5 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
@@ -12,7 +13,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
-use miden_objects::assembly::default_source_manager_arc_dyn;
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
@@ -907,7 +908,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     let lock_timestamp = 2_000_000_000;
-    let source_manager = default_source_manager_arc_dyn();
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
         .source_manager(source_manager.clone())

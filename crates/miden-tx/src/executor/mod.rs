@@ -5,8 +5,8 @@ use alloc::vec::Vec;
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -104,7 +104,7 @@ where
         TransactionExecutor {
             data_store,
             authenticator: None,
-            source_manager: default_source_manager_arc_dyn(),
+            source_manager: Arc::new(DefaultSourceManager::default()),
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,

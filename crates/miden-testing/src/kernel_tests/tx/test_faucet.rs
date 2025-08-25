@@ -1,3 +1,5 @@
+use alloc::sync::Arc;
+
 use miden_lib::errors::tx_kernel_errors::{
     ERR_FAUCET_NEW_TOTAL_SUPPLY_WOULD_EXCEED_MAX_ASSET_AMOUNT,
     ERR_FAUCET_NON_FUNGIBLE_ASSET_ALREADY_ISSUED,
@@ -18,7 +20,7 @@ use miden_objects::account::{
     AccountType,
     StorageMap,
 };
-use miden_objects::assembly::default_source_manager_arc_dyn;
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -731,7 +733,7 @@ fn setup_non_faucet_account() -> anyhow::Result<Account> {
     let faucet_component = AccountComponent::compile(
         "export.::miden::faucet::mint
          export.::miden::faucet::burn",
-        TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn()),
+        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default())),
         vec![],
     )?
     .with_supported_type(AccountType::RegularAccountUpdatableCode);

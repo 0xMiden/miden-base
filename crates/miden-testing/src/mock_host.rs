@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountHeader, AccountVaultDelta};
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::{SourceManager, default_source_manager_arc_dyn};
+use miden_objects::assembly::{DefaultSourceManager, SourceManager};
 use miden_objects::{Felt, Word};
 use miden_processor::{
     AdviceInputs,
@@ -51,7 +51,7 @@ impl MockHost {
         Self {
             acct_procedure_index_map: account_procedure_index_map,
             mast_store,
-            source_manager: default_source_manager_arc_dyn(),
+            source_manager: Arc::new(DefaultSourceManager::default()),
         }
     }
 

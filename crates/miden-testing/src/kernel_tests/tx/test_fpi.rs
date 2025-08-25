@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use alloc::vec;
 use alloc::vec::Vec;
 
@@ -32,7 +33,7 @@ use miden_objects::account::{
     PartialAccount,
     StorageSlot,
 };
-use miden_objects::assembly::default_source_manager_arc_dyn;
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::AccountInputs;
 use miden_processor::{AdviceInputs, Felt};
@@ -77,7 +78,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
 
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         storage_slots.clone(),
     )?
     .with_supports_all_types();
@@ -323,14 +324,14 @@ fn test_fpi_memory_two_accounts() -> anyhow::Result<()> {
 
     let foreign_account_component_1 = AccountComponent::compile(
         foreign_account_code_source_1,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         storage_slots_1.clone(),
     )?
     .with_supports_all_types();
 
     let foreign_account_component_2 = AccountComponent::compile(
         foreign_account_code_source_2,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         storage_slots_2.clone(),
     )?
     .with_supports_all_types();
@@ -530,7 +531,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
 
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         storage_slots,
     )?
     .with_supports_all_types();
@@ -690,7 +691,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let second_foreign_account_component = AccountComponent::compile(
         second_foreign_account_code_source,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         storage_slots,
     )?
     .with_supports_all_types();
@@ -748,7 +749,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let first_foreign_account_component = AccountComponent::compile(
         first_foreign_account_code_source,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         storage_slots,
     )?
     .with_supports_all_types();
@@ -887,7 +888,7 @@ fn test_nested_fpi_stack_overflow() {
             let storage_slots = vec![AccountStorage::mock_item_0().slot];
             let last_foreign_account_component = AccountComponent::compile(
                 last_foreign_account_code_source,
-                TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+                TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
                 storage_slots,
             )
             .unwrap()
@@ -934,7 +935,7 @@ fn test_nested_fpi_stack_overflow() {
 
                 let foreign_account_component = AccountComponent::compile(
                     foreign_account_code_source,
-                    TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+                    TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
                     vec![],
                 )
                 .unwrap()
@@ -1051,7 +1052,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
 
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         vec![],
     )?
     .with_supports_all_types();
@@ -1146,7 +1147,7 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
-        TransactionKernel::with_kernel_library(default_source_manager_arc_dyn()),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         vec![AccountStorage::mock_item_0().slot],
     )?
     .with_supports_all_types();

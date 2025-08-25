@@ -7,7 +7,6 @@ use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountId};
-use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::{
@@ -129,13 +128,11 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
-    let source_manager = default_source_manager_arc_dyn();
     let failing_note_1 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.1 drop push.0 div end")
-    .source_manager(source_manager.clone())
     .dynamically_linked_libraries([TransactionKernel::library()])
     .build()?;
 
@@ -144,7 +141,6 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.2 drop push.0 div end")
-    .source_manager(source_manager.clone())
     .dynamically_linked_libraries([TransactionKernel::library()])
     .build()?;
 

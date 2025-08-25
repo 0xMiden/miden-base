@@ -35,7 +35,7 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::default_source_manager_arc_dyn;
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
@@ -955,7 +955,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
             acct_procedure_index_map,
             None,
             tx_inputs.block_header().fee_parameters(),
-            default_source_manager_arc_dyn(),
+            Arc::new(DefaultSourceManager::default()),
         )
     };
     let advice_inputs = advice_inputs.into_advice_inputs();
@@ -1381,7 +1381,7 @@ async fn execute_tx_view_script() -> anyhow::Result<()> {
     ";
 
     let source = NamedSource::new("test::module_1", test_module_source);
-    let source_manager = default_source_manager_arc_dyn();
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone());
 
     let library = assembler.assemble_library([source]).unwrap();

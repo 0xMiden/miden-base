@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
@@ -30,7 +31,7 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
-use miden_objects::assembly::{Library, default_source_manager_arc_dyn};
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -595,7 +596,8 @@ fn test_set_map_item() -> miette::Result<()> {
 #[test]
 fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
-    let assembler = TransactionKernel::with_kernel_library(default_source_manager_arc_dyn());
+    let assembler =
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()));
 
     // The following code will execute the following logic that will be asserted during the test:
     //
@@ -1135,7 +1137,8 @@ fn test_was_procedure_called() -> miette::Result<()> {
         "#;
 
     // Compile the transaction script using the testing assembler with mock account
-    let assembler = TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn());
+    let assembler =
+        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
     let tx_script = TransactionScript::new(
         assembler
             .assemble_program(tx_script_code)
@@ -1182,7 +1185,8 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler = TransactionKernel::with_mock_libraries(default_source_manager_arc_dyn());
+    let mut assembler =
+        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
     assembler.link_static_library(&external_library)?;
 
     let account_component_source =
