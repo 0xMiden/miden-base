@@ -96,7 +96,7 @@ where
 
     /// Creates a new [TransactionExecutor] instance with the specified [DataStore].
     ///
-    /// The created executor will have not authenticator our source manager set, and tracing and
+    /// The created executor will not have the authenticator or source manager set, and tracing and
     /// debug mode will be turned off.
     pub fn new(data_store: &'store STORE) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
