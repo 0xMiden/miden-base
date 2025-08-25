@@ -42,9 +42,6 @@ const.OUTPUT_VAULT_ROOT_PTR=12
 # made to the account storage since the last re-computation, and 0 otherwise.
 const.NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR=21
 
-# The memory address at which the native account's new code commitment is stored.
-const.NEW_CODE_ROOT_PTR=16
-
 # The memory address at which the absolute expiration block number is stored.
 const.TX_EXPIRATION_BLOCK_NUM_PTR=20
 
@@ -527,27 +524,6 @@ end
 #! - INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT is the initial storage commitment of the native account.
 export.get_init_account_storage_commitment
     padw mem_loadw.INIT_NATIVE_ACCOUNT_STORAGE_COMMITMENT_PTR
-end
-
-#! Returns the code commitment of the native account at the beginning of the transaction.
-#!
-#! This procedure returns the code commitment stored in the native account data block because the
-#! account's code cannot be changed during the user code execution. Only in the epilogue the code
-#! commitment can be updated. So, the initial code commitment will be equal to the native account
-#! code commitment whenever it is called by a user.
-#!
-#! For the same reason this procedure doesn't have a dedicated setter, `set_acct_code_commitment`
-#! procedure should be used as a setter instead.
-#!
-#! Inputs:  []
-#! Outputs: [INIT_NATIVE_ACCOUNT_CODE_COMMITMENT]
-#!
-#! Where:
-#! - INIT_NATIVE_ACCOUNT_CODE_COMMITMENT is the initial code commitment of the native account.
-export.get_init_account_code_commitment
-    padw
-    exec.get_native_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
-    mem_loadw
 end
 
 #! Returns the input notes commitment.
