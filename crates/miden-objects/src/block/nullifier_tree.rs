@@ -1,9 +1,9 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use vm_core::EMPTY_WORD;
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_processor::DeserializationError;
+use miden_core::EMPTY_WORD;
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_processor::DeserializationError;
 
 use crate::Word;
 use crate::block::{BlockNumber, NullifierWitness};

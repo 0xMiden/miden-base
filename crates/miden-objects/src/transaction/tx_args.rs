@@ -322,8 +322,8 @@ impl Deserializable for TransactionScript {
 
 #[cfg(test)]
 mod tests {
-    use vm_core::AdviceMap;
-    use vm_core::utils::{Deserializable, Serializable};
+    use miden_core::AdviceMap;
+    use miden_core::utils::{Deserializable, Serializable};
 
     use crate::transaction::TransactionArgs;
 

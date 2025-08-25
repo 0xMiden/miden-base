@@ -376,7 +376,7 @@ impl Deserializable for FeeParameters {
 #[cfg(test)]
 mod tests {
     use assert_matches::assert_matches;
-    use vm_core::Word;
+    use miden_core::Word;
     use winter_rand_utils::rand_value;
 
     use super::*;

@@ -466,8 +466,8 @@ fn validate_nonce(
 mod tests {
 
     use assert_matches::assert_matches;
-    use vm_core::utils::Serializable;
-    use vm_core::{Felt, FieldElement};
+    use miden_core::utils::Serializable;
+    use miden_core::{Felt, FieldElement};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::account::delta::AccountUpdateDetails;

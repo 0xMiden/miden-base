@@ -2,7 +2,7 @@ use alloc::vec::Vec;
 use core::cmp::Ordering;
 
 use miden_objects::{Felt, LexicographicWord, Word, ZERO};
-use vm_processor::{AdviceMutation, ContextId, EventError, ProcessState};
+use miden_processor::{AdviceMutation, ContextId, EventError, ProcessState};
 
 // LINK MAP
 // ================================================================================================
@@ -54,9 +54,10 @@ impl<'process> LinkMap<'process> {
 
         let (set_op, entry_ptr) = link_map.compute_set_operation(LexicographicWord::from(map_key));
 
-        Ok(vec![AdviceMutation::ExtendStack {
-            values: vec![Felt::from(set_op as u8), Felt::from(entry_ptr)],
-        }])
+        Ok(vec![AdviceMutation::extend_stack([
+            Felt::from(set_op as u8),
+            Felt::from(entry_ptr),
+        ])])
     }
 
     /// Handles a `LINK_MAP_GET_EVENT` emitted from a VM.
@@ -75,9 +76,10 @@ impl<'process> LinkMap<'process> {
         let link_map = LinkMap::new(map_ptr, process);
         let (get_op, entry_ptr) = link_map.compute_get_operation(LexicographicWord::from(map_key));
 
-        Ok(vec![AdviceMutation::ExtendStack {
-            values: vec![Felt::from(get_op as u8), Felt::from(entry_ptr)],
-        }])
+        Ok(vec![AdviceMutation::extend_stack([
+            Felt::from(get_op as u8),
+            Felt::from(entry_ptr),
+        ])])
     }
 
     /// Returns `true` if the map is empty, `false` otherwise.

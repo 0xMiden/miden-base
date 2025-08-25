@@ -264,13 +264,13 @@ impl From<NoAuth> for AccountComponent {
 ///
 /// This component supports all account types.
 #[derive(Debug)]
-pub struct AuthMultisigRpoFalcon512 {
+pub struct AuthRpoFalcon512Multisig {
     threshold: u32,
     approvers: Vec<PublicKey>,
 }
 
-impl AuthMultisigRpoFalcon512 {
-    /// Creates a new [`AuthMultisigRpoFalcon512`] component with the given `threshold` and
+impl AuthRpoFalcon512Multisig {
+    /// Creates a new [`AuthRpoFalcon512Multisig`] component with the given `threshold` and
     /// list of approver public keys.
     ///
     /// # Errors
@@ -290,8 +290,8 @@ impl AuthMultisigRpoFalcon512 {
     }
 }
 
-impl From<AuthMultisigRpoFalcon512> for AccountComponent {
-    fn from(multisig: AuthMultisigRpoFalcon512) -> Self {
+impl From<AuthRpoFalcon512Multisig> for AccountComponent {
+    fn from(multisig: AuthRpoFalcon512Multisig) -> Self {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: [threshold, num_approvers, 0, 0]
@@ -502,7 +502,7 @@ mod tests {
         let threshold = 2u32;
 
         // Create multisig component
-        let multisig_component = AuthMultisigRpoFalcon512::new(threshold, approvers.clone())
+        let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
             .expect("multisig component creation failed");
 
         // Build account with multisig component
@@ -533,7 +533,7 @@ mod tests {
         let approvers = vec![pub_key];
         let threshold = 1u32;
 
-        let multisig_component = AuthMultisigRpoFalcon512::new(threshold, approvers.clone())
+        let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
             .expect("multisig component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
@@ -560,11 +560,11 @@ mod tests {
         let approvers = vec![pub_key];
 
         // Test threshold = 0 (should fail)
-        let result = AuthMultisigRpoFalcon512::new(0, approvers.clone());
+        let result = AuthRpoFalcon512Multisig::new(0, approvers.clone());
         assert!(result.unwrap_err().to_string().contains("threshold must be at least 1"));
 
         // Test threshold > number of approvers (should fail)
-        let result = AuthMultisigRpoFalcon512::new(2, approvers);
+        let result = AuthRpoFalcon512Multisig::new(2, approvers);
         assert!(
             result
                 .unwrap_err()

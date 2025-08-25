@@ -18,11 +18,11 @@ use miden_objects::transaction::{
     TransactionInputs,
     TransactionScript,
 };
-use miden_objects::{MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
-use miden_prover::StackOutputs;
-use vm_processor::fast::FastProcessor;
-use vm_processor::{AdviceInputs, ExecutionError, StackInputs};
-pub use vm_processor::{ExecutionOptions, Felt, MastForestStore};
+use miden_objects::vm::StackOutputs;
+use miden_objects::{Felt, MAX_TX_EXECUTION_CYCLES, MIN_TX_EXECUTION_CYCLES};
+use miden_processor::fast::FastProcessor;
+use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
+pub use miden_processor::{ExecutionOptions, MastForestStore};
 
 use super::TransactionExecutorError;
 use crate::auth::{TransactionAuthenticator, UnreachableAuth};

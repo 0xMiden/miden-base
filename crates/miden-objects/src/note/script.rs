@@ -179,8 +179,8 @@ impl Deserializable for NoteScript {
 // ================================================================================================
 
 impl PrettyPrint for NoteScript {
-    fn render(&self) -> vm_core::prettier::Document {
-        use vm_core::prettier::*;
+    fn render(&self) -> miden_core::prettier::Document {
+        use miden_core::prettier::*;
         let entrypoint = self.mast[self.entrypoint].to_pretty_print(&self.mast);
 
         indent(4, const_text("begin") + nl() + entrypoint.render()) + nl() + const_text("end")

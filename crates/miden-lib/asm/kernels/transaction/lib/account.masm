@@ -194,22 +194,21 @@ end
 
 #! Computes the account commitment of the current account.
 #!
+#! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire 
+#! account. Assuming that the storage commitment is current, computing account commitment is 
+#! relatively cheap — essentially is consists of just 2 permutations of the hash function and takes
+#! relatively small number of cycles, so it would not be worth adding a separate caching mechanism 
+#! for this.
+#!
 #! Inputs:  []
 #! Outputs: [ACCOUNT_COMMITMENT]
 #!
 #! Where:
 #! - ACCOUNT_COMMITMENT is the commitment of the account data.
 export.compute_current_commitment
-    exec.memory::is_native_account
-    # => [is_native_account]
-
-    # first compute the latest storage commitment
-    # since foreign accounts do not change during transaction execution, this step can be skipped
-    # for them
-    if.true
-        exec.compute_current_storage_commitment
-        # => []
-    end
+    # if outdated, recompute the storage commitment and store it in the memory
+    exec.refresh_storage_commitment
+    # => []
 
     # prepare the stack for computing the account commitment
     exec.memory::get_current_account_data_ptr padw padw padw
@@ -313,15 +312,6 @@ export.memory::get_init_account_vault_root->get_initial_vault_root
 #! - INIT_ACCOUNT_STORAGE_COMMITMENT is the initial account storage commitment.
 export.memory::get_init_account_storage_commitment->get_initial_storage_commitment
 
-#! Returns the code commitment of the native account at the beginning of the transaction.
-#!
-#! Inputs:  []
-#! Outputs: [INIT_ACCOUNT_CODE_COMMITMENT]
-#!
-#! Where:
-#! - INIT_ACCOUNT_CODE_COMMITMENT is the initial account code commitment.
-export.memory::get_init_account_code_commitment->get_initial_code_commitment
-
 #! Gets the code commitment of the current account.
 #!
 #! Inputs:  []
@@ -329,21 +319,20 @@ export.memory::get_init_account_code_commitment->get_initial_code_commitment
 #!
 #! Where:
 #! - CODE_COMMITMENT is the commitment of the account code.
-export.get_code_commitment
-    # get the code commitment
-    exec.memory::get_acct_code_commitment
-    # => [CODE_COMMITMENT]
-end
+export.memory::get_acct_code_commitment->get_code_commitment
 
-#! Gets the storage commitment of the current account.
+#! Computes the storage commitment of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [STORAGE_COMMITMENT]
 #!
 #! Where:
-#! - STORAGE_COMMITMENT is the commitment of the account storage.
-export.get_storage_commitment
-    # get the storage commitment
+#! - STORAGE_COMMITMENT is the current commitment of the account storage.
+export.compute_storage_commitment
+    # if outdated, recompute the storage commitment and store it in the memory
+    exec.refresh_storage_commitment
+
+    # return the storage commitment
     exec.memory::get_acct_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
@@ -1096,6 +1085,11 @@ proc.set_item_raw
     swap mul.8 add mem_storew
     # => [NEW_VALUE, OLD_VALUE]
 
+    # update the storage commitment dirty flag, indicating that the commitment is outdated
+    push.1
+    exec.memory::set_native_account_storage_commitment_dirty_flag
+    # => [NEW_VALUE, OLD_VALUE]
+
     # drop value
     dropw
     # => [OLD_VALUE]
@@ -1260,22 +1254,30 @@ proc.hash_map_key
     # => [HASHED_KEY]
 end
 
-#! Computes the account storage commitment by hashing the storage slots and updates the storage
-#! commitment in memory to the newly computed storage commitment.
+#! Makes the account storage commitment up-to-date.
+#!
+#! Notice that the account storage commitment got updated only if it is outdated: if the account 
+#! storage changes, its commitment will be recomputed by hashing the storage slots. Then this newly
+#! computed storage commitment updates the storage commitment in memory. If the storage commitment
+#! is up-to-date, this procedure does nothing. 
 #!
 #! Inputs:  []
 #! Outputs: []
-proc.compute_current_storage_commitment
-    # get number of storage slots
-    exec.memory::get_num_storage_slots
-    # => [num_storage_slots]
+proc.refresh_storage_commitment
+    # First we should determine whether the storage commitment should be recomputed. We should do so
+    # if the current account is native and the storage commitment is outdated (the dirty flag equals
+    # 1). Otherwise the commitment value is guaranteed to be up-to-date.
+    exec.memory::get_recompute_storage_commitment_flag
+    # => [should_recompute_storage_commitment]
 
-    # check if there are storage slots
-    dup neq.0
-    # => [storage_slots_is_not_empty, num_storage_slots]
-
-    # only loop and hash over storage if there are storage slots
     if.true
+        # dirty flag being equal 1 ensures that we have at least one storage slot, so we have to 
+        # hash the storage anyway
+
+        # get number of storage slots
+        exec.memory::get_num_storage_slots
+        # => [num_storage_slots]
+
         # setup start and end ptr
         mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
         # => [start_ptr, end_ptr]
@@ -1299,9 +1301,10 @@ proc.compute_current_storage_commitment
         # set new account storage commitment
         exec.memory::set_acct_storage_commitment dropw
         # => []
-    else
-        # drop number of storage slots
-        drop
+
+        # update the storage commitment dirty flag, indicating that the commitment is up-to-date
+        push.0 
+        exec.memory::set_native_account_storage_commitment_dirty_flag
         # => []
     end
 end

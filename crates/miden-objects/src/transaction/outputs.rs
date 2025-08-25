@@ -334,8 +334,8 @@ fn build_output_notes_commitment(notes: &[OutputNote]) -> Word {
 #[cfg(test)]
 mod output_notes_tests {
     use anyhow::Context;
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_assembly::Assembler;
 
     use super::OutputNotes;
     use crate::TransactionOutputError;

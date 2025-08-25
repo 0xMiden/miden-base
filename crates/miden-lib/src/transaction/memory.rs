@@ -16,7 +16,7 @@ pub type StorageSlot = u8;
 //
 // | Section            | Start address, pointer (word pointer) | End address, pointer (word pointer) | Comment                                    |
 // | ------------------ | :-----------------------------------: | :---------------------------------: | ------------------------------------------ |
-// | Bookkeeping        | 0 (0)                                 | 287 (71)                            |                                            |
+// | Bookkeeping        | 0 (0)                                 | 92 (23)                             |                                            |
 // | Global inputs      | 400 (100)                             | 439 (109)                           |                                            |
 // | Block header       | 800 (200)                             | 843 (210)                           |                                            |
 // | Partial blockchain | 1_200 (300)                           | 1_331? (332?)                       |                                            |
@@ -88,8 +88,12 @@ pub const INPUT_VAULT_ROOT_PTR: MemoryAddress = 12;
 /// The memory address at which the output vault root is stored.
 pub const OUTPUT_VAULT_ROOT_PTR: MemoryAddress = 16;
 
-/// The memory address at which the native account's new code commitment is stored.
-pub const NEW_CODE_ROOT_PTR: MemoryAddress = 20;
+/// The memory address at which the dirty flag of the storage commitment of the native account is
+/// stored.
+///
+/// This binary flag specifies whether the commitment is outdated: it holds 1 if some changes were
+/// made to the account storage since the last re-computation, and 0 otherwise.
+pub const NATIVE_ACCT_STORAGE_COMMITMENT_DIRTY_FLAG_PTR: MemoryAddress = 20;
 
 /// The memory address at which the transaction expiration block number is stored.
 pub const TX_EXPIRATION_BLOCK_NUM_PTR: MemoryAddress = 24;
@@ -105,7 +109,7 @@ pub const TX_EXPIRATION_BLOCK_NUM_PTR: MemoryAddress = 24;
 /// ┌───────────────┬────────────────┬───────────────────┬─────┬────────────────────┐
 /// │ STACK TOP PTR │ NATIVE ACCOUNT │ FOREIGN ACCOUNT 1 │ ... │ FOREIGN ACCOUNT 63 │
 /// ├───────────────┼────────────────┼───────────────────┼─────┼────────────────────┤
-///        28               29                30                         92
+///        28               29                34                         92
 /// ```
 pub const ACCOUNT_STACK_TOP_PTR: MemoryAddress = 28;
 
@@ -132,14 +136,6 @@ pub const INIT_NATIVE_ACCT_VAULT_ROOT_PTR: MemoryAddress = 416;
 
 /// The memory address at which the initial storage commitment of the native account is stored.
 pub const INIT_NATIVE_ACCT_STORAGE_COMMITMENT_PTR: MemoryAddress = 420;
-
-/// The memory address at which the initial code commitment of the native account is stored.
-///
-/// It points to the code commitment stored in the native account data block because the account's
-/// code cannot be changed during the user code execution. Only in the epilogue the code commitment
-/// can be updated. So, the initial code commitment will be equal to the native account code
-/// commitment whenever it is called by a user.
-pub const INIT_NATIVE_ACCT_CODE_COMMITMENT_PTR: MemoryAddress = NATIVE_ACCT_CODE_COMMITMENT_PTR;
 
 /// The memory address at which the input notes commitment is stored.
 pub const INPUT_NOTES_COMMITMENT_PTR: MemoryAddress = 424;

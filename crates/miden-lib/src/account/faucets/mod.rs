@@ -17,7 +17,11 @@ use thiserror::Error;
 
 use super::AuthScheme;
 use super::interface::{AccountComponentInterface, AccountInterface};
-use crate::account::auth::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
+use crate::account::auth::{
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512AclConfig,
+    AuthRpoFalcon512Multisig,
+};
 use crate::account::components::basic_fungible_faucet_library;
 use crate::transaction::memory::FAUCET_STORAGE_DATA_SLOT;
 
@@ -289,9 +293,20 @@ pub fn create_basic_fungible_faucet(
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
+        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
+            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
+                .map_err(FungibleFaucetError::AccountError)?
+                .into()
+        },
         AuthScheme::NoAuth => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
+            ));
+        },
+        AuthScheme::Unknown => {
+            return Err(FungibleFaucetError::UnsupportedAuthScheme(
+                "basic fungible faucets cannot be created with Unknown authentication scheme"
+                    .into(),
             ));
         },
     };

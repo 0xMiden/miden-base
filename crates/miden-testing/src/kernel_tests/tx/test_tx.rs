@@ -76,6 +76,9 @@ use miden_objects::transaction::{
     TransactionSummary,
 };
 use miden_objects::{FieldElement, Hasher, Word};
+use miden_processor::crypto::RpoRandomCoin;
+use miden_processor::fast::FastProcessor;
+use miden_processor::{AdviceInputs, StackInputs};
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
     AccountProcedureIndexMap,
@@ -85,9 +88,6 @@ use miden_tx::{
     TransactionExecutorHost,
     TransactionMastStore,
 };
-use vm_processor::crypto::RpoRandomCoin;
-use vm_processor::fast::FastProcessor;
-use vm_processor::{AdviceInputs, StackInputs};
 
 use super::{Felt, ONE, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
@@ -1389,6 +1389,10 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
     let pub_key = match account_interface.auth().first().unwrap() {
         AuthScheme::RpoFalcon512 { pub_key } => pub_key,
         AuthScheme::NoAuth => panic!("Expected RpoFalcon512 auth scheme, got NoAuth"),
+        AuthScheme::RpoFalcon512Multisig { .. } => {
+            panic!("Expected RpoFalcon512 auth scheme, got Multisig")
+        },
+        AuthScheme::Unknown => panic!("Expected RpoFalcon512 auth scheme, got Unknown"),
     };
 
     // This is in an internal detail of the tx executor host, but this is the easiest way to check

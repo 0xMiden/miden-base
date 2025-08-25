@@ -16,9 +16,9 @@ use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
+use miden_processor::ExecutionError;
 use miden_testing::{Auth, MockChain};
 use miden_tx::TransactionExecutorError;
-use vm_processor::ExecutionError;
 
 // CONSTANTS
 // ================================================================================================

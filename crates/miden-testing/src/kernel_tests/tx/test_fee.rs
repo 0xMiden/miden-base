@@ -5,8 +5,8 @@ use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::{self, Felt, Word};
+use miden_processor::ExecutionError;
 use miden_tx::TransactionExecutorError;
-use vm_processor::ExecutionError;
 
 use crate::{Auth, MockChain};
 

@@ -3,9 +3,9 @@ use alloc::string::String;
 use alloc::vec::Vec;
 use core::ops::Range;
 
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_core::{Felt, FieldElement};
-use vm_processor::DeserializationError;
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_core::{Felt, FieldElement};
+use miden_processor::DeserializationError;
 
 mod entry_content;
 pub use entry_content::*;
@@ -377,10 +377,10 @@ mod tests {
     use core::error::Error;
     use core::panic;
 
-    use assembly::Assembler;
+    use miden_assembly::Assembler;
+    use miden_core::utils::{Deserializable, Serializable};
+    use miden_core::{EMPTY_WORD, Felt, Word};
     use semver::Version;
-    use vm_core::utils::{Deserializable, Serializable};
-    use vm_core::{EMPTY_WORD, Felt, Word};
 
     use crate::account::component::FieldIdentifier;
     use crate::account::component::template::storage::placeholder::TemplateType;

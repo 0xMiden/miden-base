@@ -15,6 +15,8 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::testing::note::NoteBuilder;
+use miden_processor::ExecutionError;
+use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::{
     FailedNote,
     NoteConsumptionChecker,
@@ -24,8 +26,6 @@ use miden_tx::{
 };
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::ExecutionError;
-use vm_processor::crypto::RpoRandomCoin;
 
 use crate::utils::create_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
@@ -52,7 +52,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
         &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
-    let notes = vec![p2id_note, p2ide_note];
+    let notes = vec![p2ide_note, p2id_note];
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(notes.clone())
         .build()?;
@@ -69,13 +69,14 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
         .check_notes_consumability(target_account_id, block_ref, input_notes, tx_args)
         .await?;
 
-    assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. }=> {
-    assert_eq!(successful.len(), notes.len());
-    successful.iter().zip(notes.iter()).for_each(|(success, note)| {
-        assert_eq!(success, note);
+    assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. } => {
+        assert_eq!(successful.len(), notes.len());
+        successful.iter().zip(notes.iter()).for_each(|(success, note)| {
+            assert_eq!(success, note);
+        });
+        assert!(failed.is_empty());
     });
-    assert!(failed.is_empty());
-    });
+
     Ok(())
 }
 

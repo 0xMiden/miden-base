@@ -1,8 +1,8 @@
 use alloc::collections::{BTreeMap, BTreeSet};
 
+use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
 use miden_crypto::merkle::{InnerNodeInfo, SmtLeaf};
-use vm_core::utils::{Deserializable, Serializable};
 
 use super::{AccountStorage, AccountStorageHeader, StorageSlot};
 use crate::AccountError;
@@ -101,16 +101,16 @@ impl From<&AccountStorage> for PartialStorage {
 }
 
 impl Serializable for PartialStorage {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.header);
         target.write(&self.maps);
     }
 }
 
 impl Deserializable for PartialStorage {
-    fn read_from<R: vm_core::utils::ByteReader>(
+    fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
-    ) -> Result<Self, vm_processor::DeserializationError> {
+    ) -> Result<Self, miden_processor::DeserializationError> {
         let header: AccountStorageHeader = source.read()?;
         let map_smts: BTreeMap<Word, PartialStorageMap> = source.read()?;
 
@@ -123,8 +123,8 @@ impl Deserializable for PartialStorage {
 #[cfg(test)]
 mod tests {
     use anyhow::Context;
+    use miden_core::Word;
     use miden_crypto::merkle::PartialSmt;
-    use vm_core::Word;
 
     use crate::account::{
         AccountStorage,

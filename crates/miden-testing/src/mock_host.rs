@@ -9,8 +9,7 @@ use miden_objects::account::{AccountHeader, AccountVaultDelta};
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{SourceManager, default_source_manager_arc_dyn};
 use miden_objects::{Felt, Word};
-use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
-use vm_processor::{
+use miden_processor::{
     AdviceInputs,
     AdviceMutation,
     BaseHost,
@@ -21,6 +20,7 @@ use vm_processor::{
     ProcessState,
     SyncHost,
 };
+use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 
 // MOCK HOST
 // ================================================================================================
@@ -37,7 +37,7 @@ pub struct MockHost {
 
 impl MockHost {
     /// Returns a new [MockHost] instance with the provided
-    /// [AdviceInputs](vm_processor::AdviceInputs).
+    /// [AdviceInputs](miden_processor::AdviceInputs).
     pub fn new(
         account: AccountHeader,
         advice_inputs: &AdviceInputs,
@@ -85,7 +85,7 @@ impl MockHost {
         process: &ProcessState,
     ) -> Result<Vec<AdviceMutation>, EventError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process).map_err(Box::new)?;
-        Ok(vec![AdviceMutation::ExtendStack { values: vec![Felt::from(proc_idx)] }])
+        Ok(vec![AdviceMutation::extend_stack([Felt::from(proc_idx)])])
     }
 }
 

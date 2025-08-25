@@ -2,11 +2,11 @@ use alloc::string::{String, ToString};
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
-use assembly::{Assembler, DefaultSourceManager};
 use rand::Rng;
 
 use crate::account::AccountId;
+use crate::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
+use crate::assembly::{Assembler, DefaultSourceManager};
 use crate::asset::Asset;
 use crate::note::{
     Note,

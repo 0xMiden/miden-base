@@ -134,3 +134,68 @@ That means if a `Note` is private and the operator stores only the note's hash, 
 <p style="text-align: center;">
     <img src="img/note/nullifier.png" style="width:70%;" alt="Nullifier diagram"/>
 </p>
+
+## Standard Note Types
+
+The miden-base repository provides several standard note scripts that implement common use cases for asset transfers and interactions. These pre-built note types offer secure, tested implementations for typical scenarios.
+
+### P2ID (Pay-to-ID)
+
+The P2ID note script implements a simple pay-to-account-ID pattern. It adds all assets from the note to a specific target account.
+
+**Key characteristics:**
+- **Purpose:** Direct asset transfer to a specific account ID
+- **Inputs:** Requires exactly 2 note inputs containing the target account ID
+- **Validation:** Ensures the consuming account's ID matches the target account ID specified in the note
+- **Requirements:** Target account must expose the `miden::contracts::wallets::basic::receive_asset` procedure
+
+**Use case:** Simple, direct payments where you want to send assets to a known account ID.
+
+### P2IDE (Pay-to-ID Extended)
+
+The P2IDE note script extends P2ID with additional features including time-locking and reclaim functionality.
+
+**Key characteristics:**
+- **Purpose:** Advanced asset transfer with time-lock and reclaim capabilities
+- **Inputs:** Requires exactly 4 note inputs:
+  - Target account ID
+  - Reclaim block height (when sender can reclaim)
+  - Time-lock block height (when target can consume)
+- **Time-lock:** Note cannot be consumed until the specified block height is reached
+- **Reclaim:** Original sender can reclaim the note after the reclaim block height if not consumed by target
+- **Validation:** Complex logic to handle both target consumption and sender reclaim scenarios
+- **Requirements:** Account must expose the `miden::contracts::wallets::basic::receive_asset` procedure
+
+**Use cases:**
+- Escrow-like payments with time constraints
+- Conditional payments that can be reclaimed if not consumed
+- Time-delayed transfers
+
+### SWAP
+
+The SWAP note script implements atomic asset swapping functionality.
+
+**Key characteristics:**
+- **Purpose:** Atomic asset exchange between two parties
+- **Inputs:** Requires exactly 12 note inputs specifying:
+  - Requested asset details
+  - Payback note recipient information
+  - Note creation parameters (execution hint, type, aux data, tag)
+- **Assets:** Must contain exactly 1 asset to be swapped
+- **Mechanism:**
+  1. Creates a payback note containing the requested asset for the original note issuer
+  2. Adds the note's asset to the consuming account's vault
+- **Requirements:** Account must expose both:
+  - `miden::contracts::wallets::basic::receive_asset` procedure
+  - `miden::contracts::wallets::basic::move_asset_to_note` procedure
+
+**Use case:** Decentralized asset trading where two parties want to exchange different assets atomically.
+
+### Choosing the Right Note Type
+
+- **Use P2ID** for simple, direct payments to known accounts
+- **Use P2IDE** when you need time-locks, escrow functionality, or reclaim capabilities
+- **Use SWAP** for atomic asset exchanges between parties
+- **Create custom scripts** for specialized use cases not covered by standard types
+
+These standard note types provide a foundation for common operations while maintaining the flexibility to create custom note scripts for specialized requirements.

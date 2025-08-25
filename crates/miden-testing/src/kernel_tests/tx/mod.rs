@@ -22,7 +22,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::testing::storage::prepare_assets;
 use miden_objects::vm::StackInputs;
 use miden_objects::{Felt, Hasher, ONE, Word, ZERO};
-use vm_processor::{ContextId, Process};
+use miden_processor::{ContextId, Process};
 
 use crate::MockChain;
 

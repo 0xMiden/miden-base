@@ -35,8 +35,8 @@ use miden_objects::testing::constants::{
 };
 use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{OutputNote, OutputNotes};
+use miden_processor::{Felt, ONE};
 use rand::rng;
-use vm_processor::{Felt, ONE};
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ProcessMemoryExt;

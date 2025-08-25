@@ -1,9 +1,8 @@
 use alloc::borrow::ToOwned;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{SourceManager, default_source_manager_arc_dyn};
-use vm_processor::{
+use miden_objects::assembly::{debuginfo::{SourceLanguage, Uri}, default_source_manager_arc_dyn};
+use miden_processor::{
     AdviceInputs,
     DefaultHost,
     ExecutionError,
