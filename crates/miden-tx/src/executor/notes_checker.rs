@@ -21,12 +21,12 @@ use crate::{DataStore, NoteExecutionError, TransactionExecutorError};
 #[non_exhaustive]
 pub struct FailedNote {
     pub note: Note,
-    pub error: TransactionExecutorError,
+    pub error: Option<TransactionExecutorError>,
 }
 
 impl FailedNote {
     /// Constructs a new `FailedNote`.
-    pub fn new(note: Note, error: TransactionExecutorError) -> Self {
+    pub fn new(note: Note, error: Option<TransactionExecutorError>) -> Self {
         Self { note, error }
     }
 }
@@ -151,7 +151,7 @@ where
                 Err(NoteExecutionError::NoteExecutionFailed { failed_note_index, error }) => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
-                    failed_notes.push(FailedNote::new(failed_note, error));
+                    failed_notes.push(FailedNote::new(failed_note, Some(error)));
 
                     // End if there are no more candidates.
                     if candidate_notes.is_empty() {
@@ -247,12 +247,7 @@ where
             let newly_failed: Vec<_> = candidate_notes
                 .into_iter()
                 .filter(|input_note| !successful_note_ids.contains(&input_note.note().id()))
-                .map(|input_note| {
-                    FailedNote::new(
-                        input_note.into_note(),
-                        TransactionExecutorError::DiscardedDuringRetry,
-                    )
-                })
+                .map(|input_note| FailedNote::new(input_note.into_note(), None))
                 .collect();
             failed_notes.extend(newly_failed);
 

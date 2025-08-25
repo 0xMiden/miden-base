@@ -204,8 +204,8 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                     failed.first().expect("first failed notes should exist"),
                     FailedNote {
                         note,
-                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. }),
+                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. })),
                         ..
                     } => {
                         assert_eq!(
@@ -219,8 +219,8 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                     failed.get(1).expect("second failed note should exist"),
                     FailedNote {
                         note,
-                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. }),
+                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. })),
                         ..
                     } => {
                         assert_eq!(
