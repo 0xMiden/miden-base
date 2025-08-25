@@ -78,12 +78,6 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
-    ///
-    /// # Note
-    ///
-    /// The `Assembler` passed _must_ use the same `SourceManager` as passed to
-    /// `TransactionContext`, otherwise errors will only be available in a truncated
-    /// form. See [issue #1779 in miden-base](<https://github.com/0xMiden/miden-base/issues/1779>).
     pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
