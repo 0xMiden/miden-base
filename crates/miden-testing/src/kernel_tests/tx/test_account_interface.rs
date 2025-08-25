@@ -136,7 +136,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     )
     .code("begin push.1 drop push.0 div end")
     .source_manager(source_manager.clone())
-    .dynamically_linked_libraries([TransactionKernel::kernel_as_library()])
+    .dynamically_linked_libraries([TransactionKernel::library()])
     .build()?;
 
     let failing_note_2 = NoteBuilder::new(
@@ -145,7 +145,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     )
     .code("begin push.2 drop push.0 div end")
     .source_manager(source_manager.clone())
-    .dynamically_linked_libraries([TransactionKernel::kernel_as_library()])
+    .dynamically_linked_libraries([TransactionKernel::library()])
     .build()?;
 
     let successful_note_1 = create_p2id_note(

@@ -81,7 +81,7 @@ impl CodeExecutor<DefaultHost> {
     pub fn with_default_host() -> Self {
         let mut host = DefaultHost::default();
 
-        let test_lib = TransactionKernel::kernel_as_library();
+        let test_lib = TransactionKernel::library();
         host.load_library(test_lib.mast_forest()).unwrap();
 
         CodeExecutor::new(host)

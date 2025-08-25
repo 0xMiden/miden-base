@@ -439,7 +439,8 @@ impl TransactionKernel {
     const KERNEL_TESTING_LIB_BYTES: &'static [u8] =
         include_bytes!(concat!(env!("OUT_DIR"), "/assets/kernels/kernel_library.masl"));
 
-    pub fn kernel_as_library() -> Library {
+    /// Returns the kernel library.
+    pub fn library() -> Library {
         Library::read_from_bytes(Self::KERNEL_TESTING_LIB_BYTES)
             .expect("failed to deserialize transaction kernel library")
     }
@@ -461,7 +462,7 @@ impl TransactionKernel {
     /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
     /// from the kernel library to test them individually.
     pub fn with_kernel_library(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
-        let kernel_library = Self::kernel_as_library();
+        let kernel_library = Self::library();
 
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
         source_manager_ext::load_masm_source_files(&source_manager);

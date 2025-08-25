@@ -109,7 +109,7 @@ impl TransactionContext {
         let mast_store = Rc::new(TransactionMastStore::new());
 
         mast_store.insert(program.mast_forest().clone());
-        mast_store.insert(TransactionKernel::kernel_as_library().mast_forest().clone());
+        mast_store.insert(TransactionKernel::library().mast_forest().clone());
         mast_store.load_account_code(self.account().code());
         for acc_inputs in self.tx_args.foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
