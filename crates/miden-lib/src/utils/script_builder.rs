@@ -1,6 +1,6 @@
 use alloc::string::String;
-
 use alloc::sync::Arc;
+
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, Library, LibraryPath, default_source_manager_arc_dyn};
