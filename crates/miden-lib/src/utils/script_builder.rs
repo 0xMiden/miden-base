@@ -1,9 +1,14 @@
 use alloc::string::String;
 use alloc::sync::Arc;
 
-use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Assembler, Library, LibraryPath, default_source_manager_arc_dyn};
+use miden_objects::assembly::{
+    Assembler,
+    DefaultSourceManager,
+    Library,
+    LibraryPath,
+    SourceManagerSync,
+};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
@@ -82,22 +87,18 @@ impl ScriptBuilder {
 
     /// Creates a new ScriptBuilder with the specified debug mode.
     ///
-    /// This creates a basic assembler using `TransactionKernel::assembler()`.
-    ///
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
-        let source_manager = default_source_manager_arc_dyn();
+        let source_manager = Arc::new(DefaultSourceManager::default());
         let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
             .with_debug_mode(in_debug_mode);
         Self { assembler, source_manager }
     }
 
-    /// Creates a new ScriptBuilder with the specified debug mode.
+    /// Creates a new ScriptBuilder with the specified source manager.
     ///
-    /// This creates a basic assembler using `TransactionKernel::assembler()`.
-    ///
-    /// The source manager is.
+    /// The returned builder is instantiated with debug mode enabled.
     ///
     /// # Arguments
     /// * `source_manager` - The source manager to use with the internal `Assembler`
@@ -307,7 +308,7 @@ impl ScriptBuilder {
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        Self::with_source_manager(default_source_manager_arc_dyn())
+        Self::new(true)
             .with_dynamically_linked_library(&AccountCode::mock_account_library())?
             .with_dynamically_linked_library(&AccountCode::mock_faucet_library())
     }
