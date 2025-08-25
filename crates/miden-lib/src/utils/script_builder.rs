@@ -1,5 +1,6 @@
 use alloc::string::String;
 
+use alloc::sync::Arc;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::assembly::{Assembler, Library, LibraryPath, default_source_manager_arc_dyn};
@@ -72,7 +73,7 @@ use crate::transaction::TransactionKernel;
 #[derive(Clone)]
 pub struct ScriptBuilder {
     assembler: Assembler,
-    source_manager: alloc::sync::Arc<dyn SourceManagerSync>,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl ScriptBuilder {
@@ -100,7 +101,7 @@ impl ScriptBuilder {
     ///
     /// # Arguments
     /// * `source_manager` - The source manager to use with the internal `Assembler`
-    pub fn with_source_manager(source_manager: alloc::sync::Arc<dyn SourceManagerSync>) -> Self {
+    pub fn with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Self {
         let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
             .with_debug_mode(true);
         Self { assembler, source_manager }
@@ -285,7 +286,7 @@ impl ScriptBuilder {
     // --------------------------------------------------------------------------------------------
 
     /// Access the [`Assembler`]'s [`SourceManagerSync`].
-    pub fn source_manager(&self) -> alloc::sync::Arc<dyn SourceManagerSync> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
         self.source_manager.clone()
     }
 

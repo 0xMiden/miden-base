@@ -8,11 +8,10 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::assembly::{Assembler, default_source_manager_arc_dyn};
+use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -65,7 +64,6 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// assert_eq!(process.stack.get(0), Felt::new(5),);
 /// ```
 pub struct TransactionContextBuilder {
-    assembler: Assembler,
     source_manager: Arc<dyn SourceManagerSync>,
     account: Account,
     account_seed: Option<Word>,
@@ -85,7 +83,6 @@ impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
         let source_manager = default_source_manager_arc_dyn();
         Self {
-            assembler: TransactionKernel::with_mock_libraries(source_manager.clone()),
             source_manager,
             account,
             account_seed: None,
@@ -112,27 +109,10 @@ impl TransactionContextBuilder {
     /// - Has an account code based on an
     ///   [miden_lib::testing::account_component::MockAccountComponent].
     pub fn with_existing_mock_account() -> Self {
-        let account =
-            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
-
-        let source_manager = default_source_manager_arc_dyn();
-        let assembler = TransactionKernel::with_mock_libraries(source_manager.clone());
-        Self {
-            assembler,
-            source_manager,
-            account,
-            account_seed: None,
-            authenticator: None,
-            input_notes: Vec::new(),
-            expected_output_notes: Vec::new(),
-            advice_inputs: Default::default(),
-            tx_script: None,
-            tx_script_args: EMPTY_WORD,
-            transaction_inputs: None,
-            note_args: BTreeMap::new(),
-            foreign_account_inputs: vec![],
-            auth_args: EMPTY_WORD,
-        }
+        Self::new(Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            IncrNonceAuthComponent,
+        ))
     }
 
     /// Same as [`Self::with_existing_mock_account`] but with a [`NoopAuthComponent`].
@@ -153,14 +133,6 @@ impl TransactionContextBuilder {
     pub fn with_non_fungible_faucet(acct_id: u128) -> Self {
         let account = Account::mock_non_fungible_faucet(acct_id);
         Self::new(account)
-    }
-
-    /// Returns a clone of the assembler.
-    ///
-    /// This is primarily useful to assemble a script whose source will end up in the source manager
-    /// that is passed to the processor. This will help generate better error messages.
-    pub fn assembler(&self) -> Assembler {
-        self.assembler.clone()
     }
 
     /// Override and set the account seed manually
@@ -244,10 +216,12 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Sets the [`SourceManagerSync`] on the [`TransactionContext`] that will be built.
+    ///
+    /// This source manager should contain the sources of all involved scripts and account code in
+    /// order to provide better error messages if an error occurs.
     pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
-        // TODO <https://github.com/0xMiden/miden-base/issues/1779>
         self.source_manager = source_manager.clone();
-        self.assembler = TransactionKernel::with_mock_libraries(source_manager.clone());
         self
     }
 
