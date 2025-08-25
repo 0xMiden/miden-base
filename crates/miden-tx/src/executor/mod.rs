@@ -7,7 +7,6 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::default_source_manager_arc_dyn;
-use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
