@@ -12,6 +12,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
+use miden_objects::assembly::default_source_manager_arc_dyn;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::asset::FungibleAsset;
@@ -907,8 +908,10 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     let lock_timestamp = 2_000_000_000;
+    let source_manager = default_source_manager_arc_dyn();
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
+        .source_manager(source_manager.clone())
         .code(code.clone())
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()?;
@@ -925,6 +928,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_inputs =
         mock_chain.get_transaction_inputs(account.clone(), None, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account.clone())
+        .with_source_manager(source_manager.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
     let result = tx_context.execute_blocking();
