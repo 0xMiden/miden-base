@@ -98,7 +98,7 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
 /// Tests that the number of cycles after compute_fee is called are constant across a diverse set of
 /// transactions.
 ///
-/// TODO: Once smt::set supports multiple leafs, this case should be tested explicitly here.
+/// TODO: Once smt::set supports multiple leaves, this case should be tested explicitly here.
 #[rstest::rstest]
 #[case::create_account_no_storage(create_account_no_storage_no_fees()?)]
 #[case::mutate_account_with_storage(mutate_account_with_storage()?)]
