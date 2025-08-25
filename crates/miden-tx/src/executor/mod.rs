@@ -25,7 +25,7 @@ use miden_processor::{AdviceInputs, ExecutionError, StackInputs};
 pub use miden_processor::{ExecutionOptions, MastForestStore};
 
 use super::TransactionExecutorError;
-use crate::auth::{TransactionAuthenticator, UnreachableAuth};
+use crate::auth::TransactionAuthenticator;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod exec_host;
@@ -83,26 +83,28 @@ impl NoteConsumptionInfo {
 pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
-    // TODO FIXME figure out when this became dead code
-    #[allow(dead_code)]
-    exec_options: ExecutionOptions,
     source_manager: Arc<dyn SourceManagerSync>,
-}
-
-pub struct TransactionExecutorBuilder<'store, 'auth, STORE, AUTH> {
-    data_store: &'store STORE,
-    authenticator: Option<&'auth AUTH>,
-    source_manager: Option<Arc<dyn SourceManagerSync>>,
     exec_options: ExecutionOptions,
 }
 
-impl<'store, STORE> TransactionExecutorBuilder<'store, 'static, STORE, UnreachableAuth> {
+impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
+where
+    STORE: DataStore + 'store + Sync,
+    AUTH: TransactionAuthenticator + 'auth + Sync,
+{
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore].
+    ///
+    /// The created executor will not have the authenticator or source manager set, and tracing and
+    /// debug mode will be turned off.
     pub fn new(data_store: &'store STORE) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
-        TransactionExecutorBuilder {
+        TransactionExecutor {
             data_store,
             authenticator: None,
-            source_manager: None,
+            source_manager: default_source_manager_arc_dyn(),
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,
@@ -112,44 +114,34 @@ impl<'store, STORE> TransactionExecutorBuilder<'store, 'static, STORE, Unreachab
             .expect("Must not fail while max cycles is more than min trace length"),
         }
     }
-}
 
-impl<'store, 'auth, STORE, AUTH> TransactionExecutorBuilder<'store, 'auth, STORE, AUTH> {
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
-    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
-        self.source_manager = Some(source_manager);
+    /// Adds the specified [TransactionAuthenticator] to the executor.
+    ///
+    /// This will overwrite any previously set authenticator.
+    pub fn with_authenticator(mut self, authenticator: &'auth AUTH) -> Self {
+        self.authenticator = Some(authenticator);
         self
     }
 
-    /// Add an authentificator to the transaction executor.
+    /// Adds the specified source manager to the executor.
     ///
-    /// By default none is used.
-    pub fn with_authenticator<'a, A>(
-        self,
-        authenticator: impl Into<Option<&'a A>>,
-    ) -> TransactionExecutorBuilder<'store, 'a, STORE, A> {
-        let Self {
-            data_store, source_manager, exec_options, ..
-        } = self;
-
-        TransactionExecutorBuilder {
-            data_store,
-            authenticator: authenticator.into(),
-            source_manager,
-            exec_options,
-        }
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the same source manager as was used with the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts.
+    ///
+    /// This will overwrite any previously set source manager.
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
     }
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
-    /// [TransactionAuthenticator] and [ExecutionOptions].
+    /// Sets the [ExecutionOptions] for the executor to the provided options.
     ///
-    /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
-    /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
+    /// # Errors
+    /// Returns an error if the specified cycle values (`max_cycles` and `expected_cycles`) in
+    /// the [ExecutionOptions] are not within the range [`MIN_TX_EXECUTION_CYCLES`] and
+    /// [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
         mut self,
         exec_options: ExecutionOptions,
@@ -181,46 +173,6 @@ impl<'store, 'auth, STORE, AUTH> TransactionExecutorBuilder<'store, 'auth, STORE
         self
     }
 
-    /// Construct the `TransactionExecutor`.
-    pub fn build(self) -> TransactionExecutor<'store, 'auth, STORE, AUTH> {
-        let Self {
-            data_store,
-            authenticator,
-            source_manager,
-            exec_options,
-        } = self;
-        let source_manager = source_manager.unwrap_or_else(default_source_manager_arc_dyn);
-
-        TransactionExecutor {
-            data_store,
-            authenticator,
-            exec_options,
-            source_manager,
-        }
-    }
-}
-
-impl<'store, STORE> TransactionExecutor<'store, 'static, STORE, UnreachableAuth>
-where
-    STORE: DataStore + 'store + Sync,
-{
-    // CONSTRUCTOR
-    // --------------------------------------------------------------------------------------------
-
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
-    /// [TransactionAuthenticator].
-    pub fn builder(
-        data_store: &'store STORE,
-    ) -> TransactionExecutorBuilder<'store, 'static, STORE, UnreachableAuth> {
-        TransactionExecutorBuilder::<'store, 'static, STORE, UnreachableAuth>::new(data_store)
-    }
-}
-
-impl<'store, 'auth, STORE, AUTH> TransactionExecutor<'store, 'auth, STORE, AUTH>
-where
-    STORE: DataStore + 'store + Sync,
-    AUTH: TransactionAuthenticator + 'auth + Sync,
-{
     // TRANSACTION EXECUTION
     // --------------------------------------------------------------------------------------------
 

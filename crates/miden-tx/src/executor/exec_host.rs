@@ -6,8 +6,8 @@ use alloc::vec::Vec;
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::assembly::debuginfo::{Location, SourceManagerSync};
-use miden_objects::assembly::{SourceFile, SourceSpan};
+use miden_objects::assembly::debuginfo::Location;
+use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::FeeParameters;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
@@ -32,6 +32,9 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
+
+// TRANSACTION EXECUTOR HOST
+// ================================================================================================
 
 /// The transaction executor host is responsible for handling [`FutureMaybeSend`] requests made by
 /// the transaction kernel during execution. In particular, it responds to signature generation
@@ -62,7 +65,7 @@ where
     /// The balance of the native asset in the account at the beginning of transaction execution.
     initial_native_asset: FungibleAsset,
 
-    /// The source manager to track source code file span information, improving any masm related
+    /// The source manager to track source code file span information, improving any MASM related
     /// error messages.
     source_manager: Arc<dyn SourceManagerSync>,
 }

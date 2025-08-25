@@ -334,12 +334,11 @@ fn build_output_notes_commitment(notes: &[OutputNote]) -> Word {
 #[cfg(test)]
 mod output_notes_tests {
     use assert_matches::assert_matches;
-    use crate::Word;
 
     use super::OutputNotes;
-    use crate::TransactionOutputError;
     use crate::note::Note;
     use crate::transaction::OutputNote;
+    use crate::{TransactionOutputError, Word};
 
     #[test]
     fn test_duplicate_output_notes() -> anyhow::Result<()> {

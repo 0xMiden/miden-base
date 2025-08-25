@@ -6,8 +6,8 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
-use miden_objects::assembly::debuginfo::{SourceLanguage, SourceManagerSync, Uri};
-use miden_objects::assembly::{Assembler, SourceManager};
+use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
+use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -147,14 +147,13 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-        let authenticator = self.authenticator();
 
-        let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::builder(&self)
-            .with_authenticator(authenticator)
-            .with_source_manager(source_manager)
-            .with_debug_mode()
-            .build();
+        let mut tx_executor = TransactionExecutor::new(&self)
+            .with_source_manager(self.source_manager.clone())
+            .with_debug_mode();
+        if let Some(authenticator) = self.authenticator() {
+            tx_executor = tx_executor.with_authenticator(authenticator);
+        }
 
         tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }

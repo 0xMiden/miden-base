@@ -58,7 +58,7 @@ pub mod assembly {
     use alloc::sync::Arc;
 
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
-    use miden_assembly::debuginfo::SourceManagerSync;
+    pub use miden_assembly::debuginfo::SourceManagerSync;
     pub use miden_assembly::{
         Assembler,
         DefaultSourceManager,
