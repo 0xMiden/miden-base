@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
-use miden_objects::assembly::SourceManager;
+use miden_objects::assembly::{DefaultSourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
@@ -82,6 +82,7 @@ impl NoteConsumptionInfo {
 pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
+    source_manager: Arc<dyn SourceManagerSync>,
     exec_options: ExecutionOptions,
 }
 
@@ -90,17 +91,20 @@ where
     STORE: DataStore + 'store + Sync,
     AUTH: TransactionAuthenticator + 'auth + Sync,
 {
-    // CONSTRUCTOR
+    // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
-    /// [TransactionAuthenticator].
-    pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore].
+    ///
+    /// The created executor will have not authenticator our source manager set, and tracing and
+    /// debug mode will be turned off.
+    pub fn new(data_store: &'store STORE) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
 
         Self {
             data_store,
-            authenticator,
+            authenticator: None,
+            source_manager: Arc::new(DefaultSourceManager::default()),
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,
@@ -111,20 +115,42 @@ where
         }
     }
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
-    /// [TransactionAuthenticator] and [ExecutionOptions].
+    /// Adds the specified [TransactionAuthenticator] to the executor.
     ///
-    /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
-    /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
+    /// This will overwrite any previously set authenticator.
+    pub fn with_authenticator(mut self, authenticator: &'auth AUTH) -> Self {
+        self.authenticator = Some(authenticator);
+        self
+    }
+
+    /// Adds the specified source manager to the executor.
+    ///
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the same source manager as was used with the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts.
+    ///
+    /// This will overwrite any previously set source manager.
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
+    }
+
+    /// Sets the [ExecutionOptions] for the executor to the provided options.
+    ///
+    /// # Errors
+    /// Returns an error if the specified cycle values (`max_cycles` and `expected_cycles`) in
+    /// the [ExecutionOptions] are not within the range [`MIN_TX_EXECUTION_CYCLES`] and
+    /// [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
-        data_store: &'store STORE,
-        authenticator: Option<&'auth AUTH>,
+        mut self,
         exec_options: ExecutionOptions,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
         validate_num_cycles(exec_options.expected_cycles())?;
 
-        Ok(Self { data_store, authenticator, exec_options })
+        self.exec_options = exec_options;
+        Ok(self)
     }
 
     /// Puts the [TransactionExecutor] into debug mode.
@@ -160,13 +186,6 @@ where
     /// provided `notes` were created. Then, it executes the transaction program and creates an
     /// [`ExecutedTransaction`].
     ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
-    ///
     /// # Errors:
     ///
     /// Returns an error if:
@@ -180,8 +199,6 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
-        // TODO: SourceManager: Pass source manager to host once refactored.
-        _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
@@ -226,6 +243,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -253,13 +271,6 @@ where
     /// Executes an arbitrary script against the given account and returns the stack state at the
     /// end of execution.
     ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
-    ///
     /// # Errors:
     /// Returns an error if:
     /// - If required data can not be fetched from the [DataStore].
@@ -272,8 +283,6 @@ where
         tx_script: TransactionScript,
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
-        // TODO: SourceManager: Pass source manager to host once refactored.
-        _source_manager: Arc<dyn SourceManager + Send + Sync>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
         let ref_blocks = [block_ref].into_iter().collect();
         let (account, seed, ref_block, mmr) = self
@@ -311,6 +320,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -393,6 +403,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
         let advice_inputs = advice_inputs.into_advice_inputs();
 

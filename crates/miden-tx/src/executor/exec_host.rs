@@ -7,7 +7,7 @@ use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
-use miden_objects::assembly::{DefaultSourceManager, SourceFile, SourceManager, SourceSpan};
+use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::FeeParameters;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
@@ -61,6 +61,10 @@ where
 
     /// The balance of the native asset in the account at the beginning of transaction execution.
     initial_native_asset: FungibleAsset,
+
+    /// The source manager to track source code file span information, improving any MASM related
+    /// error messages.
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
@@ -80,6 +84,7 @@ where
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
         fee_parameters: &FeeParameters,
+        source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         // TODO: Once we have lazy account loading, this should be loaded in on_tx_fee_computed to
         // avoid the use of PartialVault entirely, which in the future, may or may not track
@@ -117,6 +122,7 @@ where
             authenticator,
             generated_signatures: BTreeMap::new(),
             initial_native_asset,
+            source_manager,
         }
     }
 
@@ -230,10 +236,9 @@ where
         &self,
         location: &Location,
     ) -> (SourceSpan, Option<Arc<SourceFile>>) {
-        // TODO: Replace with proper call to source manager once the host owns it.
-        let stub_source_manager = DefaultSourceManager::default();
-        let maybe_file = stub_source_manager.get_by_uri(location.uri());
-        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        let source_manager = self.source_manager.as_ref();
+        let maybe_file = source_manager.get_by_uri(location.uri());
+        let span = source_manager.location_to_span(location.clone()).unwrap_or_default();
         (span, maybe_file)
     }
 }

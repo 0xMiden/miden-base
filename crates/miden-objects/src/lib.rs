@@ -56,6 +56,7 @@ pub use miden_crypto::word::{LexicographicWord, Word, WordError};
 
 pub mod assembly {
     pub use miden_assembly::ast::{Module, ModuleKind, ProcedureName, QualifiedProcedureName};
+    pub use miden_assembly::debuginfo::SourceManagerSync;
     pub use miden_assembly::{
         Assembler,
         DefaultSourceManager,

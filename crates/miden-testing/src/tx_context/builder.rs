@@ -246,9 +246,7 @@ impl TransactionContextBuilder {
         // TODO: SourceManager.
         let source_manager =
             alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
+                as alloc::sync::Arc<dyn miden_objects::assembly::SourceManagerSync + 'static>;
 
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,

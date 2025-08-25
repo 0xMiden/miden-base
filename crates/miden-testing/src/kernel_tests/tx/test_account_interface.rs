@@ -63,7 +63,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let tx_args = tx_context.tx_args().clone();
 
     let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -102,7 +102,7 @@ async fn check_note_consumability_custom_notes_success(
     let tx_args = tx_context.tx_args().clone();
 
     let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -179,7 +179,7 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     let tx_args = tx_context.tx_args().clone();
 
     let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context, None).with_tracing();
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker

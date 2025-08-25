@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{Assembler, SourceManager};
+use miden_objects::assembly::{Assembler, SourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -55,7 +55,7 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
-    pub(super) source_manager: Arc<dyn SourceManager + Send + Sync>,
+    pub(super) source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl TransactionContext {
@@ -146,14 +146,15 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-        let authenticator = self.authenticator();
 
-        let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
+        let mut tx_executor = TransactionExecutor::new(&self)
+            .with_source_manager(self.source_manager.clone())
+            .with_debug_mode();
+        if let Some(authenticator) = self.authenticator() {
+            tx_executor = tx_executor.with_authenticator(authenticator);
+        }
 
-        tx_executor
-            .execute_transaction(account_id, block_num, notes, tx_args, source_manager)
-            .await
+        tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }
 
     /// Executes the transaction through a [TransactionExecutor]
@@ -197,7 +198,7 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
         Arc::clone(&self.source_manager)
     }
 }
