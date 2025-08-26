@@ -462,17 +462,8 @@ impl TransactionKernel {
     /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
     /// from the kernel library to test them individually.
     pub fn with_kernel_library(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
-        let kernel_library = Self::library();
-
-        #[cfg(all(any(feature = "testing", test), feature = "std"))]
-        source_manager_ext::load_masm_source_files(&source_manager);
-
-        Assembler::with_kernel(source_manager, Self::kernel())
-            .with_dynamic_library(StdLibrary::default())
-            .expect("failed to load std-lib")
-            .with_dynamic_library(MidenLib::default())
-            .expect("failed to load miden-lib")
-            .with_dynamic_library(kernel_library)
+        Self::assembler_with_source_manager(source_manager)
+            .with_dynamic_library(Self::library())
             .expect("failed to load kernel library (/lib)")
             .with_debug_mode(true)
     }
@@ -487,7 +478,7 @@ impl TransactionKernel {
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
     pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
-        let mut assembler = Self::with_kernel_library(source_manager).with_debug_mode(true);
+        let mut assembler = Self::with_kernel_library(source_manager);
 
         for library in Self::mock_libraries() {
             assembler
