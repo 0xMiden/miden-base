@@ -95,8 +95,8 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
     Ok(())
 }
 
-/// Tests that the number of cycles after compute_fee is called are constant across a diverse set of
-/// transactions.
+/// Tests that the _actual_ number of cycles after compute_fee is called are less than the
+/// _predicted_ number of cycles (based on the constants) across a diverse set of transactions.
 ///
 /// TODO: Once smt::set supports multiple leaves, this case should be tested explicitly here.
 #[rstest::rstest]
@@ -104,7 +104,7 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
 #[case::mutate_account_with_storage(mutate_account_with_storage()?)]
 #[case::create_output_notes(create_output_notes()?)]
 #[test]
-fn num_tx_cycles_after_compute_fee_are_constant(
+fn num_tx_cycles_after_compute_fee_are_less_than_estimated(
     #[case] tx: ExecutedTransaction,
 ) -> anyhow::Result<()> {
     // These constants should always be updated together with the equivalent constants in
