@@ -33,3 +33,7 @@ or
 ```shell
 make bench-note-checker
 ```
+
+## License
+
+This project is [MIT licensed](../../LICENSE).
