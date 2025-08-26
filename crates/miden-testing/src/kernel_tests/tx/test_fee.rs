@@ -1,13 +1,18 @@
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::errors::TransactionKernelError;
-use miden_objects::account::AccountId;
-use miden_objects::asset::FungibleAsset;
+use miden_lib::testing::note::NoteBuilder;
+use miden_objects::account::{AccountId, StorageMap, StorageSlot};
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
+use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
+use miden_objects::transaction::{ExecutedTransaction, OutputNote};
 use miden_objects::{self, Felt, Word};
 use miden_processor::ExecutionError;
 use miden_tx::TransactionExecutorError;
+use winter_rand_utils::rand_value;
 
+use crate::utils::create_p2any_note;
 use crate::{Auth, MockChain};
 
 // FEE TESTS
@@ -32,7 +37,7 @@ fn create_account_with_fees() -> anyhow::Result<()> {
     let expected_fee = tx.compute_fee();
     assert_eq!(expected_fee, tx.fee().amount());
 
-    // We expect that the new account contains the amount minus the paid fee.
+    // We expect that the new account contains the note_amount minus the paid fee.
     let added_asset = FungibleAsset::new(chain.native_asset_id(), note_amount)?.sub(tx.fee())?;
 
     assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
@@ -87,4 +92,111 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
     });
 
     Ok(())
+}
+
+/// Tests that the _actual_ number of cycles after compute_fee is called are less than the
+/// _predicted_ number of cycles (based on the constants) across a diverse set of transactions.
+///
+/// TODO: Once smt::set supports multiple leaves, this case should be tested explicitly here.
+#[rstest::rstest]
+#[case::create_account_no_storage(create_account_no_storage_no_fees()?)]
+#[case::mutate_account_with_storage(mutate_account_with_storage()?)]
+#[case::create_output_notes(create_output_notes()?)]
+#[test]
+fn num_tx_cycles_after_compute_fee_are_less_than_estimated(
+    #[case] tx: ExecutedTransaction,
+) -> anyhow::Result<()> {
+    // These constants should always be updated together with the equivalent constants in
+    // epilogue.masm.
+    const SMT_SET_ADDITIONAL_CYCLES: usize = 250;
+    const NUM_POST_COMPUTE_FEE_CYCLES: usize = 500;
+
+    assert!(
+        tx.measurements().after_tx_cycles_obtained
+            < NUM_POST_COMPUTE_FEE_CYCLES + SMT_SET_ADDITIONAL_CYCLES,
+        "estimated number of cycles is not larger than the measurements, so they need to be updated"
+    );
+
+    Ok(())
+}
+
+/// Returns a transaction that creates an account without storage and 0 fees.
+fn create_account_no_storage_no_fees() -> anyhow::Result<ExecutedTransaction> {
+    let mut builder = MockChain::builder();
+    let account = builder.create_new_wallet(Auth::IncrNonce)?;
+    builder
+        .build()?
+        .build_tx_context(account, &[], &[])?
+        .build()?
+        .execute_blocking()
+        .map_err(From::from)
+}
+
+/// Returns a transaction that mutates an account with storage and consumes a note.
+fn mutate_account_with_storage() -> anyhow::Result<ExecutedTransaction> {
+    let native_asset_id = AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET)?;
+    let native_asset = FungibleAsset::new(native_asset_id, 10_000)?;
+    let mut builder =
+        MockChain::builder().native_asset_id(native_asset_id).verification_base_fee(100);
+    let account = builder.add_existing_mock_account_with_storage_and_assets(
+        Auth::IncrNonce,
+        [
+            StorageSlot::Value(rand_value()),
+            StorageSlot::Map(StorageMap::with_entries([(rand_value(), rand_value())])?),
+        ],
+        [Asset::from(native_asset), NonFungibleAsset::mock(&[1, 2, 3, 4])],
+    )?;
+    let p2id_note = builder.add_p2id_note(
+        account.id(),
+        account.id(),
+        &[FungibleAsset::mock(250)],
+        NoteType::Public,
+    )?;
+    builder
+        .build()?
+        .build_tx_context(account, &[p2id_note.id()], &[])?
+        .build()?
+        .execute_blocking()
+        .map_err(From::from)
+}
+
+/// Returns a transaction that consumes two notes and creates two notes.
+fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
+    let native_asset_id = AccountId::try_from(ACCOUNT_ID_NATIVE_ASSET_FAUCET)?;
+    let native_asset = FungibleAsset::new(native_asset_id, 10_000)?;
+    let mut builder =
+        MockChain::builder().native_asset_id(native_asset_id).verification_base_fee(20);
+    let account = builder.add_existing_mock_account_with_storage_and_assets(
+        Auth::IncrNonce,
+        [
+            StorageSlot::Value(rand_value()),
+            StorageSlot::Map(StorageMap::with_entries([(rand_value(), rand_value())])?),
+        ],
+        [Asset::from(native_asset), NonFungibleAsset::mock(&[1, 2, 3, 4])],
+    )?;
+    let note_asset0 = FungibleAsset::mock(200).unwrap_fungible();
+    let note_asset1 = FungibleAsset::mock(500).unwrap_fungible();
+
+    // This creates a note that adds the given assets to the transaction vault without moving them
+    // to the account. This is needed to preserve the overall transaction asset rules, since the
+    // SPAWN note does not remove the assets from the account vault.
+    let asset_note = NoteBuilder::new(account.id(), &mut rand::rng())
+        .add_assets([Asset::from(note_asset0.add(note_asset1)?)])
+        .build()?;
+    builder.add_note(OutputNote::Full(asset_note.clone()));
+
+    let output_note0 = create_p2any_note(account.id(), &[note_asset0.into()]);
+    let output_note1 = create_p2any_note(account.id(), &[note_asset1.into()]);
+
+    let spawn_note = builder.add_spawn_note(account.id(), [&output_note0, &output_note1])?;
+    builder
+        .build()?
+        .build_tx_context(account, &[asset_note.id(), spawn_note.id()], &[])?
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(output_note0),
+            OutputNote::Full(output_note1),
+        ])
+        .build()?
+        .execute_blocking()
+        .map_err(From::from)
 }

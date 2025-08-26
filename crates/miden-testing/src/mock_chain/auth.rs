@@ -3,10 +3,10 @@
 use alloc::vec::Vec;
 
 use miden_lib::account::auth::{
-    AuthMultisigRpoFalcon512,
     AuthRpoFalcon512,
     AuthRpoFalcon512Acl,
     AuthRpoFalcon512AclConfig,
+    AuthRpoFalcon512Multisig,
 };
 use miden_lib::testing::account_component::{ConditionalAuthComponent, IncrNonceAuthComponent};
 use miden_objects::Word;
@@ -72,7 +72,7 @@ impl Auth {
             Auth::Multisig { threshold, approvers } => {
                 let pub_keys: Vec<_> = approvers.iter().map(|word| PublicKey::new(*word)).collect();
 
-                let component = AuthMultisigRpoFalcon512::new(*threshold, pub_keys)
+                let component = AuthRpoFalcon512Multisig::new(*threshold, pub_keys)
                     .expect("multisig component creation failed")
                     .into();
 

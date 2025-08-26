@@ -3,7 +3,10 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_objects::account::AccountId;
-use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary, SourceManager};
+#[cfg(any(feature = "testing", test))]
+use miden_objects::assembly::Library;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
@@ -151,9 +154,12 @@ impl TransactionKernel {
     /// Returns a new Miden assembler instantiated with the transaction kernel and loaded with the
     /// Miden stdlib as well as with miden-lib.
     pub fn assembler() -> Assembler {
-        let source_manager: Arc<dyn SourceManager + Send + Sync> =
-            Arc::new(DefaultSourceManager::default());
+        Self::assembler_with_source_manager(Arc::new(DefaultSourceManager::default()))
+    }
 
+    /// Returns a new assembler instantiated with the transaction kernel and loaded with the
+    /// Miden stdlib as well as with miden-lib.
+    pub fn assembler_with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
         #[cfg(all(any(feature = "testing", test), feature = "std"))]
         source_manager_ext::load_masm_source_files(&source_manager);
 
@@ -321,7 +327,7 @@ impl TransactionKernel {
 
     /// Returns [TransactionOutputs] constructed from the provided output stack and advice map.
     ///
-    /// The output stack is expected to be arrange as follows:
+    /// The output stack is expected to be arranged as follows:
     ///
     /// ```text
     /// [
@@ -433,9 +439,19 @@ impl TransactionKernel {
     const KERNEL_TESTING_LIB_BYTES: &'static [u8] =
         include_bytes!(concat!(env!("OUT_DIR"), "/assets/kernels/kernel_library.masl"));
 
-    pub fn kernel_as_library() -> miden_objects::assembly::Library {
-        miden_objects::assembly::Library::read_from_bytes(Self::KERNEL_TESTING_LIB_BYTES)
+    /// Returns the kernel library.
+    pub fn library() -> Library {
+        Library::read_from_bytes(Self::KERNEL_TESTING_LIB_BYTES)
             .expect("failed to deserialize transaction kernel library")
+    }
+
+    /// Returns the mock account and faucet libraries.
+    pub fn mock_libraries() -> impl Iterator<Item = Library> {
+        use miden_objects::account::AccountCode;
+
+        use crate::testing::mock_account_code::MockAccountCodeExt;
+
+        vec![AccountCode::mock_account_library(), AccountCode::mock_faucet_library()].into_iter()
     }
 
     /// Returns an [`Assembler`] with the transaction kernel as a library.
@@ -445,20 +461,9 @@ impl TransactionKernel {
     /// because even though the library (`api.masm`) and the kernel binary (`main.masm`) include
     /// this code, it is not otherwise accessible. By adding it separately, we can invoke procedures
     /// from the kernel library to test them individually.
-    pub fn with_kernel_library() -> Assembler {
-        let source_manager: Arc<dyn SourceManager + Send + Sync> =
-            Arc::new(DefaultSourceManager::default());
-        let kernel_library = Self::kernel_as_library();
-
-        #[cfg(all(any(feature = "testing", test), feature = "std"))]
-        source_manager_ext::load_masm_source_files(&source_manager);
-
-        Assembler::with_kernel(source_manager, Self::kernel())
-            .with_dynamic_library(StdLibrary::default())
-            .expect("failed to load std-lib")
-            .with_dynamic_library(MidenLib::default())
-            .expect("failed to load miden-lib")
-            .with_dynamic_library(kernel_library)
+    pub fn with_kernel_library(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
+        Self::assembler_with_source_manager(source_manager)
+            .with_dynamic_library(Self::library())
             .expect("failed to load kernel library (/lib)")
             .with_debug_mode(true)
     }
@@ -472,25 +477,22 @@ impl TransactionKernel {
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
-    pub fn with_mock_libraries() -> Assembler {
-        use miden_objects::account::AccountCode;
+    pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
+        let mut assembler = Self::with_kernel_library(source_manager);
 
-        use crate::testing::mock_account_code::MockAccountCodeExt;
-
-        let assembler = Self::with_kernel_library().with_debug_mode(true);
+        for library in Self::mock_libraries() {
+            assembler
+                .link_dynamic_library(library)
+                .expect("failed to add mock account libraries");
+        }
 
         assembler
-            .with_dynamic_library(AccountCode::mock_account_library())
-            .expect("failed to add mock account library")
-            .with_dynamic_library(AccountCode::mock_faucet_library())
-            .expect("failed to add mock faucet library")
     }
 }
 
 #[cfg(all(any(feature = "testing", test), feature = "std"))]
 mod source_manager_ext {
     use std::path::{Path, PathBuf};
-    use std::sync::Arc;
     use std::vec::Vec;
     use std::{fs, io};
 
@@ -503,7 +505,7 @@ mod source_manager_ext {
     /// This source manager is passed to the [`super::TransactionKernel::assembler`] from which it
     /// can be passed on to the VM processor. If an error occurs, the sources can be used to provide
     /// a pointer to the failed location.
-    pub fn load_masm_source_files(source_manager: &Arc<dyn SourceManager + Send + Sync>) {
+    pub fn load_masm_source_files(source_manager: &dyn SourceManager) {
         if let Err(err) = load(source_manager) {
             // Stringifying the error is not ideal (we may loose some source errors) but this
             // should never really error anyway.
@@ -512,7 +514,7 @@ mod source_manager_ext {
     }
 
     /// Implements the logic of the above function with error handling.
-    fn load(source_manager: &Arc<dyn SourceManager + Send + Sync>) -> io::Result<()> {
+    fn load(source_manager: &dyn SourceManager) -> io::Result<()> {
         for file in get_masm_files(concat!(env!("OUT_DIR"), "/asm"))? {
             source_manager.load_file(&file).map_err(io::Error::other)?;
         }

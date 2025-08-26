@@ -445,6 +445,14 @@ pub struct TxAccountUpdate {
     final_state_commitment: Word,
 
     /// The commitment to the account delta resulting from the execution of the transaction.
+    ///
+    /// This must be the commitment to the account delta as computed by the transaction kernel in
+    /// the epilogue (the "pre-fee" delta). Notably, this _excludes_ the automatically removed fee
+    /// asset. The account delta possibly contained in [`AccountUpdateDetails`] _includes_ the
+    /// _removed_ fee asset, so that it represents the full account delta of the transaction
+    /// (the "post-fee" delta). This mismatch means that in order to validate the delta, the
+    /// fee asset must be _added_ to the delta before checking its commitment against this
+    /// field.
     account_delta_commitment: Word,
 
     /// A set of changes which can be applied the account's state prior to the transaction to

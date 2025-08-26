@@ -7,7 +7,7 @@ use alloc::vec::Vec;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
-use miden_objects::assembly::{Assembler, SourceManager};
+use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -55,17 +55,18 @@ pub struct TransactionContext {
     pub(super) mast_store: TransactionMastStore,
     pub(super) advice_inputs: AdviceInputs,
     pub(super) authenticator: Option<MockAuthenticator>,
-    pub(super) source_manager: Arc<dyn SourceManager + Send + Sync>,
+    pub(super) source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl TransactionContext {
     /// Executes arbitrary code within the context of a mocked transaction environment and returns
     /// the resulting [Process].
     ///
-    /// The code is compiled with the assembler attached to this context and executed with advice
-    /// inputs constructed from the data stored in the context. The program is run on a [MockHost]
-    /// which is loaded with the procedures exposed by the transaction kernel, and also individual
-    /// kernel functions (not normally exposed).
+    /// The code is compiled with the assembler returned by
+    /// [`TransactionKernel::with_mock_libraries`] and executed with advice inputs constructed from
+    /// the data stored in the context. The program is run on a [`MockHost`] which is loaded with
+    /// the procedures exposed by the transaction kernel, and also individual kernel functions (not
+    /// normally exposed).
     ///
     /// To improve the error message quality, convert the returned [`ExecutionError`] into a
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
@@ -77,11 +78,7 @@ impl TransactionContext {
     /// # Panics
     ///
     /// - If the provided `code` is not a valid program.
-    pub fn execute_code_with_assembler(
-        &self,
-        code: &str,
-        assembler: Assembler,
-    ) -> Result<Process, ExecutionError> {
+    pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
         let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
             &self.tx_inputs,
             &self.tx_args,
@@ -89,22 +86,15 @@ impl TransactionContext {
         )
         .expect("error initializing transaction inputs");
 
-        let test_lib = TransactionKernel::kernel_as_library();
-
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
-
-        // TODO: SourceManager: Load source into host-owned source manager.
         // Virtual file name should be unique.
-        let virtual_source_file = source_manager.load(
+        let virtual_source_file = self.source_manager.load(
             SourceLanguage::Masm,
             Uri::new("_tx_context_code"),
             code.to_owned(),
         );
 
+        let assembler = TransactionKernel::with_mock_libraries(self.source_manager.clone())
+            .with_debug_mode(true);
         let program = assembler
             .with_debug_mode(true)
             .assemble_program(virtual_source_file)
@@ -113,31 +103,25 @@ impl TransactionContext {
         let mast_store = Rc::new(TransactionMastStore::new());
 
         mast_store.insert(program.mast_forest().clone());
-        mast_store.insert(test_lib.mast_forest().clone());
+        mast_store.insert(TransactionKernel::library().mast_forest().clone());
         mast_store.load_account_code(self.account().code());
         for acc_inputs in self.tx_args.foreign_account_inputs() {
             mast_store.load_account_code(acc_inputs.code());
         }
 
         let advice_inputs = advice_inputs.into_advice_inputs();
-        CodeExecutor::new(MockHost::new(
-            self.tx_inputs.account().into(),
-            &advice_inputs,
-            mast_store,
-            self.tx_args.to_foreign_account_code_commitments(),
-        ))
+        CodeExecutor::new(
+            MockHost::new(
+                self.tx_inputs.account().into(),
+                &advice_inputs,
+                mast_store,
+                self.tx_args.to_foreign_account_code_commitments(),
+            )
+            .with_source_manager(self.source_manager()),
+        )
         .stack_inputs(stack_inputs)
         .extend_advice_inputs(advice_inputs)
         .execute_program(program)
-    }
-
-    /// Executes arbitrary code with a kernel library assembler
-    /// ([`TransactionKernel::with_kernel_library`]).
-    ///
-    /// For more information, see the docs for [TransactionContext::execute_code_with_assembler()].
-    pub fn execute_code(&self, code: &str) -> Result<Process, ExecutionError> {
-        let assembler = TransactionKernel::with_kernel_library();
-        self.execute_code_with_assembler(code, assembler)
     }
 
     /// Executes the transaction through a [TransactionExecutor]
@@ -146,14 +130,15 @@ impl TransactionContext {
         let block_num = self.tx_inputs().block_header().block_num();
         let notes = self.tx_inputs().input_notes().clone();
         let tx_args = self.tx_args().clone();
-        let authenticator = self.authenticator();
 
-        let source_manager = Arc::clone(&self.source_manager);
-        let tx_executor = TransactionExecutor::new(&self, authenticator).with_debug_mode();
+        let mut tx_executor = TransactionExecutor::new(&self)
+            .with_source_manager(self.source_manager.clone())
+            .with_debug_mode();
+        if let Some(authenticator) = self.authenticator() {
+            tx_executor = tx_executor.with_authenticator(authenticator);
+        }
 
-        tx_executor
-            .execute_transaction(account_id, block_num, notes, tx_args, source_manager)
-            .await
+        tx_executor.execute_transaction(account_id, block_num, notes, tx_args).await
     }
 
     /// Executes the transaction through a [TransactionExecutor]
@@ -197,7 +182,7 @@ impl TransactionContext {
     }
 
     /// Returns the source manager used in the assembler of the transaction context builder.
-    pub fn source_manager(&self) -> Arc<dyn SourceManager + Send + Sync> {
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
         Arc::clone(&self.source_manager)
     }
 }

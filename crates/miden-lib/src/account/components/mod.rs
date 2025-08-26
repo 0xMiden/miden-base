@@ -48,7 +48,7 @@ static NO_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 });
 
 // Initialize the Multisig Rpo Falcon 512 library only once.
-static MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
+static RPO_FALCON_512_MULTISIG_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
     let bytes = include_bytes!(concat!(
         env!("OUT_DIR"),
         "/assets/account_components/multisig_rpo_falcon_512.masl"
@@ -83,7 +83,7 @@ pub fn no_auth_library() -> Library {
 
 /// Returns the Multisig Library.
 pub fn multisig_library() -> Library {
-    MULTISIG_LIBRARY.clone()
+    RPO_FALCON_512_MULTISIG_LIBRARY.clone()
 }
 
 // WELL KNOWN COMPONENTS
@@ -93,27 +93,34 @@ pub fn multisig_library() -> Library {
 pub enum WellKnownComponent {
     BasicWallet,
     BasicFungibleFaucet,
-    RpoFalcon512,
-    RpoFalcon512Acl,
-    RpoFalconMultisig,
+    AuthRpoFalcon512,
+    AuthRpoFalcon512Acl,
+    AuthRpoFalcon512Multisig,
+    AuthNoAuth,
 }
 
 impl WellKnownComponent {
-    /// Returns the iterator over procedure digests, containing digests of all procedures provided
-    /// by the current component.
+    /// Returns the iterator over digests of all procedures exported from the component.
     pub fn procedure_digests(&self) -> impl Iterator<Item = Word> {
-        let forest = match self {
-            Self::BasicWallet => BASIC_WALLET_LIBRARY.mast_forest(),
-            Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.mast_forest(),
-            Self::RpoFalcon512 => RPO_FALCON_512_LIBRARY.mast_forest(),
-            Self::RpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.mast_forest(),
-            Self::RpoFalconMultisig => MULTISIG_LIBRARY.mast_forest(),
+        let library = match self {
+            Self::BasicWallet => BASIC_WALLET_LIBRARY.as_ref(),
+            Self::BasicFungibleFaucet => BASIC_FUNGIBLE_FAUCET_LIBRARY.as_ref(),
+            Self::AuthRpoFalcon512 => RPO_FALCON_512_LIBRARY.as_ref(),
+            Self::AuthRpoFalcon512Acl => RPO_FALCON_512_ACL_LIBRARY.as_ref(),
+            Self::AuthRpoFalcon512Multisig => RPO_FALCON_512_MULTISIG_LIBRARY.as_ref(),
+            Self::AuthNoAuth => NO_AUTH_LIBRARY.as_ref(),
         };
 
-        forest.procedure_digests()
+        library.exports().map(|export| {
+            library
+                .mast_forest()
+                .get_node_by_id(export.node)
+                .expect("export node not in the forest")
+                .digest()
+        })
     }
 
-    /// Checks whether all procedures from the current component are present in the procedures map
+    /// Checks whether procedures from the current component are present in the procedures map
     /// and if so it removes these procedures from this map and pushes the corresponding component
     /// interface to the component interface vector.
     fn extract_component(
@@ -121,12 +128,12 @@ impl WellKnownComponent {
         procedures_map: &mut BTreeMap<Word, &AccountProcedureInfo>,
         component_interface_vec: &mut Vec<AccountComponentInterface>,
     ) {
+        // Determine if this component should be extracted based on procedure matching
         if self
             .procedure_digests()
             .all(|proc_digest| procedures_map.contains_key(&proc_digest))
         {
-            // `storage_offset` is guaranteed to be overwritten because `Self::procedure_digests`
-            // will return at least one digest.
+            // Extract the storage offset from any matching procedure
             let mut storage_offset = 0u8;
             self.procedure_digests().for_each(|component_procedure| {
                 if let Some(proc_info) = procedures_map.remove(&component_procedure) {
@@ -134,18 +141,22 @@ impl WellKnownComponent {
                 }
             });
 
+            // Create the appropriate component interface
             match self {
                 Self::BasicWallet => {
                     component_interface_vec.push(AccountComponentInterface::BasicWallet)
                 },
                 Self::BasicFungibleFaucet => component_interface_vec
                     .push(AccountComponentInterface::BasicFungibleFaucet(storage_offset)),
-                Self::RpoFalcon512 => component_interface_vec
+                Self::AuthRpoFalcon512 => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512(storage_offset)),
-                Self::RpoFalcon512Acl => component_interface_vec
+                Self::AuthRpoFalcon512Acl => component_interface_vec
                     .push(AccountComponentInterface::AuthRpoFalcon512Acl(storage_offset)),
-                Self::RpoFalconMultisig => component_interface_vec
-                    .push(AccountComponentInterface::AuthRpoFalconMultisig(storage_offset)),
+                Self::AuthRpoFalcon512Multisig => component_interface_vec
+                    .push(AccountComponentInterface::AuthRpoFalcon512Multisig(storage_offset)),
+                Self::AuthNoAuth => {
+                    component_interface_vec.push(AccountComponentInterface::AuthNoAuth)
+                },
             }
         }
     }
@@ -158,8 +169,9 @@ impl WellKnownComponent {
     ) {
         Self::BasicWallet.extract_component(procedures_map, component_interface_vec);
         Self::BasicFungibleFaucet.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalcon512.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
-        Self::RpoFalconMultisig.extract_component(procedures_map, component_interface_vec);
+        Self::AuthRpoFalcon512.extract_component(procedures_map, component_interface_vec);
+        Self::AuthRpoFalcon512Acl.extract_component(procedures_map, component_interface_vec);
+        Self::AuthRpoFalcon512Multisig.extract_component(procedures_map, component_interface_vec);
+        Self::AuthNoAuth.extract_component(procedures_map, component_interface_vec);
     }
 }

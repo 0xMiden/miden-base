@@ -6,7 +6,8 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountHeader, AccountVaultDelta};
-use miden_objects::assembly::SourceManager;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::assembly::{DefaultSourceManager, SourceManager};
 use miden_objects::{Felt, Word};
 use miden_processor::{
     AdviceInputs,
@@ -31,11 +32,11 @@ use miden_tx::{AccountProcedureIndexMap, LinkMap, TransactionMastStore};
 pub struct MockHost {
     acct_procedure_index_map: AccountProcedureIndexMap,
     mast_store: Rc<TransactionMastStore>,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl MockHost {
-    /// Returns a new [MockHost] instance with the provided
-    /// [AdviceInputs](miden_processor::AdviceInputs).
+    /// Returns a new [`MockHost`] instance with the provided [`AdviceInputs`].
     pub fn new(
         account: AccountHeader,
         advice_inputs: &AdviceInputs,
@@ -43,12 +44,21 @@ impl MockHost {
         mut foreign_code_commitments: BTreeSet<Word>,
     ) -> Self {
         foreign_code_commitments.insert(account.code_commitment());
-        let proc_index_map = AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs);
+        let account_procedure_index_map =
+            AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs)
+                .expect("account procedure index map should be valid");
 
         Self {
-            acct_procedure_index_map: proc_index_map.unwrap(),
+            acct_procedure_index_map: account_procedure_index_map,
             mast_store,
+            source_manager: Arc::new(DefaultSourceManager::default()),
         }
+    }
+
+    /// Sets the provided [`SourceManagerSync`] on the host.
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
     }
 
     /// Consumes `self` and returns the advice provider and account vault delta.
@@ -64,7 +74,7 @@ impl MockHost {
         process: &ProcessState,
     ) -> Result<Vec<AdviceMutation>, EventError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process).map_err(Box::new)?;
-        Ok(vec![AdviceMutation::ExtendStack { values: vec![Felt::from(proc_idx)] }])
+        Ok(vec![AdviceMutation::extend_stack([Felt::from(proc_idx)])])
     }
 }
 
@@ -80,10 +90,8 @@ impl BaseHost for MockHost {
         miden_objects::assembly::debuginfo::SourceSpan,
         Option<Arc<miden_objects::assembly::SourceFile>>,
     ) {
-        // TODO: SourceManager: Replace with proper call to source manager once the host owns it.
-        let stub_source_manager = miden_objects::assembly::DefaultSourceManager::default();
-        let maybe_file = stub_source_manager.get_by_uri(location.uri());
-        let span = stub_source_manager.location_to_span(location.clone()).unwrap_or_default();
+        let maybe_file = self.source_manager.get_by_uri(location.uri());
+        let span = self.source_manager.location_to_span(location.clone()).unwrap_or_default();
         (span, maybe_file)
     }
 }
