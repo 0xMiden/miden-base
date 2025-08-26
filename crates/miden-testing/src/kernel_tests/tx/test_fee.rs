@@ -70,7 +70,9 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
 
     assert_matches!(
         err,
-        TransactionExecutorError::InsufficientFee { account_balance: _, tx_fee: _ }
+        TransactionExecutorError::InsufficientFee { account_balance, tx_fee: _ } => {
+            assert_eq!(account_balance, account_amount + note_amount);
+        }
     );
 
     Ok(())
