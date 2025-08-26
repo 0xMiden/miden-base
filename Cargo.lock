@@ -1152,6 +1152,7 @@ dependencies = [
  "miden-objects",
  "miden-processor",
  "miden-stdlib",
+ "rand",
  "regex",
  "thiserror 2.0.15",
  "walkdir",

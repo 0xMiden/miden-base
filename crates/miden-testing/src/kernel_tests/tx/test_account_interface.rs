@@ -3,6 +3,7 @@ use alloc::vec::Vec;
 use assert_matches::assert_matches;
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::Word;
 use miden_objects::account::{Account, AccountId};
@@ -13,7 +14,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::note::NoteBuilder;
 use miden_processor::ExecutionError;
 use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
@@ -133,14 +133,16 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.1 drop push.0 div end")
-    .build(&TransactionKernel::with_kernel_library())?;
+    .dynamically_linked_libraries([TransactionKernel::library()])
+    .build()?;
 
     let failing_note_2 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
     )
     .code("begin push.2 drop push.0 div end")
-    .build(&TransactionKernel::with_kernel_library())?;
+    .dynamically_linked_libraries([TransactionKernel::library()])
+    .build()?;
 
     let successful_note_1 = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),

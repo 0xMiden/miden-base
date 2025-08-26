@@ -1,11 +1,11 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::note::Note;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
 use rand::SeedableRng;
@@ -133,7 +133,8 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
     NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
         .code(code)
-        .build(&TransactionKernel::with_mock_libraries())
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()
         .expect("generated note script should compile")
 }
 
@@ -146,7 +147,8 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
-        .build(&TransactionKernel::with_mock_libraries())?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
 
     Ok(note)
 }

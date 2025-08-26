@@ -1,10 +1,11 @@
 use alloc::string::ToString;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use assert_matches::assert_matches;
 use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountType, StorageSlot};
-use miden_objects::assembly::Assembler;
 use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::assembly::{Assembler, DefaultSourceManager};
 use miden_objects::asset::{FungibleAsset, NonFungibleAsset, TokenSymbol};
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::crypto::rand::{FeltRng, RpoRandomCoin};
@@ -149,7 +150,7 @@ fn test_custom_account_default_note() {
 
     let account_component = AccountComponent::compile(
         account_custom_code_source,
-        TransactionKernel::with_kernel_library(),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         vec![],
     )
     .unwrap()
@@ -432,7 +433,7 @@ fn test_custom_account_custom_notes() {
 
     let account_component = AccountComponent::compile_with_path(
         account_custom_code_source,
-        TransactionKernel::with_kernel_library(),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         vec![],
         "test::account::component_1",
     )
@@ -545,7 +546,7 @@ fn test_custom_account_multiple_components_custom_notes() {
 
     let custom_component = AccountComponent::compile_with_path(
         account_custom_code_source,
-        TransactionKernel::with_kernel_library(),
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
         vec![],
         "test::account::component_1",
     )

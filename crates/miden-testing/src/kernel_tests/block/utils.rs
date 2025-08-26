@@ -3,7 +3,7 @@ use std::vec;
 use std::vec::Vec;
 
 use miden_lib::note::create_p2id_note;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
 use miden_objects::asset::{Asset, FungibleAsset};
@@ -12,7 +12,6 @@ use miden_objects::block::BlockNumber;
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::{Note, NoteId, NoteTag, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{
     ExecutedTransaction,
     OutputNote,
@@ -63,7 +62,7 @@ pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
     NoteBuilder::new(sender, &mut rng)
         .note_type(NoteType::Private)
         .tag(NoteTag::for_local_use_case(0, 0).unwrap().into())
-        .build(&TransactionKernel::assembler().with_debug_mode(true))
+        .build()
         .unwrap()
 }
 
@@ -120,7 +119,7 @@ pub fn generate_conditional_tx(
     modify_storage: bool,
 ) -> ExecutedTransaction {
     let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
-        .build(&TransactionKernel::assembler())
+        .build()
         .expect("failed to create the noop note");
     chain.add_pending_note(OutputNote::Full(noop_note.clone()));
     chain.prove_next_block().unwrap();
