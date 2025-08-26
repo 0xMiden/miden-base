@@ -6,6 +6,7 @@ use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountDelta};
 use miden_objects::block::BlockNumber;
 use miden_objects::transaction::{
+    ExecutedTransaction,
     InputNote,
     InputNotes,
     OutputNote,
@@ -47,17 +48,17 @@ impl LocalTransactionProver {
     #[cfg(any(feature = "testing", test))]
     pub fn prove_dummy(
         &self,
-        tx_witness: TransactionWitness,
+        executed_tx: ExecutedTransaction,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness { tx_inputs, account_delta, tx_outputs, .. } = tx_witness;
+        let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
 
         self.build_proven_transaction(
-            tx_inputs.input_notes(),
+            tx_witness.tx_inputs.input_notes(),
             tx_outputs,
             account_delta,
-            tx_inputs.account(),
-            tx_inputs.block_header().block_num(),
-            tx_inputs.block_header().commitment(),
+            tx_witness.tx_inputs.account(),
+            tx_witness.tx_inputs.block_header().block_num(),
+            tx_witness.tx_inputs.block_header().commitment(),
             ExecutionProof::new_dummy(),
         )
     }
@@ -122,7 +123,7 @@ impl LocalTransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness { tx_inputs, tx_args, advice_witness, .. } = tx_witness;
+        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
 
         let account = tx_inputs.account();
         let input_notes = tx_inputs.input_notes();

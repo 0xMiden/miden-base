@@ -1,8 +1,4 @@
-#[cfg(any(feature = "testing", test))]
-use super::TransactionOutputs;
 use super::{AdviceInputs, TransactionArgs, TransactionInputs};
-#[cfg(any(feature = "testing", test))]
-use crate::account::AccountDelta;
 use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // TRANSACTION WITNESS
@@ -27,23 +23,11 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 /// and tx outputs; account codes and a subset of that data in advice inputs).
 /// We should optimize it to contain only the minimum data required for executing/proving the
 /// transaction.
-#[cfg(not(any(feature = "testing", test)))]
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct TransactionWitness {
     pub tx_inputs: TransactionInputs,
     pub tx_args: TransactionArgs,
     pub advice_witness: AdviceInputs,
-}
-
-/// Please see the docs for the non-testing variant.
-#[cfg(any(feature = "testing", test))]
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct TransactionWitness {
-    pub tx_inputs: TransactionInputs,
-    pub tx_args: TransactionArgs,
-    pub advice_witness: AdviceInputs,
-    pub account_delta: AccountDelta,
-    pub tx_outputs: TransactionOutputs,
 }
 
 // SERIALIZATION
@@ -54,12 +38,6 @@ impl Serializable for TransactionWitness {
         self.tx_inputs.write_into(target);
         self.tx_args.write_into(target);
         self.advice_witness.write_into(target);
-
-        #[cfg(any(feature = "testing", test))]
-        {
-            self.account_delta.write_into(target);
-            self.tx_outputs.write_into(target);
-        }
     }
 }
 
@@ -69,21 +47,7 @@ impl Deserializable for TransactionWitness {
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
 
-        #[cfg(not(any(feature = "testing", test)))]
-        {
-            Ok(Self { tx_inputs, tx_args, advice_witness })
-        }
-
-        #[cfg(any(feature = "testing", test))]
-        {
-            Ok(Self {
-                tx_inputs,
-                tx_args,
-                advice_witness,
-                account_delta: AccountDelta::read_from(source)?,
-                tx_outputs: TransactionOutputs::read_from(source)?,
-            })
-        }
+        Ok(Self { tx_inputs, tx_args, advice_witness })
     }
 }
 
@@ -92,29 +56,16 @@ mod tests {
     use anyhow::Context;
     use miden_crypto::Word;
 
-    use crate::ZERO;
-    use crate::account::{
-        AccountBuilder,
-        AccountComponent,
-        AccountDelta,
-        AccountHeader,
-        AccountStorageDelta,
-        AccountVaultDelta,
-        StorageSlot,
-    };
+    use crate::account::{AccountBuilder, AccountComponent, StorageSlot};
     use crate::assembly::Assembler;
     use crate::asset::FungibleAsset;
     use crate::block::{BlockHeader, BlockNumber};
     use crate::testing::noop_auth_component::NoopAuthComponent;
-    use crate::testing::note::NoteBuilder;
     use crate::transaction::{
         InputNotes,
-        OutputNote,
-        OutputNotes,
         PartialBlockchain,
         TransactionArgs,
         TransactionInputs,
-        TransactionOutputs,
         TransactionWitness,
     };
     use crate::vm::AdviceInputs;
@@ -145,12 +96,6 @@ mod tests {
             Word::empty(),
         );
 
-        let account_delta = {
-            let storage_delta = AccountStorageDelta::new();
-            let vault_delta = AccountVaultDelta::default();
-            AccountDelta::new(account.id(), storage_delta, vault_delta, ZERO).unwrap()
-        };
-
         let tx_inputs = TransactionInputs::new(
             account.clone(),
             None,
@@ -160,28 +105,10 @@ mod tests {
         )
         .unwrap();
 
-        let tx_outputs = {
-            let account_header: AccountHeader = account.clone().into();
-
-            let mock_note = NoteBuilder::new(account.id(), &mut rand::rng())
-                .build(&Assembler::default())
-                .unwrap();
-
-            TransactionOutputs {
-                account: account_header,
-                account_delta_commitment: Word::default(),
-                output_notes: OutputNotes::new(vec![OutputNote::Full(mock_note)]).unwrap(),
-                fee: asset.unwrap_fungible(),
-                expiration_block_num: BlockNumber::default(),
-            }
-        };
-
         let witness = TransactionWitness {
             tx_inputs,
             tx_args: TransactionArgs::default(),
             advice_witness: AdviceInputs::default(),
-            account_delta,
-            tx_outputs,
         };
 
         let bytes = witness.to_bytes();
