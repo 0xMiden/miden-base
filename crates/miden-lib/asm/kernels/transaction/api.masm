@@ -140,32 +140,33 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the account ID.
+#! Returns the account ID of the current account.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [acct_id_prefix, acct_id_suffix, pad(14)]
+#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
-#! - acct_id is the account ID.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
+#!   accessing account.
 #!
 #! Invocation: dynexec
 export.account_get_id
     # get the account ID
     exec.account::get_id
-    # => [acct_id_prefix, acct_id_suffix, pad(16)]
+    # => [account_id_prefix, account_id_suffix, pad(16)]
 
     # truncate the stack
     movup.2 drop movup.2 drop
-    # => [acct_id_prefix, acct_id_suffix, pad(14)]
+    # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 
-#! Returns the account nonce.
+#! Returns the nonce of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [nonce, pad(15)]
 #!
 #! Where:
-#! - nonce is the account nonce.
+#! - nonce is the current account's nonce.
 #!
 #! Invocation: dynexec
 export.account_get_nonce
@@ -433,13 +434,13 @@ export.account_get_initial_vault_root
     # => [INIT_VAULT_ROOT, pad(12)]
 end
 
-#! Returns a commitment to the account vault the transaction is being executed against.
+#! Returns the vault root of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [VAULT_ROOT, pad(12)]
 #!
 #! Where:
-#! - VAULT_ROOT is the commitment to the account vault.
+#! - VAULT_ROOT is the root of the account vault.
 #!
 #! Invocation: dynexec
 export.account_get_vault_root
@@ -515,7 +516,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
 #! Outputs: [balance, pad(15)]
@@ -539,7 +540,7 @@ export.account_get_balance
     # => [balance, pad(15)]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [has_asset, pad(15)]
