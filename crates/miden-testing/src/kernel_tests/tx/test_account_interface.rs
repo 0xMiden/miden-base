@@ -201,8 +201,7 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
                     FailedNote {
                         note,
                         error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. })),
-                        ..
+                            ExecutionError::DivideByZero { .. }))
                     } => {
                         assert_eq!(
                             note.id(),
@@ -216,8 +215,7 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
                     FailedNote {
                         note,
                         error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. })),
-                        ..
+                            ExecutionError::DivideByZero { .. }))
                     } => {
                         assert_eq!(
                             note.id(),

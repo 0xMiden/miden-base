@@ -18,7 +18,6 @@ use crate::{DataStore, NoteExecutionError, TransactionExecutorError};
 
 /// Represents a failed note consumption.
 #[derive(Debug)]
-#[non_exhaustive]
 pub struct FailedNote {
     pub note: Note,
     pub error: Option<TransactionExecutorError>,
@@ -33,7 +32,6 @@ impl FailedNote {
 
 /// Contains information about the successful and failed consumption of notes.
 #[derive(Default, Debug)]
-#[non_exhaustive]
 pub struct NoteConsumptionInfo {
     pub successful: Vec<Note>,
     pub failed: Vec<FailedNote>,
