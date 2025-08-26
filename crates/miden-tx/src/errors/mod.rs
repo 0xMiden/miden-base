@@ -10,6 +10,7 @@ use miden_objects::crypto::merkle::SmtProofError;
 use miden_objects::note::NoteId;
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{
+    AccountDeltaError,
     AccountError,
     Felt,
     ProvenTransactionError,
@@ -69,6 +70,8 @@ pub enum TransactionExecutorError {
         in_kernel_commitment: Word,
         host_commitment: Word,
     },
+    #[error("failed to remove the fee asset from the pre-fee account delta")]
+    RemoveFeeAssetFromDelta(#[source] AccountDeltaError),
     #[error("input account ID {input_id} does not match output account ID {output_id}")]
     InconsistentAccountId {
         input_id: AccountId,
@@ -76,6 +79,10 @@ pub enum TransactionExecutorError {
     },
     #[error("expected account nonce delta to be {expected}, found {actual}")]
     InconsistentAccountNonceDelta { expected: Felt, actual: Felt },
+    #[error(
+        "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
+    )]
+    InsufficientFee { account_balance: u64, tx_fee: u64 },
     #[error("account witness provided for account ID {0} is invalid")]
     InvalidAccountWitness(AccountId, #[source] SmtProofError),
     #[error(
@@ -103,6 +110,8 @@ pub enum TransactionExecutorError {
 pub enum TransactionProverError {
     #[error("failed to apply account delta")]
     AccountDeltaApplyFailed(#[source] AccountError),
+    #[error("failed to remove the fee asset from the pre-fee account delta")]
+    RemoveFeeAssetFromDelta(#[source] AccountDeltaError),
     #[error("failed to construct transaction outputs")]
     TransactionOutputConstructionFailed(#[source] TransactionOutputError),
     #[error("failed to build proven transaction")]

@@ -2,15 +2,16 @@
 // ================================================================================================
 
 use alloc::collections::BTreeMap;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
-use miden_lib::transaction::TransactionKernel;
 use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
-use miden_objects::assembly::Assembler;
+use miden_objects::assembly::DefaultSourceManager;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -63,7 +64,7 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 /// assert_eq!(process.stack.get(0), Felt::new(5),);
 /// ```
 pub struct TransactionContextBuilder {
-    assembler: Assembler,
+    source_manager: Arc<dyn SourceManagerSync>,
     account: Account,
     account_seed: Option<Word>,
     advice_inputs: AdviceInputs,
@@ -81,7 +82,7 @@ pub struct TransactionContextBuilder {
 impl TransactionContextBuilder {
     pub fn new(account: Account) -> Self {
         Self {
-            assembler: TransactionKernel::with_mock_libraries(),
+            source_manager: Arc::new(DefaultSourceManager::default()),
             account,
             account_seed: None,
             input_notes: Vec::new(),
@@ -107,26 +108,10 @@ impl TransactionContextBuilder {
     /// - Has an account code based on an
     ///   [miden_lib::testing::account_component::MockAccountComponent].
     pub fn with_existing_mock_account() -> Self {
-        let account =
-            Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
-
-        let assembler = TransactionKernel::with_mock_libraries();
-
-        Self {
-            assembler: assembler.clone(),
-            account,
-            account_seed: None,
-            authenticator: None,
-            input_notes: Vec::new(),
-            expected_output_notes: Vec::new(),
-            advice_inputs: Default::default(),
-            tx_script: None,
-            tx_script_args: EMPTY_WORD,
-            transaction_inputs: None,
-            note_args: BTreeMap::new(),
-            foreign_account_inputs: vec![],
-            auth_args: EMPTY_WORD,
-        }
+        Self::new(Account::mock(
+            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
+            IncrNonceAuthComponent,
+        ))
     }
 
     /// Same as [`Self::with_existing_mock_account`] but with a [`NoopAuthComponent`].
@@ -147,14 +132,6 @@ impl TransactionContextBuilder {
     pub fn with_non_fungible_faucet(acct_id: u128) -> Self {
         let account = Account::mock_non_fungible_faucet(acct_id);
         Self::new(account)
-    }
-
-    /// Returns a clone of the assembler.
-    ///
-    /// This is primarily useful to assemble a script whose source will end up in the source manager
-    /// that is passed to the processor. This will help generate better error messages.
-    pub fn assembler(&self) -> Assembler {
-        self.assembler.clone()
     }
 
     /// Override and set the account seed manually
@@ -238,18 +215,20 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Sets the [`SourceManagerSync`] on the [`TransactionContext`] that will be built.
+    ///
+    /// This source manager should contain the sources of all involved scripts and account code in
+    /// order to provide better error messages if an error occurs.
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager.clone();
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
     /// to generate valid block data for the required notes.
     pub fn build(self) -> anyhow::Result<TransactionContext> {
-        // TODO: SourceManager.
-        let source_manager =
-            alloc::sync::Arc::new(miden_objects::assembly::DefaultSourceManager::default())
-                as alloc::sync::Arc<
-                    dyn miden_objects::assembly::SourceManager + Send + Sync + 'static,
-                >;
-
         let tx_inputs = match self.transaction_inputs {
             Some(tx_inputs) => tx_inputs,
             None => {
@@ -310,7 +289,7 @@ impl TransactionContextBuilder {
             mast_store,
             authenticator: self.authenticator,
             advice_inputs: self.advice_inputs,
-            source_manager,
+            source_manager: self.source_manager,
         })
     }
 }

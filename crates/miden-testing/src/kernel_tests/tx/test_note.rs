@@ -1,5 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::string::String;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
@@ -7,10 +8,12 @@ use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
 use miden_lib::testing::mock_account::MockAccountExt;
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
+use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
@@ -31,7 +34,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
 use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
 use rand::SeedableRng;
@@ -906,10 +908,13 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     let lock_timestamp = 2_000_000_000;
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let timelock_note = NoteBuilder::new(account.id(), &mut ChaCha20Rng::from_os_rng())
         .note_inputs([Felt::from(lock_timestamp)])?
+        .source_manager(source_manager.clone())
         .code(code.clone())
-        .build(&TransactionKernel::with_mock_libraries())?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
 
     builder.add_note(OutputNote::Full(timelock_note.clone()));
 
@@ -923,6 +928,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_inputs =
         mock_chain.get_transaction_inputs(account.clone(), None, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account.clone())
+        .with_source_manager(source_manager.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
     let result = tx_context.execute_blocking();

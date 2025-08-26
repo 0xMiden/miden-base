@@ -3,6 +3,7 @@ use std::fs::{read_to_string, write};
 use std::path::Path;
 use std::time::Instant;
 
+use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::crypto::rand::RpoRandomCoin;
@@ -11,7 +12,6 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     ACCOUNT_ID_SENDER,
 };
-use miden_objects::testing::note::NoteBuilder;
 use miden_testing::{Auth, MockChain, TxContextInput};
 use miden_tx::{NoteConsumptionChecker, TransactionExecutor};
 use serde::{Deserialize, Serialize};
@@ -91,8 +91,9 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
         let mut rng = RpoRandomCoin::new([i as u32, 0, 0, 0].into());
         let failing_note = NoteBuilder::new(sender, &mut rng)
             .code("begin push.0 div end") // Division by zero - will fail.
-            .build(&miden_lib::transaction::TransactionKernel::with_kernel_library())?;
+            .build()?;
         failing_notes.push(failing_note);
+        // &miden_lib::transaction::TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()))
     }
 
     // Create the second successful note.
@@ -135,7 +136,8 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
     let tx_args = tx_context.tx_args().clone();
 
     // Create executor and checker.
-    let executor = TransactionExecutor::new(&tx_context, tx_context.authenticator());
+    let executor = TransactionExecutor::new(&tx_context)
+        .with_authenticator(tx_context.authenticator().unwrap());
     let checker = NoteConsumptionChecker::new(&executor);
 
     let result = checker
@@ -172,7 +174,8 @@ pub async fn run_mixed_notes_check_with_measurements(
     let tx_args = tx_context.tx_args().clone();
 
     // Create executor and checker.
-    let executor = TransactionExecutor::new(&tx_context, tx_context.authenticator());
+    let executor = TransactionExecutor::new(&tx_context)
+        .with_authenticator(tx_context.authenticator().unwrap());
     let checker = NoteConsumptionChecker::new(&executor);
 
     // Measure execution time.

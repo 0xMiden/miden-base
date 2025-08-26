@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
@@ -29,8 +30,8 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -347,7 +348,7 @@ pub fn test_compute_code_commitment() -> miette::Result<()> {
         expected_code_commitment = account.code().commitment()
     );
 
-    tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -418,9 +419,7 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let process = &tx_context
-            .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
-            .unwrap();
+        let process = &tx_context.execute_code(&code)?;
 
         assert_eq!(
             value,
@@ -575,9 +574,7 @@ fn test_set_map_item() -> miette::Result<()> {
         new_value = &new_value,
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
-        .unwrap();
+    let process = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value);
@@ -599,7 +596,8 @@ fn test_set_map_item() -> miette::Result<()> {
 #[test]
 fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
-    let assembler = TransactionKernel::with_kernel_library();
+    let assembler =
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()));
 
     // The following code will execute the following logic that will be asserted during the test:
     //
@@ -963,7 +961,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
         end
         "#,
     );
-    tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -1030,7 +1028,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         fungible_asset = Word::from(&fungible_asset),
         expected_vault_root = &account.vault().root(),
     );
-    tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -1139,12 +1137,10 @@ fn test_was_procedure_called() -> miette::Result<()> {
         "#;
 
     // Compile the transaction script using the testing assembler with mock account
-    let assembler = TransactionKernel::with_mock_libraries();
-    let tx_script = TransactionScript::new(
-        assembler
-            .assemble_program(tx_script_code)
-            .wrap_err("Failed to compile transaction script")?,
-    );
+    let tx_script = ScriptBuilder::with_mock_libraries()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_code)
+        .into_diagnostic()?;
 
     // Create transaction context and execute
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
@@ -1186,7 +1182,8 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler = TransactionKernel::with_mock_libraries();
+    let mut assembler =
+        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
     assembler.link_static_library(&external_library)?;
 
     let account_component_source =

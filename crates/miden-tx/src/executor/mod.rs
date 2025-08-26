@@ -1,9 +1,13 @@
 use alloc::collections::BTreeSet;
+use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
+use miden_objects::assembly::DefaultSourceManager;
+use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::asset::Asset;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::{
     AccountInputs,
@@ -48,6 +52,7 @@ pub use notes_checker::{FailedNote, NoteConsumptionChecker, NoteConsumptionInfo}
 pub struct TransactionExecutor<'store, 'auth, STORE: 'store, AUTH: 'auth> {
     data_store: &'store STORE,
     authenticator: Option<&'auth AUTH>,
+    source_manager: Arc<dyn SourceManagerSync>,
     exec_options: ExecutionOptions,
 }
 
@@ -56,17 +61,19 @@ where
     STORE: DataStore + 'store + Sync,
     AUTH: TransactionAuthenticator + 'auth + Sync,
 {
-    // CONSTRUCTOR
+    // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore] and
-    /// [TransactionAuthenticator].
-    pub fn new(data_store: &'store STORE, authenticator: Option<&'auth AUTH>) -> Self {
+    /// Creates a new [TransactionExecutor] instance with the specified [DataStore].
+    ///
+    /// The created executor will not have the authenticator or source manager set, and tracing and
+    /// debug mode will be turned off.
+    pub fn new(data_store: &'store STORE) -> Self {
         const _: () = assert!(MIN_TX_EXECUTION_CYCLES <= MAX_TX_EXECUTION_CYCLES);
-
-        Self {
+        TransactionExecutor {
             data_store,
-            authenticator,
+            authenticator: None,
+            source_manager: Arc::new(DefaultSourceManager::default()),
             exec_options: ExecutionOptions::new(
                 Some(MAX_TX_EXECUTION_CYCLES),
                 MIN_TX_EXECUTION_CYCLES,
@@ -77,37 +84,66 @@ where
         }
     }
 
-    /// Creates a new [TransactionExecutor] instance with the specified [DataStore],
-    /// [TransactionAuthenticator] and [ExecutionOptions].
+    /// Adds the specified [TransactionAuthenticator] to the executor and returns the resulting
+    /// executor.
     ///
-    /// The specified cycle values (`max_cycles` and `expected_cycles`) in the [ExecutionOptions]
-    /// must be within the range [`MIN_TX_EXECUTION_CYCLES`] and [`MAX_TX_EXECUTION_CYCLES`].
+    /// This will overwrite any previously set authenticator.
+    #[must_use]
+    pub fn with_authenticator(mut self, authenticator: &'auth AUTH) -> Self {
+        self.authenticator = Some(authenticator);
+        self
+    }
+
+    /// Adds the specified source manager to the executor and returns the resulting executor.
+    ///
+    /// The `source_manager` is used to map potential errors back to their source code. To get the
+    /// most value out of it, use the same source manager as was used with the
+    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
+    /// that should be debugged, e.g. account components, note scripts or transaction scripts.
+    ///
+    /// This will overwrite any previously set source manager.
+    #[must_use]
+    pub fn with_source_manager(mut self, source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        self.source_manager = source_manager;
+        self
+    }
+
+    /// Sets the [ExecutionOptions] for the executor to the provided options and returns the
+    /// resulting executor.
+    ///
+    /// # Errors
+    /// Returns an error if the specified cycle values (`max_cycles` and `expected_cycles`) in
+    /// the [ExecutionOptions] are not within the range [`MIN_TX_EXECUTION_CYCLES`] and
+    /// [`MAX_TX_EXECUTION_CYCLES`].
     pub fn with_options(
-        data_store: &'store STORE,
-        authenticator: Option<&'auth AUTH>,
+        mut self,
         exec_options: ExecutionOptions,
     ) -> Result<Self, TransactionExecutorError> {
         validate_num_cycles(exec_options.max_cycles())?;
         validate_num_cycles(exec_options.expected_cycles())?;
 
-        Ok(Self { data_store, authenticator, exec_options })
+        self.exec_options = exec_options;
+        Ok(self)
     }
 
-    /// Puts the [TransactionExecutor] into debug mode.
+    /// Puts the [TransactionExecutor] into debug mode and returns the resulting executor.
     ///
     /// When transaction executor is in debug mode, all transaction-related code (note scripts,
     /// account code) will be compiled and executed in debug mode. This will ensure that all debug
     /// instructions present in the original source code are executed.
+    #[must_use]
     pub fn with_debug_mode(mut self) -> Self {
         self.exec_options = self.exec_options.with_debugging(true);
         self
     }
 
-    /// Enables tracing for the created instance of [TransactionExecutor].
+    /// Enables tracing for the created instance of [TransactionExecutor] and returns the resulting
+    /// executor.
     ///
     /// When tracing is enabled, the executor will receive tracing events as various stages of the
     /// transaction kernel complete. This enables collecting basic stats about how long different
     /// stages of transaction execution take.
+    #[must_use]
     pub fn with_tracing(mut self) -> Self {
         self.exec_options = self.exec_options.with_tracing();
         self
@@ -125,13 +161,6 @@ where
     /// the reference block of the transaction and the set of headers from the blocks in which the
     /// provided `notes` were created. Then, it executes the transaction program and creates an
     /// [`ExecutedTransaction`].
-    ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
     /// # Errors:
     ///
@@ -172,13 +201,6 @@ where
 
     /// Executes an arbitrary script against the given account and returns the stack state at the
     /// end of execution.
-    ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
     ///
     /// # Errors:
     /// Returns an error if:
@@ -283,6 +305,7 @@ where
             acct_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().fee_parameters(),
+            self.source_manager.clone(),
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -302,22 +325,32 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     stack_outputs: StackOutputs,
     host: TransactionExecutorHost<STORE, AUTH>,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    let (account_delta, output_notes, generated_signatures, tx_progress) = host.into_parts();
+    // Note that the account delta does not contain the removed transaction fee, so it is the
+    // "pre-fee" delta of the transaction.
+    let (pre_fee_account_delta, output_notes, generated_signatures, tx_progress) =
+        host.into_parts();
 
     let tx_outputs =
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .map_err(TransactionExecutorError::TransactionOutputConstructionFailed)?;
 
-    let initial_account = tx_inputs.account();
-    let final_account = &tx_outputs.account;
-
-    let host_delta_commitment = account_delta.to_commitment();
-    if tx_outputs.account_delta_commitment != host_delta_commitment {
+    let pre_fee_delta_commitment = pre_fee_account_delta.to_commitment();
+    if tx_outputs.account_delta_commitment != pre_fee_delta_commitment {
         return Err(TransactionExecutorError::InconsistentAccountDeltaCommitment {
             in_kernel_commitment: tx_outputs.account_delta_commitment,
-            host_commitment: host_delta_commitment,
+            host_commitment: pre_fee_delta_commitment,
         });
     }
+
+    // The full transaction delta is the pre fee delta with the fee asset removed.
+    let mut post_fee_account_delta = pre_fee_account_delta;
+    post_fee_account_delta
+        .vault_mut()
+        .remove_asset(Asset::from(tx_outputs.fee))
+        .map_err(TransactionExecutorError::RemoveFeeAssetFromDelta)?;
+
+    let initial_account = tx_inputs.account();
+    let final_account = &tx_outputs.account;
 
     if initial_account.id() != final_account.id() {
         return Err(TransactionExecutorError::InconsistentAccountId {
@@ -328,10 +361,10 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 
     // make sure nonce delta was computed correctly
     let nonce_delta = final_account.nonce() - initial_account.nonce();
-    if nonce_delta != account_delta.nonce_delta() {
+    if nonce_delta != post_fee_account_delta.nonce_delta() {
         return Err(TransactionExecutorError::InconsistentAccountNonceDelta {
             expected: nonce_delta,
-            actual: account_delta.nonce_delta(),
+            actual: post_fee_account_delta.nonce_delta(),
         });
     }
 
@@ -341,7 +374,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
     Ok(ExecutedTransaction::new(
         tx_inputs,
         tx_outputs,
-        account_delta,
+        post_fee_account_delta,
         tx_args,
         advice_inputs,
         tx_progress.into(),
@@ -417,6 +450,12 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
             match error.downcast_ref::<TransactionKernelError>() {
                 Some(TransactionKernelError::Unauthorized(summary)) => {
                     TransactionExecutorError::Unauthorized(summary.clone())
+                },
+                Some(TransactionKernelError::InsufficientFee { account_balance, tx_fee }) => {
+                    TransactionExecutorError::InsufficientFee {
+                        account_balance: *account_balance,
+                        tx_fee: *tx_fee,
+                    }
                 },
                 _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
             }
