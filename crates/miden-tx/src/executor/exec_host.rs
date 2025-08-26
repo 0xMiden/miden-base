@@ -23,6 +23,7 @@ use miden_processor::{
     ProcessState,
 };
 
+use crate::AccountProcedureIndexMap;
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::host::{
     ScriptMastForestStore,
@@ -31,7 +32,6 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
-use crate::{AccountProcedureIndexMap, TransactionExecutorError};
 
 /// The transaction executor host is responsible for handling [`FutureMaybeSend`] requests made by
 /// the transaction kernel during execution. In particular, it responds to signature generation
@@ -159,7 +159,7 @@ where
     fn on_tx_fee_computed(
         &self,
         fee_asset: FungibleAsset,
-    ) -> Result<Vec<AdviceMutation>, TransactionExecutorError> {
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         // Compute the current balance of the native asset in the account based on the initial value
         // and the delta.
         let current_native_asset = {
@@ -194,7 +194,7 @@ where
 
         // Return an error if the balance in the account does not cover the fee.
         if current_native_asset.amount() < fee_asset.amount() {
-            return Err(TransactionExecutorError::InsufficientFee {
+            return Err(TransactionKernelError::InsufficientFee {
                 account_balance: current_native_asset.amount(),
                 tx_fee: fee_asset.amount(),
             });

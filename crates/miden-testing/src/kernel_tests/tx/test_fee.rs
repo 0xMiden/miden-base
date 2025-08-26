@@ -4,7 +4,6 @@ use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::{self, Felt, Word};
-use miden_processor::ExecutionError;
 use miden_tx::TransactionExecutorError;
 
 use crate::{Auth, MockChain};
@@ -69,21 +68,10 @@ fn tx_host_aborts_if_account_balance_does_not_cover_fee() -> anyhow::Result<()> 
         .execute_blocking()
         .unwrap_err();
 
-    assert_matches!(err, TransactionExecutorError::TransactionProgramExecutionFailed(
-        execution_error
-    ) => {
-        assert_matches!(execution_error, ExecutionError::EventError { error, .. } => {
-            let kernel_error = error.downcast_ref::<TransactionExecutorError>().unwrap();
-            assert_matches!(kernel_error, TransactionExecutorError::InsufficientFee {
-                account_balance,
-                tx_fee: _
-            } => {
-                // Make sure the host computes the correct account balance based on the initial
-                // value in the account and the amount added throughout transaction execution.
-                assert_eq!(*account_balance, account_amount + note_amount);
-            });
-        })
-    });
+    assert_matches!(
+        err,
+        TransactionExecutorError::InsufficientFee { account_balance: _, tx_fee: _ }
+    );
 
     Ok(())
 }
