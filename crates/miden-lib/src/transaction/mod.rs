@@ -47,7 +47,7 @@ pub use crate::errors::{
     TransactionTraceParsingError,
 };
 
-mod procedures;
+mod kernel_procedures;
 
 // CONSTANTS
 // ================================================================================================

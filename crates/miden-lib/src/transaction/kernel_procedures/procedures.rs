@@ -2,11 +2,11 @@
 
 use miden_objects::{word, Word};
 
-// KERNEL V0 PROCEDURES
+// KERNEL PROCEDURES
 // ================================================================================================
 
-/// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Word; 48] = [
+/// Hashes of all dynamically executed kernel procedures.
+pub const KERNEL_PROCEDURES: [Word; 48] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
