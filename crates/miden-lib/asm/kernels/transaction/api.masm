@@ -729,7 +729,7 @@ end
 #! - ASSET can be a fungible or non-fungible asset.
 #!
 #! Panics if:
-#! - the procedure is called from a non-account context.
+#! - the procedure is called when the current account is not the native one.
 #!
 #! Invocation: dynexec
 export.note_add_asset
@@ -1176,10 +1176,11 @@ export.tx_get_block_timestamp
     # => [timestamp, pad(15)]
 end
 
-#! Tells the transaction kernel that we are about to execute a procedure on a foreign account.
+#! Starts a foreign account context.
 #!
-#! Checks whether the current foreign account was already loaded to the memory, and loads it if not.
-#! Moves the account pointer to the currently accessing foreign account.
+#! This allows calling procedures on an account different from the native account. It loads the
+#! foreign account into memory, unless already loaded. It pushes the foreign account onto the
+#! account stack, which makes the foreign account the current account.
 #!
 #! Inputs:
 #!   Operand stack: [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
@@ -1274,13 +1275,15 @@ export.tx_start_foreign_context
     # => [pad(16)]
 end
 
-#! Tells the transaction kernel that we are done executing a procedure on a foreign account.
+#! Ends a foreign account context.
+#!
+#! This pops the top of the account stack, making the previous account the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
 #!
 #! Panics if:
-#! - the current context is a native context.
+#! - the current account is the native account.
 #!
 #! Invocation: dynexec
 export.tx_end_foreign_context
