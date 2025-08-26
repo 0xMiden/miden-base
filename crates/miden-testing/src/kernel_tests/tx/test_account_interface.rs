@@ -123,7 +123,6 @@ async fn check_note_consumability_custom_notes_success(
 async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
-    let mock_chain = builder.build()?;
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
@@ -141,33 +140,28 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     .code("begin push.2 drop push.0 div end")
     .build(&TransactionKernel::with_kernel_library())?;
 
-    let successful_note_1 = create_p2id_note(
+    let successful_note_1 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
-        vec![FungibleAsset::mock(10)],
+        &[FungibleAsset::mock(10)],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
-    let successful_note_2 = create_p2id_note(
+    let successful_note_2 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
-        vec![FungibleAsset::mock(145)],
+        &[FungibleAsset::mock(145)],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
-    let successful_note_3 = create_p2id_note(
+    let successful_note_3 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
-        vec![FungibleAsset::mock(250)],
+        &[FungibleAsset::mock(250)],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([3u32; 4])),
     )?;
 
+    let mock_chain = builder.build()?;
     let tx_context = mock_chain
         .build_tx_context(
             TxContextInput::Account(account),
@@ -245,17 +239,15 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
 async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
-    let mock_chain = builder.build()?;
 
-    let successful_note = create_p2id_note(
+    let successful_note = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
-        vec![FungibleAsset::mock(10)],
+        &[FungibleAsset::mock(10)],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
+    let mock_chain = builder.build()?;
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::Account(account), &[], &[successful_note.clone()])?
         .build()?;
