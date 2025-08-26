@@ -222,7 +222,7 @@ where
                         found_successful = Some(idx);
                         break;
                     },
-                    _ => {
+                    Err(_) => {
                         // This combination failed, continue to next.
                     },
                 };
