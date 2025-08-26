@@ -28,6 +28,10 @@
 - Added `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
 - Added `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
 - Added `AddressInterface` type to represent the interface of the account to which an `Address` points ([#1761](https://github.com/0xMiden/miden-base/pull/#1761)).
+- Add `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713)).
+- Document `Address` in Miden book ([#1792](https://github.com/0xMiden/miden-base/pull/1792)).
+- Add `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
+- Add `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
 
 ### Changes
 
