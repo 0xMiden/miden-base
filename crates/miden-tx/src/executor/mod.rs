@@ -609,6 +609,12 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
                 Some(TransactionKernelError::Unauthorized(summary)) => {
                     TransactionExecutorError::Unauthorized(summary.clone())
                 },
+                Some(TransactionKernelError::InsufficientFee { account_balance, tx_fee }) => {
+                    TransactionExecutorError::InsufficientFee {
+                        account_balance: *account_balance,
+                        tx_fee: *tx_fee,
+                    }
+                },
                 _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
             }
         },
