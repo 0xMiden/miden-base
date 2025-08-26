@@ -51,8 +51,7 @@ impl<H: SyncHost> CodeExecutor<H> {
     /// [`Report`](miden_objects::assembly::diagnostics::Report).
     pub fn run(self, code: &str) -> Result<Process, ExecutionError> {
         let source_manager: Arc<dyn SourceManagerSync> = Arc::new(DefaultSourceManager::default());
-        let assembler =
-            TransactionKernel::with_kernel_library(source_manager.clone()).with_debug_mode(true);
+        let assembler = TransactionKernel::with_kernel_library(source_manager.clone());
 
         // Virtual file name should be unique.
         let virtual_source_file =

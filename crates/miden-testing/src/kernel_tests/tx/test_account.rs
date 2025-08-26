@@ -1137,13 +1137,10 @@ fn test_was_procedure_called() -> miette::Result<()> {
         "#;
 
     // Compile the transaction script using the testing assembler with mock account
-    let assembler =
-        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
-    let tx_script = TransactionScript::new(
-        assembler
-            .assemble_program(tx_script_code)
-            .wrap_err("Failed to compile transaction script")?,
-    );
+    let tx_script = ScriptBuilder::with_mock_libraries()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_code)
+        .into_diagnostic()?;
 
     // Create transaction context and execute
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
