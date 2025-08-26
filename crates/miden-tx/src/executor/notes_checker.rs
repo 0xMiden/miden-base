@@ -255,26 +255,11 @@ where
         }
     }
 
-    /// Validates input notes, transaction inputs, and account inputs before executing the
-    /// transaction with specified notes. Keeps track and returns both successfully consumed notes
-    /// as well as notes that failed to be consumed.
+    /// Attempts to execute a transaction with the provided input notes.
     ///
-    /// The `source_manager` is used to map potential errors back to their source code. To get the
-    /// most value out of it, use the source manager from the
-    /// [`Assembler`](miden_objects::assembly::Assembler) that assembled the Miden Assembly code
-    /// that should be debugged, e.g. account components, note scripts or transaction scripts. If
-    /// no error-to-source mapping is desired, a default source manager can be passed, e.g.
-    /// [`DefaultSourceManager::default`](miden_objects::assembly::DefaultSourceManager::default).
-    ///
-    /// # Returns:
-    /// - An index into the input notes for the note that failed execution along with the associated
-    ///   error.
-    ///
-    /// # Errors:
-    /// Returns an error if:
-    /// - If required data can not be fetched from the [`DataStore`].
-    /// - If the transaction host can not be created from the provided values.
-    /// - If the execution of the provided program fails on the stage other than note execution.
+    /// This method executes the full transaction pipeline including prologue, note execution,
+    /// and epilogue phases. It returns `Ok(())` if all notes are successfully consumed,
+    /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
         account_id: AccountId,
