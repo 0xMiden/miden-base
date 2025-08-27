@@ -123,7 +123,7 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = notes.clone().into_vec();
+        let mut candidate_notes = notes.into_vec();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -184,15 +184,15 @@ where
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
-        candidate_notes: Vec<InputNote>,
+        input_notes: Vec<InputNote>,
         mut failed_notes: Vec<FailedNote>,
         tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
         let mut successful_notes: Vec<InputNote> = Vec::new();
-        let mut remaining_notes = candidate_notes.clone();
+        let mut remaining_notes = input_notes;
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
-        for size in 1..=candidate_notes.len() {
+        for size in 1..=remaining_notes.len() {
             // Can't build a combination of size N without at least N-1 successful notes.
             if successful_notes.len() < size - 1 {
                 break;
