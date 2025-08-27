@@ -44,7 +44,8 @@ The currently supported **address types** are:
 - `AccountIdAddress` (type `0`): An address pointing to an account ID.
 
 The currently supported **address interfaces** are:
-- `BasicWallet` (type `0`): The standard basic wallet interface. See the [account code](./code.md#interface) docs for details.
+- `Unspecified` (type `0`): No interface is specified. Used for addresses where the interface is unknown.
+- `BasicWallet` (type `1`): The standard basic wallet interface. See the [account code](./code.md#interface) docs for details.
 
 ### `AccountIdAddress`
 
