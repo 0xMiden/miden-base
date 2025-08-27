@@ -46,6 +46,10 @@ The currently supported **address types** are:
 The currently supported **address interfaces** are:
 - `BasicWallet` (type `0`): The standard basic wallet interface. See the [account code](./code.md#interface) docs for details.
 
+### `AccountIdAddress`
+
+The account ID address points to an account ID and also allows specifiying the [note tag](../note.md#note-discovery) length. This tag length preference determines how many bits of the account ID are encoded into note tags of notes targeted to this address. This lets the owner of the account choose their level of privacy. A higher tag length makes the account more uniquely identifiable and reduces privacy, while a shorter length increases privacy at the cost of matching more notes published onchain.
+
 ## Encoding
 
 An address is encoded in [**bech32 format**](https://github.com/bitcoin/bips/blob/master/bip-0173.mediawiki), which has the following benefits:
