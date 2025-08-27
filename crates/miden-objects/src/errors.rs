@@ -153,6 +153,11 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error("account is of type {actual} but {expected} was expected")]
+    UnexpectedAccountType {
+        actual: AccountType,
+        expected: AccountType,
+    },
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]

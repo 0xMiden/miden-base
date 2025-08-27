@@ -3,6 +3,7 @@ use alloc::string::ToString;
 use core::fmt;
 
 use super::{AccountType, Asset, AssetError, Felt, Word, ZERO, is_not_a_non_fungible_asset};
+use crate::AccountError;
 use crate::account::{AccountId, AccountIdPrefix};
 use crate::utils::serde::{
     ByteReader,
@@ -84,7 +85,8 @@ impl FungibleAsset {
 
     /// Returns the key which is used to store this asset in the account vault.
     pub fn vault_key(&self) -> Word {
-        Self::vault_key_from_faucet(self.faucet_id)
+        // SAFETY: account type is valid by construction
+        Self::vault_key_from_faucet(self.faucet_id).unwrap()
     }
 
     // OPERATIONS
@@ -163,11 +165,22 @@ impl FungibleAsset {
     }
 
     /// Returns the key which is used to store this asset in the account vault.
-    pub(super) fn vault_key_from_faucet(faucet_id: AccountId) -> Word {
-        let mut key = Word::empty();
-        key[2] = faucet_id.suffix();
-        key[3] = faucet_id.prefix().as_felt();
-        key
+    ///
+    /// # Errors
+    ///
+    /// If the account type is not [`AccountType::FungibleFaucet`].
+    pub fn vault_key_from_faucet(faucet_id: AccountId) -> Result<Word, AccountError> {
+        if faucet_id.account_type() == AccountType::FungibleFaucet {
+            let mut key = Word::empty();
+            key[2] = faucet_id.suffix();
+            key[3] = faucet_id.prefix().as_felt();
+            Ok(key)
+        } else {
+            Err(AccountError::UnexpectedAccountType {
+                actual: faucet_id.account_type(),
+                expected: AccountType::FungibleFaucet,
+            })
+        }
     }
 }
 

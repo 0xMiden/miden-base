@@ -1,5 +1,7 @@
 use alloc::string::ToString;
 
+use serde::de::Unexpected;
+
 use super::{
     AccountType,
     Asset,
@@ -73,12 +75,11 @@ impl AssetVault {
     /// # Errors
     /// Returns an error if the specified ID is not an ID of a fungible asset faucet.
     pub fn get_balance(&self, faucet_id: AccountId) -> Result<u64, AssetVaultError> {
-        if !matches!(faucet_id.account_type(), AccountType::FungibleFaucet) {
-            return Err(AssetVaultError::NotAFungibleFaucetId(faucet_id));
-        }
-
         // if the tree value is [0, 0, 0, 0], the asset is not stored in the vault
-        match self.asset_tree.get_value(&FungibleAsset::vault_key_from_faucet(faucet_id)) {
+        match self.asset_tree.get_value(
+            &FungibleAsset::vault_key_from_faucet(faucet_id)
+                .map_err(|_| AssetVaultError::NotAFungibleFaucetId(faucet_id))?,
+        ) {
             asset if asset == Smt::EMPTY_VALUE => Ok(0),
             asset => Ok(FungibleAsset::new_unchecked(asset).amount()),
         }
