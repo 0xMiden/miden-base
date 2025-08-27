@@ -151,14 +151,14 @@ where
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
                     failed_notes.push(FailedNote::new(failed_note, Some(error)));
 
-                    // End if there are no more candidates.
+                    // All possible candidate combinations have been attempted.
                     if candidate_notes.is_empty() {
                         return Ok(NoteConsumptionInfo::new(Vec::new(), failed_notes));
                     }
                     // Continue and process the next set of candidates.
                 },
-                Err(NoteExecutionError::EpilogueExecutionFailed(err)) => {
-                    if let Some(consumption_info) = self
+                Err(NoteExecutionError::EpilogueExecutionFailed(_)) => {
+                    let consumption_info = self
                         .find_largest_executable_combination(
                             target_account_id,
                             block_ref,
@@ -166,12 +166,8 @@ where
                             failed_notes,
                             &tx_args,
                         )
-                        .await
-                    {
-                        return Ok(consumption_info);
-                    } else {
-                        return Err(NoteExecutionError::EpilogueExecutionFailed(err));
-                    }
+                        .await;
+                    return Ok(consumption_info);
                 },
                 Err(error) => return Err(error),
             }
@@ -191,7 +187,7 @@ where
         candidate_notes: Vec<InputNote>,
         mut failed_notes: Vec<FailedNote>,
         tx_args: &TransactionArgs,
-    ) -> Option<NoteConsumptionInfo> {
+    ) -> NoteConsumptionInfo {
         let mut successful_notes: Vec<InputNote> = Vec::new();
         let mut remaining_notes = candidate_notes.clone();
 
@@ -232,25 +228,19 @@ where
             }
         }
 
-        if !successful_notes.is_empty() {
-            // Convert successful InputNotes to Notes.
-            let successful =
-                successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+        // Convert successful InputNotes to Notes.
+        let successful = successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
 
-            // Update failed_notes with notes that weren't included in successful combination
-            let successful_note_ids =
-                successful.iter().map(|note| note.id()).collect::<BTreeSet<_>>();
-            // TODO: Replace `None` with meaningful error for `FailedNote` below.
-            let newly_failed = candidate_notes
-                .into_iter()
-                .filter(|input_note| !successful_note_ids.contains(&input_note.note().id()))
-                .map(|input_note| FailedNote::new(input_note.into_note(), None));
-            failed_notes.extend(newly_failed);
+        // Update failed_notes with notes that weren't included in successful combination
+        let successful_note_ids = successful.iter().map(|note| note.id()).collect::<BTreeSet<_>>();
+        // TODO: Replace `None` with meaningful error for `FailedNote` below.
+        let newly_failed = candidate_notes
+            .into_iter()
+            .filter(|input_note| !successful_note_ids.contains(&input_note.note().id()))
+            .map(|input_note| FailedNote::new(input_note.into_note(), None));
+        failed_notes.extend(newly_failed);
 
-            Some(NoteConsumptionInfo::new(successful, failed_notes))
-        } else {
-            None
-        }
+        NoteConsumptionInfo::new(successful, failed_notes)
     }
 
     /// Attempts to execute a transaction with the provided input notes.
