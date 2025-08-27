@@ -78,7 +78,7 @@
 - [BREAKING] Merge the current and initial account code commitment procedures into one ([#1776](https://github.com/0xMiden/miden-base/pull/1776)).
 - Add `TransactionExecutorError::InsufficientFee` variant([#1786](https://github.com/0xMiden/miden-base/pull/1786)).
 - [BREAKING] Made source manager an instance variable of the `TransactionExecutor` ([#1788](https://github.com/0xMiden/miden-base/pull/1788)).
-- [BREAKING] Made function for calculating a fungible faucet's vault key public ([#1788](https://github.com/0xMiden/miden-base/pull/1788)).
+- [BREAKING] Made function for calculating a fungible faucet's vault key public ([#1794](https://github.com/0xMiden/miden-base/pull/1794)).
 
 ## 0.10.1 (2025-08-02)
 

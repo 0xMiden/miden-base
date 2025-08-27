@@ -1,7 +1,6 @@
 use alloc::string::ToString;
 
 use super::{
-    AccountType,
     Asset,
     ByteReader,
     ByteWriter,
