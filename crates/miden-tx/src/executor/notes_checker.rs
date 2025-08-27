@@ -198,15 +198,14 @@ where
             }
 
             // Try adding each remaining note to the current successful combination.
-            let mut test_notes = successful_notes.clone();
             for (idx, note) in remaining_notes.iter().enumerate() {
-                test_notes.push(note.clone());
+                successful_notes.push(note.clone());
 
                 match self
                     .try_execute_notes(
                         target_account_id,
                         block_ref,
-                        InputNotes::<InputNote>::new_unchecked(test_notes.clone()),
+                        InputNotes::<InputNote>::new_unchecked(successful_notes.clone()),
                         tx_args,
                     )
                     .await
@@ -215,13 +214,12 @@ where
                         // This combination succeeded; remove the most recently added note from
                         // the remaining set.
                         remaining_notes.remove(idx);
-                        successful_notes = test_notes;
                         break;
                     },
                     _ => {
                         // This combination failed; remove the last note from the test set and
                         // continue to next note.
-                        test_notes.pop();
+                        successful_notes.pop();
                     },
                 }
             }
