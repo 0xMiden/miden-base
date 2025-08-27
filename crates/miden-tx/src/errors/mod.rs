@@ -26,7 +26,7 @@ use thiserror::Error;
 // ================================================================================================
 
 #[derive(Debug, Error)]
-pub enum NoteExecutionError {
+pub enum NoteCheckerError {
     #[error("transaction preparation failed: {0}")]
     TransactionPreparationFailed(#[source] TransactionExecutorError),
     #[error("transaction execution prologue failed: {0}")]

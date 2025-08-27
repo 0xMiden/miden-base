@@ -19,9 +19,9 @@ use miden_processor::crypto::RpoRandomCoin;
 use miden_tx::auth::UnreachableAuth;
 use miden_tx::{
     FailedNote,
+    NoteCheckerError,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
-    NoteExecutionError,
     TransactionExecutor,
     TransactionExecutorError,
 };
@@ -275,6 +275,6 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
         .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
         .await;
 
-    assert_matches!(execution_check_result, Err(NoteExecutionError::EpilogueExecutionFailed(_)));
+    assert_matches!(execution_check_result, Err(NoteCheckerError::EpilogueExecutionFailed(_)));
     Ok(())
 }
