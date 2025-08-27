@@ -10,7 +10,7 @@ An address is a unique identifier that facilitates sending and receiving of [not
 
 ### Access control for notes
 
-An address determines who is allowed to consume a note. In this sense, it acts as an access-control mechanism.
+An address expresses who is allowed to consume a note. In this sense, it acts as an access-control mechanism.
 
 Consider two examples that use different access control mechanisms:
 
