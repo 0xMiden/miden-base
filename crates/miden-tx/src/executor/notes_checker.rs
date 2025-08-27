@@ -1,4 +1,3 @@
-use alloc::collections::BTreeSet;
 use alloc::vec::Vec;
 
 use miden_lib::note::well_known_note::WellKnownNote;

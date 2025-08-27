@@ -22,12 +22,7 @@ The benchmark varies N (number of failing notes) to measure how performance scal
 
 To run only the criterion benchmarks:
 ```bash
-cargo bench -p bench-note-checker --bench benchmarks
-```
-
-To generate JSON benchmark results:
-```bash
-cargo run -p bench-note-checker
+cargo bench -p bench-note-checker --bench benches
 ```
 or
 ```shell

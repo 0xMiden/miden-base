@@ -136,7 +136,7 @@ bench-prover: ## Run prover benchmarks and consolidate results.
 
 .PHONY: bench-note-checker
 bench-note-checker: ## Run note checker benchmarks
-	cargo run --bin bench-note-checker
+	cargo bench --bin bench-note-checker --bench benches
 
 # --- installing ----------------------------------------------------------------------------------
 
