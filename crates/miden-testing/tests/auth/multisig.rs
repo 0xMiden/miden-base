@@ -141,16 +141,12 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
     let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
-    // Populate advice map with signatures
-    let mut advice_map = AdviceMap::default();
-    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
-    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
-
     // Execute transaction with signatures - should succeed
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
-        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
+        .add_signature(public_keys[0], msg, sig_1)
+        .add_signature(public_keys[1], msg, sig_2)
         .auth_args(salt)
         .build()?
         .execute()
