@@ -63,6 +63,8 @@ where
     STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
+    const MAX_INPUT_NOTES: u16 = 20;
+
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
     pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {
         NoteConsumptionChecker(tx_executor)
@@ -74,23 +76,24 @@ where
     /// This function attempts to find the maximum set of notes that can be successfully executed
     /// together by the target account.
     ///
-    /// If some notes succeed but others fail, the failed notes are removed from the candidate set
+    /// Because of the runtime complexity involved in this function, a limit of
+    /// [`Self::MAX_INPUT_NOTES`] input notes is enforced.
+    ///
+    /// If some notes succeed and others fail, the failed notes are removed from the candidate set
     /// and the remaining notes (successful + unattempted) are retried in the next iteration. This
     /// process continues until either all remaining notes succeed or no notes can be successfully
     /// executed
     ///
-    /// # Example Execution Flow
-    ///
-    /// Given notes A, B, C, D, E:
+    /// For example, given notes A, B, C, D, E, the execution flow would be as follows:
     /// - Try [A, B, C, D, E] → A, B succeed, C fails → Remove C, try again.
     /// - Try [A, B, D, E] → A, B, D succeed, E fails → Remove E, try again.
     /// - Try [A, B, D] → All succeed → Return successful=[A, B, D], failed=[C, E].
     ///
-    /// # Returns
+    /// If a failure occurs at the epilogue phase of the transaction execution, the relevant set of
+    /// otherwise-successful notes are retried in various combinations in an attempt to find a
+    /// combination that passes the epilogue phase successfully.
     ///
-    /// Returns [`NoteConsumptionInfo`] containing:
-    /// - `successful`: Notes that can be consumed together by the account.
-    /// - `failed`: Notes that failed during execution attempts.
+    /// Returns a list of successfully consumed notes and a list of failed notes.
     pub async fn check_notes_consumability(
         &self,
         target_account_id: AccountId,
@@ -98,6 +101,10 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
+        let num_notes = input_notes.num_notes();
+        if num_notes == 0 || num_notes > Self::MAX_INPUT_NOTES {
+            return Err(NoteCheckerError::InvalidInputNoteCount(num_notes));
+        }
         // Ensure well-known notes are ordered first.
         let mut notes = input_notes.into_vec();
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
