@@ -288,7 +288,7 @@ where
                     return Err(NoteCheckerError::PrologueExecutionFailed(error));
                 }
 
-                let ((_failed_note, last_note_interval), success_notes) =
+                let ((_, last_note_interval), success_notes) =
                     notes.split_last().expect("notes vector is not empty because of earlier check");
 
                 // If the interval end of the last note is specified, then an error occurred after
