@@ -255,7 +255,7 @@ where
             return Ok(());
         }
 
-        // TODO: ideally, we should prepare the inputs only once for the while note consumption
+        // TODO: ideally, we should prepare the inputs only once for the whole note consumption
         // check (rather than doing this every time when we try to execute some subset of notes),
         // but we currently cannot do this because transaction preparation includes input notes;
         // we should refactor the preparation process to separate input note preparation from the
