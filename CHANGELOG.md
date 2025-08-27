@@ -2,6 +2,10 @@
 
 ## 0.12.0 (TBD)
 
+### Features
+
+- Added `build_recipient` procedure to `miden::note` module ([#1807](https://github.com/0xMiden/miden-base/pull/1807)).
+
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
