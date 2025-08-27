@@ -489,13 +489,8 @@ proc.process_account_data
     exec.account::save_account_storage_data
     # => [ACCOUNT_COMMITMENT]
 
-    # set the new account code commitment to the initial account code root
-    # this is used for managing code commitment updates
-    exec.memory::get_acct_code_commitment
-    exec.memory::set_new_acct_code_commitment
-    # => [ACCOUNT_CODE_COMMITMENT, ACCOUNT_COMMITMENT]
-
     # validates and stores account procedures in memory.
+    exec.memory::get_acct_code_commitment
     exec.account::save_account_procedure_data
     # => [ACCOUNT_COMMITMENT]
 

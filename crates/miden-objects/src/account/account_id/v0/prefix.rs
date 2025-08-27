@@ -2,9 +2,9 @@ use alloc::string::{String, ToString};
 use core::fmt;
 use core::hash::Hash;
 
-use vm_core::Felt;
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_processor::DeserializationError;
+use miden_core::Felt;
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
+use miden_processor::DeserializationError;
 
 use crate::account::account_id::v0::{self, validate_prefix};
 use crate::account::{AccountIdVersion, AccountStorageMode, AccountType};

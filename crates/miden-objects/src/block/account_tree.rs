@@ -1,9 +1,9 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
+use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_crypto::merkle::{MerkleError, MutationSet, Smt, SmtLeaf};
-use vm_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
-use vm_processor::{DeserializationError, SMT_DEPTH};
+use miden_processor::{DeserializationError, SMT_DEPTH};
 
 use crate::account::{AccountId, AccountIdPrefix};
 use crate::block::AccountWitness;

@@ -38,6 +38,7 @@ mod errors;
 pub use errors::{
     AuthenticationError,
     DataStoreError,
+    NoteCheckerError,
     TransactionExecutorError,
     TransactionProverError,
     TransactionVerifierError,

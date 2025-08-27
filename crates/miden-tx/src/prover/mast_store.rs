@@ -7,7 +7,7 @@ use miden_objects::Word;
 use miden_objects::account::AccountCode;
 use miden_objects::assembly::mast::MastForest;
 use miden_objects::utils::sync::RwLock;
-use vm_processor::MastForestStore;
+use miden_processor::MastForestStore;
 
 // TRANSACTION MAST STORE
 // ================================================================================================

@@ -1,5 +1,5 @@
-use vm_core::Felt;
-use vm_core::utils::{Deserializable, Serializable};
+use miden_core::Felt;
+use miden_core::utils::{Deserializable, Serializable};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
 use crate::asset::PartialVault;
@@ -88,7 +88,7 @@ impl From<&Account> for PartialAccount {
 }
 
 impl Serializable for PartialAccount {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(self.id);
         target.write(self.nonce);
         target.write(&self.account_code);
@@ -98,9 +98,9 @@ impl Serializable for PartialAccount {
 }
 
 impl Deserializable for PartialAccount {
-    fn read_from<R: vm_core::utils::ByteReader>(
+    fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
-    ) -> Result<Self, vm_processor::DeserializationError> {
+    ) -> Result<Self, miden_processor::DeserializationError> {
         let account_id = source.read()?;
         let nonce = source.read()?;
         let account_code = source.read()?;

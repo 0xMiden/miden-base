@@ -7,7 +7,6 @@ help:
 # -- variables --------------------------------------------------------------------------------------
 
 WARNINGS=RUSTDOCFLAGS="-D warnings"
-ALL_FEATURES=--features concurrent,testing
 # Enable file generation in the `src` directory.
 # This is used in the build scripts of miden-lib.
 BUILD_GENERATED_FILES_IN_SRC=BUILD_GENERATED_FILES_IN_SRC=1
@@ -19,7 +18,7 @@ BACKTRACE=RUST_BACKTRACE=1
 
 .PHONY: clippy
 clippy: ## Runs Clippy with configs
-	cargo clippy --workspace --all-targets $(ALL_FEATURES) -- -D warnings
+	cargo clippy --workspace --all-targets --all-features -- -D warnings
 
 
 .PHONY: clippy-no-std
@@ -29,7 +28,7 @@ clippy-no-std: ## Runs Clippy with configs
 
 .PHONY: fix
 fix: ## Runs Fix with configs
-	cargo fix --workspace --allow-staged --allow-dirty --all-targets $(ALL_FEATURES)
+	cargo fix --workspace --allow-staged --allow-dirty --all-targets --all-features
 
 
 .PHONY: format
@@ -66,7 +65,7 @@ lint: ## Runs all linting tasks at once (Clippy, fixing, formatting, typos)
 
 .PHONY: doc
 doc: ## Generates & checks documentation
-	$(WARNINGS) cargo doc $(ALL_FEATURES) --keep-going --release
+	$(WARNINGS) cargo doc --all-features --keep-going --release
 
 
 .PHONY: book
@@ -94,14 +93,14 @@ test-dev: ## Run default tests excluding slow prove tests in debug mode intended
 
 .PHONY: test-docs
 test-docs: ## Run documentation tests
-	$(WARNINGS) cargo test --doc $(ALL_FEATURES)
+	$(WARNINGS) cargo test --doc
 
 
 # --- checking ------------------------------------------------------------------------------------
 
 .PHONY: check
 check: ## Check all targets and features for errors without code generation
-	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --all-targets $(ALL_FEATURES)
+	$(BUILD_GENERATED_FILES_IN_SRC) cargo check --all-targets --all-features
 
 
 .PHONY: check-no-std
@@ -134,6 +133,10 @@ bench-tx: ## Run transaction benchmarks
 bench-prover: ## Run prover benchmarks and consolidate results.
 	cargo bench --bin bench-prover --bench benches
 	cargo run --bin bench-prover
+
+.PHONY: bench-note-checker
+bench-note-checker: ## Run note checker benchmarks
+	cargo bench --bin bench-note-checker --bench benches
 
 # --- installing ----------------------------------------------------------------------------------
 

@@ -356,24 +356,17 @@ impl Deserializable for InputNote {
 
 #[cfg(test)]
 mod input_notes_tests {
-    use anyhow::Context;
-    use assembly::Assembler;
     use assert_matches::assert_matches;
+    use miden_core::Word;
 
     use super::InputNotes;
     use crate::TransactionInputError;
-    use crate::account::AccountId;
-    use crate::testing::account_id::ACCOUNT_ID_SENDER;
-    use crate::testing::note::NoteBuilder;
+    use crate::note::Note;
     use crate::transaction::InputNote;
 
     #[test]
     fn test_duplicate_input_notes() -> anyhow::Result<()> {
-        let mock_account_id: AccountId = ACCOUNT_ID_SENDER.try_into().unwrap();
-
-        let mock_note = NoteBuilder::new(mock_account_id, &mut rand::rng())
-            .build(&Assembler::default())
-            .context("failed to create mock note")?;
+        let mock_note = Note::mock_noop(Word::empty());
         let mock_note_nullifier = mock_note.nullifier();
         let mock_note_clone = mock_note.clone();
 

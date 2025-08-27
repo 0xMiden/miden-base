@@ -12,13 +12,13 @@ use miden_objects::note::{Note, NoteAssets, NoteInputs, NoteMetadata, NoteRecipi
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
 use miden_objects::{Word, ZERO};
+use miden_processor::utils::Deserializable;
 use miden_tx::{
     LocalTransactionProver,
     ProvingOptions,
     TransactionVerifier,
     TransactionVerifierError,
 };
-use vm_processor::utils::Deserializable;
 
 // HELPER FUNCTIONS
 // ================================================================================================

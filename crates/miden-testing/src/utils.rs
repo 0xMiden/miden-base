@@ -1,15 +1,15 @@
 use alloc::string::String;
 use alloc::vec::Vec;
 
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::note::Note;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::testing::storage::prepare_assets;
+use miden_processor::Felt;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
-use vm_processor::Felt;
 
 // HELPER MACROS
 // ================================================================================================
@@ -18,7 +18,7 @@ use vm_processor::Felt;
 macro_rules! assert_execution_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
-            Err(vm_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg }) => {
+            Err(miden_processor::ExecutionError::FailedAssertion { label: _, source_file: _, clk: _, err_code, err_msg }) => {
                 if let Some(ref msg) = err_msg {
                   assert_eq!(msg.as_ref(), $expected_err.message(), "error messages did not match");
                 }
@@ -40,7 +40,7 @@ macro_rules! assert_transaction_executor_error {
     ($execution_result:expr, $expected_err:expr) => {
         match $execution_result {
             Err(miden_tx::TransactionExecutorError::TransactionProgramExecutionFailed(
-                vm_processor::ExecutionError::FailedAssertion {
+                miden_processor::ExecutionError::FailedAssertion {
                     label: _,
                     source_file: _,
                     clk: _,
@@ -133,7 +133,8 @@ pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
     NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
         .code(code)
-        .build(&TransactionKernel::with_mock_libraries())
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()
         .expect("generated note script should compile")
 }
 
@@ -146,7 +147,8 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
-        .build(&TransactionKernel::with_mock_libraries())?;
+        .dynamically_linked_libraries(TransactionKernel::mock_libraries())
+        .build()?;
 
     Ok(note)
 }

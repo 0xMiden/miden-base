@@ -4,14 +4,13 @@ use std::collections::BTreeMap;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
-use miden_lib::transaction::TransactionKernel;
+use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::batch::ProposedBatch;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::MerkleError;
 use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::AccountIdBuilder;
-use miden_objects::testing::note::NoteBuilder;
 use miden_objects::transaction::{InputNote, InputNoteCommitment, OutputNote, PartialBlockchain};
 use miden_objects::{BatchAccountUpdateError, ProposedBatchError, Word};
 use rand::rngs::SmallRng;
@@ -26,9 +25,7 @@ fn mock_account_id(num: u8) -> AccountId {
 
 pub fn mock_note(num: u8) -> Note {
     let sender = mock_account_id(num);
-    NoteBuilder::new(sender, SmallRng::from_seed([num; 32]))
-        .build(&TransactionKernel::assembler().with_debug_mode(true))
-        .unwrap()
+    NoteBuilder::new(sender, SmallRng::from_seed([num; 32])).build().unwrap()
 }
 
 pub fn mock_output_note(num: u8) -> OutputNote {

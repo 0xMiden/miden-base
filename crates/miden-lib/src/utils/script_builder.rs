@@ -1,7 +1,14 @@
 use alloc::string::String;
+use alloc::sync::Arc;
 
 use miden_objects::assembly::diagnostics::NamedSource;
-use miden_objects::assembly::{Assembler, Library, LibraryPath};
+use miden_objects::assembly::{
+    Assembler,
+    DefaultSourceManager,
+    Library,
+    LibraryPath,
+    SourceManagerSync,
+};
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 
@@ -71,6 +78,7 @@ use crate::transaction::TransactionKernel;
 #[derive(Clone)]
 pub struct ScriptBuilder {
     assembler: Assembler,
+    source_manager: Arc<dyn SourceManagerSync>,
 }
 
 impl ScriptBuilder {
@@ -79,13 +87,25 @@ impl ScriptBuilder {
 
     /// Creates a new ScriptBuilder with the specified debug mode.
     ///
-    /// This creates a basic assembler using `TransactionKernel::assembler()`.
-    ///
     /// # Arguments
     /// * `in_debug_mode` - Whether to enable debug mode in the assembler
     pub fn new(in_debug_mode: bool) -> Self {
-        let assembler = TransactionKernel::assembler().with_debug_mode(in_debug_mode);
-        Self { assembler }
+        let source_manager = Arc::new(DefaultSourceManager::default());
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
+            .with_debug_mode(in_debug_mode);
+        Self { assembler, source_manager }
+    }
+
+    /// Creates a new ScriptBuilder with the specified source manager.
+    ///
+    /// The returned builder is instantiated with debug mode enabled.
+    ///
+    /// # Arguments
+    /// * `source_manager` - The source manager to use with the internal `Assembler`
+    pub fn with_source_manager(source_manager: Arc<dyn SourceManagerSync>) -> Self {
+        let assembler = TransactionKernel::assembler_with_source_manager(source_manager.clone())
+            .with_debug_mode(true);
+        Self { assembler, source_manager }
     }
 
     // LIBRARY MANAGEMENT
@@ -263,6 +283,14 @@ impl ScriptBuilder {
         Ok(NoteScript::new(program))
     }
 
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Access the [`Assembler`]'s [`SourceManagerSync`].
+    pub fn source_manager(&self) -> Arc<dyn SourceManagerSync> {
+        self.source_manager.clone()
+    }
+
     // TESTING CONVENIENCE FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
@@ -280,7 +308,7 @@ impl ScriptBuilder {
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
 
-        Self::default()
+        Self::new(true)
             .with_dynamically_linked_library(&AccountCode::mock_account_library())?
             .with_dynamically_linked_library(&AccountCode::mock_faucet_library())
     }

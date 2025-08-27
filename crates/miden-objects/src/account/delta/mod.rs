@@ -65,6 +65,9 @@ impl AccountDelta {
         Ok(Self { account_id, storage, vault, nonce_delta })
     }
 
+    // PUBLIC MUTATORS
+    // --------------------------------------------------------------------------------------------
+
     /// Merge another [AccountDelta] into this one.
     pub fn merge(&mut self, other: Self) -> Result<(), AccountDeltaError> {
         let new_nonce_delta = self.nonce_delta + other.nonce_delta;
@@ -81,6 +84,11 @@ impl AccountDelta {
 
         self.storage.merge(other.storage)?;
         self.vault.merge(other.vault)
+    }
+
+    /// Returns a mutable reference to the account vault delta.
+    pub fn vault_mut(&mut self) -> &mut AccountVaultDelta {
+        &mut self.vault
     }
 
     // PUBLIC ACCESSORS
@@ -466,8 +474,8 @@ fn validate_nonce(
 mod tests {
 
     use assert_matches::assert_matches;
-    use vm_core::utils::Serializable;
-    use vm_core::{Felt, FieldElement};
+    use miden_core::utils::Serializable;
+    use miden_core::{Felt, FieldElement};
 
     use super::{AccountDelta, AccountStorageDelta, AccountVaultDelta};
     use crate::account::delta::AccountUpdateDetails;

@@ -1,3 +1,4 @@
+use alloc::sync::Arc;
 use std::collections::BTreeMap;
 
 use anyhow::Context;
@@ -29,8 +30,8 @@ use miden_objects::account::{
     AccountType,
     StorageSlot,
 };
-use miden_objects::assembly::Library;
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
+use miden_objects::assembly::{DefaultSourceManager, Library};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PRIVATE_NON_FUNGIBLE_FAUCET,
@@ -40,10 +41,10 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
+use miden_processor::{EMPTY_WORD, ExecutionError, Word};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
-use vm_processor::{EMPTY_WORD, ExecutionError, Word};
 
 use super::{Felt, StackInputs, ZERO};
 use crate::executor::CodeExecutor;
@@ -85,7 +86,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             assert_eqw.err="initial and current commitment should be equal when no changes have been made"
             # => []
 
-            call.mock_account::get_storage_commitment
+            call.mock_account::compute_storage_commitment
             # => [STORAGE_COMMITMENT0, pad(12)]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT0]
@@ -109,7 +110,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             # => [STORAGE_COMMITMENT0]
 
             padw padw padw padw
-            call.mock_account::get_storage_commitment
+            call.mock_account::compute_storage_commitment
             # => [STORAGE_COMMITMENT1, pad(12), STORAGE_COMMITMENT0]
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
@@ -139,36 +140,6 @@ pub fn compute_current_commitment() -> miette::Result<()> {
         .execute_blocking()
         .into_diagnostic()
         .wrap_err("failed to execute code")?;
-
-    Ok(())
-}
-
-// ACCOUNT CODE TESTS
-// ================================================================================================
-
-// TODO: add the current code commitment obtainment once we will have updatable code
-#[test]
-pub fn test_get_code_commitment() -> miette::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
-    let account = tx_context.account();
-
-    let code = format!(
-        r#"
-        use.$kernel::prologue
-        use.$kernel::account
-        begin
-            exec.prologue::prepare_transaction
-
-            # get the initial code commitment
-            exec.account::get_initial_code_commitment
-            push.{expected_code_commitment}
-            assert_eqw.err="actual code commitment is not equal to the expected one"
-        end
-        "#,
-        expected_code_commitment = account.code().commitment()
-    );
-
-    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -352,6 +323,36 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
     Ok(())
 }
 
+// ACCOUNT CODE TESTS
+// ================================================================================================
+
+// TODO: update this test once the ability to change the account code will be implemented
+#[test]
+pub fn test_compute_code_commitment() -> miette::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+    let account = tx_context.account();
+
+    let code = format!(
+        r#"
+        use.$kernel::prologue
+        use.mock::account->mock_account
+
+        begin
+            exec.prologue::prepare_transaction
+            # get the code commitment
+            call.mock_account::get_code_commitment
+            push.{expected_code_commitment}
+            assert_eqw.err="actual code commitment is not equal to the expected one"
+        end
+        "#,
+        expected_code_commitment = account.code().commitment()
+    );
+
+    tx_context.execute_code(&code)?;
+
+    Ok(())
+}
+
 // ACCOUNT STORAGE TESTS
 // ================================================================================================
 
@@ -418,9 +419,7 @@ fn test_get_map_item() -> miette::Result<()> {
             map_key = &key,
         );
 
-        let process = &tx_context
-            .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
-            .unwrap();
+        let process = &tx_context.execute_code(&code)?;
 
         assert_eq!(
             value,
@@ -575,9 +574,7 @@ fn test_set_map_item() -> miette::Result<()> {
         new_value = &new_value,
     );
 
-    let process = &tx_context
-        .execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())
-        .unwrap();
+    let process = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
     new_storage_map.insert(new_key, new_value);
@@ -599,7 +596,8 @@ fn test_set_map_item() -> miette::Result<()> {
 #[test]
 fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
-    let assembler = TransactionKernel::with_kernel_library();
+    let assembler =
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()));
 
     // The following code will execute the following logic that will be asserted during the test:
     //
@@ -870,12 +868,9 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
 }
 
 #[test]
-fn test_get_storage_commitment() -> anyhow::Result<()> {
+fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let account = tx_context.account().clone();
-
-    // get the initial storage commitment
     let code = format!(
         r#"
         use.miden::account
@@ -890,9 +885,39 @@ fn test_get_storage_commitment() -> anyhow::Result<()> {
             assert_eqw.err="actual storage commitment is not equal to the expected one"
         end
         "#,
-        expected_storage_commitment = &account.storage().commitment(),
+        expected_storage_commitment = &tx_context.account().storage().commitment(),
     );
     tx_context.execute_code(&code)?;
+
+    Ok(())
+}
+
+/// This test creates an account with mock storage slots and calls the
+/// `compute_storage_commitment` procedure each time the storage is updated.
+///
+/// Namely, we invoke the `mock_account::compute_storage_commitment` procedure:
+/// - Right after the account creation.
+/// - After updating the 0th storage slot (value slot).
+/// - Right after the previous call to make sure it returns the same commitment from the cached
+///   data.
+/// - After updating the 2nd storage slot (map slot).
+#[test]
+fn test_compute_storage_commitment() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
+    let mut account_clone = tx_context.account().clone();
+    let account_storage = account_clone.storage_mut();
+
+    let init_storage_commitment = account_storage.commitment();
+
+    account_storage.set_item(0, [9, 10, 11, 12].map(Felt::new).into())?;
+    let storage_commitment_0 = account_storage.commitment();
+
+    account_storage.set_map_item(
+        2,
+        [101, 102, 103, 104].map(Felt::new).into(),
+        [5, 6, 7, 8].map(Felt::new).into(),
+    )?;
+    let storage_commitment_2 = account_storage.commitment();
 
     let code = format!(
         r#"
@@ -903,15 +928,40 @@ fn test_get_storage_commitment() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            # get the current storage commitment
-            call.mock_account::get_storage_commitment
-            push.{expected_storage_commitment}
-            assert_eqw.err="actual storage commitment is not equal to the expected one"
+            # assert the correctness of the initial storage commitment
+            call.mock_account::compute_storage_commitment
+            push.{init_storage_commitment}
+            assert_eqw.err="storage commitment at the beginning of the transaction is not equal to the expected one"
+
+            # update the 0th (value) storage slot
+            push.9.10.11.12.0
+            call.mock_account::set_item dropw drop
+            # => []
+
+            # assert the correctness of the storage commitment after the 0th slot was updated
+            call.mock_account::compute_storage_commitment
+            push.{storage_commitment_0}
+            assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
+
+            # get the storage commitment once more to get the cached data and assert that this data 
+            # didn't change
+            call.mock_account::compute_storage_commitment
+            push.{storage_commitment_0}
+            assert_eqw.err="storage commitment should remain the same"
+
+            # update the 2nd (map) storage slot
+            push.5.6.7.8.101.102.103.104.2 # [idx, KEY, VALUE]
+            call.mock_account::set_map_item dropw dropw
+            # => []
+
+            # assert the correctness of the storage commitment after the 2nd slot was updated
+            call.mock_account::compute_storage_commitment
+            push.{storage_commitment_2}
+            assert_eqw.err="storage commitment after the 2nd slot was updated is not equal to the expected one"
         end
         "#,
-        expected_storage_commitment = &account.storage().commitment(),
     );
-    tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -978,7 +1028,7 @@ fn test_get_vault_root() -> anyhow::Result<()> {
         fungible_asset = Word::from(&fungible_asset),
         expected_vault_root = &account.vault().root(),
     );
-    tx_context.execute_code_with_assembler(&code, TransactionKernel::with_mock_libraries())?;
+    tx_context.execute_code(&code)?;
 
     Ok(())
 }
@@ -1087,12 +1137,10 @@ fn test_was_procedure_called() -> miette::Result<()> {
         "#;
 
     // Compile the transaction script using the testing assembler with mock account
-    let assembler = TransactionKernel::with_mock_libraries();
-    let tx_script = TransactionScript::new(
-        assembler
-            .assemble_program(tx_script_code)
-            .wrap_err("Failed to compile transaction script")?,
-    );
+    let tx_script = ScriptBuilder::with_mock_libraries()
+        .into_diagnostic()?
+        .compile_tx_script(tx_script_code)
+        .into_diagnostic()?;
 
     // Create transaction context and execute
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
@@ -1134,7 +1182,8 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
     let external_library =
         TransactionKernel::assembler().assemble_library([external_library_source])?;
 
-    let mut assembler = TransactionKernel::with_mock_libraries();
+    let mut assembler =
+        TransactionKernel::with_mock_libraries(Arc::new(DefaultSourceManager::default()));
     assembler.link_static_library(&external_library)?;
 
     let account_component_source =

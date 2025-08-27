@@ -37,8 +37,7 @@ use miden_objects::transaction::{
 };
 use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
-pub use tx_progress::TransactionProgress;
-use vm_processor::{
+use miden_processor::{
     AdviceMutation,
     ContextId,
     EventError,
@@ -48,6 +47,7 @@ use vm_processor::{
     MastForestStore,
     ProcessState,
 };
+pub use tx_progress::TransactionProgress;
 
 use crate::auth::SigningInputs;
 
@@ -441,7 +441,7 @@ where
         process: &ProcessState,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         let proc_idx = self.acct_procedure_index_map.get_proc_index(process)?;
-        Ok(vec![AdviceMutation::ExtendStack { values: vec![Felt::from(proc_idx)] }])
+        Ok(vec![AdviceMutation::extend_stack([Felt::from(proc_idx)])])
     }
 
     /// Handles the increment nonce event by incrementing the nonce delta by one.

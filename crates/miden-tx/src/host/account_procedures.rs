@@ -4,7 +4,7 @@ use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT
 use miden_lib::transaction::{TransactionAdviceInputs, TransactionKernelError};
 use miden_objects::account::{AccountCode, AccountProcedureInfo};
 use miden_objects::transaction::{TransactionArgs, TransactionInputs};
-use vm_processor::AdviceInputs;
+use miden_processor::AdviceInputs;
 
 use super::{BTreeMap, Felt, ProcessState, Word};
 use crate::errors::TransactionHostError;

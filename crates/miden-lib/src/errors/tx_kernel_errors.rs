@@ -218,6 +218,8 @@ pub const ERR_PROLOGUE_PROVIDED_INPUT_ASSETS_INFO_DOES_NOT_MATCH_ITS_COMMITMENT:
 /// Error Message: "verification base fee must fit into a u32"
 pub const ERR_PROLOGUE_VERIFICATION_BASE_FEE_MUST_BE_U32: MasmError = MasmError::from_static_str("verification base fee must fit into a u32");
 
+/// Error Message: "failed to approve multisig transaction as it was already executed"
+pub const ERR_TX_ALREADY_EXECUTED: MasmError = MasmError::from_static_str("failed to approve multisig transaction as it was already executed");
 /// Error Message: "transaction expiration block delta must be within 0x1 and 0xFFFF"
 pub const ERR_TX_INVALID_EXPIRATION_DELTA: MasmError = MasmError::from_static_str("transaction expiration block delta must be within 0x1 and 0xFFFF");
 /// Error Message: "number of output notes in the transaction exceeds the maximum limit of 1024"

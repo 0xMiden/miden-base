@@ -10,6 +10,8 @@ use super::{AssetError, Felt, Hasher, TokenSymbolError, Word, ZERO};
 use crate::account::AccountIdPrefix;
 
 mod fungible;
+use alloc::boxed::Box;
+
 pub use fungible::FungibleAsset;
 
 mod nonfungible;
@@ -193,6 +195,11 @@ impl TryFrom<Word> for Asset {
     type Error = AssetError;
 
     fn try_from(value: Word) -> Result<Self, Self::Error> {
+        // Return an error if element 3 is not a valid account ID prefix, which cannot be checked by
+        // is_not_a_non_fungible_asset.
+        AccountIdPrefix::try_from(value[3])
+            .map_err(|err| AssetError::InvalidFaucetAccountId(Box::from(err)))?;
+
         if is_not_a_non_fungible_asset(value) {
             FungibleAsset::try_from(value).map(Asset::from)
         } else {

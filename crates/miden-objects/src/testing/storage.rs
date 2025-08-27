@@ -2,8 +2,8 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 
+use miden_core::{Felt, Word};
 use miden_crypto::EMPTY_WORD;
-use vm_core::{Felt, Word};
 
 use crate::AccountDeltaError;
 use crate::account::{

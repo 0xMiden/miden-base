@@ -6,7 +6,7 @@ use miden_objects::assembly::mast::MastForest;
 use miden_objects::note::NoteScript;
 use miden_objects::transaction::TransactionScript;
 use miden_objects::vm::AdviceMap;
-use vm_processor::MastForestStore;
+use miden_processor::MastForestStore;
 
 /// Stores the MAST forests for a set of scripts (both note scripts and transaction scripts).
 ///

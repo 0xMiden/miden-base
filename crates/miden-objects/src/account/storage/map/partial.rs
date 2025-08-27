@@ -1,3 +1,4 @@
+use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
 use miden_crypto::merkle::{
     InnerNodeInfo,
@@ -8,7 +9,6 @@ use miden_crypto::merkle::{
     SmtLeaf,
     SmtProof,
 };
-use vm_core::utils::{Deserializable, Serializable};
 
 use crate::account::StorageMap;
 
@@ -18,7 +18,7 @@ use crate::account::StorageMap;
 /// A partial storage map carries only the Merkle authentication data a transaction will need.
 /// Every included entry pairs a value with its proof, letting the transaction kernel verify reads
 /// (and prepare writes) without needing the complete tree.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PartialStorageMap {
     partial_smt: PartialSmt,
 }
@@ -97,15 +97,15 @@ impl From<PartialSmt> for PartialStorageMap {
 }
 
 impl Serializable for PartialStorageMap {
-    fn write_into<W: vm_core::utils::ByteWriter>(&self, target: &mut W) {
+    fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.partial_smt);
     }
 }
 
 impl Deserializable for PartialStorageMap {
-    fn read_from<R: vm_core::utils::ByteReader>(
+    fn read_from<R: miden_core::utils::ByteReader>(
         source: &mut R,
-    ) -> Result<Self, vm_processor::DeserializationError> {
+    ) -> Result<Self, miden_processor::DeserializationError> {
         let storage: PartialSmt = source.read()?;
         Ok(PartialStorageMap { partial_smt: storage })
     }

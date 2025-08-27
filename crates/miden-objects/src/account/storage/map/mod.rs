@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 
+use miden_core::EMPTY_WORD;
 use miden_crypto::merkle::EmptySubtreeRoots;
-use vm_core::EMPTY_WORD;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
 use crate::Hasher;

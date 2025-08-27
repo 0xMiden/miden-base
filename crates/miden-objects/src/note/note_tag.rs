@@ -124,6 +124,7 @@ impl NoteTag {
     pub const DEFAULT_NETWORK_TAG_LENGTH: u8 = 30;
     /// The maximum number of bits that can be encoded into the tag for local accounts.
     pub const MAX_LOCAL_TAG_LENGTH: u8 = 30;
+
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 

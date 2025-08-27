@@ -3,12 +3,12 @@ use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
 
+use miden_core::Felt;
 use serde::de::value::MapAccessDeserializer;
 use serde::de::{self, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
-use vm_core::Felt;
 
 use super::placeholder::TemplateType;
 use super::{

@@ -1,4 +1,4 @@
-use vm_processor::ExecutionOptions;
+use miden_processor::ExecutionOptions;
 
 /// Depth of the account database tree.
 pub const ACCOUNT_TREE_DEPTH: u8 = 64;
