@@ -16,8 +16,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
 use miden_objects::transaction::OutputNote;
-use miden_objects::vm::AdviceMap;
-use miden_objects::{Felt, Hasher, Word};
+use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
