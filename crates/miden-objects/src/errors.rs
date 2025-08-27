@@ -110,6 +110,8 @@ pub enum AccountError {
     AccountComponentTemplateInstantiationError(#[source] AccountComponentTemplateError),
     #[error("account component contains multiple authentication procedures")]
     AccountComponentMultipleAuthProcedures,
+    #[error("package does not contain account component metadata")]
+    AccountComponentMetadataMissing,
     #[error("failed to update asset vault")]
     AssetVaultUpdateError(#[source] AssetVaultError),
     #[error("account build error: {0}")]

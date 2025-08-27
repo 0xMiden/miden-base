@@ -142,7 +142,7 @@ impl AccountComponent {
         let metadata_bytes = package
             .account_component_metadata_bytes
             .as_deref()
-            .expect("no account component metadata present");
+            .ok_or(AccountError::AccountComponentMetadataMissing)?;
 
         let metadata =
             AccountComponentMetadata::read_from_bytes(metadata_bytes).map_err(|err| {
