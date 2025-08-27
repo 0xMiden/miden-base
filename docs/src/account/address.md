@@ -23,9 +23,13 @@ To allow for both of these use cases, addresses must be able to represent accoun
 
 ### Account interface discovery
 
-An address allows the sender of the note to easily discover the interface of the receiving account. As explained in the [account interface](./code.md#interface) section, every account can have a different set of procedures that note scripts can call, which is the _interface_ of the account. In order for the sender of a note to create a note that the receiver can consume, the sender needs to know the interface of the receiving account. This can be communicated via the address, which encodes a mapping of standard interfaces like the basic wallet. An address can encode exactly one such interface in order to keep address sizes small, but users can generate multiple addresses for the same account in order to communicate different interfaces to senders.
+An address allows the sender of the note to easily discover the interface of the receiving account. As explained in the [account interface](./code.md#interface) section, every account can have a different set of procedures that note scripts can call, which is the _interface_ of the account. In order for the sender of a note to create a note that the receiver can consume, the sender needs to know the interface of the receiving account. This can be communicated via the address, which encodes a mapping of standard interfaces like the basic wallet.
 
 If a sender wants to create a note, it is up to them to check whether the receiver account has an interface that it compatible with that note. The notion of an address doesn't exist at protocol level and so it is up to wallets or clients to implement this interface compatibility check.
+
+## Relationship to Identifiers
+
+An address can encode exactly one account interface, which is a deliberate limitation to keep address sizes small. Users can generate multiple addresses for the same identifier like account ID or public key, in order to communicate different interfaces to senders. In other words, there could be multiple different addresses that point to the same account, each encoding a different interface. So, the relationship from addresses to their underlying identifiers is n-to-1.
 
 ## Types & Interfaces
 
