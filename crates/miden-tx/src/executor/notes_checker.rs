@@ -203,9 +203,8 @@ where
             }
 
             // Try adding each remaining note to the current successful combination.
-            let mut found_successful = None;
+            let mut test_notes = successful_notes.clone();
             for (idx, note) in remaining_notes.iter().enumerate() {
-                let mut test_notes = successful_notes.clone();
                 test_notes.push(note.clone());
 
                 match self
@@ -218,19 +217,18 @@ where
                     .await
                 {
                     Ok(()) => {
+                        // This combination succeeded; remove the most recently added note from
+                        // the remaining set.
+                        remaining_notes.remove(idx);
                         successful_notes = test_notes;
-                        found_successful = Some(idx);
                         break;
                     },
-                    Err(_) => {
-                        // This combination failed, continue to next.
+                    _ => {
+                        // This combination failed; remove the last note from the test set and
+                        // continue to next note.
+                        test_notes.pop();
                     },
-                };
-            }
-
-            // Remove the successful note for next iteration.
-            if let Some(idx) = found_successful {
-                remaining_notes.remove(idx);
+                }
             }
         }
 
