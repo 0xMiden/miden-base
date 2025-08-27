@@ -34,12 +34,13 @@ testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils"]
 
 [dependencies]
 # Miden dependencies
-miden-assembly    = { workspace = true }
-miden-core        = { workspace = true }
-miden-crypto      = { workspace = true }
-miden-processor   = { workspace = true }
-miden-utils-sync  = { workspace = true }
-miden-verifier    = { workspace = true }
+miden-assembly     = { workspace = true }
+miden-core         = { workspace = true }
+miden-crypto       = { workspace = true }
+miden-mast-package = { workspace = true }
+miden-processor    = { workspace = true }
+miden-utils-sync   = { workspace = true }
+miden-verifier     = { workspace = true }
 winter-rand-utils = { optional = true, version = "0.13" }
 
 # External dependencies
