@@ -187,8 +187,8 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         let num_procs = falcon.config.auth_trigger_procedures.len() as u32;
         storage_slots.push(StorageSlot::Value(Word::from([
             num_procs,
-            u32::from(falcon.config.allow_unauthorized_output_notes),
-            u32::from(falcon.config.allow_unauthorized_input_notes),
+            falcon.config.allow_unauthorized_output_notes as u32,
+            falcon.config.allow_unauthorized_input_notes as u32,
             0,
         ])));
 
