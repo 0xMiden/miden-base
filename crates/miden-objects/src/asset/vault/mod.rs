@@ -1,7 +1,5 @@
 use alloc::string::ToString;
 
-use serde::de::Unexpected;
-
 use super::{
     AccountType,
     Asset,
