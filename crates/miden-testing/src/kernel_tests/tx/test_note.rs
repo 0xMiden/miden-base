@@ -672,7 +672,100 @@ fn test_get_note_serial_number() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_inputs_hash() -> anyhow::Result<()> {
+fn test_build_recipient() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    // Create test script and serial number
+    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
+    let serial_num = Word::from([200u32, 201u32, 202u32, 203u32]);
+
+    let code = format!(
+        "
+        use.std::sys
+
+        use.miden::note
+
+        begin
+            # put the values that will be hashed into the memory
+            push.1.2.3.4.4000 mem_storew dropw
+            push.5.6.7.8.4004 mem_storew dropw
+            push.9.10.11.12.4008 mem_storew dropw
+            push.13.14.15.16.4012 mem_storew dropw
+
+            # Test with 4 values
+            push.{script_root}  # SCRIPT_ROOT
+            push.{serial_num}   # SERIAL_NUM
+            push.4.4000         # num_inputs, inputs_ptr
+            exec.note::build_recipient
+            # => [RECIPIENT_4]
+
+            # Test with 5 values
+            push.{script_root}  # SCRIPT_ROOT
+            push.{serial_num}   # SERIAL_NUM
+            push.5.4000         # num_inputs, inputs_ptr
+            exec.note::build_recipient
+            # => [RECIPIENT_5, RECIPIENT_4]
+
+            # Test with 13 values
+            push.{script_root}  # SCRIPT_ROOT
+            push.{serial_num}   # SERIAL_NUM
+            push.13.4000        # num_inputs, inputs_ptr
+            exec.note::build_recipient
+            # => [RECIPIENT_13, RECIPIENT_5, RECIPIENT_4]
+
+            # truncate the stack
+            exec.sys::truncate_stack
+        end
+    ",
+        script_root = note_script.root(),
+        serial_num = serial_num,
+    );
+
+    let process = &tx_context.execute_code(&code)?;
+
+    // Create expected recipients and get their digests
+    let note_inputs_4 =
+        NoteInputs::new(vec![Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])?;
+    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4);
+
+    let note_inputs_5 = NoteInputs::new(vec![
+        Felt::new(1),
+        Felt::new(2),
+        Felt::new(3),
+        Felt::new(4),
+        Felt::new(5),
+    ])?;
+    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5);
+
+    let note_inputs_13 = NoteInputs::new(vec![
+        Felt::new(1),
+        Felt::new(2),
+        Felt::new(3),
+        Felt::new(4),
+        Felt::new(5),
+        Felt::new(6),
+        Felt::new(7),
+        Felt::new(8),
+        Felt::new(9),
+        Felt::new(10),
+        Felt::new(11),
+        Felt::new(12),
+        Felt::new(13),
+    ])?;
+    let recipient_13 = NoteRecipient::new(serial_num, note_script, note_inputs_13);
+
+    let mut expected_stack = alloc::vec::Vec::new();
+    expected_stack.extend_from_slice(recipient_4.digest().as_elements());
+    expected_stack.extend_from_slice(recipient_5.digest().as_elements());
+    expected_stack.extend_from_slice(recipient_13.digest().as_elements());
+    expected_stack.reverse();
+
+    assert_eq!(process.stack.get_state_at(process.system.clk())[0..12], expected_stack);
+    Ok(())
+}
+
+#[test]
+fn test_compute_inputs_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
