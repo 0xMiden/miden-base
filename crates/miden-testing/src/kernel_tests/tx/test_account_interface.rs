@@ -258,7 +258,7 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
 
     let mock_chain = builder.build()?;
     let tx_context = mock_chain
-        .build_tx_context(TxContextInput::Account(account), &[], &[successful_note.clone()])?
+        .build_tx_context(TxContextInput::Account(account), &[], &[successful_note])?
         .build()?;
 
     let input_notes = tx_context.input_notes().clone();
