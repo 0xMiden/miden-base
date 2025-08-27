@@ -5,6 +5,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- Added `AccountExport` and `AuthenticationExport` structs for separate export of account data and private keys ([#1790](https://github.com/0xMiden/miden-base/issues/1790)).
 
 ## 0.11.0 (2025-08-26)
 
