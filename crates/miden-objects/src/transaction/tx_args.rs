@@ -110,13 +110,6 @@ impl TransactionArgs {
         self
     }
 
-    /// Adds the provided signature to the advice inputs.
-    pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Vec<Felt>) {
-        self.advice_inputs
-            .map
-            .insert(Hasher::merge(&[public_key.into(), message]), signature);
-    }
-
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
@@ -193,6 +186,17 @@ impl TransactionArgs {
         ];
 
         self.advice_inputs.extend(AdviceInputs::default().with_map(new_elements));
+    }
+
+    /// Adds the `signature` corresponding to `public_key` on `message` to the advice inputs' map.
+    ///
+    /// The advice inputs' map is extended with the following key:
+    ///
+    /// - hash(public_key, message) |-> signature.
+    pub fn add_signature(&mut self, public_key: PublicKey, message: Word, signature: Vec<Felt>) {
+        self.advice_inputs
+            .map
+            .insert(Hasher::merge(&[public_key.into(), message]), signature);
     }
 
     /// Populates the advice inputs with the specified note recipient details.
