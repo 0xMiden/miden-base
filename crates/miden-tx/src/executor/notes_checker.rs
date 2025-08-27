@@ -240,11 +240,11 @@ where
             // Update failed_notes with notes that weren't included in successful combination
             let successful_note_ids =
                 successful.iter().map(|note| note.id()).collect::<BTreeSet<_>>();
-            let newly_failed: Vec<_> = candidate_notes
+            // TODO: Replace `None` with meaningful error for `FailedNote` below.
+            let newly_failed = candidate_notes
                 .into_iter()
                 .filter(|input_note| !successful_note_ids.contains(&input_note.note().id()))
-                .map(|input_note| FailedNote::new(input_note.into_note(), None))
-                .collect();
+                .map(|input_note| FailedNote::new(input_note.into_note(), None));
             failed_notes.extend(newly_failed);
 
             Some(NoteConsumptionInfo::new(successful, failed_notes))
