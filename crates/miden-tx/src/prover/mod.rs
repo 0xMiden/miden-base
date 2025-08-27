@@ -46,24 +46,6 @@ impl LocalTransactionProver {
         }
     }
 
-    #[cfg(any(feature = "testing", test))]
-    pub fn prove_dummy(
-        &self,
-        executed_tx: ExecutedTransaction,
-    ) -> Result<ProvenTransaction, TransactionProverError> {
-        let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
-
-        self.build_proven_transaction(
-            tx_witness.tx_inputs.input_notes(),
-            tx_outputs,
-            account_delta,
-            tx_witness.tx_inputs.account(),
-            tx_witness.tx_inputs.block_header().block_num(),
-            tx_witness.tx_inputs.block_header().commitment(),
-            ExecutionProof::new_dummy(),
-        )
-    }
-
     fn build_proven_transaction(
         &self,
         input_notes: &InputNotes<InputNote>,
@@ -123,18 +105,7 @@ impl LocalTransactionProver {
 
         builder.build().map_err(TransactionProverError::ProvenTransactionBuildFailed)
     }
-}
 
-impl Default for LocalTransactionProver {
-    fn default() -> Self {
-        Self {
-            mast_store: Arc::new(TransactionMastStore::new()),
-            proof_options: Default::default(),
-        }
-    }
-}
-
-impl LocalTransactionProver {
     pub fn prove(
         &self,
         tx_witness: TransactionWitness,
@@ -201,6 +172,35 @@ impl LocalTransactionProver {
             ref_block_num,
             ref_block_commitment,
             proof,
+        )
+    }
+}
+
+impl Default for LocalTransactionProver {
+    fn default() -> Self {
+        Self {
+            mast_store: Arc::new(TransactionMastStore::new()),
+            proof_options: Default::default(),
+        }
+    }
+}
+
+#[cfg(any(feature = "testing", test))]
+impl LocalTransactionProver {
+    pub fn prove_dummy(
+        &self,
+        executed_tx: ExecutedTransaction,
+    ) -> Result<ProvenTransaction, TransactionProverError> {
+        let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
+
+        self.build_proven_transaction(
+            tx_witness.tx_inputs.input_notes(),
+            tx_outputs,
+            account_delta,
+            tx_witness.tx_inputs.account(),
+            tx_witness.tx_inputs.block_header().block_num(),
+            tx_witness.tx_inputs.block_header().commitment(),
+            ExecutionProof::new_dummy(),
         )
     }
 }
