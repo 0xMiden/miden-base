@@ -231,14 +231,11 @@ where
         // Convert successful InputNotes to Notes.
         let successful = successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
 
-        // Update failed_notes with notes that weren't included in successful combination
-        let successful_note_ids = successful.iter().map(|note| note.id()).collect::<BTreeSet<_>>();
+        // Update failed_notes with notes that weren't included in successful combination.
         // TODO: Replace `None` with meaningful error for `FailedNote` below.
-        let newly_failed = candidate_notes
-            .into_iter()
-            .filter(|input_note| !successful_note_ids.contains(&input_note.note().id()))
-            .map(|input_note| FailedNote::new(input_note.into_note(), None));
-        failed_notes.extend(newly_failed);
+        let newly_failed_notes =
+            remaining_notes.into_iter().map(|note| FailedNote::new(note.into_note(), None));
+        failed_notes.extend(newly_failed_notes);
 
         NoteConsumptionInfo::new(successful, failed_notes)
     }
