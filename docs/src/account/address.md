@@ -58,7 +58,9 @@ An address is encoded in [**bech32 format**](https://github.com/bitcoin/bips/blo
 - Human-readable prefix indicates network type
 - Less prone to errors when typed or spoken compared to hex format
 
-An example of a bech32-encoded address is `mm1qrzqeg8kneq2wypcahq87774m3cqq4ejcg7`, which encodes and `AccountIdAddress` with the `BasicWallet` interface.
+Examples of bech32-encoded addresses that encode the same `AccountIdAddress` are:
+- `mm1qqttmuqgxur0jup8j8luck774rcqq58se2m`, with the `Unspecified` interface.
+- `mm1qqttmuqgxur0jup8j8luck774rcqz8z36ek`, with the `BasicWallet` interface.
 
 The structure of a bech32-encoded address is:
 - [Human-readable prefix](https://github.com/satoshilabs/slips/blob/master/slip-0173.md) that
