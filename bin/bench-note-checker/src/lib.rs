@@ -121,11 +121,9 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
 /// Runs the note consumability check and validates the results.
 pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()> {
     // Create transaction context with the setup data.
-    let (_, authenticator) = Auth::IncrNonce.build_component();
     let tx_context = setup
         .mock_chain
         .build_tx_context(TxContextInput::AccountId(setup.target_account_id), &[], &setup.notes)?
-        .authenticator(authenticator)
         .build()?;
 
     let input_notes = tx_context.input_notes().clone();

@@ -33,7 +33,6 @@ use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
 async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
-    let (_, authenticator) = Auth::IncrNonce.build_component();
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -57,7 +56,6 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let notes = vec![p2ide_note, p2id_note];
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(notes.clone())
-        .authenticator(authenticator)
         .build()?;
 
     let input_notes = tx_context.input_notes().clone();
