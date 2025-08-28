@@ -6,7 +6,7 @@
 
 ## Purpose
 
-An address is a unique identifier that facilitates sending and receiving of [notes](../note.md). It has essentially two purposes that are explained in this section.
+An address is an identifier that facilitates sending and receiving of [notes](../note.md). It has essentially two purposes that are explained in this section.
 
 ### Access control for notes
 
