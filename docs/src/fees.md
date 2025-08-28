@@ -11,8 +11,7 @@ Miden transactions pay a fee that is computed and charged automatically by the t
 ## Which asset is used to pay fees
 
 - Fees are paid in the chain’s native asset, defined by the current reference block’s fee parameters.
-- During the epilogue, the kernel constructs the fee asset using the native asset ID and removes it from the account’s vault.
-- If the account does not contain enough of the native asset to cover the computed fee, the transaction fails during the epilogue.
+- The native asset is chosen once as part of the genesis block and then copied to every newly created block, which means the native asset is the same per network during the epilogue.
 
 ## Where the fee appears in outputs
 
