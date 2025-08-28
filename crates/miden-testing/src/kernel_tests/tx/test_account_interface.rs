@@ -242,6 +242,8 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
 #[tokio::test]
 async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
+
+    // Use basic auth which will cause epilogue failure when paired up with unreachable auth.
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
 
     let successful_note = builder.add_p2id_note(
@@ -261,7 +263,7 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    // Use an auth that fails in order to force an epilogue failure.
+    // Use an auth that fails in order to force an epilogue failure when paired up with basic auth.
     let executor =
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
