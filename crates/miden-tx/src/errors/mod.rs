@@ -27,8 +27,8 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum NoteCheckerError {
-    #[error("invalid input note count {0})")]
-    InvalidInputNoteCount(u16),
+    #[error("invalid input note count {0} is out of range)")]
+    InputNoteCountOutOfRange(u16),
     #[error("transaction preparation failed: {0}")]
     TransactionPreparationFailed(#[source] TransactionExecutorError),
     #[error("transaction execution prologue failed: {0}")]

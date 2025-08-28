@@ -105,7 +105,7 @@ where
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
         let num_notes = input_notes.num_notes();
         if !Self::INPUT_NOTES_RANGE.contains(&num_notes) {
-            return Err(NoteCheckerError::InvalidInputNoteCount(num_notes));
+            return Err(NoteCheckerError::InputNoteCountOutOfRange(num_notes));
         }
         // Ensure well-known notes are ordered first.
         let mut notes = input_notes.into_vec();
