@@ -78,8 +78,8 @@ where
     /// This function attempts to find the maximum set of notes that can be successfully executed
     /// together by the target account.
     ///
-    /// Because of the runtime complexity involved in this function, a limit of
-    /// [`Self::MAX_INPUT_NOTES`] input notes is enforced.
+    /// Because of the runtime complexity involved in this function, a limited range of
+    /// [`Self::INPUT_NOTES_RANGE`] input notes is allowed.
     ///
     /// If some notes succeed and others fail, the failed notes are removed from the candidate set
     /// and the remaining notes (successful + unattempted) are retried in the next iteration. This
