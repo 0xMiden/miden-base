@@ -118,7 +118,7 @@ impl AccountComponent {
     ///
     /// This method extracts the account component metadata from the package and creates
     /// a component with the provided storage slots. The component will have default
-    /// supported types (RegularAccountImmutableCode) unless overridden.
+    /// supported types ([`AccountType::RegularAccountImmutableCode`]) unless overridden.
     ///
     /// # Arguments
     ///
