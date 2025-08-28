@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::ops::RangeInclusive;
 
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::transaction::TransactionKernel;
@@ -63,7 +64,8 @@ where
     STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
-    pub const MAX_INPUT_NOTES: u16 = 20;
+    /// Range of valid input note counts to be provided to the checker.
+    pub const INPUT_NOTES_RANGE: RangeInclusive<u16> = 1..=20;
 
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
     pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {
@@ -102,7 +104,7 @@ where
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
         let num_notes = input_notes.num_notes();
-        if num_notes == 0 || num_notes > Self::MAX_INPUT_NOTES {
+        if !Self::INPUT_NOTES_RANGE.contains(&num_notes) {
             return Err(NoteCheckerError::InvalidInputNoteCount(num_notes));
         }
         // Ensure well-known notes are ordered first.
