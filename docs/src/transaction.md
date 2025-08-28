@@ -47,7 +47,7 @@ A `Transaction` requires several inputs:
 4. **Epilogue**
    Completes the execution, resulting in an updated account state and a generated zero-knowledge proof. The validity of the resulting transaction is ensured by a combination of user-defined and protocol-defined checks:
    - The account's [authentication procedure](account/code.md#authentication) is called to authorize the transaction.
-   - The transaction fee is computed and removed from the account’s vault in the chain’s native asset. See [Fees](./fees.md).
+   - The transaction fee is computed and removed from the account's vault in the chain's native asset. See [Fees](./fees.md).
    - The account's state must have changed, or at least one input note must have been consumed to make the transaction non-empty.
    - If the account's state has changed, the `nonce` must have been incremented to prevent replay attacks.
    - Additionally, the sum of all input assets must be equal to the sum of all output assets (if the account is not a faucet).
