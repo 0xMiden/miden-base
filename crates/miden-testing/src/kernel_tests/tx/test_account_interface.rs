@@ -322,10 +322,9 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
 
     // Create a note that causes epilogue failure. Adds assets to the transaction without moving
     // them anywhere which causes an "asset imbalance" that violates the asset preservation rules.
-    let note_asset0 = FungibleAsset::mock(200).unwrap_fungible();
-    let note_asset1 = FungibleAsset::mock(500).unwrap_fungible();
+    let note_asset = FungibleAsset::mock(700).unwrap_fungible();
     let fail_epilogue_note = NoteBuilder::new(account.id(), &mut rand::rng())
-        .add_assets([Asset::from(note_asset0.add(note_asset1)?)])
+        .add_assets([Asset::from(note_asset)])
         .build()?;
     builder.add_note(OutputNote::Full(fail_epilogue_note.clone()));
 
