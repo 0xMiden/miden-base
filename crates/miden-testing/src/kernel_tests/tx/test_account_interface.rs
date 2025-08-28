@@ -201,6 +201,9 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
             successful,
             failed
         } => {
+                assert_eq!(failed.len(), 2);
+                assert_eq!(successful.len(), 3);
+
                 // First failing note.
                 assert_matches!(
                     failed.first().expect("first failed notes should exist"),
@@ -360,6 +363,9 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
             successful,
             failed
         } => {
+                assert_eq!(failed.len(), 2);
+                assert_eq!(successful.len(), 3);
+
                 // First failing note should be the note that does not cause epilogue failure.
                 assert_matches!(
                     failed.first().expect("first failed notes should exist"),
