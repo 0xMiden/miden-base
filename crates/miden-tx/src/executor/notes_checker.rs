@@ -63,7 +63,7 @@ where
     STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
-    const MAX_INPUT_NOTES: u16 = 20;
+    pub const MAX_INPUT_NOTES: u16 = 20;
 
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
     pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {
