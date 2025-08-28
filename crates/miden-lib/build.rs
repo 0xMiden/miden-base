@@ -38,7 +38,7 @@ const ASM_ACCOUNT_COMPONENTS_DIR: &str = "account_components";
 const SHARED_UTILS_DIR: &str = "shared_utils";
 const SHARED_MODULES_DIR: &str = "shared_modules";
 const ASM_TX_KERNEL_DIR: &str = "kernels/transaction";
-const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel_procedures/procedures.rs";
+const KERNEL_PROCEDURES_RS_FILE: &str = "src/transaction/kernel_procedures.rs";
 
 const TX_KERNEL_ERRORS_FILE: &str = "src/errors/tx_kernel_errors.rs";
 const NOTE_SCRIPT_ERRORS_FILE: &str = "src/errors/note_script_errors.rs";

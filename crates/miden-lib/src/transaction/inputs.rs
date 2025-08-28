@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
 use miden_objects::block::AccountWitness;
+use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
 use miden_objects::transaction::{
     InputNote,
@@ -208,16 +209,13 @@ impl TransactionAdviceInputs {
     // KERNEL INJECTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Inserts the kernel commitment and its procedure commitments into the advice map.
+    /// Inserts the kernel commitment and its procedure roots into the advice map.
     ///
     /// Inserts the following entries into the advice map:
-    /// - The commitment of the kernel |-> array of the kernel's procedure commitments.
+    /// - The commitment of the kernel |-> array of the kernel's procedure roots.
     fn add_kernel_commitment(&mut self) {
-        // insert the kernel commitment with its procedure commitments into the advice map
-        self.add_map_entry(
-            TransactionKernel::procedures_commitment(),
-            TransactionKernel::procedures_as_elements(),
-        );
+        // insert the kernel commitment with its procedure roots into the advice map
+        self.add_map_entry(TransactionKernel.to_commitment(), TransactionKernel.to_elements());
     }
 
     // ACCOUNT INJECTION

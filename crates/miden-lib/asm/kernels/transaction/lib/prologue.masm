@@ -106,7 +106,7 @@ end
 #!   Advice stack:  []
 #!
 #! Where:
-#! - TX_KERNEL_COMMITMENT is the accumulative hash of the kernel procedures.
+#! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
 #! - [KERNEL_PROCEDURE_ROOTS] is the array of the kernel procedure roots.
 proc.process_kernel_data
     # load the transaction kernel commitment from memory
@@ -117,23 +117,23 @@ proc.process_kernel_data
     # push the procedure roots of the transaction kernel from the advice map to the advice stack
     adv.push_mapvaln
     # OS => [TX_KERNEL_COMMITMENT]
-    # AS => [len_felts, [PROC_HASHES]]
+    # AS => [len_felts, [KERNEL_PROCEDURE_ROOTS]]
 
-    # move the number of felt elements in the [PROC_HASHES] array to the stack and get the
-    # number of Words from it
+    # move the number of felt elements in the [KERNEL_PROCEDURE_ROOTS] array to the stack and get
+    # the number of procedures from it (which is essentially the number of words)
     adv_push.1 div.4
-    # OS => [len_words, TX_KERNEL_COMMITMENT]
-    # AS => [[PROC_HASHES]]
+    # OS => [num_kernel_procedures, TX_KERNEL_COMMITMENT]
+    # AS => [[KERNEL_PROCEDURE_ROOTS]]
 
     # store the number of the procedures of the chosen kernel to the memory
     dup exec.memory::set_num_kernel_procedures
-    # OS => [len_words, TX_KERNEL_COMMITMENT]
-    # AS => [[PROC_HASHES]]
+    # OS => [num_kernel_procedures, TX_KERNEL_COMMITMENT]
+    # AS => [[KERNEL_PROCEDURE_ROOTS]]
 
     # get the pointer to the memory where hashes of the kernel procedures will be stored
     exec.memory::get_kernel_procedures_ptr swap
-    # OS => [len_words, kernel_procs_ptr, TX_KERNEL_COMMITMENT]
-    # AS => [[PROC_HASHES]]
+    # OS => [num_kernel_procedures, kernel_procs_ptr, TX_KERNEL_COMMITMENT]
+    # AS => [[KERNEL_PROCEDURE_ROOTS]]
 
     # store the kernel procedures to the memory
     exec.mem::pipe_words_to_memory
@@ -181,7 +181,7 @@ end
 #! - NULLIFIER_ROOT is the root of the tree with nullifiers of all notes that have ever been
 #!   consumed.
 #! - TX_COMMITMENT is a commitment to the set of transaction IDs which affected accounts in the block.
-#! - TX_KERNEL_COMMITMENT is the accumulative hash of the kernel procedures.
+#! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
 #! - PROOF_COMMITMENT is the commitment of the block's STARK proof attesting to the correct state transition.
 #! - block_num is the reference block number.
 #! - version is the current protocol version.
@@ -1150,7 +1150,7 @@ end
 #! - INITIAL_ACCOUNT_COMMITMENT is the account state prior to the transaction, EMPTY_WORD for new
 #!   accounts.
 #! - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
-#! - TX_KERNEL_COMMITMENT is the accumulative hash from all kernel commitments.
+#! - TX_KERNEL_COMMITMENT is the sequential hash from all kernel commitments.
 #! - PREV_BLOCK_COMMITMENT is the commitment to the previous block.
 #! - PARTIAL_BLOCKCHAIN_COMMITMENT is the sequential hash of the reference MMR.
 #! - ACCOUNT_ROOT is the root of the tree with latest account states for all accounts.

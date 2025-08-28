@@ -30,6 +30,7 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::SequentialCommit;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -157,7 +158,7 @@ impl MockChainBuilder {
         let nullifier_root = NullifierTree::new().root();
         let note_root = note_tree.root();
         let tx_commitment = transactions.commitment();
-        let tx_kernel_commitment = TransactionKernel::procedures_commitment();
+        let tx_kernel_commitment = TransactionKernel.to_commitment();
         let proof_commitment = Word::empty();
         let timestamp = MockChain::TIMESTAMP_START_SECS;
         let fee_parameters = FeeParameters::new(self.native_asset_id, self.verification_base_fee)
