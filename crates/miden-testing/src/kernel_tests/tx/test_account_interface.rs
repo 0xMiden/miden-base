@@ -32,6 +32,7 @@ use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
 async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
+    let (_, authenticator) = Auth::BasicAuth.build_component();
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -55,6 +56,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let notes = vec![p2ide_note, p2id_note];
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(notes.clone())
+        .authenticator(authenticator)
         .build()?;
 
     let input_notes = tx_context.input_notes().clone();
@@ -62,8 +64,9 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let executor = TransactionExecutor::new(&tx_context)
+        .with_authenticator(tx_context.authenticator().unwrap())
+        .with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -91,8 +94,10 @@ async fn check_note_consumability_custom_notes_success(
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
+        let (_, authenticator) = Auth::BasicAuth.build_component();
         TransactionContextBuilder::new(account)
             .extend_input_notes(notes.clone())
+            .authenticator(authenticator)
             .build()?
     };
 
@@ -101,8 +106,9 @@ async fn check_note_consumability_custom_notes_success(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let executor = TransactionExecutor::new(&tx_context)
+        .with_authenticator(tx_context.authenticator().unwrap())
+        .with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -121,10 +127,9 @@ async fn check_note_consumability_custom_notes_success(
 }
 
 #[tokio::test]
-async fn check_note_consumability_failure() -> anyhow::Result<()> {
+async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
-    let mock_chain = builder.build()?;
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
@@ -144,24 +149,28 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     .dynamically_linked_libraries([TransactionKernel::library()])
     .build()?;
 
-    let successful_note_1 = create_p2id_note(
+    let successful_note_1 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
-        vec![FungibleAsset::mock(10)],
+        &[FungibleAsset::mock(10)],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
-    let successful_note_2 = create_p2id_note(
+    let successful_note_2 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
-        vec![FungibleAsset::mock(145)],
+        &[FungibleAsset::mock(145)],
         NoteType::Public,
-        Default::default(),
-        &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
+    let successful_note_3 = builder.add_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(250)],
+        NoteType::Public,
+    )?;
+
+    let mock_chain = builder.build()?;
     let tx_context = mock_chain
         .build_tx_context(
             TxContextInput::Account(account),
@@ -170,7 +179,8 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                 successful_note_2.clone(),
                 successful_note_1.clone(),
                 failing_note_2.clone(),
-                failing_note_1,
+                failing_note_1.clone(),
+                successful_note_3.clone(),
             ],
         )?
         .build()?;
@@ -180,8 +190,8 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor =
-        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let executor = TransactionExecutor::new(&tx_context)
+        .with_authenticator(tx_context.authenticator().unwrap());
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -192,16 +202,15 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
         execution_check_result,
         NoteConsumptionInfo {
             successful,
-            failed,
-            ..
+            failed
         } => {
+                // First failing note.
                 assert_matches!(
-                    failed.first().expect("failed notes should exist"),
+                    failed.first().expect("first failed notes should exist"),
                     FailedNote {
                         note,
-                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. }),
-                        ..
+                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. }))
                     } => {
                         assert_eq!(
                             note.id(),
@@ -209,11 +218,70 @@ async fn check_note_consumability_failure() -> anyhow::Result<()> {
                         );
                     }
                 );
+                // Second failing note.
+                assert_matches!(
+                    failed.get(1).expect("second failed note should exist"),
+                    FailedNote {
+                        note,
+                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. }))
+                    } => {
+                        assert_eq!(
+                            note.id(),
+                            failing_note_1.id(),
+                        );
+                    }
+                );
+                // Successful notes.
                 assert_eq!(
-                    [successful[0].id(), successful[1].id()],
-                    [successful_note_2.id(), successful_note_1.id()]
+                    [successful[0].id(), successful[1].id(), successful[2].id()],
+                    [successful_note_2.id(), successful_note_1.id(), successful_note_3.id()],
                 );
             }
+    );
+    Ok(())
+}
+
+#[tokio::test]
+async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+
+    let successful_note = builder.add_p2id_note(
+        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(10)],
+        NoteType::Public,
+    )?;
+
+    let mock_chain = builder.build()?;
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::Account(account), &[], &[successful_note])?
+        .build()?;
+
+    let input_notes = tx_context.input_notes().clone();
+    let account_id = tx_context.account().id();
+    let block_ref = tx_context.tx_inputs().block_header().block_num();
+    let tx_args = tx_context.tx_args().clone();
+
+    // Use an auth that fails in order to force an epilogue failure.
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
+    let notes_checker = NoteConsumptionChecker::new(&executor);
+
+    let execution_check_result = notes_checker
+        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .await?;
+
+    assert_matches!(
+       execution_check_result,
+       NoteConsumptionInfo {
+           successful,
+           failed
+       } => {
+           assert!(successful.is_empty());
+           assert_eq!(failed.len(), 1);
+       }
     );
     Ok(())
 }

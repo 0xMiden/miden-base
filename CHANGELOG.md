@@ -1,82 +1,90 @@
 # Changelog
 
-## 0.11.0 (TBD)
+## 0.12.0 (TBD)
+
+### Features
+
+- Added `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
+
+### Changes
+
+- [BREAKING] Incremented MSRV to 1.89.
+
+## 0.11.0 (2025-08-26)
 
 ### Features
 
 - Added arguments to the auth procedure ([#1501](https://github.com/0xMiden/miden-base/pull/1501)).
 - [BREAKING] Refactored `SWAP` note & added option to select the visibility of the associated payback note ([#1539](https://github.com/0xMiden/miden-base/pull/1539)).
+- Added multi-signature authentication component as standard authentication component ([#1599](https://github.com/0xMiden/miden-base/issues/1599)).
 - Added `account_compute_delta_commitment`, `input_note_get_assets_info`, `tx_get_num_input_notes`, and `tx_get_num_output_notes` procedures to the transaction kernel ([#1609](https://github.com/0xMiden/miden-base/pull/1609)).
-- Added `output_note_get_assets_info` procedure to the transaction kernel ([#1638](https://github.com/0xMiden/miden-base/pull/1638)).
-- Implemented new `from_unauthenticated_notes` constructor for `InputNotes` ([#1629](https://github.com/0xMiden/miden-base/pull/1629)).
 - [BREAKING] Refactor `TransactionAuthenticator` to support arbitrary data signing ([#1616](https://github.com/0xMiden/miden-base/pull/1616)).
+- Implemented new `from_unauthenticated_notes` constructor for `InputNotes` ([#1629](https://github.com/0xMiden/miden-base/pull/1629)).
+- Added `output_note_get_assets_info` procedure to the transaction kernel ([#1638](https://github.com/0xMiden/miden-base/pull/1638)).
 - Pass the full `TransactionSummary` to `TransactionAuthenticator` ([#1618](https://github.com/0xMiden/miden-base/pull/1618)).
-- Add `PartialBlockchain::num_tracked_blocks()` ([#1643](https://github.com/0xMiden/miden-base/pull/1643)).
-- Add `get_initial_code_commitment`, `get_initial_storage_commitment` and `get_initial_vault_root` procedures to `miden::account` module ([#1667](https://github.com/0xMiden/miden-base/pull/1667)).
+- Added `PartialBlockchain::num_tracked_blocks()` ([#1643](https://github.com/0xMiden/miden-base/pull/1643)).
 - Removed `TransactionScript::compile` & `NoteScript::compile` methods in favor of `ScriptBuilder` ([#1665](https://github.com/0xMiden/miden-base/pull/1665)).
-- Add `FeeParameters` to `BlockHeader` ([#1652](https://github.com/0xMiden/miden-base/pull/1652)).
+- Added `get_initial_code_commitment`, `get_initial_storage_commitment` and `get_initial_vault_root` procedures to `miden::account` module ([#1667](https://github.com/0xMiden/miden-base/pull/1667)).
 - Added `input_note_get_recipient`, `output_note_get_recipient`, `input_note_get_metadata`, `output_note_get_metadata` procedures to the transaction kernel ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
 - Added `input_notes::get_assets` and `output_notes::get_assets` procedures to `miden` library ([#1648](https://github.com/0xMiden/miden-base/pull/1648)).
 - Added issuance accessor for fungible faucet accounts. ([#1660](https://github.com/0xMiden/miden-base/pull/1660)).
-- Add `FeeParameters` to `BlockHeader` and implement `compute_fee` ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654)).
-- Add `FeeParameters` to `BlockHeader`, implement `compute_fee` and output `FEE_ASSET` on the transaction stack ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659)).
-- Add multi-signature authentication component as standard authentication component ([#1599](https://github.com/0xMiden/miden-base/issues/1599)).
-- Add `FeeParameters` to `BlockHeader` and automatically compute and remove fees from account in the transaction kernel epilogue ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659), [#1664](https://github.com/0xMiden/miden-base/pull/1664), [#1775](https://github.com/0xMiden/miden-base/pull/1775)).
-- [BREAKING] Make transaction execution and transaction authentication asynchronous ([#1699](https://github.com/0xMiden/miden-base/pull/1699)).
-- [BREAKING] Consolidate to a single async interface and drop `#[maybe_async]` usage ([#1666](https://github.com/0xMiden/miden-base/pull/#1666)).
-- Add `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713), [#1750](https://github.com/0xMiden/miden-base/pull/1750)).
-- Add `AddressInterface` type to represent the interface of the account to which an `Address` points ([#1761](https://github.com/0xMiden/miden-base/pull/#1761)).
+- Added multi-signature authentication component as standard authentication component ([#1599](https://github.com/0xMiden/miden-base/issues/1599)).
+- Added `FeeParameters` to `BlockHeader` and automatically compute and remove fees from account in the transaction kernel epilogue ([#1652](https://github.com/0xMiden/miden-base/pull/1652), [#1654](https://github.com/0xMiden/miden-base/pull/1654), [#1659](https://github.com/0xMiden/miden-base/pull/1659), [#1664](https://github.com/0xMiden/miden-base/pull/1664), [#1775](https://github.com/0xMiden/miden-base/pull/1775)).
+- Added `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713), [#1750](https://github.com/0xMiden/miden-base/pull/1750)).
+- [BREAKING] Consolidated to a single async interface and drop `#[maybe_async]` usage ([#1666](https://github.com/0xMiden/miden-base/pull/#1666)).
+- [BREAKING] Made transaction execution and transaction authentication asynchronous ([#1699](https://github.com/0xMiden/miden-base/pull/1699)).
 - [BREAKING] Return dedicated insufficient fee error from transaction host if account balance is too low ([#1744](https://github.com/0xMiden/miden-base/pull/#1744)).
-- Add `Address` type to represent account-id based addresses ([#1713](https://github.com/0xMiden/miden-base/pull/1713)).
-- Add `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
-- Add `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
+- Added `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
+- Added `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
+- Added `AddressInterface` type to represent the interface of the account to which an `Address` points ([#1761](https://github.com/0xMiden/miden-base/pull/#1761)).
 
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.88.
-- Refactor account documentation into multiple sections ([#1523](https://github.com/0xMiden/miden-base/pull/1523)).
+- Refactored account documentation into multiple sections ([#1523](https://github.com/0xMiden/miden-base/pull/1523)).
 - Implemented `WellKnownComponents` enum ([#1532](https://github.com/0xMiden/miden-base/pull/1532)).
+- [BREAKING] Remove pending account APIs on `MockChain` and introduce `MockChainBuilder` to simplify mock chain creation ([#1557](https://github.com/0xMiden/miden-base/pull/1557)).
 - Made `ExecutedTransaction` implement `Send` for easier consumption ([#1560](https://github.com/0xMiden/miden-base/pull/1560)).
 - [BREAKING] `Digest` was removed in favor of `Word` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
 - [BREAKING] Upgraded Miden VM to `0.16`, `miden-crypto` to `0.15` and `winterfell` crates to `0.13` ([#1564](https://github.com/0xMiden/miden-base/pull/1564), [#1594](https://github.com/0xMiden/miden-base/pull/1594)).
 - [BREAKING] Renamed `{NoteInclusionProof, AccountWitness}::inner_nodes` to `authenticated_nodes` ([#1564](https://github.com/0xMiden/miden-base/pull/1564)).
 - [BREAKING] Renamed `{TransactionId, NoteId, Nullifier}::inner` -> `as_word` ([#1571](https://github.com/0xMiden/miden-base/pull/1571)).
 - Replaced `MerklePath` with `SparseMerklePath` in `NoteInclusionProof` ([#1572](https://github.com/0xMiden/miden-base/pull/1572)) .
-- [BREAKING] Split `TransactionHost` into `TransactionProverHost` and `TransactionExecutorHost` ([#1581](https://github.com/0xMiden/miden-base/pull/1581)).
-- [BREAKING] Remove pending account APIs on `MockChain` and introduce `MockChainBuilder` to simplify mock chain creation ([#1557](https://github.com/0xMiden/miden-base/pull/1557)).
 - [BREAKING] Renamed authentication components to include "auth" prefix for clarity ([#1575](https://github.com/0xMiden/miden-base/issues/1575)).
-- Add `TransactionEvent::Unauthorized` to enable aborting the transaction execution to get its transaction summary for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596), [#1634](https://github.com/0xMiden/miden-base/pull/1634), [#1651](https://github.com/0xMiden/miden-base/pull/1651)).
+- [BREAKING] Split `TransactionHost` into `TransactionProverHost` and `TransactionExecutorHost` ([#1581](https://github.com/0xMiden/miden-base/pull/1581)).
+- Added `TransactionEvent::Unauthorized` to enable aborting the transaction execution to get its transaction summary for signing purposes ([#1596](https://github.com/0xMiden/miden-base/pull/1596), [#1634](https://github.com/0xMiden/miden-base/pull/1634), [#1651](https://github.com/0xMiden/miden-base/pull/1651)).
 - [BREAKING] Implemented `SequentialCommit` for `AccountDelta` and renamed `AccountDelta::commitment()` to `AccountDelta::to_commitment()` ([#1603](https://github.com/0xMiden/miden-base/pull/1603)).
-- Add robustness check to `create_swap_note`: error if `requested_asset` != `offered_asset` ([#1604](https://github.com/0xMiden/miden-base/pull/1604)).
-- [BREAKING] Change `account::incr_nonce` to always increment the nonce by one, disallow incrementing more than once and return the new nonce after incrementing ([#1608](https://github.com/0xMiden/miden-base/pull/1608), [#1633](https://github.com/0xMiden/miden-base/pull/1633)).
+- Added robustness check to `create_swap_note`: error if `requested_asset` != `offered_asset` ([#1604](https://github.com/0xMiden/miden-base/pull/1604)).
+- [BREAKING] Changed `account::incr_nonce` to always increment the nonce by one, disallow incrementing more than once and return the new nonce after incrementing ([#1608](https://github.com/0xMiden/miden-base/pull/1608), [#1633](https://github.com/0xMiden/miden-base/pull/1633)).
 - Added `AccountTree::contains_account_id_prefix()` and `AccountTree::id_prefix_to_smt_key()` ([#1610](https://github.com/0xMiden/miden-base/pull/1610)).
 - Added functions for pruning `PartialBlockchain` (#[1619](https://github.com/0xMiden/miden-base/pull/1619)).
-- [BREAKING] Disallow calling the auth procedure explicitly (from outside the epilogue) ([#1622](https://github.com/0xMiden/miden-base/pull/1622)).
-- [BREAKING] Include account delta commitment in signing message for the `RpoFalcon512` family of account components ([#1624](https://github.com/0xMiden/miden-base/pull/1624)).
-- [BREAKING] Rename `TransactionEvent::FalconSigToStack` to `TransactionEvent::AuthRequest` ([#1626](https://github.com/0xMiden/miden-base/pull/1626)).
-- [BREAKING] Make the naming of the transaction script arguments consistent ([#1632](https://github.com/0xMiden/miden-base/pull/1632)).
-- [BREAKING] Move `TransactionProverHost` and `TransactionExecutorHost` from dynamic dispatch to generics ([#1037](https://github.com/0xMiden/miden-node/issues/1037))
+- [BREAKING] Disallowed calling the auth procedure explicitly (from outside the epilogue) ([#1622](https://github.com/0xMiden/miden-base/pull/1622)).
+- [BREAKING] Included account delta commitment in signing message for the `RpoFalcon512` family of account components ([#1624](https://github.com/0xMiden/miden-base/pull/1624)).
+- [BREAKING] Renamed `TransactionEvent::FalconSigToStack` to `TransactionEvent::AuthRequest` ([#1626](https://github.com/0xMiden/miden-base/pull/1626)).
+- [BREAKING] Made the naming of the transaction script arguments consistent ([#1632](https://github.com/0xMiden/miden-base/pull/1632)).
+- [BREAKING] Moved `TransactionProverHost` and `TransactionExecutorHost` from dynamic dispatch to generics ([#1037](https://github.com/0xMiden/miden-node/issues/1037))
 - [BREAKING] Changed `PartialStorage` and `PartialVault` to use `PartialSmt` instead of separate merkle proofs ([#1590](https://github.com/0xMiden/miden-base/pull/1590)).
-- [BREAKING] Move transaction inputs insertion out of transaction hosts ([#1639](https://github.com/0xMiden/miden-node/issues/1639))
+- [BREAKING] Moved transaction inputs insertion out of transaction hosts ([#1639](https://github.com/0xMiden/miden-node/issues/1639))
 - Implemented serialization for `MockChain` ([#1642](https://github.com/0xMiden/miden-base/pull/1642)).
-- [BREAKING] Reduce `FungibleAsset::MAX_AMOUNT` by a small fraction which allows using felt-based arithmetic in the fungible asset account delta ([#1681](https://github.com/0xMiden/miden-base/pull/1681)).
+- [BREAKING] Reduced `FungibleAsset::MAX_AMOUNT` by a small fraction which allows using felt-based arithmetic in the fungible asset account delta ([#1681](https://github.com/0xMiden/miden-base/pull/1681)).
 - Avoid modifying an asset vault when adding a fungible asset with amount zero and the asset does not already exist ([#1668](https://github.com/0xMiden/miden-base/pull/1668)).
-- [BREAKING] Update `NoteConsumptionChecker::check_notes_consumability` and `TransactionExecutor::try_execute_notes` to return `NoteConsumptionInfo` containing lists of `Note` rather than `NoteId` ([#1680](https://github.com/0xMiden/miden-base/pull/1680)).
-- Refactor epilogue to run as much code as possible before fees are computed ([#1698](https://github.com/0xMiden/miden-base/pull/1698)).
-- Refactor epilogue to run as much code as possible before fees are computed ([#1698](https://github.com/0xMiden/miden-base/pull/1698), [#1705](https://github.com/0xMiden/miden-base/pull/1705)).
-- [BREAKING] Remove note script utils and rename `note::add_note_assets_to_account` to `note::add_assets_to_account` ([#1694](https://github.com/0xMiden/miden-base/pull/1694)).
-- [BREAKING] Move `IncrNonceAuthComponent`, `ConditionalAuthComponent` and `AccountMockComponent` to `miden-lib` ([#1722](https://github.com/0xMiden/miden-base/pull/1722)).
+- [BREAKING] Updated `NoteConsumptionChecker::check_notes_consumability` and `TransactionExecutor::try_execute_notes` to return `NoteConsumptionInfo` containing lists of `Note` rather than `NoteId` ([#1680](https://github.com/0xMiden/miden-base/pull/1680)).
+- Refactored epilogue to run as much code as possible before fees are computed ([#1698](https://github.com/0xMiden/miden-base/pull/1698)).
+- Refactored epilogue to run as much code as possible before fees are computed ([#1698](https://github.com/0xMiden/miden-base/pull/1698), [#1705](https://github.com/0xMiden/miden-base/pull/1705)).
+- [BREAKING] Removed note script utils and rename `note::add_note_assets_to_account` to `note::add_assets_to_account` ([#1694](https://github.com/0xMiden/miden-base/pull/1694)).
 - Refactor `contracts::auth::basic` into a reusable library procedure `auth::rpo_falcon512` ([#1712](https://github.com/0xMiden/miden-base/pull/1712)).
 - [BREAKING] Refactored `FungibleAsset::sub` to be more similar to `FungibleAsset::add` ([#1720](https://github.com/0xMiden/miden-base/pull/1720)).
+- Update `NoteConsumptionChecker::check_notes_consumability` to use iterative elimination strategy to find a set of executable notes ([#1721](https://github.com/0xMiden/miden-base/pull/1721)).
+- [BREAKING] Moved `IncrNonceAuthComponent`, `ConditionalAuthComponent` and `AccountMockComponent` to `miden-lib` ([#1722](https://github.com/0xMiden/miden-base/pull/1722)).
 - [BREAKING] Split `AccountCode::mock_library` into an account and faucet library ([#1732](https://github.com/0xMiden/miden-base/pull/1732), [#1733](https://github.com/0xMiden/miden-base/pull/1733)).
-- [BREAKING] Refactor `AccountError::AssumptionViolated` into `AccountError::Other` ([#1743](https://github.com/0xMiden/miden-base/pull/1743)).
-- [BREAKING] Remove `PartialVault::{new, add}` to guarantee the vault tracks valid assets ([#1747](https://github.com/0xMiden/miden-base/pull/1747)).
-- [BREAKING] Change owner of `Arc<dyn SourceManagerSync` and unify usage over manually `+Send` `+Sync` bounds ([#1749](https://github.com/0xMiden/miden-base/pull/1749)).
-- [BREAKING] Remove account ID bech32 encoding. Use `Address::{from_bech32, to_bech32}` instead ([#1762](https://github.com/0xMiden/miden-base/pull/1762)).
-- [BREAKING] Update `account::get_storage_commitment` procedure to `account::compute_storage_commitment`([#1763](https://github.com/0xMiden/miden-base/pull/1763)).
-- Implement caching for the account storage commitment (([#1763](https://github.com/0xMiden/miden-base/pull/1763))).
+- [BREAKING] Refactored `AccountError::AssumptionViolated` into `AccountError::Other` ([#1743](https://github.com/0xMiden/miden-base/pull/1743)).
+- [BREAKING] Removed `PartialVault::{new, add}` to guarantee the vault tracks valid assets ([#1747](https://github.com/0xMiden/miden-base/pull/1747)).
+- [BREAKING] Changed owner of `Arc<dyn SourceManagerSync` and unify usage over manually `+Send` `+Sync` bounds ([#1749](https://github.com/0xMiden/miden-base/pull/1749)).
+- [BREAKING] Removed account ID bech32 encoding. Use `Address::{from_bech32, to_bech32}` instead ([#1762](https://github.com/0xMiden/miden-base/pull/1762)).
+- [BREAKING] Updated `account::get_storage_commitment` procedure to `account::compute_storage_commitment`([#1763](https://github.com/0xMiden/miden-base/pull/1763)).
+- Implemented caching for the account storage commitment (([#1763](https://github.com/0xMiden/miden-base/pull/1763))).
 - [BREAKING] Merge the current and initial account code commitment procedures into one ([#1776](https://github.com/0xMiden/miden-base/pull/1776)).
-- Add `TransactionExecutorError::InsufficientFee` variant([#1786](https://github.com/0xMiden/miden-base/pull/1786)).
+- Added `TransactionExecutorError::InsufficientFee` variant([#1786](https://github.com/0xMiden/miden-base/pull/1786)).
 - [BREAKING] Made source manager an instance variable of the `TransactionExecutor` ([#1788](https://github.com/0xMiden/miden-base/pull/1788)).
 - [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 
