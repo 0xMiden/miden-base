@@ -157,9 +157,12 @@ impl AccountComponent {
 
         let component = AccountComponent::new(template.library().clone(), storage_slots)?;
 
-        // Use supported types from template metadata, or default to RegularAccountUpdatableCode
+        // Use supported types from template metadata, or default to regular account types
         let supported_types = if template.metadata().supported_types().is_empty() {
-            BTreeSet::from_iter([AccountType::RegularAccountImmutableCode])
+            BTreeSet::from_iter([
+                AccountType::RegularAccountImmutableCode,
+                AccountType::RegularAccountUpdatableCode,
+            ])
         } else {
             template.metadata().supported_types().clone()
         };

@@ -37,7 +37,7 @@ testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils"]
 miden-assembly     = { workspace = true }
 miden-core         = { workspace = true }
 miden-crypto       = { workspace = true }
-miden-mast-package = { workspace = true }
+miden-mast-package = { default-features = false, version = "0.17.0" }
 miden-processor    = { workspace = true }
 miden-utils-sync   = { workspace = true }
 miden-verifier     = { workspace = true }
