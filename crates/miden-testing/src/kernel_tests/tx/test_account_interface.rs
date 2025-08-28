@@ -32,7 +32,7 @@ use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
 async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<()> {
-    let (_, authenticator) = Auth::BasicAuth.build_component();
+    let (_, authenticator) = Auth::IncrNonce.build_component();
     let p2id_note = create_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -64,9 +64,8 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor = TransactionExecutor::new(&tx_context)
-        .with_authenticator(tx_context.authenticator().unwrap())
-        .with_tracing();
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
@@ -128,7 +127,7 @@ async fn check_note_consumability_custom_notes_success(
 #[tokio::test]
 async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
 
@@ -189,8 +188,8 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    let executor = TransactionExecutor::new(&tx_context)
-        .with_authenticator(tx_context.authenticator().unwrap());
+    let executor =
+        TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let execution_check_result = notes_checker
