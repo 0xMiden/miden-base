@@ -8,6 +8,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_testing::{Auth, MockChain, TxContextInput};
+use miden_tx::auth::UnreachableAuth;
 use miden_tx::{NoteConsumptionChecker, TransactionExecutor};
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +65,7 @@ pub struct MixedNotesSetup {
 pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<MixedNotesSetup> {
     // Create a mock chain with an account.
     let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let account = builder.add_existing_wallet(Auth::IncrNonce)?;
     let target_account_id = account.id();
 
     // Create the first successful note (P2ID note that the account can consume).
@@ -120,9 +121,11 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
 /// Runs the note consumability check and validates the results.
 pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()> {
     // Create transaction context with the setup data.
+    let (_, authenticator) = Auth::IncrNonce.build_component();
     let tx_context = setup
         .mock_chain
         .build_tx_context(TxContextInput::AccountId(setup.target_account_id), &[], &setup.notes)?
+        .authenticator(authenticator)
         .build()?;
 
     let input_notes = tx_context.input_notes().clone();
@@ -130,8 +133,7 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
     let tx_args = tx_context.tx_args().clone();
 
     // Create executor and checker.
-    let executor = TransactionExecutor::new(&tx_context)
-        .with_authenticator(tx_context.authenticator().unwrap());
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context);
     let checker = NoteConsumptionChecker::new(&executor);
 
     let result = checker
@@ -140,8 +142,8 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
 
     // Validate that we got the expected number of successful notes.
     assert_eq!(
-        result.successful.len(),
         setup.expected_successful_count,
+        result.successful.len(),
         "Expected {} successful notes, got {}",
         setup.expected_successful_count,
         result.successful.len()
