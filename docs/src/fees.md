@@ -13,7 +13,8 @@ Miden transactions pay a fee that is computed and charged automatically by the t
 - Fees are paid in the chain’s native asset, defined by the current reference block’s fee parameters.
 - The native asset is chosen once as part of the genesis block and then copied to every newly created block, which means the native asset is the same per network during the epilogue.
 
-## Where the fee appears in outputs
+## How fees are paid
 
 - The transaction kernel outputs the computed fee as a fungible asset, and the transaction outputs include it explicitly.
 - Practically, users should ensure their account’s vault holds sufficient balance of the native asset of the current reference block to cover the fee. The fee is charged automatically; no explicit fee-sending step is required. 
+- If the account does not contain enough of the native asset to cover the computed fee, the transaction fails during the epilogue.
