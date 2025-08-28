@@ -6,7 +6,7 @@ Miden transactions pay a fee that is computed and charged automatically by the t
 
 - The fee depends on the number of VM cycles the transaction executes and grows logarithmically with that count.
 - The kernel estimates the number of verification cycles by taking log2 of the estimated total execution cycles (rounded up). The result is then multiplied by the `verification_base_fee` from the reference block’s fee parameters.
-- In other words, the fee is proportional to the logarithm of the transaction’s execution cost, scaled by the base verification fee defined in the block header.
+- In other words, the fee is proportional to the logarithm of the transaction’s number of execution cycles, scaled by the base verification fee defined in the block header.
 
 ## Which asset is used to pay fees
 
