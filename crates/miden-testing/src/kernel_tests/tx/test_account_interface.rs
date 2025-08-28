@@ -208,8 +208,8 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
                     failed.first().expect("first failed notes should exist"),
                     FailedNote {
                         note,
-                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. }))
+                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. })
                     } => {
                         assert_eq!(
                             note.id(),
@@ -222,8 +222,8 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
                     failed.get(1).expect("second failed note should exist"),
                     FailedNote {
                         note,
-                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. }))
+                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. })
                     } => {
                         assert_eq!(
                             note.id(),
@@ -365,8 +365,8 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
                     failed.first().expect("first failed notes should exist"),
                     FailedNote {
                         note,
-                        error: Some(TransactionExecutorError::TransactionProgramExecutionFailed(
-                            ExecutionError::DivideByZero { .. }))
+                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::DivideByZero { .. })
                     } => {
                         assert_eq!(
                             note.id(),
@@ -379,7 +379,9 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
                     failed.get(1).expect("second failed note should exist"),
                     FailedNote {
                         note,
-                        error: None,
+                        // todo what is this
+                        error: TransactionExecutorError::TransactionProgramExecutionFailed(
+                            ExecutionError::FailedAssertion { .. })
                     } => {
                         assert_eq!(
                             note.id(),

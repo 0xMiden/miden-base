@@ -20,12 +20,12 @@ use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 #[derive(Debug)]
 pub struct FailedNote {
     pub note: Note,
-    pub error: Option<TransactionExecutorError>,
+    pub error: TransactionExecutorError,
 }
 
 impl FailedNote {
     /// Constructs a new `FailedNote`.
-    pub fn new(note: Note, error: Option<TransactionExecutorError>) -> Self {
+    pub fn new(note: Note, error: TransactionExecutorError) -> Self {
         Self { note, error }
     }
 }
@@ -157,7 +157,7 @@ where
                 Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error }) => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
-                    failed_notes.push(FailedNote::new(failed_note, Some(error)));
+                    failed_notes.push(FailedNote::new(failed_note, error));
 
                     // All possible candidate combinations have been attempted.
                     if candidate_notes.is_empty() {
@@ -196,7 +196,7 @@ where
         mut failed_notes: Vec<FailedNote>,
         tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
-        let mut successful_notes: Vec<InputNote> = Vec::new();
+        let mut successful_notes = Vec::new();
         let mut remaining_notes = input_notes;
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
@@ -225,10 +225,16 @@ where
                         remaining_notes.remove(idx);
                         break;
                     },
-                    _ => {
+                    Err(error) => {
                         // This combination failed; remove the last note from the test set and
                         // continue to next note.
-                        successful_notes.pop();
+                        let failed_note =
+                            successful_notes.pop().expect("Successful notes should not be empty");
+                        // Record the failed note.
+                        let error = error
+                            .into_transaction_executor_error()
+                            .expect("Error should be a transaction executor error");
+                        failed_notes.push(FailedNote::new(failed_note.into_note(), error));
                     },
                 }
             }
@@ -236,13 +242,6 @@ where
 
         // Convert successful InputNotes to Notes.
         let successful = successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
-
-        // Update failed_notes with notes that weren't included in successful combination.
-        // TODO: Replace `None` with meaningful error for `FailedNote` below.
-        let newly_failed_notes =
-            remaining_notes.into_iter().map(|note| FailedNote::new(note.into_note(), None));
-        failed_notes.extend(newly_failed_notes);
-
         NoteConsumptionInfo::new(successful, failed_notes)
     }
 

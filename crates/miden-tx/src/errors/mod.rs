@@ -42,6 +42,18 @@ pub enum NoteCheckerError {
     },
 }
 
+impl NoteCheckerError {
+    pub fn into_transaction_executor_error(self) -> Option<TransactionExecutorError> {
+        match self {
+            NoteCheckerError::TransactionPreparationFailed(err) => Some(err),
+            NoteCheckerError::PrologueExecutionFailed(err) => Some(err),
+            NoteCheckerError::EpilogueExecutionFailed(err) => Some(err),
+            NoteCheckerError::NoteExecutionFailed { error, .. } => Some(error),
+            _ => None,
+        }
+    }
+}
+
 // TRANSACTION EXECUTOR ERROR
 // ================================================================================================
 
