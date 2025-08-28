@@ -343,7 +343,6 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
-    // Use an auth that fails in order to force an epilogue failure.
     let executor =
         TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context).with_tracing();
     let notes_checker = NoteConsumptionChecker::new(&executor);
