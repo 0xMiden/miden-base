@@ -1,11 +1,12 @@
 # Miden Library Procedures
 
-The Miden library provides a set of high-level procedures that can be invoked by account code, note scripts, and transaction scripts. These procedures wrap the underlying kernel procedures and provide a more convenient interface for common operations. The procedures are organized into modules corresponding to different functional areas.
+The Miden library provides a set of procedures that wrap transaction kernel procedures to provide a more convenient interface for common operations. These can be invoked by account code, note scripts, and transaction scripts, though some have restriction from where they can be called. The procedures are organized into modules corresponding to different functional areas.
 
 ## Contexts
 
-This describes contexts from which procedures can be called:
+The Miden VM contexts from which procedures can be called are:
 
+- **Local**: Executes in the local context of the calling procedure since it does not make a syscall.
 - **Any**: Can be called from any context.
 - **Account**: Can only be called from native or foreign accounts.
 - **Native**: Can only be called when the current account is the native account.
@@ -15,13 +16,9 @@ This describes contexts from which procedures can be called:
 
 If a procedure has multiple context requirements they are combined using `&`. For instance, "Native & Account" means the procedure can only be called when the current account is the native one _and_ only from the account context.
 
-## Procedures
-
-The following sections detail all procedures available in the Miden library, organized by module.
-
 ## Account Procedures (`miden::account`)
 
-Account procedures can be used to read and write to account storage, add or remove assets from the vault and fetch or compute commitments. These procedures provide high-level wrappers for kernel operations.
+Account procedures can be used to read and write to account storage, add or remove assets from the vault and fetch or compute commitments.
 
 | Procedure | Description |
 | --- | --- |
@@ -57,7 +54,7 @@ Note procedures can be used to fetch data from the note that is currently being 
 | `get_sender` | Returns the sender of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]`<br>Context: Note |
 | `get_serial_number` | Returns the serial number of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]`<br>Context: Note |
 | `get_script_root` | Returns the script root of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]`<br>Context: Note |
-| `compute_inputs_commitment` | Computes commitment to the note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[COMMITMENT]`<br>Context: Any |
+| `compute_inputs_commitment` | Computes the commitment to the note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[COMMITMENT]`<br>Context: Local |
 | `add_assets_to_account` | Adds all assets from the currently executing note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]`<br>Context: Note |
 
 ## Input Note Procedures (`miden::input_note`)
@@ -119,13 +116,13 @@ Asset procedures provide utilities for creating fungible and non-fungible assets
 
 | Procedure | Description |
 | --- | --- |
-| `build_fungible_asset` | Builds a fungible asset for the specified fungible faucet and amount.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix, amount]`<br>Outputs: `[ASSET]`<br>Context: Any |
-| `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]`<br>Context: Faucet |
-| `build_non_fungible_asset` | Builds a non-fungible asset for the specified non-fungible faucet and data hash.<br><br>Inputs: `[faucet_id_prefix, DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Any |
-| `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Faucet |
+| `build_fungible_asset` | Builds a fungible asset for the specified fungible faucet and amount.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix, amount]`<br>Outputs: `[ASSET]`<br>Context: Local |
+| `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]`<br>Context: Any |
+| `build_non_fungible_asset` | Builds a non-fungible asset for the specified non-fungible faucet and data hash.<br><br>Inputs: `[faucet_id_prefix, DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Local |
+| `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Any |
 
 ## Implementation Notes
 
-All procedures in the Miden library are implemented as wrappers around the underlying kernel procedures. They handle the necessary stack padding and cleanup operations required by the kernel interface, providing a more convenient API for developers.
+All procedures in the Miden library (except the ones with "Local" context) are implemented as wrappers around underlying kernel procedures. They handle the necessary stack padding and cleanup operations required by the kernel interface, providing a more convenient API for developers.
 
 The procedures maintain the same security and context restrictions as the underlying kernel procedures. When invoking these procedures, ensure that the calling context matches the specified requirements.

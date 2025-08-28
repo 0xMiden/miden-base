@@ -173,7 +173,7 @@ export.get_serial_number
     # => [SERIAL_NUMBER]
 end
 
-#! Computes commitment to the note inputs starting at the specified memory address.
+#! Computes the commitment to the note inputs starting at the specified memory address.
 #!
 #! This procedure checks that the provided number of inputs is within limits and then computes the
 #! commitment.
