@@ -9,6 +9,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 
 ## 0.11.0 (2025-08-26)
 
@@ -86,7 +87,6 @@
 - [BREAKING] Merge the current and initial account code commitment procedures into one ([#1776](https://github.com/0xMiden/miden-base/pull/1776)).
 - Added `TransactionExecutorError::InsufficientFee` variant([#1786](https://github.com/0xMiden/miden-base/pull/1786)).
 - [BREAKING] Made source manager an instance variable of the `TransactionExecutor` ([#1788](https://github.com/0xMiden/miden-base/pull/1788)).
-- [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 
 ## 0.10.1 (2025-08-02)
 
