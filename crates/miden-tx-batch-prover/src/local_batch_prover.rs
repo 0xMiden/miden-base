@@ -44,6 +44,8 @@ impl LocalBatchProver {
             batch_expiration_block_num,
         ) = proposed_batch.into_parts();
 
+        // Only verify transactions if `verify_txns` is true.
+        // For testing purposes, we don't want to verify transactions.
         if verify_txns {
             let verifier = TransactionVerifier::new(self.proof_security_level);
 
