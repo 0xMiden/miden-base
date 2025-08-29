@@ -215,7 +215,7 @@ pub const PARTIAL_BLOCKCHAIN_PEAKS_PTR: MemoryAddress = 1204;
 // KERNEL DATA
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which the number of the procedures of the selected kernel is stored.
+/// The memory address at which the number of the kernel procedures is stored.
 pub const NUM_KERNEL_PROCEDURES_PTR: MemoryAddress = 1600;
 
 /// The memory address at which the section, where the hashes of the kernel procedures are stored,

@@ -9,6 +9,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 
 ## 0.11.1 (2025-08-28)
 

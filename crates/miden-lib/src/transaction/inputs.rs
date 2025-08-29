@@ -2,6 +2,7 @@ use alloc::vec::Vec;
 
 use miden_objects::account::{AccountHeader, AccountId, PartialAccount};
 use miden_objects::block::AccountWitness;
+use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
 use miden_objects::transaction::{
     InputNote,
@@ -10,7 +11,7 @@ use miden_objects::transaction::{
     TransactionInputs,
 };
 use miden_objects::vm::AdviceInputs;
-use miden_objects::{EMPTY_WORD, Felt, FieldElement, WORD_SIZE, Word, ZERO};
+use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
 use thiserror::Error;
 
 use super::TransactionKernel;
@@ -36,10 +37,9 @@ impl TransactionAdviceInputs {
         tx_args: &TransactionArgs,
     ) -> Result<Self, TransactionAdviceMapMismatch> {
         let mut inputs = TransactionAdviceInputs::default();
-        let kernel_version = 0; // TODO: replace with user input
 
-        inputs.build_stack(tx_inputs, tx_args, kernel_version);
-        inputs.add_kernel_commitments(kernel_version);
+        inputs.build_stack(tx_inputs, tx_args);
+        inputs.add_kernel_commitment();
         inputs.add_partial_blockchain(tx_inputs.blockchain());
         inputs.add_input_notes(tx_inputs, tx_args)?;
 
@@ -131,12 +131,7 @@ impl TransactionAdviceInputs {
     ///     TX_SCRIPT_ARGS,
     ///     AUTH_ARGS,
     /// ]
-    fn build_stack(
-        &mut self,
-        tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
-        kernel_version: u8,
-    ) {
+    fn build_stack(&mut self, tx_inputs: &TransactionInputs, tx_args: &TransactionArgs) {
         let header = tx_inputs.block_header();
 
         // --- block header data (keep in sync with kernel's process_block_data) --
@@ -161,9 +156,6 @@ impl TransactionAdviceInputs {
         ]);
         self.extend_stack([ZERO, ZERO, ZERO, ZERO]);
         self.extend_stack(header.note_root());
-
-        // --- kernel version (keep in sync with process_kernel_data) ---------
-        self.extend_stack([Felt::from(kernel_version)]);
 
         // --- core account items (keep in sync with process_account_data) ----
         let account = tx_inputs.account();
@@ -217,27 +209,13 @@ impl TransactionAdviceInputs {
     // KERNEL INJECTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Inserts kernel commitments and hashes of their procedures into the advice inputs.
+    /// Inserts the kernel commitment and its procedure roots into the advice map.
     ///
     /// Inserts the following entries into the advice map:
-    /// - The accumulative hash of all kernels |-> array of each kernel commitment.
-    /// - The hash of the selected kernel |-> array of the kernel's procedure roots.
-    fn add_kernel_commitments(&mut self, kernel_version: u8) {
-        const NUM_KERNELS: usize = TransactionKernel::NUM_VERSIONS;
-
-        // insert kernels root with kernel commitments into the advice map
-        let mut kernel_commitments: Vec<Felt> = Vec::with_capacity(NUM_KERNELS * WORD_SIZE);
-        for version in 0..NUM_KERNELS {
-            let kernel_commitment = TransactionKernel::commitment(version as u8);
-            kernel_commitments.extend_from_slice(kernel_commitment.as_elements());
-        }
-        self.add_map_entry(TransactionKernel::kernel_commitment(), kernel_commitments);
-
-        // insert the selected kernel commitment with its procedure roots into the advice map
-        self.add_map_entry(
-            TransactionKernel::commitment(kernel_version),
-            TransactionKernel::procedures_as_elements(kernel_version),
-        );
+    /// - The commitment of the kernel |-> array of the kernel's procedure roots.
+    fn add_kernel_commitment(&mut self) {
+        // insert the kernel commitment with its procedure roots into the advice map
+        self.add_map_entry(TransactionKernel.to_commitment(), TransactionKernel.to_elements());
     }
 
     // ACCOUNT INJECTION
