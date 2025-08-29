@@ -9,6 +9,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- Added `AccountComponent::from_package()` method to create components from `miden-mast-package::Package` ([#1802](https://github.com/0xMiden/miden-base/pull/1802)).
 
 ## 0.11.1 (2025-08-28)
 
