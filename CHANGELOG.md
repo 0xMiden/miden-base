@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.11.1 (TODO)
+## 0.11.1 (2025-08-28)
 
 - Added `AddressInterface::Unspecified` to represent default addresses ([#1801](https://github.com/0xMiden/miden-base/pull/#1801)).
 
