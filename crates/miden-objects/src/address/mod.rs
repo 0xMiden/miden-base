@@ -325,6 +325,7 @@ impl TryFrom<[u8; AccountIdAddress::SERIALIZED_SIZE]> for AccountIdAddress {
 #[cfg(test)]
 mod tests {
     use alloc::boxed::Box;
+    use alloc::str::FromStr;
 
     use assert_matches::assert_matches;
     use bech32::{Bech32, NoChecksum};

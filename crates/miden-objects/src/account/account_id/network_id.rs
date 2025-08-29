@@ -1,6 +1,6 @@
 use alloc::boxed::Box;
+use alloc::str::FromStr;
 use alloc::string::ToString;
-use core::str::FromStr;
 
 use bech32::Hrp;
 
@@ -25,14 +25,18 @@ impl CustomNetworkId {
 
     /// Returns the string representation of this custom HRP.
     pub fn as_str(&self) -> &str {
-        &self.hrp.as_str()
+        self.hrp.as_str()
     }
+}
+
+impl FromStr for CustomNetworkId {
+    type Err = NetworkIdError;
 
     /// Creates a [`CustomNetworkId`] from a String.
     /// # Errors
     ///
     /// Returns an error if the string is not a valid HRP according to bech32 rules
-    pub(crate) fn from_str(hrp_str: &str) -> Result<Self, NetworkIdError> {
+    fn from_str(hrp_str: &str) -> Result<Self, Self::Err> {
         Ok(CustomNetworkId {
             hrp: Hrp::parse(hrp_str)
                 .map_err(|source| NetworkIdError::NetworkIdParseError(source.to_string().into()))?,
@@ -42,7 +46,7 @@ impl CustomNetworkId {
 
 impl core::fmt::Display for CustomNetworkId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&self.as_str())
+        f.write_str(self.as_str())
     }
 }
 
