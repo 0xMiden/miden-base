@@ -694,7 +694,7 @@ end
 
 ### NOTE ########################################
 
-#! Returns the information about assets in the input note with the specified index.
+#! Returns the number of assets and the assets commitment of the note currently being processed.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
