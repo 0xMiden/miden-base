@@ -84,7 +84,7 @@ fn test_get_sender() -> anyhow::Result<()> {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let input_note =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()?

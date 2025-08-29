@@ -350,13 +350,13 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(200)]);
+            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, [FungibleAsset::mock(200)]);
 
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
@@ -764,7 +764,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1])
             .build()?

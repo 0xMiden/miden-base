@@ -79,7 +79,8 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
 /// vault.
 ///
 /// The created note does not require authentication and can be consumed by any account.
-pub fn create_p2any_note(sender: AccountId, assets: &[Asset]) -> Note {
+pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Asset>) -> Note {
+    let assets: Vec<_> = assets.into_iter().collect();
     let mut code_body = String::new();
     for i in 0..assets.len() {
         if i == 0 {
@@ -181,7 +182,7 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.tx::add_asset_to_note\n",
+                  call.::miden::contracts::wallets::basic::move_asset_to_note\n",
             ));
         }
     }

@@ -1,6 +1,5 @@
 use anyhow::Context;
 use assert_matches::assert_matches;
-use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::{AccountId, StorageMap, StorageSlot};
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset};
 use miden_objects::note::NoteType;
@@ -166,16 +165,12 @@ fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     let note_asset0 = FungibleAsset::mock(200).unwrap_fungible();
     let note_asset1 = FungibleAsset::mock(500).unwrap_fungible();
 
-    // This creates a note that adds the given assets to the transaction vault without moving them
-    // to the account. This is needed to preserve the overall transaction asset rules, since the
-    // SPAWN note does not remove the assets from the account vault.
-    let asset_note = NoteBuilder::new(account.id(), &mut rand::rng())
-        .add_assets([Asset::from(note_asset0.add(note_asset1)?)])
-        .build()?;
+    // This creates a note that adds the given assets to the account vault.
+    let asset_note = create_p2any_note(account.id(), [Asset::from(note_asset0.add(note_asset1)?)]);
     builder.add_note(OutputNote::Full(asset_note.clone()));
 
-    let output_note0 = create_p2any_note(account.id(), &[note_asset0.into()]);
-    let output_note1 = create_p2any_note(account.id(), &[note_asset1.into()]);
+    let output_note0 = create_p2any_note(account.id(), [note_asset0.into()]);
+    let output_note1 = create_p2any_note(account.id(), [note_asset1.into()]);
 
     let spawn_note = builder.add_spawn_note(account.id(), [&output_note0, &output_note1])?;
     builder

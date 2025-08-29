@@ -68,10 +68,10 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
 
         let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(150)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(150)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .build()?

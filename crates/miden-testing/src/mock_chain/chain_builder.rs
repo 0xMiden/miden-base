@@ -414,7 +414,7 @@ impl MockChainBuilder {
     pub fn add_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: &[Asset],
+        asset: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
         let note = create_p2any_note(sender_account_id, asset);
 
