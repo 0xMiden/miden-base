@@ -11,6 +11,7 @@ use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;
+use crate::errors::TransactionCheckerError;
 use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 
 // NOTE CONSUMPTION INFO
@@ -154,7 +155,7 @@ where
                         candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
                     return Ok(NoteConsumptionInfo::new(successful, failed_notes));
                 },
-                Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error }) => {
+                Err(TransactionCheckerError::NoteExecution { failed_note_index, error }) => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
                     failed_notes.push(FailedNote::new(failed_note, error));
@@ -165,7 +166,7 @@ where
                     }
                     // Continue and process the next set of candidates.
                 },
-                Err(NoteCheckerError::EpilogueExecutionFailed(_)) => {
+                Err(TransactionCheckerError::EpilogueExecution(_)) => {
                     let consumption_info = self
                         .find_largest_executable_combination(
                             target_account_id,
@@ -177,7 +178,7 @@ where
                         .await;
                     return Ok(consumption_info);
                 },
-                Err(error) => return Err(error),
+                Err(error) => return Err(NoteCheckerError::TransactionCheck(error)),
             }
         }
     }
@@ -231,10 +232,7 @@ where
                         let failed_note =
                             successful_notes.pop().expect("Successful notes should not be empty");
                         // Record the failed note.
-                        let error = error
-                            .into_transaction_executor_error()
-                            .expect("Error should be a transaction executor error");
-                        failed_notes.push(FailedNote::new(failed_note.into_note(), error));
+                        failed_notes.push(FailedNote::new(failed_note.into_note(), error.into()));
                     },
                 }
             }
@@ -256,7 +254,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
-    ) -> Result<(), NoteCheckerError> {
+    ) -> Result<(), TransactionCheckerError> {
         if notes.is_empty() {
             return Ok(());
         }
@@ -270,7 +268,7 @@ where
             .0
             .prepare_transaction(account_id, block_ref, notes, tx_args, None)
             .await
-            .map_err(NoteCheckerError::TransactionPreparationFailed)?;
+            .map_err(TransactionCheckerError::TransactionPreparation)?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -287,7 +285,7 @@ where
                 // Empty notes vector means that we didn't process the notes, so an error
                 // occurred.
                 if notes.is_empty() {
-                    return Err(NoteCheckerError::PrologueExecutionFailed(error));
+                    return Err(TransactionCheckerError::PrologueExecution(error));
                 }
 
                 let ((_, last_note_interval), success_notes) =
@@ -296,11 +294,11 @@ where
                 // If the interval end of the last note is specified, then an error occurred after
                 // notes processing.
                 if last_note_interval.end().is_some() {
-                    Err(NoteCheckerError::EpilogueExecutionFailed(error))
+                    Err(TransactionCheckerError::EpilogueExecution(error))
                 } else {
                     // Return the index of the failed note.
                     let failed_note_index = success_notes.len();
-                    Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error })
+                    Err(TransactionCheckerError::NoteExecution { failed_note_index, error })
                 }
             },
         }

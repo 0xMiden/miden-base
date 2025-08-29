@@ -29,27 +29,35 @@ use thiserror::Error;
 pub enum NoteCheckerError {
     #[error("invalid input note count {0} is out of range)")]
     InputNoteCountOutOfRange(u16),
+    #[error("transaction execution check failed: {0}")]
+    TransactionCheck(#[source] TransactionCheckerError),
+}
+
+// TRANSACTION CHECKER ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionCheckerError {
     #[error("transaction preparation failed: {0}")]
-    TransactionPreparationFailed(#[source] TransactionExecutorError),
+    TransactionPreparation(#[source] TransactionExecutorError),
     #[error("transaction execution prologue failed: {0}")]
-    PrologueExecutionFailed(#[source] TransactionExecutorError),
+    PrologueExecution(#[source] TransactionExecutorError),
     #[error("transaction execution epilogue failed: {0}")]
-    EpilogueExecutionFailed(#[source] TransactionExecutorError),
+    EpilogueExecution(#[source] TransactionExecutorError),
     #[error("transaction note execution failed on note index {failed_note_index}: {error}")]
-    NoteExecutionFailed {
+    NoteExecution {
         failed_note_index: usize,
         error: TransactionExecutorError,
     },
 }
 
-impl NoteCheckerError {
-    pub fn into_transaction_executor_error(self) -> Option<TransactionExecutorError> {
-        match self {
-            NoteCheckerError::TransactionPreparationFailed(err) => Some(err),
-            NoteCheckerError::PrologueExecutionFailed(err) => Some(err),
-            NoteCheckerError::EpilogueExecutionFailed(err) => Some(err),
-            NoteCheckerError::NoteExecutionFailed { error, .. } => Some(error),
-            _ => None,
+impl From<TransactionCheckerError> for TransactionExecutorError {
+    fn from(error: TransactionCheckerError) -> Self {
+        match error {
+            TransactionCheckerError::TransactionPreparation(error) => error,
+            TransactionCheckerError::PrologueExecution(error) => error,
+            TransactionCheckerError::EpilogueExecution(error) => error,
+            TransactionCheckerError::NoteExecution { error, .. } => error,
         }
     }
 }
