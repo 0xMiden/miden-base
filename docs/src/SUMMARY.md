@@ -14,3 +14,4 @@
 - [Transactions](./transaction.md)
 - [State](./state.md)
 - [Blockchain](./blockchain.md)
+- [Miden Library](./miden_library.md)
