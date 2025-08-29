@@ -12,6 +12,6 @@
     - [Note](./note.md)
     - [Asset](./asset.md)
     - [Transaction](./transaction.md)
-      - [Kernel Procedures](./transaction/procedures.md)
     - [State](./state.md)
     - [Blockchain](./blockchain.md)
+    - [Miden Library](./miden_library.md)
