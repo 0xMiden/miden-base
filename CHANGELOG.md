@@ -45,6 +45,7 @@
 - Document `Address` in Miden book ([#1792](https://github.com/0xMiden/miden-base/pull/1792)).
 - Add `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
 - Add `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
+- Add `CustomHRP` in `NetworkID` ([#1787](https://github.com/0xMiden/miden-base/pull/1787)).
 
 ### Changes
 
