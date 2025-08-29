@@ -75,7 +75,7 @@ mod header;
 pub use header::AccountHeader;
 
 mod file;
-pub use file::AccountFile;
+pub use file::{AccountExport, AccountFile, AuthenticationExport};
 
 mod partial;
 pub use partial::PartialAccount;
