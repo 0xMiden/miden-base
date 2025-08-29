@@ -566,7 +566,7 @@ impl MockChain {
         &self,
         proposed_block: ProposedBlock,
     ) -> Result<ProvenBlock, ProvenBlockError> {
-        LocalBlockProver::new(0).prove_without_batch_verification(proposed_block)
+        LocalBlockProver::new(0).prove_dummy(proposed_block)
     }
 
     // TRANSACTION APIS

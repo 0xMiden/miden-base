@@ -63,7 +63,7 @@ impl LocalBlockProver {
     ///
     /// This is exposed for testing purposes.
     #[cfg(any(feature = "testing", test))]
-    pub fn prove_without_batch_verification(
+    pub fn prove_dummy(
         &self,
         proposed_block: ProposedBlock,
     ) -> Result<ProvenBlock, ProvenBlockError> {
