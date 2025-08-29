@@ -293,6 +293,10 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::IncrNonce)?;
 
+    // Prepare set of notes expected to succeed despite the fact that they will be grouped with
+    // notes that cause epilogue failure and transaction execution failure. The epilogue failure
+    // in particular will cause the note checker to execute
+    // `find_largest_executable_combination()` which this test is mainly concerned about.
     let successful_note_1 = builder.add_p2id_note(
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
         account.id(),
