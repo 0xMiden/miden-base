@@ -677,7 +677,14 @@ fn test_build_recipient() -> anyhow::Result<()> {
 
     // Create test script and serial number
     let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
-    let serial_num = Word::from([200u32, 201u32, 202u32, 203u32]);
+    let serial_num = Word::default();
+
+    // Define test values as Words
+    let word_1 = Word::from([1, 2, 3, 4u32]);
+    let word_2 = Word::from([5, 6, 7, 8u32]);
+    let word_3 = Word::from([9, 10, 11, 12u32]);
+    let word_4 = Word::from([13, 14, 15, 16u32]);
+    const BASE_ADDR: u32 = 4000;
 
     let code = format!(
         "
@@ -687,10 +694,10 @@ fn test_build_recipient() -> anyhow::Result<()> {
 
         begin
             # put the values that will be hashed into the memory
-            push.1.2.3.4.4000 mem_storew dropw
-            push.5.6.7.8.4004 mem_storew dropw
-            push.9.10.11.12.4008 mem_storew dropw
-            push.13.14.15.16.4012 mem_storew dropw
+            push.{word_1}.{base_addr} mem_storew dropw
+            push.{word_2}.{addr_1} mem_storew dropw
+            push.{word_3}.{addr_2} mem_storew dropw
+            push.{word_4}.{addr_3} mem_storew dropw
 
             # Test with 4 values
             push.{script_root}  # SCRIPT_ROOT
@@ -717,6 +724,14 @@ fn test_build_recipient() -> anyhow::Result<()> {
             exec.sys::truncate_stack
         end
     ",
+        word_1 = word_1,
+        word_2 = word_2,
+        word_3 = word_3,
+        word_4 = word_4,
+        base_addr = BASE_ADDR,
+        addr_1 = BASE_ADDR + 4,
+        addr_2 = BASE_ADDR + 8,
+        addr_3 = BASE_ADDR + 12,
         script_root = note_script.root(),
         serial_num = serial_num,
     );
@@ -724,34 +739,19 @@ fn test_build_recipient() -> anyhow::Result<()> {
     let process = &tx_context.execute_code(&code)?;
 
     // Create expected recipients and get their digests
-    let note_inputs_4 =
-        NoteInputs::new(vec![Felt::new(1), Felt::new(2), Felt::new(3), Felt::new(4)])?;
+    let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
     let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4);
 
-    let note_inputs_5 = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-    ])?;
+    let mut inputs_5 = word_1.to_vec();
+    inputs_5.push(word_2[0]);
+    let note_inputs_5 = NoteInputs::new(inputs_5)?;
     let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5);
 
-    let note_inputs_13 = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-        Felt::new(6),
-        Felt::new(7),
-        Felt::new(8),
-        Felt::new(9),
-        Felt::new(10),
-        Felt::new(11),
-        Felt::new(12),
-        Felt::new(13),
-    ])?;
+    let mut inputs_13 = word_1.to_vec();
+    inputs_13.extend_from_slice(&word_2.to_vec());
+    inputs_13.extend_from_slice(&word_3.to_vec());
+    inputs_13.push(word_4[0]);
+    let note_inputs_13 = NoteInputs::new(inputs_13)?;
     let recipient_13 = NoteRecipient::new(serial_num, note_script, note_inputs_13);
 
     let mut expected_stack = alloc::vec::Vec::new();
@@ -768,17 +768,25 @@ fn test_build_recipient() -> anyhow::Result<()> {
 fn test_compute_inputs_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let code = "
+    // Define test values as Words
+    let word_1 = Word::from([1, 2, 3, 4u32]);
+    let word_2 = Word::from([5, 6, 7, 8u32]);
+    let word_3 = Word::from([9, 10, 11, 12u32]);
+    let word_4 = Word::from([13, 14, 15, 16u32]);
+    const BASE_ADDR: u32 = 4000;
+
+    let code = format!(
+        "
         use.std::sys
 
         use.miden::note
 
         begin
             # put the values that will be hashed into the memory
-            push.1.2.3.4.4000 mem_storew dropw
-            push.5.6.7.8.4004 mem_storew dropw
-            push.9.10.11.12.4008 mem_storew dropw
-            push.13.14.15.16.4012 mem_storew dropw
+            push.{word_1}.{base_addr} mem_storew dropw
+            push.{word_2}.{addr_1} mem_storew dropw
+            push.{word_3}.{addr_2} mem_storew dropw
+            push.{word_4}.{addr_3} mem_storew dropw
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
@@ -805,49 +813,32 @@ fn test_compute_inputs_commitment() -> anyhow::Result<()> {
             # truncate the stack
             exec.sys::truncate_stack
         end
-    ";
+    ",
+        word_1 = word_1,
+        word_2 = word_2,
+        word_3 = word_3,
+        word_4 = word_4,
+        base_addr = BASE_ADDR,
+        addr_1 = BASE_ADDR + 4,
+        addr_2 = BASE_ADDR + 8,
+        addr_3 = BASE_ADDR + 12,
+    );
 
-    let process = &tx_context.execute_code(code)?;
+    let process = &tx_context.execute_code(&code)?;
 
-    let note_inputs_5_hash = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-    ])?
-    .commitment();
+    let mut inputs_5 = word_1.to_vec();
+    inputs_5.push(word_2[0]);
+    let note_inputs_5_hash = NoteInputs::new(inputs_5)?.commitment();
 
-    let note_inputs_8_hash = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-        Felt::new(6),
-        Felt::new(7),
-        Felt::new(8),
-    ])?
-    .commitment();
+    let mut inputs_8 = word_1.to_vec();
+    inputs_8.extend_from_slice(&word_2.to_vec());
+    let note_inputs_8_hash = NoteInputs::new(inputs_8)?.commitment();
 
-    let note_inputs_15_hash = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-        Felt::new(6),
-        Felt::new(7),
-        Felt::new(8),
-        Felt::new(9),
-        Felt::new(10),
-        Felt::new(11),
-        Felt::new(12),
-        Felt::new(13),
-        Felt::new(14),
-        Felt::new(15),
-    ])?
-    .commitment();
+    let mut inputs_15 = word_1.to_vec();
+    inputs_15.extend_from_slice(&word_2.to_vec());
+    inputs_15.extend_from_slice(&word_3.to_vec());
+    inputs_15.extend_from_slice(&word_4[0..3]);
+    let note_inputs_15_hash = NoteInputs::new(inputs_15)?.commitment();
 
     let mut expected_stack = alloc::vec::Vec::new();
 
