@@ -97,14 +97,13 @@ fn test_validate_non_fungible_asset() -> anyhow::Result<()> {
         use.$kernel::asset
 
         begin
-            push.{asset}
+            push.{non_fungible_asset}
             exec.asset::validate_non_fungible_asset
 
             # truncate the stack
             swapw dropw
         end
-        ",
-        asset = non_fungible_asset
+        "
     );
 
     let process = &tx_context.execute_code(&code)?;

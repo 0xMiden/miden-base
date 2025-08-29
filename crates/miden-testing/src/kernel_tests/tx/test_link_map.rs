@@ -171,15 +171,7 @@ fn insertion() -> anyhow::Result<()> {
           assert_eqw.err="retrieved value1 for key {entry3_key} should be an empty word"
           # => []
       end
-    "#,
-        entry0_key = entry0_key,
-        entry0_value = entry0_value,
-        entry1_key = entry1_key,
-        entry1_value = entry1_value,
-        entry2_key = entry2_key,
-        entry2_value = entry2_value,
-        entry3_key = entry3_key,
-        entry3_value = entry3_value,
+    "#
     );
 
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;

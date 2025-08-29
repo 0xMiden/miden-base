@@ -1434,17 +1434,15 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 
         begin
             # push the tx script input key onto the stack
-            push.{key}
+            push.{tx_script_input_key}
 
             # load the tx script input value from the map and read it onto the stack
             adv.push_mapval adv_loadw
 
             # assert that the value is correct
-            push.{value} assert_eqw
+            push.{tx_script_input_value} assert_eqw
         end
-        ",
-        key = tx_script_input_key,
-        value = tx_script_input_value
+        "
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;

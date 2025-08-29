@@ -355,8 +355,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
                 "
                 # assert the input is correct
                 dup padw movup.4 mem_loadw push.{input_word} assert_eqw push.4 add
-                ",
-                input_word = input_word
+                "
             );
         }
         code

@@ -33,7 +33,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             # => [ASSETS_COMMITMENT, num_assets]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_COMMITMENT}
+            push.{assets_commitment}
             assert_eqw.err="note {note_index} has incorrect assets hash"
             # => [num_assets]
 
@@ -41,10 +41,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             push.{assets_number}
             assert_eq.err="note {note_index} has incorrect assets number"
             # => []
-        "#,
-            note_index = note_index,
-            COMPUTED_ASSETS_COMMITMENT = assets_commitment,
-            assets_number = assets_number,
+        "#
         )
     }
 
