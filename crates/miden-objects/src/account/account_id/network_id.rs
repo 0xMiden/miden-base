@@ -1,4 +1,5 @@
-use alloc::string::{String, ToString};
+use alloc::boxed::Box;
+use alloc::string::ToString;
 use core::str::FromStr;
 
 use bech32::Hrp;
@@ -6,42 +7,42 @@ use bech32::Hrp;
 use crate::errors::NetworkIdError;
 
 /// A wrapper around HRP for custom network identifiers.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct CustomHrp {
-    hrp_string: String,
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct CustomNetworkId {
+    hrp: Hrp,
 }
 
-impl CustomHrp {
-    /// Creates a new `CustomHrp` from a string.
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if the string is not a valid HRP according to bech32 rules
-    pub fn new(s: &str) -> Result<Self, NetworkIdError> {
-        Hrp::parse(s)
-            .map(|_| CustomHrp { hrp_string: s.to_string() })
-            .map_err(|source| NetworkIdError::NetworkIdParseError(source.to_string().into()))
+impl CustomNetworkId {
+    /// Creates a new [`CustomNetworkId`] from a [`bech32::Hrp`].
+    pub fn from_hrp(hrp: Hrp) -> Self {
+        CustomNetworkId { hrp }
+    }
+
+    /// Converts this [`CustomNetworkId`] to a [`bech32::Hrp`].
+    pub(crate) fn as_hrp(&self) -> Hrp {
+        self.hrp
     }
 
     /// Returns the string representation of this custom HRP.
     pub fn as_str(&self) -> &str {
-        &self.hrp_string
+        &self.hrp.as_str()
     }
 
-    /// Converts this `CustomHrp` to a `bech32::Hrp`.
-    pub(crate) fn to_bech32_hrp(&self) -> Hrp {
-        Hrp::parse(&self.hrp_string).expect("CustomHrp should always contain valid HRP")
-    }
-
-    /// Creates a `CustomHrp` from a `bech32::Hrp`.
-    pub(crate) fn from_bech32_hrp(hrp: Hrp) -> Self {
-        CustomHrp { hrp_string: hrp.to_string() }
+    /// Creates a [`CustomNetworkId`] from a String.
+    /// # Errors
+    ///
+    /// Returns an error if the string is not a valid HRP according to bech32 rules
+    pub(crate) fn from_str(hrp_str: &str) -> Result<Self, NetworkIdError> {
+        Ok(CustomNetworkId {
+            hrp: Hrp::parse(hrp_str)
+                .map_err(|source| NetworkIdError::NetworkIdParseError(source.to_string().into()))?,
+        })
     }
 }
 
-impl core::fmt::Display for CustomHrp {
+impl core::fmt::Display for CustomNetworkId {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        f.write_str(&self.hrp_string)
+        f.write_str(&self.as_str())
     }
 }
 
@@ -49,12 +50,13 @@ impl core::fmt::Display for CustomHrp {
 // the public API since that crate does not have a stable release.
 
 /// The identifier of a Miden network.
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub enum NetworkId {
     Mainnet,
     Testnet,
     Devnet,
-    Custom(CustomHrp),
+    // Box the [`CustomNetworkId`] to keep the stack size of network ID relatively small.
+    Custom(Box<CustomNetworkId>),
 }
 
 impl NetworkId {
@@ -83,7 +85,7 @@ impl NetworkId {
             NetworkId::MAINNET => NetworkId::Mainnet,
             NetworkId::TESTNET => NetworkId::Testnet,
             NetworkId::DEVNET => NetworkId::Devnet,
-            _ => NetworkId::Custom(CustomHrp::from_bech32_hrp(hrp)),
+            _ => NetworkId::Custom(Box::new(CustomNetworkId::from_hrp(hrp))),
         }
     }
 
@@ -99,7 +101,7 @@ impl NetworkId {
                 Hrp::parse(NetworkId::TESTNET).expect("testnet hrp should be valid")
             },
             NetworkId::Devnet => Hrp::parse(NetworkId::DEVNET).expect("devnet hrp should be valid"),
-            NetworkId::Custom(custom) => custom.to_bech32_hrp(),
+            NetworkId::Custom(custom) => custom.as_hrp(),
         }
     }
 

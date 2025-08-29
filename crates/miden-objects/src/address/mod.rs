@@ -324,11 +324,13 @@ impl TryFrom<[u8; AccountIdAddress::SERIALIZED_SIZE]> for AccountIdAddress {
 
 #[cfg(test)]
 mod tests {
+    use alloc::boxed::Box;
+
     use assert_matches::assert_matches;
     use bech32::{Bech32, NoChecksum};
 
     use super::*;
-    use crate::account::{AccountType, CustomHrp};
+    use crate::account::{AccountType, CustomNetworkId};
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
     /// Tests that an account ID address can be encoded and decoded.
@@ -343,8 +345,8 @@ mod tests {
         let rng = &mut rand::rng();
         for network_id in [
             NetworkId::Mainnet,
-            NetworkId::Custom(CustomHrp::new("custom").unwrap()),
-            NetworkId::Custom(CustomHrp::new(longest_possible_hrp).unwrap()),
+            NetworkId::Custom(Box::new(CustomNetworkId::from_str("custom").unwrap())),
+            NetworkId::Custom(Box::new(CustomNetworkId::from_str(longest_possible_hrp).unwrap())),
         ] {
             for (idx, account_id) in [
                 AccountIdBuilder::new()
