@@ -5,6 +5,7 @@ exclude.workspace      = true
 homepage.workspace     = true
 license.workspace      = true
 name                   = "bench-prover"
+publish                = false
 repository.workspace   = true
 rust-version.workspace = true
 version                = "0.1.0"
