@@ -59,7 +59,7 @@ use crate::{
 // ACCOUNT COMMITMENT TESTS
 // ================================================================================================
 
-#[test]
+#[tokio::test]
 pub fn compute_current_commitment() -> miette::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
@@ -137,7 +137,7 @@ pub fn compute_current_commitment() -> miette::Result<()> {
         .map_err(|err| miette::miette!("{err}"))?;
 
     tx_context
-        .execute_blocking()
+        .execute().await
         .into_diagnostic()
         .wrap_err("failed to execute code")?;
 
@@ -147,8 +147,8 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 // ACCOUNT ID TESTS
 // ================================================================================================
 
-#[test]
-pub fn test_account_type() -> miette::Result<()> {
+#[tokio::test]
+pub async fn test_account_type() -> miette::Result<()> {
     let procedures = vec![
         ("is_fungible_faucet", AccountType::FungibleFaucet),
         ("is_non_fungible_faucet", AccountType::NonFungibleFaucet),
@@ -206,8 +206,8 @@ pub fn test_account_type() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-pub fn test_account_validate_id() -> miette::Result<()> {
+#[tokio::test]
+pub async fn test_account_validate_id() -> miette::Result<()> {
     let test_cases = [
         (ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE, None),
         (ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE, None),
@@ -280,8 +280,8 @@ pub fn test_account_validate_id() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_is_faucet_procedure() -> miette::Result<()> {
+#[tokio::test]
+async fn test_is_faucet_procedure() -> miette::Result<()> {
     let test_cases = [
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
         ACCOUNT_ID_REGULAR_PRIVATE_ACCOUNT_UPDATABLE_CODE,
@@ -327,8 +327,8 @@ fn test_is_faucet_procedure() -> miette::Result<()> {
 // ================================================================================================
 
 // TODO: update this test once the ability to change the account code will be implemented
-#[test]
-pub fn test_compute_code_commitment() -> miette::Result<()> {
+#[tokio::test]
+pub async fn test_compute_code_commitment() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
     let account = tx_context.account();
 
@@ -356,8 +356,8 @@ pub fn test_compute_code_commitment() -> miette::Result<()> {
 // ACCOUNT STORAGE TESTS
 // ================================================================================================
 
-#[test]
-fn test_get_item() -> miette::Result<()> {
+#[tokio::test]
+async fn test_get_item() -> miette::Result<()> {
     for storage_item in [AccountStorage::mock_item_0(), AccountStorage::mock_item_1()] {
         let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
@@ -388,8 +388,8 @@ fn test_get_item() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_map_item() -> miette::Result<()> {
+#[tokio::test]
+async fn test_get_map_item() -> miette::Result<()> {
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![AccountStorage::mock_item_2().slot]))
@@ -446,8 +446,8 @@ fn test_get_map_item() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_storage_slot_type() -> miette::Result<()> {
+#[tokio::test]
+async fn test_get_storage_slot_type() -> miette::Result<()> {
     for storage_item in [
         AccountStorage::mock_item_0(),
         AccountStorage::mock_item_1(),
@@ -492,8 +492,8 @@ fn test_get_storage_slot_type() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_set_item() -> miette::Result<()> {
+#[tokio::test]
+async fn test_set_item() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let new_storage_item = Word::from([91, 92, 93, 94u32]);
@@ -530,8 +530,8 @@ fn test_set_item() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_set_map_item() -> miette::Result<()> {
+#[tokio::test]
+async fn test_set_map_item() -> miette::Result<()> {
     let (new_key, new_value) =
         (Word::from([109, 110, 111, 112u32]), Word::from([9, 10, 11, 12u32]));
 
@@ -593,8 +593,8 @@ fn test_set_map_item() -> miette::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_account_component_storage_offset() -> miette::Result<()> {
+#[tokio::test]
+async fn test_account_component_storage_offset() -> miette::Result<()> {
     // setup assembler
     let assembler =
         TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()));
@@ -668,7 +668,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let component1 = AccountComponent::compile(
         source_code_component1,
         assembler.clone(),
-        vec![StorageSlot::Value(Word::empty())],
+        vec![StorageSlot::Value(Word::empty()).await],
     )
     .unwrap()
     .with_supported_type(AccountType::RegularAccountUpdatableCode);
@@ -676,7 +676,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     let component2 = AccountComponent::compile(
         source_code_component2,
         assembler.clone(),
-        vec![StorageSlot::Value(Word::empty())],
+        vec![StorageSlot::Value(Word::empty()).await],
     )
     .unwrap()
     .with_supported_type(AccountType::RegularAccountUpdatableCode);
@@ -731,7 +731,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
         .unwrap();
 
     // execute code in context
-    let tx = tx_context.execute_blocking().into_diagnostic()?;
+    let tx = tx_context.execute().await.into_diagnostic()?;
     account.apply_delta(tx.account_delta()).unwrap();
 
     // assert that elements have been set at the correct locations in storage
@@ -743,8 +743,8 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 }
 
 /// Tests that we can successfully create regular and faucet accounts with empty storage.
-#[test]
-fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
+#[tokio::test]
+async fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
         let (account, seed) = AccountBuilder::new([5; 32])
             .account_type(account_type)
@@ -756,13 +756,13 @@ fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
         TransactionContextBuilder::new(account)
             .account_seed(Some(seed))
             .build()?
-            .execute_blocking()?;
+            .execute().await?;
     }
 
     Ok(())
 }
 
-fn create_procedure_metadata_test_account(
+async fn create_procedure_metadata_test_account(
     account_type: AccountType,
     storage_offset: u8,
     storage_size: u8,
@@ -783,7 +783,7 @@ fn create_procedure_metadata_test_account(
             .collect(),
     );
 
-    let storage = AccountStorage::new(vec![StorageSlot::Value(EMPTY_WORD)]).unwrap();
+    let storage = AccountStorage::new(vec![StorageSlot::Value(EMPTY_WORD).await]).unwrap();
 
     let seed = AccountId::compute_account_seed(
         [9; 32],
@@ -805,7 +805,7 @@ fn create_procedure_metadata_test_account(
         .tx_inputs(tx_inputs)
         .build()?;
 
-    let result = tx_context.execute_blocking().map_err(|err| {
+    let result = tx_context.execute().await.map_err(|err| {
         let TransactionExecutorError::TransactionProgramExecutionFailed(exec_err) = err else {
             panic!("should have received an execution error");
         };
@@ -817,10 +817,10 @@ fn create_procedure_metadata_test_account(
 }
 
 /// Tests that creating an account whose procedure accesses the reserved faucet storage slot fails.
-#[test]
-fn creating_faucet_account_with_procedure_accessing_reserved_slot_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn creating_faucet_account_with_procedure_accessing_reserved_slot_fails() -> anyhow::Result<()> {
     // Set offset to 0 for a faucet which should be disallowed.
-    let execution_res = create_procedure_metadata_test_account(AccountType::FungibleFaucet, 0, 1)
+    let execution_res = create_procedure_metadata_test_account(AccountType::FungibleFaucet, 0, 1).await
         .context("failed to create test account")?;
 
     assert_execution_error!(execution_res, ERR_FAUCET_INVALID_STORAGE_OFFSET);
@@ -829,17 +829,17 @@ fn creating_faucet_account_with_procedure_accessing_reserved_slot_fails() -> any
 }
 
 /// Tests that creating a faucet whose procedure offset+size is out of bounds fails.
-#[test]
-fn creating_faucet_with_procedure_offset_plus_size_out_of_bounds_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn creating_faucet_with_procedure_offset_plus_size_out_of_bounds_fails() -> anyhow::Result<()> {
     // Set offset to lowest allowed value 1 and size to 1 while number of slots is 1 which should
     // result in an out of bounds error.
-    let execution_res = create_procedure_metadata_test_account(AccountType::FungibleFaucet, 1, 1)
+    let execution_res = create_procedure_metadata_test_account(AccountType::FungibleFaucet, 1, 1).await
         .context("failed to create test account")?;
 
     assert_execution_error!(execution_res, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS);
 
     // Set offset to 2 while number of slots is 1 which should result in an out of bounds error.
-    let execution_res = create_procedure_metadata_test_account(AccountType::FungibleFaucet, 2, 1)
+    let execution_res = create_procedure_metadata_test_account(AccountType::FungibleFaucet, 2, 1).await
         .context("failed to create test account")?;
 
     assert_execution_error!(execution_res, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS);
@@ -848,18 +848,18 @@ fn creating_faucet_with_procedure_offset_plus_size_out_of_bounds_fails() -> anyh
 }
 
 /// Tests that creating an account whose procedure offset+size is out of bounds fails.
-#[test]
-fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> anyhow::Result<()> {
     // Set size to 2 while number of slots is 1 which should result in an out of bounds error.
     let execution_res =
-        create_procedure_metadata_test_account(AccountType::RegularAccountImmutableCode, 0, 2)
+        create_procedure_metadata_test_account(AccountType::RegularAccountImmutableCode, 0, 2).await
             .context("failed to create test account")?;
 
     assert_execution_error!(execution_res, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS);
 
     // Set offset to 2 while number of slots is 1 which should result in an out of bounds error.
     let execution_res =
-        create_procedure_metadata_test_account(AccountType::RegularAccountImmutableCode, 2, 1)
+        create_procedure_metadata_test_account(AccountType::RegularAccountImmutableCode, 2, 1).await
             .context("failed to create test account")?;
 
     assert_execution_error!(execution_res, ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS);
@@ -867,8 +867,8 @@ fn creating_account_with_procedure_offset_plus_size_out_of_bounds_fails() -> any
     Ok(())
 }
 
-#[test]
-fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = format!(
@@ -901,8 +901,8 @@ fn test_get_initial_storage_commitment() -> anyhow::Result<()> {
 /// - Right after the previous call to make sure it returns the same commitment from the cached
 ///   data.
 /// - After updating the 2nd storage slot (map slot).
-#[test]
-fn test_compute_storage_commitment() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_compute_storage_commitment() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
     let mut account_clone = tx_context.account().clone();
     let account_storage = account_clone.storage_mut();
@@ -969,8 +969,8 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
 // ACCOUNT VAULT TESTS
 // ================================================================================================
 
-#[test]
-fn test_get_vault_root() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_vault_root() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let mut account = tx_context.account().clone();
@@ -1036,8 +1036,8 @@ fn test_get_vault_root() -> anyhow::Result<()> {
 // PROCEDURE AUTHENTICATION TESTS
 // ================================================================================================
 
-#[test]
-fn test_authenticate_and_track_procedure() -> miette::Result<()> {
+#[tokio::test]
+async fn test_authenticate_and_track_procedure() -> miette::Result<()> {
     let mock_component = MockAccountComponent::with_empty_slots();
 
     let account_code = AccountCode::from_components(
@@ -1091,8 +1091,8 @@ fn test_authenticate_and_track_procedure() -> miette::Result<()> {
 // PROCEDURE INTROSPECTION TESTS
 // ================================================================================================
 
-#[test]
-fn test_was_procedure_called() -> miette::Result<()> {
+#[tokio::test]
+async fn test_was_procedure_called() -> miette::Result<()> {
     // Create a standard account using the mock component
     let mock_component = MockAccountComponent::with_slots(AccountStorage::mock_storage_slots());
     let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
@@ -1146,7 +1146,7 @@ fn test_was_procedure_called() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::new(account).tx_script(tx_script).build().unwrap();
 
     tx_context
-        .execute_blocking()
+        .execute().await
         .into_diagnostic()
         .wrap_err("Failed to execute transaction")?;
 
@@ -1158,8 +1158,8 @@ fn test_was_procedure_called() -> miette::Result<()> {
 ///
 /// The call chain and dependency graph in this test is:
 /// `tx script -> account code -> external library`
-#[test]
-fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
+#[tokio::test]
+async fn transaction_executor_account_code_using_custom_library() -> miette::Result<()> {
     const EXTERNAL_LIBRARY_CODE: &str = r#"
       use.miden::account
 
@@ -1221,7 +1221,7 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
         .build()
         .unwrap();
 
-    let executed_tx = tx_context.execute_blocking().into_diagnostic()?;
+    let executed_tx = tx_context.execute().await.into_diagnostic()?;
 
     // Account's initial nonce of 1 should have been incremented by 1.
     assert_eq!(executed_tx.account_delta().nonce_delta(), Felt::new(1));
@@ -1235,8 +1235,8 @@ fn transaction_executor_account_code_using_custom_library() -> miette::Result<()
 }
 
 /// Tests that incrementing the account nonce twice fails.
-#[test]
-fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let source_code = "
         use.miden::account
 
@@ -1247,7 +1247,7 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     ";
 
     let faulty_auth_component =
-        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
+        AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![.await])?
             .with_supports_all_types();
     let (account, seed) = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
@@ -1258,7 +1258,7 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .build()?
-        .execute_blocking();
+        .execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
 
@@ -1266,8 +1266,8 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
 }
 
 /// Tests that incrementing the account nonce fails if it would overflow the field.
-#[test]
-fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
+#[tokio::test]
+async fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     let mut account = AccountBuilder::new([42; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_empty_slots())
@@ -1277,7 +1277,7 @@ fn incrementing_nonce_overflow_fails() -> anyhow::Result<()> {
     // modulus - 2.
     account.increment_nonce(Felt::new(Felt::MODULUS - 2))?;
 
-    let result = TransactionContextBuilder::new(account).build()?.execute_blocking();
+    let result = TransactionContextBuilder::new(account).build()?.execute().await;
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_AT_MAX);
 

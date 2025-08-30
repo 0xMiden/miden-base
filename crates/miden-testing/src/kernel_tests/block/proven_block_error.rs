@@ -33,7 +33,7 @@ struct WitnessTestSetup {
 /// Setup for a test which returns two inputs for the same block. The valid inputs match the
 /// commitments of the latest block and the stale inputs match the commitments of the latest block
 /// minus 1.
-fn witness_test_setup() -> WitnessTestSetup {
+async fn witness_test_setup().await -> WitnessTestSetup {
     let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(4);
 
     let account0 = accounts.remove(&0).context("failed to remove account 0").unwrap();
@@ -43,12 +43,12 @@ fn witness_test_setup() -> WitnessTestSetup {
     // Add note to chain.
     chain.prove_next_block().unwrap();
 
-    let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note.id()]);
+    let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note.id()]).await;
     let tx1 = txs.remove(&1).context("failed to remove tx 1").unwrap();
     let tx2 = txs.remove(&2).context("failed to remove tx 2").unwrap();
 
     let batch1 = generate_batch(&mut chain, vec![tx1, tx2]);
-    let batches = vec![batch1];
+    let batches = vec![batch1.await];
     let stale_block_inputs = chain.get_block_inputs(&batches).unwrap();
 
     let account_root0 = chain.account_tree().root();
@@ -74,8 +74,8 @@ fn witness_test_setup() -> WitnessTestSetup {
 
 /// Tests that a proven block cannot be built if witnesses from a stale account tree are used
 /// (i.e. an account tree whose root is not in the previous block header).
-#[test]
-fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -83,7 +83,7 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
         stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await.await;
 
     // Account tree root mismatch.
     // --------------------------------------------------------------------------------------------
@@ -113,8 +113,8 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
 
 /// Tests that a proven block cannot be built if witnesses from a stale nullifier tree are used
 /// (i.e. a nullifier tree whose root is not in the previous block header).
-#[test]
-fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -122,7 +122,7 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
         stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await.await;
 
     // Nullifier tree root mismatch.
     // --------------------------------------------------------------------------------------------
@@ -152,8 +152,8 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
 
 /// Tests that a proven block cannot be built if both witnesses from a stale account tree and from
 /// the current account tree are used which results in different account tree roots.
-#[test]
-fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -161,7 +161,7 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
         mut stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await.await;
 
     // Stale and current account witnesses used together.
     // --------------------------------------------------------------------------------------------
@@ -200,8 +200,8 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
 
 /// Tests that a proven block cannot be built if both witnesses from a stale nullifier tree and from
 /// the current nullifier tree are used which results in different nullifier tree roots.
-#[test]
-fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     // Setup test with stale and valid block inputs.
     // --------------------------------------------------------------------------------------------
 
@@ -209,7 +209,7 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
         mut stale_block_inputs,
         valid_block_inputs,
         batches,
-    } = witness_test_setup();
+    } = witness_test_setup().await.await;
 
     // Stale and current nullifier witnesses used together.
     // --------------------------------------------------------------------------------------------
@@ -247,8 +247,8 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
 
 /// Tests that creating an account when an existing account with the same account ID prefix exists,
 /// results in an error.
-#[test]
-fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
 
@@ -300,7 +300,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .build()?;
-    let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
+    let tx = tx_context.execute().await.context("failed to execute account creating tx")?;
     let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
 
     let batch = generate_batch(&mut mock_chain, vec![tx]);
@@ -344,8 +344,8 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 }
 
 /// Tests that creating two accounts in the same block whose ID prefixes match, results in an error.
-#[test]
-fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> anyhow::Result<()> {
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
     let mut mock_chain = MockChain::new();

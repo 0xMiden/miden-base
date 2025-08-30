@@ -104,7 +104,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// // The target account is a new account so we move it into the build_tx_context, since the
 /// // chain's committed accounts do not yet contain it.
 /// let tx_context = mock_chain.build_tx_context(target, &[note.id()], &[])?.build()?;
-/// let executed_transaction = tx_context.execute_blocking()?;
+/// let executed_transaction = tx_context.execute().await?;
 /// # Ok(())
 /// # }
 /// ```
@@ -141,7 +141,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// let transaction = mock_chain
 ///     .build_tx_context(receiver.id(), &[note.id()], &[])?
 ///     .build()?
-///     .execute_blocking()?;
+///     .execute().await?;
 ///
 /// // Add the transaction to the mock chain's "mempool" of pending transactions.
 /// mock_chain.add_pending_executed_transaction(&transaction);
@@ -1393,8 +1393,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn private_account_state_update() -> anyhow::Result<()> {
+    #[tokio::test]
+    async fn private_account_state_update() -> anyhow::Result<()> {
         let faucet_id = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into()?;
         let account_builder = AccountBuilder::new([4; 32])
             .storage_mode(AccountStorageMode::Private)
@@ -1423,7 +1423,7 @@ mod tests {
         let tx = mock_chain
             .build_tx_context(TxContextInput::Account(account), &[], &[note_1])?
             .build()?
-            .execute_blocking()?;
+            .execute().await?;
 
         mock_chain.add_pending_executed_transaction(&tx)?;
         mock_chain.prove_next_block()?;
@@ -1437,8 +1437,8 @@ mod tests {
         Ok(())
     }
 
-    #[test]
-    fn mock_chain_serialization() {
+    #[tokio::test]
+    async fn mock_chain_serialization() {
         let mut builder = MockChain::builder();
 
         let mut notes = vec![];
@@ -1474,7 +1474,7 @@ mod tests {
                 .unwrap()
                 .build()
                 .unwrap()
-                .execute_blocking()
+                .execute().await
                 .unwrap();
             chain.add_pending_executed_transaction(&tx).unwrap();
             chain.prove_next_block().unwrap();

@@ -31,8 +31,6 @@ itertools   = { default-features = false, features = ["use_alloc"], version = "0
 rand        = { features = ["os_rng", "small_rng"], workspace = true }
 rand_chacha = { default-features = false, version = "0.9" }
 thiserror   = { workspace = true }
-# TODO: We should be able to remove this once we remove `TransactionContext::execute_blocking`
-tokio      = { features = ["macros", "rt"], workspace = true }
 winterfell = { version = "0.13" }
 
 [dev-dependencies]
@@ -40,4 +38,5 @@ anyhow            = { features = ["backtrace", "std"], workspace = true }
 assert_matches    = { workspace = true }
 miden-objects     = { features = ["std"], workspace = true }
 rstest            = { workspace = true }
+tokio             = { features = ["macros", "rt"], workspace = true }
 winter-rand-utils = { version = "0.13" }

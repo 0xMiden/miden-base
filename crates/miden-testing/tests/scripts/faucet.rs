@@ -1,10 +1,16 @@
-extern crate alloc;
 
 use miden_lib::account::faucets::FungibleFaucetExt;
 use miden_lib::errors::tx_kernel_errors::ERR_FUNGIBLE_ASSET_DISTRIBUTE_WOULD_CAUSE_MAX_SUPPLY_TO_BE_EXCEEDED;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::note::{NoteAssets, NoteExecutionHint, NoteId, NoteMetadata, NoteTag, NoteType};
+use miden_objects::note::{
+    NoteAssets,
+    NoteExecutionHint,
+    NoteId,
+    NoteMetadata,
+    NoteTag,
+    NoteType,
+};
 use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain, assert_transaction_executor_error};
@@ -14,8 +20,8 @@ use crate::{get_note_with_fungible_asset_and_script, prove_and_verify_transactio
 // TESTS MINT FUNGIBLE ASSET
 // ================================================================================================
 
-#[test]
-fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Success)
     // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
@@ -65,7 +71,7 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?;
 
-    let executed_transaction = tx_context.execute_blocking()?;
+    let executed_transaction = tx_context.execute().await?;
 
     prove_and_verify_transaction(executed_transaction.clone())?;
 
@@ -85,8 +91,8 @@ fn prove_faucet_contract_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
+#[tokio::test]
+async fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Result<()> {
     // CONSTRUCT AND EXECUTE TX (Failure)
     // --------------------------------------------------------------------------------------------
     let mut builder = MockChain::builder();
@@ -128,7 +134,8 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
         .build_tx_context(faucet.id(), &[], &[])?
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     // Execute the transaction and get the witness
     assert_transaction_executor_error!(
@@ -141,8 +148,8 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
 // TESTS BURN FUNGIBLE ASSET
 // ================================================================================================
 
-#[test]
-fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
     let mut mock_chain = builder.build()?;
@@ -190,7 +197,8 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let executed_transaction = mock_chain
         .build_tx_context(faucet.id(), &[note.id()], &[])?
         .build()?
-        .execute_blocking()?;
+        .execute()
+        .await?;
 
     // Prove, serialize/deserialize and verify the transaction
     prove_and_verify_transaction(executed_transaction.clone())?;

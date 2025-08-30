@@ -27,8 +27,8 @@ use crate::kernel_tests::block::utils::generate_conditional_tx;
 use crate::{AccountState, Auth, MockChain, ProvenTransactionExt};
 
 /// Tests that we can build empty blocks.
-#[test]
-fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let TestSetup { chain, .. } = setup_chain(2);
 
     let block_inputs = BlockInputs::new(
@@ -50,8 +50,8 @@ fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
 
 /// Tests that a proposed block from two batches with one transaction each can be successfully
 /// built.
-#[test]
-fn proposed_block_basic_success() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_basic_success() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(2);
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
@@ -109,8 +109,8 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
 }
 
 /// Tests that account updates are correctly aggregated into a block-level account update.
-#[test]
-fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     // We need authentication because we're modifying accounts with the input notes.
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
     let asset = generate_fungible_asset(
@@ -180,8 +180,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
 }
 
 /// Tests that unauthenticated notes can be authenticated when inclusion proofs are provided.
-#[test]
-fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(3);
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
@@ -231,8 +231,8 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that a batch that expires at the block being proposed is still accepted.
-#[test]
-fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
     let block1_num = chain.block_header(1).block_num();
     let account0 = accounts.remove(&0).unwrap();
@@ -262,8 +262,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
 /// Tests that a NOOP transaction with state commitments X -> X against account A can appear
 /// in one batch while another batch contains a state-updating transaction with state commitments X
 /// -> Y against the same account A. Both batches are in the same block.
-#[test]
-fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
+#[tokio::test]
+async fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow::Result<()> {
     let account_builder = Account::builder(rand::rng().random())
         .storage_mode(AccountStorageMode::Public)
         .with_component(MockAccountComponent::with_empty_slots());

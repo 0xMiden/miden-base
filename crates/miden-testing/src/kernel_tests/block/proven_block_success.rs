@@ -31,8 +31,8 @@ use crate::utils::create_spawn_note;
 
 /// Tests the outputs of a proven block with transactions that consume notes, create output notes
 /// and modify the account's state.
-#[test]
-fn proven_block_success() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_success() -> anyhow::Result<()> {
     // Setup test with notes that produce output notes, in order to test the block note tree root
     // computation.
     // --------------------------------------------------------------------------------------------
@@ -61,10 +61,10 @@ fn proven_block_success() -> anyhow::Result<()> {
     chain.add_pending_note(OutputNote::Full(input_note3.clone()));
     chain.prove_next_block()?;
 
-    let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[input_note0.id()]);
-    let tx1 = generate_tx_with_authenticated_notes(&mut chain, account1.id(), &[input_note1.id()]);
-    let tx2 = generate_tx_with_authenticated_notes(&mut chain, account2.id(), &[input_note2.id()]);
-    let tx3 = generate_tx_with_authenticated_notes(&mut chain, account3.id(), &[input_note3.id()]);
+    let tx0 = generate_tx_with_authenticated_notes(&mut chain, account0.id(), &[input_note0.id()]).await;
+    let tx1 = generate_tx_with_authenticated_notes(&mut chain, account1.id(), &[input_note1.id()]).await;
+    let tx2 = generate_tx_with_authenticated_notes(&mut chain, account2.id(), &[input_note2.id()]).await;
+    let tx3 = generate_tx_with_authenticated_notes(&mut chain, account3.id(), &[input_note3.id()]).await;
 
     let batch0 = generate_batch(&mut chain, [tx0.clone(), tx1.clone()].to_vec());
     let batch1 = generate_batch(&mut chain, [tx2.clone(), tx3.clone()].to_vec());
@@ -203,8 +203,8 @@ fn proven_block_success() -> anyhow::Result<()> {
 ///
 /// We also test that the batch note tree containing the output generating transactions is a subtree
 /// of the subtree of the overall block note tree computed from the block's output notes.
-#[test]
-fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(4);
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
@@ -345,8 +345,8 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
 }
 
 /// Tests that we can build empty blocks.
-#[test]
-fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // Setup a chain with a non-empty nullifier tree by consuming some notes.
     // --------------------------------------------------------------------------------------------
 

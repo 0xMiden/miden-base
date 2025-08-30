@@ -486,8 +486,8 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
 }
 
 /// Tests that changing the account state without incrementing the nonce results in an error.
-#[test]
-fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
+#[tokio::test]
+async fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::Result<()> {
     let code = "
         use.mock::account
 
@@ -507,7 +507,8 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
     let result = TransactionContextBuilder::with_noop_auth_account()
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute()
+        .await;
 
     assert_transaction_executor_error!(
         result,
@@ -517,11 +518,11 @@ fn epilogue_fails_on_account_state_change_without_nonce_increment() -> anyhow::R
     Ok(())
 }
 
-#[test]
-fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_epilogue_execute_empty_transaction() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_noop_auth_account().build()?;
 
-    let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
 
     assert_transaction_executor_error!(result, ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY);
 

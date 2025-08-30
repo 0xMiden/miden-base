@@ -45,8 +45,8 @@ use crate::{TransactionContextBuilder, assert_execution_error, assert_transactio
 // FUNGIBLE FAUCET MINT TESTS
 // ================================================================================================
 
-#[test]
-fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
     let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         faucet_id.into(),
@@ -101,8 +101,8 @@ fn test_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
 }
 
 /// Tests that minting a fungible asset on a non-faucet account fails.
-#[test]
-fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let account = setup_non_faucet_account()?;
 
     let code = format!(
@@ -121,14 +121,14 @@ fn mint_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute().await;
     assert_transaction_executor_error!(result, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
 
     Ok(())
 }
 
-#[test]
-fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
         10u32.into(),
@@ -155,8 +155,8 @@ fn test_mint_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     let code = format!(
         "
         use.mock::faucet
@@ -176,7 +176,7 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
     )
     .tx_script(tx_script)
     .build()?
-    .execute_blocking();
+    .execute().await;
 
     assert_transaction_executor_error!(
         result,
@@ -188,8 +188,8 @@ fn test_mint_fungible_asset_fails_saturate_max_amount() -> anyhow::Result<()> {
 // NON-FUNGIBLE FAUCET MINT TESTS
 // ================================================================================================
 
-#[test]
-fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context =
         TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
             .build()?;
@@ -242,8 +242,8 @@ fn test_mint_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_non_fungible_faucet(
         ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
     )
@@ -271,8 +271,8 @@ fn test_mint_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 }
 
 /// Tests that minting a non-fungible asset on a non-faucet account fails.
-#[test]
-fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let account = setup_non_faucet_account()?;
 
     let code = format!(
@@ -291,14 +291,14 @@ fn mint_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute().await;
     assert_transaction_executor_error!(result, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
 
     Ok(())
 }
 
-#[test]
-fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<()> {
     let tx_context =
         TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
             .build()?;
@@ -329,8 +329,8 @@ fn test_mint_non_fungible_asset_fails_asset_already_exists() -> anyhow::Result<(
 // FUNGIBLE FAUCET BURN TESTS
 // ================================================================================================
 
-#[test]
-fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context = {
         let account = Account::mock_fungible_faucet(
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
@@ -395,8 +395,8 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 }
 
 /// Tests that burning a fungible asset on a non-faucet account fails.
-#[test]
-fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let account = setup_non_faucet_account()?;
 
     let code = format!(
@@ -415,14 +415,14 @@ fn burn_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute().await;
     assert_transaction_executor_error!(result, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
 
     Ok(())
 }
 
-#[test]
-fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         Felt::try_from(FUNGIBLE_FAUCET_INITIAL_BALANCE).unwrap(),
@@ -452,8 +452,8 @@ fn test_burn_fungible_asset_inconsistent_faucet_id() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
@@ -487,8 +487,8 @@ fn test_burn_fungible_asset_insufficient_input_amount() -> anyhow::Result<()> {
 // NON-FUNGIBLE FAUCET BURN TESTS
 // ================================================================================================
 
-#[test]
-fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     let tx_context =
         TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
             .build()?;
@@ -556,8 +556,8 @@ fn test_burn_non_fungible_asset_succeeds() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
     let tx_context =
         TransactionContextBuilder::with_non_fungible_faucet(NonFungibleAsset::mock_issuer().into())
             .build()?;
@@ -586,8 +586,8 @@ fn test_burn_non_fungible_asset_fails_does_not_exist() -> anyhow::Result<()> {
 }
 
 /// Tests that burning a non-fungible asset on a non-faucet account fails.
-#[test]
-fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let account = setup_non_faucet_account()?;
 
     let code = format!(
@@ -606,14 +606,14 @@ fn burn_non_fungible_asset_fails_on_non_faucet_account() -> anyhow::Result<()> {
     let result = TransactionContextBuilder::new(account)
         .tx_script(tx_script)
         .build()?
-        .execute_blocking();
+        .execute().await;
     assert_transaction_executor_error!(result, ERR_FUNGIBLE_ASSET_FAUCET_IS_NOT_ORIGIN);
 
     Ok(())
 }
 
-#[test]
-fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result<()> {
     let non_fungible_asset_burnt = NonFungibleAsset::mock(&[1, 2, 3]);
 
     // Run code from a different non-fungible asset issuer
@@ -646,8 +646,8 @@ fn test_burn_non_fungible_asset_fails_inconsistent_faucet_id() -> anyhow::Result
 // IS NON FUNGIBLE ASSET ISSUED TESTS
 // ================================================================================================
 
-#[test]
-fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
     // NON_FUNGIBLE_ASSET_DATA_2 is "issued" during the mock faucet creation, so it is already in
     // the map of issued assets.
     let tx_context =
@@ -691,8 +691,8 @@ fn test_is_non_fungible_asset_issued_succeeds() -> anyhow::Result<()> {
 // GET TOTAL ISSUANCE TESTS
 // ================================================================================================
 
-#[test]
-fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_total_issuance_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_fungible_faucet(
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
         Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),

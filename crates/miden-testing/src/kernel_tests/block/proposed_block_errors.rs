@@ -30,14 +30,14 @@ use crate::ProvenTransactionExt;
 use crate::utils::create_spawn_note;
 
 /// Tests that too many batches produce an error.
-#[test]
-fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
     let count = MAX_BATCHES_PER_BLOCK + 1;
     let TestSetup { mut chain, mut txs, .. } = setup_chain(count);
 
     let mut batches = Vec::with_capacity(count);
     for i in 0..count {
-        batches.push(generate_batch(&mut chain, vec![txs.remove(&i).unwrap()]));
+        batches.push(generate_batch(&mut chain, vec![txs.remove(&i).unwrap().await]));
     }
 
     let block_inputs = BlockInputs::new(
@@ -56,8 +56,8 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
 }
 
 /// Tests that duplicate batches produce an error.
-#[test]
-fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut txs, .. } = setup_chain(1);
     let proven_tx0 = txs.remove(&0).unwrap();
     let batch0 = generate_batch(&mut chain, vec![proven_tx0]);
@@ -80,8 +80,8 @@ fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
 }
 
 /// Tests that an expired batch produces an error.
-#[test]
-fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
     let block1_num = chain.block_header(1).block_num();
     let account0 = accounts.remove(&0).unwrap();
@@ -117,12 +117,12 @@ fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
 }
 
 /// Tests that a timestamp at or before the previous block header produces an error.
-#[test]
-fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut txs, .. } = setup_chain(1);
     let proven_tx0 = txs.remove(&0).unwrap();
     let batch0 = generate_batch(&mut chain, vec![proven_tx0]);
-    let batches = vec![batch0];
+    let batches = vec![batch0.await];
     // Mock BlockInputs.
     let block_inputs = BlockInputs::new(
         chain.latest_block_header(),
@@ -147,12 +147,12 @@ fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::R
 
 /// Tests that a partial blockchain that is not at the state of the previous block header produces
 /// an error.
-#[test]
-fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut txs, .. } = setup_chain(1);
     let proven_tx0 = txs.remove(&0).unwrap();
     let batch0 = generate_batch(&mut chain, vec![proven_tx0]);
-    let batches = vec![batch0];
+    let batches = vec![batch0.await];
 
     // Select the partial blockchain which is valid for the current block but pass the next block in
     // the chain, which is an inconsistent combination.
@@ -200,8 +200,8 @@ fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> 
 
 /// Tests that a partial blockchain that does not contain all reference blocks of the batches
 /// produces an error.
-#[test]
-fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut txs, .. } = setup_chain(1);
     let proven_tx0 = txs.remove(&0).unwrap();
 
@@ -238,8 +238,8 @@ fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()>
 }
 
 /// Tests that duplicate input notes across batches produce an error.
-#[test]
-fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
 
     let account0 = accounts.remove(&0).unwrap();
@@ -272,8 +272,8 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
 }
 
 /// Tests that duplicate output notes across batches produce an error.
-#[test]
-fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(1);
     let account = accounts.remove(&0).unwrap();
 
@@ -281,8 +281,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 
     // Create two different notes that will create the same output note. Their IDs will be different
     // due to having a different serial number generated from contained RNG.
-    let note0 = create_spawn_note(account.id(), vec![&output_note])?;
-    let note1 = create_spawn_note(account.id(), vec![&output_note])?;
+    let note0 = create_spawn_note(account.id(), vec![&output_note.await])?;
+    let note1 = create_spawn_note(account.id(), vec![&output_note.await])?;
 
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));
@@ -312,8 +312,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 /// Tests that a missing note inclusion proof produces an error.
 /// Also tests that an error is produced if the block that the note inclusion proof references is
 /// not in the partial blockchain.
-#[test]
-fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_block()
+#[tokio::test]
+async fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_block()
 -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
 
@@ -389,8 +389,8 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
 }
 
 /// Tests that a missing note inclusion proof produces an error.
-#[test]
-fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
 
     let account0 = accounts.remove(&0).unwrap();
@@ -416,8 +416,8 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
 }
 
 /// Tests that a missing nullifier witness produces an error.
-#[test]
-fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
 
     let account0 = accounts.remove(&0).unwrap();
@@ -456,8 +456,8 @@ fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
 }
 
 /// Tests that a nullifier witness pointing to a spent nullifier produces an error.
-#[test]
-fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
@@ -483,7 +483,7 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
         account1.id(),
         &[note0.id()],
     );
-    alternative_chain.add_pending_executed_transaction(&transaction)?;
+    alternative_chain.add_pending_executed_transaction(&transaction.await)?;
     alternative_chain.prove_next_block()?;
     let spent_proof = alternative_chain.nullifier_tree().open(&note0.nullifier());
 
@@ -504,8 +504,8 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
 /// commitment but produce different final state commitments produce an error.
 /// We test this simply by putting the same transaction in different batches and ensuring that the
 /// batch IDs will be unique to avoid triggering the duplicate batches check.
-#[test]
-fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(2);
 
     let account0 = accounts.remove(&0).unwrap();
@@ -547,8 +547,8 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
 }
 
 /// Tests that a missing account witness produces an error.
-#[test]
-fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(2);
     let account0 = accounts.remove(&0).unwrap();
     let tx0 = txs.remove(&0).unwrap();
@@ -573,8 +573,8 @@ fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
 
 /// Tests that, given three transactions 0 -> 1 -> 2 which are executed against the same account and
 /// build on top of each other produce an error when tx 1 is missing from the block.
-#[test]
-fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Result<()> {
+#[tokio::test]
+async fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Result<()> {
     let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
     let asset = generate_fungible_asset(
         100,
@@ -605,8 +605,8 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.
-    let tx0 = ProvenTransaction::from_executed_transaction_mocked(executed_tx0.clone());
-    let tx2 = ProvenTransaction::from_executed_transaction_mocked(executed_tx2.clone());
+    let tx0 = ProvenTransaction::from_executed_transaction_mocked(executed_tx0.clone(.await));
+    let tx2 = ProvenTransaction::from_executed_transaction_mocked(executed_tx2.clone(.await));
 
     let batch0 = generate_batch(&mut chain, vec![tx0]);
     let batch1 = generate_batch(&mut chain, vec![tx2]);

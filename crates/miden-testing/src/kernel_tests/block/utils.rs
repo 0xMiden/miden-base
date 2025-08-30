@@ -86,7 +86,7 @@ pub fn generate_fungible_asset(amount: u64, faucet_id: AccountId) -> Asset {
     FungibleAsset::new(faucet_id, amount).unwrap().into()
 }
 
-pub fn generate_executed_tx_with_authenticated_notes(
+pub async fn generate_executed_tx_with_authenticated_notes(
     chain: &MockChain,
     input: impl Into<TxContextInput>,
     notes: &[NoteId],
@@ -96,15 +96,15 @@ pub fn generate_executed_tx_with_authenticated_notes(
         .expect("failed to build tx context")
         .build()
         .unwrap();
-    tx_context.execute_blocking().unwrap()
+    tx_context.execute().await.unwrap()
 }
 
-pub fn generate_tx_with_authenticated_notes(
+pub async fn generate_tx_with_authenticated_notes(
     chain: &mut MockChain,
     account_id: AccountId,
     notes: &[NoteId],
 ) -> ProvenTransaction {
-    let executed_tx = generate_executed_tx_with_authenticated_notes(chain, account_id, notes);
+    let executed_tx = generate_executed_tx_with_authenticated_notes(chain, account_id, notes).await.await;
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
@@ -113,7 +113,7 @@ pub fn generate_tx_with_authenticated_notes(
 /// - if `modify_storage` is false, it does nothing (NOOP).
 ///
 /// To make this transaction (always) non-empty, it consumes one "noop note", which does nothing.
-pub fn generate_conditional_tx(
+pub async fn generate_conditional_tx(
     chain: &mut MockChain,
     input: impl Into<TxContextInput>,
     modify_storage: bool,
@@ -138,11 +138,11 @@ pub fn generate_conditional_tx(
         .auth_args(auth_args.into())
         .build()
         .unwrap();
-    tx_context.execute_blocking().unwrap()
+    tx_context.execute().await.unwrap()
 }
 
 /// Generates a transaction that expires at the given block number.
-pub fn generate_tx_with_expiration(
+pub async fn generate_tx_with_expiration(
     chain: &mut MockChain,
     input: impl Into<TxContextInput>,
     expiration_block: BlockNumber,
@@ -157,11 +157,11 @@ pub fn generate_tx_with_expiration(
         .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
         .build()
         .unwrap();
-    let executed_tx = tx_context.execute_blocking().unwrap();
+    let executed_tx = tx_context.execute().await.unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 
-pub fn generate_tx_with_unauthenticated_notes(
+pub async fn generate_tx_with_unauthenticated_notes(
     chain: &mut MockChain,
     account_id: AccountId,
     notes: &[Note],
@@ -171,7 +171,7 @@ pub fn generate_tx_with_unauthenticated_notes(
         .expect("failed to build tx context")
         .build()
         .unwrap();
-    let executed_tx = tx_context.execute_blocking().unwrap();
+    let executed_tx = tx_context.execute().await.unwrap();
     ProvenTransaction::from_executed_transaction_mocked(executed_tx)
 }
 

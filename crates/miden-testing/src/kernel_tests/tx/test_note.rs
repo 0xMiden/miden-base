@@ -52,8 +52,8 @@ use crate::{
     assert_transaction_executor_error,
 };
 
-#[test]
-fn test_get_sender_no_sender() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_sender_no_sender() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
     // calling get_sender should return sender
     let code = "
@@ -78,8 +78,8 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_sender() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_sender() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -115,8 +115,8 @@ fn test_get_sender() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_vault_data() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_vault_data() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(crate::Auth::BasicAuth)?;
@@ -188,8 +188,8 @@ fn test_get_vault_data() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_assets() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_assets() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -325,8 +325,8 @@ fn test_get_assets() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_inputs() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -415,8 +415,8 @@ fn test_get_inputs() -> anyhow::Result<()> {
 /// Previously this setup was leading to the incorrect number of note input values computed during
 /// the `get_inputs` procedure, see the
 /// [issue #1363](https://github.com/0xMiden/miden-base/issues/1363) for more details.
-#[test]
-fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -488,8 +488,8 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_note_setup() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_note_setup() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -530,8 +530,8 @@ fn test_note_setup() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_note_script_and_note_args() -> miette::Result<()> {
+#[tokio::test]
+async fn test_note_script_and_note_args() -> miette::Result<()> {
     let mut tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth).map_err(|err| miette!(err))?;
@@ -632,8 +632,8 @@ fn note_setup_memory_assertions(process: &Process) {
     );
 }
 
-#[test]
-fn test_get_note_serial_number() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_note_serial_number() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -671,8 +671,8 @@ fn test_get_note_serial_number() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_inputs_hash() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_inputs_hash() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
     let code = "
@@ -768,8 +768,8 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_get_current_script_root() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_get_current_script_root() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -807,8 +807,8 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
     Ok(())
 }
 
-#[test]
-fn test_build_note_metadata() -> miette::Result<()> {
+#[tokio::test]
+async fn test_build_note_metadata() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
@@ -872,8 +872,8 @@ fn test_build_note_metadata() -> miette::Result<()> {
 }
 
 /// This serves as a test that setting a custom timestamp on mock chain blocks works.
-#[test]
-pub fn test_timelock() -> anyhow::Result<()> {
+#[tokio::test]
+pub async fn test_timelock() -> anyhow::Result<()> {
     const TIMESTAMP_ERROR: MasmError = MasmError::from_static_str("123");
 
     let code = format!(
@@ -931,7 +931,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
         .with_source_manager(source_manager.clone())
         .tx_inputs(tx_inputs.clone())
         .build()?;
-    let result = tx_context.execute_blocking();
+    let result = tx_context.execute().await;
     assert_transaction_executor_error!(result, TIMESTAMP_ERROR);
 
     // Consume note where lock timestamp matches the block timestamp.
@@ -943,7 +943,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let tx_inputs =
         mock_chain.get_transaction_inputs(account.clone(), None, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
 
     Ok(())
 }
@@ -953,8 +953,8 @@ pub fn test_timelock() -> anyhow::Result<()> {
 ///
 /// Previously this setup was leading to the values collision in the advice map, see the
 /// [issue #1267](https://github.com/0xMiden/miden-base/issues/1267) for more details.
-#[test]
-fn test_public_key_as_note_input() -> anyhow::Result<()> {
+#[tokio::test]
+async fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
@@ -997,6 +997,6 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
         .authenticator(authenticator)
         .build()?;
 
-    tx_context.execute_blocking()?;
+    tx_context.execute().await?;
     Ok(())
 }
