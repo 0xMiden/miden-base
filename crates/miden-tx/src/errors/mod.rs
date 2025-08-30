@@ -27,17 +27,39 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum NoteCheckerError {
+    #[error("input note count {0} is out of range)")]
+    InputNoteCountOutOfRange(u16),
+    #[error("transaction execution check failed: {0}")]
+    TransactionCheck(#[source] TransactionCheckerError),
+}
+
+// TRANSACTION CHECKER ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionCheckerError {
     #[error("transaction preparation failed: {0}")]
-    TransactionPreparationFailed(#[source] TransactionExecutorError),
+    TransactionPreparation(#[source] TransactionExecutorError),
     #[error("transaction execution prologue failed: {0}")]
-    PrologueExecutionFailed(#[source] TransactionExecutorError),
+    PrologueExecution(#[source] TransactionExecutorError),
     #[error("transaction execution epilogue failed: {0}")]
-    EpilogueExecutionFailed(#[source] TransactionExecutorError),
+    EpilogueExecution(#[source] TransactionExecutorError),
     #[error("transaction note execution failed on note index {failed_note_index}: {error}")]
-    NoteExecutionFailed {
+    NoteExecution {
         failed_note_index: usize,
         error: TransactionExecutorError,
     },
+}
+
+impl From<TransactionCheckerError> for TransactionExecutorError {
+    fn from(error: TransactionCheckerError) -> Self {
+        match error {
+            TransactionCheckerError::TransactionPreparation(error) => error,
+            TransactionCheckerError::PrologueExecution(error) => error,
+            TransactionCheckerError::EpilogueExecution(error) => error,
+            TransactionCheckerError::NoteExecution { error, .. } => error,
+        }
+    }
 }
 
 // TRANSACTION EXECUTOR ERROR

@@ -1,4 +1,5 @@
 use alloc::vec::Vec;
+use core::ops::RangeInclusive;
 
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::transaction::TransactionKernel;
@@ -10,6 +11,7 @@ use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
 use crate::auth::TransactionAuthenticator;
+use crate::errors::TransactionCheckerError;
 use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 
 // NOTE CONSUMPTION INFO
@@ -19,12 +21,12 @@ use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 #[derive(Debug)]
 pub struct FailedNote {
     pub note: Note,
-    pub error: Option<TransactionExecutorError>,
+    pub error: TransactionExecutorError,
 }
 
 impl FailedNote {
     /// Constructs a new `FailedNote`.
-    pub fn new(note: Note, error: Option<TransactionExecutorError>) -> Self {
+    pub fn new(note: Note, error: TransactionExecutorError) -> Self {
         Self { note, error }
     }
 }
@@ -63,6 +65,9 @@ where
     STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
+    /// Range of valid input note counts to be provided to the checker.
+    pub const INPUT_NOTES_RANGE: RangeInclusive<u16> = 1..=20;
+
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
     pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {
         NoteConsumptionChecker(tx_executor)
@@ -74,23 +79,24 @@ where
     /// This function attempts to find the maximum set of notes that can be successfully executed
     /// together by the target account.
     ///
-    /// If some notes succeed but others fail, the failed notes are removed from the candidate set
+    /// Because of the runtime complexity involved in this function, a limited range of
+    /// [`Self::INPUT_NOTES_RANGE`] input notes is allowed.
+    ///
+    /// If some notes succeed and others fail, the failed notes are removed from the candidate set
     /// and the remaining notes (successful + unattempted) are retried in the next iteration. This
     /// process continues until either all remaining notes succeed or no notes can be successfully
     /// executed
     ///
-    /// # Example Execution Flow
-    ///
-    /// Given notes A, B, C, D, E:
+    /// For example, given notes A, B, C, D, E, the execution flow would be as follows:
     /// - Try [A, B, C, D, E] → A, B succeed, C fails → Remove C, try again.
     /// - Try [A, B, D, E] → A, B, D succeed, E fails → Remove E, try again.
     /// - Try [A, B, D] → All succeed → Return successful=[A, B, D], failed=[C, E].
     ///
-    /// # Returns
+    /// If a failure occurs at the epilogue phase of the transaction execution, the relevant set of
+    /// otherwise-successful notes are retried in various combinations in an attempt to find a
+    /// combination that passes the epilogue phase successfully.
     ///
-    /// Returns [`NoteConsumptionInfo`] containing:
-    /// - `successful`: Notes that can be consumed together by the account.
-    /// - `failed`: Notes that failed during execution attempts.
+    /// Returns a list of successfully consumed notes and a list of failed notes.
     pub async fn check_notes_consumability(
         &self,
         target_account_id: AccountId,
@@ -98,6 +104,10 @@ where
         input_notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
+        let num_notes = input_notes.num_notes();
+        if !Self::INPUT_NOTES_RANGE.contains(&num_notes) {
+            return Err(NoteCheckerError::InputNoteCountOutOfRange(num_notes));
+        }
         // Ensure well-known notes are ordered first.
         let mut notes = input_notes.into_vec();
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
@@ -145,10 +155,10 @@ where
                         candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
                     return Ok(NoteConsumptionInfo::new(successful, failed_notes));
                 },
-                Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error }) => {
+                Err(TransactionCheckerError::NoteExecution { failed_note_index, error }) => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
                     let failed_note = candidate_notes.remove(failed_note_index).into_note();
-                    failed_notes.push(FailedNote::new(failed_note, Some(error)));
+                    failed_notes.push(FailedNote::new(failed_note, error));
 
                     // All possible candidate combinations have been attempted.
                     if candidate_notes.is_empty() {
@@ -156,7 +166,7 @@ where
                     }
                     // Continue and process the next set of candidates.
                 },
-                Err(NoteCheckerError::EpilogueExecutionFailed(_)) => {
+                Err(TransactionCheckerError::EpilogueExecution(_)) => {
                     let consumption_info = self
                         .find_largest_executable_combination(
                             target_account_id,
@@ -168,7 +178,7 @@ where
                         .await;
                     return Ok(consumption_info);
                 },
-                Err(error) => return Err(error),
+                Err(error) => return Err(NoteCheckerError::TransactionCheck(error)),
             }
         }
     }
@@ -187,7 +197,7 @@ where
         mut failed_notes: Vec<FailedNote>,
         tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
-        let mut successful_notes: Vec<InputNote> = Vec::new();
+        let mut successful_notes = Vec::new();
         let mut remaining_notes = input_notes;
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
@@ -198,15 +208,14 @@ where
             }
 
             // Try adding each remaining note to the current successful combination.
-            let mut test_notes = successful_notes.clone();
             for (idx, note) in remaining_notes.iter().enumerate() {
-                test_notes.push(note.clone());
+                successful_notes.push(note.clone());
 
                 match self
                     .try_execute_notes(
                         target_account_id,
                         block_ref,
-                        InputNotes::<InputNote>::new_unchecked(test_notes.clone()),
+                        InputNotes::<InputNote>::new_unchecked(successful_notes.clone()),
                         tx_args,
                     )
                     .await
@@ -215,13 +224,15 @@ where
                         // This combination succeeded; remove the most recently added note from
                         // the remaining set.
                         remaining_notes.remove(idx);
-                        successful_notes = test_notes;
                         break;
                     },
-                    _ => {
+                    Err(error) => {
                         // This combination failed; remove the last note from the test set and
                         // continue to next note.
-                        test_notes.pop();
+                        let failed_note =
+                            successful_notes.pop().expect("Successful notes should not be empty");
+                        // Record the failed note.
+                        failed_notes.push(FailedNote::new(failed_note.into_note(), error.into()));
                     },
                 }
             }
@@ -229,13 +240,6 @@ where
 
         // Convert successful InputNotes to Notes.
         let successful = successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
-
-        // Update failed_notes with notes that weren't included in successful combination.
-        // TODO: Replace `None` with meaningful error for `FailedNote` below.
-        let newly_failed_notes =
-            remaining_notes.into_iter().map(|note| FailedNote::new(note.into_note(), None));
-        failed_notes.extend(newly_failed_notes);
-
         NoteConsumptionInfo::new(successful, failed_notes)
     }
 
@@ -250,7 +254,7 @@ where
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
-    ) -> Result<(), NoteCheckerError> {
+    ) -> Result<(), TransactionCheckerError> {
         if notes.is_empty() {
             return Ok(());
         }
@@ -264,7 +268,7 @@ where
             .0
             .prepare_transaction(account_id, block_ref, notes, tx_args, None)
             .await
-            .map_err(NoteCheckerError::TransactionPreparationFailed)?;
+            .map_err(TransactionCheckerError::TransactionPreparation)?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -281,7 +285,7 @@ where
                 // Empty notes vector means that we didn't process the notes, so an error
                 // occurred.
                 if notes.is_empty() {
-                    return Err(NoteCheckerError::PrologueExecutionFailed(error));
+                    return Err(TransactionCheckerError::PrologueExecution(error));
                 }
 
                 let ((_, last_note_interval), success_notes) =
@@ -290,11 +294,11 @@ where
                 // If the interval end of the last note is specified, then an error occurred after
                 // notes processing.
                 if last_note_interval.end().is_some() {
-                    Err(NoteCheckerError::EpilogueExecutionFailed(error))
+                    Err(TransactionCheckerError::EpilogueExecution(error))
                 } else {
                     // Return the index of the failed note.
                     let failed_note_index = success_notes.len();
-                    Err(NoteCheckerError::NoteExecutionFailed { failed_note_index, error })
+                    Err(TransactionCheckerError::NoteExecution { failed_note_index, error })
                 }
             },
         }
