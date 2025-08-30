@@ -18,7 +18,6 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::crypto::SequentialCommit;
 use miden_objects::note::Nullifier;
 use miden_objects::transaction::PartialBlockchain;
 

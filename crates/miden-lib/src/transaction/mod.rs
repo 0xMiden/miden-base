@@ -440,6 +440,14 @@ impl TransactionKernel {
 
         Ok((final_account_commitment, account_delta_commitment))
     }
+
+    // UTILITY METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Computes the sequential hash of all kernel procedures.
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
 }
 
 #[cfg(any(feature = "testing", test))]
