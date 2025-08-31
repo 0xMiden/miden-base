@@ -20,7 +20,7 @@ fn note_checker_benchmarks(c: &mut Criterion) {
         group.bench_function(format!("{BENCH_MIXED_NOTES}_{failing_count}_failing"), |b| {
             let setup =
                 setup_mixed_notes_benchmark(MixedNotesConfig { failing_note_count: failing_count })
-                    .expect("Failed to set up mixed notes benchmark");
+                    .expect("failed to set up mixed notes benchmark");
 
             b.iter(|| {
                 let runtime =

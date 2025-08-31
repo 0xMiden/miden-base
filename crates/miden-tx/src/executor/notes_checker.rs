@@ -237,7 +237,7 @@ where
                         // This combination failed; remove the last note from the test set and
                         // continue to next note.
                         let failed_note =
-                            successful_notes.pop().expect("Successful notes should not be empty");
+                            successful_notes.pop().expect("successful notes should not be empty");
                         // Record the failed note.
                         failed_notes.push(FailedNote::new(failed_note.into_note(), error.into()));
                     },
