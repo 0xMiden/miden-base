@@ -35,7 +35,12 @@ mod data_store;
 pub use data_store::DataStore;
 
 mod notes_checker;
-pub use notes_checker::{FailedNote, NoteConsumptionChecker, NoteConsumptionInfo};
+pub use notes_checker::{
+    FailedNote,
+    MAX_NUM_CHECKER_NOTES,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
+};
 
 // TRANSACTION EXECUTOR
 // ================================================================================================

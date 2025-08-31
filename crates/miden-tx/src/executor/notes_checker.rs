@@ -13,6 +13,12 @@ use crate::auth::TransactionAuthenticator;
 use crate::errors::TransactionCheckerError;
 use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 
+// CONSTANTS
+// ================================================================================================
+
+/// Maximum number of notes that can be checked at once.
+pub const MAX_NUM_CHECKER_NOTES: u16 = 20;
+
 // NOTE CONSUMPTION INFO
 // ================================================================================================
 
@@ -64,9 +70,6 @@ where
     STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
-    /// Maximum number of notes that can be checked at once.
-    pub const MAX_NUM_NOTES: u16 = 20;
-
     /// Creates a new [`NoteConsumptionChecker`] instance with the given transaction executor.
     pub fn new(tx_executor: &'a TransactionExecutor<'a, 'a, STORE, AUTH>) -> Self {
         NoteConsumptionChecker(tx_executor)
@@ -104,7 +107,7 @@ where
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
         let num_notes = input_notes.num_notes();
-        if num_notes == 0 || num_notes > Self::MAX_NUM_NOTES {
+        if num_notes == 0 || num_notes > MAX_NUM_CHECKER_NOTES {
             return Err(NoteCheckerError::InputNoteCountOutOfRange(num_notes));
         }
         // Ensure well-known notes are ordered first.

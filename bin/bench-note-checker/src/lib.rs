@@ -49,7 +49,7 @@ impl NoteCheckerMeasurements {
 #[derive(Clone, Debug)]
 pub struct MixedNotesConfig {
     /// Number of failing notes to insert between successful notes.
-    pub failing_note_count: usize,
+    pub failing_note_count: u16,
 }
 
 /// Setup data for the mixed notes benchmark.
@@ -78,7 +78,7 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
 
     // Create many failing notes (division by zero error).
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-    let mut failing_notes = Vec::with_capacity(config.failing_note_count);
+    let mut failing_notes = Vec::with_capacity(config.failing_note_count as usize);
 
     for i in 0..config.failing_note_count {
         let mut seed = [0u8; 32];
