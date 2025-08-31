@@ -180,7 +180,12 @@ where
                         .await;
                     return Ok(consumption_info);
                 },
-                Err(error) => return Err(NoteCheckerError::TransactionCheck(error)),
+                Err(TransactionCheckerError::PrologueExecution(err)) => {
+                    return Err(NoteCheckerError::PrologueExecution(err));
+                },
+                Err(TransactionCheckerError::TransactionPreparation(err)) => {
+                    return Err(NoteCheckerError::TransactionPreparation(err));
+                },
             }
         }
     }
