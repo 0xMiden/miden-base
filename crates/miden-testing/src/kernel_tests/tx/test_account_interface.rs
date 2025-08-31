@@ -388,7 +388,6 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
                     failed.get(1).expect("second failed note should exist"),
                     FailedNote {
                         note,
-                        // todo what is this
                         error: TransactionExecutorError::TransactionProgramExecutionFailed(
                             ExecutionError::FailedAssertion { .. })
                     } => {
