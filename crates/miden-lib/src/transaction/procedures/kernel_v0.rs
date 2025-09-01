@@ -6,7 +6,7 @@ use miden_objects::{word, Word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed procedures from the kernel 0.
-pub const KERNEL0_PROCEDURES: [Word; 48] = [
+pub const KERNEL0_PROCEDURES: [Word; 47] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
@@ -55,8 +55,6 @@ pub const KERNEL0_PROCEDURES: [Word; 48] = [
     word!("0x7d32952d4dc0edd0311e3424b8128df2d48cf949f800c28218fbc851a8db42b5"),
     // faucet_is_non_fungible_asset_issued
     word!("0xc827d2430763c70880216804d3523c14e70e5cf926d5d8a72844c6476add5ef7"),
-    // note_get_assets_info
-    word!("0x13a1496a239fa95b3b376c53d899ce2d495e956cdae0f121666408462784673a"),
     // note_add_asset
     word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
     // note_get_serial_number
@@ -68,7 +66,7 @@ pub const KERNEL0_PROCEDURES: [Word; 48] = [
     // note_get_script_root
     word!("0x317c3f724d57093c98927f7820dc00f5cf3509d2de4306dccaef4e2266fcd5b6"),
     // input_note_get_assets_info
-    word!("0x0816c7215676487f3ce03d372bf5512afb528ab62466074921829d7d2974147c"),
+    word!("0x159439fe48dbc11e674c5d05830d0408dcfa033c26e85e01256002c6cbc07e9a"),
     // output_note_get_assets_info
     word!("0x71d0e246d52c4d896e6508564207e049d4d68da187a143fe95bf5e7f5602f967"),
     // input_note_get_recipient

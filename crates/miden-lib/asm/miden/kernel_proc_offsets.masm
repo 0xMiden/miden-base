@@ -46,49 +46,48 @@ const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=23
 
 ### Note ########################################
 # assets
-const.NOTE_GET_ASSETS_INFO_OFFSET=24                  # accessor
-const.NOTE_ADD_ASSET_OFFSET=25                        # mutator
+const.NOTE_ADD_ASSET_OFFSET=24
 
 # note parameters
-const.NOTE_GET_SERIAL_NUMBER_OFFSET=26
-const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=27
-const.NOTE_GET_SENDER_OFFSET=28
-const.NOTE_GET_SCRIPT_ROOT_OFFSET=29
+const.NOTE_GET_SERIAL_NUMBER_OFFSET=25
+const.NOTE_GET_INPUTS_COMMITMENT_AND_LEN_OFFSET=26
+const.NOTE_GET_SENDER_OFFSET=27
+const.NOTE_GET_SCRIPT_ROOT_OFFSET=28
 
 # note introspection
-const.INPUT_NOTE_GET_ASSETS_INFO_OFFSET=30
-const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=31
+const.INPUT_NOTE_GET_ASSETS_INFO_OFFSET=29
+const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=30
 
-const.INPUT_NOTE_GET_RECIPIENT_OFFSET=32
-const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=33
+const.INPUT_NOTE_GET_RECIPIENT_OFFSET=31
+const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=32
 
-const.INPUT_NOTE_GET_METADATA_OFFSET=34
-const.OUTPUT_NOTE_GET_METADATA_OFFSET=35
+const.INPUT_NOTE_GET_METADATA_OFFSET=33
+const.OUTPUT_NOTE_GET_METADATA_OFFSET=34
 
 ### Tx ##########################################
 # creation
-const.TX_CREATE_NOTE_OFFSET=36
+const.TX_CREATE_NOTE_OFFSET=35
 
 # input/output notes
 
-const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=37
-const.TX_GET_NUM_INPUT_NOTES_OFFSET=38
+const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=36
+const.TX_GET_NUM_INPUT_NOTES_OFFSET=37
 
-const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=39
-const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=40
+const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=38
+const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=39
 
 # block info
-const.TX_GET_BLOCK_COMMITMENT_OFFSET=41
-const.TX_GET_BLOCK_NUMBER_OFFSET=42
-const.TX_GET_BLOCK_TIMESTAMP_OFFSET=43
+const.TX_GET_BLOCK_COMMITMENT_OFFSET=40
+const.TX_GET_BLOCK_NUMBER_OFFSET=41
+const.TX_GET_BLOCK_TIMESTAMP_OFFSET=42
 
 # foreign context
-const.TX_START_FOREIGN_CONTEXT_OFFSET=44
-const.TX_END_FOREIGN_CONTEXT_OFFSET=45
+const.TX_START_FOREIGN_CONTEXT_OFFSET=43
+const.TX_END_FOREIGN_CONTEXT_OFFSET=44
 
 # expiration data
-const.TX_GET_EXPIRATION_DELTA_OFFSET=46               # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=47        # mutator
+const.TX_GET_EXPIRATION_DELTA_OFFSET=45               # accessor
+const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=46        # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -386,18 +385,6 @@ export.faucet_is_non_fungible_asset_issued_offset
 end
 
 ### NOTE ########################################
-
-#! Returns the offset of the `note_get_assets_info` kernel procedure.
-#!
-#! Inputs:  []
-#! Outputs: [proc_offset]
-#!
-#! Where:
-#! - proc_offset is the offset of the `note_get_assets_info` kernel procedure required to get the
-#!   address where this procedure is stored.
-export.note_get_assets_info_offset
-    push.NOTE_GET_ASSETS_INFO_OFFSET
-end
 
 #! Returns the offset of the `note_add_asset` kernel procedure.
 #!

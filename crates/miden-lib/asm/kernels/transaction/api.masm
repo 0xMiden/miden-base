@@ -1,10 +1,7 @@
-use.std::sys
-
 use.$kernel::account
 use.$kernel::account_delta
 use.$kernel::account_id
 use.$kernel::asset_vault
-use.$kernel::constants
 use.$kernel::faucet
 use.$kernel::input_note
 use.$kernel::memory
@@ -31,6 +28,8 @@ const.ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the 
 const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 
 const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
 
 # AUTHENTICATION
 # =================================================================================================
@@ -693,31 +692,6 @@ end
 
 ### NOTE ########################################
 
-#! Returns the information about assets in the input note with the specified index.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
-#!
-#! Where:
-#! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
-#!
-#! Panics if:
-#! - a note is not being processed.
-#!
-#! Invocation: dynexec
-export.note_get_assets_info
-    # get the assets info
-    exec.note::get_assets_info
-    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
-
-    # truncate the stack
-    repeat.5
-        movup.5 drop
-    end
-    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
-end
-
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [note_idx, ASSET, pad(11)]
@@ -746,11 +720,15 @@ end
 
 #! Returns the information about assets in the input note with the specified index.
 #!
-#! Inputs:  [note_index, pad(15)]
+#! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
 #!
 #! Where:
-#! - note_index is the index of the input note whose assets info should be returned.
+#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose assets info should be returned. Notice that if
+#!   is_current_note flag is true (we should process the currently processed note), this index is
+#!   assumed to be pad.
 #! - num_assets is the number of assets in the specified note.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
 #!
@@ -759,18 +737,30 @@ end
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
-    # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
+    # get the memory pointer to the note with the specified index and verify it is valid
+    swap exec.input_note::get_input_note_ptr swap
+    # => [is_current_note, indexed_input_note_ptr, pad(14)]
+
+    # get the memory pointer to the currently processed input note
+    exec.memory::get_current_input_note_ptr swap
+    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr, pad(14)]
+
+    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
+    # on the stack. If it is false, indexed_input_note_ptr remains instead.
+    cdrop
+    # => [input_note_ptr', pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT
+    # => [input_note_ptr', pad(15)]
 
     # get the assets info
     exec.input_note::get_assets_info
-    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
+    # => [ASSETS_COMMITMENT, num_assets, pad(15)]
 
     # truncate the stack
-    repeat.5
-        movup.5 drop
-    end
+    movupw.2 dropw
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 

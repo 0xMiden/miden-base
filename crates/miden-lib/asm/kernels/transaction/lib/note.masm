@@ -50,36 +50,6 @@ export.get_sender
     # => [sender_id_prefix, sender_id_suffix]
 end
 
-#! Returns the number of assets and the assets commitment of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [ASSETS_COMMITMENT, num_assets]
-#!
-#! Where:
-#! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
-#!
-#! Panics if:
-#! - the note is not being processed.
-export.get_assets_info
-    # get the current input note pointer
-    exec.memory::get_current_input_note_ptr
-    # => [ptr]
-
-    # assert the pointer is not zero - this would suggest the procedure has been called from an
-    # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT
-    # => [ptr]
-
-    # get the number of assets in the note
-    dup exec.memory::get_input_note_num_assets
-    # => [num_assets, ptr]
-
-    # get the assets commitment from the note pointer
-    swap exec.memory::get_input_note_assets_commitment
-    # => [ASSETS_COMMITMENT, num_assets]
-end
-
 #! Returns the commitment to the note's inputs.
 #!
 #! Inputs:  []
