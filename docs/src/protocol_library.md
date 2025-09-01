@@ -1,6 +1,6 @@
-# Miden Library Procedures
+# Miden Protocol Library
 
-The Miden library provides a set of procedures that wrap transaction kernel procedures to provide a more convenient interface for common operations. These can be invoked by account code, note scripts, and transaction scripts, though some have restriction from where they can be called. The procedures are organized into modules corresponding to different functional areas.
+The Miden protocol library provides a set of procedures that wrap transaction kernel procedures to provide a more convenient interface for common operations. These can be invoked by account code, note scripts, and transaction scripts, though some have restriction from where they can be called. The procedures are organized into modules corresponding to different functional areas.
 
 ## Contexts
 
@@ -18,7 +18,7 @@ If a procedure has multiple context requirements they are combined using `&`. Fo
 
 ## Implementation
 
-All procedures in the Miden library (except the ones with "Local" context) are implemented as wrappers around underlying kernel procedures. They handle the necessary stack padding and cleanup operations required by the kernel interface, providing a more convenient API for developers.
+All procedures in the Miden protocol library (except the ones with "Local" context) are implemented as wrappers around underlying kernel procedures. They handle the necessary stack padding and cleanup operations required by the kernel interface, providing a more convenient API for developers.
 
 The procedures maintain the same security and context restrictions as the underlying kernel procedures. When invoking these procedures, ensure that the calling context matches the requirements.
 
