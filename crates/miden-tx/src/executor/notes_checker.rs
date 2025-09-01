@@ -18,7 +18,7 @@ use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 // ================================================================================================
 
 /// Maximum number of notes that can be checked at once.
-pub const MAX_NUM_CHECKER_NOTES: u16 = 20;
+pub const MAX_NUM_CHECKER_NOTES: usize = 20;
 
 // NOTE CONSUMPTION INFO
 // ================================================================================================
@@ -104,17 +104,15 @@ where
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
-        input_notes: InputNotes<InputNote>,
+        mut notes: Vec<Note>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let num_notes = input_notes.num_notes();
+        let num_notes = notes.len();
         if num_notes == 0 || num_notes > MAX_NUM_CHECKER_NOTES {
             return Err(NoteCheckerError::InputNoteCountOutOfRange(num_notes));
         }
         // Ensure well-known notes are ordered first.
-        let mut notes = input_notes.into_vec();
-        notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note.note()).is_none());
-        let notes = InputNotes::<InputNote>::new_unchecked(notes);
+        notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
         // Attempt to find an executable set of notes.
         self.find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
@@ -132,10 +130,10 @@ where
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
-        notes: InputNotes<InputNote>,
+        notes: Vec<Note>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = notes.into_vec();
+        let mut candidate_notes = notes;
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -147,20 +145,25 @@ where
                 .try_execute_notes(
                     target_account_id,
                     block_ref,
-                    InputNotes::<InputNote>::new_unchecked(candidate_notes.clone()),
+                    InputNotes::<InputNote>::new_unchecked(
+                        candidate_notes
+                            .iter()
+                            .cloned()
+                            .map(InputNote::unauthenticated)
+                            .collect::<Vec<_>>(),
+                    ),
                     &tx_args,
                 )
                 .await
             {
                 Ok(()) => {
                     // A full set of successful notes has been found.
-                    let successful =
-                        candidate_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+                    let successful = candidate_notes;
                     return Ok(NoteConsumptionInfo::new(successful, failed_notes));
                 },
                 Err(TransactionCheckerError::NoteExecution { failed_note_index, error }) => {
                     // SAFETY: Failed note index is in bounds of the candidate notes.
-                    let failed_note = candidate_notes.remove(failed_note_index).into_note();
+                    let failed_note = candidate_notes.remove(failed_note_index);
                     failed_notes.push(FailedNote::new(failed_note, error));
 
                     // All possible candidate combinations have been attempted.
@@ -201,7 +204,7 @@ where
         &self,
         target_account_id: AccountId,
         block_ref: BlockNumber,
-        input_notes: Vec<InputNote>,
+        input_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
         tx_args: &TransactionArgs,
     ) -> NoteConsumptionInfo {
@@ -224,7 +227,13 @@ where
                     .try_execute_notes(
                         target_account_id,
                         block_ref,
-                        InputNotes::<InputNote>::new_unchecked(successful_notes.clone()),
+                        InputNotes::<InputNote>::new_unchecked(
+                            successful_notes
+                                .iter()
+                                .cloned()
+                                .map(InputNote::unauthenticated)
+                                .collect::<Vec<_>>(),
+                        ),
                         tx_args,
                     )
                     .await
@@ -242,17 +251,15 @@ where
                             successful_notes.pop().expect("successful notes should not be empty");
                         // Record the failed note (overwrite previous failures for the relevant
                         // note).
-                        failed_note_set.insert(
-                            failed_note.id(),
-                            FailedNote::new(failed_note.into_note(), error.into()),
-                        );
+                        failed_note_set
+                            .insert(failed_note.id(), FailedNote::new(failed_note, error.into()));
                     },
                 }
             }
         }
 
         // Convert successful InputNotes to Notes.
-        let successful = successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+        let successful = successful_notes;
         // Append failed notes to the list of failed notes provided as input.
         failed_notes.extend(failed_note_set.into_values());
         NoteConsumptionInfo::new(successful, failed_notes)

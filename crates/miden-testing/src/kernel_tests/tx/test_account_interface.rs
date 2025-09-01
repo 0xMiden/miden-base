@@ -58,7 +58,6 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
         .extend_input_notes(notes.clone())
         .build()?;
 
-    let input_notes = tx_context.input_notes().clone();
     let target_account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
@@ -68,7 +67,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumption_info = notes_checker
-        .check_notes_consumability(target_account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(target_account_id, block_ref, notes.clone(), tx_args)
         .await?;
 
     assert_matches!(consumption_info, NoteConsumptionInfo { successful, failed, .. } => {
@@ -98,7 +97,6 @@ async fn check_note_consumability_custom_notes_success(
             .build()?
     };
 
-    let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
@@ -109,7 +107,7 @@ async fn check_note_consumability_custom_notes_success(
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumption_info = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(account_id, block_ref, notes.clone(), tx_args)
         .await?;
 
     assert_matches!(consumption_info, NoteConsumptionInfo { successful, failed, .. }=> {
@@ -168,21 +166,17 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     )?;
 
     let mock_chain = builder.build()?;
+    let notes = vec![
+        successful_note_2.clone(),
+        successful_note_1.clone(),
+        failing_note_2.clone(),
+        failing_note_1.clone(),
+        successful_note_3.clone(),
+    ];
     let tx_context = mock_chain
-        .build_tx_context(
-            TxContextInput::Account(account),
-            &[],
-            &[
-                successful_note_2.clone(),
-                successful_note_1.clone(),
-                failing_note_2.clone(),
-                failing_note_1.clone(),
-                successful_note_3.clone(),
-            ],
-        )?
+        .build_tx_context(TxContextInput::Account(account), &[], &notes)?
         .build()?;
 
-    let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
@@ -192,7 +186,7 @@ async fn check_note_consumability_partial_success() -> anyhow::Result<()> {
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumption_info = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(account_id, block_ref, notes, tx_args)
         .await?;
 
     assert_matches!(
@@ -257,11 +251,11 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
     )?;
 
     let mock_chain = builder.build()?;
+    let notes = vec![successful_note.clone()];
     let tx_context = mock_chain
-        .build_tx_context(TxContextInput::Account(account), &[], &[successful_note])?
+        .build_tx_context(TxContextInput::Account(account), &[], &notes)?
         .build()?;
 
-    let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
@@ -272,7 +266,7 @@ async fn check_note_consumability_epilogue_failure() -> anyhow::Result<()> {
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumption_info = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(account_id, block_ref, notes, tx_args)
         .await?;
 
     assert_matches!(
@@ -334,21 +328,17 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
     builder.add_note(OutputNote::Full(fail_epilogue_note.clone()));
 
     let mock_chain = builder.build()?;
+    let notes = vec![
+        successful_note_1.clone(),
+        fail_epilogue_note.clone(),
+        successful_note_2.clone(),
+        failing_note_1.clone(),
+        successful_note_3.clone(),
+    ];
     let tx_context = mock_chain
-        .build_tx_context(
-            TxContextInput::Account(account),
-            &[],
-            &[
-                successful_note_1.clone(),
-                fail_epilogue_note.clone(),
-                successful_note_2.clone(),
-                failing_note_1.clone(),
-                successful_note_3.clone(),
-            ],
-        )?
+        .build_tx_context(TxContextInput::Account(account), &[], &notes)?
         .build()?;
 
-    let input_notes = tx_context.input_notes().clone();
     let account_id = tx_context.account().id();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
@@ -358,7 +348,7 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
     let notes_checker = NoteConsumptionChecker::new(&executor);
 
     let consumption_info = notes_checker
-        .check_notes_consumability(account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(account_id, block_ref, notes, tx_args)
         .await?;
 
     assert_matches!(

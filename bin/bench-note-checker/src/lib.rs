@@ -49,7 +49,7 @@ impl NoteCheckerMeasurements {
 #[derive(Clone, Debug)]
 pub struct MixedNotesConfig {
     /// Number of failing notes to insert between successful notes.
-    pub failing_note_count: u16,
+    pub failing_note_count: usize,
 }
 
 /// Setup data for the mixed notes benchmark.
@@ -78,7 +78,7 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
 
     // Create many failing notes (division by zero error).
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER)?;
-    let mut failing_notes = Vec::with_capacity(config.failing_note_count as usize);
+    let mut failing_notes = Vec::with_capacity(config.failing_note_count);
 
     for i in 0..config.failing_note_count {
         let mut seed = [0u8; 32];
@@ -126,7 +126,6 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
         .build_tx_context(TxContextInput::AccountId(setup.target_account_id), &[], &setup.notes)?
         .build()?;
 
-    let input_notes = tx_context.input_notes().clone();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
@@ -135,7 +134,7 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
     let checker = NoteConsumptionChecker::new(&executor);
 
     let result = checker
-        .check_notes_consumability(setup.target_account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(setup.target_account_id, block_ref, setup.notes.clone(), tx_args)
         .await?;
 
     // Validate that we got the expected number of successful notes.
