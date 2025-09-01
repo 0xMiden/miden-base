@@ -261,11 +261,9 @@ where
             }
         }
 
-        // Convert successful InputNotes to Notes.
-        let successful = successful_notes;
         // Append failed notes to the list of failed notes provided as input.
         failed_notes.extend(failed_note_index.into_values());
-        NoteConsumptionInfo::new(successful, failed_notes)
+        NoteConsumptionInfo::new(successful_notes, failed_notes)
     }
 
     /// Attempts to execute a transaction with the provided input notes.
