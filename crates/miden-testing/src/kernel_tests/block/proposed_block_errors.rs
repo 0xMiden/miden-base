@@ -582,7 +582,7 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     );
 
     let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
+    let mut account1 = accounts.remove(&1).unwrap();
 
     let note0 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
     let note1 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
@@ -595,13 +595,15 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     let executed_tx0 =
         generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note0.id()]);
 
+    account1.apply_delta(executed_tx0.account_delta())?;
     // Builds a tx on top of the account state from tx0.
     let executed_tx1 =
-        generate_executed_tx_with_authenticated_notes(&chain, executed_tx0.clone(), &[note1.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note1.id()]);
 
+    account1.apply_delta(executed_tx1.account_delta())?;
     // Builds a tx on top of the account state from tx1.
     let executed_tx2 =
-        generate_executed_tx_with_authenticated_notes(&chain, executed_tx1.clone(), &[note2.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note2.id()]);
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.

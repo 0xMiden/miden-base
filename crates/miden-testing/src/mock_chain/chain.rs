@@ -1,4 +1,3 @@
-use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::ToString;
 use alloc::vec::Vec;
@@ -627,14 +626,6 @@ impl MockChain {
                     .clone()
             },
             TxContextInput::Account(account) => account,
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                let mut initial_account = executed_transaction.initial_account().clone();
-                initial_account
-                    .apply_delta(executed_transaction.account_delta())
-                    .context("could not apply delta from previous transaction")?;
-
-                initial_account
-            },
         };
 
         let tx_inputs = self
@@ -1332,7 +1323,6 @@ impl Deserializable for AccountCredentials {
 pub enum TxContextInput {
     AccountId(AccountId),
     Account(Account),
-    ExecutedTransaction(Box<ExecutedTransaction>),
 }
 
 impl TxContextInput {
@@ -1341,9 +1331,6 @@ impl TxContextInput {
         match self {
             TxContextInput::AccountId(account_id) => *account_id,
             TxContextInput::Account(account) => account.id(),
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                executed_transaction.account_id()
-            },
         }
     }
 }
@@ -1357,12 +1344,6 @@ impl From<AccountId> for TxContextInput {
 impl From<Account> for TxContextInput {
     fn from(account: Account) -> Self {
         Self::Account(account)
-    }
-}
-
-impl From<ExecutedTransaction> for TxContextInput {
-    fn from(tx: ExecutedTransaction) -> Self {
-        Self::ExecutedTransaction(Box::new(tx))
     }
 }
 
