@@ -210,7 +210,7 @@ where
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
         let mut remaining_notes = input_notes;
-        let mut failed_note_set = BTreeMap::new();
+        let mut failed_note_index = BTreeMap::new();
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
         for size in 1..=remaining_notes.len() {
@@ -239,6 +239,9 @@ where
                     .await
                 {
                     Ok(()) => {
+                        // The successfully added note might have failed earlier. Remove it from the
+                        // failed list.
+                        failed_note_index.remove(&note.id());
                         // This combination succeeded; remove the most recently added note from
                         // the remaining set.
                         remaining_notes.remove(idx);
@@ -251,7 +254,7 @@ where
                             successful_notes.pop().expect("successful notes should not be empty");
                         // Record the failed note (overwrite previous failures for the relevant
                         // note).
-                        failed_note_set
+                        failed_note_index
                             .insert(failed_note.id(), FailedNote::new(failed_note, error.into()));
                     },
                 }
@@ -261,7 +264,7 @@ where
         // Convert successful InputNotes to Notes.
         let successful = successful_notes;
         // Append failed notes to the list of failed notes provided as input.
-        failed_notes.extend(failed_note_set.into_values());
+        failed_notes.extend(failed_note_index.into_values());
         NoteConsumptionInfo::new(successful, failed_notes)
     }
 
