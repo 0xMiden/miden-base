@@ -6,10 +6,6 @@ use.$kernel::memory
 # ERRORS
 # =================================================================================================
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT="attempted to access note sender from incorrect context"
-
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
-
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
 
 const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255"
@@ -23,32 +19,6 @@ const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 
 # CURRENTLY EXECUTING NOTE PROCEDURES
 # =================================================================================================
-
-#! Returns the sender of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [sender_id_prefix, sender_id_suffix]
-#!
-#! Where:
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender of the note currently
-#!   being processed.
-#!
-#! Panics if:
-#! - the note is not being processed.
-export.get_sender
-    # get the current input note pointer
-    exec.memory::get_current_input_note_ptr
-    # => [ptr]
-
-    # assert the pointer is not zero - this would suggest the procedure has been called from an
-    # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT
-    # => [ptr]
-
-    # get the sender from the note pointer
-    exec.memory::get_input_note_sender
-    # => [sender_id_prefix, sender_id_suffix]
-end
 
 #! Returns the commitment to the note's inputs.
 #!

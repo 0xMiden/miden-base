@@ -1733,7 +1733,6 @@ export.get_input_note_sender
     # reassemble the suffix by multiplying the high part with 2^32 and adding the lo part
     mul.0x0100000000 add swap
     # => [sender_id_prefix, sender_id_suffix]
-
 end
 
 # OUTPUT NOTES

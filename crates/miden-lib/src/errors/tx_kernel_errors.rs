@@ -149,6 +149,8 @@ pub const ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = Masm
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note assets from incorrect context");
 /// Error Message: "attempted to access note inputs from incorrect context"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note inputs from incorrect context");
+/// Error Message: "attempted to access note metadata from incorrect context"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note metadata from incorrect context");
 /// Error Message: "attempted to access note sender from incorrect context"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note sender from incorrect context");
 /// Error Message: "note data does not match the commitment"

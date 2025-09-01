@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
-use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
+use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
@@ -54,7 +54,24 @@ use crate::{
 
 #[test]
 fn test_get_sender_no_sender() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+    // Creates a mockchain with an account and a note that it can consume
+    let tx_context = {
+        let mut builder = MockChain::builder();
+        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+        let p2id_note = builder.add_p2id_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            account.id(),
+            &[FungibleAsset::mock(150)],
+            NoteType::Public,
+        )?;
+        let mut mock_chain = builder.build()?;
+        mock_chain.prove_next_block()?;
+
+        mock_chain
+            .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note])?
+            .build()?
+    };
+
     // calling get_sender should return sender
     let code = "
         use.$kernel::memory
@@ -74,7 +91,10 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
 
     let process = tx_context.execute_code(code);
 
-    assert_execution_error!(process, ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT);
+    assert_execution_error!(
+        process,
+        ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT
+    );
     Ok(())
 }
 

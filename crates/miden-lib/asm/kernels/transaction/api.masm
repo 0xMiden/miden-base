@@ -31,6 +31,8 @@ const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offse
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
 
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT="attempted to access note metadata from incorrect context"
+
 # AUTHENTICATION
 # =================================================================================================
 
@@ -728,7 +730,7 @@ end
 #!   the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose assets info should be returned. Notice that if
 #!   is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be pad.
+#!   assumed to be 0 (pad element).
 #! - num_assets is the number of assets in the specified note.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
 #!
@@ -797,11 +799,15 @@ end
 
 #! Returns the metadata of the input note with the specified index.
 #!
-#! Inputs:  [note_index, pad(15)]
+#! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [METADATA, pad(12)]
 #!
 #! Where:
-#! - note_index is the index of the input note whose metadata should be returned.
+#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose metadata should be returned. Notice that if
+#!   is_current_note flag is true (we should process the currently processed note), this index is
+#!   assumed to be 0 (pad element).
 #! - METADATA is the metadata of the input note.
 #!
 #! Panics if:
@@ -809,13 +815,23 @@ end
 #!
 #! Invocation: dynexec
 export.input_note_get_metadata
-    # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
+    # get the memory pointer to the note with the specified index and verify it is valid
+    swap exec.input_note::get_input_note_ptr swap
+    # => [is_current_note, indexed_input_note_ptr, pad(14)]
 
-    # get the note data pointer by the provided index
-    exec.memory::get_input_note_ptr
-    # => [note_ptr, pad(15)]
+    # get the memory pointer to the currently processed input note
+    exec.memory::get_current_input_note_ptr swap
+    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr, pad(14)]
+
+    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
+    # on the stack. If it is false, indexed_input_note_ptr remains instead.
+    cdrop
+    # => [input_note_ptr', pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT
+    # => [input_note_ptr', pad(15)]
 
     # get the metadata
     exec.memory::get_input_note_metadata
@@ -959,28 +975,6 @@ export.note_get_inputs_commitment_and_len
     # truncate the stack
     swapdw dropw dropw
     # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
-end
-
-#! Returns the sender of the note currently being processed.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [sender_id_prefix, sender_id_suffix, pad(14)]
-#!
-#! Where:
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender account ID of the note
-#!   currently being processed.
-#!
-#! Panics if:
-#! - a note is not being processed.
-#!
-#! Invocation: dynexec
-export.note_get_sender
-    exec.note::get_sender
-    # => [sender_id_prefix, sender_id_suffix, pad(16)]
-
-    # truncate the stack
-    movup.2 drop movup.2 drop
-    # => [sender_id_prefix, sender_id_suffix, pad(14)]
 end
 
 #! Returns the script root of the note currently being processed.

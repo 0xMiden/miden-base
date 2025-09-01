@@ -33,6 +33,7 @@ export.get_assets
     # push the flag indicating that we want to request assets info from the currently processing 
     # note
     push.1
+    # => [1, pad(14), dest_ptr]
 
     exec.kernel_proc_offsets::input_note_get_assets_info_offset
     # => [offset, 1, pad(14), dest_ptr]
@@ -135,17 +136,42 @@ end
 #! Invocation: exec
 export.get_sender
     # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
+    padw padw padw push.0.0
+    # => [pad(14)]
 
-    exec.kernel_proc_offsets::note_get_sender_offset
-    # => [offset, pad(15)]
+    # push the flag indicating that we want to request metadata from the currently processing 
+    # note
+    push.1
+    # => [1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_metadata_offset
+    # => [offset, 1, pad(14)]
 
     syscall.exec_kernel_proc
-    # => [sender, pad(15)]
+    # => [METADATA, pad(12)]
+
+    # extract the sender ID from the metadata word
+    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix, pad(12)]
+
+    drop drop
+    # => [merged_sender_id_type_hint_tag, sender_id_prefix, pad(12)]
+
+    # extract suffix of sender from merged layout, which means clearing the least significant byte
+    u32split swap
+    # => [merged_lo, merged_hi, sender_id_prefix, pad(12)]
+
+    # clear least significant byte
+    u32and.0xffffff00 swap
+    # => [sender_id_suffix_hi, sender_id_suffix_lo, sender_id_prefix, pad(12)]
+
+    # reassemble the suffix by multiplying the high part with 2^32 and adding the lo part
+    mul.0x0100000000 add swap
+    # => [sender_id_prefix, sender_id_suffix, pad(12)]
+
+    # => [sender_id_prefix, sender_id_suffix, 0, 0, 0, 0]
 
     # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
+    swapw dropw swapw dropw movdn.5 movdn.5 dropw
     # => [sender_id_prefix, sender_id_suffix]
 end
 
