@@ -16,6 +16,12 @@ The Miden VM contexts from which procedures can be called are:
 
 If a procedure has multiple context requirements they are combined using `&`. For instance, "Native & Account" means the procedure can only be called when the current account is the native one _and_ only from the account context.
 
+## Implementation
+
+All procedures in the Miden library (except the ones with "Local" context) are implemented as wrappers around underlying kernel procedures. They handle the necessary stack padding and cleanup operations required by the kernel interface, providing a more convenient API for developers.
+
+The procedures maintain the same security and context restrictions as the underlying kernel procedures. When invoking these procedures, ensure that the calling context matches the requirements.
+
 ## Account Procedures (`miden::account`)
 
 Account procedures can be used to read and write to account storage, add or remove assets from the vault and fetch or compute commitments.
@@ -120,9 +126,3 @@ Asset procedures provide utilities for creating fungible and non-fungible assets
 | `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]`<br>Context: Any |
 | `build_non_fungible_asset` | Builds a non-fungible asset for the specified non-fungible faucet and data hash.<br><br>Inputs: `[faucet_id_prefix, DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Local |
 | `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Any |
-
-## Implementation Notes
-
-All procedures in the Miden library (except the ones with "Local" context) are implemented as wrappers around underlying kernel procedures. They handle the necessary stack padding and cleanup operations required by the kernel interface, providing a more convenient API for developers.
-
-The procedures maintain the same security and context restrictions as the underlying kernel procedures. When invoking these procedures, ensure that the calling context matches the specified requirements.
