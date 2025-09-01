@@ -739,23 +739,15 @@ end
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
-    # get the memory pointer to the note with the specified index and verify it is valid
-    swap exec.input_note::get_input_note_ptr swap
-    # => [is_current_note, indexed_input_note_ptr, pad(14)]
-
-    # get the memory pointer to the currently processed input note
-    exec.memory::get_current_input_note_ptr swap
-    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr, pad(14)]
-
-    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
-    # on the stack. If it is false, indexed_input_note_ptr remains instead.
-    cdrop
-    # => [input_note_ptr', pad(15)]
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
     dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT
-    # => [input_note_ptr', pad(15)]
+    # => [input_note_ptr, pad(15)]
 
     # get the assets info
     exec.input_note::get_assets_info
@@ -815,18 +807,10 @@ end
 #!
 #! Invocation: dynexec
 export.input_note_get_metadata
-    # get the memory pointer to the note with the specified index and verify it is valid
-    swap exec.input_note::get_input_note_ptr swap
-    # => [is_current_note, indexed_input_note_ptr, pad(14)]
-
-    # get the memory pointer to the currently processed input note
-    exec.memory::get_current_input_note_ptr swap
-    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr, pad(14)]
-
-    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
-    # on the stack. If it is false, indexed_input_note_ptr remains instead.
-    cdrop
-    # => [input_note_ptr', pad(15)]
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
@@ -1356,4 +1340,35 @@ export.exec_kernel_proc
     # execute loaded procedure
     dynexec
     # => [<procedure_outputs>, <pad>]
+end
+
+#! Returns the memory pointer to the input note, depending on whether the requested note is current
+#! or it was requested by index.
+#!
+#! Inputs:  [is_current_note, note_index]
+#! Outputs: [input_note_ptr]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose assets info should be returned. Notice that if
+#!   is_current_note flag is true (we should process the currently processed note), this index is
+#!   assumed to be 0 (pad element).
+#! - input_note_ptr is the pointer to the correct input note. 
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+proc.get_requested_note_ptr
+    # get the memory pointer to the note with the specified index and verify it is valid
+    swap exec.input_note::get_input_note_ptr swap
+    # => [is_current_note, indexed_input_note_ptr]
+
+    # get the memory pointer to the currently processed input note
+    exec.memory::get_current_input_note_ptr swap
+    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr]
+
+    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
+    # on the stack. If it is false, indexed_input_note_ptr remains instead.
+    cdrop
+    # => [input_note_ptr]
 end
