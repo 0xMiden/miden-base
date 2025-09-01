@@ -5,6 +5,8 @@ use miden_processor::DeserializationError;
 use crate::account::AccountId;
 use crate::{Felt, Hasher, NoteError, WORD_SIZE, ZERO};
 
+use alloc::sync::Arc;
+
 mod assets;
 pub use assets::NoteAssets;
 
@@ -231,6 +233,15 @@ impl Serializable for Note {
 
         // only metadata is serialized as note ID can be computed from note details
         header.metadata().write_into(target);
+        let mut mast = details.script().mast().clone();
+        Arc::make_mut(&mut mast).strip_decorators();
+        let recipient = NoteRecipient::new(
+            details.serial_num(),
+            NoteScript::from_parts(mast, details.script().entrypoint()),
+            details.inputs().clone(),
+        );
+
+        let details = NoteDetails::new(details.assets().clone(), recipient);
         details.write_into(target);
     }
 }
