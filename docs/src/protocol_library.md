@@ -29,10 +29,10 @@ Account procedures can be used to read and write to account storage, add or remo
 | --- | --- |
 | `get_id` | Returns the account ID of the current account.<br><br>Inputs: `[]`<br>Outputs: `[account_id_prefix, account_id_suffix]`<br>Context: Any |
 | `get_nonce` | Returns the nonce of the current account. Always returns the initial nonce as it can only be incremented in auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[nonce]`<br>Context: Any |
+| `incr_nonce` | Increments the account nonce by one and returns the new nonce. Can only be called from auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[final_nonce]`<br>Context: Auth |
 | `get_initial_commitment` | Returns the native account commitment at the beginning of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[INIT_COMMITMENT]`<br>Context: Any |
 | `compute_current_commitment` | Computes and returns the account commitment from account data stored in memory.<br><br>Inputs: `[]`<br>Outputs: `[ACCOUNT_COMMITMENT]`<br>Context: Any |
 | `compute_delta_commitment` | Computes the commitment to the native account's delta. Can only be called from auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[DELTA_COMMITMENT]`<br>Context: Auth |
-| `incr_nonce` | Increments the account nonce by one and returns the new nonce. Can only be called from auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[final_nonce]`<br>Context: Auth |
 | `get_item` | Gets an item from the account storage.<br><br>Inputs: `[index]`<br>Outputs: `[VALUE]`<br>Context: Account |
 | `set_item` | Sets an item in the account storage.<br><br>Inputs: `[index, VALUE]`<br>Outputs: `[OLD_VALUE]`<br>Context: Native & Account |
 | `get_map_item` | Returns the VALUE located under the specified KEY within the map contained in the given account storage slot.<br><br>Inputs: `[index, KEY]`<br>Outputs: `[VALUE]`<br>Context: Account |
@@ -46,11 +46,11 @@ Account procedures can be used to read and write to account storage, add or remo
 | `remove_asset` | Removes the specified asset from the vault.<br><br>Inputs: `[ASSET]`<br>Outputs: `[ASSET]`<br>Context: Native & Account |
 | `get_initial_vault_root` | Returns the vault root of the native account at the beginning of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[INIT_VAULT_ROOT]`<br>Context: Any |
 | `get_vault_root` | Returns the vault root of the current account.<br><br>Inputs: `[]`<br>Outputs: `[VAULT_ROOT]`<br>Context: Any |
-| `was_procedure_called` | Checks if a procedure has been called during transaction execution.<br><br>Inputs: `[PROC_ROOT]`<br>Outputs: `[was_called]`<br>Context: Any |
+| `was_procedure_called` | Returns 1 if a procedure was called during transaction execution, and 0 otherwise.<br><br>Inputs: `[PROC_ROOT]`<br>Outputs: `[was_called]`<br>Context: Any |
 
 ## Note Procedures (`miden::note`)
 
-Note procedures can be used to fetch data from the note that is currently being processed and manipulate note assets.
+Note procedures can be used to fetch data from the note that is currently being processed.
 
 | Procedure | Description |
 | --- | --- |
@@ -70,8 +70,8 @@ Input note procedures can be used to fetch data on input notes consumed by the t
 | --- | --- |
 | `get_assets_info` | Returns the information about assets in the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[ASSETS_COMMITMENT, num_assets]`<br>Context: Any |
 | `get_assets` | Writes the assets of the input note with the specified index into memory starting at the specified address.<br><br>Inputs: `[dest_ptr, note_index]`<br>Outputs: `[num_assets, dest_ptr, note_index]`<br>Context: Any |
-| `get_recipient` | Returns the recipient of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]`<br>Context: Any |
-| `get_metadata` | Returns the metadata of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]`<br>Context: Any |
+| `get_recipient` | Returns the [recipient](note.md#note-recipient-restricting-consumption) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]`<br>Context: Any |
+| `get_metadata` | Returns the [metadata](note.md#metadata) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]`<br>Context: Any |
 
 ## Output Note Procedures (`miden::output_note`)
 
@@ -81,8 +81,8 @@ Output note procedures can be used to fetch data on output notes created by the 
 | --- | --- |
 | `get_assets_info` | Returns the information about assets in the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[ASSETS_COMMITMENT, num_assets]`<br>Context: Any |
 | `get_assets` | Writes the assets of the output note with the specified index into memory starting at the specified address.<br><br>Inputs: `[dest_ptr, note_index]`<br>Outputs: `[num_assets, dest_ptr, note_index]`<br>Context: Any |
-| `get_recipient` | Returns the recipient of the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]`<br>Context: Any |
-| `get_metadata` | Returns the metadata of the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]`<br>Context: Any |
+| `get_recipient` | Returns the [recipient](note.md#note-recipient-restricting-consumption) of the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]`<br>Context: Any |
+| `get_metadata` | Returns the [metadata](note.md#metadata) of the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]`<br>Context: Any |
 
 ## Transaction Procedures (`miden::tx`)
 
@@ -122,6 +122,6 @@ Asset procedures provide utilities for creating fungible and non-fungible assets
 | Procedure | Description |
 | --- | --- |
 | `build_fungible_asset` | Builds a fungible asset for the specified fungible faucet and amount.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix, amount]`<br>Outputs: `[ASSET]`<br>Context: Any |
-| `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]`<br>Context: Any |
+| `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]`<br>Context: Faucet |
 | `build_non_fungible_asset` | Builds a non-fungible asset for the specified non-fungible faucet and data hash.<br><br>Inputs: `[faucet_id_prefix, DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Any |
-| `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Any |
+| `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]`<br>Context: Faucet |

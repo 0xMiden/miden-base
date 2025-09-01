@@ -556,7 +556,7 @@ export.get_vault_root
     # => [VAULT_ROOT]
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Note: This returns 1 only if the procedure invoked account-restricted kernel APIs (e.g.,
 #! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute

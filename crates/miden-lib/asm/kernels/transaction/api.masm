@@ -1327,7 +1327,7 @@ export.tx_get_expiration_delta
     # => [block_height_delta, pad(15)]
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT, pad(12)]
 #! Outputs: [was_called, pad(15)]
