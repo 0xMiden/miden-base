@@ -181,10 +181,8 @@ pub const ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_COMMITMENT: Mas
 pub const ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_NUMBER_COMMITMENT: MasmError = MasmError::from_static_str("the provided global inputs do not match the block number commitment");
 /// Error Message: "note commitment computed from the input note data does not match given note commitment"
 pub const ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("note commitment computed from the input note data does not match given note commitment");
-/// Error Message: "sequential hash over kernel commitments does not match tx kernel commitment from block"
-pub const ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel commitments does not match tx kernel commitment from block");
-/// Error Message: "sequential hash over kernel procedures does not match kernel commitment"
-pub const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel procedures does not match kernel commitment");
+/// Error Message: "sequential hash over kernel procedures does not match kernel commitment from block"
+pub const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel procedures does not match kernel commitment from block");
 /// Error Message: "account IDs provided via global inputs and advice provider do not match"
 pub const ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER: MasmError = MasmError::from_static_str("account IDs provided via global inputs and advice provider do not match");
 /// Error Message: "reference block MMR and note's authentication MMR must match"
