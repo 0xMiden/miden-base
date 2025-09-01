@@ -139,7 +139,7 @@ impl AccountStorage {
 pub fn prepare_assets(note_assets: &NoteAssets) -> Vec<String> {
     let mut assets = Vec::new();
     for &asset in note_assets.iter() {
-        let asset_word: Word = asset.into();
+        let asset_word = Word::from(asset);
         assets.push(asset_word.to_string());
     }
     assets

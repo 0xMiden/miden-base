@@ -162,7 +162,9 @@ impl AssetVault {
                 current.add(asset).map_err(AssetVaultError::AddFungibleAssetBalanceError)?
             },
         };
-        self.asset_tree.insert(new.vault_key(), new.into());
+        self.asset_tree
+            .insert(new.vault_key(), new.into())
+            .map_err(AssetVaultError::ExceededMaxLeaves)?;
 
         // return the new asset
         Ok(new)
@@ -177,7 +179,10 @@ impl AssetVault {
         asset: NonFungibleAsset,
     ) -> Result<NonFungibleAsset, AssetVaultError> {
         // add non-fungible asset to the vault
-        let old = self.asset_tree.insert(asset.vault_key(), asset.into());
+        let old = self
+            .asset_tree
+            .insert(asset.vault_key(), asset.into())
+            .map_err(AssetVaultError::ExceededMaxLeaves)?;
 
         // if the asset already exists, return an error
         if old != Smt::EMPTY_VALUE {
@@ -234,7 +239,9 @@ impl AssetVault {
             0 => Smt::EMPTY_VALUE,
             _ => new.into(),
         };
-        self.asset_tree.insert(new.vault_key(), value);
+        self.asset_tree
+            .insert(new.vault_key(), value)
+            .map_err(AssetVaultError::ExceededMaxLeaves)?;
 
         // return the asset that was removed.
         Ok(asset)
@@ -250,7 +257,10 @@ impl AssetVault {
         asset: NonFungibleAsset,
     ) -> Result<NonFungibleAsset, AssetVaultError> {
         // remove the asset from the vault.
-        let old = self.asset_tree.insert(asset.vault_key(), Smt::EMPTY_VALUE);
+        let old = self
+            .asset_tree
+            .insert(asset.vault_key(), Smt::EMPTY_VALUE)
+            .map_err(AssetVaultError::ExceededMaxLeaves)?;
 
         // return an error if the asset did not exist in the vault.
         if old == Smt::EMPTY_VALUE {

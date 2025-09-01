@@ -1,7 +1,7 @@
 use alloc::collections::BTreeMap;
 
 use miden_core::EMPTY_WORD;
-use miden_crypto::merkle::EmptySubtreeRoots;
+use miden_crypto::merkle::{EmptySubtreeRoots, MerkleError};
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
 use crate::Hasher;
@@ -146,7 +146,7 @@ impl StorageMap {
     /// [`Self::EMPTY_VALUE`] if no entry was previously present.
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
-    pub fn insert(&mut self, key: Word, value: Word) -> Word {
+    pub fn insert(&mut self, key: Word, value: Word) -> Result<Word, MerkleError> {
         if value == EMPTY_WORD {
             self.map.remove(&key);
         } else {
@@ -158,13 +158,13 @@ impl StorageMap {
     }
 
     /// Applies the provided delta to this account storage.
-    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Word {
+    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Result<Word, MerkleError> {
         // apply the updated and cleared leaves to the storage map
         for (&key, &value) in delta.entries().iter() {
-            self.insert(key.into_inner(), value);
+            self.insert(key.into_inner(), value)?;
         }
 
-        self.root()
+        Ok(self.root())
     }
 
     /// Consumes the map and returns the underlying map of entries.

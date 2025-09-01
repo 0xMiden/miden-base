@@ -6,6 +6,7 @@ use core::fmt::{self, Display};
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_core::{Felt, Word};
+use miden_crypto::WordError;
 use miden_crypto::dsa::rpo_falcon512::{self};
 use miden_crypto::word::parse_hex_string_as_word;
 use miden_processor::DeserializationError;
@@ -56,7 +57,7 @@ impl StorageValueName {
     /// A [`StorageValueName`] serves as an identifier for storage values that are determined at
     /// instantiation time of an [AccountComponentTemplate](super::super::AccountComponentTemplate).
     ///
-    /// The key can consist of one or more segments separated by dots (`.`).  
+    /// The key can consist of one or more segments separated by dots (`.`).
     /// Each segment must be non-empty and may contain only alphanumeric characters, underscores
     /// (`_`), or hyphens (`-`).
     ///
@@ -379,12 +380,12 @@ impl TemplateWord for Word {
         TemplateType::native_word()
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        parse_hex_string_as_word(input)
+        Word::try_from(input)
             .map_err(|err| {
                 TemplateTypeError::parse(
                     Self::type_name().as_str(),
                     Self::type_name(),
-                    WordParseError(err.into()),
+                    WordParseError(err.to_string()),
                 )
             })
             .map(Word::from)
@@ -396,12 +397,12 @@ impl TemplateWord for rpo_falcon512::PublicKey {
         TemplateType::new("auth::rpo_falcon512::pub_key").expect("type is well formed")
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        parse_hex_string_as_word(input)
+        Word::try_from(input)
             .map_err(|err| {
                 TemplateTypeError::parse(
                     input.to_string(),
                     Self::type_name(),
-                    WordParseError(err.into()),
+                    WordParseError(err.to_string()),
                 )
             })
             .map(Word::from)

@@ -83,7 +83,9 @@ pub mod crypto {
 pub mod utils {
     pub use miden_core::utils::*;
     pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
-    pub use miden_crypto::word::parse_hex_string_as_word;
+    pub mod collections {
+        pub use miden_crypto::Map;
+    }
     pub use miden_utils_sync as sync;
 
     pub mod serde {

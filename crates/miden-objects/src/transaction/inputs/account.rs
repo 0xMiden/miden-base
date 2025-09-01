@@ -1,3 +1,5 @@
+use miden_crypto::merkle::SparseMerklePath;
+
 use crate::Word;
 use crate::account::{AccountCode, AccountId, PartialAccount, PartialStorage};
 use crate::asset::PartialVault;
@@ -66,6 +68,8 @@ impl AccountInputs {
     /// This root should be equal to the account root in the reference block header.
     pub fn compute_account_root(&self) -> Result<Word, SmtProofError> {
         let smt_merkle_path = self.witness.path().clone();
+        let smt_merkle_path = SparseMerklePath::try_from(smt_merkle_path)
+            .expect("Only ever exists for merkle paths that match the SMT depth by construction");
         let smt_leaf = self.witness.leaf();
         let root = SmtProof::new(smt_merkle_path, smt_leaf)?.compute_root();
 

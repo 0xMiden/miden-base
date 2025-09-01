@@ -153,6 +153,8 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error("applying the storage delta failed")]
+    ApplyStorageDelta(#[source] MerkleError),
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]
@@ -226,6 +228,10 @@ pub enum AccountTreeError {
     TreeRootConflict(#[source] MerkleError),
     #[error("failed to apply mutations to account tree")]
     ApplyMutations(#[source] MerkleError),
+    #[error("failed to compute account mutations")]
+    ComputeMutations(#[source] MerkleError),
+    #[error("exceeded max number of values per key")]
+    MaxValuesPerKeyExceeded(#[source] MerkleError),
     #[error("smt leaf's index is not a valid account ID prefix")]
     InvalidAccountIdPrefix(#[source] AccountIdError),
     #[error("account witness merkle path depth {0} does not match AccountTree::DEPTH")]
@@ -421,6 +427,8 @@ pub enum AssetVaultError {
     NonFungibleAssetNotFound(NonFungibleAsset),
     #[error("subtracting fungible asset amounts would underflow")]
     SubtractFungibleAssetBalanceError(#[source] AssetError),
+    #[error("exceeded maximum number of leaves per key")]
+    ExceededMaxLeaves(#[source] MerkleError),
 }
 
 // PARTIAL ASSET VAULT ERROR
@@ -971,4 +979,10 @@ pub enum NullifierTreeError {
 
     #[error("new tree root after nullifier witness insertion does not match previous tree root")]
     TreeRootConflict(#[source] MerkleError),
+
+    #[error("mutation derivation failed")]
+    MutationDerivationIssue(#[source] MerkleError),
+
+    #[error("exceeded the maximum number of values per key")]
+    MaxValuesPerKeyExceeded(#[source] MerkleError),
 }

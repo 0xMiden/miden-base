@@ -2,6 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
+use std::borrow::ToOwned;
 
 use miden_core::Felt;
 use serde::de::value::MapAccessDeserializer;
@@ -9,6 +10,7 @@ use serde::de::{self, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
+use vm_core::{Felt, Word};
 
 use super::placeholder::TemplateType;
 use super::{
@@ -25,7 +27,6 @@ use crate::account::component::FieldIdentifier;
 use crate::account::component::template::storage::placeholder::{TEMPLATE_REGISTRY, TemplateFelt};
 use crate::account::{AccountComponentMetadata, StorageValueName};
 use crate::errors::AccountComponentTemplateError;
-use crate::utils::parse_hex_string_as_word;
 
 // ACCOUNT COMPONENT METADATA TOML FROM/TO
 // ================================================================================================
@@ -105,13 +106,13 @@ impl<'de> Deserialize<'de> for WordRepresentation {
             where
                 E: Error,
             {
-                let parsed_value = parse_hex_string_as_word(value).map_err(|_err| {
+                let parsed_value = Word::parse(value).map_err(|_err| {
                     E::invalid_value(
                         serde::de::Unexpected::Str(value),
                         &"a valid hexadecimal string",
                     )
                 })?;
-                Ok(parsed_value.into())
+                Ok(<[Felt; _]>::from(&parsed_value).into())
             }
 
             fn visit_string<E>(self, value: String) -> Result<Self::Value, E>
