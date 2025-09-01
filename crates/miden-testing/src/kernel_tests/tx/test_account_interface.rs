@@ -309,13 +309,14 @@ async fn check_note_consumability_epilogue_failure_with_new_combination() -> any
         &[FungibleAsset::mock(145)],
         NoteType::Public,
     )?;
-    let successful_note_3 = builder.add_p2id_note(
-        ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-        account.id(),
-        &[FungibleAsset::mock(250)],
-        NoteType::Public,
-    )?;
     let sender = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
+    let successful_note_3 = NoteBuilder::new(
+        sender,
+        ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),
+    )
+    .code("begin push.1 drop push.1 div end")
+    .dynamically_linked_libraries([TransactionKernel::library()])
+    .build()?;
     let failing_note_1 = NoteBuilder::new(
         sender,
         ChaCha20Rng::from_seed(ChaCha20Rng::from_seed([0_u8; 32]).random()),

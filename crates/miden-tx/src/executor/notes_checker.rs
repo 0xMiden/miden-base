@@ -1,3 +1,4 @@
+use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
 
 use miden_lib::note::well_known_note::WellKnownNote;
@@ -206,6 +207,7 @@ where
     ) -> NoteConsumptionInfo {
         let mut successful_notes = Vec::new();
         let mut remaining_notes = input_notes;
+        let mut failed_note_set = BTreeMap::new();
 
         // Iterate by note count: try 1 note, then 2, then 3, etc.
         for size in 1..=remaining_notes.len() {
@@ -238,8 +240,12 @@ where
                         // continue to next note.
                         let failed_note =
                             successful_notes.pop().expect("successful notes should not be empty");
-                        // Record the failed note.
-                        failed_notes.push(FailedNote::new(failed_note.into_note(), error.into()));
+                        // Record the failed note (overwrite previous failures for the relevant
+                        // note).
+                        failed_note_set.insert(
+                            failed_note.id(),
+                            FailedNote::new(failed_note.into_note(), error.into()),
+                        );
                     },
                 }
             }
@@ -247,6 +253,8 @@ where
 
         // Convert successful InputNotes to Notes.
         let successful = successful_notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
+        // Append failed notes to the list of failed notes provided as input.
+        failed_notes.extend(failed_note_set.into_values());
         NoteConsumptionInfo::new(successful, failed_notes)
     }
 
@@ -270,7 +278,7 @@ where
         // check (rather than doing this every time when we try to execute some subset of notes),
         // but we currently cannot do this because transaction preparation includes input notes;
         // we should refactor the preparation process to separate input note preparation from the
-        // rest, and then we can prepare the rest of the inputs once for the whole check
+        // rest, and then we can prepare the rest of the inputs once for the whole check.
         let (mut host, _, stack_inputs, advice_inputs) = self
             .0
             .prepare_transaction(account_id, block_ref, notes, tx_args, None)
