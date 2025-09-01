@@ -9,6 +9,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- Remove some of the `note` kernel procedures and use `input_note` procedures instead ([#1834](https://github.com/0xMiden/miden-base/pull/1834)).
 
 ## 0.11.1 (2025-08-28)
 
