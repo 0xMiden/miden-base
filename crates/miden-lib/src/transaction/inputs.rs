@@ -56,13 +56,13 @@ impl TransactionAdviceInputs {
 
         // --- native account injection ---------------------------------------
 
-        let native_acc = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native_acc)?;
+        let partial_native_acc = tx_inputs.partial_account();
+        inputs.add_account(partial_native_acc)?;
 
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
-            let account_id_key = build_account_id_key(native_acc.id());
+            let account_id_key = build_account_id_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
@@ -166,16 +166,16 @@ impl TransactionAdviceInputs {
         self.extend_stack([Felt::from(kernel_version)]);
 
         // --- core account items (keep in sync with process_account_data) ----
-        let account = tx_inputs.account();
+        let partial_account = tx_inputs.partial_account();
         self.extend_stack([
-            account.id().suffix(),
-            account.id().prefix().as_felt(),
+            partial_account.id().suffix(),
+            partial_account.id().prefix().as_felt(),
             ZERO,
-            account.nonce(),
+            partial_account.nonce(),
         ]);
-        self.extend_stack(account.vault().root());
-        self.extend_stack(account.storage().commitment());
-        self.extend_stack(account.code().commitment());
+        self.extend_stack(partial_account.vault().root());
+        self.extend_stack(partial_account.storage().commitment());
+        self.extend_stack(partial_account.code().commitment());
 
         // --- number of notes, script root and args --------------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);

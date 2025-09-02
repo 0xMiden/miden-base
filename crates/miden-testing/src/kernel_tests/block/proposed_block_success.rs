@@ -285,11 +285,11 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     let state_updating_tx = generate_conditional_tx(&mut chain, account0.clone(), true);
 
     // sanity check: NOOP transaction's init and final commitment should be the same.
-    assert_eq!(noop_tx.initial_account().commitment(), noop_tx.final_account().commitment());
+    assert_eq!(noop_tx.initial_account().to_commitment(), noop_tx.final_account().commitment());
     // sanity check: State-updating transaction's init and final commitment should *not* be the
     // same.
     assert_ne!(
-        state_updating_tx.initial_account().commitment(),
+        state_updating_tx.initial_account().to_commitment(),
         state_updating_tx.final_account().commitment()
     );
 

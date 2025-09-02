@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::AccountId;
+use miden_objects::account::{AccountId, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
@@ -272,7 +272,8 @@ where
 
         validate_account_inputs(tx_args, &ref_block)?;
 
-        let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
+        let partial_account = PartialAccount::from(account);
+        let tx_inputs = TransactionInputs::new(partial_account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
@@ -298,7 +299,7 @@ where
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
-            &tx_inputs.account().into(),
+            tx_inputs.partial_account(),
             input_notes.clone(),
             self.data_store,
             script_mast_store,
@@ -327,7 +328,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
-    let (pre_fee_account_delta, output_notes, generated_signatures, tx_progress) =
+    let (pre_fee_account_delta, _input_notes, output_notes, generated_signatures, tx_progress) =
         host.into_parts();
 
     let tx_outputs =
@@ -349,7 +350,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         .remove_asset(Asset::from(tx_outputs.fee))
         .map_err(TransactionExecutorError::RemoveFeeAssetFromDelta)?;
 
-    let initial_account = tx_inputs.account();
+    let initial_account = tx_inputs.partial_account();
     let final_account = &tx_outputs.account;
 
     if initial_account.id() != final_account.id() {

@@ -896,10 +896,7 @@ impl MockChain {
     pub fn add_pending_executed_transaction(
         &mut self,
         transaction: &ExecutedTransaction,
-    ) -> anyhow::Result<Account> {
-        let mut account = transaction.initial_account().clone();
-        account.apply_delta(transaction.account_delta())?;
-
+    ) -> anyhow::Result<()> {
         // Transform the executed tx into a proven tx with a dummy proof.
         let proven_tx = LocalTransactionProver::default()
             .prove_dummy(transaction.clone())
@@ -907,7 +904,7 @@ impl MockChain {
 
         self.pending_transactions.push(proven_tx);
 
-        Ok(account)
+        Ok(())
     }
 
     /// Adds the given [`ProvenTransaction`] to the list of pending transactions.

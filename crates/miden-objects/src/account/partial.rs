@@ -1,7 +1,9 @@
-use miden_core::Felt;
 use miden_core::utils::{Deserializable, Serializable};
+use miden_core::{Felt, ZERO};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
+use crate::Word;
+use crate::account::hash_account;
 use crate::asset::PartialVault;
 
 /// A partial representation of an account.
@@ -9,6 +11,8 @@ use crate::asset::PartialVault;
 /// A partial account is used as inputs to the transaction kernel and contains only the essential
 /// data needed for verification and transaction processing without requiring the full account
 /// state.
+///
+/// For new accounts, the partial storage must be the full initial account storage.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct PartialAccount {
     /// The ID for the partial account
@@ -66,6 +70,51 @@ impl PartialAccount {
     /// Returns a reference to the partial vault representation of the account.
     pub fn vault(&self) -> &PartialVault {
         &self.partial_vault
+    }
+
+    /// Returns true if the account is new (i.e. its nonce is zero and it hasn't been registered on
+    /// chain yet).
+    pub fn is_new(&self) -> bool {
+        self.nonce == ZERO
+    }
+
+    /// Returns the commitment of this account.
+    ///
+    /// The commitment of an account is computed as:
+    ///
+    /// ```text
+    /// hash(id, nonce, vault_root, storage_commitment, code_commitment).
+    /// ```
+    pub fn to_commitment(&self) -> Word {
+        hash_account(
+            self.id,
+            self.nonce,
+            self.vault().root(),
+            self.storage().commitment(),
+            self.code().commitment(),
+        )
+    }
+
+    /// Returns the commitment of this account as used for the initial account state commitment in
+    /// transaction proofs.
+    ///
+    /// For existing accounts, this is exactly the same as [Account::commitment()], however, for new
+    /// accounts this value is set to [`Word::empty`]. This is because when a transaction is
+    /// executed against a new account, public input for the initial account state is set to
+    /// [`Word::empty`] to distinguish new accounts from existing accounts. The actual
+    /// commitment of the initial account state (and the initial state itself), are provided to
+    /// the VM via the advice provider.
+    pub fn initial_commitment(&self) -> Word {
+        if self.is_new() {
+            Word::empty()
+        } else {
+            self.to_commitment()
+        }
+    }
+
+    /// Consumes self and returns the underlying parts of the partial account.
+    pub fn into_parts(self) -> (AccountId, Felt, AccountCode, PartialStorage, PartialVault) {
+        (self.id, self.nonce, self.account_code, self.partial_storage, self.partial_vault)
     }
 }
 
