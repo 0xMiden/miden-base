@@ -101,8 +101,8 @@ Transaction procedures manage transaction-level operations including note creati
 | `add_asset_to_note` | Adds the ASSET to the note specified by the index.<br><br>Inputs: `[ASSET, note_idx]`<br>Outputs: `[ASSET, note_idx]` | Native |
 | `build_recipient_hash` | Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
 | `execute_foreign_procedure` | Executes the provided procedure against the foreign account.<br><br>Inputs: `[foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, <inputs>, pad(n)]`<br>Outputs: `[<outputs>]` | Any |
-| `update_expiration_block_delta` | Updates the transaction expiration delta.<br><br>Inputs: `[block_height_delta]`<br>Outputs: `[]` | Any |
 | `get_expiration_block_delta` | Returns the transaction expiration delta, or 0 if not set.<br><br>Inputs: `[]`<br>Outputs: `[block_height_delta]` | Any |
+| `update_expiration_block_delta` | Updates the transaction expiration delta.<br><br>Inputs: `[block_height_delta]`<br>Outputs: `[]` | Any |
 
 ## Faucet Procedures (`miden::faucet`)
 
