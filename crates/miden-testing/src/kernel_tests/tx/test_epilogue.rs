@@ -310,7 +310,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         .build()?;
 
     let input_note = create_spawn_note(
-        ACCOUNT_ID_SENDER.try_into()?,
+        account.id(),
         vec![&output_note_1, &output_note_2, &output_note_3],
     )?;
 
