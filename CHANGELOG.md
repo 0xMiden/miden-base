@@ -9,6 +9,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- [BREAKING] Remove `MockChain::add_pending_p2id_note` in favor of using `MockChainBuilder` ([#1842](https://github.com/0xMiden/miden-base/pull/#1842)).
 
 ## 0.11.1 (2025-08-28)
 
