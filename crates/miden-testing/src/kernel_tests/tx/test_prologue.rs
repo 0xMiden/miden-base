@@ -353,23 +353,17 @@ fn partial_blockchain_memory_assertions(process: &Process, prepared_tx: &Transac
 }
 
 fn kernel_data_memory_assertions(process: &Process) {
-    let latest_version_procedures = TransactionKernel::PROCEDURES
-        .last()
-        .expect("kernel should have at least one version");
-
     // check that the number of kernel procedures stored in the memory is equal to the number of
-    // kernel procedures in the `TransactionKernel` array.
-    //
-    // By default we check procedures of the latest kernel version
+    // procedures in the `TransactionKernel::PROCEDURES` array
     assert_eq!(
         process.get_kernel_mem_word(NUM_KERNEL_PROCEDURES_PTR)[0].as_int(),
-        latest_version_procedures.len() as u64,
+        TransactionKernel::PROCEDURES.len() as u64,
         "Number of the kernel procedures should be stored at the NUM_KERNEL_PROCEDURES_PTR"
     );
 
     // check that the hashes of the kernel procedures stored in the memory is equal to the hashes in
-    // `TransactionKernel`'s procedures array
-    for (i, &proc_hash) in latest_version_procedures.iter().enumerate() {
+    // `TransactionKernel::PROCEDURES` array
+    for (i, &proc_hash) in TransactionKernel::PROCEDURES.iter().enumerate() {
         assert_eq!(
             process.get_kernel_mem_word(KERNEL_PROCEDURES_PTR + (i * WORD_SIZE) as u32),
             proc_hash,
