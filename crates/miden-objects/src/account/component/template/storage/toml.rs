@@ -4,13 +4,12 @@ use alloc::vec::Vec;
 use core::fmt;
 use std::borrow::ToOwned;
 
-use miden_core::Felt;
+use miden_core::{Felt, Word};
 use serde::de::value::MapAccessDeserializer;
 use serde::de::{self, Error, MapAccess, SeqAccess, Visitor};
 use serde::ser::{SerializeMap, SerializeStruct};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
-use vm_core::{Felt, Word};
 
 use super::placeholder::TemplateType;
 use super::{

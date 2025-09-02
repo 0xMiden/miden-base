@@ -82,7 +82,7 @@ pub mod crypto {
 
 pub mod utils {
     pub use miden_core::utils::*;
-    pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, collections, hex_to_bytes};
+    pub use miden_crypto::utils::{HexParseError, bytes_to_hex_string, hex_to_bytes};
     pub mod collections {
         pub use miden_crypto::Map;
     }
