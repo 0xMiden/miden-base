@@ -177,6 +177,7 @@ impl ExecutedTransaction {
             tx_args: self.tx_args,
             advice_witness: self.advice_witness,
         };
+
         (self.account_delta, self.tx_outputs, tx_witness, self.tx_measurements)
     }
 }
