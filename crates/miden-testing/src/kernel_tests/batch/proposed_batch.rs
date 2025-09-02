@@ -294,8 +294,14 @@ async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()>
     let block3 = chain.prove_next_block()?;
 
     assert_eq!(block1.output_notes().count(), 2, "block 1 should contain note1 and note2");
-    assert!(block1.output_notes().any(|note| note.1.commitment() == note1.commitment()));
-    assert!(block1.output_notes().any(|note| note.1.commitment() == note2.commitment()));
+    assert!(
+        block1.output_notes().any(|(_, note)| note.commitment() == note1.commitment()),
+        "block 1 should contain note1"
+    );
+    assert!(
+        block1.output_notes().any(|(_, note)| note.commitment() == note2.commitment()),
+        "block 1 should contain note2"
+    );
 
     // Consume the authenticated note as an unauthenticated one in the transaction.
     let tx1 =
