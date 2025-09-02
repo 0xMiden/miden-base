@@ -5,10 +5,8 @@ use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AuthSecretKey, StorageSlot};
-use miden_objects::asset::Asset;
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::{
     AccountTree,
@@ -23,7 +21,7 @@ use miden_objects::block::{
     ProvenBlock,
 };
 use miden_objects::crypto::merkle::SmtProof;
-use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier};
+use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
@@ -36,8 +34,7 @@ use miden_objects::transaction::{
     TransactionHeader,
     TransactionInputs,
 };
-use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH};
 use miden_processor::{DeserializationError, Word};
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
@@ -935,63 +932,6 @@ impl MockChain {
         self.pending_output_notes.push(note);
     }
 
-    /// Adds a plain P2ID [`OutputNote`] to the list of pending notes.
-    ///
-    /// The note is immediately spendable by `target_account_id` and carries no
-    /// additional reclaim or timelock conditions.
-    pub fn add_pending_p2id_note(
-        &mut self,
-        sender_account_id: AccountId,
-        target_account_id: AccountId,
-        asset: &[Asset],
-        note_type: NoteType,
-    ) -> Result<Note, NoteError> {
-        let mut rng = RpoRandomCoin::new(Word::empty());
-
-        let note = create_p2id_note(
-            sender_account_id,
-            target_account_id,
-            asset.to_vec(),
-            note_type,
-            Default::default(),
-            &mut rng,
-        )?;
-
-        self.add_pending_note(OutputNote::Full(note.clone()));
-        Ok(note)
-    }
-
-    /// Adds a P2IDE [`OutputNote`] (pay‑to‑ID‑extended) to the list of pending notes.
-    ///
-    /// A P2IDE note can include an optional `timelock_height` and/or an optional
-    /// `reclaim_height` after which the `sender_account_id` may reclaim the
-    /// funds.
-    pub fn add_pending_p2ide_note(
-        &mut self,
-        sender_account_id: AccountId,
-        target_account_id: AccountId,
-        asset: &[Asset],
-        note_type: NoteType,
-        reclaim_height: Option<BlockNumber>,
-        timelock_height: Option<BlockNumber>,
-    ) -> Result<Note, NoteError> {
-        let mut rng = RpoRandomCoin::new(Word::empty());
-
-        let note = create_p2ide_note(
-            sender_account_id,
-            target_account_id,
-            asset.to_vec(),
-            reclaim_height,
-            timelock_height,
-            note_type,
-            Default::default(),
-            &mut rng,
-        )?;
-
-        self.add_pending_note(OutputNote::Full(note.clone()));
-        Ok(note)
-    }
-
     // PRIVATE HELPERS
     // ----------------------------------------------------------------------------------------
 
@@ -1373,7 +1313,8 @@ impl From<ExecutedTransaction> for TxContextInput {
 mod tests {
     use miden_lib::account::wallets::BasicWallet;
     use miden_objects::account::{AccountBuilder, AccountStorageMode};
-    use miden_objects::asset::FungibleAsset;
+    use miden_objects::asset::{Asset, FungibleAsset};
+    use miden_objects::note::NoteType;
     use miden_objects::testing::account_id::{
         ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,

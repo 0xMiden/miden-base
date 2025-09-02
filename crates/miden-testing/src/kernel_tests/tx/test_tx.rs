@@ -139,25 +139,32 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
 async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let asset = FungibleAsset::mock(400);
+    let account1 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
+    let account2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
+    let output_note = create_p2any_note(account1.id(), [asset]);
+    let spawn_note = builder.add_spawn_note(account1.id(), [&output_note])?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
-    // Create a note that will be contained in block 11.
-    let note = mock_chain
-        .add_pending_p2id_note(
-            account.id(),
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-            &[],
-            NoteType::Private,
-        )
-        .unwrap();
+    // Consume the spawn note which creates a note for account 2 to consume. It will be contained in
+    // block 11. We use account 1 for this, so that account 2 remains unchanged and is still valid
+    // against reference block 1 which we'll use for the later transaction.
+    let tx = mock_chain
+        .build_tx_context(account1.id(), &[spawn_note.id()], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .build()?
+        .execute()
+        .await?;
+
+    // Add the transaction to the mock chain's mempool so it will be included in the next block.
+    mock_chain.add_pending_executed_transaction(&tx)?;
     // Create block 11.
     mock_chain.prove_next_block()?;
 
     // Get as input note, and assert that the note was created after block 1 (which we'll
     // use as reference)
-    let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
+    let input_note = mock_chain.get_public_note(&output_note.id()).expect("note not found");
     assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
     mock_chain.prove_next_block()?;
@@ -165,7 +172,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
 
     // Attempt to execute a transaction against reference block 1 with the note created in block 11
     // - which should fail.
-    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
+    let tx_context = mock_chain.build_tx_context(account2.id(), &[], &[])?.build()?;
 
     let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context)
         .with_source_manager(tx_context.source_manager());
@@ -173,7 +180,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Try to execute with block_ref==1
     let error = tx_executor
         .execute_transaction(
-            account.id(),
+            account2.id(),
             BlockNumber::from(1),
             InputNotes::new(vec![input_note]).unwrap(),
             TransactionArgs::default(),
