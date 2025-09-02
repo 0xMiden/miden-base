@@ -147,7 +147,7 @@ pub fn create_spawn_note<'note>(
     sender_id: AccountId,
     output_notes: impl IntoIterator<Item = &'note Note>,
 ) -> anyhow::Result<Note> {
-    let note_code = note_script_that_creates_notes(output_notes);
+    let note_code = note_script_that_creates_notes(sender_id, output_notes)?;
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
         .code(note_code)
@@ -159,11 +159,17 @@ pub fn create_spawn_note<'note>(
 
 /// Returns the code for a note that creates all notes in `output_notes`
 fn note_script_that_creates_notes<'note>(
+    spawn_note_sender_id: AccountId,
     output_notes: impl IntoIterator<Item = &'note Note>,
-) -> String {
+) -> anyhow::Result<String> {
     let mut out = String::from("use.miden::tx\nuse.mock::account\n\nbegin\n");
 
     for (idx, note) in output_notes.into_iter().enumerate() {
+        anyhow::ensure!(
+            note.metadata().sender() == spawn_note_sender_id,
+            "spawn note sender does not match sender of provided output notes"
+        );
+
         if idx == 0 {
             out.push_str("padw padw\n");
         } else {
@@ -193,5 +199,5 @@ fn note_script_that_creates_notes<'note>(
     }
 
     out.push_str("repeat.5 dropw end\nend");
-    out
+    Ok(out)
 }
