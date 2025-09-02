@@ -569,7 +569,7 @@ export.account_has_non_fungible_asset
     # => [has_asset, pad(15)]
 end
 
-### FAUCET #####################################
+### FAUCET ######################################
 
 #! Mint an asset from the faucet the transaction is being executed against.
 #!
@@ -726,7 +726,9 @@ export.note_add_asset
     # => [note_idx, ASSET, pad(11)]
 end
 
-#! Returns the assets information in the specified input note.
+### INPUT NOTE ##################################
+
+#! Returns the assets information of the specified input note.
 #!
 #! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
@@ -831,98 +833,6 @@ export.input_note_get_metadata
 
     # get the metadata
     exec.memory::get_input_note_metadata
-    # => [METADATA, pad(15)]
-
-    # truncate the stack
-    swapw drop drop drop movdn.4
-    # => [METADATA, pad(12)]
-end
-
-#! Returns the information about assets in the output note with the specified index.
-#!
-#! Inputs:  [note_index, pad(15)]
-#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
-#!
-#! Where:
-#! - note_index is the index of the output note whose assets info should be returned.
-#! - num_assets is the number of assets in the specified note.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of output notes.
-#!
-#! Invocation: dynexec
-export.output_note_get_assets_info
-    # assert that the provided note index is less than the total number of output notes
-    exec.output_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
-
-    # get the assets info
-    exec.output_note::get_assets_info
-    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
-
-    # truncate the stack
-    repeat.5
-        movup.5 drop
-    end
-    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
-end
-
-#! Returns the recipient of the output note with the specified index.
-#!
-#! Inputs:  [note_index, pad(15)]
-#! Outputs: [RECIPIENT, pad(12)]
-#!
-#! Where:
-#! - note_index is the index of the output note whose recipient should be returned.
-#! - RECIPIENT is the commitment to the output note's script, inputs, the serial number.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of output notes.
-#!
-#! Invocation: dynexec
-export.output_note_get_recipient
-    # assert that the provided note index is less than the total number of output notes
-    exec.output_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
-
-    # get the note data pointer by the provided index
-    exec.memory::get_output_note_ptr
-    # => [note_ptr, pad(15)]
-
-    # get the recipient
-    exec.memory::get_output_note_recipient
-    # => [RECIPIENT, pad(15)]
-
-    # truncate the stack
-    swapw drop drop drop movdn.4
-    # => [RECIPIENT, pad(12)]
-end
-
-#! Returns the metadata of the output note with the specified index.
-#!
-#! Inputs:  [note_index, pad(15)]
-#! Outputs: [METADATA, pad(12)]
-#!
-#! Where:
-#! - note_index is the index of the output note whose metadata should be returned.
-#! - METADATA is the metadata of the output note.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of output notes.
-#!
-#! Invocation: dynexec
-export.output_note_get_metadata
-    # assert that the provided note index is less than the total number of output notes
-    exec.output_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
-    
-    # get the note data pointer by the provided index
-    exec.memory::get_output_note_ptr
-    # => [note_ptr, pad(15)]
-
-    # get the metadata
-    exec.memory::get_output_note_metadata
     # => [METADATA, pad(15)]
 
     # truncate the stack
@@ -1059,6 +969,100 @@ export.input_note_get_script_root
         movup.4 drop
     end
     # => [SCRIPT_ROOT, pad(12)]
+end
+
+### OUTPUT NOTE #################################
+
+#! Returns the information about assets in the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose assets info should be returned.
+#! - num_assets is the number of assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_assets_info
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
+    # get the assets info
+    exec.output_note::get_assets_info
+    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
+
+    # truncate the stack
+    repeat.5
+        movup.5 drop
+    end
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+end
+
+#! Returns the recipient of the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [RECIPIENT, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose recipient should be returned.
+#! - RECIPIENT is the commitment to the output note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_recipient
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+
+    # get the note data pointer by the provided index
+    exec.memory::get_output_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the recipient
+    exec.memory::get_output_note_recipient
+    # => [RECIPIENT, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [RECIPIENT, pad(12)]
+end
+
+#! Returns the metadata of the output note with the specified index.
+#!
+#! Inputs:  [note_index, pad(15)]
+#! Outputs: [METADATA, pad(12)]
+#!
+#! Where:
+#! - note_index is the index of the output note whose metadata should be returned.
+#! - METADATA is the metadata of the output note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of output notes.
+#!
+#! Invocation: dynexec
+export.output_note_get_metadata
+    # assert that the provided note index is less than the total number of output notes
+    exec.output_note::assert_note_index_in_bounds
+    # => [note_index, pad(15)]
+    
+    # get the note data pointer by the provided index
+    exec.memory::get_output_note_ptr
+    # => [note_ptr, pad(15)]
+
+    # get the metadata
+    exec.memory::get_output_note_metadata
+    # => [METADATA, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [METADATA, pad(12)]
 end
 
 ### TRANSACTION #################################
