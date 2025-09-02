@@ -66,11 +66,16 @@ end
 #! Invocation: exec
 export.get_inputs
     # pad the stack
-    padw padw padw push.0.0.0
-    # OS => [pad(15), dest_ptr]
+    padw padw padw push.0.0
+    # OS => [pad(14), dest_ptr]
 
-    exec.kernel_proc_offsets::note_get_inputs_commitment_and_len_offset
-    # OS => [offset, pad(15), dest_ptr]
+    # push the flag indicating that we want to request assets info from the currently processing 
+    # note
+    push.1
+    # => [1, pad(14), dest_ptr]
+
+    exec.kernel_proc_offsets::input_note_get_data_info_offset
+    # OS => [offset, 1, pad(14), dest_ptr]
 
     syscall.exec_kernel_proc
     # OS => [INPUTS_COMMITMENT, num_inputs, pad(11), dest_ptr]

@@ -1586,13 +1586,13 @@ end
 
 #! Returns the number of inputs of the note currently being processed.
 #!
-#! Inputs:  []
+#! Inputs:  [note_ptr]
 #! Outputs: [num_inputs]
 #!
 #! Where:
+#! - note_ptr is the memory address at which the input note data begins.
 #! - num_inputs is the number of inputs in the input note.
 export.get_input_note_num_inputs
-    exec.get_current_input_note_ptr
     add.INPUT_NOTE_NUM_INPUTS_OFFSET
     mem_load
 end

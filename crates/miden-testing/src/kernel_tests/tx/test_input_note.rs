@@ -241,3 +241,53 @@ fn test_get_assets() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Check that the number of the inputs and their commitment of a note with one asset obtained from
+/// the `input_note::get_data_info` procedure is correct.
+#[test]
+fn test_get_data_info() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the inputs commitment and length from the input note with index 0 (the only one we
+            # have)
+            push.0
+            exec.input_note::get_data_info
+            # => [NOTE_INPUTS_COMMITMENT, num_inputs]
+
+            # assert the correctness of the inputs commitment
+            push.{INPUTS_COMMITMENT}
+            assert_eqw.err="note 0 has incorrect inputs commitment"
+            # => [num_inputs]
+
+            # assert the inputs have correct length
+            push.{inputs_length}
+            assert_eq.err="note 0 has incorrect inputs length"
+            # => []
+        end
+    "#,
+        INPUTS_COMMITMENT = p2id_note_1_asset.inputs().commitment(),
+        inputs_length = p2id_note_1_asset.inputs().num_values(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}

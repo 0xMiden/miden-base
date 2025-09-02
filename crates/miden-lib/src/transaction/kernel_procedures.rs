@@ -59,8 +59,8 @@ pub const KERNEL_PROCEDURES: [Word; 46] = [
     word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
     // note_get_serial_number
     word!("0x6989241a99d9aa1630daae03fc55ecac269e184d6b455c7c0bc996d15ef7f9a8"),
-    // note_get_inputs_commitment_and_len
-    word!("0x6ae9f25739a4368330c40e9bd21e5beed4583656443877f3f59cad5040decee1"),
+    // input_note_get_data_info
+    word!("0xdd8bbf4cdb48051da346bc89760b77fdf4c948904276a99d96409922a00bd322"),
     // note_get_script_root
     word!("0x317c3f724d57093c98927f7820dc00f5cf3509d2de4306dccaef4e2266fcd5b6"),
     // input_note_get_assets_info

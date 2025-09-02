@@ -8,9 +8,7 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 # INPUT NOTE PROCEDURES
 # =================================================================================================
 
-#! Returns the information about assets in the input note with the specified index.
-#!
-#! The provided input note index is expected to be less than the total number of input notes.
+#! Returns the information about assets in the input note with the specified memory pointer.
 #!
 #! Inputs:  [input_note_ptr]
 #! Outputs: [ASSETS_COMMITMENT, num_assets]

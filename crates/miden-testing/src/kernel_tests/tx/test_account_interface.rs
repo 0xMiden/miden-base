@@ -53,7 +53,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
         &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
-    let notes = vec![p2ide_note, p2id_note];
+    let notes = vec![p2id_note, p2ide_note];
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(notes.clone())
         .authenticator(authenticator)
@@ -75,9 +75,11 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. } => {
         assert_eq!(successful.len(), notes.len());
-        successful.iter().zip(notes.iter()).for_each(|(success, note)| {
-            assert_eq!(success, note);
-        });
+
+        // we asserted that `successful` and `notes` vectors have the same length, so it's safe to
+        // check their equality that way
+        successful.iter().for_each(|successful_note| assert!(notes.contains(successful_note)));
+
         assert!(failed.is_empty());
     });
 

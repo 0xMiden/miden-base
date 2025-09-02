@@ -33,6 +33,8 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted t
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT="attempted to access note metadata from incorrect context"
 
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
+
 # AUTHENTICATION
 # =================================================================================================
 
@@ -720,7 +722,7 @@ export.note_add_asset
     # => [note_idx, ASSET, pad(11)]
 end
 
-#! Returns the information about assets in the input note with the specified index.
+#! Returns the assets information in the specified input note.
 #!
 #! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
@@ -731,11 +733,14 @@ end
 #! - note_index is the index of the input note whose assets info should be returned. Notice that if
 #!   is_current_note flag is true (we should process the currently processed note), this index is
 #!   assumed to be 0 (pad element).
-#! - num_assets is the number of assets in the specified note.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified input note.
+#! - num_assets is the number of assets in the specified input note.
 #!
-#! Panics if:
-#! - the note index is greater or equal to the total number of input notes.
+#! Panics:
+#! - if requested by note index: the note index is greater or equal to the total number of input 
+#!   notes.
+#! - if requested from current note: the input note is not being processed (attempted to access note
+#!   inputs from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
@@ -789,21 +794,24 @@ export.input_note_get_recipient
     # => [RECIPIENT, pad(12)]
 end
 
-#! Returns the metadata of the input note with the specified index.
+#! Returns the metadata of the specified input note.
 #!
 #! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [METADATA, pad(12)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#! - is_current_note is the boolean flag indicating whether we should return the metadata from
 #!   the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose metadata should be returned. Notice that if
 #!   is_current_note flag is true (we should process the currently processed note), this index is
 #!   assumed to be 0 (pad element).
-#! - METADATA is the metadata of the input note.
+#! - METADATA is the metadata of the specified input note.
 #!
-#! Panics if:
-#! - the note index is greater or equal to the total number of input notes.
+#! Panics:
+#! - if requested by note index: the note index is greater or equal to the total number of input 
+#!   notes.
+#! - if requested from current note: the input note is not being processed (attempted to access note
+#!   inputs from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_metadata
@@ -815,7 +823,7 @@ export.input_note_get_metadata
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
     dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT
-    # => [input_note_ptr', pad(15)]
+    # => [input_note_ptr, pad(15)]
 
     # get the metadata
     exec.memory::get_input_note_metadata
@@ -939,25 +947,50 @@ export.note_get_serial_number
     # => [SERIAL_NUMBER, pad(12)]
 end
 
-#! Returns the current note's inputs commitment and length.
+#! Returns the inputs commitment and length of the specified input note.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 #!
 #! Where:
-#! - NOTE_INPUTS_COMMITMENT is the current note's inputs commitment.
-#! - num_inputs is the number of input values of the current note.
+#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
+#!   and length from the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose data should be returned. Notice that if
+#!   is_current_note flag is true (we should process the currently processed note), this index is
+#!   assumed to be 0 (pad element).
+#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
+#! - num_inputs is the number of input values of the specified input note.
+#!
+#! Panics:
+#! - if requested by note index: the note index is greater or equal to the total number of input 
+#!   notes.
+#! - if requested from current note: the input note is not being processed (attempted to access note
+#!   inputs from incorrect context).
 #!
 #! Invocation: dynexec
-export.note_get_inputs_commitment_and_len
-    exec.memory::get_input_note_num_inputs
-    # => [num_inputs, pad(16)]
+export.input_note_get_data_info
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
 
-    exec.note::get_note_inputs_commitment
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT
+    # => [input_note_ptr, pad(15)]
+
+    # get the number of inputs
+    dup exec.memory::get_input_note_num_inputs swap
+    # => [input_note_ptr, num_inputs, pad(16)]
+
+    # get the inputs commitment
+    exec.memory::get_input_note_inputs_commitment
     # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
-    swapdw dropw dropw
+    repeat.5
+        movup.5 drop
+    end
     # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 end
 
