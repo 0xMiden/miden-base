@@ -1,4 +1,3 @@
-use.std::collections::smt
 use.$kernel::memory
 
 # A link map is a map data structure based on a sorted linked list.
@@ -198,7 +197,9 @@ const.LINK_MAP_GET_EVENT=131101
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   update_entry, insert_at_head, insert_after_entry.
 export.set
-    emit.LINK_MAP_SET_EVENT adv_push.2
+    push.LINK_MAP_SET_EVENT emit drop
+
+    adv_push.2
     # => [operation, entry_ptr, map_ptr, KEY, VALUE0, VALUE1]
 
     dup.2 dup.2
@@ -264,7 +265,9 @@ end
 #! - the host provides faulty advice. See panic sections of assert_entry_ptr_is_valid,
 #!   get_existing_value, assert_absent_at_head, assert_absent_after_entry.
 export.get
-    emit.LINK_MAP_GET_EVENT adv_push.2
+    push.LINK_MAP_GET_EVENT emit drop
+
+    adv_push.2
     # => [get_operation, entry_ptr, map_ptr, KEY]
 
     dup.2 dup.2

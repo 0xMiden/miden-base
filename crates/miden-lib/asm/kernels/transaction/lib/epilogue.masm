@@ -244,7 +244,7 @@ proc.compute_fee
     clk
     # => [num_current_cycles]
 
-    emit.EPILOGUE_AFTER_TX_CYCLES_OBTAINED
+    push.EPILOGUE_AFTER_TX_CYCLES_OBTAINED emit drop
 
     # estimate the number of cycles the transaction will take
     add.ESTIMATED_AFTER_COMPUTE_FEE_CYCLES
@@ -309,7 +309,7 @@ proc.compute_and_remove_fee
     exec.build_native_fee_asset
     # => [FEE_ASSET]
 
-    emit.EPILOGUE_TX_FEE_COMPUTED
+    push.EPILOGUE_TX_FEE_COMPUTED emit drop
     # => [FEE_ASSET]
 
     # remove the fee from the native account's vault

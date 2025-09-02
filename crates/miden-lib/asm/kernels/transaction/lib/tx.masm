@@ -505,7 +505,7 @@ end
 #! - the note_tag starts with anything but 0b11 and note_type is not public.
 #! - the number of output notes exceeds the maximum limit of 1024.
 export.create_note
-    emit.NOTE_BEFORE_CREATED_EVENT
+    push.NOTE_BEFORE_CREATED_EVENT emit drop
 
     exec.build_note_metadata
     # => [NOTE_METADATA, RECIPIENT]
@@ -522,7 +522,8 @@ export.create_note
     # => [NOTE_METADATA, note_ptr, RECIPIENT, note_idx]
 
     # emit event to signal that a new note is created
-    emit.NOTE_AFTER_CREATED_EVENT
+
+    push.NOTE_AFTER_CREATED_EVENT emit drop
 
     # set the metadata for the output note
     dup.4 exec.memory::set_output_note_metadata dropw
@@ -565,7 +566,8 @@ export.add_asset_to_note
     # => [ASSET, note_ptr, num_of_assets, note_idx]
 
     # emit event to signal that a new asset is going to be added to the note.
-    emit.NOTE_BEFORE_ADD_ASSET_EVENT
+    push.NOTE_BEFORE_ADD_ASSET_EVENT emit drop
+
     # => [ASSET, note_ptr, num_of_assets, note_idx]
 
     # Check if ASSET to add is fungible
@@ -583,12 +585,13 @@ export.add_asset_to_note
     end
     # => [note_ptr, note_idx]
 
-    # update the assets commitment dirty flag to signal that the current assets commitment is not 
+    # update the assets commitment dirty flag to signal that the current assets commitment is not
     # valid anymore
     push.1 swap exec.memory::set_output_note_dirty_flag
     # => [note_idx]
 
     # emit event to signal that a new asset was added to the note.
-    emit.NOTE_AFTER_ADD_ASSET_EVENT
+    push.NOTE_AFTER_ADD_ASSET_EVENT emit drop
+
     # => [note_idx]
 end

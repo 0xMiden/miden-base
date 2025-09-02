@@ -149,7 +149,7 @@ export.auth__tx_rpo_falcon512_multisig
 
     # If signatures are non-existent the tx will fail here.
     if.true
-        emit.UNAUTHORIZED_EVENT
+        push.UNAUTHORIZED_EVENT emit drop
         push.0 assert.err="insufficient number of signatures"
     end
 

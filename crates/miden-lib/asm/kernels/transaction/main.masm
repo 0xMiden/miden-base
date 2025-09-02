@@ -69,18 +69,18 @@ const.EPILOGUE_END=131099
 proc.main.1
     # Prologue
     # ---------------------------------------------------------------------------------------------
-    
-    emit.PROLOGUE_START
+
+    push.PROLOGUE_START emit drop
 
     exec.prologue::prepare_transaction
     # => [pad(16)]
 
-    emit.PROLOGUE_END
+    push.PROLOGUE_END emit drop
 
     # Note Processing
     # ---------------------------------------------------------------------------------------------
-    
-    emit.NOTES_PROCESSING_START
+
+    push.NOTES_PROCESSING_START emit drop
 
     exec.memory::get_num_input_notes
     # => [num_input_notes, pad(16)]
@@ -93,7 +93,7 @@ proc.main.1
     # => [should_loop, pad(16)]
 
     while.true
-        emit.NOTE_EXECUTION_START
+        push.NOTE_EXECUTION_START emit drop
         # => []
 
         exec.note::prepare_note
@@ -114,18 +114,18 @@ proc.main.1
         loc_load.0 neq
         # => [should_loop, pad(16)]
 
-        emit.NOTE_EXECUTION_END
+        push.NOTE_EXECUTION_END emit drop
     end
 
     exec.note::note_processing_teardown
     # => [pad(16)]
 
-    emit.NOTES_PROCESSING_END
+    push.NOTES_PROCESSING_END emit drop
 
     # Transaction Script Processing
     # ---------------------------------------------------------------------------------------------
-    
-    emit.TX_SCRIPT_PROCESSING_START
+
+    push.TX_SCRIPT_PROCESSING_START emit drop
 
     # get the memory address of the transaction script root and load it to the stack
     exec.memory::get_tx_script_root_ptr
@@ -157,12 +157,12 @@ proc.main.1
         # => [pad(16)]
     end
 
-    emit.TX_SCRIPT_PROCESSING_END
+    push.TX_SCRIPT_PROCESSING_END emit drop
 
     # Epilogue
     # ---------------------------------------------------------------------------------------------
 
-    emit.EPILOGUE_START
+    push.EPILOGUE_START emit drop
 
     # execute the transaction epilogue
     exec.epilogue::finalize_transaction
@@ -172,7 +172,7 @@ proc.main.1
     repeat.13 movup.13 drop end
     # => [OUTPUT_NOTES_COMMITMENT, ACCOUNT_UPDATE_COMMITMENT, FEE_ASSET, tx_expiration_block_num, pad(3)]
 
-    emit.EPILOGUE_END
+    push.EPILOGUE_END emit drop
 end
 
 begin

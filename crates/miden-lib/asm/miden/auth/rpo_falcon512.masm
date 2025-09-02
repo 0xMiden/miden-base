@@ -59,7 +59,7 @@ export.authenticate_transaction
     # Fetch signature from advice provider and verify.
     # ---------------------------------------------------------------------------------------------
     # Emit the authentication request event that pushes a signature for the message to the advice stack
-    emit.AUTH_REQUEST
+    push.AUTH_REQUEST emit drop
     swapw
     # OS => [PUB_KEY, MESSAGE]
     # AS => [SIGNATURE]
@@ -145,7 +145,7 @@ export.verify_signatures.16
             # => [MSG, PK, MSG, i-1]
 
             # Emit the authentication request event that pushes a signature for the message to the advice stack.
-            emit.AUTH_REQUEST
+            push.AUTH_REQUEST emit drop
 
             swapw
             # OS => [PUB_KEY, MSG, MSG, i-1]
