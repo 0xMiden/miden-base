@@ -231,3 +231,41 @@ export.get_script_root
     swapdw dropw dropw swapw dropw
     # => [SCRIPT_ROOT]
 end
+
+#! Returns the serial number of the input note with the specified index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [SERIAL_NUMBER]
+#!
+#! Where:
+#! - note_index is the index of the input note whose serial number should be returned.
+#! - SERIAL_NUMBER is the serial number of the specified input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_serial_number
+    # start padding the stack
+    push.0 swap
+    # => [note_index, 0]
+
+    # push the flag indicating that we want to request serial number from the note with the 
+    # specified index
+    push.0
+    # => [0, note_index, 0]
+
+    exec.kernel_proc_offsets::input_note_get_serial_number_offset
+    # => [offset, 0, note_index, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, 0, note_index, pad(13)]
+
+    syscall.exec_kernel_proc
+    # => [SERIAL_NUMBER, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [SERIAL_NUMBER]
+end

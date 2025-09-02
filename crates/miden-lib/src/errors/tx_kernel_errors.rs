@@ -153,6 +153,8 @@ pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT: MasmErr
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note metadata from incorrect context");
 /// Error Message: "attempted to access note script root from incorrect context"
 pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note script root from incorrect context");
+/// Error Message: "attempted to access note serial number from incorrect context"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note serial number from incorrect context");
 /// Error Message: "note data does not match the commitment"
 pub const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT: MasmError = MasmError::from_static_str("note data does not match the commitment");
 /// Error Message: "adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"

@@ -334,3 +334,46 @@ fn test_get_script_root() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Check that the serial number of a note with one asset obtained from the
+/// `input_note::get_serial_number` procedure is correct.
+#[test]
+fn test_get_serial_number() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the serial number from the input note with index 0 (the only one we have)
+            push.0
+            exec.input_note::get_serial_number
+            # => [SERIAL_NUMBER]
+
+            # assert the correctness of the serial number
+            push.{SERIAL_NUMBER}
+            assert_eqw.err="note 0 has incorrect serial number"
+            # => []
+        end
+    "#,
+        SERIAL_NUMBER = p2id_note_1_asset.serial_num(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}

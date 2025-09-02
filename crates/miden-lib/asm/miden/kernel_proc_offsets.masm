@@ -49,7 +49,7 @@ const.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET=23
 const.NOTE_ADD_ASSET_OFFSET=24
 
 # note parameters
-const.NOTE_GET_SERIAL_NUMBER_OFFSET=25
+const.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET=25
 const.INPUT_NOTE_GET_DATA_INFO_OFFSET=26
 const.INPUT_NOTE_GET_SCRIPT_ROOT_OFFSET=27
 
@@ -469,16 +469,16 @@ export.output_note_get_metadata_offset
     push.OUTPUT_NOTE_GET_METADATA_OFFSET
 end
 
-#! Returns the offset of the `note_get_serial_number` kernel procedure.
+#! Returns the offset of the `input_note_get_serial_number` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `note_get_serial_number` kernel procedure required to get the
-#!   address where this procedure is stored.
-export.note_get_serial_number_offset
-    push.NOTE_GET_SERIAL_NUMBER_OFFSET
+#! - proc_offset is the offset of the `input_note_get_serial_number` kernel procedure required to 
+#!   get the address where this procedure is stored.
+export.input_note_get_serial_number_offset
+    push.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET
 end
 
 #! Returns the offset of the `input_note_get_data_info` kernel procedure.

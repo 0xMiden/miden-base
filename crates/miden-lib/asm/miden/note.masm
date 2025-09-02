@@ -196,11 +196,16 @@ end
 #! Invocation: exec
 export.get_serial_number
     # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
+    padw padw padw push.0.0
+    # => [pad(14)]
 
-    exec.kernel_proc_offsets::note_get_serial_number_offset
-    # => [offset, pad(15)]
+    # push the flag indicating that we want to request script root from the currently processing
+    # note
+    push.1
+    # => [1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_serial_number_offset
+    # => [offset, 1, pad(14)]
 
     syscall.exec_kernel_proc
     # => [SERIAL_NUMBER, pad(12)]

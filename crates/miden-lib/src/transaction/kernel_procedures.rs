@@ -57,8 +57,8 @@ pub const KERNEL_PROCEDURES: [Word; 46] = [
     word!("0xc827d2430763c70880216804d3523c14e70e5cf926d5d8a72844c6476add5ef7"),
     // note_add_asset
     word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
-    // note_get_serial_number
-    word!("0x6989241a99d9aa1630daae03fc55ecac269e184d6b455c7c0bc996d15ef7f9a8"),
+    // input_note_get_serial_number
+    word!("0x25815e02b7976d8e5c297dde60d372cc142c81f702f424ac0920190528c547ee"),
     // input_note_get_data_info
     word!("0xdd8bbf4cdb48051da346bc89760b77fdf4c948904276a99d96409922a00bd322"),
     // input_note_get_script_root

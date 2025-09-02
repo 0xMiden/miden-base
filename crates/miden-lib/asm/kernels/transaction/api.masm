@@ -37,6 +37,8 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted t
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_FROM_INCORRECT_CONTEXT="attempted to access note script root from incorrect context"
 
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_FROM_INCORRECT_CONTEXT="attempted to access note serial number from incorrect context"
+
 # AUTHENTICATION
 # =================================================================================================
 
@@ -928,24 +930,45 @@ export.output_note_get_metadata
     # => [METADATA, pad(12)]
 end
 
-#! Returns the serial number of the note currently being processed.
+#! Returns the serial number of the specified input note.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [SERIAL_NUMBER, pad(12)]
 #!
 #! Where:
-#! - SERIAL_NUMBER is the serial number of the note currently being processed.
+#! - is_current_note is the boolean flag indicating whether we should return the serial number
+#!   of the currently processing note or of the note with the specified index.
+#! - note_index is the index of the input note whose serial number should be returned. Notice that 
+#!   if is_current_note flag is true (we should process the currently processed note), this index is
+#!   assumed to be 0 (pad element).
+#! - SERIAL_NUMBER is the serial number of the specified input note.
 #!
-#! Panics if:
-#! - no note is not being processed.
+#! Panics:
+#! - if requested by note index: the note index is greater or equal to the total number of input 
+#!   notes.
+#! - if requested from current note: the input note is not being processed (attempted to access note
+#!   inputs from incorrect context).
 #!
 #! Invocation: dynexec
-export.note_get_serial_number
-    exec.note::get_serial_number
-    # => [SERIAL_NUMBER, pad(16)]
+export.input_note_get_serial_number
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_FROM_INCORRECT_CONTEXT
+    # => [input_note_ptr, pad(15)]
+
+    # get the serial number using the note pointer
+    exec.memory::get_input_note_serial_num
+    # => [SERIAL_NUMBER, pad(15)]
 
     # truncate the stack
-    swapw dropw
+    repeat.3
+        movup.4 drop
+    end
     # => [SERIAL_NUMBER, pad(12)]
 end
 
