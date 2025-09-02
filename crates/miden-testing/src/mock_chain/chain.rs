@@ -578,17 +578,13 @@ impl MockChain {
     ///   from the chain for the public account identified by the ID.
     /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
     ///   account is passed as-is to the inputs.
-    /// - [`TxContextInput::ExecutedTransaction`]: Initialize the builder with [`TransactionInputs`]
-    ///   where the account passed to the inputs is the final account of the executed transaction.
-    ///   This is the initial account of the transaction with the account delta applied.
     ///
     /// In all cases, if the chain contains a seed or authenticator for the account, they are added
     /// to the builder.
     ///
-    /// [`TxContextInput::Account`] and [`TxContextInput::ExecutedTransaction`] can be used to build
-    /// a chain of transactions against the same account that build on top of each other. For
-    /// example, transaction A modifies an account from state 0 to 1, and transaction B modifies
-    /// it from state 1 to 2.
+    /// [`TxContextInput::Account`] can be used to build a chain of transactions against the same
+    /// account that build on top of each other. For example, transaction A modifies an account
+    /// from state 0 to 1, and transaction B modifies it from state 1 to 2.
     pub fn build_tx_context_at(
         &self,
         reference_block: impl Into<BlockNumber>,
