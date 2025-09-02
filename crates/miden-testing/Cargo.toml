@@ -18,6 +18,7 @@ std = ["miden-lib/std"]
 [dependencies]
 # Workspace dependencies
 miden-block-prover = { features = ["testing"], workspace = true }
+miden-tx-batch-prover = { features = ["testing"], workspace = true }
 miden-lib          = { features = ["testing"], workspace = true }
 miden-objects      = { features = ["testing"], workspace = true }
 miden-tx           = { features = ["testing"], workspace = true }
