@@ -309,10 +309,8 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()?;
 
-    let input_note = create_spawn_note(
-        account.id(),
-        vec![&output_note_1, &output_note_2, &output_note_3],
-    )?;
+    let input_note =
+        create_spawn_note(account.id(), vec![&output_note_1, &output_note_2, &output_note_3])?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?

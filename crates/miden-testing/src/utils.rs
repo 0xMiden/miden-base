@@ -143,6 +143,11 @@ pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Ass
 ///
 ///  A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
 ///  parameter.
+///
+/// # Errors
+///
+/// Returns an error if:
+/// - the sender of any of the provided output notes does not match `sender_id`.
 pub fn create_spawn_note<'note>(
     sender_id: AccountId,
     output_notes: impl IntoIterator<Item = &'note Note>,

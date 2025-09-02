@@ -507,6 +507,11 @@ impl MockChainBuilder {
     ///
     /// A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
     /// parameter.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the sender of any of the provided output notes does not match `sender_id`.
     pub fn add_spawn_note<'note>(
         &mut self,
         sender_id: AccountId,
