@@ -277,21 +277,3 @@ export.get_serial_number
     exec.memory::get_input_note_serial_num
     # => [SERIAL_NUMBER, ...]
 end
-
-#! Returns the script root of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [SCRIPT_ROOT]
-#!
-#! Where:
-#! - SCRIPT_ROOT is the serial number of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-export.get_script_root
-    exec.memory::get_current_input_note_ptr
-    # => [note_ptr]
-
-    exec.memory::get_input_note_script_root
-    # => [SCRIPT_ROOT]
-end

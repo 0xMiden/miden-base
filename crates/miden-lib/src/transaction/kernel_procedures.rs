@@ -61,8 +61,8 @@ pub const KERNEL_PROCEDURES: [Word; 46] = [
     word!("0x6989241a99d9aa1630daae03fc55ecac269e184d6b455c7c0bc996d15ef7f9a8"),
     // input_note_get_data_info
     word!("0xdd8bbf4cdb48051da346bc89760b77fdf4c948904276a99d96409922a00bd322"),
-    // note_get_script_root
-    word!("0x317c3f724d57093c98927f7820dc00f5cf3509d2de4306dccaef4e2266fcd5b6"),
+    // input_note_get_script_root
+    word!("0x527036257e58c3a84cf0aa170fb3f219a4553db17d269279355ad164a2b90ac5"),
     // input_note_get_assets_info
     word!("0x159439fe48dbc11e674c5d05830d0408dcfa033c26e85e01256002c6cbc07e9a"),
     // output_note_get_assets_info

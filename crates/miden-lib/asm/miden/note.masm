@@ -30,7 +30,7 @@ export.get_assets
     padw padw padw push.0.0
     # => [pad(14), dest_ptr]
 
-    # push the flag indicating that we want to request assets info from the currently processing 
+    # push the flag indicating that we want to request assets info from the currently processing
     # note
     push.1
     # => [1, pad(14), dest_ptr]
@@ -62,6 +62,9 @@ end
 #! - dest_ptr is the memory address to write the inputs.
 #! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
 #! - INPUTS is the data corresponding to the note's inputs.
+#!
+#! Panics if:
+#! - no note is being processed.
 #!
 #! Invocation: exec
 export.get_inputs
@@ -144,8 +147,7 @@ export.get_sender
     padw padw padw push.0.0
     # => [pad(14)]
 
-    # push the flag indicating that we want to request metadata from the currently processing 
-    # note
+    # push the flag indicating that we want to request metadata from the currently processing note
     push.1
     # => [1, pad(14)]
 
@@ -260,11 +262,16 @@ end
 #! Invocation: exec
 export.get_script_root
     # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
+    padw padw padw push.0.0
+    # => [pad(14)]
 
-    exec.kernel_proc_offsets::note_get_script_root_offset
-    # => [offset, pad(15)]
+    # push the flag indicating that we want to request script root from the currently processing
+    # note
+    push.1
+    # => [1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_script_root_offset
+    # => [offset, 1, pad(14)]
 
     syscall.exec_kernel_proc
     # => [SCRIPT_ROOT, pad(12)]

@@ -291,3 +291,46 @@ fn test_get_data_info() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Check that the script root of a note with one asset obtained from the
+/// `input_note::get_script_root` procedure is correct.
+#[test]
+fn test_get_script_root() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the script root from the input note with index 0 (the only one we have)
+            push.0
+            exec.input_note::get_script_root
+            # => [SCRIPT_ROOT]
+
+            # assert the correctness of the script root
+            push.{SCRIPT_ROOT}
+            assert_eqw.err="note 0 has incorrect script root"
+            # => []
+        end
+    "#,
+        SCRIPT_ROOT = p2id_note_1_asset.script().root(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}

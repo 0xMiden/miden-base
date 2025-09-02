@@ -171,7 +171,7 @@ export.get_data_info
     push.0 swap
     # => [note_index, 0]
 
-    # push the flag indicating that we want to request metadata from the note with the specified
+    # push the flag indicating that we want to request note data from the note with the specified
     # index
     push.0
     # => [0, note_index, 0]
@@ -192,4 +192,42 @@ export.get_data_info
         movup.5 drop
     end
     # => [NOTE_INPUTS_COMMITMENT, num_inputs]
+end
+
+#! Returns the script root of the input note with the specified index.
+#!
+#! Inputs:  [note_index]
+#! Outputs: [SCRIPT_ROOT]
+#!
+#! Where:
+#! - note_index is the index of the input note whose script root should be returned.
+#! - SCRIPT_ROOT is the script root of the specified input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#!
+#! Invocation: exec
+export.get_script_root
+    # start padding the stack
+    push.0 swap
+    # => [note_index, 0]
+
+    # push the flag indicating that we want to request script root from the note with the specified
+    # index
+    push.0
+    # => [0, note_index, 0]
+
+    exec.kernel_proc_offsets::input_note_get_script_root_offset
+    # => [offset, 0, note_index, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, 0, note_index, pad(13)]
+
+    syscall.exec_kernel_proc
+    # => [SCRIPT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [SCRIPT_ROOT]
 end
