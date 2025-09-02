@@ -57,18 +57,11 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// note creation in a test setting. Once entities are set up, [`TransactionContextBuilder`] objects
 /// can be obtained in order to execute transactions accordingly.
 ///
-/// On a high-level, there are two ways to interact with the mock chain:
-/// - Generating transactions yourself and adding them to the mock chain "mempool" using
-///   [`MockChain::add_pending_executed_transaction`] or
-///   [`MockChain::add_pending_proven_transaction`]. Once some transactions have been added, they
-///   can be proven into a block using [`MockChain::prove_next_block`], which commits them to the
-///   chain state.
-/// - Using any of the other pending APIs to _magically_ add new notes, accounts or nullifiers in
-///   the next block. For example, [`MockChain::add_pending_p2id_note`] will create a new P2ID note
-///   in the next proven block, without actually containing a transaction that creates that note.
-///
-/// Both approaches can be mixed in the same block, within limits. In particular, avoid modification
-/// of the _same_ entities using both regular transactions and the magic pending APIs.
+/// The primary way to interact with the mock chain is by generating transactions yourself and
+/// adding them to the mock chain "mempool" using [`MockChain::add_pending_executed_transaction`]
+/// or [`MockChain::add_pending_proven_transaction`]. Once some transactions have been added, they
+/// can be proven into a block using [`MockChain::prove_next_block`], which commits them to the
+/// chain state.
 ///
 /// The mock chain uses the batch and block provers underneath to process pending transactions, so
 /// the generated blocks are realistic and indistinguishable from a real node. The only caveat is
