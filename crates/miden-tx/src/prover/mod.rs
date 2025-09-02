@@ -217,7 +217,8 @@ fn partial_storage_to_storage(partial_storage: PartialStorage) -> AccountStorage
         }
     }
 
-    AccountStorage::new(storage_slots).expect("TODO")
+    AccountStorage::new(storage_slots)
+        .expect("partial storage should not contain more than max allowed storage slots")
 }
 
 fn partial_storage_map_to_storage_map(partial_storage_map: PartialStorageMap) -> StorageMap {
