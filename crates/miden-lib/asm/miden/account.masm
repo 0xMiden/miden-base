@@ -3,7 +3,7 @@ use.miden::kernel_proc_offsets
 # NATIVE ACCOUNT PROCEDURES
 # =================================================================================================
 
-#! Returns the account ID.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [acct_id_prefix, acct_id_suffix]
@@ -29,6 +29,34 @@ export.get_id
     # clean the stack
     swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
     # => [acct_id_prefix, acct_id_suffix]
+end
+
+#! Returns the ID of the native account.
+#!
+#! Inputs:  []
+#! Outputs: [native_acct_id_prefix, native_acct_id_suffix]
+#!
+#! Where:
+#! - native_acct_id_{prefix,suffix} are the prefix and suffix felts of the native account ID.
+#!
+#! Invocation: exec
+export.get_native_id
+    # start padding the stack
+    push.0.0.0
+
+    exec.kernel_proc_offsets::account_get_native_id_offset
+    # => [offset, 0, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [native_acct_id_prefix, native_acct_id_suffix, pad(14)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
+    # => [native_acct_id_prefix, native_acct_id_suffix]
 end
 
 #! Returns the account nonce.

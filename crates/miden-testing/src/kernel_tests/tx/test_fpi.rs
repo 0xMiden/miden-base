@@ -1002,9 +1002,7 @@ fn test_nested_fpi_stack_overflow() {
                 foreign_suffix = foreign_accounts.last().unwrap().id().suffix(),
             );
 
-
-
-                let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
+            let tx_script = ScriptBuilder::default().compile_tx_script(code).unwrap();
 
             let tx_context = mock_chain
                 .build_tx_context(native_account.id(), &[], &[])
@@ -1238,6 +1236,124 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
 
     let result = tx_context.execute_code(&code).map(|_| ());
     assert_execution_error!(result, ERR_FOREIGN_ACCOUNT_INVALID_COMMITMENT);
+    Ok(())
+}
+
+/// This test checks that our `miden::get_id` and `miden::get_native_id` procedures return IDs of
+/// the current and native account respectively while being called from the foreign account.
+#[test]
+fn test_fpi_get_account_id() -> anyhow::Result<()> {
+    let foreign_account_code_source = "
+        use.miden::account
+
+        export.get_current_and_native_ids
+            # get the ID of the current (foreign) account
+            exec.account::get_id
+            # => [acct_id_prefix, acct_id_suffix, pad(16)]
+
+            # get the ID of the native account
+            exec.account::get_native_id
+            # => [native_acct_id_prefix, native_acct_id_suffix, acct_id_prefix, acct_id_suffix, pad(16)]
+
+            # truncate the stack
+            swapw dropw
+            # => [native_acct_id_prefix, native_acct_id_suffix, acct_id_prefix, acct_id_suffix, pad(12)]
+        end
+    ";
+
+    let foreign_account_component = AccountComponent::compile(
+        foreign_account_code_source,
+        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+        Vec::new(),
+    )?
+    .with_supports_all_types();
+
+    let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(foreign_account_component)
+        .build_existing()?;
+
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    let mut mock_chain =
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
+    mock_chain.prove_next_block()?;
+
+    let code = format!(
+        r#"
+        use.std::sys
+
+        use.miden::tx
+        use.miden::account
+
+        begin
+            # get the IDs of the foreign and native accounts
+            # pad the stack for the `execute_foreign_procedure` execution
+            padw padw padw push.0.0.0
+            # => [pad(15)]
+
+            # get the hash of the `get_current_and_native_ids` foreign account procedure
+            push.{get_current_and_native_ids_hash}
+
+            # push the foreign account ID
+            push.{foreign_suffix}.{foreign_prefix}
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
+
+            exec.tx::execute_foreign_procedure
+            # => [native_acct_id_prefix, native_acct_id_suffix, acct_id_prefix, acct_id_suffix]
+
+            # push the expected native account ID and check that it is equal to the one returned
+            # from the FPI
+            push.{expected_native_suffix}.{expected_native_prefix}
+            movup.2 eq
+            movdn.2 eq
+            and
+            # => [is_native_id_equal, acct_id_prefix, acct_id_suffix]
+
+            assert.err="native account ID returned from the FPI is not equal to the expected one"
+            # => [acct_id_prefix, acct_id_suffix]
+
+            # push the expected foreign account ID and check that it is equal to the one returned
+            # from the FPI
+            push.{foreign_suffix}.{foreign_prefix}
+            movup.2 eq
+            movdn.2 eq
+            and
+            # => [is_foreign_id_equal]
+
+            assert.err="foreign account ID returned from the FPI is not equal to the expected one"
+            # => []
+
+            # truncate the stack
+            exec.sys::truncate_stack
+        end
+        "#,
+        get_current_and_native_ids_hash = foreign_account.code().procedures()[1].mast_root(),
+        foreign_suffix = foreign_account.id().suffix(),
+        foreign_prefix = foreign_account.id().prefix().as_felt(),
+        expected_native_suffix = native_account.id().suffix(),
+        expected_native_prefix = native_account.id().prefix().as_felt(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let foreign_account_inputs = mock_chain
+        .get_foreign_account_inputs(foreign_account.id())
+        .expect("failed to get foreign account inputs");
+    let tx_context = mock_chain
+        .build_tx_context(native_account.id(), &[], &[])
+        .expect("failed to build tx context")
+        .foreign_accounts(vec![foreign_account_inputs])
+        .tx_script(tx_script)
+        .build()?;
+
+    let _executed_transaction = tx_context.execute_blocking()?;
+
     Ok(())
 }
 

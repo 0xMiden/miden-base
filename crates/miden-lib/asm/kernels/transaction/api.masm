@@ -140,23 +140,42 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the account ID.
+#! Returns the current account ID.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [acct_id_prefix, acct_id_suffix, pad(14)]
 #!
 #! Where:
-#! - acct_id is the account ID.
+#! - acct_id is the ID if the current account.
 #!
 #! Invocation: dynexec
 export.account_get_id
-    # get the account ID
+    # get the current account ID
     exec.account::get_id
     # => [acct_id_prefix, acct_id_suffix, pad(16)]
 
     # truncate the stack
     movup.2 drop movup.2 drop
     # => [acct_id_prefix, acct_id_suffix, pad(14)]
+end
+
+#! Returns the native account ID.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [native_acct_id_prefix, native_acct_id_suffix, pad(14)]
+#!
+#! Where:
+#! - native_acct_id is the ID of the native account.
+#!
+#! Invocation: dynexec
+export.account_get_native_id
+    # get the native account ID
+    exec.memory::get_native_account_id
+    # => [native_acct_id_prefix, native_acct_id_suffix, pad(16)]
+
+    # truncate the stack
+    movup.2 drop movup.2 drop
+    # => [native_acct_id_prefix, native_acct_id_suffix, pad(14)]
 end
 
 #! Returns the account nonce.

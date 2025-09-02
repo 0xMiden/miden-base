@@ -1010,20 +1010,6 @@ export.get_account_id
     # => [curr_acct_id_prefix, curr_acct_id_suffix]
 end
 
-#! Sets the account ID and nonce.
-#!
-#! Inputs:  [account_nonce, 0, account_id_prefix, account_id_suffix]
-#! Outputs: [account_nonce, 0, account_id_prefix, account_id_suffix]
-#!
-#! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the id of the currently accessing
-#!   account.
-#! - account_nonce is the nonce of the currently accessing account.
-export.set_acct_id_and_nonce
-    exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET
-    mem_storew
-end
-
 #! Returns the id of the native account.
 #!
 #! Inputs:  []
@@ -1038,6 +1024,20 @@ export.get_native_account_id
     # => [native_acct_id_prefix, native_acct_id_suffix]
 end
 
+#! Sets the account ID and nonce.
+#!
+#! Inputs:  [account_nonce, 0, account_id_prefix, account_id_suffix]
+#! Outputs: [account_nonce, 0, account_id_prefix, account_id_suffix]
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the id of the currently accessing
+#!   account.
+#! - account_nonce is the nonce of the currently accessing account.
+export.set_acct_id_and_nonce
+    exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET
+    mem_storew
+end
+
 #! Returns the account nonce.
 #!
 #! Inputs:  []
@@ -1045,9 +1045,20 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
-
 export.get_acct_nonce
     exec.get_current_account_data_ptr add.ACCT_NONCE_OFFSET
+    mem_load
+end
+
+#! Returns the nonce of the native account.
+#!
+#! Inputs:  []
+#! Outputs: [native_acct_nonce]
+#!
+#! Where:
+#! - native_acct_nonce is the nonce of the native account.
+export.get_native_account_nonce
+    push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_ID_AND_NONCE_OFFSET 
     mem_load
 end
 

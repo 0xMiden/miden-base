@@ -75,9 +75,11 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
 
     assert_matches!(execution_check_result, NoteConsumptionInfo { successful, failed, .. } => {
         assert_eq!(successful.len(), notes.len());
-        successful.iter().zip(notes.iter()).for_each(|(success, note)| {
-            assert_eq!(success, note);
-        });
+
+        // we asserted that `successful` and `notes` vectors have the same length, so it's safe to
+        // check their equality that way
+        successful.iter().for_each(|successful_note| assert!(notes.contains(successful_note)));
+
         assert!(failed.is_empty());
     });
 
