@@ -512,7 +512,6 @@ impl MockChainBuilder {
         sender_id: AccountId,
         output_notes: impl IntoIterator<Item = &'note Note>,
     ) -> anyhow::Result<Note> {
-        let output_notes = output_notes.into_iter().collect();
         let note = create_spawn_note(sender_id, output_notes)?;
 
         self.add_note(OutputNote::Full(note.clone()));

@@ -143,7 +143,10 @@ pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Ass
 ///
 ///  A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
 ///  parameter.
-pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyhow::Result<Note> {
+pub fn create_spawn_note<'note>(
+    sender_id: AccountId,
+    output_notes: impl IntoIterator<Item = &'note Note>,
+) -> anyhow::Result<Note> {
     let note_code = note_script_that_creates_notes(output_notes);
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
@@ -155,10 +158,12 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 }
 
 /// Returns the code for a note that creates all notes in `output_notes`
-fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
+fn note_script_that_creates_notes<'note>(
+    output_notes: impl IntoIterator<Item = &'note Note>,
+) -> String {
     let mut out = String::from("use.miden::tx\nuse.mock::account\n\nbegin\n");
 
-    for (idx, note) in output_notes.iter().enumerate() {
+    for (idx, note) in output_notes.into_iter().enumerate() {
         if idx == 0 {
             out.push_str("padw padw\n");
         } else {
