@@ -13,6 +13,51 @@ pub use template::*;
 use crate::account::{AccountType, StorageSlot};
 use crate::{AccountError, Word};
 
+// IMPLEMENTATIONS
+// ================================================================================================
+
+impl TryFrom<Package> for AccountComponentTemplate {
+    type Error = AccountError;
+
+    fn try_from(package: Package) -> Result<Self, Self::Error> {
+        let library = package.unwrap_library().as_ref().clone();
+
+        // Extract metadata if present
+        let metadata = match package.account_component_metadata_bytes.as_deref() {
+            Some(metadata_bytes) => AccountComponentMetadata::read_from_bytes(metadata_bytes)
+                .map_err(|err| {
+                    AccountError::other_with_source(
+                        "failed to deserialize account component metadata",
+                        err,
+                    )
+                })?,
+            None => {
+                // Create default metadata for packages without explicit metadata
+                let default_types = BTreeSet::from_iter([
+                    AccountType::RegularAccountImmutableCode,
+                    AccountType::RegularAccountUpdatableCode,
+                ]);
+
+                AccountComponentMetadata::new(
+                    package.name.clone(),
+                    format!("Component generated from package: {}", package.name),
+                    semver::Version::new(1, 0, 0),
+                    default_types,
+                    vec![], // Empty storage entries - will need to be provided via InitStorageData
+                )
+                .map_err(|err| {
+                    AccountError::other_with_source(
+                        "failed to create default component metadata",
+                        err,
+                    )
+                })?
+            },
+        };
+
+        Ok(AccountComponentTemplate::new(metadata, library))
+    }
+}
+
 /// An [`AccountComponent`] defines a [`Library`] of code and the initial value and types of
 /// the [`StorageSlot`]s it accesses.
 ///
@@ -164,6 +209,31 @@ impl AccountComponent {
         };
 
         Ok(component.with_supported_types(supported_types))
+    }
+
+    /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
+    ///
+    /// This is the recommended way to create components from packages as it provides
+    /// better type safety by leveraging the component's metadata to validate storage
+    /// initialization data.
+    ///
+    /// # Arguments
+    ///
+    /// * `package` - The package containing the library and optional metadata
+    /// * `init_storage_data` - The initialization data for storage slots
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - The package cannot be converted to an [`AccountComponentTemplate`]
+    /// - The storage initialization fails due to invalid or missing data
+    /// - The component creation fails
+    pub fn from_package_with_init_data(
+        package: &Package,
+        init_storage_data: &InitStorageData,
+    ) -> Result<Self, AccountError> {
+        let template = AccountComponentTemplate::try_from(package.clone())?;
+        Self::from_template(&template, init_storage_data)
     }
 
     // ACCESSORS
@@ -332,5 +402,87 @@ mod tests {
         assert!(component.supports_type(AccountType::RegularAccountUpdatableCode));
         assert!(!component.supports_type(AccountType::FungibleFaucet));
         assert!(!component.supports_type(AccountType::NonFungibleFaucet));
+    }
+
+    #[test]
+    fn test_try_from_package_for_template() {
+        // Create a simple library for testing
+        let library = Assembler::default().assemble_library([CODE]).unwrap();
+
+        // Test with metadata
+        let metadata = AccountComponentMetadata::new(
+            "test_component".to_string(),
+            "A test component".to_string(),
+            semver::Version::new(1, 0, 0),
+            BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
+            vec![],
+        )
+        .unwrap();
+
+        let metadata_bytes = metadata.to_bytes();
+        let package_with_metadata = Package {
+            name: "test_package".to_string(),
+            mast: MastArtifact::Library(Arc::new(library.clone())),
+            manifest: PackageManifest::new(None),
+            account_component_metadata_bytes: Some(metadata_bytes),
+        };
+
+        let template = AccountComponentTemplate::try_from(package_with_metadata).unwrap();
+        assert_eq!(template.metadata().name(), "test_component");
+        assert!(
+            template
+                .metadata()
+                .supported_types()
+                .contains(&AccountType::RegularAccountImmutableCode)
+        );
+
+        // Test without metadata
+        let package_without_metadata = Package {
+            name: "test_package_no_metadata".to_string(),
+            mast: MastArtifact::Library(Arc::new(library)),
+            manifest: PackageManifest::new(None),
+            account_component_metadata_bytes: None,
+        };
+
+        let template = AccountComponentTemplate::try_from(package_without_metadata).unwrap();
+        assert_eq!(template.metadata().name(), "test_package_no_metadata");
+        assert!(
+            template
+                .metadata()
+                .supported_types()
+                .contains(&AccountType::RegularAccountImmutableCode)
+        );
+        assert!(
+            template
+                .metadata()
+                .supported_types()
+                .contains(&AccountType::RegularAccountUpdatableCode)
+        );
+    }
+
+    #[test]
+    fn test_from_package_with_init_data() {
+        // Create a simple library for testing
+        let library = Assembler::default().assemble_library([CODE]).unwrap();
+
+        // Create a package without metadata (will use defaults)
+        let package = Package {
+            name: "test_package_init_data".to_string(),
+            mast: MastArtifact::Library(Arc::new(library)),
+            manifest: PackageManifest::new(None),
+            account_component_metadata_bytes: None,
+        };
+
+        // Test with empty init data - this tests the complete workflow:
+        // Package -> AccountComponentTemplate -> AccountComponent
+        let init_data = InitStorageData::default();
+        let component =
+            AccountComponent::from_package_with_init_data(&package, &init_data).unwrap();
+
+        // Verify the component was created correctly with default metadata
+        assert_eq!(component.storage_size(), 0);
+        assert!(component.supports_type(AccountType::RegularAccountImmutableCode));
+        assert!(component.supports_type(AccountType::RegularAccountUpdatableCode));
+        assert!(!component.supports_type(AccountType::FungibleFaucet));
     }
 }
