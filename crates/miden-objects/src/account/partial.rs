@@ -85,7 +85,7 @@ impl PartialAccount {
     /// ```text
     /// hash(id, nonce, vault_root, storage_commitment, code_commitment).
     /// ```
-    pub fn to_commitment(&self) -> Word {
+    pub fn commitment(&self) -> Word {
         hash_account(
             self.id,
             self.nonce,
@@ -108,7 +108,7 @@ impl PartialAccount {
         if self.is_new() {
             Word::empty()
         } else {
-            self.to_commitment()
+            self.commitment()
         }
     }
 
