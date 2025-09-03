@@ -6,7 +6,7 @@ use alloc::vec::Vec;
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
-use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT;
+use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
@@ -48,53 +48,47 @@ use crate::{
     TransactionContext,
     TransactionContextBuilder,
     TxContextInput,
-    assert_execution_error,
     assert_transaction_executor_error,
 };
 
 #[test]
-fn test_get_sender_no_sender() -> anyhow::Result<()> {
-    // Creates a mockchain with an account and a note that it can consume
-    let tx_context = {
-        let mut builder = MockChain::builder();
-        let account = builder.add_existing_wallet(Auth::BasicAuth)?;
-        let p2id_note = builder.add_p2id_note(
-            ACCOUNT_ID_SENDER.try_into().unwrap(),
-            account.id(),
-            &[FungibleAsset::mock(150)],
-            NoteType::Public,
-        )?;
-        let mut mock_chain = builder.build()?;
-        mock_chain.prove_next_block()?;
-
-        mock_chain
-            .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note])?
-            .build()?
-    };
+fn test_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
+    // Creates a mockchain with an account and a note
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let p2id_note = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
+        account.id(),
+        &[FungibleAsset::mock(150)],
+        NoteType::Public,
+    )?;
+    let mut mock_chain = builder.build()?;
+    mock_chain.prove_next_block()?;
 
     // calling get_sender should return sender
     let code = "
-        use.$kernel::memory
-        use.$kernel::prologue
         use.miden::note
 
         begin
-            exec.prologue::prepare_transaction
-
-            # force the current input note pointer to 0
-            push.0 exec.memory::set_current_input_note_ptr
-
-            # get the sender
+            # try to get the sender from transaction script
             exec.note::get_sender
         end
         ";
+    let tx_script = ScriptBuilder::default()
+        .compile_tx_script(code)
+        .context("failed to compile tx script")?;
 
-    let process = tx_context.execute_code(code);
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[p2id_note.id()], &[])?
+        .tx_script(tx_script)
+        .build()?;
 
-    assert_execution_error!(
-        process,
-        ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT
+    let result = tx_context.execute_blocking();
+    assert_transaction_executor_error!(
+        result,
+        ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED
     );
+
     Ok(())
 }
 
@@ -273,7 +267,7 @@ fn test_get_assets() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_inputs() -> anyhow::Result<()> {
+fn test_get_payload() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -292,18 +286,23 @@ fn test_get_inputs() -> anyhow::Result<()> {
             .build()?
     };
 
-    fn construct_input_assertions(note: &Note) -> String {
+    fn construct_payload_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for input_chunk in note.inputs().values().chunks(WORD_SIZE) {
-            let mut input_word = EMPTY_WORD;
-            input_word.as_mut_slice()[..input_chunk.len()].copy_from_slice(input_chunk);
+        for payload_chunk in note.inputs().values().chunks(WORD_SIZE) {
+            let mut payload_word = EMPTY_WORD;
+            payload_word.as_mut_slice()[..payload_chunk.len()].copy_from_slice(payload_chunk);
 
             code += &format!(
-                "
-                # assert the input is correct
-                dup padw movup.4 mem_loadw push.{input_word} assert_eqw push.4 add
-                ",
-                input_word = input_word
+                r#"
+                # assert the payload is correct
+                # => [dest_ptr]
+                dup padw movup.4 mem_loadw push.{payload_word} assert_eqw.err="payload is incorrect"
+                # => [dest_ptr]
+                
+                push.4 add
+                # => [dest_ptr+4]
+                "#,
+                payload_word = payload_word
             );
         }
         code
@@ -325,30 +324,30 @@ fn test_get_inputs() -> anyhow::Result<()> {
             exec.note_internal::prepare_note
             # => [note_script_root_ptr, NOTE_ARGS, pad(11)]
 
-            # drop the note inputs
+            # clean the stack
             dropw dropw dropw dropw
             # => []
 
-            push.{NOTE_0_PTR} exec.note::get_inputs
-            # => [num_inputs, dest_ptr]
+            push.{NOTE_0_PTR} exec.note::get_payload
+            # => [payload_len, dest_ptr]
 
-            eq.{num_inputs} assert
+            eq.{payload_len} assert
             # => [dest_ptr]
 
             dup eq.{NOTE_0_PTR} assert
             # => [dest_ptr]
 
-            # apply note 1 input assertions
-            {input_assertions}
+            # apply note 1 payload assertions
+            {payload_assertions}
             # => [dest_ptr]
 
-            # clean the pointer
+            # clear the stack
             drop
             # => []
         end
         ",
-        num_inputs = note0.inputs().num_values(),
-        input_assertions = construct_input_assertions(note0),
+        payload_len = note0.inputs().num_values(),
+        payload_assertions = construct_payload_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
 
@@ -356,14 +355,15 @@ fn test_get_inputs() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the scenario when an input note has exactly 8 input values, and the transaction
-/// script attempts to load the inputs to memory using the `miden::note::get_inputs` procedure.
+/// This test checks the scenario when an input note has exactly 8 payload values, and the
+/// transaction script attempts to load the payload to memory using the `miden::note::get_payload`
+/// procedure.
 ///
-/// Previously this setup was leading to the incorrect number of note input values computed during
-/// the `get_inputs` procedure, see the
+/// Previously this setup was leading to the incorrect number of note payload values computed during
+/// the `get_payload` procedure, see the
 /// [issue #1363](https://github.com/0xMiden/miden-base/issues/1363) for more details.
 #[test]
-fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
+fn test_get_exactly_8_payload_values() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -402,7 +402,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
             Felt::new(7),
             Felt::new(8),
         ])
-        .context("failed to create note inputs")?,
+        .context("failed to create note payload")?,
     );
     let input_note = Note::new(vault.clone(), metadata, recipient);
 
@@ -418,12 +418,12 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_inputs` procedure to trigger note inputs number assertion
-                push.0 exec.note::get_inputs
-                # => [num_inputs, 0]
+                # execute the `get_payload` procedure to trigger note payload length assertion
+                push.0 exec.note::get_payload
+                # => [payload_len, 0]
 
-                # assert that the number if inputs is 8
-                push.8 assert_eq.err=\"number of inputs should be equal to 8\"
+                # assert that the payload length is 8
+                push.8 assert_eq.err=\"number of payload values should be equal to 8\"
 
                 # clean the stack
                 drop
@@ -636,24 +636,24 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
-            # execute the `compute_inputs_commitment` procedure for 5 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_payload_commitment` procedure for 5 values
+            exec.note::compute_payload_commitment
             # => [HASH_5]
 
             push.8.4000
-            # execute the `compute_inputs_commitment` procedure for 8 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_payload_commitment` procedure for 8 values
+            exec.note::compute_payload_commitment
             # => [HASH_8, HASH_5]
 
             push.15.4000
-            # execute the `compute_inputs_commitment` procedure for 15 values
-            exec.note::compute_inputs_commitment
+            # execute the `compute_payload_commitment` procedure for 15 values
+            exec.note::compute_payload_commitment
             # => [HASH_15, HASH_8, HASH_5]
 
             push.0.4000
-            # check that calling `compute_inputs_commitment` procedure with 0 elements will result in an
+            # check that calling `compute_payload_commitment` procedure with 0 elements will result in an
             # empty word
-            exec.note::compute_inputs_commitment
+            exec.note::compute_payload_commitment
             # => [0, 0, 0, 0, HASH_15, HASH_8, HASH_5]
 
             # truncate the stack
@@ -830,7 +830,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
 
       begin
           # store the note inputs to memory starting at address 0
-          push.0 exec.note::get_inputs
+          push.0 exec.note::get_payload
           # => [num_inputs, inputs_ptr]
 
           # make sure the number of inputs is 1

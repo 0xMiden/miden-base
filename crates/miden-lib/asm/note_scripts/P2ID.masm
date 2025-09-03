@@ -29,7 +29,7 @@ const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transacti
 #!   greater than 2^63.
 begin
     # store the note inputs to memory starting at address 0
-    padw push.0 exec.note::get_inputs
+    padw push.0 exec.note::get_payload
     # => [num_inputs, inputs_ptr, EMPTY_WORD]
 
     # make sure the number of inputs is 2

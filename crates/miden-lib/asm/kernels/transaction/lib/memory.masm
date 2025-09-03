@@ -220,12 +220,12 @@ const.INPUT_NOTE_ID_OFFSET=0
 const.INPUT_NOTE_CORE_DATA_OFFSET=4
 const.INPUT_NOTE_SERIAL_NUM_OFFSET=4
 const.INPUT_NOTE_SCRIPT_ROOT_OFFSET=8
-const.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET=12
+const.INPUT_NOTE_PAYLOAD_COMMITMENT_OFFSET=12
 const.INPUT_NOTE_ASSETS_COMMITMENT_OFFSET=16
 const.INPUT_NOTE_RECIPIENT_OFFSET=20
 const.INPUT_NOTE_METADATA_OFFSET=24
 const.INPUT_NOTE_ARGS_OFFSET=28
-const.INPUT_NOTE_NUM_INPUTS_OFFSET=32
+const.INPUT_NOTE_PAYLOAD_LEN_OFFSET=32
 const.INPUT_NOTE_NUM_ASSETS_OFFSET=36
 const.INPUT_NOTE_ASSETS_OFFSET=40
 
@@ -1516,17 +1516,17 @@ export.get_input_note_script_root_ptr
     add.INPUT_NOTE_SCRIPT_ROOT_OFFSET
 end
 
-#! Returns the inputs commitment of an input note located at the specified memory address.
+#! Returns the payload commitment of an input note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [INPUTS_COMMITMENT]
+#! Outputs: [PAYLOAD_COMMITMENT]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - INPUTS_COMMITMENT is the inputs commitment of the input note.
-export.get_input_note_inputs_commitment
+#! - PAYLOAD_COMMITMENT is the payload commitment of the input note.
+export.get_input_note_payload_commitment
     padw
-    movup.4 add.INPUT_NOTE_INPUTS_COMMITMENT_OFFSET
+    movup.4 add.INPUT_NOTE_PAYLOAD_COMMITMENT_OFFSET
     mem_loadw
 end
 
@@ -1584,29 +1584,29 @@ export.set_input_note_args
     mem_storew
 end
 
-#! Returns the number of inputs of the note currently being processed.
+#! Returns the payload length of the note currently being processed.
 #!
 #! Inputs:  [note_ptr]
-#! Outputs: [num_inputs]
+#! Outputs: [payload_len]
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - num_inputs is the number of inputs in the input note.
-export.get_input_note_num_inputs
-    add.INPUT_NOTE_NUM_INPUTS_OFFSET
+#! - payload_len is the number of payload values in the input note.
+export.get_input_note_payload_len
+    add.INPUT_NOTE_PAYLOAD_LEN_OFFSET
     mem_load
 end
 
-#! Sets the number of input values for an input note located at the specified memory address.
+#! Sets the number of payload values for an input note located at the specified memory address.
 #!
-#! Inputs:  [note_ptr, num_inputs]
+#! Inputs:  [note_ptr, payload_len]
 #! Outputs: []
 #!
 #! Where:
 #! - note_ptr is the memory address at which the input note data begins.
-#! - num_inputs is the number of inputs in the input note.
-export.set_input_note_num_inputs
-    add.INPUT_NOTE_NUM_INPUTS_OFFSET
+#! - payload_len is the number of payload values in the input note.
+export.set_input_note_payload_len
+    add.INPUT_NOTE_PAYLOAD_LEN_OFFSET
     mem_store
 end
 

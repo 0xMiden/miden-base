@@ -29,15 +29,15 @@ const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUC
 
 const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT="attempted to access note assets from incorrect context"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of current note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT="attempted to access note metadata from incorrect context"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of current note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT="attempted to access note inputs from incorrect context"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note payload of current note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_FROM_INCORRECT_CONTEXT="attempted to access note script root from incorrect context"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of current note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_FROM_INCORRECT_CONTEXT="attempted to access note serial number from incorrect context"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note serial number of current note because no note is currently being processed"
 
 # AUTHENTICATION
 # =================================================================================================
@@ -737,16 +737,14 @@ end
 #! - is_current_note is the boolean flag indicating whether we should return the assets data from
 #!   the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose assets info should be returned. Notice that if
-#!   is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be 0 (pad element).
+#!   is_current_note is 1, note_index is ignored.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified input note.
 #! - num_assets is the number of assets in the specified input note.
 #!
-#! Panics:
-#! - if requested by note index: the note index is greater or equal to the total number of input 
-#!   notes.
-#! - if requested from current note: the input note is not being processed (attempted to access note
-#!   inputs from incorrect context).
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_assets_info
@@ -757,7 +755,7 @@ export.input_note_get_assets_info
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
     # get the assets info
@@ -809,15 +807,13 @@ end
 #! - is_current_note is the boolean flag indicating whether we should return the metadata from
 #!   the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose metadata should be returned. Notice that if
-#!   is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be 0 (pad element).
+#!   is_current_note is 1, note_index is ignored.
 #! - METADATA is the metadata of the specified input note.
 #!
-#! Panics:
-#! - if requested by note index: the note index is greater or equal to the total number of input 
-#!   notes.
-#! - if requested from current note: the input note is not being processed (attempted to access note
-#!   inputs from incorrect context).
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_metadata
@@ -828,7 +824,7 @@ export.input_note_get_metadata
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_FROM_INCORRECT_CONTEXT
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
     # get the metadata
@@ -849,15 +845,13 @@ end
 #! - is_current_note is the boolean flag indicating whether we should return the serial number
 #!   of the currently processing note or of the note with the specified index.
 #! - note_index is the index of the input note whose serial number should be returned. Notice that 
-#!   if is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be 0 (pad element).
+#!   if is_current_note is 1, note_index is ignored.
 #! - SERIAL_NUMBER is the serial number of the specified input note.
 #!
-#! Panics:
-#! - if requested by note index: the note index is greater or equal to the total number of input 
-#!   notes.
-#! - if requested from current note: the input note is not being processed (attempted to access note
-#!   inputs from incorrect context).
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_serial_number
@@ -868,7 +862,7 @@ export.input_note_get_serial_number
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_FROM_INCORRECT_CONTEXT
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
     # get the serial number using the note pointer
@@ -882,28 +876,26 @@ export.input_note_get_serial_number
     # => [SERIAL_NUMBER, pad(12)]
 end
 
-#! Returns the inputs commitment and length of the specified input note.
+#! Returns the payload commitment and length of the specified input note.
 #!
 #! Inputs:  [is_current_note, note_index, pad(14)]
-#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+#! Outputs: [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
+#! - is_current_note is the boolean flag indicating whether we should return the payload commitment 
 #!   and length from the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
-#!   is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be 0 (pad element).
-#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
-#! - num_inputs is the number of input values of the specified input note.
+#!   is_current_note is 1, note_index is ignored.
+#! - NOTE_PAYLOAD_COMMITMENT is the payload commitment of the specified input note.
+#! - payload_len is the number of payload values of the specified input note.
 #!
-#! Panics:
-#! - if requested by note index: the note index is greater or equal to the total number of input 
-#!   notes.
-#! - if requested from current note: the input note is not being processed (attempted to access note
-#!   inputs from incorrect context).
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_data_info
+export.input_note_get_payload_info
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -911,22 +903,22 @@ export.input_note_get_data_info
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
-    # get the number of inputs
-    dup exec.memory::get_input_note_num_inputs swap
-    # => [input_note_ptr, num_inputs, pad(16)]
+    # get the note payload length
+    dup exec.memory::get_input_note_payload_len swap
+    # => [input_note_ptr, payload_len, pad(16)]
 
-    # get the inputs commitment
-    exec.memory::get_input_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
+    # get the payload commitment
+    exec.memory::get_input_note_payload_commitment
+    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(16)]
 
     # truncate the stack
     repeat.5
         movup.5 drop
     end
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11)]
 end
 
 #! Returns the script root of the specified input note.
@@ -938,15 +930,13 @@ end
 #! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
 #!   and length from the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
-#!   is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be 0 (pad element).
+#!   is_current_note is 1, note_index is ignored.
 #! - SCRIPT_ROOT is the script root of the specified input note.
 #!
-#! Panics:
-#! - if requested by note index: the note index is greater or equal to the total number of input 
-#!   notes.
-#! - if requested from current note: the input note is not being processed (attempted to access note
-#!   inputs from incorrect context).
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_script_root
@@ -957,7 +947,7 @@ export.input_note_get_script_root
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_FROM_INCORRECT_CONTEXT
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
     # get the script root using the note pointer
@@ -1432,11 +1422,10 @@ end
 #! Outputs: [input_note_ptr]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#! - is_current_note is the boolean flag indicating whether we should return requested data from
 #!   the currently processing note or from the note with the specified index.
-#! - note_index is the index of the input note whose assets info should be returned. Notice that if
-#!   is_current_note flag is true (we should process the currently processed note), this index is
-#!   assumed to be 0 (pad element).
+#! - note_index is the index of the input note whose data should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
 #! - input_note_ptr is the pointer to the correct input note. 
 #!
 #! Panics if:

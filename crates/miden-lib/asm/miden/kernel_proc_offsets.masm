@@ -50,7 +50,7 @@ const.NOTE_ADD_ASSET_OFFSET=24
 
 # note parameters
 const.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET=25
-const.INPUT_NOTE_GET_DATA_INFO_OFFSET=26
+const.INPUT_NOTE_GET_PAYLOAD_INFO_OFFSET=26
 const.INPUT_NOTE_GET_SCRIPT_ROOT_OFFSET=27
 
 # note introspection
@@ -481,16 +481,16 @@ export.input_note_get_serial_number_offset
     push.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET
 end
 
-#! Returns the offset of the `input_note_get_data_info` kernel procedure.
+#! Returns the offset of the `input_note_get_payload_info` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `input_note_get_data_info` kernel procedure required to get
+#! - proc_offset is the offset of the `input_note_get_payload_info` kernel procedure required to get
 #!   the address where this procedure is stored.
-export.input_note_get_data_info_offset
-    push.INPUT_NOTE_GET_DATA_INFO_OFFSET
+export.input_note_get_payload_info_offset
+    push.INPUT_NOTE_GET_PAYLOAD_INFO_OFFSET
 end
 
 #! Returns the offset of the `input_note_get_script_root` kernel procedure.

@@ -55,7 +55,7 @@ const.ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH="note commitment computed fro
 
 const.ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO="new account must have a zero nonce"
 
-const.ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
+const.ERR_PROLOGUE_NOTE_PAYLOAD_LEN_EXCEEDED_LIMIT="number of note payload values exceeded the maximum limit of 128"
 
 const.ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED="failed to authenticate note inclusion in block"
 
@@ -641,11 +641,11 @@ proc.process_note_inputs_length
 
     # validate the input length
     dup exec.::$kernel::util::note::get_max_inputs_per_note lte
-    assert.err=ERR_PROLOGUE_NUMBER_OF_NOTE_INPUTS_EXCEEDED_LIMIT
+    assert.err=ERR_PROLOGUE_NOTE_PAYLOAD_LEN_EXCEEDED_LIMIT
     # => [inputs_len, note_ptr]
 
     # store the inputs length into the memory
-    dup.1 exec.memory::set_input_note_num_inputs
+    dup.1 exec.memory::set_input_note_payload_len
     # => [note_ptr]
 end
 
@@ -800,7 +800,7 @@ proc.compute_input_note_id
     # => [MERGE_SCRIPT, note_ptr]
 
     # compute RECIPIENT: hash(MERGE_SCRIPT || INPUT_COMMITMENT)
-    dup.4 exec.memory::get_input_note_inputs_commitment hmerge
+    dup.4 exec.memory::get_input_note_payload_commitment hmerge
     # => [RECIPIENT, note_ptr]
 
     # store the recipient in memory

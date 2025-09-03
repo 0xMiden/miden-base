@@ -75,7 +75,7 @@ To start the transaction process, the executor fetches and prepares all the inpu
 
 In the transaction's prologue the data is being authenticated by re-hashing the provided values and comparing them to the blockchain's data (this is how private data can be used and verified during the execution of transaction without actually revealing it to the network).
 
-Then the P2ID note script is being executed. The script starts by reading the note inputs `note::get_inputs` — in our case the account ID of the intended target account. It checks if the provided target account ID equals the account ID of the executing account. This is the first time the note invokes a method exposed by the `Transaction` kernel, `account::get_id`.
+Then the P2ID note script is being executed. The script starts by reading the note inputs `note::get_payload` — in our case the account ID of the intended target account. It checks if the provided target account ID equals the account ID of the executing account. This is the first time the note invokes a method exposed by the `Transaction` kernel, `account::get_id`.
 
 If the check passes, the note script pushes the assets it holds into the account's vault. For every asset the note contains, the script calls the `wallets::basic::receive_asset` method exposed by the account's wallet component. The `wallets::basic::receive_asset` procedure calls `account::add_asset`, which cannot be called from the note itself. This allows accounts to control what functionality to expose, e.g. whether the account supports receiving assets or not, and the note cannot bypass that.
 
