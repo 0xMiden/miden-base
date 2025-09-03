@@ -5,7 +5,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId};
+use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::block::{BlockHeader, BlockNumber};
@@ -194,11 +194,13 @@ impl DataStore for TransactionContext {
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
     ) -> impl FutureMaybeSend<
-        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     > {
         assert_eq!(account_id, self.account().id());
-        let (_partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
-        async move { Ok((self.account.clone(), seed, header, mmr)) }
+        assert_eq!(account_id, self.tx_inputs.account().id());
+
+        let (partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
+        async move { Ok((partial_account, seed, header, mmr)) }
     }
 }
 

@@ -1,6 +1,6 @@
 use alloc::collections::BTreeSet;
 
-use miden_objects::account::{Account, AccountId};
+use miden_objects::account::{AccountId, PartialAccount};
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::PartialBlockchain;
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
@@ -31,6 +31,6 @@ pub trait DataStore: MastForestStore {
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
     ) -> impl FutureMaybeSend<
-        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     >;
 }

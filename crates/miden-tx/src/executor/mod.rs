@@ -4,7 +4,7 @@ use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{AccountId, PartialAccount};
+use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
@@ -277,8 +277,7 @@ where
 
         validate_account_inputs(tx_args, &ref_block)?;
 
-        let partial_account = PartialAccount::from(account);
-        let tx_inputs = TransactionInputs::new(partial_account, seed, ref_block, mmr, notes)
+        let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, advice_inputs) =
