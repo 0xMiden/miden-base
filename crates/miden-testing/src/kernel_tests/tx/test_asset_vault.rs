@@ -6,7 +6,9 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
     ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
 };
+use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::memory;
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::AssetVaultError;
 use miden_objects::account::AccountId;
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
@@ -157,8 +159,6 @@ fn test_has_non_fungible_asset() -> anyhow::Result<()> {
 
 #[test]
 fn test_add_fungible_asset_success() -> anyhow::Result<()> {
-    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
-    let mut account_vault = tx_context.account().vault().clone();
     let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
     let amount = FungibleAsset::MAX_AMOUNT - FUNGIBLE_ASSET_AMOUNT;
     let add_fungible_asset = Asset::try_from(Word::new([
@@ -168,35 +168,37 @@ fn test_add_fungible_asset_success() -> anyhow::Result<()> {
         faucet_id.prefix().as_felt(),
     ]))
     .unwrap();
+    let asset_note = NoteBuilder::new(faucet_id, rand::rng())
+        .add_assets([add_fungible_asset].map(Asset::from))
+        .build()?;
 
     let code = format!(
         "
-        use.$kernel::prologue
-        use.mock::account
+      use.mock::account
 
-        begin
-            exec.prologue::prepare_transaction
-            push.{FUNGIBLE_ASSET}
-            call.account::add_asset
+      begin
+          push.{FUNGIBLE_ASSET}
+          call.account::add_asset
 
-            # truncate the stack
-            swapw dropw
-        end
-        ",
+          # truncate the stack
+          swapw dropw
+      end
+      ",
         FUNGIBLE_ASSET = Word::from(add_fungible_asset)
     );
 
-    let process = &tx_context.execute_code(&code)?;
+    let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
+    let tx_context = TransactionContextBuilder::with_existing_mock_account()
+        .tx_script(tx_script)
+        .extend_input_notes(vec![asset_note])
+        .build()?;
+    let account = tx_context.account().clone();
+    let tx = tx_context.execute_blocking()?;
 
-    assert_eq!(
-        process.stack.get_word(0),
-        Into::<Word>::into(account_vault.add_asset(add_fungible_asset).unwrap())
-    );
+    let mut account_vault = account.vault().clone();
+    account_vault.add_asset(add_fungible_asset)?;
 
-    assert_eq!(
-        process.get_kernel_mem_word(memory::NATIVE_ACCT_VAULT_ROOT_PTR),
-        account_vault.root()
-    );
+    assert_eq!(tx.final_account().vault_root(), account_vault.root());
 
     Ok(())
 }

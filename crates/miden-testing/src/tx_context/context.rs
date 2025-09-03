@@ -29,6 +29,7 @@ use miden_processor::{
 };
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::{
+    AccountVaultAssetWitness,
     DataStore,
     DataStoreError,
     TransactionExecutor,
@@ -201,6 +202,26 @@ impl DataStore for TransactionContext {
 
         let (partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
         async move { Ok((partial_account, seed, header, mmr)) }
+    }
+
+    /// TODO: Vault root is currently unused because for the native account vault, we should return
+    /// the latest state, since the vault can change as transaction executes.
+    fn get_vault_asset_witness(
+        &self,
+        account_id: AccountId,
+        _vault_root: Word,
+        asset_key: Word,
+    ) -> impl FutureMaybeSend<Result<AccountVaultAssetWitness, DataStoreError>> {
+        assert_eq!(
+            account_id,
+            self.account.id(),
+            "only native account vault witnesses can be requested (for now)"
+        );
+
+        let smt_proof = self.account().vault().asset_tree().open(&asset_key);
+        let witness = AccountVaultAssetWitness::from(smt_proof);
+
+        async { Ok(witness) }
     }
 }
 

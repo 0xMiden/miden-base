@@ -73,4 +73,9 @@ impl AccountDeltaTracker {
         AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta)
             .expect("account delta created in delta tracker should be valid")
     }
+
+    /// Returns the account ID of the account whose delta is being tracked.
+    pub fn id(&self) -> AccountId {
+        self.account_id
+    }
 }

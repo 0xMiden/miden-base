@@ -22,9 +22,13 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
+use miden_lib::transaction::memory::{
+    ACCOUNT_STACK_TOP_PTR,
+    CURRENT_INPUT_NOTE_PTR,
+    NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+};
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
-use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
@@ -184,12 +188,16 @@ where
         }
 
         let advice_mutations = match transaction_event {
-            TransactionEvent::AccountVaultBeforeAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::AccountVaultBeforeAddAsset => {
+                self.on_account_vault_before_add_or_remove_asset(process)
+            },
             TransactionEvent::AccountVaultAfterAddAsset => {
                 self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeRemoveAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::AccountVaultBeforeRemoveAsset => {
+                self.on_account_vault_before_add_or_remove_asset(process)
+            },
             TransactionEvent::AccountVaultAfterRemoveAsset => {
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
@@ -590,6 +598,95 @@ where
         Ok(())
     }
 
+    /// TODO
+    ///
+    /// Expected stack state: [ASSET, account_vault_root_ptr, ...]
+    pub fn on_account_vault_before_add_or_remove_asset(
+        &mut self,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
+            TransactionKernelError::MalformedAssetInEventHandler {
+                handler: "on_account_vault_before_add_or_remove_asset",
+                source,
+            }
+        })?;
+
+        let vault_root_ptr = process.get_stack_item(4);
+        let vault_root_ptr = u32::try_from(vault_root_ptr).map_err(|_err| {
+            TransactionKernelError::ViolatedAssumption(format!(
+                "vault root ptr should fit into a u32, but was {vault_root_ptr}"
+            ))
+        })?;
+        let vault_root = process
+            .get_mem_word(process.ctx(), vault_root_ptr)
+            .map_err(|_err| {
+                TransactionKernelError::ViolatedAssumption(format!(
+                    "vault root ptr {vault_root_ptr} is not word-aligned"
+                ))
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::ViolatedAssumption(format!(
+                    "vault root ptr {vault_root_ptr} was not initialized"
+                ))
+            })?;
+
+        // Get the current account ID from memory.
+        let current_account_id = {
+            let account_stack_top_ptr =
+                process.get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
+                    TransactionKernelError::ViolatedAssumption(
+                        "account stack top ptr should be initialized".into(),
+                    )
+                })?;
+            let account_stack_top_ptr = u32::try_from(account_stack_top_ptr).map_err(|_| {
+                TransactionKernelError::ViolatedAssumption(
+                    "account stack top ptr should fit into a u32".into(),
+                )
+            })?;
+
+            let current_account_ptr =
+                process.get_mem_value(process.ctx(), account_stack_top_ptr).ok_or_else(|| {
+                    TransactionKernelError::ViolatedAssumption(
+                        "account id should be initialized".into(),
+                    )
+                })?;
+            let current_account_ptr = u32::try_from(current_account_ptr).map_err(|_| {
+                TransactionKernelError::ViolatedAssumption(
+                    "current account ptr should fit into a u32".into(),
+                )
+            })?;
+
+            let current_account_id_and_nonce = process
+                .get_mem_word(process.ctx(), current_account_ptr)
+                .map_err(|_| {
+                    TransactionKernelError::ViolatedAssumption(
+                        "account stack top ptr should be word-aligned".into(),
+                    )
+                })?
+                .ok_or_else(|| {
+                    TransactionKernelError::ViolatedAssumption(
+                        "current account id should be initialized".into(),
+                    )
+                })?;
+
+            AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
+                .map_err(|_| {
+                    TransactionKernelError::ViolatedAssumption(
+                        "native account id ptr should point to a valid account ID".into(),
+                    )
+                })?
+        };
+
+        Ok(TransactionEventHandling::Unhandled(
+            TransactionEventData::AccountVaultAssetWitness {
+                current_account_id,
+                vault_root,
+                asset,
+            },
+        ))
+    }
+
     /// Extracts the asset that is being removed from the account's vault from the process state
     /// and updates the appropriate fungible or non-fungible asset map.
     ///
@@ -766,5 +863,13 @@ pub(super) enum TransactionEventData {
     TransactionFeeComputed {
         /// The fee asset extracted from the stack.
         fee_asset: FungibleAsset,
+    },
+    AccountVaultAssetWitness {
+        /// The account ID for whose vault a witness is requested.
+        current_account_id: AccountId,
+        /// The vault root identifying the asset vault from which a witness is requested.
+        vault_root: Word,
+        /// The asset for which a witness is requested.
+        asset: Asset,
     },
 }

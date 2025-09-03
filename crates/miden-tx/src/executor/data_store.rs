@@ -2,6 +2,7 @@ use alloc::collections::BTreeSet;
 
 use miden_objects::account::{AccountId, PartialAccount};
 use miden_objects::block::{BlockHeader, BlockNumber};
+use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::PartialBlockchain;
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
 
@@ -33,4 +34,29 @@ pub trait DataStore: MastForestStore {
     ) -> impl FutureMaybeSend<
         Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     >;
+
+    /// Returns the witness that needs to be added to the advice provider's Merkle store and advice
+    /// map to make access to the specified asset possible.
+    fn get_vault_asset_witness(
+        &self,
+        account_id: AccountId,
+        vault_root: Word,
+        asset_key: Word,
+    ) -> impl FutureMaybeSend<Result<AccountVaultAssetWitness, DataStoreError>>;
+}
+
+/// TODO
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountVaultAssetWitness(SmtProof);
+
+impl From<SmtProof> for AccountVaultAssetWitness {
+    fn from(proof: SmtProof) -> Self {
+        Self(proof)
+    }
+}
+
+impl From<AccountVaultAssetWitness> for SmtProof {
+    fn from(witness: AccountVaultAssetWitness) -> Self {
+        witness.0
+    }
 }

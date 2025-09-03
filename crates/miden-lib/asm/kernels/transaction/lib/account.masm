@@ -849,10 +849,6 @@ end
 #!   added.
 #! - the vault already contains the same non-fungible asset.
 export.add_asset_to_vault
-    # emit event to signal that an asset is going to be added to the account vault
-    emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
-    # => [ASSET]
-
     # duplicate the ASSET to be able to emit an event after an asset is being added
     dupw
     # => [ASSET, ASSET]
@@ -860,6 +856,9 @@ export.add_asset_to_vault
     # fetch the account vault root
     exec.memory::get_acct_vault_root_ptr movdn.4
     # => [ASSET, acct_vault_root_ptr, ASSET]
+
+    # emit event to signal that an asset is going to be added to the account vault
+    emit.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
 
     # add the asset to the account vault
     exec.asset_vault::add_asset
@@ -889,13 +888,12 @@ end
 #! - the amount of the fungible asset in the vault is less than the amount to be removed.
 #! - the non-fungible asset is not found in the vault.
 export.remove_asset_from_vault
-    # emit event to signal that an asset is going to be removed from the account vault
-    emit.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT
-    # => [ASSET]
-
     # fetch the vault root
     exec.memory::get_acct_vault_root_ptr movdn.4
     # => [ASSET, acct_vault_root_ptr]
+
+    # emit event to signal that an asset is going to be removed from the account vault
+    emit.ACCOUNT_VAULT_BEFORE_REMOVE_ASSET_EVENT
 
     # remove the asset from the account vault
     exec.asset_vault::remove_asset

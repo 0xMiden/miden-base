@@ -767,6 +767,12 @@ proc.add_input_note_assets_to_vault
         padw dup.5 mem_loadw
         # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 
+        # TODO: Temporary solution. Avoid loading assets one by one but pre-load all note assets
+        # before tx execution.
+        # Event is equivalent to ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT
+        emit.131072
+        # => [ASSET, input_vault_root_ptr, assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
+
         exec.asset_vault::add_asset dropw
         # => [assets_start_ptr, assets_end_ptr, input_vault_root_ptr]
 

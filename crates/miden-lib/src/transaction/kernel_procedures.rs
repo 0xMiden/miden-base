@@ -36,9 +36,9 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     // account_get_vault_root
     word!("0x42a2bfb8eac4fce9bbf75ea15215b00729faeeaf7fff784692948d3f618a9bb7"),
     // account_add_asset
-    word!("0xf0d6be80cdd2a62cab2b4ad5606dde01af1968e3ab3357dcb63fe36aea7f8b80"),
+    word!("0x9a96c031f9ca6d839acc5ce6aa01b63ddba91fe312ea824ccd224c365cc1327d"),
     // account_remove_asset
-    word!("0x7a8f7b23afe3d6264686c4895f78744fbccda957e901247c8f3585427d470039"),
+    word!("0x8372d56ed394254481026d264b8ea97c2342ba42db21c61b2e96c6bf06d950a9"),
     // account_get_balance
     word!("0xb4e92ae0196ca128a451e40dd8a5ff56c13919efa67f63dca488214fbba3ffbc"),
     // account_has_non_fungible_asset

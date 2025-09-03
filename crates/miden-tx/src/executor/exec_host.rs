@@ -5,12 +5,14 @@ use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
-use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::FungibleAsset;
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::block::FeeParameters;
+use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{
     AdviceMutation,
@@ -211,6 +213,48 @@ where
         Ok(Vec::new())
     }
 
+    /// TODO
+    async fn on_account_vault_asset_witness_requested(
+        &self,
+        current_account_id: AccountId,
+        vault_root: Word,
+        asset: Asset,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        // For now, we only support getting witnesses for the native account, so return early if the
+        // requested account is not the native one.
+        if current_account_id != self.base_host.account_delta_tracker().id() {
+            return Ok(Vec::new());
+        }
+
+        let asset_key = asset.vault_key();
+        let asset_witness = self
+            .base_host
+            .store()
+            .get_vault_asset_witness(current_account_id, vault_root, asset_key)
+            .await
+            .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
+                vault_root,
+                asset_key,
+                source: Box::new(err),
+            })?;
+
+        // TODO: Should there be a convenience function on `SmtProof` to get its authenticated
+        // nodes?
+        let smt_proof = SmtProof::from(asset_witness);
+        let authenticated_nodes = smt_proof
+            .path()
+            .authenticated_nodes(smt_proof.leaf().index().value(), smt_proof.leaf().hash())
+            .expect("leaf index is u64 and should be less than 2^SMT_DEPTH");
+
+        let merkle_store_ext = AdviceMutation::extend_merkle_store(authenticated_nodes);
+        let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
+            smt_proof.leaf().hash(),
+            smt_proof.leaf().to_elements(),
+        )]));
+
+        Ok(vec![merkle_store_ext, map_ext])
+    }
+
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
     /// transaction progress.
     #[allow(clippy::type_complexity)]
@@ -285,6 +329,14 @@ where
                 TransactionEventData::TransactionFeeComputed { fee_asset } => {
                     self.on_tx_fee_computed(fee_asset).map_err(EventError::from)
                 },
+                TransactionEventData::AccountVaultAssetWitness {
+                    current_account_id,
+                    vault_root,
+                    asset,
+                } => self
+                    .on_account_vault_asset_witness_requested(current_account_id, vault_root, asset)
+                    .await
+                    .map_err(EventError::from),
             }
         }
     }
