@@ -99,19 +99,7 @@ impl LocalTransactionProver {
         let builder = match partial_account.id().is_onchain() {
             true => {
                 let account_update_details = if partial_account.is_new() {
-                    let (id, nonce, code, partial_storage, partial_vault) =
-                        partial_account.into_parts();
-
-                    // For new accounts, the partial storage must represent the full initial account
-                    // storage.
-                    let storage = partial_storage_to_full(partial_storage);
-
-                    // The vault of a new account should be empty.
-                    debug_assert_eq!(partial_vault.leaves().count(), 0);
-                    let vault = AssetVault::default();
-
-                    let mut account = Account::from_parts(id, vault, storage, code, nonce);
-
+                    let mut account = partial_account_to_full(partial_account);
                     account
                         .apply_delta(&post_fee_account_delta)
                         .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
@@ -197,6 +185,20 @@ impl Default for LocalTransactionProver {
             proof_options: Default::default(),
         }
     }
+}
+
+fn partial_account_to_full(partial_account: PartialAccount) -> Account {
+    let (id, nonce, code, partial_storage, partial_vault) = partial_account.into_parts();
+
+    // For new accounts, the partial storage must represent the full initial account
+    // storage.
+    let storage = partial_storage_to_full(partial_storage);
+
+    // The vault of a new account should be empty.
+    debug_assert_eq!(partial_vault.leaves().count(), 0);
+    let vault = AssetVault::default();
+
+    Account::from_parts(id, vault, storage, code, nonce)
 }
 
 fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
