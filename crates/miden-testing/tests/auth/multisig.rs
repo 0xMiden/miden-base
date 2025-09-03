@@ -315,3 +315,26 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Tests that 1-of-2 approvers can consume a note.
+///
+/// This test verifies that a multisig account with 2 approvers and threshold 2, but a procedure
+/// threshold of 1, can consume a note when only one approver signs the transaction.
+#[tokio::test]
+async fn test_multisig_note_consumption_one_approver() -> anyhow::Result<()> {
+    // Setup keys and authenticators
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
+
+    let proc_threshold_map = vec![(BasicWallet::receive_asset_digest(), 1)];
+
+    // Create multisig account
+    let multisig_starting_balance = 10u64;
+    let mut multisig_account =
+        create_multisig_account(2, &public_keys, multisig_starting_balance, proc_threshold_map)?;
+
+    // TODO
+    // 1. create a mock note from some random account
+    // 2. consume without signatures
+    // 3. get signature from one approver
+    Ok(())
+}
