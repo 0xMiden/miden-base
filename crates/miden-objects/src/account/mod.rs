@@ -213,7 +213,7 @@ impl Account {
     /// [crate::EMPTY_WORD] to distinguish new accounts from existing accounts. The actual
     /// commitment of the initial account state (and the initial state itself), are provided to
     /// the VM via the advice provider.
-    pub fn init_commitment(&self) -> Word {
+    pub fn initial_commitment(&self) -> Word {
         if self.is_new() {
             Word::empty()
         } else {

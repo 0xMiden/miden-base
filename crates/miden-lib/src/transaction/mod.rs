@@ -196,7 +196,7 @@ impl TransactionKernel {
     /// - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
     pub fn build_input_stack(
         account_id: AccountId,
-        init_account_commitment: Word,
+        initial_account_commitment: Word,
         input_notes_commitment: Word,
         block_commitment: Word,
         block_num: BlockNumber,
@@ -207,7 +207,7 @@ impl TransactionKernel {
         inputs.push(account_id.suffix());
         inputs.push(account_id.prefix().as_felt());
         inputs.extend(input_notes_commitment);
-        inputs.extend_from_slice(init_account_commitment.as_elements());
+        inputs.extend_from_slice(initial_account_commitment.as_elements());
         inputs.extend_from_slice(block_commitment.as_elements());
         StackInputs::new(inputs)
             .map_err(|e| e.to_string())

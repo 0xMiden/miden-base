@@ -538,7 +538,7 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
       first_batch_id,
       second_batch_id
     } if account_id == account1.id() &&
-      initial_state_commitment == account1.init_commitment() &&
+      initial_state_commitment == account1.initial_commitment() &&
       first_batch_id == batch0.id() &&
       second_batch_id == batch1.id()
     );
