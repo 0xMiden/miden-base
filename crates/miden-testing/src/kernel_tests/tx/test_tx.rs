@@ -783,10 +783,11 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
+        use.miden::note
         use.$kernel::prologue
 
         proc.build_recipient_hash
-            exec.tx::build_recipient_hash
+            exec.note::build_recipient_hash
         end
 
         begin

@@ -60,6 +60,7 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
         use.$kernel::memory
         use.$kernel::prologue
         use.miden::note
+        use.miden::current_note
 
         begin
             exec.prologue::prepare_transaction
@@ -68,7 +69,7 @@ fn test_get_sender_no_sender() -> anyhow::Result<()> {
             push.0 exec.memory::set_current_input_note_ptr
 
             # get the sender
-            exec.note::get_sender
+            exec.current_note::get_sender
         end
         ";
 
@@ -95,12 +96,13 @@ fn test_get_sender() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.$kernel::note->note_internal
         use.miden::note
+        use.miden::current_note
 
         begin
             exec.prologue::prepare_transaction
             exec.note_internal::prepare_note
             dropw dropw dropw dropw
-            exec.note::get_sender
+            exec.current_note::get_sender
 
             # truncate the stack
             swapw dropw
@@ -153,12 +155,13 @@ fn test_get_vault_data() -> anyhow::Result<()> {
 
         use.$kernel::prologue
         use.$kernel::note
+        use.miden::current_note
 
         begin
             exec.prologue::prepare_transaction
 
             # get the assets info about note 0
-            exec.note::get_assets_info
+            exec.current_note::get_assets_info
 
             # assert the assets data is correct
             push.{note_0_asset_commitment} assert_eqw
@@ -168,7 +171,7 @@ fn test_get_vault_data() -> anyhow::Result<()> {
             exec.note::increment_current_input_note_ptr
 
             # get the assets info about note 1
-            exec.note::get_assets_info
+            exec.current_note::get_assets_info
 
             # assert the assets data is correct
             push.{note_1_asset_commitment} assert_eqw
@@ -245,6 +248,7 @@ fn test_get_assets() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.$kernel::note->note_internal
         use.miden::note
+        use.miden::current_note
 
         proc.process_note_0
             # drop the note inputs
@@ -254,7 +258,7 @@ fn test_get_assets() -> anyhow::Result<()> {
             push.{DEST_POINTER_NOTE_0}
 
             # get the assets
-            exec.note::get_assets
+            exec.current_note::get_assets
 
             # assert the number of assets is correct
             eq.{note_0_num_assets} assert
@@ -277,7 +281,7 @@ fn test_get_assets() -> anyhow::Result<()> {
             push.{DEST_POINTER_NOTE_1}
 
             # get the assets
-            exec.note::get_assets
+            exec.current_note::get_assets
 
             # assert the number of assets is correct
             eq.{note_1_num_assets} assert
@@ -369,6 +373,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
         use.$kernel::prologue
         use.$kernel::note->note_internal
         use.miden::note
+        use.miden::current_note
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -382,7 +387,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
             dropw dropw dropw dropw
             # => []
 
-            push.{NOTE_0_PTR} exec.note::get_inputs
+            push.{NOTE_0_PTR} exec.current_note::get_inputs
             # => [num_inputs, dest_ptr]
 
             eq.{num_inputs} assert
@@ -467,12 +472,13 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     let tx_code = "
             use.$kernel::prologue
             use.miden::note
+            use.miden::current_note
 
             begin
                 exec.prologue::prepare_transaction
 
                 # execute the `get_inputs` procedure to trigger note inputs number assertion
-                push.0 exec.note::get_inputs
+                push.0 exec.current_note::get_inputs
                 # => [num_inputs, 0]
 
                 # assert that the number if inputs is 8
@@ -654,10 +660,11 @@ fn test_get_note_serial_number() -> anyhow::Result<()> {
     let code = "
         use.$kernel::prologue
         use.miden::note
+        use.miden::current_note
 
         begin
             exec.prologue::prepare_transaction
-            exec.note::get_serial_number
+            exec.current_note::get_serial_number
 
             # truncate the stack
             swapw dropw
@@ -874,10 +881,11 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
     let code = "
     use.$kernel::prologue
     use.miden::note
+    use.miden::current_note
 
     begin
         exec.prologue::prepare_transaction
-        exec.note::get_script_root
+        exec.current_note::get_script_root
 
         # truncate the stack
         swapw dropw
@@ -963,11 +971,12 @@ pub fn test_timelock() -> anyhow::Result<()> {
     let code = format!(
         r#"
       use.miden::note
+      use.miden::current_note
       use.miden::tx
 
       begin
           # store the note inputs to memory starting at address 0
-          push.0 exec.note::get_inputs
+          push.0 exec.current_note::get_inputs
           # => [num_inputs, inputs_ptr]
 
           # make sure the number of inputs is 1

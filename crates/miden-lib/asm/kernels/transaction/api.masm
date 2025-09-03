@@ -9,6 +9,7 @@ use.$kernel::faucet
 use.$kernel::input_note
 use.$kernel::memory
 use.$kernel::note
+use.$kernel::current_note
 use.$kernel::output_note
 use.$kernel::tx
 
@@ -708,7 +709,7 @@ end
 #! Invocation: dynexec
 export.note_get_assets_info
     # get the assets info
-    exec.note::get_assets_info
+    exec.current_note::get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(16)]
 
     # truncate the stack
@@ -941,7 +942,7 @@ end
 #!
 #! Invocation: dynexec
 export.note_get_serial_number
-    exec.note::get_serial_number
+    exec.current_note::get_serial_number
     # => [SERIAL_NUMBER, pad(16)]
 
     # truncate the stack
@@ -963,7 +964,7 @@ export.note_get_inputs_commitment_and_len
     exec.memory::get_input_note_num_inputs
     # => [num_inputs, pad(16)]
 
-    exec.note::get_note_inputs_commitment
+    exec.current_note::get_note_inputs_commitment
     # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
@@ -985,7 +986,7 @@ end
 #!
 #! Invocation: dynexec
 export.note_get_sender
-    exec.note::get_sender
+    exec.current_note::get_sender
     # => [sender_id_prefix, sender_id_suffix, pad(16)]
 
     # truncate the stack
@@ -1006,7 +1007,7 @@ end
 #!
 #! Invocation: dynexec
 export.note_get_script_root
-    exec.note::get_script_root
+    exec.current_note::get_script_root
     # => [SCRIPT_ROOT, pad(16)]
 
     # truncate the stack

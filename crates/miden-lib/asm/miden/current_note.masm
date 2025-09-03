@@ -1,0 +1,284 @@
+use.miden::kernel_proc_offsets
+use.std::mem
+use.miden::contracts::wallets::basic->wallet
+use.miden::note
+
+# ERRORS
+# =================================================================================================
+
+const.ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS="the specified number of note inputs does not match the actual number"
+
+# PROCEDURES
+# =================================================================================================
+
+#! Writes the assets of the currently executing note into memory starting at the specified address.
+#!
+#! Inputs:  [dest_ptr]
+#! Outputs: [num_assets, dest_ptr]
+#!
+#! Where:
+#! - dest_ptr is the memory address to write the assets.
+#! - num_assets is the number of assets in the currently executing note.
+#!
+#! Invocation: exec
+export.get_assets
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15), dest_ptr]
+
+    exec.kernel_proc_offsets::note_get_assets_info_offset
+    # => [offset, pad(15), dest_ptr]
+
+    syscall.exec_kernel_proc
+    # => [ASSETS_COMMITMENT, num_assets, pad(11), dest_ptr]
+
+    # clean the stack
+    swapdw dropw dropw movup.7 movup.7 movup.7 drop drop drop
+    # => [ASSETS_COMMITMENT, num_assets, dest_ptr]
+
+    # write the assets from the advice map into memory
+    exec.note::write_assets_to_memory
+    # => [num_assets, dest_ptr]
+end
+
+#! Returns the number of assets and the assets commitment of the note currently being processed.
+#!
+#! Inputs:  []
+#! Outputs: [ASSETS_COMMITMENT, num_assets]
+#!
+#! Where:
+#! - num_assets is the number of assets in the note currently being processed.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
+#!
+#! Panics if:
+#! - no note is being processed.
+#!
+#! Invocation: exec
+export.get_assets_info
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::note_get_assets_info_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+
+    # clean the stack
+    swapdw dropw dropw movup.7 movup.7 movup.7 drop drop drop
+    # => [ASSETS_COMMITMENT, num_assets]
+end
+
+#! Loads the note's inputs to `dest_ptr`.
+#!
+#! Inputs:
+#!   Stack: [dest_ptr]
+#!   Advice Map: { INPUTS_COMMITMENT: [INPUTS] }
+#! Outputs:
+#!   Stack: [num_inputs, dest_ptr]
+#!
+#! Where:
+#! - dest_ptr is the memory address to write the inputs.
+#! - INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - INPUTS is the data corresponding to the note's inputs.
+#!
+#! Invocation: exec
+export.get_inputs
+    # pad the stack
+    padw padw padw push.0.0.0
+    # OS => [pad(15), dest_ptr]
+
+    exec.kernel_proc_offsets::note_get_inputs_commitment_and_len_offset
+    # OS => [offset, pad(15), dest_ptr]
+
+    syscall.exec_kernel_proc
+    # OS => [INPUTS_COMMITMENT, num_inputs, pad(11), dest_ptr]
+
+    # clean the stack
+    swapdw dropw dropw
+    movup.5 drop movup.5 drop movup.5 drop
+    # OS => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
+
+    # load the inputs from the advice map to the advice stack
+    adv.push_mapvaln
+    # OS => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [advice_num_inputs, [INPUT_VALUES]]
+
+    # move the number of inputs obtained from advice map to the operand stack
+    adv_push.1 dup.5
+    # OS => [num_inputs, advice_num_inputs, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
+    # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
+    u32divmod.8 neq.0 add mul.8
+    # OS => [rounded_up_num_inputs, advice_num_inputs, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS
+    # OS => [INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # calculate the number of words required to store the inputs
+    dup.4 u32divmod.4 neq.0 add
+    # OS => [num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # round up the number of words to the next multiple of 2
+    dup is_odd add
+    # OS => [even_num_words, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    dup.6 swap
+    # OS => [even_num_words, dest_ptr, INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
+
+    # write the input values from the advice stack into memory
+    exec.mem::pipe_preimage_to_memory drop
+    # OS => [num_inputs, dest_ptr]
+    # AS => []
+end
+
+#! Returns the sender of the note currently being processed.
+#!
+#! Inputs:  []
+#! Outputs: [sender_id_prefix, sender_id_suffix]
+#!
+#! Where:
+#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender of the note currently
+#!   being processed.
+#!
+#! Panics if:
+#! - no note is being processed.
+#!
+#! Invocation: exec
+export.get_sender
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::note_get_sender_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [sender, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
+    # => [sender_id_prefix, sender_id_suffix]
+end
+
+#! Returns the serial number of the note currently being processed.
+#!
+#! Inputs:  []
+#! Outputs: [SERIAL_NUMBER]
+#!
+#! Where:
+#! - SERIAL_NUMBER is the serial number of the note currently being processed.
+#!
+#! Panics if:
+#! - no note is being processed.
+#!
+#! Invocation: exec
+export.get_serial_number
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::note_get_serial_number_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [SERIAL_NUMBER, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [SERIAL_NUMBER]
+end
+
+#! Returns the script root of the note currently being processed.
+#!
+#! Inputs:  []
+#! Outputs: [SCRIPT_ROOT]
+#!
+#! Where:
+#! - SCRIPT_ROOT is the script root of the note currently being processed.
+#!
+#! Panics if:
+#! - no note is being processed.
+#!
+#! Invocation: exec
+export.get_script_root
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::note_get_script_root_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [SCRIPT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [SCRIPT_ROOT]
+end
+
+#! Adds all assets from the currently executing note to the account vault.
+#!
+#! Inputs:  []
+#! Outputs: []
+export.add_assets_to_account.1024
+    # write assets to local memory starting at offset 0
+    # we have allocated 4 * MAX_ASSETS_PER_NOTE number of locals so all assets should fit
+    # since the asset memory will be overwritten, we don't have to initialize the locals to zero
+    locaddr.0 exec.get_assets
+    # => [num_of_assets, ptr = 0]
+
+    # compute the pointer at which we should stop iterating
+    mul.4 dup.1 add
+    # => [end_ptr, ptr]
+
+    # pad the stack and move the pointer to the top
+    padw movup.5
+    # => [ptr, EMPTY_WORD, end_ptr]
+
+    # loop if the amount of assets is non-zero
+    dup dup.6 neq
+    # => [should_loop, ptr, EMPTY_WORD, end_ptr]
+
+    while.true
+        # => [ptr, EMPTY_WORD, end_ptr]
+
+        # save the pointer so that we can use it later
+        dup movdn.5
+        # => [ptr, EMPTY_WORD, ptr, end_ptr]
+
+        # load the asset
+        mem_loadw
+        # => [ASSET, ptr, end_ptr]
+
+        # pad the stack before call
+        padw swapw padw padw swapdw
+        # => [ASSET, pad(12), ptr, end_ptr]
+
+        # add asset to the account
+        call.wallet::receive_asset
+        # => [pad(16), ptr, end_ptr]
+
+        # clean the stack after call
+        dropw dropw dropw
+        # => [EMPTY_WORD, ptr, end_ptr]
+
+        # increment the pointer and continue looping if ptr != end_ptr
+        movup.4 add.4 dup dup.6 neq
+        # => [should_loop, ptr+4, EMPTY_WORD, end_ptr]
+    end
+    # => [ptr', EMPTY_WORD, end_ptr]
+
+    # clear the stack
+    drop dropw drop
+    # => []
+end

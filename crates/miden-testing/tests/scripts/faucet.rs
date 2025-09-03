@@ -160,6 +160,8 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
 
     // need to create a note with the fungible asset to be burned
     let note_script = "
+        use.miden::current_note
+        
         # burn the asset
         begin
             dropw
@@ -168,7 +170,7 @@ fn prove_faucet_contract_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             padw padw padw padw
             # => [pad(16)]
 
-            exec.::miden::note::get_assets drop
+            exec.current_note::get_assets drop
             mem_loadw
             # => [ASSET, pad(12)]
 
