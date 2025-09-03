@@ -104,7 +104,7 @@ impl LocalTransactionProver {
 
                     // For new accounts, the partial storage must represent the full initial account
                     // storage.
-                    let storage = partial_storage_to_storage(partial_storage);
+                    let storage = partial_storage_to_full(partial_storage);
 
                     // The vault of a new account should be empty.
                     debug_assert_eq!(partial_vault.leaves().count(), 0);
@@ -199,7 +199,7 @@ impl Default for LocalTransactionProver {
     }
 }
 
-fn partial_storage_to_storage(partial_storage: PartialStorage) -> AccountStorage {
+fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
     let (_, header, mut maps) = partial_storage.into_parts();
     let mut storage_slots = Vec::new();
     for (slot_type, slot_value) in header.slots() {
