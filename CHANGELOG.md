@@ -5,11 +5,13 @@
 ### Features
 
 - Added `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
-- [BREAKING] Replaced `Account` with `PartialAccount` in `TransactionInputs` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
 
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- [BREAKING] Replaced `Account` with `PartialAccount` in `TransactionInputs` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
+- [BREAKING] Renamed `Account::init_commitment` to `Account::initial_commitment` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
+
 
 ## 0.11.1 (2025-08-28)
 
