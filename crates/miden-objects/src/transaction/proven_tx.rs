@@ -177,7 +177,7 @@ impl ProvenTransaction {
                 AccountUpdateDetails::New(account) => {
                     if !is_new_account {
                         return Err(
-                            ProvenTransactionError::ExistingPublicStateccountRequiresDeltaDetails(
+                            ProvenTransactionError::ExistingPublicStateAccountRequiresDeltaDetails(
                                 self.account_id(),
                             ),
                         );

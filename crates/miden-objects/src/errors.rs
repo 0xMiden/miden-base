@@ -662,7 +662,7 @@ pub enum ProvenTransactionError {
     #[error(
         "existing account {0} with public state should only provide delta updates instead of full details"
     )]
-    ExistingPublicStateccountRequiresDeltaDetails(AccountId),
+    ExistingPublicStateAccountRequiresDeltaDetails(AccountId),
     #[error("failed to construct output notes for proven transaction")]
     OutputNotesError(TransactionOutputError),
     #[error(
