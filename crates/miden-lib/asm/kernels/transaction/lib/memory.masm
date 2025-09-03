@@ -868,19 +868,12 @@ end
 #! Inputs:  []
 #! Outputs: []
 export.set_current_account_data_ptr_to_native_account
-    # get the pointer to the first stack element where pointer to the native account data should be
-    # stored
-    push.ACCOUNT_STACK_TOP_PTR
-    push.MIN_ACCOUNT_STACK_PTR
+    # store the native account data pointer into the first account stack element.
+    push.NATIVE_ACCOUNT_DATA_PTR mem_store.MIN_ACCOUNT_STACK_PTR
     # => [native_acct_stack_ptr, account_stack_top_ptr]
 
-    # store the native account data pointer into the first stack element.
-    push.NATIVE_ACCOUNT_DATA_PTR dup.1 mem_store
-    # => [native_acct_stack_ptr, account_stack_top_ptr]
-
-    # store the pointer to the first account stack element at the account stack top
-    # pointer.
-    swap mem_store
+    # store the pointer to the first account stack element into the account stack top pointer.
+    push.MIN_ACCOUNT_STACK_PTR mem_store.ACCOUNT_STACK_TOP_PTR
     # => []
 end
 
