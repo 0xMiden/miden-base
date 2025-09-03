@@ -79,12 +79,12 @@ impl AccountInterface {
         self.account_id.is_regular_account()
     }
 
-    /// Returns `true` if the full state of the account is on chain, i.e. if the modes are
+    /// Returns `true` if the full state of the account is public on chain, i.e. if the modes are
     /// [`AccountStorageMode::Public`](miden_objects::account::AccountStorageMode::Public) or
     /// [`AccountStorageMode::Network`](miden_objects::account::AccountStorageMode::Network),
     /// `false` otherwise.
-    pub fn is_onchain(&self) -> bool {
-        self.account_id.is_onchain()
+    pub fn has_public_state(&self) -> bool {
+        self.account_id.has_public_state()
     }
 
     /// Returns `true` if the reference account is a private account, `false` otherwise.

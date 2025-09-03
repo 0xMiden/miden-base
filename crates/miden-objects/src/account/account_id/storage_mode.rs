@@ -28,9 +28,9 @@ pub enum AccountStorageMode {
 }
 
 impl AccountStorageMode {
-    /// Returns `true` if the full state of the account is on chain, i.e. if the modes are
+    /// Returns `true` if the full state of the account is public on chain, i.e. if the modes are
     /// [`Self::Public`] or [`Self::Network`], `false` otherwise.
-    pub fn is_onchain(&self) -> bool {
+    pub fn has_public_state(&self) -> bool {
         matches!(self, Self::Public | Self::Network)
     }
 

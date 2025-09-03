@@ -84,8 +84,8 @@ impl LocalTransactionProver {
             .remove_asset(Asset::from(tx_outputs.fee))
             .map_err(TransactionProverError::RemoveFeeAssetFromDelta)?;
 
-        // If the account is on-chain, add the update details.
-        let builder = match account.is_onchain() {
+        // If the account's state is public, add the update details.
+        let builder = match account.has_public_state() {
             true => {
                 let account_update_details = if account.is_new() {
                     let mut account = account.clone();

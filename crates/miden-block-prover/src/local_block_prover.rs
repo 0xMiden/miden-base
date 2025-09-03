@@ -158,7 +158,7 @@ impl LocalBlockProver {
         // Currently undefined and reserved for future use.
         // See miden-base/1155.
         let version = 0;
-        let tx_kernel_commitment = TransactionKernel::kernel_commitment();
+        let tx_kernel_commitment = TransactionKernel.to_commitment();
 
         // For now, we're not actually proving the block.
         let proof_commitment = Word::empty();

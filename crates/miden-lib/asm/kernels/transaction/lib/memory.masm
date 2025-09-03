@@ -147,11 +147,10 @@ const.PARTIAL_BLOCKCHAIN_PEAKS_PTR=1204
 # KERNEL DATA
 # -------------------------------------------------------------------------------------------------
 
-# The memory address at which the number of the procedures of the selected kernel is stored.
+# The memory address at which the number of the kernel procedures is stored.
 const.NUM_KERNEL_PROCEDURES_PTR=1600
 
 # The memory address at which the hashes of kernel procedures begin.
-# TODO: choose the proper memory location for the kernel procedures.
 const.KERNEL_PROCEDURES_PTR=1604
 
 # ACCOUNT DATA
@@ -753,7 +752,7 @@ end
 #! Outputs: [TX_KERNEL_COMMITMENT]
 #!
 #! Where:
-#! - TX_KERNEL_COMMITMENT is an accumulative hash from all kernel commitments.
+#! - TX_KERNEL_COMMITMENT is the sequential hash of the kernel procedures.
 export.get_tx_kernel_commitment
     padw mem_loadw.TX_KERNEL_COMMITMENT_PTR
 end
