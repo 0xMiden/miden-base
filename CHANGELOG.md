@@ -4,14 +4,16 @@
 
 ### Features
 
+- Added `add_signature` helper to simplify loading signatures into advice map ([#1725](https://github.com/0xMiden/miden-base/pull/1725)).
 - Added `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
 
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 - [BREAKING] Replaced `Account` with `PartialAccount` in `TransactionInputs` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
 - [BREAKING] Renamed `Account::init_commitment` to `Account::initial_commitment` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
-
+- [BREAKING] Rename the `is_onchain` method to `has_public_state` for `AccountId`, `AccountIdPrefix`, `Account`, `AccountInterface` and `AccountStorageMode` ([#1846](https://github.com/0xMiden/miden-base/pull/1846)).
 
 ## 0.11.1 (2025-08-28)
 
@@ -48,6 +50,7 @@
 - Document `Address` in Miden book ([#1792](https://github.com/0xMiden/miden-base/pull/1792)).
 - Add `asset_vault::peek_balance` ([#1745](https://github.com/0xMiden/miden-base/pull/1745)).
 - Add `get_auth_scheme` method to `AccountComponentInterface` and `AccountInterface` for better authentication scheme extraction ([#1759](https://github.com/0xMiden/miden-base/pull/1759)).
+- Add `CustomNetworkId` in `NetworkID` ([#1787](https://github.com/0xMiden/miden-base/pull/1787)).
 
 ### Changes
 
