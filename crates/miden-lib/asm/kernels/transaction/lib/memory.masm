@@ -1058,7 +1058,7 @@ end
 #! Where:
 #! - native_acct_nonce is the nonce of the native account.
 export.get_native_account_nonce
-    push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_ID_AND_NONCE_OFFSET 
+    push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_NONCE_OFFSET 
     mem_load
 end
 

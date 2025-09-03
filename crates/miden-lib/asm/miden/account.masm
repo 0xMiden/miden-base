@@ -59,7 +59,7 @@ export.get_native_id
     # => [native_acct_id_prefix, native_acct_id_suffix]
 end
 
-#! Returns the account nonce.
+#! Returns the nonce of the current account.
 #!
 #! This procedure always returns the initial account nonce, as the nonce can only be incremented
 #! in the authentication procedure when signing the transaction after all user code has been 
@@ -89,6 +89,34 @@ export.get_nonce
     # clean the stack
     swapdw dropw dropw swapw dropw movdn.3 drop drop drop
     # => [nonce]
+end
+
+#! Returns the nonce of the native account.
+#!
+#! Inputs:  []
+#! Outputs: [native_nonce]
+#!
+#! Where:
+#! - native_nonce is the nonce of the native account.
+#!
+#! Invocation: exec
+export.get_native_nonce
+    # start padding the stack
+    push.0.0.0
+
+    exec.kernel_proc_offsets::account_get_native_nonce_offset
+    # => [offset, 0, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [native_nonce, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [native_nonce]
 end
 
 #! Returns the native account commitment at the beginning of the transaction.

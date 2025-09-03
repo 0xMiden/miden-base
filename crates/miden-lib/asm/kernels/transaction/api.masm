@@ -178,7 +178,7 @@ export.account_get_native_id
     # => [native_acct_id_prefix, native_acct_id_suffix, pad(14)]
 end
 
-#! Returns the account nonce.
+#! Returns the current account nonce.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [nonce, pad(15)]
@@ -195,6 +195,25 @@ export.account_get_nonce
     # truncate the stack
     swap drop
     # => [nonce, pad(15)]
+end
+
+#! Returns the native account nonce.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [native_nonce, pad(15)]
+#!
+#! Where:
+#! - native_nonce is the nonce of the native account.
+#!
+#! Invocation: dynexec
+export.account_get_native_nonce
+    # get the native account nonce
+    exec.memory::get_native_account_nonce
+    # => [native_nonce, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [native_nonce, pad(15)]
 end
 
 #! Increments the account nonce by one and returns the new nonce.

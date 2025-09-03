@@ -241,7 +241,16 @@ impl AccountBuilder {
     /// The [`AccountId`] is constructed by slightly modifying `init_seed[0..8]` to be a valid ID.
     ///
     /// For possible errors, see the documentation of [`Self::build`].
-    pub fn build_existing(mut self) -> Result<Account, AccountError> {
+    pub fn build_existing(self) -> Result<Account, AccountError> {
+        self.build_existing_with_nonce(Felt::ONE)
+    }
+
+    /// Builds the account as an existing account with the nonce set to the provided `nonce`.
+    ///
+    /// The [`AccountId`] is constructed by slightly modifying `init_seed[0..8]` to be a valid ID.
+    ///
+    /// For possible errors, see the documentation of [`Self::build`].
+    pub fn build_existing_with_nonce(mut self, nonce: Felt) -> Result<Account, AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         let account_id = {
@@ -255,7 +264,7 @@ impl AccountBuilder {
             )
         };
 
-        Ok(Account::from_parts(account_id, vault, storage, code, Felt::ONE))
+        Ok(Account::from_parts(account_id, vault, storage, code, nonce))
     }
 }
 
