@@ -77,11 +77,12 @@ fn create_multisig_account(
     threshold: u32,
     public_keys: &[PublicKey],
     asset_amount: u64,
+    proc_threshold_map: Vec<(Word, u32)>,
 ) -> anyhow::Result<Account> {
     let approvers: Vec<_> = public_keys.iter().map(|pk| pk.to_commitment()).collect();
 
     let multisig_account = AccountBuilder::new([0; 32])
-        .with_auth_component(Auth::Multisig { threshold, approvers })
+        .with_auth_component(Auth::Multisig { threshold, approvers, proc_threshold_map })
         .with_component(BasicWallet)
         .account_type(AccountType::RegularAccountUpdatableCode)
         .storage_mode(AccountStorageMode::Public)
@@ -111,7 +112,8 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
 
     // Create multisig account
     let multisig_starting_balance = 10u64;
-    let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
+    let mut multisig_account =
+        create_multisig_account(2, &public_keys, multisig_starting_balance, vec![])?;
 
     let output_note_asset = FungibleAsset::mock(0);
 
@@ -196,7 +198,7 @@ async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(4, 4)?;
 
     // Create multisig account with 4 approvers but threshold of 2
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -274,7 +276,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(3, 2)?;
 
     // Create 2/3 multisig account
-    let multisig_account = create_multisig_account(2, &public_keys, 20)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 20, vec![])?;
 
     let mut mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()
@@ -350,7 +352,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
 async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     // SECTION 1: Execute a transaction script to update signers and threshold
     // ================================================================================
@@ -620,7 +622,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 async fn test_multisig_update_signers_remove_owner() -> anyhow::Result<()> {
     // Setup 5 original owners with threshold 4
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(5, 5)?;
-    let multisig_account = create_multisig_account(4, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(4, &public_keys, 10, vec![])?;
 
     // Build mock chain
     let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
@@ -791,7 +793,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
 
     let (_secret_keys, public_keys, _authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    let multisig_account = create_multisig_account(2, &public_keys, 10)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 10, vec![])?;
 
     let mock_chain = MockChainBuilder::with_accounts([multisig_account.clone()])
         .unwrap()

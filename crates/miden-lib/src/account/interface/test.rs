@@ -28,6 +28,7 @@ use crate::AuthScheme;
 use crate::account::auth::{
     AuthRpoFalcon512,
     AuthRpoFalcon512Multisig,
+    AuthRpoFalcon512MultisigConfig,
     NoAuth,
     PublicKeyCommitment,
 };
@@ -898,8 +899,12 @@ fn test_public_key_extraction_multisig_account() {
     let threshold = 2u32;
 
     // Create multisig component
-    let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
-        .expect("multisig component creation failed");
+    let multisig_component = AuthRpoFalcon512Multisig::new(
+        threshold,
+        approvers.clone(),
+        AuthRpoFalcon512MultisigConfig::default(),
+    )
+    .expect("multisig component creation failed");
 
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let multisig_account = AccountBuilder::new(mock_seed)
