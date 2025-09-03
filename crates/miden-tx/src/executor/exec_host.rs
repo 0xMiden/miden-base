@@ -19,11 +19,9 @@ use miden_processor::{
     EventError,
     FutureMaybeSend,
     MastForest,
-    MastForestStore,
     ProcessState,
 };
 
-use crate::AccountProcedureIndexMap;
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::host::{
     ScriptMastForestStore,
@@ -32,6 +30,7 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
+use crate::{AccountProcedureIndexMap, DataStore};
 
 // TRANSACTION EXECUTOR HOST
 // ================================================================================================
@@ -45,7 +44,7 @@ use crate::host::{
 /// execution.
 pub struct TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore,
+    STORE: DataStore,
     AUTH: TransactionAuthenticator,
 {
     /// The underlying base transaction host.
@@ -72,7 +71,7 @@ where
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore + Sync,
+    STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
     // CONSTRUCTORS
@@ -235,7 +234,7 @@ where
 
 impl<STORE, AUTH> BaseHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: MastForestStore,
+    STORE: DataStore,
     AUTH: TransactionAuthenticator,
 {
     fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
@@ -255,7 +254,7 @@ where
 
 impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: MastForestStore + Sync,
+    STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
     fn on_event(

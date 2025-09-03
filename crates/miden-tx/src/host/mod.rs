@@ -726,6 +726,12 @@ where
     }
 }
 
+impl<'store, STORE> TransactionBaseHost<'store, STORE> {
+    pub fn store(&self) -> &'store STORE {
+        self.mast_store
+    }
+}
+
 /// Extracts a word from a slice of field elements.
 pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
     Word::from([
