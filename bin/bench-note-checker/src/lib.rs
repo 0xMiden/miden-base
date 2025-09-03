@@ -88,7 +88,6 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
             .code("begin push.0 div end") // Division by zero - will fail.
             .build()?;
         failing_notes.push(failing_note);
-        // &miden_lib::transaction::TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()))
     }
 
     // Create the second successful note.

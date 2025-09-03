@@ -18,6 +18,8 @@ use crate::{DataStore, NoteCheckerError, TransactionExecutorError};
 // ================================================================================================
 
 /// Maximum number of notes that can be checked at once.
+///
+/// Fixed at an amount that should keep each run of note consumption checking to a maximum of ~50ms.
 pub const MAX_NUM_CHECKER_NOTES: usize = 20;
 
 // NOTE CONSUMPTION INFO
