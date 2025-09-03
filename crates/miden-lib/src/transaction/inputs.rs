@@ -56,7 +56,7 @@ impl TransactionAdviceInputs {
 
         // --- native account injection ---------------------------------------
 
-        let partial_native_acc = tx_inputs.partial_account();
+        let partial_native_acc = tx_inputs.account();
         inputs.add_account(partial_native_acc)?;
 
         // if a seed was provided, extend the map appropriately
@@ -166,16 +166,16 @@ impl TransactionAdviceInputs {
         self.extend_stack([Felt::from(kernel_version)]);
 
         // --- core account items (keep in sync with process_account_data) ----
-        let partial_account = tx_inputs.partial_account();
+        let account = tx_inputs.account();
         self.extend_stack([
-            partial_account.id().suffix(),
-            partial_account.id().prefix().as_felt(),
+            account.id().suffix(),
+            account.id().prefix().as_felt(),
             ZERO,
-            partial_account.nonce(),
+            account.nonce(),
         ]);
-        self.extend_stack(partial_account.vault().root());
-        self.extend_stack(partial_account.storage().commitment());
-        self.extend_stack(partial_account.code().commitment());
+        self.extend_stack(account.vault().root());
+        self.extend_stack(account.storage().commitment());
+        self.extend_stack(account.code().commitment());
 
         // --- number of notes, script root and args --------------------------
         self.extend_stack([Felt::from(tx_inputs.input_notes().num_notes())]);

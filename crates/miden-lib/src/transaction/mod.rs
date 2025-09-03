@@ -130,11 +130,11 @@ impl TransactionKernel {
         tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
     ) -> Result<(StackInputs, TransactionAdviceInputs), TransactionAdviceMapMismatch> {
-        let partial_account = tx_inputs.partial_account();
+        let account = tx_inputs.account();
 
         let stack_inputs = TransactionKernel::build_input_stack(
-            partial_account.id(),
-            partial_account.initial_commitment(),
+            account.id(),
+            account.initial_commitment(),
             tx_inputs.input_notes().commitment(),
             tx_inputs.block_header().commitment(),
             tx_inputs.block_header().block_num(),

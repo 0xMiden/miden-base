@@ -48,7 +48,7 @@ impl AccountProcedureIndexMap {
         tx_advice_inputs: &TransactionAdviceInputs,
     ) -> Result<Self, TransactionHostError> {
         let mut account_code_commitments = tx_args.to_foreign_account_code_commitments();
-        account_code_commitments.insert(tx_inputs.partial_account().code().commitment());
+        account_code_commitments.insert(tx_inputs.account().code().commitment());
 
         Self::new(account_code_commitments, tx_advice_inputs.as_advice_inputs())
     }

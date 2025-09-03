@@ -391,7 +391,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_tag_1 = NoteTag::from_account_id(network_account);
     let assets = NoteAssets::new(vec![input_asset_1])?;
     let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().partial_account().id(),
+        tx_context.tx_inputs().account().id(),
         NoteType::Public,
         output_tag_1,
         NoteExecutionHint::Always,
@@ -406,7 +406,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
     let output_tag_2 = NoteTag::from_account_id(local_account);
     let assets = NoteAssets::new(vec![input_asset_2])?;
     let metadata = NoteMetadata::new(
-        tx_context.tx_inputs().partial_account().id(),
+        tx_context.tx_inputs().account().id(),
         NoteType::Public,
         output_tag_2,
         NoteExecutionHint::after_block(123.into())?,
@@ -940,7 +940,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
 
     // load account/note/tx_script MAST to the mast_store
     let mast_store = Arc::new(TransactionMastStore::new());
-    mast_store.load_account_code(tx_inputs.partial_account().code());
+    mast_store.load_account_code(tx_inputs.account().code());
 
     let mut host = {
         let acct_procedure_index_map =
@@ -948,7 +948,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
                 .unwrap();
 
         TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
-            tx_inputs.partial_account(),
+            tx_inputs.account(),
             tx_inputs.input_notes().clone(),
             mast_store.as_ref(),
             scripts_mast_store,

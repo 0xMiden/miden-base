@@ -62,7 +62,7 @@ impl LocalTransactionProver {
         input_notes: &InputNotes<InputNote>,
         tx_outputs: TransactionOutputs,
         pre_fee_account_delta: AccountDelta,
-        partial_account: PartialAccount,
+        account: PartialAccount,
         ref_block_num: BlockNumber,
         ref_block_commitment: Word,
         proof: ExecutionProof,
@@ -75,8 +75,8 @@ impl LocalTransactionProver {
         let pre_fee_delta_commitment: Word = pre_fee_account_delta.to_commitment();
 
         let builder = ProvenTransactionBuilder::new(
-            partial_account.id(),
-            partial_account.initial_commitment(),
+            account.id(),
+            account.initial_commitment(),
             tx_outputs.account.commitment(),
             pre_fee_delta_commitment,
             ref_block_num,
@@ -96,10 +96,10 @@ impl LocalTransactionProver {
             .map_err(TransactionProverError::RemoveFeeAssetFromDelta)?;
 
         // If the account is on-chain, add the update details.
-        let builder = match partial_account.id().is_onchain() {
+        let builder = match account.id().is_onchain() {
             true => {
-                let account_update_details = if partial_account.is_new() {
-                    let mut account = partial_account_to_full(partial_account);
+                let account_update_details = if account.is_new() {
+                    let mut account = partial_account_to_full(account);
                     account
                         .apply_delta(&post_fee_account_delta)
                         .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
@@ -127,7 +127,7 @@ impl LocalTransactionProver {
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
                 .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
-        self.mast_store.load_account_code(tx_inputs.partial_account().code());
+        self.mast_store.load_account_code(tx_inputs.account().code());
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),

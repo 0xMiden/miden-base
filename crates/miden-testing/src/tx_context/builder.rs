@@ -273,7 +273,7 @@ impl TransactionContextBuilder {
 
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
-            mast_forest_store.load_account_code(tx_inputs.partial_account().code());
+            mast_forest_store.load_account_code(tx_inputs.account().code());
 
             for acc_inputs in tx_args.foreign_account_inputs() {
                 mast_forest_store.insert(acc_inputs.code().mast());

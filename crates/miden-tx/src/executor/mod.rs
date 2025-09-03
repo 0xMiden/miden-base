@@ -299,7 +299,7 @@ where
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
-            tx_inputs.partial_account(),
+            tx_inputs.account(),
             input_notes.clone(),
             self.data_store,
             script_mast_store,
@@ -350,7 +350,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         .remove_asset(Asset::from(tx_outputs.fee))
         .map_err(TransactionExecutorError::RemoveFeeAssetFromDelta)?;
 
-    let initial_account = tx_inputs.partial_account();
+    let initial_account = tx_inputs.account();
     let final_account = &tx_outputs.account;
 
     if initial_account.id() != final_account.id() {
