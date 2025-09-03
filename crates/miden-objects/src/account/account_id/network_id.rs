@@ -111,7 +111,7 @@ impl core::fmt::Display for NetworkId {
 // CUSTOM NETWORK ID
 // ================================================================================================
 
-/// A wrapper around HRP for custom network identifiers.
+/// A wrapper around bech32 HRP(human-readable part) for custom network identifiers.
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct CustomNetworkId {
     hrp: Hrp,
