@@ -9,10 +9,11 @@ use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
-use miden_objects::account::Account;
+use miden_objects::account::{Account, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
+use miden_objects::asset::PartialVault;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -79,6 +80,7 @@ pub struct TransactionContextBuilder {
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
     signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
+    enable_lazy_loading: bool,
 }
 
 impl TransactionContextBuilder {
@@ -98,6 +100,7 @@ impl TransactionContextBuilder {
             foreign_account_inputs: vec![],
             auth_args: EMPTY_WORD,
             signatures: Vec::new(),
+            enable_lazy_loading: false,
         }
     }
 
@@ -200,6 +203,12 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Set whether the transaction should use lazy loading or not.
+    pub fn enable_lazy_loading(mut self, lazy_loading: bool) -> Self {
+        self.enable_lazy_loading = lazy_loading;
+        self
+    }
+
     /// Extend the note arguments map with the provided one.
     pub fn extend_note_args(mut self, note_args: BTreeMap<NoteId, Word>) -> Self {
         self.note_args.extend(note_args);
@@ -260,13 +269,27 @@ impl TransactionContextBuilder {
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
-                mock_chain
-                    .get_transaction_inputs(
-                        self.account.clone(),
-                        self.account_seed,
-                        &input_note_ids,
-                        &[],
+                let account = if self.enable_lazy_loading {
+                    // Construct a partial vault that tracks the empty word, but none of the assets
+                    // that are actually in the asset tree. That way, the partial vault has the same
+                    // root as the full vault, but will not add any relevant merkle paths to the
+                    // merkle store, which will cause assets to be requested on demand.
+                    let mut partial_vault = PartialVault::default();
+                    partial_vault.add(self.account.vault().asset_tree().open(&Word::empty()))?;
+
+                    PartialAccount::new(
+                        self.account.id(),
+                        self.account.nonce(),
+                        self.account.code().clone(),
+                        self.account.storage().into(),
+                        partial_vault,
                     )
+                } else {
+                    PartialAccount::from(&self.account)
+                };
+
+                mock_chain
+                    .get_transaction_inputs(account, self.account_seed, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
         };

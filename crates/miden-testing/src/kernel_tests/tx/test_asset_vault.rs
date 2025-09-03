@@ -157,19 +157,18 @@ fn test_has_non_fungible_asset() -> anyhow::Result<()> {
     Ok(())
 }
 
+/// TODO: Test second asset to test lazy loading (could be moved elsewhere).
 #[test]
 fn test_add_fungible_asset_success() -> anyhow::Result<()> {
-    let faucet_id: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
-    let amount = FungibleAsset::MAX_AMOUNT - FUNGIBLE_ASSET_AMOUNT;
-    let add_fungible_asset = Asset::try_from(Word::new([
-        Felt::new(amount),
-        ZERO,
-        faucet_id.suffix(),
-        faucet_id.prefix().as_felt(),
-    ]))
-    .unwrap();
-    let asset_note = NoteBuilder::new(faucet_id, rand::rng())
-        .add_assets([add_fungible_asset].map(Asset::from))
+    let faucet_id1: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET.try_into().unwrap();
+    // let faucet_id2: AccountId = ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into().unwrap();
+
+    let fungible_asset1 =
+        FungibleAsset::new(faucet_id1, FungibleAsset::MAX_AMOUNT - FUNGIBLE_ASSET_AMOUNT)?;
+    // let fungible_asset2 = FungibleAsset::new(faucet_id2, FUNGIBLE_ASSET_AMOUNT)?;
+
+    let asset_note = NoteBuilder::new(faucet_id1, rand::rng())
+        .add_assets([fungible_asset1 /* fungible_asset2 */].map(Asset::from))
         .build()?;
 
     let code = format!(
@@ -177,26 +176,29 @@ fn test_add_fungible_asset_success() -> anyhow::Result<()> {
       use.mock::account
 
       begin
-          push.{FUNGIBLE_ASSET}
+          push.{FUNGIBLE_ASSET1}
           call.account::add_asset
 
           # truncate the stack
-          swapw dropw
+          dropw
       end
       ",
-        FUNGIBLE_ASSET = Word::from(add_fungible_asset)
+        FUNGIBLE_ASSET1 = Word::from(fungible_asset1),
+        // FUNGIBLE_ASSET2 = Word::from(fungible_asset2)
     );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(code)?;
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_input_notes(vec![asset_note])
+        .enable_lazy_loading(true)
         .build()?;
     let account = tx_context.account().clone();
     let tx = tx_context.execute_blocking()?;
 
     let mut account_vault = account.vault().clone();
-    account_vault.add_asset(add_fungible_asset)?;
+    account_vault.add_asset(fungible_asset1.into())?;
+    // account_vault.add_asset(fungible_asset2.into())?;
 
     assert_eq!(tx.final_account().vault_root(), account_vault.root());
 

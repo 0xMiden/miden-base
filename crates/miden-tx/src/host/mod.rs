@@ -824,6 +824,7 @@ where
 }
 
 impl<'store, STORE> TransactionBaseHost<'store, STORE> {
+    /// Returns the underlying store of the base host.
     pub fn store(&self) -> &'store STORE {
         self.mast_store
     }

@@ -60,6 +60,11 @@ impl PartialVault {
         self.partial_smt.leaves().map(|(_, leaf)| leaf)
     }
 
+    /// TODO
+    pub fn open(&self, asset_key: Word) -> Result<SmtProof, MerkleError> {
+        self.partial_smt.open(&asset_key)
+    }
+
     /// Returns the [`Asset`] associated with the given `vault_key`.
     ///
     /// The return value is `None` if the asset does not exist in the vault.

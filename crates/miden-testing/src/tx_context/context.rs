@@ -201,6 +201,7 @@ impl DataStore for TransactionContext {
         assert_eq!(account_id, self.tx_inputs.account().id());
 
         let (partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
+
         async move { Ok((partial_account, seed, header, mmr)) }
     }
 

@@ -6,7 +6,7 @@ use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountId, AuthSecretKey, StorageSlot};
+use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount, StorageSlot};
 use miden_objects::asset::Asset;
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::{
@@ -664,7 +664,7 @@ impl MockChain {
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
-        account: Account,
+        account: impl Into<PartialAccount>,
         account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
@@ -733,7 +733,7 @@ impl MockChain {
     /// Returns a valid [`TransactionInputs`] for the specified entities.
     pub fn get_transaction_inputs(
         &self,
-        account: Account,
+        account: impl Into<PartialAccount>,
         account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
