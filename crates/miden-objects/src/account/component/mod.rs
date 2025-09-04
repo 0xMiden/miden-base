@@ -22,7 +22,7 @@ impl TryFrom<Package> for AccountComponentTemplate {
     fn try_from(package: Package) -> Result<Self, Self::Error> {
         let library = package.unwrap_library().as_ref().clone();
 
-        // Extract metadata if present
+        // Extract metadata - require explicit account component metadata
         let metadata = match package.account_component_metadata_bytes.as_deref() {
             Some(metadata_bytes) => AccountComponentMetadata::read_from_bytes(metadata_bytes)
                 .map_err(|err| {
@@ -32,25 +32,9 @@ impl TryFrom<Package> for AccountComponentTemplate {
                     )
                 })?,
             None => {
-                // Create default metadata for packages without explicit metadata
-                let default_types = BTreeSet::from_iter([
-                    AccountType::RegularAccountImmutableCode,
-                    AccountType::RegularAccountUpdatableCode,
-                ]);
-
-                AccountComponentMetadata::new(
-                    package.name.clone(),
-                    format!("Component generated from package: {}", package.name),
-                    semver::Version::new(1, 0, 0),
-                    default_types,
-                    vec![], // Empty storage entries - will need to be provided via InitStorageData
-                )
-                .map_err(|err| {
-                    AccountError::other_with_source(
-                        "failed to create default component metadata",
-                        err,
-                    )
-                })?
+                return Err(AccountError::other(
+                    "package does not contain account component metadata - packages without explicit metadata may be intended for other purposes (e.g., note scripts, transaction scripts)",
+                ));
             },
         };
 
@@ -159,72 +143,20 @@ impl AccountComponent {
             .with_supported_types(template.metadata().supported_types().clone()))
     }
 
-    /// Creates an [`AccountComponent`] from a [`Package`].
-    ///
-    /// This method creates a component with the provided storage slots. If the package
-    /// contains account component metadata, it will use the supported types from that
-    /// metadata. Otherwise, it defaults to supporting both regular account types.
-    ///
-    /// # Arguments
-    ///
-    /// * `package` - The package containing the library and optional metadata
-    /// * `storage_slots` - The storage slots to initialize the component with
-    ///
-    /// # Errors
-    ///
-    /// Returns an error if:
-    /// - The metadata is present but cannot be deserialized
-    /// - The component creation fails (e.g., too many storage slots)
-    pub fn from_package(
-        package: &Package,
-        storage_slots: Vec<StorageSlot>,
-    ) -> Result<Self, AccountError> {
-        let component =
-            AccountComponent::new(package.unwrap_library().as_ref().clone(), storage_slots)?;
-
-        // Default supported types for regular accounts
-        let default_types = BTreeSet::from_iter([
-            AccountType::RegularAccountImmutableCode,
-            AccountType::RegularAccountUpdatableCode,
-        ]);
-
-        // Determine supported types based on metadata presence
-        let supported_types = match package.account_component_metadata_bytes.as_deref() {
-            Some(metadata_bytes) => {
-                let metadata =
-                    AccountComponentMetadata::read_from_bytes(metadata_bytes).map_err(|err| {
-                        AccountError::other_with_source(
-                            "failed to deserialize account component metadata",
-                            err,
-                        )
-                    })?;
-
-                if metadata.supported_types().is_empty() {
-                    default_types
-                } else {
-                    metadata.supported_types().clone()
-                }
-            },
-            None => default_types,
-        };
-
-        Ok(component.with_supported_types(supported_types))
-    }
-
     /// Creates an [`AccountComponent`] from a [`Package`] using [`InitStorageData`].
     ///
-    /// This is the recommended way to create components from packages as it provides
-    /// better type safety by leveraging the component's metadata to validate storage
-    /// initialization data.
+    /// This method provides type safety by leveraging the component's metadata to validate
+    /// storage initialization data. The package must contain explicit account component metadata.
     ///
     /// # Arguments
     ///
-    /// * `package` - The package containing the library and optional metadata
+    /// * `package` - The package containing the library and account component metadata
     /// * `init_storage_data` - The initialization data for storage slots
     ///
     /// # Errors
     ///
     /// Returns an error if:
+    /// - The package does not contain account component metadata
     /// - The package cannot be converted to an [`AccountComponentTemplate`]
     /// - The storage initialization fails due to invalid or missing data
     /// - The component creation fails
@@ -339,70 +271,10 @@ mod tests {
     use miden_assembly::Assembler;
     use miden_core::utils::Serializable;
     use miden_mast_package::{MastArtifact, Package, PackageManifest};
+    use semver::Version;
 
     use super::*;
     use crate::testing::account_code::CODE;
-
-    #[test]
-    fn test_from_package_with_metadata() {
-        // Create a simple library for testing
-        let library = Assembler::default().assemble_library([CODE]).unwrap();
-
-        // Create metadata for the component
-        let metadata = AccountComponentMetadata::new(
-            "test_component".to_string(),
-            "A test component".to_string(),
-            semver::Version::new(1, 0, 0),
-            BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
-            vec![],
-        )
-        .unwrap();
-
-        // Serialize the metadata
-        let metadata_bytes = metadata.to_bytes();
-
-        // Create a package with the library and metadata
-        let package = Package {
-            name: "test_package".to_string(),
-            mast: MastArtifact::Library(Arc::new(library)),
-            manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: Some(metadata_bytes),
-        };
-
-        // Test the from_package method
-        let storage_slots = vec![];
-        let component = AccountComponent::from_package(&package, storage_slots).unwrap();
-
-        // Verify the component was created correctly
-        assert_eq!(component.storage_size(), 0);
-        assert!(component.supports_type(AccountType::RegularAccountImmutableCode));
-        assert!(!component.supports_type(AccountType::FungibleFaucet));
-    }
-
-    #[test]
-    fn test_from_package_without_metadata() {
-        // Create a simple library for testing
-        let library = Assembler::default().assemble_library([CODE]).unwrap();
-
-        // Create a package without metadata
-        let package = Package {
-            name: "test_package".to_string(),
-            mast: MastArtifact::Library(Arc::new(library)),
-            manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: None,
-        };
-
-        // Test the from_package method
-        let storage_slots = vec![];
-        let component = AccountComponent::from_package(&package, storage_slots).unwrap();
-
-        // Verify the component was created correctly with default supported types
-        assert_eq!(component.storage_size(), 0);
-        assert!(component.supports_type(AccountType::RegularAccountImmutableCode));
-        assert!(component.supports_type(AccountType::RegularAccountUpdatableCode));
-        assert!(!component.supports_type(AccountType::FungibleFaucet));
-        assert!(!component.supports_type(AccountType::NonFungibleFaucet));
-    }
 
     #[test]
     fn test_try_from_package_for_template() {
@@ -413,7 +285,7 @@ mod tests {
         let metadata = AccountComponentMetadata::new(
             "test_component".to_string(),
             "A test component".to_string(),
-            semver::Version::new(1, 0, 0),
+            Version::new(1, 0, 0),
             BTreeSet::from_iter([AccountType::RegularAccountImmutableCode]),
             vec![],
         )
@@ -436,7 +308,7 @@ mod tests {
                 .contains(&AccountType::RegularAccountImmutableCode)
         );
 
-        // Test without metadata
+        // Test without metadata - should fail
         let package_without_metadata = Package {
             name: "test_package_no_metadata".to_string(),
             mast: MastArtifact::Library(Arc::new(library)),
@@ -444,20 +316,10 @@ mod tests {
             account_component_metadata_bytes: None,
         };
 
-        let template = AccountComponentTemplate::try_from(package_without_metadata).unwrap();
-        assert_eq!(template.metadata().name(), "test_package_no_metadata");
-        assert!(
-            template
-                .metadata()
-                .supported_types()
-                .contains(&AccountType::RegularAccountImmutableCode)
-        );
-        assert!(
-            template
-                .metadata()
-                .supported_types()
-                .contains(&AccountType::RegularAccountUpdatableCode)
-        );
+        let result = AccountComponentTemplate::try_from(package_without_metadata);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("package does not contain account component metadata"));
     }
 
     #[test]
@@ -465,12 +327,28 @@ mod tests {
         // Create a simple library for testing
         let library = Assembler::default().assemble_library([CODE]).unwrap();
 
-        // Create a package without metadata (will use defaults)
+        // Create metadata for the component
+        let metadata = AccountComponentMetadata::new(
+            "test_component".to_string(),
+            "A test component".to_string(),
+            Version::new(1, 0, 0),
+            BTreeSet::from_iter([
+                AccountType::RegularAccountImmutableCode,
+                AccountType::RegularAccountUpdatableCode,
+            ]),
+            vec![],
+        )
+        .unwrap();
+
+        // Serialize the metadata
+        let metadata_bytes = metadata.to_bytes();
+
+        // Create a package with metadata
         let package = Package {
             name: "test_package_init_data".to_string(),
-            mast: MastArtifact::Library(Arc::new(library)),
+            mast: MastArtifact::Library(Arc::new(library.clone())),
             manifest: PackageManifest::new(None),
-            account_component_metadata_bytes: None,
+            account_component_metadata_bytes: Some(metadata_bytes),
         };
 
         // Test with empty init data - this tests the complete workflow:
@@ -479,10 +357,24 @@ mod tests {
         let component =
             AccountComponent::from_package_with_init_data(&package, &init_data).unwrap();
 
-        // Verify the component was created correctly with default metadata
+        // Verify the component was created correctly
         assert_eq!(component.storage_size(), 0);
         assert!(component.supports_type(AccountType::RegularAccountImmutableCode));
         assert!(component.supports_type(AccountType::RegularAccountUpdatableCode));
         assert!(!component.supports_type(AccountType::FungibleFaucet));
+
+        // Test without metadata - should fail
+        let package_without_metadata = Package {
+            name: "test_package_no_metadata".to_string(),
+            mast: MastArtifact::Library(Arc::new(library)),
+            manifest: PackageManifest::new(None),
+            account_component_metadata_bytes: None,
+        };
+
+        let result =
+            AccountComponent::from_package_with_init_data(&package_without_metadata, &init_data);
+        assert!(result.is_err());
+        let error_msg = result.unwrap_err().to_string();
+        assert!(error_msg.contains("package does not contain account component metadata"));
     }
 }
