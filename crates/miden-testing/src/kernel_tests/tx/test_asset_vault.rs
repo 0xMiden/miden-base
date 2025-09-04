@@ -6,15 +6,12 @@ use miden_lib::errors::tx_kernel_errors::{
     ERR_VAULT_NON_FUNGIBLE_ASSET_ALREADY_EXISTS,
     ERR_VAULT_NON_FUNGIBLE_ASSET_TO_REMOVE_NOT_FOUND,
 };
-use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::memory;
-use miden_lib::utils::ScriptBuilder;
 use miden_objects::AssetVaultError;
 use miden_objects::account::AccountId;
 use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
-    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET_1,
 };
