@@ -26,6 +26,8 @@ fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         FungibleAsset::new(faucet_id1, FungibleAsset::MAX_AMOUNT - FUNGIBLE_ASSET_AMOUNT)?;
     let fungible_asset2 = FungibleAsset::new(faucet_id2, FUNGIBLE_ASSET_AMOUNT)?;
 
+    // Build a note that adds the assets to the input vault of the transaction. This is necessary
+    // to adhere to asset preservation rules.
     let asset_note = NoteBuilder::new(faucet_id1, rand::rng())
         .add_assets([fungible_asset1, fungible_asset2].map(Asset::from))
         .build()?;

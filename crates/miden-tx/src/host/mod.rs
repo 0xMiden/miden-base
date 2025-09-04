@@ -28,7 +28,7 @@ use miden_lib::transaction::memory::{
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
-use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
+use miden_objects::account::{AccountDelta, AccountHeader, AccountId, PartialAccount};
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
@@ -67,6 +67,9 @@ pub struct TransactionBaseHost<'store, STORE> {
     /// MAST store which contains the forests of all scripts involved in the transaction. These
     /// include input note scripts and the transaction script, but not account code.
     scripts_mast_store: ScriptMastForestStore,
+
+    /// The header of the account at the beginning of transaction execution.
+    native_account_header: AccountHeader,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -108,6 +111,7 @@ where
         Self {
             mast_store,
             scripts_mast_store,
+            native_account_header: account.into(),
             account_delta: AccountDeltaTracker::new(
                 account.id(),
                 account.storage().header().clone(),
@@ -136,6 +140,12 @@ where
         &self.tx_progress
     }
 
+    /// Returns a reference to the account header of the native account, which represents the state
+    /// at the beginning of the transaction.
+    pub fn native_account_header(&self) -> &AccountHeader {
+        &self.native_account_header
+    }
+
     /// Returns a reference to the account delta tracker of this transaction host.
     pub fn account_delta_tracker(&self) -> &AccountDeltaTracker {
         &self.account_delta
@@ -147,7 +157,6 @@ where
     }
 
     /// Returns the input notes consumed in this transaction.
-    #[allow(unused)]
     pub fn input_notes(&self) -> InputNotes<InputNote> {
         self.input_notes.clone()
     }

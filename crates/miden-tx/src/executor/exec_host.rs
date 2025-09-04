@@ -213,19 +213,44 @@ where
         Ok(Vec::new())
     }
 
-    /// TODO
+    /// Handles a request to an asset witness by querying the data store for a merkle path.
+    ///
+    /// ## Native Account
+    ///
+    /// For the native account we always request witnesses for the initial vault root, because the
+    /// data store only has the state of the account vault at the beginning of the transaction.
+    /// Since the vault root can change as the transaction progresses, this means the witnesses
+    /// may become _partially_ or fully outdated. To see why they can only be _partially_ outdated,
+    /// consider the following example:
+    ///
+    /// ```text
+    ///      A               A'
+    ///     / \             /  \
+    ///    B   C    ->    B'    C
+    ///   / \  / \       /  \  / \
+    ///  D  E F   G     D   E' F  G
+    /// ```
+    ///
+    /// Leaf E was updated to E', in turn updating nodes B and A. If we now request the merkle path
+    /// to G against root A (the initial vault root), we'll get nodes F and B. F is a node in the
+    /// updated tree, while B is not. We insert both into the merkle store anyway. Now, if the
+    /// transaction attempts to verify the merkle path to G, it can do so because F and B' are in
+    /// the merkle store. Note that B' is in the store because the transaction inserted it into the
+    /// merkle store as part of updating E, not because we inserted it. B is present in the store,
+    /// but is simply ignored for the purpose of verifyin G's inclusion.
     async fn on_account_vault_asset_witness_requested(
         &self,
         current_account_id: AccountId,
-        vault_root: Word,
+        _vault_root: Word,
         asset: Asset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         // For now, we only support getting witnesses for the native account, so return early if the
         // requested account is not the native one.
-        if current_account_id != self.base_host.account_delta_tracker().id() {
+        if current_account_id != self.base_host.native_account_header().id() {
             return Ok(Vec::new());
         }
 
+        let vault_root = self.base_host.native_account_header().vault_root();
         let asset_key = asset.vault_key();
         let asset_witness = self
             .base_host
@@ -238,8 +263,7 @@ where
                 source: Box::new(err),
             })?;
 
-        // TODO: Should there be a convenience function on `SmtProof` to get its authenticated
-        // nodes?
+        // Get the nodes in the proof and insert them into the merkle store.
         let smt_proof = SmtProof::from(asset_witness);
         let authenticated_nodes = smt_proof
             .path()

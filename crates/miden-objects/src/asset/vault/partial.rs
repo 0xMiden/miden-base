@@ -60,7 +60,12 @@ impl PartialVault {
         self.partial_smt.leaves().map(|(_, leaf)| leaf)
     }
 
-    /// TODO
+    /// Returns an opening of the asset associated with `asset_key`.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the key is not tracked by this partial vault.
     pub fn open(&self, asset_key: Word) -> Result<SmtProof, MerkleError> {
         self.partial_smt.open(&asset_key)
     }

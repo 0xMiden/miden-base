@@ -35,7 +35,10 @@ pub trait DataStore: MastForestStore {
         Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     >;
 
-    /// Returns the witness that needs to be added to the advice provider's Merkle store and advice
+    /// Returns a witness for an asset in the requested account's vault with the requested vault
+    /// root.
+    ///
+    /// This is the witness that needs to be added to the advice provider's merkle store and advice
     /// map to make access to the specified asset possible.
     fn get_vault_asset_witness(
         &self,

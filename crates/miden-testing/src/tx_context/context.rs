@@ -205,18 +205,21 @@ impl DataStore for TransactionContext {
         async move { Ok((partial_account, seed, header, mmr)) }
     }
 
-    /// TODO: Vault root is currently unused because for the native account vault, we should return
-    /// the latest state, since the vault can change as transaction executes.
     fn get_vault_asset_witness(
         &self,
         account_id: AccountId,
-        _vault_root: Word,
+        vault_root: Word,
         asset_key: Word,
     ) -> impl FutureMaybeSend<Result<AccountVaultAssetWitness, DataStoreError>> {
         assert_eq!(
             account_id,
             self.account.id(),
             "only native account vault witnesses can be requested (for now)"
+        );
+        assert_eq!(
+            vault_root,
+            self.account.vault().root(),
+            "vault root should match the native account's root (for now)"
         );
 
         let smt_proof = self.account().vault().asset_tree().open(&asset_key);
