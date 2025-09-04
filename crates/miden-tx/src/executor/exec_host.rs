@@ -237,7 +237,7 @@ where
     /// transaction attempts to verify the merkle path to G, it can do so because F and B' are in
     /// the merkle store. Note that B' is in the store because the transaction inserted it into the
     /// merkle store as part of updating E, not because we inserted it. B is present in the store,
-    /// but is simply ignored for the purpose of verifyin G's inclusion.
+    /// but is simply ignored for the purpose of verifying G's inclusion.
     async fn on_account_vault_asset_witness_requested(
         &self,
         current_account_id: AccountId,
