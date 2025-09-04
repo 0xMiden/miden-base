@@ -607,9 +607,9 @@ where
         Ok(())
     }
 
-    /// TODO
+    /// Extracts all necessary data for requesting an asset witness.
     ///
-    /// Expected stack state: [ASSET, account_vault_root_ptr, ...]
+    /// Expected stack state: `[ASSET, account_vault_root_ptr]`
     pub fn on_account_vault_before_add_or_remove_asset(
         &mut self,
         process: &ProcessState,
@@ -670,7 +670,7 @@ where
                 .get_mem_word(process.ctx(), current_account_ptr)
                 .map_err(|_| {
                     TransactionKernelError::ViolatedAssumption(
-                        "account stack top ptr should be word-aligned".into(),
+                        "current account ptr should be word-aligned".into(),
                     )
                 })?
                 .ok_or_else(|| {
@@ -682,7 +682,7 @@ where
             AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
                 .map_err(|_| {
                     TransactionKernelError::ViolatedAssumption(
-                        "native account id ptr should point to a valid account ID".into(),
+                        "current account id ptr should point to a valid account ID".into(),
                     )
                 })?
         };
@@ -874,6 +874,7 @@ pub(super) enum TransactionEventData {
         /// The fee asset extracted from the stack.
         fee_asset: FungibleAsset,
     },
+    /// The data necessary to request an asset witness from the data store.
     AccountVaultAssetWitness {
         /// The account ID for whose vault a witness is requested.
         current_account_id: AccountId,
