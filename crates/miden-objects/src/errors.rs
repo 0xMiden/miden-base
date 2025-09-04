@@ -434,6 +434,8 @@ pub enum PartialAssetVaultError {
     VaultKeyMismatch { expected: Word, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
+    #[error("asset is not tracked in the partial vault")]
+    UntrackedAsset(#[source] MerkleError),
 }
 
 // NOTE ERROR

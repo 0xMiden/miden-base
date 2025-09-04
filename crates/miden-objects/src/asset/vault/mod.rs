@@ -18,6 +18,9 @@ use crate::{AssetVaultError, Word};
 mod partial;
 pub use partial::PartialVault;
 
+mod asset_witness;
+pub use asset_witness::AssetWitness;
+
 // ASSET VAULT
 // ================================================================================================
 
@@ -87,6 +90,15 @@ impl AssetVault {
     /// Returns an iterator over the assets stored in the vault.
     pub fn assets(&self) -> impl Iterator<Item = Asset> + '_ {
         self.asset_tree.entries().map(|x| Asset::new_unchecked(x.1))
+    }
+
+    /// Returns an opening of the leaf associated with `vault_key`.
+    ///
+    /// The `vault_key` can be obtained with [`Asset::vault_key`].
+    pub fn open(&self, vault_key: Word) -> AssetWitness {
+        let smt_proof = self.asset_tree.open(&vault_key);
+        // SAFETY: The asset vault should only contain valid assets.
+        AssetWitness::new_unchecked(smt_proof)
     }
 
     /// Returns a reference to the Sparse Merkle Tree underling this asset vault.

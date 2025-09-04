@@ -10,7 +10,6 @@ pub use miden_objects::transaction::TransactionInputs;
 
 mod executor;
 pub use executor::{
-    AccountVaultAssetWitness,
     DataStore,
     ExecutionOptions,
     FailedNote,

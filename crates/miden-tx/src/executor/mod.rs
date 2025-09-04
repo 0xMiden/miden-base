@@ -32,7 +32,7 @@ mod exec_host;
 pub use exec_host::TransactionExecutorHost;
 
 mod data_store;
-pub use data_store::{AccountVaultAssetWitness, DataStore};
+pub use data_store::DataStore;
 
 mod notes_checker;
 pub use notes_checker::{

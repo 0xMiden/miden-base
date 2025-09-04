@@ -8,6 +8,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
+use miden_objects::asset::AssetWitness;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -29,7 +30,6 @@ use miden_processor::{
 };
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::{
-    AccountVaultAssetWitness,
     DataStore,
     DataStoreError,
     TransactionExecutor,
@@ -210,7 +210,7 @@ impl DataStore for TransactionContext {
         account_id: AccountId,
         vault_root: Word,
         asset_key: Word,
-    ) -> impl FutureMaybeSend<Result<AccountVaultAssetWitness, DataStoreError>> {
+    ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
         assert_eq!(
             account_id,
             self.account.id(),
@@ -222,10 +222,9 @@ impl DataStore for TransactionContext {
             "vault root should match the native account's root (for now)"
         );
 
-        let smt_proof = self.account().vault().asset_tree().open(&asset_key);
-        let witness = AccountVaultAssetWitness::from(smt_proof);
+        let asset_witness = self.account().vault().open(asset_key);
 
-        async { Ok(witness) }
+        async { Ok(asset_witness) }
     }
 }
 

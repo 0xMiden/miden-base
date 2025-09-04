@@ -281,7 +281,7 @@ impl TransactionContextBuilder {
                     // root as the full vault, but will not add any relevant merkle paths to the
                     // merkle store, which will test lazy loading of assets.
                     let mut partial_vault = PartialVault::default();
-                    partial_vault.add(self.account.vault().asset_tree().open(&Word::empty()))?;
+                    partial_vault.add(self.account.vault().open(Word::empty()).into())?;
 
                     PartialAccount::new(
                         self.account.id(),
