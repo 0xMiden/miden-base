@@ -11,6 +11,8 @@ mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
 mod note_builder;
+use miden_objects::crypto::merkle::{LeafIndex, Smt};
+use miden_prover::crypto::MerkleError;
 use note_builder::OutputNoteBuilder;
 
 mod script_mast_forest_store;
@@ -29,7 +31,7 @@ use miden_lib::transaction::memory::{
 };
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
 use miden_objects::account::{AccountDelta, AccountHeader, AccountId, PartialAccount};
-use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -42,6 +44,7 @@ use miden_objects::transaction::{
 use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
 use miden_processor::{
+    AdviceError,
     AdviceMutation,
     ContextId,
     EventError,
@@ -687,13 +690,30 @@ where
                 })?
         };
 
-        Ok(TransactionEventHandling::Unhandled(
-            TransactionEventData::AccountVaultAssetWitness {
-                current_account_id,
-                vault_root,
-                asset,
-            },
-        ))
+        // The third element in an SMT key is the index.
+        let leaf_index = asset.vault_key()[3];
+        match process.advice_provider().get_merkle_path(
+            vault_root,
+            &Felt::from(AssetVault::DEPTH),
+            &leaf_index,
+        ) {
+            // Merkle path is already in the store; consider the event handled.
+            Ok(_) => Ok(TransactionEventHandling::Handled(Vec::new())),
+            // This means the merkle path is missing in the advice provider.
+            Err(AdviceError::MerkleStoreLookupFailed(MerkleError::NodeIndexNotFoundInStore(
+                ..,
+            ))) => Ok(TransactionEventHandling::Unhandled(
+                TransactionEventData::AccountVaultAssetWitness {
+                    current_account_id,
+                    vault_root,
+                    asset,
+                },
+            )),
+            // We should never encounter this as long as our inputs to get_merkle_path are correct.
+            Err(err) => Err(TransactionKernelError::ViolatedAssumption(format!(
+                "unexpected merkle store lookup error: {err}"
+            ))),
+        }
     }
 
     /// Extracts the asset that is being removed from the account's vault from the process state

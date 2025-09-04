@@ -1,5 +1,7 @@
 use alloc::string::ToString;
 
+use miden_processor::SMT_DEPTH;
+
 use super::{
     AccountType,
     Asset,
@@ -41,8 +43,15 @@ pub struct AssetVault {
 }
 
 impl AssetVault {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// The depth of the SMT that represents the asset vault.
+    pub const DEPTH: u8 = SMT_DEPTH;
+
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+
     /// Returns a new [AssetVault] initialized with the provided assets.
     pub fn new(assets: &[Asset]) -> Result<Self, AssetVaultError> {
         Ok(Self {
