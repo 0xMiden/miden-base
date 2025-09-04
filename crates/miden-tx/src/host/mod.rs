@@ -155,10 +155,17 @@ where
     }
 
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
-    pub fn into_parts(self) -> (AccountDelta, Vec<OutputNote>, TransactionProgress) {
+    pub fn into_parts(
+        self,
+    ) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>, TransactionProgress) {
         let output_notes = self.output_notes.into_values().map(|builder| builder.build()).collect();
 
-        (self.account_delta.into_delta(), output_notes, self.tx_progress)
+        (
+            self.account_delta.into_delta(),
+            self.input_notes,
+            output_notes,
+            self.tx_progress,
+        )
     }
 
     // EVENT HANDLERS

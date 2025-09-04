@@ -955,7 +955,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
                 .unwrap();
 
         TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
-            &tx_inputs.account().into(),
+            tx_inputs.account(),
             tx_inputs.input_notes().clone(),
             mast_store.as_ref(),
             scripts_mast_store,
@@ -983,7 +983,7 @@ async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_tran
         ..Default::default()
     };
 
-    let (_, output_notes, _signatures, _tx_progress) = host.into_parts();
+    let (_, _input_notes, output_notes, _signatures, _tx_progress) = host.into_parts();
     let tx_outputs =
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
             .unwrap();
