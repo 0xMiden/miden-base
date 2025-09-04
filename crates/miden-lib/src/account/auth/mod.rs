@@ -7,5 +7,5 @@ pub use rpo_falcon_512::AuthRpoFalcon512;
 mod rpo_falcon_512_acl;
 pub use rpo_falcon_512_acl::{AuthRpoFalcon512Acl, AuthRpoFalcon512AclConfig};
 
-mod multisig;
-pub use multisig::AuthRpoFalcon512Multisig;
+mod rpo_falcon_512_multisig;
+pub use rpo_falcon_512_multisig::AuthRpoFalcon512Multisig;
