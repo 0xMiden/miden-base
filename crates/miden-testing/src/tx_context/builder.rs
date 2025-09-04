@@ -12,8 +12,8 @@ use miden_objects::EMPTY_WORD;
 use miden_objects::account::{Account, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::asset::PartialVault;
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -80,7 +80,7 @@ pub struct TransactionContextBuilder {
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
     signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
-    enable_lazy_loading: bool,
+    load_partial_account: bool,
 }
 
 impl TransactionContextBuilder {
@@ -100,7 +100,7 @@ impl TransactionContextBuilder {
             foreign_account_inputs: vec![],
             auth_args: EMPTY_WORD,
             signatures: Vec::new(),
-            enable_lazy_loading: false,
+            load_partial_account: false,
         }
     }
 
@@ -203,9 +203,12 @@ impl TransactionContextBuilder {
         self
     }
 
-    /// Set whether the transaction should use lazy loading or not.
-    pub fn enable_lazy_loading(mut self, lazy_loading: bool) -> Self {
-        self.enable_lazy_loading = lazy_loading;
+    /// Causes the transaction to only construct a minimal partial account as the transaction
+    /// input, causing lazy loading of assets throughout transaction execution.
+    ///
+    /// This exists to test lazy loading selectively and should go away in the future.
+    pub fn enable_partial_loading(mut self) -> Self {
+        self.load_partial_account = true;
         self
     }
 
@@ -269,11 +272,14 @@ impl TransactionContextBuilder {
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
-                let account = if self.enable_lazy_loading {
+                // If partial loading is enabled, construct an account that doesn't contain all
+                // merkle paths of assets, in order to test lazy loading. Otherwise, load the full
+                // account.
+                let account = if self.load_partial_account {
                     // Construct a partial vault that tracks the empty word, but none of the assets
                     // that are actually in the asset tree. That way, the partial vault has the same
                     // root as the full vault, but will not add any relevant merkle paths to the
-                    // merkle store, which will cause assets to be requested on demand.
+                    // merkle store, which will test lazy loading of assets.
                     let mut partial_vault = PartialVault::default();
                     partial_vault.add(self.account.vault().asset_tree().open(&Word::empty()))?;
 
