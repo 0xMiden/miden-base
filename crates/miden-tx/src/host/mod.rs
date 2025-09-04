@@ -11,7 +11,6 @@ mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
 mod note_builder;
-use miden_objects::crypto::merkle::{LeafIndex, Smt};
 use miden_prover::crypto::MerkleError;
 use note_builder::OutputNoteBuilder;
 
