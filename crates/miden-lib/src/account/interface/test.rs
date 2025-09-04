@@ -703,7 +703,7 @@ impl AccountComponentExt for AccountComponent {
 }
 
 fn get_mock_auth_component() -> AuthRpoFalcon512 {
-    let mock_public_key = PublicKey::new(Word::from([0, 1, 2, 3u32]));
+    let mock_public_key = PublicKey::from(Word::from([0, 1, 2, 3u32]));
     AuthRpoFalcon512::new(mock_public_key)
 }
 
@@ -733,8 +733,8 @@ fn test_get_auth_scheme_rpo_falcon512() {
     assert_eq!(auth_schemes.len(), 1);
     let auth_scheme = &auth_schemes[0];
     match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+        AuthScheme::RpoFalcon512 { pub_key_committment: pub_key } => {
+            assert_eq!(*pub_key, PublicKey::from(Word::from([0, 1, 2, 3u32])));
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -799,8 +799,8 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
     assert_eq!(wallet_account_interface.auth().len(), 1);
 
     match &wallet_account_interface.auth()[0] {
-        AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+        AuthScheme::RpoFalcon512 { pub_key_committment: pub_key } => {
+            assert_eq!(*pub_key, PublicKey::from(Word::from([0, 1, 2, 3u32])));
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -838,8 +838,8 @@ fn test_account_interface_get_auth_scheme() {
     // Test that auth() method provides the authentication schemes
     assert_eq!(wallet_account_interface.auth().len(), 1);
     match &wallet_account_interface.auth()[0] {
-        AuthScheme::RpoFalcon512 { pub_key } => {
-            assert_eq!(*pub_key, PublicKey::new(Word::from([0, 1, 2, 3u32])));
+        AuthScheme::RpoFalcon512 { pub_key_committment: pub_key } => {
+            assert_eq!(*pub_key, PublicKey::from(Word::from([0, 1, 2, 3u32])));
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }
@@ -871,7 +871,9 @@ fn get_public_keys_from_account(account: &Account) -> Vec<Word> {
     for auth in interface.auth() {
         match auth {
             AuthScheme::NoAuth => {},
-            AuthScheme::RpoFalcon512 { pub_key } => pub_keys.push(Word::from(*pub_key)),
+            AuthScheme::RpoFalcon512 { pub_key_committment: pub_key } => {
+                pub_keys.push(Word::from(*pub_key))
+            },
             AuthScheme::RpoFalcon512Multisig { pub_keys: multisig_keys, .. } => {
                 for key in multisig_keys {
                     pub_keys.push(Word::from(*key));
@@ -903,9 +905,9 @@ fn test_public_key_extraction_regular_account() {
 #[test]
 fn test_public_key_extraction_multisig_account() {
     // Create test public keys
-    let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
-    let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
-    let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
+    let pub_key_1 = PublicKey::from(Word::from([1u32, 0, 0, 0]));
+    let pub_key_2 = PublicKey::from(Word::from([2u32, 0, 0, 0]));
+    let pub_key_3 = PublicKey::from(Word::from([3u32, 0, 0, 0]));
     let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
     let threshold = 2u32;
 

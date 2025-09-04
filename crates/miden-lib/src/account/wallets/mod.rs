@@ -124,7 +124,9 @@ pub fn create_basic_wallet(
     }
 
     let auth_component: AccountComponent = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key } => AuthRpoFalcon512::new(pub_key).into(),
+        AuthScheme::RpoFalcon512 { pub_key_committment } => {
+            AuthRpoFalcon512::new(pub_key_committment).into()
+        },
         AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
             AuthRpoFalcon512Multisig::new(threshold, pub_keys)
                 .map_err(BasicWalletError::AccountError)?
@@ -168,10 +170,10 @@ mod tests {
 
     #[test]
     fn test_create_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
+        let pub_key = rpo_falcon512::PublicKey::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
-            AuthScheme::RpoFalcon512 { pub_key },
+            AuthScheme::RpoFalcon512 { pub_key_committment: pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         );
@@ -183,10 +185,10 @@ mod tests {
 
     #[test]
     fn test_serialize_basic_wallet() {
-        let pub_key = rpo_falcon512::PublicKey::new(Word::from([ONE; 4]));
+        let pub_key = rpo_falcon512::PublicKey::from(Word::from([ONE; 4]));
         let wallet = create_basic_wallet(
             [1; 32],
-            AuthScheme::RpoFalcon512 { pub_key },
+            AuthScheme::RpoFalcon512 { pub_key_committment: pub_key },
             AccountType::RegularAccountImmutableCode,
             AccountStorageMode::Public,
         )

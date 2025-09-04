@@ -4,6 +4,7 @@ use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageS
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
+use crate::account::PublicKeyCommitment;
 use crate::account::components::{
     multisig_library,
     no_auth_library,
@@ -25,13 +26,13 @@ use crate::account::components::{
 ///
 /// [kasm]: crate::transaction::TransactionKernel::assembler
 pub struct AuthRpoFalcon512 {
-    public_key: PublicKey,
+    public_key_commitment: PublicKeyCommitment,
 }
 
 impl AuthRpoFalcon512 {
     /// Creates a new [`AuthRpoFalcon512`] component with the given `public_key`.
-    pub fn new(public_key: PublicKey) -> Self {
-        Self { public_key }
+    pub fn new(public_key_commitment: PublicKeyCommitment) -> Self {
+        Self { public_key_commitment }
     }
 }
 
@@ -39,7 +40,7 @@ impl From<AuthRpoFalcon512> for AccountComponent {
     fn from(falcon: AuthRpoFalcon512) -> Self {
         AccountComponent::new(
             rpo_falcon_512_library(),
-            vec![StorageSlot::Value(falcon.public_key.into())],
+            vec![StorageSlot::Value(falcon.public_key_commitment.into())],
         )
         .expect("falcon component should satisfy the requirements of a valid account component")
         .with_supports_all_types()
@@ -150,7 +151,7 @@ impl Default for AuthRpoFalcon512AclConfig {
 ///
 /// This component supports all account types.
 pub struct AuthRpoFalcon512Acl {
-    public_key: PublicKey,
+    public_key_commitment: PublicKeyCommitment,
     config: AuthRpoFalcon512AclConfig,
 }
 
@@ -161,7 +162,7 @@ impl AuthRpoFalcon512Acl {
     /// # Panics
     /// Panics if more than [AccountCode::MAX_NUM_PROCEDURES] procedures are specified.
     pub fn new(
-        public_key: PublicKey,
+        public_key_commitment: PublicKeyCommitment,
         config: AuthRpoFalcon512AclConfig,
     ) -> Result<Self, AccountError> {
         let max_procedures = AccountCode::MAX_NUM_PROCEDURES;
@@ -171,7 +172,7 @@ impl AuthRpoFalcon512Acl {
             )));
         }
 
-        Ok(Self { public_key, config })
+        Ok(Self { public_key_commitment, config })
     }
 }
 
@@ -180,7 +181,7 @@ impl From<AuthRpoFalcon512Acl> for AccountComponent {
         let mut storage_slots = Vec::with_capacity(3);
 
         // Slot 0: Public key
-        storage_slots.push(StorageSlot::Value(falcon.public_key.into()));
+        storage_slots.push(StorageSlot::Value(falcon.public_key_commitment.into()));
 
         // Slot 1: [num_tracked_procs, allow_unauthorized_output_notes,
         // allow_unauthorized_input_notes, 0]
@@ -266,7 +267,7 @@ impl From<NoAuth> for AccountComponent {
 #[derive(Debug)]
 pub struct AuthRpoFalcon512Multisig {
     threshold: u32,
-    approvers: Vec<PublicKey>,
+    approvers: Vec<PublicKeyCommitment>,
 }
 
 impl AuthRpoFalcon512Multisig {
@@ -275,7 +276,7 @@ impl AuthRpoFalcon512Multisig {
     ///
     /// # Errors
     /// Returns an error if threshold is 0 or greater than the number of approvers.
-    pub fn new(threshold: u32, approvers: Vec<PublicKey>) -> Result<Self, AccountError> {
+    pub fn new(threshold: u32, approvers: Vec<PublicKeyCommitment>) -> Result<Self, AccountError> {
         if threshold == 0 {
             return Err(AccountError::other("threshold must be at least 1"));
         }
@@ -330,8 +331,9 @@ impl From<AuthRpoFalcon512Multisig> for AccountComponent {
 mod tests {
     use alloc::string::ToString;
 
-    use miden_objects::Word;
     use miden_objects::account::AccountBuilder;
+    use miden_objects::crypto::dsa::rpo_falcon512::Polynomial;
+    use miden_objects::{Felt, FieldElement, Word};
 
     use super::*;
     use crate::account::components::WellKnownComponent;
@@ -349,6 +351,15 @@ mod tests {
         expected_slot_1: Word,
     }
 
+    fn pk(v: i16) -> PublicKeyCommitment {
+        PublicKeyCommitment::from(Word::new([
+            Felt::new(v as u64),
+            Felt::ZERO,
+            Felt::ZERO,
+            Felt::ZERO,
+        ]))
+    }
+
     /// Helper function to get the basic wallet procedures for testing
     fn get_basic_wallet_procedures() -> Vec<Word> {
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
@@ -360,7 +371,7 @@ mod tests {
 
     /// Parametrized test helper for ACL component testing
     fn test_acl_component(config: AclTestConfig) {
-        let public_key = PublicKey::new(Word::empty());
+        let public_key_commitment = PublicKeyCommitment::empty();
 
         // Build the configuration
         let mut acl_config = AuthRpoFalcon512AclConfig::new()
@@ -376,8 +387,8 @@ mod tests {
         };
 
         // Create component and account
-        let component =
-            AuthRpoFalcon512Acl::new(public_key, acl_config).expect("component creation failed");
+        let component = AuthRpoFalcon512Acl::new(public_key_commitment, acl_config)
+            .expect("component creation failed");
 
         let (account, _) = AccountBuilder::new([0; 32])
             .with_auth_component(component)
@@ -387,7 +398,7 @@ mod tests {
 
         // Assert public key in slot 0
         let public_key_slot = account.storage().get_item(0).expect("storage slot 0 access failed");
-        assert_eq!(public_key_slot, Word::from(public_key));
+        assert_eq!(public_key_slot, Word::from(public_key_commitment));
 
         // Assert configuration in slot 1
         let slot_1 = account.storage().get_item(1).expect("storage slot 1 access failed");
@@ -495,9 +506,9 @@ mod tests {
     #[test]
     fn test_multisig_component_setup() {
         // Create test public keys
-        let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
-        let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
-        let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
+        let pub_key_1 = pk(1);
+        let pub_key_2 = pk(2);
+        let pub_key_3 = pk(3);
         let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
         let threshold = 2u32;
 
@@ -529,7 +540,7 @@ mod tests {
     /// Test multisig component with minimum threshold (1 of 1)
     #[test]
     fn test_multisig_component_minimum_threshold() {
-        let pub_key = PublicKey::new(Word::from([42u32, 0, 0, 0]));
+        let pub_key = pk(42);
         let approvers = vec![pub_key];
         let threshold = 1u32;
 
@@ -556,7 +567,7 @@ mod tests {
     /// Test multisig component error cases
     #[test]
     fn test_multisig_component_error_cases() {
-        let pub_key = PublicKey::new(Word::from([1u32, 0, 0, 0]));
+        let pub_key = pk(1);
         let approvers = vec![pub_key];
 
         // Test threshold = 0 (should fail)

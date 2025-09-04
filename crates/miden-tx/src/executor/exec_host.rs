@@ -231,10 +231,6 @@ where
     STORE: MastForestStore,
     AUTH: TransactionAuthenticator,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
-    }
-
     fn get_label_and_source_file(
         &self,
         location: &Location,

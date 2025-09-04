@@ -70,7 +70,8 @@ impl Auth {
                 (component, Some(authenticator))
             },
             Auth::Multisig { threshold, approvers } => {
-                let pub_keys: Vec<_> = approvers.iter().map(|word| PublicKey::new(*word)).collect();
+                let pub_keys: Vec<_> =
+                    approvers.iter().map(|word| PublicKey::from(*word)).collect();
 
                 let component = AuthRpoFalcon512Multisig::new(*threshold, pub_keys)
                     .expect("multisig component creation failed")
