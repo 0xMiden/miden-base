@@ -256,9 +256,11 @@ where
         &mut self,
         process: &ProcessState,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
+        let event_id = TryInto::<u32>::try_into(process.get_stack_item(0).as_int()).expect(
+            "the top of the stack is always a u32 event identifier when inside `fn on_event`",
+        );
         // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
         // should be cleaner.
-        let event_id = process.get_stack_item(0).as_int() as u32; // TODO failable
         let event_handling_result = TransactionEvent::try_from(event_id)
             .map_err(EventError::from)
             .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));

@@ -285,20 +285,19 @@ pub fn create_basic_fungible_faucet(
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
     let auth_component: AccountComponent = match auth_scheme {
-        AuthScheme::RpoFalcon512 { pub_key_committment: pub_key } => AuthRpoFalcon512Acl::new(
-            pub_key,
+        AuthScheme::RpoFalcon512 { pub_key_commitment } => AuthRpoFalcon512Acl::new(
+            pub_key_commitment,
             AuthRpoFalcon512AclConfig::new()
                 .with_auth_trigger_procedures(vec![distribute_proc_root])
                 .with_allow_unauthorized_input_notes(true),
         )
         .map_err(FungibleFaucetError::AccountError)?
         .into(),
-        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => AuthRpoFalcon512Multisig::new(
-            threshold,
-            alloc::vec::Vec::from_iter(pub_keys.into_iter().map(|x| x.into())),
-        )
-        .map_err(FungibleFaucetError::AccountError)?
-        .into(),
+        AuthScheme::RpoFalcon512Multisig { threshold, pub_keys } => {
+            AuthRpoFalcon512Multisig::new(threshold, pub_keys)
+                .map_err(FungibleFaucetError::AccountError)?
+                .into()
+        },
         AuthScheme::NoAuth => {
             return Err(FungibleFaucetError::UnsupportedAuthScheme(
                 "basic fungible faucets cannot be created with NoAuth authentication scheme".into(),
@@ -376,7 +375,7 @@ mod tests {
     fn faucet_contract_creation() {
         let pub_key_word = Word::new([ONE; 4]);
         let auth_scheme: AuthScheme =
-            AuthScheme::RpoFalcon512 { pub_key_committment: pub_key_word.into() };
+            AuthScheme::RpoFalcon512 { pub_key_commitment: pub_key_word.into() };
 
         // we need to use an initial seed to create the wallet account
         let init_seed: [u8; 32] = [

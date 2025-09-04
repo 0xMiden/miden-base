@@ -17,8 +17,8 @@ fn wallet_creation() {
     let mut rng = ChaCha20Rng::from_seed(seed);
 
     let sec_key = SecretKey::with_rng(&mut rng);
-    let pub_key_committment = miden_lib::account::PublicKeyCommitment::from(sec_key.public_key());
-    let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key_committment };
+    let pub_key_commitment = miden_lib::account::PublicKeyCommitment::from(sec_key.public_key());
+    let auth_scheme: AuthScheme = AuthScheme::RpoFalcon512 { pub_key_commitment };
 
     // we need to use an initial seed to create the wallet account
     let init_seed: [u8; 32] = [
@@ -33,7 +33,7 @@ fn wallet_creation() {
         create_basic_wallet(init_seed, auth_scheme, account_type, storage_mode).unwrap();
 
     let expected_code = AccountCode::from_components(
-        &[AuthRpoFalcon512::new(pub_key_committment).into(), BasicWallet.into()],
+        &[AuthRpoFalcon512::new(pub_key_commitment).into(), BasicWallet.into()],
         AccountType::RegularAccountUpdatableCode,
     )
     .unwrap();
@@ -41,5 +41,5 @@ fn wallet_creation() {
 
     assert!(wallet.is_regular_account());
     assert_eq!(wallet.code().commitment(), expected_code_commitment);
-    assert_eq!(wallet.storage().get_item(0).unwrap(), Word::from(pub_key_committment));
+    assert_eq!(wallet.storage().get_item(0).unwrap(), Word::from(pub_key_commitment));
 }

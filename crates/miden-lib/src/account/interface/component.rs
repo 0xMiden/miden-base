@@ -101,7 +101,7 @@ impl AccountComponentInterface {
             AccountComponentInterface::AuthRpoFalcon512(storage_index)
             | AccountComponentInterface::AuthRpoFalcon512Acl(storage_index) => {
                 vec![AuthScheme::RpoFalcon512 {
-                    pub_key_committment: PublicKeyCommitment::from(
+                    pub_key_commitment: PublicKeyCommitment::from(
                         storage
                             .get_item(*storage_index)
                             .expect("invalid storage index of the public key"),

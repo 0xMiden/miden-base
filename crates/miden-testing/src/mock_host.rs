@@ -98,7 +98,9 @@ impl SyncHost for MockHost {
     }
 
     fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
-        let event_id = process.get_stack_item(0).as_int() as u32; // TODO FIXME
+        let event_id = process.get_stack_item(0).as_int().try_into().expect(
+            "the top of the stack is always a u32 event identifier when inside `fn on_event`",
+        );
         let event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         if process.ctx() != ContextId::root() {

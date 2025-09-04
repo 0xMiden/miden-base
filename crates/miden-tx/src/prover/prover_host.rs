@@ -104,7 +104,9 @@ where
     }
 
     fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
-        let event_id = process.get_stack_item(0).as_int() as u32; // TODO make conversion failable
+        let event_id = TryInto::<u32>::try_into(process.get_stack_item(0).as_int()).expect(
+            "the top of the stack is always a u32 event identifier when inside `fn on_event`",
+        );
         let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         match self.base_host.handle_event(process, transaction_event)? {
