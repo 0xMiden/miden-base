@@ -147,13 +147,7 @@ where
                 .try_execute_notes(
                     target_account_id,
                     block_ref,
-                    InputNotes::<InputNote>::new_unchecked(
-                        candidate_notes
-                            .iter()
-                            .cloned()
-                            .map(InputNote::unauthenticated)
-                            .collect::<Vec<_>>(),
-                    ),
+                    candidate_notes.clone().into(),
                     &tx_args,
                 )
                 .await
