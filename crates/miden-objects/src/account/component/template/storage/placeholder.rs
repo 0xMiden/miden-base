@@ -6,7 +6,6 @@ use core::fmt::{self, Display};
 
 use miden_core::utils::{ByteReader, ByteWriter, Deserializable, Serializable};
 use miden_core::{Felt, Word};
-use miden_crypto::WordError;
 use miden_crypto::dsa::rpo_falcon512::{self};
 use miden_processor::DeserializationError;
 use thiserror::Error;

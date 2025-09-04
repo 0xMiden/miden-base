@@ -247,13 +247,18 @@ where
     STORE: MastForestStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
+    fn get_mast_forest(&self, node_digest: &Word) -> impl FutureMaybeSend<Option<Arc<MastForest>>> {
+        let v = self.base_host.get_mast_forest(node_digest);
+        async move { v }
+    }
+
     fn on_event(
         &mut self,
         process: &ProcessState,
-        event_id: u32,
     ) -> impl FutureMaybeSend<Result<Vec<AdviceMutation>, EventError>> {
         // TODO: Eventually, refactor this to let TransactionEvent contain the data directly, which
         // should be cleaner.
+        let event_id = process.get_stack_item(0).as_int() as u32; // TODO failable
         let event_handling_result = TransactionEvent::try_from(event_id)
             .map_err(EventError::from)
             .and_then(|transaction_event| self.base_host.handle_event(process, transaction_event));

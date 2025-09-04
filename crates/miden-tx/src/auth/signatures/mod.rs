@@ -39,7 +39,7 @@ pub fn get_falcon_signature<R: Rng>(
     let s2 = sig.sig_poly();
     // We also need in the VM the expanded key corresponding to the public key that was provided
     // via the operand stack
-    let h = *key.public_key();
+    let h = key.public_key().clone();
     // Lastly, for the probabilistic product routine that is part of the verification procedure,
     // we need to compute the product of the expanded key and the signature polynomial in
     // the ring of polynomials with coefficients in the Miden field.

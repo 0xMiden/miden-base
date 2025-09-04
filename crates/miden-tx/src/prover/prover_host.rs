@@ -84,10 +84,6 @@ impl<STORE> BaseHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
-    fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
-        self.base_host.get_mast_forest(procedure_root)
-    }
-
     fn get_label_and_source_file(
         &self,
         _location: &Location,
@@ -103,11 +99,12 @@ impl<STORE> SyncHost for TransactionProverHost<'_, STORE>
 where
     STORE: MastForestStore,
 {
-    fn on_event(
-        &mut self,
-        process: &ProcessState,
-        event_id: u32,
-    ) -> Result<Vec<AdviceMutation>, EventError> {
+    fn get_mast_forest(&self, node_digest: &Word) -> Option<Arc<MastForest>> {
+        self.base_host.get_mast_forest(node_digest)
+    }
+
+    fn on_event(&mut self, process: &ProcessState) -> Result<Vec<AdviceMutation>, EventError> {
+        let event_id = process.get_stack_item(0).as_int() as u32; // TODO make conversion failable
         let transaction_event = TransactionEvent::try_from(event_id).map_err(Box::new)?;
 
         match self.base_host.handle_event(process, transaction_event)? {

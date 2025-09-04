@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 
 use miden_objects::account::{AccountCode, AccountComponent, StorageMap, StorageSlot};
-use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::{AccountError, Word};
 
 use crate::account::PublicKeyCommitment;

@@ -2,6 +2,7 @@
 // ================================================================================================
 use alloc::vec::Vec;
 
+use miden_lib::account::PublicKeyCommitment;
 use miden_lib::account::auth::{
     AuthRpoFalcon512,
     AuthRpoFalcon512Acl,
@@ -59,21 +60,22 @@ impl Auth {
             Auth::BasicAuth => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = sec_key.public_key();
+                let pub_key_commitment =
+                    miden_lib::account::PublicKeyCommitment::from(sec_key.public_key());
 
-                let component = AuthRpoFalcon512::new(pub_key).into();
+                let component = AuthRpoFalcon512::new(pub_key_commitment).into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-                    &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
+                    &[(pub_key_commitment.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,
                 );
 
                 (component, Some(authenticator))
             },
             Auth::Multisig { threshold, approvers } => {
-                let pub_keys: Vec<_> =
-                    approvers.iter().map(|word| PublicKey::from(*word)).collect();
+                let pub_key_commitments: Vec<_> =
+                    approvers.iter().map(|word| PublicKeyCommitment::from(*word)).collect();
 
-                let component = AuthRpoFalcon512Multisig::new(*threshold, pub_keys)
+                let component = AuthRpoFalcon512Multisig::new(*threshold, pub_key_commitments)
                     .expect("multisig component creation failed")
                     .into();
 
@@ -86,10 +88,10 @@ impl Auth {
             } => {
                 let mut rng = ChaCha20Rng::from_seed(Default::default());
                 let sec_key = SecretKey::with_rng(&mut rng);
-                let pub_key = sec_key.public_key();
+                let pub_key_commitment = PublicKeyCommitment::from(sec_key.public_key());
 
                 let component = AuthRpoFalcon512Acl::new(
-                    pub_key,
+                    pub_key_commitment,
                     AuthRpoFalcon512AclConfig::new()
                         .with_auth_trigger_procedures(auth_trigger_procedures.clone())
                         .with_allow_unauthorized_output_notes(*allow_unauthorized_output_notes)
@@ -98,7 +100,7 @@ impl Auth {
                 .expect("component creation failed")
                 .into();
                 let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-                    &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
+                    &[(pub_key_commitment.into(), AuthSecretKey::RpoFalcon512(sec_key))],
                     rng,
                 );
 

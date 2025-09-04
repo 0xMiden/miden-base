@@ -2,7 +2,6 @@ use alloc::collections::BTreeMap;
 use alloc::string::{String, ToString};
 use alloc::vec::Vec;
 use core::fmt;
-use std::borrow::ToOwned;
 
 use miden_core::{Felt, Word};
 use serde::de::value::MapAccessDeserializer;

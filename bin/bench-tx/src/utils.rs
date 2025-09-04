@@ -4,6 +4,7 @@ pub use alloc::string::String;
 use std::fs::{read_to_string, write};
 
 use anyhow::Context;
+use miden_lib::account::PublicKeyCommitment;
 use miden_lib::account::auth::AuthRpoFalcon512;
 use miden_lib::account::wallets::BasicWallet;
 use miden_objects::account::{
@@ -70,7 +71,7 @@ pub fn get_account_with_basic_authenticated_wallet(
     init_seed: [u8; 32],
     account_type: AccountType,
     storage_mode: AccountStorageMode,
-    public_key: PublicKey,
+    public_key: PublicKeyCommitment,
     assets: Option<Asset>,
 ) -> Account {
     AccountBuilder::new(init_seed)
@@ -83,17 +84,17 @@ pub fn get_account_with_basic_authenticated_wallet(
         .unwrap()
 }
 
-pub fn get_new_pk_and_authenticator() -> (PublicKey, BasicAuthenticator<ChaCha20Rng>) {
+pub fn get_new_pk_and_authenticator() -> (PublicKeyCommitment, BasicAuthenticator<ChaCha20Rng>) {
     let mut rng = ChaCha20Rng::from_seed(Default::default());
     let sec_key = SecretKey::with_rng(&mut rng);
-    let pub_key = sec_key.public_key();
+    let pub_key_commitment = PublicKeyCommitment::from(sec_key.public_key());
 
     let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
-        &[(pub_key.into(), AuthSecretKey::RpoFalcon512(sec_key))],
+        &[(pub_key_commitment.into(), AuthSecretKey::RpoFalcon512(sec_key))],
         rng,
     );
 
-    (pub_key, authenticator)
+    (pub_key_commitment, authenticator)
 }
 
 pub fn write_bench_results_to_json(
