@@ -301,6 +301,7 @@ impl TransactionContextBuilder {
         };
 
         Ok(TransactionContext {
+            account: self.account,
             expected_output_notes: self.expected_output_notes,
             tx_args,
             tx_inputs,

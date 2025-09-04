@@ -1,7 +1,6 @@
 use alloc::vec::Vec;
 
 use super::{
-    Account,
     AccountDelta,
     AccountHeader,
     AccountId,
@@ -17,6 +16,7 @@ use super::{
     TransactionOutputs,
     TransactionWitness,
 };
+use crate::account::PartialAccount;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::utils::serde::{
@@ -73,7 +73,7 @@ impl ExecutedTransaction {
         // we create the id from the content, so we cannot construct the
         // `id` value after construction `Self {..}` without moving
         let id = TransactionId::new(
-            tx_inputs.account().init_commitment(),
+            tx_inputs.account().initial_commitment(),
             tx_outputs.account.commitment(),
             tx_inputs.input_notes().commitment(),
             tx_outputs.output_notes.commitment(),
@@ -103,12 +103,12 @@ impl ExecutedTransaction {
         self.initial_account().id()
     }
 
-    /// Returns the description of the account before the transaction was executed.
-    pub fn initial_account(&self) -> &Account {
+    /// Returns the partial state of the account before the transaction was executed.
+    pub fn initial_account(&self) -> &PartialAccount {
         self.tx_inputs.account()
     }
 
-    /// Returns description of the account after the transaction was executed.
+    /// Returns the header of the account state after the transaction was executed.
     pub fn final_account(&self) -> &AccountHeader {
         &self.tx_outputs.account
     }

@@ -1,7 +1,7 @@
 use core::fmt::Debug;
 
 use super::PartialBlockchain;
-use crate::account::{Account, AccountId};
+use crate::account::{AccountId, PartialAccount};
 use crate::block::BlockHeader;
 use crate::note::{Note, NoteInclusionProof};
 use crate::utils::serde::{
@@ -25,7 +25,7 @@ pub use notes::{InputNote, InputNotes, ToInputNoteCommitments};
 /// Contains the data required to execute a transaction.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct TransactionInputs {
-    account: Account,
+    account: PartialAccount,
     account_seed: Option<Word>,
     block_header: BlockHeader,
     block_chain: PartialBlockchain,
@@ -42,14 +42,16 @@ impl TransactionInputs {
     /// - For a new account, account seed is not provided or the provided seed is invalid.
     /// - For an existing account, account seed was provided.
     pub fn new(
-        account: Account,
+        account: impl Into<PartialAccount>,
         account_seed: Option<Word>,
         block_header: BlockHeader,
         block_chain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
+        let partial_account: PartialAccount = account.into();
+
         // validate the seed
-        validate_account_seed(&account, account_seed)?;
+        validate_account_seed(&partial_account, account_seed)?;
 
         // check the block_chain and block_header are consistent
         let block_num = block_header.block_num();
@@ -85,7 +87,7 @@ impl TransactionInputs {
         }
 
         Ok(Self {
-            account,
+            account: partial_account,
             account_seed,
             block_header,
             block_chain,
@@ -96,8 +98,8 @@ impl TransactionInputs {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns account against which the transaction is to be executed.
-    pub fn account(&self) -> &Account {
+    /// Returns the account against which the transaction is executed.
+    pub fn account(&self) -> &PartialAccount {
         &self.account
     }
 
@@ -128,7 +130,13 @@ impl TransactionInputs {
     /// Consumes these transaction inputs and returns their underlying components.
     pub fn into_parts(
         self,
-    ) -> (Account, Option<Word>, BlockHeader, PartialBlockchain, InputNotes<InputNote>) {
+    ) -> (
+        PartialAccount,
+        Option<Word>,
+        BlockHeader,
+        PartialBlockchain,
+        InputNotes<InputNote>,
+    ) {
         (
             self.account,
             self.account_seed,
@@ -151,12 +159,12 @@ impl Serializable for TransactionInputs {
 
 impl Deserializable for TransactionInputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let account = Account::read_from(source)?;
+        let partial_account = PartialAccount::read_from(source)?;
         let account_seed = source.read()?;
         let block_header = BlockHeader::read_from(source)?;
         let block_chain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
-        Self::new(account, account_seed, block_header, block_chain, input_notes)
+        Self::new(partial_account, account_seed, block_header, block_chain, input_notes)
             .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }
@@ -166,7 +174,7 @@ impl Deserializable for TransactionInputs {
 
 /// Validates that the provided seed is valid for this account.
 fn validate_account_seed(
-    account: &Account,
+    account: &PartialAccount,
     account_seed: Option<Word>,
 ) -> Result<(), TransactionInputError> {
     match (account.is_new(), account_seed) {

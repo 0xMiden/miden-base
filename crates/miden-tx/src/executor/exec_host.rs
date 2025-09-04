@@ -214,12 +214,19 @@ where
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
     /// transaction progress.
+    #[allow(clippy::type_complexity)]
     pub fn into_parts(
         self,
-    ) -> (AccountDelta, Vec<OutputNote>, BTreeMap<Word, Vec<Felt>>, TransactionProgress) {
-        let (account_delta, output_notes, tx_progress) = self.base_host.into_parts();
+    ) -> (
+        AccountDelta,
+        InputNotes<InputNote>,
+        Vec<OutputNote>,
+        BTreeMap<Word, Vec<Felt>>,
+        TransactionProgress,
+    ) {
+        let (account_delta, input_notes, output_notes, tx_progress) = self.base_host.into_parts();
 
-        (account_delta, output_notes, self.generated_signatures, tx_progress)
+        (account_delta, input_notes, output_notes, self.generated_signatures, tx_progress)
     }
 }
 
