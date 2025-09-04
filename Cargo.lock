@@ -748,7 +748,7 @@ dependencies = [
  "js-sys",
  "libc",
  "r-efi",
- "wasi 0.14.2+wasi-0.2.4",
+ "wasi 0.14.3+wasi-0.2.4",
  "wasm-bindgen",
 ]
 
@@ -1060,7 +1060,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b3e7ecca25db4e82c5d47141b723fb781f7dbb2e0c410ad86d4a038fa92fb646"
 dependencies = [
  "miden-core",
- "thiserror 2.0.16",
+ "thiserror",
  "winter-air",
  "winter-prover",
 ]
@@ -1076,7 +1076,7 @@ dependencies = [
  "miden-core",
  "miden-mast-package",
  "smallvec",
- "thiserror 2.0.16",
+ "thiserror",
 ]
 
 [[package]]
@@ -1097,7 +1097,7 @@ dependencies = [
  "rustc_version 0.4.1",
  "semver 1.0.26",
  "smallvec",
- "thiserror 2.0.16",
+ "thiserror",
 ]
 
 [[package]]
@@ -1121,7 +1121,7 @@ version = "0.12.0"
 dependencies = [
  "miden-lib",
  "miden-objects",
- "thiserror 2.0.16",
+ "thiserror",
 ]
 
 [[package]]
@@ -1135,7 +1135,7 @@ dependencies = [
  "miden-formatting",
  "num-derive",
  "num-traits",
- "thiserror 2.0.16",
+ "thiserror",
  "winter-math",
  "winter-utils",
 ]
@@ -1154,7 +1154,7 @@ dependencies = [
  "rand",
  "rand_core",
  "sha3",
- "thiserror 2.0.16",
+ "thiserror",
  "winter-crypto",
  "winter-math",
  "winter-utils",
@@ -1173,8 +1173,8 @@ dependencies = [
  "miden-utils-sync",
  "paste",
  "serde",
- "serde_spanned 1.0.0",
- "thiserror 2.0.16",
+ "serde_spanned",
+ "thiserror",
 ]
 
 [[package]]
@@ -1198,7 +1198,7 @@ dependencies = [
  "miden-stdlib",
  "rand",
  "regex",
- "thiserror 2.0.16",
+ "thiserror",
  "walkdir",
 ]
 
@@ -1239,7 +1239,7 @@ dependencies = [
  "syn",
  "terminal_size",
  "textwrap",
- "thiserror 2.0.16",
+ "thiserror",
  "trybuild",
  "unicode-width 0.1.14",
 ]
@@ -1280,8 +1280,8 @@ dependencies = [
  "semver 1.0.26",
  "serde",
  "tempfile",
- "thiserror 2.0.16",
- "toml 0.8.23",
+ "thiserror",
+ "toml",
  "winter-air",
  "winter-rand-utils",
 ]
@@ -1296,7 +1296,7 @@ dependencies = [
  "miden-core",
  "miden-debug-types",
  "miden-utils-diagnostics",
- "thiserror 2.0.16",
+ "thiserror",
  "tokio",
  "tracing",
  "winter-prover",
@@ -1327,7 +1327,7 @@ dependencies = [
  "miden-core",
  "miden-processor",
  "miden-utils-sync",
- "thiserror 2.0.16",
+ "thiserror",
 ]
 
 [[package]]
@@ -1345,7 +1345,7 @@ dependencies = [
  "rand",
  "rand_chacha",
  "rstest",
- "thiserror 2.0.16",
+ "thiserror",
  "tokio",
  "winter-rand-utils",
  "winterfell",
@@ -1366,7 +1366,7 @@ dependencies = [
  "miden-verifier",
  "rand",
  "rstest",
- "thiserror 2.0.16",
+ "thiserror",
  "tokio",
 ]
 
@@ -1410,7 +1410,7 @@ checksum = "9997989e3f883b70c56ebad49d430fa3b996cd0d50a852c0bca2746d652f2390"
 dependencies = [
  "miden-air",
  "miden-core",
- "thiserror 2.0.16",
+ "thiserror",
  "tracing",
  "winter-verifier",
 ]
@@ -1423,7 +1423,7 @@ checksum = "e381ba23e4f57ffa0d6039113f6d6004e5b8c7ae6cb909329b48f2ab525e8680"
 dependencies = [
  "miden-formatting",
  "smallvec",
- "thiserror 2.0.16",
+ "thiserror",
 ]
 
 [[package]]
@@ -1712,9 +1712,9 @@ dependencies = [
 
 [[package]]
 name = "pprof"
-version = "0.14.1"
+version = "0.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "afad4d4df7b31280028245f152d5a575083e2abb822d05736f5e47653e77689f"
+checksum = "38a01da47675efa7673b032bf8efd8214f1917d89685e07e395ab125ea42b187"
 dependencies = [
  "aligned-vec",
  "backtrace",
@@ -1730,7 +1730,7 @@ dependencies = [
  "spin 0.10.0",
  "symbolic-demangle",
  "tempfile",
- "thiserror 1.0.69",
+ "thiserror",
 ]
 
 [[package]]
@@ -2087,15 +2087,6 @@ dependencies = [
 
 [[package]]
 name = "serde_spanned"
-version = "0.6.9"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bf41e0cfaf7226dca15e8197172c295a782857fcb97fad1808a166870dee75a3"
-dependencies = [
- "serde",
-]
-
-[[package]]
-name = "serde_spanned"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "40734c41988f7306bb04f0ecf60ec0f3f1caa34290e4e8ea471dcd3346483b83"
@@ -2314,31 +2305,11 @@ dependencies = [
 
 [[package]]
 name = "thiserror"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b6aaf5339b578ea85b50e080feb250a3e8ae8cfcdff9a461c9ec2904bc923f52"
-dependencies = [
- "thiserror-impl 1.0.69",
-]
-
-[[package]]
-name = "thiserror"
 version = "2.0.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3467d614147380f2e4e374161426ff399c91084acd2363eaf549172b3d5e60c0"
 dependencies = [
- "thiserror-impl 2.0.16",
-]
-
-[[package]]
-name = "thiserror-impl"
-version = "1.0.69"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fee6c4efc90059e10f81e6d42c60a18f76588c3d74cb83a0b242a2b6c7504c1"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
+ "thiserror-impl",
 ]
 
 [[package]]
@@ -2423,25 +2394,13 @@ dependencies = [
 
 [[package]]
 name = "toml"
-version = "0.8.23"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc1beb996b9d83529a9e75c17a1686767d148d70663143c7854d8b4a09ced362"
-dependencies = [
- "serde",
- "serde_spanned 0.6.9",
- "toml_datetime 0.6.11",
- "toml_edit",
-]
-
-[[package]]
-name = "toml"
 version = "0.9.5"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "75129e1dc5000bfbaa9fee9d1b21f974f9fbad9daec557a521ee6e080825f6e8"
 dependencies = [
  "indexmap",
  "serde",
- "serde_spanned 1.0.0",
+ "serde_spanned",
  "toml_datetime 0.7.0",
  "toml_parser",
  "toml_writer",
@@ -2453,9 +2412,6 @@ name = "toml_datetime"
 version = "0.6.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "22cddaf88f4fbc13c51aebbf5f8eceb5c7c5a9da2ac40a13519eb5b0a0e8f11c"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "toml_datetime"
@@ -2473,10 +2429,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "41fe8c660ae4257887cf66394862d21dbca4a6ddd26f04a3560410406a2f819a"
 dependencies = [
  "indexmap",
- "serde",
- "serde_spanned 0.6.9",
  "toml_datetime 0.6.11",
- "toml_write",
  "winnow",
 ]
 
@@ -2488,12 +2441,6 @@ checksum = "b551886f449aa90d4fe2bdaa9f4a2577ad2dde302c61ecf262d80b116db95c10"
 dependencies = [
  "winnow",
 ]
-
-[[package]]
-name = "toml_write"
-version = "0.1.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5d99f8c9a7727884afe522e9bd5edbfc91a3312b36a77b5fb8926e4c31a41801"
 
 [[package]]
 name = "toml_writer"
@@ -2575,7 +2522,7 @@ dependencies = [
  "serde_json",
  "target-triple",
  "termcolor",
- "toml 0.9.5",
+ "toml",
 ]
 
 [[package]]
@@ -2669,11 +2616,11 @@ checksum = "ccf3ec651a847eb01de73ccad15eb7d99f80485de043efb2f370cd654f4ea44b"
 
 [[package]]
 name = "wasi"
-version = "0.14.2+wasi-0.2.4"
+version = "0.14.3+wasi-0.2.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9683f9a5a998d873c0d21fcbe3c083009670149a8fab228644b8bd36b2c48cb3"
+checksum = "6a51ae83037bdd272a9e28ce236db8c07016dd0d50c27038b3f407533c030c95"
 dependencies = [
- "wit-bindgen-rt",
+ "wit-bindgen",
 ]
 
 [[package]]
@@ -3222,13 +3169,10 @@ dependencies = [
 ]
 
 [[package]]
-name = "wit-bindgen-rt"
-version = "0.39.0"
+name = "wit-bindgen"
+version = "0.45.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6f42320e61fe2cfd34354ecb597f86f413484a798ba44a8ca1165c58d42da6c1"
-dependencies = [
- "bitflags 2.9.3",
-]
+checksum = "052283831dbae3d879dc7f51f3d92703a316ca49f91540417d38591826127814"
 
 [[package]]
 name = "zerocopy"

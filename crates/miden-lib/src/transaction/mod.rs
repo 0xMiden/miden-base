@@ -9,6 +9,7 @@ use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{Assembler, DefaultSourceManager, KernelLibrary};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::BlockNumber;
+use miden_objects::crypto::SequentialCommit;
 use miden_objects::transaction::{
     OutputNote,
     OutputNotes,
@@ -47,7 +48,8 @@ pub use crate::errors::{
     TransactionTraceParsingError,
 };
 
-mod procedures;
+mod kernel_procedures;
+use kernel_procedures::KERNEL_PROCEDURES;
 
 // CONSTANTS
 // ================================================================================================
@@ -82,6 +84,12 @@ static TX_SCRIPT_MAIN: LazyLock<Program> = LazyLock::new(|| {
 pub struct TransactionKernel;
 
 impl TransactionKernel {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// Array of kernel procedures.
+    pub const PROCEDURES: &'static [Word] = &KERNEL_PROCEDURES;
+
     // KERNEL SOURCE CODE
     // --------------------------------------------------------------------------------------------
 
@@ -134,7 +142,7 @@ impl TransactionKernel {
 
         let stack_inputs = TransactionKernel::build_input_stack(
             account.id(),
-            account.init_commitment(),
+            account.initial_commitment(),
             tx_inputs.input_notes().commitment(),
             tx_inputs.block_header().commitment(),
             tx_inputs.block_header().block_num(),
@@ -196,7 +204,7 @@ impl TransactionKernel {
     /// - INPUT_NOTES_COMMITMENT, see `transaction::api::get_input_notes_commitment`.
     pub fn build_input_stack(
         account_id: AccountId,
-        init_account_commitment: Word,
+        initial_account_commitment: Word,
         input_notes_commitment: Word,
         block_commitment: Word,
         block_num: BlockNumber,
@@ -207,7 +215,7 @@ impl TransactionKernel {
         inputs.push(account_id.suffix());
         inputs.push(account_id.prefix().as_felt());
         inputs.extend(input_notes_commitment);
-        inputs.extend_from_slice(init_account_commitment.as_elements());
+        inputs.extend_from_slice(initial_account_commitment.as_elements());
         inputs.extend_from_slice(block_commitment.as_elements());
         StackInputs::new(inputs)
             .map_err(|e| e.to_string())
@@ -432,6 +440,14 @@ impl TransactionKernel {
 
         Ok((final_account_commitment, account_delta_commitment))
     }
+
+    // UTILITY METHODS
+    // --------------------------------------------------------------------------------------------
+
+    /// Computes the sequential hash of all kernel procedures.
+    pub fn to_commitment(&self) -> Word {
+        <Self as SequentialCommit>::to_commitment(self)
+    }
 }
 
 #[cfg(any(feature = "testing", test))]
@@ -487,6 +503,15 @@ impl TransactionKernel {
         }
 
         assembler
+    }
+}
+
+impl SequentialCommit for TransactionKernel {
+    type Commitment = Word;
+
+    /// Returns kernel procedures as vector of Felts.
+    fn to_elements(&self) -> Vec<Felt> {
+        Word::words_as_elements(Self::PROCEDURES).to_vec()
     }
 }
 

@@ -286,7 +286,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         existing_id.suffix(),
         "test should work if suffixes are different, so we want to ensure it"
     );
-    assert_eq!(account.init_commitment(), Word::empty());
+    assert_eq!(account.initial_commitment(), Word::empty());
 
     let existing_account = Account::mock(existing_id.into(), auth_component);
     builder.add_account(existing_account.clone())?;

@@ -16,8 +16,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
 use miden_objects::transaction::OutputNote;
-use miden_objects::vm::AdviceMap;
-use miden_objects::{Felt, Hasher, Word};
+use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
@@ -141,16 +140,12 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
     let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
-    // Populate advice map with signatures
-    let mut advice_map = AdviceMap::default();
-    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
-    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
-
     // Execute transaction with signatures - should succeed
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[input_note.id()], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
-        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
+        .add_signature(public_keys[0], msg, sig_1)
+        .add_signature(public_keys[1], msg, sig_2)
         .auth_args(salt)
         .build()?
         .execute()
@@ -227,16 +222,12 @@ async fn test_multisig_2_of_4_all_signer_combinations() -> anyhow::Result<()> {
             .get_signature(public_keys[*signer2_idx].into(), &tx_summary)
             .await?;
 
-        // Populate advice map with signatures from the chosen signers
-        let mut advice_map = AdviceMap::default();
-        advice_map.insert(Hasher::merge(&[public_keys[*signer1_idx].into(), msg]), sig_1);
-        advice_map.insert(Hasher::merge(&[public_keys[*signer2_idx].into(), msg]), sig_2);
-
         // Execute transaction with signatures - should succeed for any combination
         let tx_context_execute = mock_chain
             .build_tx_context(multisig_account.id(), &[], &[])?
-            .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
             .auth_args(salt)
+            .add_signature(public_keys[*signer1_idx], msg, sig_1)
+            .add_signature(public_keys[*signer2_idx], msg, sig_2)
             .build()?;
 
         let executed_tx = tx_context_execute.execute().await.unwrap_or_else(|_| {
@@ -294,15 +285,11 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
     let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
-    // Populate advice map with signatures
-    let mut advice_map = AdviceMap::default();
-    advice_map.insert(Hasher::merge(&[public_keys[0].into(), msg]), sig_1);
-    advice_map.insert(Hasher::merge(&[public_keys[1].into(), msg]), sig_2);
-
     // Execute transaction with signatures - should succeed (first execution)
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
+        .add_signature(public_keys[0], msg, sig_1.clone())
+        .add_signature(public_keys[1], msg, sig_2.clone())
         .auth_args(salt)
         .build()?;
 
@@ -315,7 +302,8 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     // Now attempt to execute the same transaction again - should fail due to replay protection
     let tx_context_replay = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
-        .extend_advice_map(advice_map.iter().map(|(k, v)| (*k, v.to_vec())))
+        .add_signature(public_keys[0], msg, sig_1)
+        .add_signature(public_keys[1], msg, sig_2)
         .auth_args(salt)
         .build()?;
 

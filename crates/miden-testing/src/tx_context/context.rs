@@ -49,6 +49,7 @@ use crate::tx_context::builder::MockAuthenticator;
 /// It implements [`DataStore`], so transactions may be executed with
 /// [TransactionExecutor](miden_tx::TransactionExecutor)
 pub struct TransactionContext {
+    pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
     pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
@@ -154,7 +155,7 @@ impl TransactionContext {
     }
 
     pub fn account(&self) -> &Account {
-        self.tx_inputs.account()
+        &self.account
     }
 
     pub fn expected_output_notes(&self) -> &[Note] {
@@ -196,8 +197,8 @@ impl DataStore for TransactionContext {
         Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     > {
         assert_eq!(account_id, self.account().id());
-        let (account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
-        async move { Ok((account, seed, header, mmr)) }
+        let (_partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
+        async move { Ok((self.account.clone(), seed, header, mmr)) }
     }
 }
 
