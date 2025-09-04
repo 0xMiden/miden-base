@@ -4,7 +4,7 @@
 
 ### Features
 
-- Reorganized note-related modules, created `current_note` module, added `build_recipient` procedure ([#1807](https://github.com/0xMiden/miden-base/pull/1807)).
+- [BREAKING] Reorganized note-related modules, created `current_note` module, added `build_recipient` procedure ([#1807](https://github.com/0xMiden/miden-base/pull/1807)).
 - Added `add_signature` helper to simplify loading signatures into advice map ([#1725](https://github.com/0xMiden/miden-base/pull/1725)).
 - Added `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
 
