@@ -40,6 +40,7 @@ pub enum TransactionKernelError {
         handler: &'static str,
         source: AssetError,
     },
+    /// A generic error returned when the transaction kernel did not behave as expected.
     #[error("tx kernel violated an assumption: {0}")]
     ViolatedAssumption(String),
     #[error(
