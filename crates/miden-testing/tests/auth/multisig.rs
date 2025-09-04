@@ -1,3 +1,4 @@
+use miden_lib::account::PublicKeyCommitment;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_objects::account::{
@@ -9,7 +10,7 @@ use miden_objects::account::{
     AuthSecretKey,
 };
 use miden_objects::asset::FungibleAsset;
-use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -28,7 +29,8 @@ use rand_chacha::ChaCha20Rng;
 // HELPER FUNCTIONS
 // ================================================================================================
 
-type MultisigTestSetup = (Vec<SecretKey>, Vec<PublicKey>, Vec<BasicAuthenticator<ChaCha20Rng>>);
+type MultisigTestSetup =
+    (Vec<SecretKey>, Vec<PublicKeyCommitment>, Vec<BasicAuthenticator<ChaCha20Rng>>);
 
 /// Sets up secret keys, public keys, and authenticators for multisig testing
 fn setup_keys_and_authenticators(
@@ -43,7 +45,7 @@ fn setup_keys_and_authenticators(
 
     for _ in 0..num_approvers {
         let sec_key = SecretKey::with_rng(&mut rng);
-        let pub_key = sec_key.public_key();
+        let pub_key = PublicKeyCommitment::from(sec_key.public_key());
 
         secret_keys.push(sec_key);
         public_keys.push(pub_key);
@@ -64,7 +66,7 @@ fn setup_keys_and_authenticators(
 /// Creates a multisig account with the specified configuration
 fn create_multisig_account(
     threshold: u32,
-    public_keys: &[PublicKey],
+    public_keys: &[PublicKeyCommitment],
     asset_amount: u64,
 ) -> anyhow::Result<Account> {
     let approvers: Vec<_> = public_keys.iter().map(|pk| (*pk).into()).collect();

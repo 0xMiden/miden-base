@@ -26,6 +26,7 @@ use miden_objects::testing::account_id::{
 use miden_objects::{AccountError, Felt, NoteError, Word, ZERO};
 
 use crate::AuthScheme;
+use crate::account::PublicKeyCommitment;
 use crate::account::auth::{AuthRpoFalcon512, AuthRpoFalcon512Multisig, NoAuth};
 use crate::account::faucets::BasicFungibleFaucet;
 use crate::account::interface::{
@@ -702,8 +703,10 @@ impl AccountComponentExt for AccountComponent {
     }
 }
 
+/// Helper function to create a mock auth component for testing
 fn get_mock_auth_component() -> AuthRpoFalcon512 {
-    let mock_public_key = PublicKey::from(Word::from([0, 1, 2, 3u32]));
+    let mock_word = Word::from([0, 1, 2, 3u32]);
+    let mock_public_key = PublicKeyCommitment::from(mock_word);
     AuthRpoFalcon512::new(mock_public_key)
 }
 
@@ -800,7 +803,8 @@ fn test_account_interface_from_account_uses_get_auth_scheme() {
 
     match &wallet_account_interface.auth()[0] {
         AuthScheme::RpoFalcon512 { pub_key_committment: pub_key } => {
-            assert_eq!(*pub_key, PublicKey::from(Word::from([0, 1, 2, 3u32])));
+            let expected_pub_key = PublicKeyCommitment::from(Word::from([0, 1, 2, 3u32]));
+            assert_eq!(*pub_key, expected_pub_key);
         },
         _ => panic!("Expected RpoFalcon512 auth scheme"),
     }

@@ -237,10 +237,9 @@ impl AccountTree {
         state_commitment: Word,
     ) -> Result<Word, AccountTreeError> {
         let key = Self::id_to_smt_key(account_id);
-        let prev_value = self
-            .smt
-            .insert(key, state_commitment)
-            .map_err(AccountTreeError::MaxValuesPerKeyExceeded)?;
+        // SAFETY: account tree should not contain multi-entry leaves and so the maximum number
+        // of entries per leaf should never be exceeded.
+        let prev_value = self.smt.insert(key, state_commitment).expect("account tree should always have a single value per key, and hence cannot exceed the maximum leaf number");
 
         // If the leaf of the account ID now has two or more entries, we've inserted a duplicate
         // prefix.

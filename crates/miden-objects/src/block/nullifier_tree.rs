@@ -128,7 +128,7 @@ impl NullifierTree {
             .compute_mutations(nullifiers.into_iter().map(|(nullifier, block_num)| {
                 (nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
             }))
-            .map_err(NullifierTreeError::MutationDerivationIssue)?;
+            .map_err(NullifierTreeError::ComputeMutation)?;
 
         Ok(NullifierMutationSet::new(mutation_set))
     }
@@ -147,10 +147,12 @@ impl NullifierTree {
         nullifier: Nullifier,
         block_num: BlockNumber,
     ) -> Result<(), NullifierTreeError> {
+        // SAFETY: A nullifier can only ever be spent once, hence we cannot exceed the maximum
+        // number of per-key entries.
         let prev_nullifier_value = self
             .smt
             .insert(nullifier.as_word(), Self::block_num_to_leaf_value(block_num))
-            .map_err(NullifierTreeError::MaxValuesPerKeyExceeded)?;
+            .expect("nullifiers are spent once, and hence have one associated block number");
 
         if prev_nullifier_value != Self::UNSPENT_NULLIFIER {
             Err(NullifierTreeError::NullifierAlreadySpent(nullifier))

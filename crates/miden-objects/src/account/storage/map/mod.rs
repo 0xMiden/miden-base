@@ -1,13 +1,13 @@
 use alloc::collections::BTreeMap;
 
 use miden_core::EMPTY_WORD;
-use miden_crypto::merkle::{EmptySubtreeRoots, MerkleError};
+use miden_crypto::merkle::EmptySubtreeRoots;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
-use crate::Hasher;
 use crate::account::StorageMapDelta;
 use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof};
 use crate::errors::StorageMapError;
+use crate::{AccountError, Hasher};
 
 mod partial;
 pub use partial::PartialStorageMap;
@@ -146,7 +146,7 @@ impl StorageMap {
     /// [`Self::EMPTY_VALUE`] if no entry was previously present.
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
-    pub fn insert(&mut self, key: Word, value: Word) -> Result<Word, MerkleError> {
+    pub fn insert(&mut self, key: Word, value: Word) -> Result<Word, AccountError> {
         if value == EMPTY_WORD {
             self.map.remove(&key);
         } else {
@@ -154,11 +154,11 @@ impl StorageMap {
         }
 
         let key = Self::hash_key(key);
-        self.smt.insert(key, value) // Delegate to Smt's insert method
+        self.smt.insert(key, value).map_err(AccountError::MaxLeafEntriesExceeded)
     }
 
     /// Applies the provided delta to this account storage.
-    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Result<Word, MerkleError> {
+    pub fn apply_delta(&mut self, delta: &StorageMapDelta) -> Result<Word, AccountError> {
         // apply the updated and cleared leaves to the storage map
         for (&key, &value) in delta.entries().iter() {
             self.insert(key.into_inner(), value)?;

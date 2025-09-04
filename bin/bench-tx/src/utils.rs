@@ -15,7 +15,7 @@ use miden_objects::account::{
     AuthSecretKey,
 };
 use miden_objects::asset::Asset;
-use miden_objects::crypto::dsa::rpo_falcon512::{PublicKey, SecretKey};
+use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
 use miden_objects::transaction::TransactionMeasurements;
 use miden_tx::auth::BasicAuthenticator;
 use rand_chacha::ChaCha20Rng;

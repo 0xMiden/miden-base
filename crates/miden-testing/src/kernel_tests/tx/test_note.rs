@@ -4,6 +4,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use anyhow::Context;
+use miden_lib::account::PublicKeyCommitment;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::MasmError;
 use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT;
@@ -959,8 +960,8 @@ fn test_public_key_as_note_input() -> anyhow::Result<()> {
     let sec_key = SecretKey::with_rng(&mut rng);
     // this value will be used both as public key in the RPO component of the target account and as
     // well as the input of the input note
-    let public_key = sec_key.public_key();
-    let public_key_value: Word = public_key.into();
+    let public_key = PublicKeyCommitment::from(sec_key.public_key());
+    let public_key_value = Word::from(public_key);
 
     let (rpo_component, authenticator) = Auth::BasicAuth.build_component();
 

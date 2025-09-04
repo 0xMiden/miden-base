@@ -233,16 +233,16 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let key5_final_value = Word::from([1, 2, 3, 4u32]);
 
     let mut map0 = StorageMap::new();
-    map0.insert(key0, key0_init_value);
-    map0.insert(key1, key1_init_value);
+    map0.insert(key0, key0_init_value).unwrap();
+    map0.insert(key1, key1_init_value).unwrap();
 
     let mut map1 = StorageMap::new();
-    map1.insert(key2, key2_init_value);
-    map1.insert(key3, key3_init_value);
-    map1.insert(key4, key4_init_value);
+    map1.insert(key2, key2_init_value).unwrap();
+    map1.insert(key3, key3_init_value).unwrap();
+    map1.insert(key4, key4_init_value).unwrap();
 
     let mut map2 = StorageMap::new();
-    map2.insert(key5, key5_init_value);
+    map2.insert(key5, key5_init_value).unwrap();
 
     let TestSetup { mock_chain, account_id } = setup_test(
         vec![

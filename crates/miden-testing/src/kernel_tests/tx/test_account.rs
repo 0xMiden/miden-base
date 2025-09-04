@@ -577,7 +577,7 @@ fn test_set_map_item() -> miette::Result<()> {
     let process = &tx_context.execute_code(&code).unwrap();
 
     let mut new_storage_map = AccountStorage::mock_map();
-    new_storage_map.insert(new_key, new_value);
+    new_storage_map.insert(new_key, new_value).unwrap();
 
     assert_eq!(
         new_storage_map.root(),
@@ -943,7 +943,7 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
             push.{storage_commitment_0}
             assert_eqw.err="storage commitment after the 0th slot was updated is not equal to the expected one"
 
-            # get the storage commitment once more to get the cached data and assert that this data 
+            # get the storage commitment once more to get the cached data and assert that this data
             # didn't change
             call.mock_account::compute_storage_commitment
             push.{storage_commitment_0}

@@ -331,7 +331,6 @@ mod tests {
     use alloc::string::ToString;
 
     use miden_objects::account::AccountBuilder;
-    use miden_objects::crypto::dsa::rpo_falcon512::Polynomial;
     use miden_objects::{Felt, FieldElement, Word};
 
     use super::*;

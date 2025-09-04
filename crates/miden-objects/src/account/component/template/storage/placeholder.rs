@@ -378,15 +378,13 @@ impl TemplateWord for Word {
         TemplateType::native_word()
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        Word::try_from(input)
-            .map_err(|err| {
-                TemplateTypeError::parse(
-                    Self::type_name().as_str(),
-                    Self::type_name(),
-                    WordParseError(err.to_string()),
-                )
-            })
-            .map(Word::from)
+        Word::try_from(input).map_err(|err| {
+            TemplateTypeError::parse(
+                Self::type_name().as_str(),
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
     }
 }
 
@@ -395,15 +393,13 @@ impl TemplateWord for rpo_falcon512::PublicKey {
         TemplateType::new("auth::rpo_falcon512::pub_key").expect("type is well formed")
     }
     fn parse_word(input: &str) -> Result<Word, TemplateTypeError> {
-        Word::try_from(input)
-            .map_err(|err| {
-                TemplateTypeError::parse(
-                    input.to_string(),
-                    Self::type_name(),
-                    WordParseError(err.to_string()),
-                )
-            })
-            .map(Word::from)
+        Word::try_from(input).map_err(|err| {
+            TemplateTypeError::parse(
+                input.to_string(),
+                Self::type_name(),
+                WordParseError(err.to_string()),
+            )
+        })
     }
 }
 
