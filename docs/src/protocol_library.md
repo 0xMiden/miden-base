@@ -55,11 +55,12 @@ Note procedures can be used to fetch data from the note that is currently being 
 | Procedure | Description | Context |
 | --- | --- | --- |
 | `get_assets` | Writes the assets of the currently executing note into memory starting at the specified address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Note |
-| `get_inputs` | Writes the note's inputs to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_inputs, dest_ptr]` | Note |
+| `get_recipient` | Returns the recipient of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[RECIPIENT]` | Note |
+| `get_payload` | Writes the note's payload to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[payload_len, dest_ptr]` | Note |
 | `get_sender` | Returns the sender of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Note |
 | `get_serial_number` | Returns the serial number of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
 | `get_script_root` | Returns the script root of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
-| `compute_inputs_commitment` | Computes the commitment to the note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[COMMITMENT]` | Any |
+| `compute_payload_commitment` | Computes the commitment to the output note payload starting at the specified memory address.<br><br>Inputs: `[payload_ptr, payload_len]`<br>Outputs: `[PAYLOAD_COMMITMENT]` | Any |
 | `add_assets_to_account` | Adds all assets from the currently executing note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]` | Note |
 
 ## Input Note Procedures (`miden::input_note`)
@@ -68,10 +69,13 @@ Input note procedures can be used to fetch data on input notes consumed by the t
 
 | Procedure | Description | Context |
 | --- | --- | --- |
-| `get_assets_info` | Returns the information about assets in the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[ASSETS_COMMITMENT, num_assets]` | Any |
-| `get_assets` | Writes the assets of the input note with the specified index into memory starting at the specified address.<br><br>Inputs: `[dest_ptr, note_index]`<br>Outputs: `[num_assets, dest_ptr, note_index]` | Any |
+| `get_assets_info` | Returns the information about [assets](note.md#assets) in the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[ASSETS_COMMITMENT, num_assets]` | Any |
+| `get_assets` | Writes the [assets](note.md#assets) of the input note with the specified index into memory starting at the specified address.<br><br>Inputs: `[dest_ptr, note_index]`<br>Outputs: `[num_assets, dest_ptr, note_index]` | Any |
 | `get_recipient` | Returns the [recipient](note.md#note-recipient-restricting-consumption) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]` | Any |
 | `get_metadata` | Returns the [metadata](note.md#metadata) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]` | Any |
+| `get_payload_info` | Returns the [payload](note.md#inputs) commitment and length of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[NOTE_PAYLOAD_COMMITMENT, payload_len]` | Any |
+| `get_script_root` | Returns the [script root](note.md#script) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[SCRIPT_ROOT]` | Any |
+| `get_serial_number` | Returns the [serial number](note.md#serial-number) of the input note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[SERIAL_NUMBER]` | Any |
 
 ## Output Note Procedures (`miden::output_note`)
 
