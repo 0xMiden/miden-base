@@ -416,7 +416,7 @@ end
 #!
 #! Where:
 #! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
-export.set_global_acct_id
+export.set_global_account_id
     push.0.0
     # => [0, 0, acct_id_prefix, acct_id_suffix]
     mem_storew.NATIVE_ACCT_ID_PTR
@@ -431,7 +431,7 @@ end
 #!
 #! Where:
 #! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
-export.get_global_acct_id
+export.get_global_account_id
     padw mem_loadw.NATIVE_ACCT_ID_PTR
     # => [0, 0, acct_id_prefix, acct_id_suffix]
     drop drop
@@ -720,7 +720,7 @@ end
 #!
 #! Where:
 #! - ACCT_DB_ROOT is the account database root of the transaction reference block.
-export.get_acct_db_root
+export.get_account_db_root
     padw mem_loadw.ACCT_DB_ROOT_PTR
 end
 
@@ -989,7 +989,7 @@ end
 #!
 #! Where:
 #! - ptr is the memory address at which the core account data ends.
-export.get_core_acct_data_end_ptr
+export.get_core_account_data_end_ptr
     exec.get_current_account_data_ptr add.ACCT_CORE_DATA_SECTION_END_OFFSET
 end
 
@@ -1033,7 +1033,7 @@ end
 #! - account_id_{prefix,suffix} are the prefix and suffix felts of the id of the currently accessing
 #!   account.
 #! - account_nonce is the nonce of the currently accessing account.
-export.set_acct_id_and_nonce
+export.set_account_id_and_nonce
     exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET
     mem_storew
 end
@@ -1045,7 +1045,7 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
-export.get_acct_nonce
+export.get_account_nonce
     exec.get_current_account_data_ptr add.ACCT_NONCE_OFFSET
     mem_load
 end
@@ -1069,7 +1069,7 @@ end
 #!
 #! Where:
 #! - acct_nonce is the account nonce.
-export.set_acct_nonce
+export.set_account_nonce
     exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET padw
     # => [0, 0, 0, 0, acct_id_and_nonce_ptr, new_nonce]
     dup.4 mem_loadw
@@ -1087,7 +1087,7 @@ end
 #!
 #! Where:
 #! - acct_vault_root_ptr is the memory pointer to the account asset vault root.
-export.get_acct_vault_root_ptr
+export.get_account_vault_root_ptr
     exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
 end
 
@@ -1098,7 +1098,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the account asset vault root.
-export.get_acct_vault_root
+export.get_account_vault_root
     padw
     exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_loadw
@@ -1111,7 +1111,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the account vault root to be set.
-export.set_acct_vault_root
+export.set_account_vault_root
     exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_storew
 end
@@ -1125,7 +1125,7 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the code commitment of the account.
-export.get_acct_code_commitment
+export.get_account_code_commitment
     padw
     exec.get_current_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_loadw
@@ -1138,7 +1138,7 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the code commitment to be set.
-export.set_acct_code_commitment
+export.set_account_code_commitment
     exec.get_current_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_storew
 end
@@ -1196,7 +1196,7 @@ end
 #!
 #! Where:
 #! - account_procedures_section_ptr is the memory pointer to the account procedures section.
-export.get_acct_procedures_section_ptr
+export.get_account_procedures_section_ptr
     exec.get_current_account_data_ptr add.ACCT_PROCEDURES_SECTION_OFFSET
 end
 
@@ -1207,7 +1207,7 @@ end
 #!
 #! Where:
 #! - procedures_call_tracking_ptr is the memory pointer to the procedure call tracking section.
-export.get_acct_procedures_call_tracking_ptr
+export.get_account_procedures_call_tracking_ptr
     exec.get_current_account_data_ptr add.ACCT_PROCEDURES_CALL_TRACKING_OFFSET
 end
 
@@ -1219,8 +1219,8 @@ end
 #! Where:
 #! - proc_idx is the index of the account procedure.
 #! - proc_ptr is the memory pointer to the account procedure at the specified index.
-export.get_acct_procedure_ptr
-    mul.8 exec.get_acct_procedures_section_ptr add
+export.get_account_procedure_ptr
+    mul.8 exec.get_account_procedures_section_ptr add
 end
 
 ### ACCOUNT STORAGE #################################################
@@ -1232,7 +1232,7 @@ end
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
-export.get_acct_storage_commitment
+export.get_account_storage_commitment
     padw
     exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_loadw
@@ -1245,7 +1245,7 @@ end
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
-export.set_acct_storage_commitment
+export.set_account_storage_commitment
     exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_storew
 end
@@ -1334,7 +1334,7 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
-export.get_acct_storage_slots_section_ptr
+export.get_account_storage_slots_section_ptr
     exec.get_current_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
 end
 

@@ -482,7 +482,7 @@ end
 #! Invocation: dynexec
 export.account_get_vault_root
     # fetch the account vault root
-    exec.memory::get_acct_vault_root
+    exec.memory::get_account_vault_root
     # => [VAULT_ROOT, pad(16)]
 
     # truncate the stack
@@ -569,7 +569,7 @@ end
 #! Invocation: dynexec
 export.account_get_balance
     # get the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.2
+    exec.memory::get_account_vault_root_ptr movdn.2
     # => [faucet_id_prefix, faucet_id_suffix, acct_vault_root_ptr, pad(14)]
 
     # get the asset balance
@@ -592,7 +592,7 @@ end
 #! Invocation: dynexec
 export.account_has_non_fungible_asset
     # get the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
+    exec.memory::get_account_vault_root_ptr movdn.4
     # => [ASSET, vault_root_ptr, pad(12)]
 
     # check if the account vault has the non-fungible asset
@@ -1270,12 +1270,12 @@ export.tx_start_foreign_context
 
         # store the id and nonce of the foreign account to the memory
         dropw adv_loadw
-        exec.memory::set_acct_id_and_nonce dropw
+        exec.memory::set_account_id_and_nonce dropw
         # OS => [pad(16)]
         # AS => [VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
 
         # store the vault root of the foreign account to the memory
-        adv_loadw exec.memory::set_acct_vault_root dropw
+        adv_loadw exec.memory::set_account_vault_root dropw
         # OS => [pad(16)]
         # AS => [STORAGE_ROOT, CODE_ROOT]
 
@@ -1285,7 +1285,7 @@ export.tx_start_foreign_context
         # AS => []
 
         # store the code root into the memory
-        exec.memory::set_acct_code_commitment
+        exec.memory::set_account_code_commitment
         # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
         # AS => []
 
@@ -1295,7 +1295,7 @@ export.tx_start_foreign_context
         # AS => []
 
         # store the storage root to the memory
-        exec.memory::set_acct_storage_commitment
+        exec.memory::set_account_storage_commitment
         # OS => [STORAGE_ROOT, pad(16)]
         # AS => []
 

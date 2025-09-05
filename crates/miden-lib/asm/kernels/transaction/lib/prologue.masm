@@ -87,7 +87,7 @@ proc.process_global_inputs
     exec.memory::set_block_commitment dropw
     exec.memory::set_init_account_commitment dropw
     exec.memory::set_nullifier_commitment dropw
-    exec.memory::set_global_acct_id
+    exec.memory::set_global_account_id
 end
 
 # KERNEL DATA
@@ -287,13 +287,13 @@ proc.validate_new_account
     # => []
 
     # Assert the account nonce is 0
-    exec.memory::get_acct_nonce eq.0 assert.err=ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO
+    exec.memory::get_account_nonce eq.0 assert.err=ERR_PROLOGUE_NEW_ACCOUNT_NONCE_MUST_BE_ZERO
     # => []
 
     # Assert the initial vault is empty
     # ---------------------------------------------------------------------------------------------
     # get the account vault root
-    exec.memory::get_acct_vault_root
+    exec.memory::get_account_vault_root
     # => [ACCT_VAULT_ROOT]
 
     # push empty vault root onto stack
@@ -417,32 +417,32 @@ proc.process_account_data
     # => [ACCOUNT_COMMITMENT]
 
     # assert the account ID matches the account ID in global inputs
-    exec.memory::get_global_acct_id
+    exec.memory::get_global_account_id
     exec.memory::get_account_id
     exec.account_id::is_equal assert.err=ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER
     # => [ACCOUNT_COMMITMENT]
 
     # store a copy of the initial nonce in global inputs
-    exec.memory::get_acct_nonce
+    exec.memory::get_account_nonce
     exec.memory::set_init_nonce
     # => [ACCOUNT_COMMITMENT]
 
     # validates and stores account storage slots in memory
     # account storage commitment is also stored as an initial one in the global inputs
-    exec.memory::get_acct_storage_commitment
+    exec.memory::get_account_storage_commitment
     exec.memory::set_init_account_storage_commitment
     exec.account::save_account_storage_data
     # => [ACCOUNT_COMMITMENT]
 
     # validates and stores account procedures in memory.
-    exec.memory::get_acct_code_commitment
+    exec.memory::get_account_code_commitment
     exec.account::save_account_procedure_data
     # => [ACCOUNT_COMMITMENT]
 
     # copy the initial account vault root to the input vault root to support transaction asset
     # invariant checking
     # this account vault root is also stored as an initial one in the global inputs
-    exec.memory::get_acct_vault_root 
+    exec.memory::get_account_vault_root 
     exec.memory::set_init_account_vault_root
     exec.memory::set_input_vault_root dropw
     # => [ACCOUNT_COMMITMENT]
@@ -474,7 +474,7 @@ proc.process_account_data
         # => []
 
         # assert the nonce of an existing account is non-zero
-        exec.memory::get_acct_nonce neq.0
+        exec.memory::get_account_nonce neq.0
         assert.err=ERR_PROLOGUE_EXISTING_ACCOUNT_MUST_HAVE_NON_ZERO_NONCE
         # => []
     end
