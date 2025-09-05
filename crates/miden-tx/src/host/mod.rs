@@ -11,7 +11,6 @@ mod account_procedures;
 pub use account_procedures::AccountProcedureIndexMap;
 
 mod note_builder;
-use miden_prover::crypto::MerkleError;
 use note_builder::OutputNoteBuilder;
 
 mod script_mast_forest_store;

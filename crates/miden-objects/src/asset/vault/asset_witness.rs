@@ -1,4 +1,4 @@
-use miden_crypto::merkle::SmtProof;
+use miden_crypto::merkle::{InnerNodeInfo, SmtProof};
 
 use crate::AssetError;
 use crate::asset::Asset;
@@ -37,6 +37,14 @@ impl AssetWitness {
     /// Prefer [`AssetWitness::new`] whenever possible.
     pub fn new_unchecked(smt_proof: SmtProof) -> Self {
         Self(smt_proof)
+    }
+
+    /// Returns an iterator over every inner node of this witness' merkle path.
+    pub fn authenticated_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
+        self.0
+            .path()
+            .authenticated_nodes(self.0.leaf().index().value(), self.0.leaf().hash())
+            .expect("leaf index is u64 and should be less than 2^SMT_DEPTH")
     }
 }
 

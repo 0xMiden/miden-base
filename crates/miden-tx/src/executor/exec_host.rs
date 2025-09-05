@@ -264,13 +264,10 @@ where
             })?;
 
         // Get the nodes in the proof and insert them into the merkle store.
-        let smt_proof = SmtProof::from(asset_witness);
-        let authenticated_nodes = smt_proof
-            .path()
-            .authenticated_nodes(smt_proof.leaf().index().value(), smt_proof.leaf().hash())
-            .expect("leaf index is u64 and should be less than 2^SMT_DEPTH");
+        let merkle_store_ext =
+            AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
 
-        let merkle_store_ext = AdviceMutation::extend_merkle_store(authenticated_nodes);
+        let smt_proof = SmtProof::from(asset_witness);
         let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
             smt_proof.leaf().hash(),
             smt_proof.leaf().to_elements(),
