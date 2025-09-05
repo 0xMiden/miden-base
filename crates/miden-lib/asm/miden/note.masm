@@ -54,6 +54,39 @@ export.get_assets
     # => [num_assets, dest_ptr]
 end
 
+#! Returns the recipient of the note currently being processed.
+#!
+#! Inputs:  []
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - no note is being processed.
+#!
+#! Invocation: exec
+export.get_recipient
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that we want to request recipient from the currently processing
+    # note
+    push.1
+    # => [is_current_note = 1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_recipient_offset
+    # => [offset, is_current_note = 1, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [RECIPIENT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [RECIPIENT]
+end
+
 #! Writes the note's payload to `dest_ptr`.
 #!
 #! Inputs:

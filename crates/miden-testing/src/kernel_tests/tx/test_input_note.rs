@@ -94,7 +94,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
 }
 
 /// Check that recipient and metadata of a note with one asset obtained from the
-/// `input_note::get_recipient` procedure is correct.
+/// `input_note::get_recipient` and `input_note::get_metadata` procedures are correct.
 #[test]
 fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let TestSetup {

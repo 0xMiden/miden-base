@@ -31,6 +31,8 @@ const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offse
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of current note because no note is currently being processed"
 
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note recipient of current note because no note is currently being processed"
+
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of current note because no note is currently being processed"
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note payload of current note because no note is currently being processed"
@@ -740,27 +742,34 @@ export.input_note_get_assets_info
     # => [ASSETS_COMMITMENT, num_assets, pad(11)]
 end
 
-#! Returns the recipient of the input note with the specified index.
+#! Returns the recipient of the specified input note.
 #!
-#! Inputs:  [note_index, pad(15)]
+#! Inputs:  [is_current_note, note_index, pad(15)]
 #! Outputs: [RECIPIENT, pad(12)]
 #!
 #! Where:
-#! - note_index is the index of the input note whose recipient should be returned.
+#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose assets info should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
 #! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
 export.input_note_get_recipient
-    # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
 
-    # get the note data pointer by the provided index
-    exec.memory::get_input_note_ptr
-    # => [note_ptr, pad(15)]
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
 
     # get the recipient
     exec.memory::get_input_note_recipient
