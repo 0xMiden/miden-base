@@ -11,6 +11,9 @@ use.miden::kernel_proc_offsets
 #! - amount is the amount of the asset to create.
 #! - ASSET is the created fungible asset.
 #!
+#! Panics if:
+#! - the current account is not a fungible faucet.
+#!
 #! Invocation: exec
 export.create_fungible_asset
     # fetch the id of the faucet the transaction is being executed against.
@@ -30,6 +33,9 @@ end
 #! Where:
 #! - DATA_HASH is the data hash of the non-fungible asset to create.
 #! - ASSET is the created non-fungible asset.
+#!
+#! Panics if:
+#! - the current account is not a non-fungible faucet.
 #!
 #! Invocation: exec
 export.create_non_fungible_asset
