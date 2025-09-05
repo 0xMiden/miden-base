@@ -55,7 +55,7 @@ Note procedures can be used to fetch data from the note that is currently being 
 | Procedure | Description | Context |
 | --- | --- | --- |
 | `get_assets` | Writes the assets of the currently executing note into memory starting at the specified address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Note |
-| `get_inputs` | Loads the note's inputs to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_inputs, dest_ptr]` | Note |
+| `get_inputs` | Writes the note's inputs to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_inputs, dest_ptr]` | Note |
 | `get_sender` | Returns the sender of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Note |
 | `get_serial_number` | Returns the serial number of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
 | `get_script_root` | Returns the script root of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |

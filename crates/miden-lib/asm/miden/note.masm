@@ -2,6 +2,7 @@ use.miden::kernel_proc_offsets
 use.std::crypto::hashes::rpo
 use.std::mem
 use.miden::contracts::wallets::basic->wallet
+use.miden::account_id
 
 # ERRORS
 # =================================================================================================
@@ -53,7 +54,7 @@ export.get_assets
     # => [num_assets, dest_ptr]
 end
 
-#! Loads the note's payload to `dest_ptr`.
+#! Writes the note's payload to `dest_ptr`.
 #!
 #! Inputs:
 #!   Stack: [dest_ptr]
@@ -73,7 +74,7 @@ end
 export.get_payload
     # pad the stack
     padw padw padw push.0.0
-    # OS => [pad(14), dest_ptr]
+    # => [pad(14), dest_ptr]
 
     # push the flag indicating that we want to request payload info from the currently processing 
     # note
@@ -81,55 +82,19 @@ export.get_payload
     # => [is_current_note = 1, pad(14), dest_ptr]
 
     exec.kernel_proc_offsets::input_note_get_payload_info_offset
-    # OS => [offset, is_current_note = 1, pad(14), dest_ptr]
+    # => [offset, is_current_note = 1, pad(14), dest_ptr]
 
     syscall.exec_kernel_proc
-    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11), dest_ptr]
+    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11), dest_ptr]
 
     # clean the stack
     swapdw dropw dropw
     movup.5 drop movup.5 drop movup.5 drop
-    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
 
-    # load the payload from the advice map to the advice stack
-    adv.push_mapvaln
-    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [advice_payload_len, [PAYLOAD_VALUES]]
-
-    # move the number of payload values obtained from advice map to the operand stack
-    adv_push.1 dup.5
-    # OS => [payload_len, advice_payload_len, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
-
-    # Validate the note payload length. Round up the number of payload values to the next multiple 
-    # of 8: that value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
-    u32divmod.8 neq.0 add mul.8
-    # OS => [rounded_up_payload_len, advice_payload_len, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
-
-    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_PAYLOAD_VALUES
-    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
-
-    # calculate the number of words required to store the payload
-    dup.4 u32divmod.4 neq.0 add
-    # OS => [num_words, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
-
-    # round up the number of words to the next multiple of 2
-    dup is_odd add
-    # OS => [even_num_words, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
-
-    # prepare the stack for the `pipe_preimage_to_memory` procedure
-    dup.6 swap
-    # OS => [even_num_words, dest_ptr, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
-
-    # write the payload values from the advice stack into memory
-    exec.mem::pipe_preimage_to_memory drop
-    # OS => [payload_len, dest_ptr]
-    # AS => []
+    # write the payload values to the memory using the provided destination pointer
+    exec.write_payload_to_memory
+    # => [payload_len, dest_ptr]
 end
 
 #! Returns the sender of the note currently being processed.
@@ -167,15 +132,11 @@ export.get_sender
     # => [merged_sender_id_type_hint_tag, sender_id_prefix, pad(12)]
 
     # extract suffix of sender from merged layout, which means clearing the least significant byte
-    u32split swap
-    # => [merged_lo, merged_hi, sender_id_prefix, pad(12)]
+    exec.account_id::shape_suffix
+    # => [sender_id_suffix, sender_id_prefix, pad(12)]
 
-    # clear least significant byte
-    u32and.0xffffff00 swap
-    # => [sender_id_suffix_hi, sender_id_suffix_lo, sender_id_prefix, pad(12)]
-
-    # reassemble the suffix by multiplying the high part with 2^32 and adding the lo part
-    mul.0x0100000000 add swap
+    # rearrange suffix and prefix
+    swap
     # => [sender_id_prefix, sender_id_suffix, pad(12)]
 
     # clean the stack
@@ -382,5 +343,60 @@ export.write_assets_to_memory
     # write the data from the advice stack into memory
     exec.mem::pipe_preimage_to_memory drop
     # OS => [num_assets, dest_ptr]
+    # AS => []
+end
+
+# HELPER PROCEDURES
+# =================================================================================================
+
+#! Writes the payload values stored in the advice map to the memory specified by the provided 
+#! destination pointer.
+#!
+#! Inputs:
+#!   Operand stack: [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+#!   Advice map: {
+#!     NOTE_PAYLOAD_COMMITMENT: [[PAYLOAD_VALUES]]
+#!   }
+#! Outputs:
+#!   Operand stack: [payload_len, dest_ptr]
+proc.write_payload_to_memory
+    # load the payload from the advice map to the advice stack
+    adv.push_mapvaln
+    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [advice_payload_len, [PAYLOAD_VALUES]]
+
+    # move the number of payload values obtained from advice map to the operand stack
+    adv_push.1 dup.5
+    # OS => [payload_len, advice_payload_len, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [[PAYLOAD_VALUES]]
+
+    # Validate the note payload length. Round up the number of payload values to the next multiple 
+    # of 8: that value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
+    u32divmod.8 neq.0 add mul.8
+    # OS => [rounded_up_payload_len, advice_payload_len, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [[PAYLOAD_VALUES]]
+
+    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_PAYLOAD_VALUES
+    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [[PAYLOAD_VALUES]]
+
+    # calculate the number of words required to store the payload
+    dup.4 u32divmod.4 neq.0 add
+    # OS => [num_words, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [[PAYLOAD_VALUES]]
+
+    # round up the number of words to the next multiple of 2
+    dup is_odd add
+    # OS => [even_num_words, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [[PAYLOAD_VALUES]]
+
+    # prepare the stack for the `pipe_preimage_to_memory` procedure
+    dup.6 swap
+    # OS => [even_num_words, dest_ptr, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # AS => [[PAYLOAD_VALUES]]
+
+    # write the payload values from the advice stack into memory
+    exec.mem::pipe_preimage_to_memory drop
+    # OS => [payload_len, dest_ptr]
     # AS => []
 end
