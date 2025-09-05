@@ -58,6 +58,13 @@ impl PartialStorage {
         self.commitment
     }
 
+    // TODO: Consider removing once no longer needed so we don't commit to the underlying BTreeMap
+    // type.
+    /// Consumes self and returns the underlying parts.
+    pub fn into_parts(self) -> (Word, AccountStorageHeader, BTreeMap<Word, PartialStorageMap>) {
+        (self.commitment, self.header, self.maps)
+    }
+
     // TODO: Add from account storage with (slot/[key])?
 
     // ITERATORS
