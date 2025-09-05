@@ -698,18 +698,18 @@ where
             // Merkle path is already in the store; consider the event handled.
             Ok(_) => Ok(TransactionEventHandling::Handled(Vec::new())),
             // This means the merkle path is missing in the advice provider.
-            Err(AdviceError::MerkleStoreLookupFailed(MerkleError::NodeIndexNotFoundInStore(
-                ..,
-            ))) => Ok(TransactionEventHandling::Unhandled(
-                TransactionEventData::AccountVaultAssetWitness {
-                    current_account_id,
-                    vault_root,
-                    asset,
-                },
-            )),
+            Err(AdviceError::MerkleStoreLookupFailed(_)) => {
+                Ok(TransactionEventHandling::Unhandled(
+                    TransactionEventData::AccountVaultAssetWitness {
+                        current_account_id,
+                        vault_root,
+                        asset,
+                    },
+                ))
+            },
             // We should never encounter this as long as our inputs to get_merkle_path are correct.
             Err(err) => Err(TransactionKernelError::ViolatedAssumption(format!(
-                "unexpected merkle store lookup error: {err}"
+                "unexpected get_merkle_path error: {err}"
             ))),
         }
     }
