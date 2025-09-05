@@ -250,7 +250,7 @@ impl MockChainBuilder {
             .account_type(AccountType::FungibleFaucet)
             .with_component(basic_faucet);
 
-        self.add_account_from_builder(auth_method, account_builder, AccountState::Exists)
+        self.add_account_from_builder(auth_method, account_builder, AccountState::New)
     }
 
     /// Adds an existing public [`BasicFungibleFaucet`] account to the initial chain state and
