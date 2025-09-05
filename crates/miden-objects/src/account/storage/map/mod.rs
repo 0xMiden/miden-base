@@ -6,11 +6,14 @@ use miden_crypto::merkle::EmptySubtreeRoots;
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
 use crate::Hasher;
 use crate::account::StorageMapDelta;
-use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof};
+use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
 
 mod partial;
 pub use partial::PartialStorageMap;
+
+mod storage_map_witness;
+pub use storage_map_witness::StorageMapWitness;
 
 // ACCOUNT STORAGE MAP
 // ================================================================================================
@@ -116,9 +119,9 @@ impl StorageMap {
     /// Returns an opening of the leaf associated with `key`.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    pub fn open(&self, key: &Word) -> SmtProof {
+    pub fn open(&self, key: &Word) -> StorageMapWitness {
         let key = Self::hash_key(*key);
-        self.smt.open(&key)
+        StorageMapWitness::new(self.smt.open(&key))
     }
 
     // ITERATORS

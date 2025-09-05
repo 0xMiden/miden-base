@@ -6,7 +6,7 @@ use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount, StorageSlot};
+use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
 use miden_objects::asset::Asset;
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::{
@@ -21,7 +21,6 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier};
 use miden_objects::transaction::{
     AccountInputs,
@@ -752,15 +751,6 @@ impl MockChain {
 
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
-
-        let mut storage_map_proofs = vec![];
-        for slot in account.storage().slots() {
-            // if there are storage maps, we populate the merkle store and advice map
-            if let StorageSlot::Map(map) = slot {
-                let proofs: Vec<SmtProof> = map.entries().map(|(key, _)| map.open(key)).collect();
-                storage_map_proofs.extend(proofs);
-            }
-        }
 
         Ok(AccountInputs::new(account.into(), account_witness))
     }
