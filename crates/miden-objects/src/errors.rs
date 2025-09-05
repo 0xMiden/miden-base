@@ -385,6 +385,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
+    #[error("vault key {actual} does not match expected vault key {expected}")]
+    VaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
