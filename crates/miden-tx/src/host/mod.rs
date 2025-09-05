@@ -689,8 +689,7 @@ where
                 })?
         };
 
-        // The third element in an SMT key is the index.
-        let leaf_index = asset.vault_key()[3];
+        let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
         match process.advice_provider().get_merkle_path(
             vault_root,
             &Felt::from(AssetVault::DEPTH),

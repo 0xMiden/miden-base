@@ -15,7 +15,7 @@ use super::{
 };
 use crate::account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction};
 use crate::crypto::merkle::Smt;
-use crate::{AssetVaultError, Word};
+use crate::{AssetVaultError, Felt, Word};
 
 mod partial;
 pub use partial::PartialVault;
@@ -118,6 +118,12 @@ impl AssetVault {
     /// Returns a bool indicating whether the vault is empty.
     pub fn is_empty(&self) -> bool {
         self.asset_tree.is_empty()
+    }
+
+    /// Returns the leaf index of a vault key.
+    pub fn vault_key_to_leaf_index(vault_key: Word) -> Felt {
+        // The third element in an SMT key is the index.
+        vault_key[3]
     }
 
     // PUBLIC MODIFIERS

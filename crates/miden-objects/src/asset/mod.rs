@@ -15,6 +15,7 @@ use alloc::boxed::Box;
 pub use fungible::FungibleAsset;
 
 mod nonfungible;
+
 pub use nonfungible::{NonFungibleAsset, NonFungibleAssetDetails};
 
 mod token_symbol;
