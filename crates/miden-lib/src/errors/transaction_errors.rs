@@ -81,11 +81,11 @@ pub enum TransactionKernelError {
     #[error("failed to convert fee asset into fungible asset")]
     FailedToConvertFeeAsset(#[source] AssetError),
     #[error(
-        "failed to get vault asset witness from data store for vault root {vault_root} and asset_key {asset_key}"
+        "failed to get vault asset witness from data store for vault root {vault_root} and vault_key {vault_key}"
     )]
     GetVaultAssetWitness {
         vault_root: Word,
-        asset_key: Word,
+        vault_key: Word,
         // TODO: Change to DataStoreError when this error moves to miden-tx.
         // This is always a DataStoreError, but we can't import it from miden-tx here.
         source: Box<dyn Error + Send + Sync + 'static>,

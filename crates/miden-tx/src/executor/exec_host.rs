@@ -251,15 +251,15 @@ where
         }
 
         let vault_root = self.base_host.native_account_header().vault_root();
-        let asset_key = asset.vault_key();
+        let vault_key = asset.vault_key();
         let asset_witness = self
             .base_host
             .store()
-            .get_vault_asset_witness(current_account_id, vault_root, asset_key)
+            .get_vault_asset_witness(current_account_id, vault_root, vault_key)
             .await
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
-                asset_key,
+                vault_key,
                 source: Box::new(err),
             })?;
 

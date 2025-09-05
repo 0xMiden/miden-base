@@ -209,7 +209,7 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        asset_key: Word,
+        vault_key: Word,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
         assert_eq!(
             account_id,
@@ -222,7 +222,7 @@ impl DataStore for TransactionContext {
             "vault root should match the native account's root (for now)"
         );
 
-        let asset_witness = self.account().vault().open(asset_key);
+        let asset_witness = self.account().vault().open(vault_key);
 
         async { Ok(asset_witness) }
     }

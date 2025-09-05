@@ -44,6 +44,6 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         vault_root: Word,
-        asset_key: Word,
+        vault_key: Word,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
 }
