@@ -7,13 +7,14 @@ use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::AccountId;
 use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::testing::account_id::{
+    ACCOUNT_ID_NATIVE_ASSET_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
 use miden_objects::testing::constants::FUNGIBLE_ASSET_AMOUNT;
 
 use super::Word;
-use crate::{MockChain, TransactionContextBuilder};
+use crate::{Auth, MockChain, TransactionContextBuilder};
 
 /// Tests that adding two different assets to the account vault succeeds when lazy loading is
 /// enabled.
@@ -131,6 +132,29 @@ fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     account_vault.remove_asset(fungible_asset2.into())?;
 
     assert_eq!(tx.final_account().vault_root(), account_vault.root());
+
+    Ok(())
+}
+
+/// Tests that a transaction against an account with a non-empty vault successfully loads the fee
+/// asset during the epilogue.
+#[test]
+fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
+    let mut builder =
+        MockChain::builder().native_asset_id(ACCOUNT_ID_NATIVE_ASSET_FAUCET.try_into()?);
+    let account = builder.add_existing_mock_account_with_assets(
+        Auth::IncrNonce,
+        [
+            FungibleAsset::mock(23),
+            FungibleAsset::new(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2.try_into()?, 50)?.into(),
+        ],
+    )?;
+    builder
+        .build()?
+        .build_tx_context(account, &[], &[])?
+        .enable_partial_loading()
+        .build()?
+        .execute_blocking()?;
 
     Ok(())
 }

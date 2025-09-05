@@ -9,7 +9,6 @@ use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, FungibleAsset};
-use miden_objects::block::FeeParameters;
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
@@ -63,9 +62,6 @@ where
     /// authenticator that produced it.
     generated_signatures: BTreeMap<Word, Vec<Felt>>,
 
-    /// The balance of the native asset in the account at the beginning of transaction execution.
-    initial_native_asset: FungibleAsset,
-
     /// The source manager to track source code file span information, improving any MASM related
     /// error messages.
     source_manager: Arc<dyn SourceManagerSync>,
@@ -87,32 +83,8 @@ where
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
-        fee_parameters: &FeeParameters,
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
-        // TODO: Once we have lazy account loading, this should be loaded in on_tx_fee_computed to
-        // avoid the use of PartialVault entirely, which in the future, may or may not track
-        // all assets in the account at this point. Here we assume it does track _all_ assets of the
-        // account.
-        let initial_native_asset = {
-            let native_asset = FungibleAsset::new(fee_parameters.native_asset_id(), 0)
-                .expect("native asset ID should be a valid fungible faucet ID");
-
-            // Map Asset to FungibleAsset.
-            // SAFETY: We requested a fungible vault key, so if Some is returned, it should be a
-            // fungible asset.
-            // A returned error means the vault does not track or does not contain the asset.
-            // However, since in practice, the partial vault represents the entire account vault,
-            // we can assume the second case. A returned None means the asset's amount is
-            // zero.
-            // So in both Err and None cases, use the default native_asset with amount 0.
-            account
-                .vault()
-                .get(native_asset.vault_key())
-                .map(|asset| asset.map(|asset| asset.unwrap_fungible()).unwrap_or(native_asset))
-                .unwrap_or(native_asset)
-        };
-
         let base_host = TransactionBaseHost::new(
             account,
             input_notes,
@@ -125,7 +97,6 @@ where
             base_host,
             authenticator,
             generated_signatures: BTreeMap::new(),
-            initial_native_asset,
             source_manager,
         }
     }
@@ -166,10 +137,41 @@ where
 
     /// Handles the [`TransactionEvent::EpilogueTxFeeComputed`] and returns an error if the account
     /// cannot pay the fee.
-    fn on_tx_fee_computed(
+    async fn on_tx_fee_computed(
         &self,
         fee_asset: FungibleAsset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let asset_witness = self
+            .base_host
+            .store()
+            .get_vault_asset_witness(
+                self.base_host.native_account_header().id(),
+                self.base_host.native_account_header().vault_root(),
+                fee_asset.vault_key(),
+            )
+            .await
+            .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
+                vault_root: self.base_host.native_account_header().vault_root(),
+                vault_key: fee_asset.vault_key(),
+                source: Box::new(err),
+            })?;
+
+        // Find asset in the witness or default to 0 if it isn't present.
+        let initial_native_asset = asset_witness
+            .assets()
+            .find_map(|asset| match asset {
+                Asset::Fungible(fungible_asset)
+                    if fungible_asset.vault_key() == fee_asset.vault_key() =>
+                {
+                    Some(fungible_asset)
+                },
+                _ => None,
+            })
+            .unwrap_or(
+                FungibleAsset::new(fee_asset.faucet_id(), 0)
+                    .expect("fungible asset created from fee asset should be valid"),
+            );
+
         // Compute the current balance of the native asset in the account based on the initial value
         // and the delta.
         let current_native_asset = {
@@ -178,13 +180,13 @@ where
                 .account_delta_tracker()
                 .vault_delta()
                 .fungible()
-                .amount(&self.initial_native_asset.faucet_id())
+                .amount(&initial_native_asset.faucet_id())
                 .unwrap_or(0);
 
             // SAFETY: Initial native asset faucet ID should be a fungible faucet and amount should
             // be less than MAX_AMOUNT as checked by the account delta.
             let native_asset_delta = FungibleAsset::new(
-                self.initial_native_asset.faucet_id(),
+                initial_native_asset.faucet_id(),
                 native_asset_amount_delta.unsigned_abs(),
             )
             .expect("faucet ID and amount should be valid");
@@ -192,11 +194,11 @@ where
             // SAFETY: These computations are essentially the same as the ones executed by the
             // transaction kernel, which should have aborted if they weren't valid.
             if native_asset_amount_delta > 0 {
-                self.initial_native_asset
+                initial_native_asset
                     .add(native_asset_delta)
                     .expect("transaction kernel should ensure amounts do not exceed MAX_AMOUNT")
             } else {
-                self.initial_native_asset
+                initial_native_asset
                     .sub(native_asset_delta)
                     .expect("transaction kernel should ensure amount is not negative")
             }
@@ -210,7 +212,7 @@ where
             });
         }
 
-        Ok(Vec::new())
+        Ok(vec![AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes())])
     }
 
     /// Handles a request to an asset witness by querying the data store for a merkle path.
@@ -348,7 +350,7 @@ where
                     .await
                     .map_err(EventError::from),
                 TransactionEventData::TransactionFeeComputed { fee_asset } => {
-                    self.on_tx_fee_computed(fee_asset).map_err(EventError::from)
+                    self.on_tx_fee_computed(fee_asset).await.map_err(EventError::from)
                 },
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,

@@ -39,6 +39,14 @@ impl AssetWitness {
         Self(smt_proof)
     }
 
+    /// Returns the assets in this witness.
+    pub fn assets(&self) -> impl Iterator<Item = Asset> {
+        // Check if we can avoid cloning the vector.
+        self.0.leaf().entries().to_vec().into_iter().map(|(_key, value)| {
+            Asset::try_from(value).expect("asset witness should track valid assets")
+        })
+    }
+
     /// Returns an iterator over every inner node of this witness' merkle path.
     pub fn authenticated_nodes(&self) -> impl Iterator<Item = InnerNodeInfo> + '_ {
         self.0
