@@ -28,11 +28,9 @@ use miden_objects::transaction::{
     ExecutedTransaction,
     InputNote,
     InputNotes,
-    OrderedTransactionHeaders,
     OutputNote,
     PartialBlockchain,
     ProvenTransaction,
-    TransactionHeader,
     TransactionInputs,
 };
 use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
@@ -41,6 +39,7 @@ use miden_processor::{DeserializationError, Word};
 use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
+use miden_tx_batch_prover::LocalBatchProver;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use winterfell::ByteWriter;
@@ -482,37 +481,8 @@ impl MockChain {
         &self,
         proposed_batch: ProposedBatch,
     ) -> anyhow::Result<ProvenBatch> {
-        let (
-            transactions,
-            block_header,
-            _partial_blockchain,
-            _unauthenticated_note_proofs,
-            id,
-            account_updates,
-            input_notes,
-            output_notes,
-            batch_expiration_block_num,
-        ) = proposed_batch.into_parts();
-
-        // SAFETY: This satisfies the requirements of the ordered tx headers.
-        let tx_headers = OrderedTransactionHeaders::new_unchecked(
-            transactions
-                .iter()
-                .map(AsRef::as_ref)
-                .map(TransactionHeader::from)
-                .collect::<Vec<_>>(),
-        );
-
-        Ok(ProvenBatch::new(
-            id,
-            block_header.commitment(),
-            block_header.block_num(),
-            account_updates,
-            input_notes,
-            output_notes,
-            batch_expiration_block_num,
-            tx_headers,
-        )?)
+        let batch_prover = LocalBatchProver::new(0);
+        Ok(batch_prover.prove_dummy(proposed_batch)?)
     }
 
     // BLOCK APIS
@@ -565,7 +535,7 @@ impl MockChain {
         &self,
         proposed_block: ProposedBlock,
     ) -> Result<ProvenBlock, ProvenBlockError> {
-        LocalBlockProver::new(0).prove_without_batch_verification(proposed_block)
+        LocalBlockProver::new(0).prove_dummy(proposed_block)
     }
 
     // TRANSACTION APIS
