@@ -56,13 +56,13 @@ impl TransactionAdviceInputs {
 
         // --- native account injection ---------------------------------------
 
-        let native_acc = PartialAccount::from(tx_inputs.account());
-        inputs.add_account(&native_acc)?;
+        let partial_native_acc = tx_inputs.account();
+        inputs.add_account(partial_native_acc)?;
 
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
-            let account_id_key = build_account_id_key(native_acc.id());
+            let account_id_key = build_account_id_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 

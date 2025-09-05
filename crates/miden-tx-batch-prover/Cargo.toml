@@ -18,6 +18,7 @@ bench = false
 [features]
 default = ["std"]
 std     = ["miden-objects/std", "miden-tx/std"]
+testing = []
 
 [dependencies]
 miden-objects = { workspace = true }

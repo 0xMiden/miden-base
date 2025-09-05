@@ -3,9 +3,20 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountDelta};
-use miden_objects::asset::Asset;
+use miden_objects::account::{
+    Account,
+    AccountDelta,
+    AccountStorage,
+    PartialAccount,
+    PartialStorage,
+    PartialStorageMap,
+    StorageMap,
+    StorageSlot,
+    StorageSlotType,
+};
+use miden_objects::asset::{Asset, AssetVault};
 use miden_objects::block::BlockNumber;
+use miden_objects::crypto::merkle::SmtLeaf;
 use miden_objects::transaction::{
     ExecutedTransaction,
     InputNote,
@@ -51,7 +62,7 @@ impl LocalTransactionProver {
         input_notes: &InputNotes<InputNote>,
         tx_outputs: TransactionOutputs,
         pre_fee_account_delta: AccountDelta,
-        account: &Account,
+        account: PartialAccount,
         ref_block_num: BlockNumber,
         ref_block_commitment: Word,
         proof: ExecutionProof,
@@ -65,7 +76,7 @@ impl LocalTransactionProver {
 
         let builder = ProvenTransactionBuilder::new(
             account.id(),
-            account.init_commitment(),
+            account.initial_commitment(),
             tx_outputs.account.commitment(),
             pre_fee_delta_commitment,
             ref_block_num,
@@ -84,11 +95,10 @@ impl LocalTransactionProver {
             .remove_asset(Asset::from(tx_outputs.fee))
             .map_err(TransactionProverError::RemoveFeeAssetFromDelta)?;
 
-        // If the account is on-chain, add the update details.
-        let builder = match account.is_onchain() {
+        let builder = match account.has_public_state() {
             true => {
                 let account_update_details = if account.is_new() {
-                    let mut account = account.clone();
+                    let mut account = partial_account_to_full(account);
                     account
                         .apply_delta(&post_fee_account_delta)
                         .map_err(TransactionProverError::AccountDeltaApplyFailed)?;
@@ -112,38 +122,29 @@ impl LocalTransactionProver {
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
 
-        let account = tx_inputs.account();
-        let input_notes = tx_inputs.input_notes();
-        let ref_block_num = tx_inputs.block_header().block_num();
-        let ref_block_commitment = tx_inputs.block_header().commitment();
-
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
                 .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
-        self.mast_store.load_account_code(account.code());
+        self.mast_store.load_account_code(tx_inputs.account().code());
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
-            input_notes.iter().map(|n| n.note().script()),
+            tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let mut host = {
-            let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
-                &tx_inputs,
-                &tx_args,
-                &advice_inputs,
-            )
-            .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+        let acct_procedure_index_map =
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+                .map_err(TransactionProverError::TransactionHostCreationFailed)?;
 
-            TransactionProverHost::new(
-                &account.into(),
-                input_notes.clone(),
-                self.mast_store.as_ref(),
-                script_mast_store,
-                acct_procedure_index_map,
-            )
-        };
+        let (partial_account, _, ref_block, _, input_notes) = tx_inputs.into_parts();
+        let mut host = TransactionProverHost::new(
+            &partial_account,
+            input_notes,
+            self.mast_store.as_ref(),
+            script_mast_store,
+            acct_procedure_index_map,
+        );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
 
@@ -159,18 +160,18 @@ impl LocalTransactionProver {
         // Extract transaction outputs and process transaction data.
         // Note that the account delta does not contain the removed transaction fee, so it is the
         // "pre-fee" delta of the transaction.
-        let (pre_fee_account_delta, output_notes, _tx_progress) = host.into_parts();
+        let (pre_fee_account_delta, input_notes, output_notes, _tx_progress) = host.into_parts();
         let tx_outputs =
             TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
                 .map_err(TransactionProverError::TransactionOutputConstructionFailed)?;
 
         self.build_proven_transaction(
-            input_notes,
+            &input_notes,
             tx_outputs,
             pre_fee_account_delta,
-            account,
-            ref_block_num,
-            ref_block_commitment,
+            partial_account,
+            ref_block.block_num(),
+            ref_block.commitment(),
             proof,
         )
     }
@@ -185,6 +186,52 @@ impl Default for LocalTransactionProver {
     }
 }
 
+fn partial_account_to_full(partial_account: PartialAccount) -> Account {
+    let (id, nonce, code, partial_storage, partial_vault) = partial_account.into_parts();
+
+    // For new accounts, the partial storage must represent the full initial account
+    // storage.
+    let storage = partial_storage_to_full(partial_storage);
+
+    // The vault of a new account should be empty.
+    debug_assert_eq!(partial_vault.leaves().count(), 0);
+    let vault = AssetVault::default();
+
+    Account::from_parts(id, vault, storage, code, nonce)
+}
+
+fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
+    let (_, header, mut maps) = partial_storage.into_parts();
+    let mut storage_slots = Vec::new();
+    for (slot_type, slot_value) in header.slots() {
+        match slot_type {
+            StorageSlotType::Value => {
+                storage_slots.push(StorageSlot::Value(*slot_value));
+            },
+            StorageSlotType::Map => {
+                let storage_map = maps
+                    .remove(slot_value)
+                    .map(partial_storage_map_to_storage_map)
+                    .expect("partial storage map should be present in partial storage");
+                storage_slots.push(StorageSlot::Map(storage_map));
+            },
+        }
+    }
+
+    AccountStorage::new(storage_slots)
+        .expect("partial storage should not contain more than max allowed storage slots")
+}
+
+fn partial_storage_map_to_storage_map(partial_storage_map: PartialStorageMap) -> StorageMap {
+    let mut storage_map = StorageMap::new();
+    for (key, value) in
+        partial_storage_map.leaves().map(|(_, leaf)| leaf).flat_map(SmtLeaf::entries)
+    {
+        storage_map.insert(*key, *value);
+    }
+    storage_map
+}
+
 #[cfg(any(feature = "testing", test))]
 impl LocalTransactionProver {
     pub fn prove_dummy(
@@ -193,13 +240,15 @@ impl LocalTransactionProver {
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
 
+        let (partial_account, _, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
+
         self.build_proven_transaction(
-            tx_witness.tx_inputs.input_notes(),
+            &input_notes,
             tx_outputs,
             account_delta,
-            tx_witness.tx_inputs.account(),
-            tx_witness.tx_inputs.block_header().block_num(),
-            tx_witness.tx_inputs.block_header().commitment(),
+            partial_account,
+            ref_block.block_num(),
+            ref_block.commitment(),
             ExecutionProof::new_dummy(),
         )
     }

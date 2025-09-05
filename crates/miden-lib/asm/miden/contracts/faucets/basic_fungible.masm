@@ -8,7 +8,6 @@
 # - decimals are the decimals of the token.
 # - token_symbol as three chars encoded in a Felt.
 use.miden::account
-use.miden::asset
 use.miden::faucet
 use.miden::tx
 use.miden::contracts::auth::basic
@@ -69,7 +68,7 @@ export.distribute.4
     # => [amount, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     # creating the asset
-    exec.asset::create_fungible_asset
+    exec.faucet::create_fungible_asset
     # => [ASSET, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     # mint the asset; this is needed to satisfy asset preservation logic.

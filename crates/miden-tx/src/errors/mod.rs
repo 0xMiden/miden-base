@@ -27,17 +27,41 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum NoteCheckerError {
+    #[error("invalid input note count {0} is out of range)")]
+    InputNoteCountOutOfRange(usize),
     #[error("transaction preparation failed: {0}")]
-    TransactionPreparationFailed(#[source] TransactionExecutorError),
+    TransactionPreparation(#[source] TransactionExecutorError),
     #[error("transaction execution prologue failed: {0}")]
-    PrologueExecutionFailed(#[source] TransactionExecutorError),
+    PrologueExecution(#[source] TransactionExecutorError),
+}
+
+// TRANSACTION CHECKER ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub(crate) enum TransactionCheckerError {
+    #[error("transaction preparation failed: {0}")]
+    TransactionPreparation(#[source] TransactionExecutorError),
+    #[error("transaction execution prologue failed: {0}")]
+    PrologueExecution(#[source] TransactionExecutorError),
     #[error("transaction execution epilogue failed: {0}")]
-    EpilogueExecutionFailed(#[source] TransactionExecutorError),
+    EpilogueExecution(#[source] TransactionExecutorError),
     #[error("transaction note execution failed on note index {failed_note_index}: {error}")]
-    NoteExecutionFailed {
+    NoteExecution {
         failed_note_index: usize,
         error: TransactionExecutorError,
     },
+}
+
+impl From<TransactionCheckerError> for TransactionExecutorError {
+    fn from(error: TransactionCheckerError) -> Self {
+        match error {
+            TransactionCheckerError::TransactionPreparation(error) => error,
+            TransactionCheckerError::PrologueExecution(error) => error,
+            TransactionCheckerError::EpilogueExecution(error) => error,
+            TransactionCheckerError::NoteExecution { error, .. } => error,
+        }
+    }
 }
 
 // TRANSACTION EXECUTOR ERROR

@@ -140,23 +140,24 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the current account ID.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [acct_id_prefix, acct_id_suffix, pad(14)]
+#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
-#! - acct_id is the ID if the current account.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
+#!   accessing account.
 #!
 #! Invocation: dynexec
 export.account_get_id
     # get the current account ID
     exec.account::get_id
-    # => [acct_id_prefix, acct_id_suffix, pad(16)]
+    # => [account_id_prefix, account_id_suffix, pad(16)]
 
     # truncate the stack
     movup.2 drop movup.2 drop
-    # => [acct_id_prefix, acct_id_suffix, pad(14)]
+    # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 
 #! Returns the native account ID.
@@ -184,7 +185,7 @@ end
 #! Outputs: [nonce, pad(15)]
 #!
 #! Where:
-#! - nonce is the account nonce.
+#! - nonce is the current account's nonce.
 #!
 #! Invocation: dynexec
 export.account_get_nonce
@@ -471,13 +472,13 @@ export.account_get_initial_vault_root
     # => [INIT_VAULT_ROOT, pad(12)]
 end
 
-#! Returns a commitment to the account vault the transaction is being executed against.
+#! Returns the vault root of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [VAULT_ROOT, pad(12)]
 #!
 #! Where:
-#! - VAULT_ROOT is the commitment to the account vault.
+#! - VAULT_ROOT is the root of the account vault.
 #!
 #! Invocation: dynexec
 export.account_get_vault_root
@@ -553,7 +554,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
 #! Outputs: [balance, pad(15)]
@@ -577,7 +578,7 @@ export.account_get_balance
     # => [balance, pad(15)]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [has_asset, pad(15)]
@@ -731,7 +732,7 @@ end
 
 ### NOTE ########################################
 
-#! Returns the information about assets in the input note with the specified index.
+#! Returns the number of assets and the assets commitment of the note currently being processed.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
@@ -766,7 +767,7 @@ end
 #! - ASSET can be a fungible or non-fungible asset.
 #!
 #! Panics if:
-#! - the procedure is called from a non-account context.
+#! - the procedure is called when the current account is not the native one.
 #!
 #! Invocation: dynexec
 export.note_add_asset
@@ -1213,10 +1214,11 @@ export.tx_get_block_timestamp
     # => [timestamp, pad(15)]
 end
 
-#! Tells the transaction kernel that we are about to execute a procedure on a foreign account.
+#! Starts a foreign account context.
 #!
-#! Checks whether the current foreign account was already loaded to the memory, and loads it if not.
-#! Moves the account pointer to the currently accessing foreign account.
+#! This allows calling procedures on an account different from the native account. It loads the
+#! foreign account into memory, unless already loaded. It pushes the foreign account onto the
+#! account stack, which makes the foreign account the current account.
 #!
 #! Inputs:
 #!   Operand stack: [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
@@ -1311,13 +1313,15 @@ export.tx_start_foreign_context
     # => [pad(16)]
 end
 
-#! Tells the transaction kernel that we are done executing a procedure on a foreign account.
+#! Ends a foreign account context.
+#!
+#! This pops the top of the account stack, making the previous account the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
 #!
 #! Panics if:
-#! - the current context is a native context.
+#! - the current account is the native account.
 #!
 #! Invocation: dynexec
 export.tx_end_foreign_context
@@ -1361,7 +1365,7 @@ export.tx_get_expiration_delta
     # => [block_height_delta, pad(15)]
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT, pad(12)]
 #! Outputs: [was_called, pad(15)]

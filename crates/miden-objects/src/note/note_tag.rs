@@ -32,7 +32,7 @@ const LOCAL_ANY: u32 = 0xc000_0000;
 ///
 /// The execution hints are _not_ enforced, therefore function only as hints. For example, if a
 /// note's tag is created with the [NoteExecutionMode::Network], further validation is necessary to
-/// check the account_id is known, that the account's state is on-chain, and the account is
+/// check the account_id is known, that the account's state is public on chain, and the account is
 /// controlled by the network.
 ///
 /// The goal of the hint is to allow for a network node to quickly filter notes that are not

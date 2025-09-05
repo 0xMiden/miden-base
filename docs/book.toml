@@ -6,6 +6,7 @@ multilingual = false
 title        = "The Miden protocol"
 
 [output.html]
+additional-css     = ["custom.css"]
 git-repository-url = "https://github.com/0xMiden/miden-base"
 
 [preprocessor.katex]
