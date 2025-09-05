@@ -699,34 +699,6 @@ export.faucet_is_non_fungible_asset_issued
     # => [is_issued, pad(15)]
 end
 
-### NOTE ########################################
-
-#! Adds the ASSET to the note specified by the index.
-#!
-#! Inputs:  [note_idx, ASSET, pad(11)]
-#! Outputs: [note_idx, ASSET, pad(11)]
-#!
-#! Where:
-#! - note_idx is the index of the note to which the asset is added.
-#! - ASSET can be a fungible or non-fungible asset.
-#!
-#! Panics if:
-#! - the procedure is called when the current account is not the native one.
-#!
-#! Invocation: dynexec
-export.note_add_asset
-    # check that this procedure was executed against the native account
-    exec.memory::assert_native_account
-    # => [note_idx, ASSET, pad(11)]
-
-    # duplicate the asset word to be able to return it
-    movdn.4 dupw movup.8
-    # => [note_idx, ASSET, ASSET, pad(11)]
-
-    exec.tx::add_asset_to_note
-    # => [note_idx, ASSET, pad(11)]
-end
-
 ### INPUT NOTE ##################################
 
 #! Returns the assets information of the specified input note.
@@ -963,6 +935,32 @@ export.input_note_get_script_root
 end
 
 ### OUTPUT NOTE #################################
+
+#! Adds the ASSET to the note specified by the index.
+#!
+#! Inputs:  [note_idx, ASSET, pad(11)]
+#! Outputs: [note_idx, ASSET, pad(11)]
+#!
+#! Where:
+#! - note_idx is the index of the note to which the asset is added.
+#! - ASSET can be a fungible or non-fungible asset.
+#!
+#! Panics if:
+#! - the procedure is called when the current account is not the native one.
+#!
+#! Invocation: dynexec
+export.output_note_add_asset
+    # check that this procedure was executed against the native account
+    exec.memory::assert_native_account
+    # => [note_idx, ASSET, pad(11)]
+
+    # duplicate the asset word to be able to return it
+    movdn.4 dupw movup.8
+    # => [note_idx, ASSET, ASSET, pad(11)]
+
+    exec.tx::add_asset_to_note
+    # => [note_idx, ASSET, pad(11)]
+end
 
 #! Returns the information about assets in the output note with the specified index.
 #!

@@ -73,7 +73,7 @@ pub const KERNEL_PROCEDURES: [Word; 46] = [
     word!("0x71d0e246d52c4d896e6508564207e049d4d68da187a143fe95bf5e7f5602f967"),
     // output_note_get_recipient
     word!("0xc824115ed79a2e1670daed8c18fba1bc15f54c5ec0ec6699de69a00b21d9df92"),
-    // note_add_asset
+    // output_note_add_asset
     word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
     // tx_create_note
     word!("0x52b37f8b25e26517f22f1f600acae7fbfffa84094595ba961af2af807a484736"),

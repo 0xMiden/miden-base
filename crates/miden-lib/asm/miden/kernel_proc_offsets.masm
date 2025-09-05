@@ -58,8 +58,7 @@ const.INPUT_NOTE_GET_RECIPIENT_OFFSET=29
 const.OUTPUT_NOTE_GET_METADATA_OFFSET=30
 const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=31
 const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=32
-
-const.NOTE_ADD_ASSET_OFFSET=33
+const.OUTPUT_NOTE_ADD_ASSET_OFFSET=33
 
 ### Tx ##########################################
 # creation
@@ -383,16 +382,16 @@ end
 
 ### NOTE ########################################
 
-#! Returns the offset of the `note_add_asset` kernel procedure.
+#! Returns the offset of the `output_note_add_asset` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `note_add_asset` kernel procedure required to get the
+#! - proc_offset is the offset of the `output_note_add_asset` kernel procedure required to get the
 #!   address where this procedure is stored.
-export.note_add_asset_offset
-    push.NOTE_ADD_ASSET_OFFSET
+export.output_note_add_asset_offset
+    push.OUTPUT_NOTE_ADD_ASSET_OFFSET
 end
 
 #! Returns the offset of the `input_note_get_assets_info` kernel procedure.
