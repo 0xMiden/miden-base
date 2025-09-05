@@ -40,9 +40,6 @@ pub enum TransactionKernelError {
         handler: &'static str,
         source: AssetError,
     },
-    /// A generic error returned when the transaction kernel did not behave as expected.
-    #[error("tx kernel violated an assumption: {0}")]
-    ViolatedAssumption(String),
     #[error(
         "note inputs data extracted from the advice map by the event handler is not well formed"
     )]
@@ -98,6 +95,35 @@ pub enum TransactionKernelError {
     /// missing.
     #[error("transaction requires a signature")]
     Unauthorized(Box<TransactionSummary>),
+    /// A generic error returned when the transaction kernel did not behave as expected.
+    #[error("{message}")]
+    Other {
+        message: Box<str>,
+        // thiserror will return this when calling Error::source on TransactionKernelError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl TransactionKernelError {
+    /// Creates a custom error using the [`TransactionKernelError::Other`] variant from an error
+    /// message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { message: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`TransactionKernelError::Other`] variant from an error
+    /// message and a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            message: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // TRANSACTION EVENT PARSING ERROR

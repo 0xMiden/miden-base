@@ -624,19 +624,19 @@ where
 
         let vault_root_ptr = process.get_stack_item(4);
         let vault_root_ptr = u32::try_from(vault_root_ptr).map_err(|_err| {
-            TransactionKernelError::ViolatedAssumption(format!(
+            TransactionKernelError::other(format!(
                 "vault root ptr should fit into a u32, but was {vault_root_ptr}"
             ))
         })?;
         let vault_root = process
             .get_mem_word(process.ctx(), vault_root_ptr)
             .map_err(|_err| {
-                TransactionKernelError::ViolatedAssumption(format!(
+                TransactionKernelError::other(format!(
                     "vault root ptr {vault_root_ptr} is not word-aligned"
                 ))
             })?
             .ok_or_else(|| {
-                TransactionKernelError::ViolatedAssumption(format!(
+                TransactionKernelError::other(format!(
                     "vault root ptr {vault_root_ptr} was not initialized"
                 ))
             })?;
@@ -662,9 +662,10 @@ where
                 ))
             },
             // We should never encounter this as long as our inputs to get_merkle_path are correct.
-            Err(err) => Err(TransactionKernelError::ViolatedAssumption(format!(
-                "unexpected get_merkle_path error: {err}"
-            ))),
+            Err(err) => Err(TransactionKernelError::other_with_source(
+                "unexpected get_merkle_path error",
+                err,
+            )),
         }
     }
 
@@ -727,45 +728,32 @@ where
     fn get_current_account_id(process: &ProcessState) -> Result<AccountId, TransactionKernelError> {
         let account_stack_top_ptr =
             process.get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
-                TransactionKernelError::ViolatedAssumption(
-                    "account stack top ptr should be initialized".into(),
-                )
+                TransactionKernelError::other("account stack top ptr should be initialized")
             })?;
         let account_stack_top_ptr = u32::try_from(account_stack_top_ptr).map_err(|_| {
-            TransactionKernelError::ViolatedAssumption(
-                "account stack top ptr should fit into a u32".into(),
-            )
+            TransactionKernelError::other("account stack top ptr should fit into a u32")
         })?;
 
-        let current_account_ptr =
-            process.get_mem_value(process.ctx(), account_stack_top_ptr).ok_or_else(|| {
-                TransactionKernelError::ViolatedAssumption(
-                    "account id should be initialized".into(),
-                )
-            })?;
+        let current_account_ptr = process
+            .get_mem_value(process.ctx(), account_stack_top_ptr)
+            .ok_or_else(|| TransactionKernelError::other("account id should be initialized"))?;
         let current_account_ptr = u32::try_from(current_account_ptr).map_err(|_| {
-            TransactionKernelError::ViolatedAssumption(
-                "current account ptr should fit into a u32".into(),
-            )
+            TransactionKernelError::other("current account ptr should fit into a u32")
         })?;
 
         let current_account_id_and_nonce = process
             .get_mem_word(process.ctx(), current_account_ptr)
             .map_err(|_| {
-                TransactionKernelError::ViolatedAssumption(
-                    "current account ptr should be word-aligned".into(),
-                )
+                TransactionKernelError::other("current account ptr should be word-aligned")
             })?
             .ok_or_else(|| {
-                TransactionKernelError::ViolatedAssumption(
-                    "current account id should be initialized".into(),
-                )
+                TransactionKernelError::other("current account id should be initialized")
             })?;
 
         AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
             .map_err(|_| {
-                TransactionKernelError::ViolatedAssumption(
-                    "current account id ptr should point to a valid account ID".into(),
+                TransactionKernelError::other(
+                    "current account id ptr should point to a valid account ID",
                 )
             })
     }
