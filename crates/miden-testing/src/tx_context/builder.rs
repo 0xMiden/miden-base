@@ -12,6 +12,7 @@ use miden_objects::EMPTY_WORD;
 use miden_objects::account::{Account, AccountHeader, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::asset::PartialVault;
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
@@ -275,33 +276,46 @@ impl TransactionContextBuilder {
 
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
-
-                // If partial loading is enabled, construct an account that doesn't contain all
-                // merkle paths of assets, in order to test lazy loading. Otherwise, load the full
-                // account.
-                let account = if self.load_partial_account {
-                    // Construct a partial vault that tracks the empty word, but none of the assets
-                    // that are actually in the asset tree. That way, the partial vault has the same
-                    // root as the full vault, but will not add any relevant merkle paths to the
-                    // merkle store, which will test lazy loading of assets.
-                    let mut partial_vault = PartialVault::default();
-                    partial_vault.add(self.account.vault().open(Word::empty()).into())?;
-
-                    PartialAccount::new(
-                        self.account.id(),
-                        self.account.nonce(),
-                        self.account.code().clone(),
-                        self.account.storage().into(),
-                        partial_vault,
-                    )
-                } else {
-                    PartialAccount::from(&self.account)
-                };
+                let account = PartialAccount::from(&self.account);
 
                 mock_chain
                     .get_transaction_inputs(account, self.account_seed, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
+        };
+
+        // If partial loading is enabled, construct an account that doesn't contain all
+        // merkle paths of assets, in order to test lazy loading. Otherwise, load the full
+        // account.
+        let tx_inputs = if self.load_partial_account {
+            let (account, account_seed, block_header, partial_blockchain, input_notes) =
+                tx_inputs.into_parts();
+            // Construct a partial vault that tracks the empty word, but none of the assets
+            // that are actually in the asset tree. That way, the partial vault has the same
+            // root as the full vault, but will not add any relevant merkle paths to the
+            // merkle store, which will test lazy loading of assets.
+            // Note that we use self.account instead of account, because we cannot do the same
+            // operation on a partial vault.
+            let mut partial_vault = PartialVault::default();
+            partial_vault.add(self.account.vault().open(Word::empty()).into())?;
+
+            let account = PartialAccount::new(
+                account.id(),
+                account.nonce(),
+                account.code().clone(),
+                account.storage().clone(),
+                partial_vault,
+            );
+
+            TransactionInputs::new(
+                account,
+                account_seed,
+                block_header,
+                partial_blockchain,
+                input_notes,
+            )?
+        } else {
+            tx_inputs
         };
 
         let tx_args = TransactionArgs::new(AdviceMap::default(), self.foreign_account_inputs)
