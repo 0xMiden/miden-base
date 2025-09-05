@@ -9,10 +9,9 @@ use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
-use miden_objects::account::{Account, PartialAccount};
+use miden_objects::account::{Account, AccountHeader, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
-use miden_objects::asset::PartialVault;
 use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
@@ -199,6 +198,11 @@ impl TransactionContextBuilder {
 
     /// Set the desired transaction inputs
     pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
+        assert_eq!(
+            AccountHeader::from(&self.account),
+            tx_inputs.account().into(),
+            "account in context and account provided via tx inputs are not the same account"
+        );
         self.transaction_inputs = Some(tx_inputs);
         self
     }
