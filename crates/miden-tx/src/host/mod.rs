@@ -199,14 +199,14 @@ where
 
         let advice_mutations = match transaction_event {
             TransactionEvent::AccountVaultBeforeAddAsset => {
-                self.on_account_vault_before_add_or_remove_asset(process)
+                Self::on_account_vault_before_add_or_remove_asset(process)
             },
             TransactionEvent::AccountVaultAfterAddAsset => {
                 self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
             TransactionEvent::AccountVaultBeforeRemoveAsset => {
-                self.on_account_vault_before_add_or_remove_asset(process)
+                Self::on_account_vault_before_add_or_remove_asset(process)
             },
             TransactionEvent::AccountVaultAfterRemoveAsset => {
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
@@ -608,11 +608,11 @@ where
         Ok(())
     }
 
-    /// Extracts all necessary data for requesting an asset witness.
+    /// Checks if the necessary witness for accessing the asset is already in the merkle store,
+    /// and if not, extracts all necessary data for requesting it.
     ///
     /// Expected stack state: `[ASSET, account_vault_root_ptr]`
     pub fn on_account_vault_before_add_or_remove_asset(
-        &mut self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
