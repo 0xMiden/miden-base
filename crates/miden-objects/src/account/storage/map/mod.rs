@@ -4,10 +4,10 @@ use miden_core::EMPTY_WORD;
 use miden_crypto::merkle::EmptySubtreeRoots;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
-use crate::Hasher;
 use crate::account::StorageMapDelta;
 use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
+use crate::{Felt, Hasher};
 
 mod partial;
 pub use partial::PartialStorageMap;
@@ -19,7 +19,7 @@ pub use storage_map_witness::StorageMapWitness;
 // ================================================================================================
 
 /// Empty storage map root.
-pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::TREE_DEPTH, 0);
+pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::DEPTH, 0);
 
 /// An account storage map is a sparse merkle tree of depth [`Self::TREE_DEPTH`] (64).
 ///
@@ -53,8 +53,8 @@ impl StorageMap {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// Depth of the storage tree.
-    pub const TREE_DEPTH: u8 = SMT_DEPTH;
+    /// The depth of the SMT that represents the storage map.
+    pub const DEPTH: u8 = SMT_DEPTH;
 
     /// The default value of empty leaves.
     pub const EMPTY_VALUE: Word = Smt::EMPTY_VALUE;
@@ -178,6 +178,13 @@ impl StorageMap {
     /// Hashes the given key to get the key of the SMT.
     pub fn hash_key(key: Word) -> Word {
         Hasher::hash_elements(key.as_elements())
+    }
+
+    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
+    /// Returns the leaf index of a map key.
+    pub fn vault_key_to_leaf_index(map_key: Word) -> Felt {
+        // The third element in an SMT key is the index.
+        map_key[3]
     }
 }
 

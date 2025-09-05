@@ -90,6 +90,16 @@ pub enum TransactionKernelError {
         source: Box<dyn Error + Send + Sync + 'static>,
     },
     #[error(
+        "failed to get vault asset witness from data store for map root {map_root} and map_key {map_key}"
+    )]
+    GetStorageMapWitness {
+        map_root: Word,
+        map_key: Word,
+        // TODO: Change to DataStoreError when this error moves to miden-tx.
+        // This is always a DataStoreError, but we can't import it from miden-tx here.
+        source: Box<dyn Error + Send + Sync + 'static>,
+    },
+    #[error(
         "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
     )]
     InsufficientFee { account_balance: u64, tx_fee: u64 },

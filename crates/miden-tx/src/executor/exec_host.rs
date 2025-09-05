@@ -5,7 +5,7 @@ use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
-use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
+use miden_objects::account::{AccountDelta, AccountId, PartialAccount, StorageSlotType};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
@@ -211,6 +211,67 @@ where
         Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
+    /// Handles a request for a storage map witness by querying the data store for a merkle path.
+    ///
+    /// Note that we request witnesses against the initial map root for native accounts. See also
+    /// [`Self::on_account_vault_asset_witness_requested`] for more on this topic.
+    async fn on_account_storage_map_witness_requested(
+        &self,
+        current_account_id: AccountId,
+        slot_index: usize,
+        _map_root: Word,
+        map_key: Word,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        // For now, we only support getting witnesses for the native account, so return early if the
+        // requested account is not the native one.
+        if current_account_id != self.base_host.initial_account_header().id() {
+            return Ok(Vec::new());
+        }
+
+        // For native accounts, we have to request witnesses against the initial root instead of the
+        // _current_ one, since the data store only has witnesses for initial one.
+        let map_root = {
+            let (slot_type, slot_value) =
+                self.base_host.initial_account_storage_header().slot(slot_index).map_err(
+                    |err| {
+                        TransactionKernelError::other_with_source(
+                            "failed to access storage map in storage header",
+                            err,
+                        )
+                    },
+                )?;
+            if *slot_type != StorageSlotType::Map {
+                return Err(TransactionKernelError::other(format!(
+                    "expected map slot type at slot index {slot_index}"
+                )));
+            }
+            *slot_value
+        };
+
+        let storage_map_witness = self
+            .base_host
+            .store()
+            .get_storage_map_witness(current_account_id, map_root, map_key)
+            .await
+            .map_err(|err| TransactionKernelError::GetStorageMapWitness {
+                map_root,
+                map_key,
+                source: Box::new(err),
+            })?;
+
+        // Get the nodes in the proof and insert them into the merkle store.
+        let merkle_store_ext =
+            AdviceMutation::extend_merkle_store(storage_map_witness.authenticated_nodes());
+
+        let smt_proof = SmtProof::from(storage_map_witness);
+        let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
+            smt_proof.leaf().hash(),
+            smt_proof.leaf().to_elements(),
+        )]));
+
+        Ok(vec![merkle_store_ext, map_ext])
+    }
+
     /// Handles a request to an asset witness by querying the data store for a merkle path.
     ///
     /// ## Native Account
@@ -345,6 +406,20 @@ where
                     asset,
                 } => self
                     .on_account_vault_asset_witness_requested(current_account_id, vault_root, asset)
+                    .await
+                    .map_err(EventError::from),
+                TransactionEventData::AccountStorageMapWitness {
+                    current_account_id,
+                    slot_index,
+                    map_root,
+                    map_key,
+                } => self
+                    .on_account_storage_map_witness_requested(
+                        current_account_id,
+                        slot_index,
+                        map_root,
+                        map_key,
+                    )
                     .await
                     .map_err(EventError::from),
             }

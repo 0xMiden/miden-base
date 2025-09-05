@@ -1,6 +1,6 @@
 use alloc::collections::BTreeSet;
 
-use miden_objects::account::{AccountId, PartialAccount};
+use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
 use miden_objects::asset::AssetWitness;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::transaction::PartialBlockchain;
@@ -46,4 +46,16 @@ pub trait DataStore: MastForestStore {
         vault_root: Word,
         vault_key: Word,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
+
+    /// Returns a witness for a storage map item in the requested account's storage with the
+    /// requested storage map root.
+    ///
+    /// This is the witness that needs to be added to the advice provider's merkle store and advice
+    /// map to make access to the specified storage map item possible.
+    fn get_storage_map_witness(
+        &self,
+        account_id: AccountId,
+        map_root: Word,
+        map_key: Word,
+    ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>>;
 }
