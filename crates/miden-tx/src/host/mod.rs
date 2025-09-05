@@ -641,52 +641,7 @@ where
                 ))
             })?;
 
-        // Get the current account ID from memory.
-        let current_account_id = {
-            let account_stack_top_ptr =
-                process.get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
-                    TransactionKernelError::ViolatedAssumption(
-                        "account stack top ptr should be initialized".into(),
-                    )
-                })?;
-            let account_stack_top_ptr = u32::try_from(account_stack_top_ptr).map_err(|_| {
-                TransactionKernelError::ViolatedAssumption(
-                    "account stack top ptr should fit into a u32".into(),
-                )
-            })?;
-
-            let current_account_ptr =
-                process.get_mem_value(process.ctx(), account_stack_top_ptr).ok_or_else(|| {
-                    TransactionKernelError::ViolatedAssumption(
-                        "account id should be initialized".into(),
-                    )
-                })?;
-            let current_account_ptr = u32::try_from(current_account_ptr).map_err(|_| {
-                TransactionKernelError::ViolatedAssumption(
-                    "current account ptr should fit into a u32".into(),
-                )
-            })?;
-
-            let current_account_id_and_nonce = process
-                .get_mem_word(process.ctx(), current_account_ptr)
-                .map_err(|_| {
-                    TransactionKernelError::ViolatedAssumption(
-                        "current account ptr should be word-aligned".into(),
-                    )
-                })?
-                .ok_or_else(|| {
-                    TransactionKernelError::ViolatedAssumption(
-                        "current account id should be initialized".into(),
-                    )
-                })?;
-
-            AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
-                .map_err(|_| {
-                    TransactionKernelError::ViolatedAssumption(
-                        "current account id ptr should point to a valid account ID".into(),
-                    )
-                })?
-        };
+        let current_account_id = Self::get_current_account_id(process)?;
 
         let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
         match process.advice_provider().get_merkle_path(
@@ -766,6 +721,53 @@ where
                 .map_err(ExecutionError::MemoryError)?
                 .map(NoteId::from))
         }
+    }
+
+    /// Returns the ID of the currently executing account.
+    fn get_current_account_id(process: &ProcessState) -> Result<AccountId, TransactionKernelError> {
+        let account_stack_top_ptr =
+            process.get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
+                TransactionKernelError::ViolatedAssumption(
+                    "account stack top ptr should be initialized".into(),
+                )
+            })?;
+        let account_stack_top_ptr = u32::try_from(account_stack_top_ptr).map_err(|_| {
+            TransactionKernelError::ViolatedAssumption(
+                "account stack top ptr should fit into a u32".into(),
+            )
+        })?;
+
+        let current_account_ptr =
+            process.get_mem_value(process.ctx(), account_stack_top_ptr).ok_or_else(|| {
+                TransactionKernelError::ViolatedAssumption(
+                    "account id should be initialized".into(),
+                )
+            })?;
+        let current_account_ptr = u32::try_from(current_account_ptr).map_err(|_| {
+            TransactionKernelError::ViolatedAssumption(
+                "current account ptr should fit into a u32".into(),
+            )
+        })?;
+
+        let current_account_id_and_nonce = process
+            .get_mem_word(process.ctx(), current_account_ptr)
+            .map_err(|_| {
+                TransactionKernelError::ViolatedAssumption(
+                    "current account ptr should be word-aligned".into(),
+                )
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::ViolatedAssumption(
+                    "current account id should be initialized".into(),
+                )
+            })?;
+
+        AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
+            .map_err(|_| {
+                TransactionKernelError::ViolatedAssumption(
+                    "current account id ptr should point to a valid account ID".into(),
+                )
+            })
     }
 
     /// Returns the number of storage slots initialized for the current account.
