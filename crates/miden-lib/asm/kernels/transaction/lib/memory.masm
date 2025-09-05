@@ -995,7 +995,7 @@ end
 
 ### ACCOUNT ID AND NONCE #################################################
 
-#! Returns the id of the current account.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [curr_acct_id_prefix, curr_acct_id_suffix]
@@ -1010,13 +1010,14 @@ export.get_account_id
     # => [curr_acct_id_prefix, curr_acct_id_suffix]
 end
 
-#! Returns the id of the native account.
+#! Returns the ID of the native account of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [native_acct_id_prefix, native_acct_id_suffix]
 #!
 #! Where:
-#! - native_acct_id_{prefix,suffix} are the prefix and suffix felts of the id of the native account.
+#! - native_acct_id_{prefix,suffix} are the prefix and suffix felts of the ID of the native account
+#!   of the transaction.
 export.get_native_account_id
     padw push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_ID_AND_NONCE_OFFSET mem_loadw
     # => [nonce, 0, native_acct_id_prefix, native_acct_id_suffix]
@@ -1030,7 +1031,7 @@ end
 #! Outputs: [account_nonce, 0, account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the id of the currently accessing
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the currently accessing
 #!   account.
 #! - account_nonce is the nonce of the currently accessing account.
 export.set_account_id_and_nonce
@@ -1038,25 +1039,25 @@ export.set_account_id_and_nonce
     mem_storew
 end
 
-#! Returns the account nonce.
+#! Returns the nonce of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [acct_nonce]
 #!
 #! Where:
-#! - acct_nonce is the account nonce.
+#! - acct_nonce is the nonce of the current account.
 export.get_account_nonce
     exec.get_current_account_data_ptr add.ACCT_NONCE_OFFSET
     mem_load
 end
 
-#! Returns the nonce of the native account.
+#! Returns the nonce of the native account of the transaction.
 #!
 #! Inputs:  []
 #! Outputs: [native_acct_nonce]
 #!
 #! Where:
-#! - native_acct_nonce is the nonce of the native account.
+#! - native_acct_nonce is the nonce of the native account of the transaction.
 export.get_native_account_nonce
     push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_NONCE_OFFSET 
     mem_load
