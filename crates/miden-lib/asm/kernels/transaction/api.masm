@@ -163,20 +163,21 @@ end
 #! Returns the native account ID.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [native_acct_id_prefix, native_acct_id_suffix, pad(14)]
+#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
-#! - native_acct_id is the ID of the native account.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
+#!   transaction.
 #!
 #! Invocation: dynexec
 export.account_get_native_id
     # get the native account ID
     exec.memory::get_native_account_id
-    # => [native_acct_id_prefix, native_acct_id_suffix, pad(16)]
+    # => [account_id_prefix, account_id_suffix, pad(16)]
 
     # truncate the stack
     movup.2 drop movup.2 drop
-    # => [native_acct_id_prefix, native_acct_id_suffix, pad(14)]
+    # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 
 #! Returns the current account nonce.
@@ -571,7 +572,7 @@ end
 export.account_get_balance
     # get the vault root
     exec.memory::get_account_vault_root_ptr movdn.2
-    # => [faucet_id_prefix, faucet_id_suffix, acct_vault_root_ptr, pad(14)]
+    # => [faucet_id_prefix, faucet_id_suffix, account_vault_root_ptr, pad(14)]
 
     # get the asset balance
     exec.asset_vault::get_balance
