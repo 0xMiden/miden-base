@@ -149,7 +149,7 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the account ID of the current account.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
@@ -160,7 +160,7 @@ end
 #!
 #! Invocation: dynexec
 export.account_get_id
-    # get the account ID
+    # get the current account ID
     exec.account::get_id
     # => [account_id_prefix, account_id_suffix, pad(16)]
 
@@ -169,7 +169,27 @@ export.account_get_id
     # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 
-#! Returns the nonce of the current account.
+#! Returns the native account ID.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
+#!   transaction.
+#!
+#! Invocation: dynexec
+export.account_get_native_id
+    # get the native account ID
+    exec.memory::get_native_account_id
+    # => [account_id_prefix, account_id_suffix, pad(16)]
+
+    # truncate the stack
+    movup.2 drop movup.2 drop
+    # => [account_id_prefix, account_id_suffix, pad(14)]
+end
+
+#! Returns the current account nonce.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [nonce, pad(15)]
@@ -186,6 +206,25 @@ export.account_get_nonce
     # truncate the stack
     swap drop
     # => [nonce, pad(15)]
+end
+
+#! Returns the native account nonce.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [native_nonce, pad(15)]
+#!
+#! Where:
+#! - native_nonce is the nonce of the native account.
+#!
+#! Invocation: dynexec
+export.account_get_native_nonce
+    # get the native account nonce
+    exec.memory::get_native_account_nonce
+    # => [native_nonce, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [native_nonce, pad(15)]
 end
 
 #! Increments the account nonce by one and returns the new nonce.
@@ -454,7 +493,7 @@ end
 #! Invocation: dynexec
 export.account_get_vault_root
     # fetch the account vault root
-    exec.memory::get_acct_vault_root
+    exec.memory::get_account_vault_root
     # => [VAULT_ROOT, pad(16)]
 
     # truncate the stack
@@ -541,8 +580,8 @@ end
 #! Invocation: dynexec
 export.account_get_balance
     # get the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.2
-    # => [faucet_id_prefix, faucet_id_suffix, acct_vault_root_ptr, pad(14)]
+    exec.memory::get_account_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, account_vault_root_ptr, pad(14)]
 
     # get the asset balance
     exec.asset_vault::get_balance
@@ -564,7 +603,7 @@ end
 #! Invocation: dynexec
 export.account_has_non_fungible_asset
     # get the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
+    exec.memory::get_account_vault_root_ptr movdn.4
     # => [ASSET, vault_root_ptr, pad(12)]
 
     # check if the account vault has the non-fungible asset
@@ -1282,12 +1321,12 @@ export.tx_start_foreign_context
 
         # store the id and nonce of the foreign account to the memory
         dropw adv_loadw
-        exec.memory::set_acct_id_and_nonce dropw
+        exec.memory::set_account_id_and_nonce dropw
         # OS => [pad(16)]
         # AS => [VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
 
         # store the vault root of the foreign account to the memory
-        adv_loadw exec.memory::set_acct_vault_root dropw
+        adv_loadw exec.memory::set_account_vault_root dropw
         # OS => [pad(16)]
         # AS => [STORAGE_ROOT, CODE_ROOT]
 
@@ -1297,7 +1336,7 @@ export.tx_start_foreign_context
         # AS => []
 
         # store the code root into the memory
-        exec.memory::set_acct_code_commitment
+        exec.memory::set_account_code_commitment
         # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
         # AS => []
 
@@ -1307,7 +1346,7 @@ export.tx_start_foreign_context
         # AS => []
 
         # store the storage root to the memory
-        exec.memory::set_acct_storage_commitment
+        exec.memory::set_account_storage_commitment
         # OS => [STORAGE_ROOT, pad(16)]
         # AS => []
 

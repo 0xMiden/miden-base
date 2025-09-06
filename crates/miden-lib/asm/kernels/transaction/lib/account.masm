@@ -248,7 +248,7 @@ export.incr_nonce
     # emit event to signal that account nonce is being incremented
     emit.ACCOUNT_BEFORE_INCREMENT_NONCE_EVENT
 
-    exec.memory::get_acct_nonce
+    exec.memory::get_account_nonce
     # => [current_nonce]
 
     # if the current nonce is the maximum felt value, then incrementing the nonce would overflow
@@ -259,7 +259,7 @@ export.incr_nonce
     add.1
     # => [new_nonce]
 
-    dup exec.memory::set_acct_nonce
+    dup exec.memory::set_account_nonce
     # => [new_nonce]
 
     emit.ACCOUNT_AFTER_INCREMENT_NONCE_EVENT
@@ -283,7 +283,7 @@ export.memory::get_account_id->get_id
 #!
 #! Where:
 #! - nonce is the account nonce.
-export.memory::get_acct_nonce->get_nonce
+export.memory::get_account_nonce->get_nonce
 
 #! Returns the native account commitment at the beginning of the transaction.
 #!
@@ -319,7 +319,7 @@ export.memory::get_init_account_storage_commitment->get_initial_storage_commitme
 #!
 #! Where:
 #! - CODE_COMMITMENT is the commitment of the account code.
-export.memory::get_acct_code_commitment->get_code_commitment
+export.memory::get_account_code_commitment->get_code_commitment
 
 #! Computes the storage commitment of the current account.
 #!
@@ -333,7 +333,7 @@ export.compute_storage_commitment
     exec.refresh_storage_commitment
 
     # return the storage commitment
-    exec.memory::get_acct_storage_commitment
+    exec.memory::get_account_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
 
@@ -457,7 +457,7 @@ end
 #! - VALUE is the value of the item.
 export.get_item
     # get account storage slots section offset
-    exec.memory::get_acct_storage_slots_section_ptr
+    exec.memory::get_account_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, index]
 
     # get the item from storage
@@ -650,7 +650,7 @@ export.get_storage_slot_type
     dup exec.memory::get_num_storage_slots lt assert.err=ERR_ACCOUNT_STORAGE_SLOT_INDEX_OUT_OF_BOUNDS
     # => [index]
 
-    exec.memory::get_acct_storage_slots_section_ptr
+    exec.memory::get_account_storage_slots_section_ptr
     # => [curr_account_storage_slots_section_ptr, index]
 
     exec.memory::get_storage_slot_type
@@ -676,7 +676,7 @@ export.get_procedure_info
     # => [index]
 
     # get procedure pointer
-    exec.memory::get_acct_procedure_ptr
+    exec.memory::get_account_procedure_ptr
     # => [proc_ptr]
 
     # get metadata pointer
@@ -789,7 +789,7 @@ export.validate_seed
     # => [SEED, 0, 0, 0, 0, EMPTY_WORD]
 
     # populate last four elements of the hasher rate with the code commitment
-    exec.memory::get_acct_code_commitment
+    exec.memory::get_account_code_commitment
     # => [CODE_COMMITMENT, SEED, 0, 0, 0, 0, EMPTY_WORD]
 
     # perform first permutation of seed and code_commitment (from advice stack)
@@ -802,7 +802,7 @@ export.validate_seed
     # => [PERM, EMPTY_WORD]
 
     # perform second permutation perm(storage_commitment, 0, 0, 0, 0)
-    swapw exec.memory::get_acct_storage_commitment swapw
+    swapw exec.memory::get_account_storage_commitment swapw
     # => [EMPTY_WORD, STORAGE_COMMITMENT, PERM]
 
     hperm
@@ -858,7 +858,7 @@ export.add_asset_to_vault
     # => [ASSET, ASSET]
 
     # fetch the account vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
+    exec.memory::get_account_vault_root_ptr movdn.4
     # => [ASSET, acct_vault_root_ptr, ASSET]
 
     # add the asset to the account vault
@@ -894,7 +894,7 @@ export.remove_asset_from_vault
     # => [ASSET]
 
     # fetch the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
+    exec.memory::get_account_vault_root_ptr movdn.4
     # => [ASSET, acct_vault_root_ptr]
 
     # remove the asset from the account vault
@@ -954,7 +954,7 @@ export.save_account_storage_data
     # AS => [[STORAGE_SLOT_DATA]]
 
     # setup acct_storage_slots_ptr and end_ptr for reading from advice stack
-    mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
+    mul.8 exec.memory::get_account_storage_slots_section_ptr dup movdn.2 add swap
     # OS => [acct_storage_slots_ptr, end_ptr, STORAGE_COMMITMENT]
     # AS => [[STORAGE_SLOT_DATA]]
 
@@ -1028,8 +1028,8 @@ export.save_account_procedure_data
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
     # setup acct_proc_offset and end_ptr for reading from advice stack
-    exec.memory::get_acct_procedure_ptr
-    push.0 exec.memory::get_acct_procedure_ptr
+    exec.memory::get_account_procedure_ptr
+    push.0 exec.memory::get_account_procedure_ptr
     # OS => [acct_proc_offset, end_ptr, CODE_COMMITMENT]
     # AS => [[ACCOUNT_PROCEDURE_DATA]]
 
@@ -1078,7 +1078,7 @@ proc.set_item_raw
     # => [index, NEW_VALUE, OLD_VALUE]
 
     # get account storage slots section offset
-    exec.memory::get_acct_storage_slots_section_ptr
+    exec.memory::get_account_storage_slots_section_ptr
     # => [acct_storage_slots_section_offset, index, NEW_VALUE, OLD_VALUE]
 
     # update storage
@@ -1111,7 +1111,7 @@ proc.get_procedure_root
     # => [index]
 
     # get procedure pointer
-    exec.memory::get_acct_procedure_ptr
+    exec.memory::get_account_procedure_ptr
     # => [proc_ptr]
 
     # load procedure root from memory
@@ -1132,7 +1132,7 @@ end
 #! - storage_size is the number of storage slots the procedure is allowed to access.
 proc.get_procedure_metadata
     # get procedure storage metadata pointer
-    padw exec.memory::get_acct_procedure_ptr add.4
+    padw exec.memory::get_account_procedure_ptr add.4
     # => [storage_offset_ptr, EMPTY_WORD]
 
     # load procedure metadata from memory and keep relevant data
@@ -1220,7 +1220,7 @@ end
 #! - the hash of the current account is not represented in the account database.
 export.validate_current_foreign_account
     # get the account database root
-    exec.memory::get_acct_db_root
+    exec.memory::get_account_db_root
     # => [ACCOUNT_DB_ROOT]
 
     # get the current account ID
@@ -1279,7 +1279,7 @@ proc.refresh_storage_commitment
         # => [num_storage_slots]
 
         # setup start and end ptr
-        mul.8 exec.memory::get_acct_storage_slots_section_ptr dup movdn.2 add swap
+        mul.8 exec.memory::get_account_storage_slots_section_ptr dup movdn.2 add swap
         # => [start_ptr, end_ptr]
 
         # pad stack to read and hash from memory
@@ -1299,7 +1299,7 @@ proc.refresh_storage_commitment
         # => [DIGEST]
 
         # set new account storage commitment
-        exec.memory::set_acct_storage_commitment dropw
+        exec.memory::set_account_storage_commitment dropw
         # => []
 
         # update the storage commitment dirty flag, indicating that the commitment is up-to-date
@@ -1340,7 +1340,7 @@ export.was_procedure_called
     assert_eqw.err=ERR_ACCOUNT_PROC_NOT_PART_OF_ACCOUNT_CODE
     # => [index]
 
-    exec.memory::get_acct_procedures_call_tracking_ptr
+    exec.memory::get_account_procedures_call_tracking_ptr
     # => [was_called_offset, index]
 
     # load the value of was_called
@@ -1358,7 +1358,7 @@ end
 #! Inputs:  [proc_idx]
 #! Outputs: []
 export.set_was_procedure_called
-    exec.memory::get_acct_procedures_call_tracking_ptr
+    exec.memory::get_account_procedures_call_tracking_ptr
     # => [was_called_offset, proc_idx]
 
     # save 1 to the was_called address

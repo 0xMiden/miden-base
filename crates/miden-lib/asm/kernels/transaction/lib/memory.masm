@@ -411,14 +411,14 @@ end
 
 #! Sets the ID of the native account.
 #!
-#! Inputs:  [acct_id_prefix, acct_id_suffix]
+#! Inputs:  [account_id_prefix, account_id_suffix]
 #! Outputs: []
 #!
 #! Where:
-#! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
-export.set_global_acct_id
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
+export.set_global_account_id
     push.0.0
-    # => [0, 0, acct_id_prefix, acct_id_suffix]
+    # => [0, 0, account_id_prefix, account_id_suffix]
     mem_storew.NATIVE_ACCT_ID_PTR
     dropw
     # => []
@@ -427,13 +427,13 @@ end
 #! Returns the ID of the native account.
 #!
 #! Inputs:  []
-#! Outputs: [acct_id_prefix, acct_id_suffix]
+#! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
-export.get_global_acct_id
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
+export.get_global_account_id
     padw mem_loadw.NATIVE_ACCT_ID_PTR
-    # => [0, 0, acct_id_prefix, acct_id_suffix]
+    # => [0, 0, account_id_prefix, account_id_suffix]
     drop drop
 end
 
@@ -720,7 +720,7 @@ end
 #!
 #! Where:
 #! - ACCT_DB_ROOT is the account database root of the transaction reference block.
-export.get_acct_db_root
+export.get_account_db_root
     padw mem_loadw.ACCT_DB_ROOT_PTR
 end
 
@@ -843,10 +843,10 @@ end
 #! Returns the length of the memory interval that the account data occupies.
 #!
 #! Inputs:  []
-#! Outputs: [acct_data_length]
+#! Outputs: [account_data_length]
 #!
 #! Where:
-#! - acct_data_length is the length of the memory interval that the account data occupies.
+#! - account_data_length is the length of the memory interval that the account data occupies.
 export.get_account_data_length
     push.ACCOUNT_DATA_LENGTH
 end
@@ -854,10 +854,10 @@ end
 #! Returns the largest memory address which can be used to load the foreign account data.
 #!
 #! Inputs:  []
-#! Outputs: [max_foreign_acct_ptr]
+#! Outputs: [max_foreign_account_ptr]
 #!
 #! Where:
-#! - max_foreign_acct_ptr is the largest memory address which can be used to load the foreign
+#! - max_foreign_account_ptr is the largest memory address which can be used to load the foreign
 #!   account data.
 export.get_max_foreign_account_ptr
     push.MAX_FOREIGN_ACCOUNT_PTR
@@ -872,11 +872,11 @@ export.set_current_account_data_ptr_to_native_account
     # stored
     push.ACCOUNT_STACK_TOP_PTR
     push.MIN_ACCOUNT_STACK_PTR
-    # => [native_acct_stack_ptr, account_stack_top_ptr]
+    # => [native_account_stack_ptr, account_stack_top_ptr]
 
     # store the native account data pointer into the first stack element.
     push.NATIVE_ACCOUNT_DATA_PTR dup.1 mem_store
-    # => [native_acct_stack_ptr, account_stack_top_ptr]
+    # => [native_account_stack_ptr, account_stack_top_ptr]
 
     # store the pointer to the first account stack element at the account stack top
     # pointer.
@@ -989,80 +989,92 @@ end
 #!
 #! Where:
 #! - ptr is the memory address at which the core account data ends.
-export.get_core_acct_data_end_ptr
+export.get_core_account_data_end_ptr
     exec.get_current_account_data_ptr add.ACCT_CORE_DATA_SECTION_END_OFFSET
 end
 
 ### ACCOUNT ID AND NONCE #################################################
 
-#! Returns the id of the current account.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  []
-#! Outputs: [curr_acct_id_prefix, curr_acct_id_suffix]
+#! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - curr_acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
 #!   accessing account.
 export.get_account_id
     padw exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET mem_loadw
-    # => [nonce, 0, curr_acct_id_prefix, curr_acct_id_suffix]
+    # => [nonce, 0, account_id_prefix, account_id_suffix]
     drop drop
-    # => [curr_acct_id_prefix, curr_acct_id_suffix]
+    # => [account_id_prefix, account_id_suffix]
+end
+
+#! Returns the ID of the native account of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [account_id_prefix, account_id_suffix]
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the native account
+#!   of the transaction.
+export.get_native_account_id
+    padw push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_ID_AND_NONCE_OFFSET mem_loadw
+    # => [nonce, 0, account_id_prefix, account_id_suffix]
+    drop drop
+    # => [account_id_prefix, account_id_suffix]
 end
 
 #! Sets the account ID and nonce.
 #!
-#! Inputs:  [account_nonce, 0, account_id_prefix, account_id_suffix]
-#! Outputs: [account_nonce, 0, account_id_prefix, account_id_suffix]
+#! Inputs:  [nonce, 0, account_id_prefix, account_id_suffix]
+#! Outputs: [nonce, 0, account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - account_id_{prefix,suffix} are the prefix and suffix felts of the id of the currently accessing
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the currently accessing
 #!   account.
-#! - account_nonce is the nonce of the currently accessing account.
-export.set_acct_id_and_nonce
+#! - nonce is the nonce of the currently accessing account.
+export.set_account_id_and_nonce
     exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET
     mem_storew
 end
 
-#! Returns the id of the native account.
+#! Returns the nonce of the current account.
 #!
 #! Inputs:  []
-#! Outputs: [native_acct_id_prefix, native_acct_id_suffix]
+#! Outputs: [nonce]
 #!
 #! Where:
-#! - native_acct_id_{prefix,suffix} are the prefix and suffix felts of the id of the native account.
-export.get_native_account_id
-    padw push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_ID_AND_NONCE_OFFSET mem_loadw
-    # => [nonce, 0, native_acct_id_prefix, native_acct_id_suffix]
-    drop drop
-    # => [native_acct_id_prefix, native_acct_id_suffix]
-end
-
-#! Returns the account nonce.
-#!
-#! Inputs:  []
-#! Outputs: [acct_nonce]
-#!
-#! Where:
-#! - acct_nonce is the account nonce.
-
-export.get_acct_nonce
+#! - nonce is the nonce of the current account.
+export.get_account_nonce
     exec.get_current_account_data_ptr add.ACCT_NONCE_OFFSET
     mem_load
 end
 
-#! Sets the account nonce.
+#! Returns the nonce of the native account of the transaction.
 #!
-#! Inputs:  [acct_nonce]
+#! Inputs:  []
+#! Outputs: [nonce]
+#!
+#! Where:
+#! - nonce is the nonce of the native account of the transaction.
+export.get_native_account_nonce
+    push.NATIVE_ACCOUNT_DATA_PTR add.ACCT_NONCE_OFFSET 
+    mem_load
+end
+
+#! Sets the nonce of the current account.
+#!
+#! Inputs:  [nonce]
 #! Outputs: []
 #!
 #! Where:
-#! - acct_nonce is the account nonce.
-export.set_acct_nonce
+#! - nonce is the nonce of the current account.
+export.set_account_nonce
     exec.get_current_account_data_ptr add.ACCT_ID_AND_NONCE_OFFSET padw
-    # => [0, 0, 0, 0, acct_id_and_nonce_ptr, new_nonce]
+    # => [0, 0, 0, 0, account_id_and_nonce_ptr, new_nonce]
     dup.4 mem_loadw
-    # => [old_nonce, 0, old_id_prefix, old_id_suffix, acct_id_and_nonce_ptr, new_nonce]
+    # => [old_nonce, 0, old_id_prefix, old_id_suffix, account_id_and_nonce_ptr, new_nonce]
     drop movup.4 movup.4 mem_storew dropw
     # => []
 end
@@ -1072,11 +1084,11 @@ end
 #! Returns the memory pointer to the account vault root.
 #!
 #! Inputs:  []
-#! Outputs: [acct_vault_root_ptr]
+#! Outputs: [account_vault_root_ptr]
 #!
 #! Where:
-#! - acct_vault_root_ptr is the memory pointer to the account asset vault root.
-export.get_acct_vault_root_ptr
+#! - account_vault_root_ptr is the memory pointer to the account asset vault root.
+export.get_account_vault_root_ptr
     exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
 end
 
@@ -1087,7 +1099,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the account asset vault root.
-export.get_acct_vault_root
+export.get_account_vault_root
     padw
     exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_loadw
@@ -1100,7 +1112,7 @@ end
 #!
 #! Where:
 #! - ACCT_VAULT_ROOT is the account vault root to be set.
-export.set_acct_vault_root
+export.set_account_vault_root
     exec.get_current_account_data_ptr add.ACCT_VAULT_ROOT_OFFSET
     mem_storew
 end
@@ -1114,7 +1126,7 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the code commitment of the account.
-export.get_acct_code_commitment
+export.get_account_code_commitment
     padw
     exec.get_current_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_loadw
@@ -1127,7 +1139,7 @@ end
 #!
 #! Where:
 #! - CODE_COMMITMENT is the code commitment to be set.
-export.set_acct_code_commitment
+export.set_account_code_commitment
     exec.get_current_account_data_ptr add.ACCT_CODE_COMMITMENT_OFFSET
     mem_storew
 end
@@ -1185,7 +1197,7 @@ end
 #!
 #! Where:
 #! - account_procedures_section_ptr is the memory pointer to the account procedures section.
-export.get_acct_procedures_section_ptr
+export.get_account_procedures_section_ptr
     exec.get_current_account_data_ptr add.ACCT_PROCEDURES_SECTION_OFFSET
 end
 
@@ -1196,7 +1208,7 @@ end
 #!
 #! Where:
 #! - procedures_call_tracking_ptr is the memory pointer to the procedure call tracking section.
-export.get_acct_procedures_call_tracking_ptr
+export.get_account_procedures_call_tracking_ptr
     exec.get_current_account_data_ptr add.ACCT_PROCEDURES_CALL_TRACKING_OFFSET
 end
 
@@ -1208,8 +1220,8 @@ end
 #! Where:
 #! - proc_idx is the index of the account procedure.
 #! - proc_ptr is the memory pointer to the account procedure at the specified index.
-export.get_acct_procedure_ptr
-    mul.8 exec.get_acct_procedures_section_ptr add
+export.get_account_procedure_ptr
+    mul.8 exec.get_account_procedures_section_ptr add
 end
 
 ### ACCOUNT STORAGE #################################################
@@ -1221,7 +1233,7 @@ end
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
-export.get_acct_storage_commitment
+export.get_account_storage_commitment
     padw
     exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_loadw
@@ -1234,7 +1246,7 @@ end
 #!
 #! Where:
 #! - STORAGE_COMMITMENT is the account storage commitment.
-export.set_acct_storage_commitment
+export.set_account_storage_commitment
     exec.get_current_account_data_ptr add.ACCT_STORAGE_COMMITMENT_OFFSET
     mem_storew
 end
@@ -1304,7 +1316,7 @@ end
 
 #! Returns the type of the requested storage slot.
 #!
-#! Inputs:  [acct_storage_slots_section_ptr, index]
+#! Inputs:  [account_storage_slots_section_ptr, index]
 #! Outputs: [slot_type]
 #!
 #! Where:
@@ -1323,7 +1335,7 @@ end
 #!
 #! Where:
 #! - storage_slots_section_ptr is the memory pointer to the account storage slots section.
-export.get_acct_storage_slots_section_ptr
+export.get_account_storage_slots_section_ptr
     exec.get_current_account_data_ptr add.ACCT_STORAGE_SLOTS_SECTION_OFFSET
 end
 

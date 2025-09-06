@@ -27,8 +27,10 @@ Account procedures can be used to read and write to account storage, add or remo
 
 | Procedure | Description | Context |
 | --- | --- | --- |
-| `get_id` | Returns the account ID of the current account.<br><br>Inputs: `[]`<br>Outputs: `[account_id_prefix, account_id_suffix]` | Any |
+| `get_id` | Returns the ID of the current account.<br><br>Inputs: `[]`<br>Outputs: `[account_id_prefix, account_id_suffix]` | Any |
+| `get_native_id` | Returns the ID of the native account of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[account_id_prefix, account_id_suffix]` | Any |
 | `get_nonce` | Returns the nonce of the current account. Always returns the initial nonce as it can only be incremented in auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[nonce]` | Any |
+| `get_native_nonce` | Returns the nonce of the native account of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[nonce]` | Any |
 | `incr_nonce` | Increments the account nonce by one and returns the new nonce. Can only be called from auth procedures.<br><br>Inputs: `[]`<br>Outputs: `[final_nonce]` | Auth |
 | `get_initial_commitment` | Returns the native account commitment at the beginning of the transaction.<br><br>Inputs: `[]`<br>Outputs: `[INIT_COMMITMENT]` | Any |
 | `compute_current_commitment` | Computes and returns the account commitment from account data stored in memory.<br><br>Inputs: `[]`<br>Outputs: `[ACCOUNT_COMMITMENT]` | Any |
@@ -114,6 +116,8 @@ Faucet procedures allow reading and writing to faucet accounts to mint and burn 
 
 | Procedure | Description | Context |
 | --- | --- | --- |
+| `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]` | Faucet |
+| `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]` | Faucet |
 | `mint` | Mint an asset from the faucet the transaction is being executed against.<br><br>Inputs: `[ASSET]`<br>Outputs: `[ASSET]` | Native & Account & Faucet |
 | `burn` | Burn an asset from the faucet the transaction is being executed against.<br><br>Inputs: `[ASSET]`<br>Outputs: `[ASSET]` | Native & Account & Faucet |
 | `get_total_issuance` | Returns the total issuance of the fungible faucet the transaction is being executed against.<br><br>Inputs: `[]`<br>Outputs: `[total_issuance]` | Faucet |
@@ -126,6 +130,4 @@ Asset procedures provide utilities for creating fungible and non-fungible assets
 | Procedure | Description | Context |
 | --- | --- | --- |
 | `build_fungible_asset` | Builds a fungible asset for the specified fungible faucet and amount.<br><br>Inputs: `[faucet_id_prefix, faucet_id_suffix, amount]`<br>Outputs: `[ASSET]` | Any |
-| `create_fungible_asset` | Creates a fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[amount]`<br>Outputs: `[ASSET]` | Faucet |
 | `build_non_fungible_asset` | Builds a non-fungible asset for the specified non-fungible faucet and data hash.<br><br>Inputs: `[faucet_id_prefix, DATA_HASH]`<br>Outputs: `[ASSET]` | Any |
-| `create_non_fungible_asset` | Creates a non-fungible asset for the faucet the transaction is being executed against.<br><br>Inputs: `[DATA_HASH]`<br>Outputs: `[ASSET]` | Faucet |
