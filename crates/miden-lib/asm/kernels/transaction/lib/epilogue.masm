@@ -12,8 +12,6 @@ use.std::word
 # ERRORS
 # =================================================================================================
 
-const.ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE="account nonce did not increase after a state changing transaction"
-
 const.ERR_EPILOGUE_TOTAL_NUMBER_OF_ASSETS_MUST_STAY_THE_SAME="total number of assets in the account and all involved notes must stay the same"
 
 const.ERR_EPILOGUE_EXECUTED_TRANSACTION_IS_EMPTY="executed transaction neither changed the account state, nor consumed any notes"
@@ -115,7 +113,7 @@ end
 #! Outputs: []
 proc.build_output_vault
     # copy final account vault root to output account vault root
-    exec.memory::get_acct_vault_root exec.memory::set_output_vault_root dropw
+    exec.memory::get_account_vault_root exec.memory::set_output_vault_root dropw
     # => []
 
     # get the number of output notes from memory
@@ -206,7 +204,7 @@ proc.execute_auth_procedure
     # => [AUTH_ARGS, pad(12)]
 
     # auth procedure is at index 0 within the account procedures section.
-    push.0 exec.memory::get_acct_procedure_ptr
+    push.0 exec.memory::get_account_procedure_ptr
     # => [auth_procedure_ptr, AUTH_ARGS, pad(12)]
 
     padw dup.4 mem_loadw
@@ -321,7 +319,7 @@ proc.compute_and_remove_fee
     # are essentially ignored.
 
     # fetch the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
+    exec.memory::get_account_vault_root_ptr movdn.4
     # => [FEE_ASSET, acct_vault_root_ptr]
 
     # remove the asset from the account vault
@@ -444,7 +442,7 @@ export.finalize_transaction.12
     # ------ Insert final account data into advice provider ------
 
     # get the offset for the end of the account data section
-    exec.memory::get_core_acct_data_end_ptr
+    exec.memory::get_core_account_data_end_ptr
     # => [acct_data_end_ptr]
 
     # get the offset for the start of the account data section
