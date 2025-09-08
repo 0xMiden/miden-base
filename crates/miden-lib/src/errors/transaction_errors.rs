@@ -53,6 +53,7 @@ pub enum TransactionKernelError {
         data: Vec<Felt>,
         // This is always a DeserializationError, but we can't import it directly here without
         // adding dependencies, so we make it a trait object instead.
+        // thiserror will return this when calling Error::source on TransactionKernelError.
         source: Box<dyn Error + Send + Sync + 'static>,
     },
     #[error("recipient data `{0:?}` in the advice provider is not well formed")]
@@ -85,6 +86,7 @@ pub enum TransactionKernelError {
         vault_key: Word,
         // TODO: Change to DataStoreError when this error moves to miden-tx.
         // This is always a DataStoreError, but we can't import it from miden-tx here.
+        // thiserror will return this when calling Error::source on TransactionKernelError.
         source: Box<dyn Error + Send + Sync + 'static>,
     },
     #[error(
