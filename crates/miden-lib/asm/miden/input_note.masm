@@ -157,31 +157,31 @@ export.get_metadata
     # => [METADATA]
 end
 
-#! Returns the payload commitment and length of the input note with the specified index.
+#! Returns the inputs commitment and length of the input note with the specified index.
 #!
 #! Inputs:  [note_index]
-#! Outputs: [NOTE_PAYLOAD_COMMITMENT, payload_len]
+#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs]
 #!
 #! Where:
 #! - note_index is the index of the input note whose data should be returned.
-#! - NOTE_PAYLOAD_COMMITMENT is the payload commitment of the specified input note.
-#! - payload_len is the number of payload values of the specified input note.
+#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
+#! - num_inputs is the number of input values of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
 #!
 #! Invocation: exec
-export.get_payload_info
+export.get_inputs_info
     # start padding the stack
     push.0 swap
     # => [note_index, 0]
 
-    # push the flag indicating that we want to request payload info from the note with the specified
+    # push the flag indicating that we want to request inputs info from the note with the specified
     # index
     push.0
     # => [is_current_note = 0, note_index, 0]
 
-    exec.kernel_proc_offsets::input_note_get_payload_info_offset
+    exec.kernel_proc_offsets::input_note_get_inputs_info_offset
     # => [offset, is_current_note = 0, note_index, 0]
 
     # pad the stack
@@ -189,14 +189,14 @@ export.get_payload_info
     # => [offset, is_current_note = 0, note_index, pad(13)]
 
     syscall.exec_kernel_proc
-    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11)]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 
     # clean the stack
     swapdw dropw dropw 
     repeat.3
         movup.5 drop
     end
-    # => [NOTE_PAYLOAD_COMMITMENT, payload_len]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs]
 end
 
 #! Returns the script root of the input note with the specified index.

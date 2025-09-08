@@ -35,7 +35,7 @@ const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="f
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of current note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note payload of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of current note because no note is currently being processed"
 
 const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of current note because no note is currently being processed"
 
@@ -897,18 +897,18 @@ export.input_note_get_serial_number
     # => [SERIAL_NUMBER, pad(12)]
 end
 
-#! Returns the payload commitment and length of the specified input note.
+#! Returns the inputs commitment and length of the specified input note.
 #!
 #! Inputs:  [is_current_note, note_index, pad(14)]
-#! Outputs: [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11)]
+#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the payload commitment 
+#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
 #!   and length from the currently processing note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
 #!   is_current_note is 1, note_index is ignored.
-#! - NOTE_PAYLOAD_COMMITMENT is the payload commitment of the specified input note.
-#! - payload_len is the number of payload values of the specified input note.
+#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
+#! - num_inputs is the number of inputs of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
@@ -916,7 +916,7 @@ end
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.input_note_get_payload_info
+export.input_note_get_inputs_info
     # get the input note pointer depending on whether the requested note is current or it was 
     # requested by index.
     exec.get_requested_note_ptr
@@ -924,22 +924,22 @@ export.input_note_get_payload_info
 
     # assert the pointer is not zero - this would suggest the procedure has been called from an
     # incorrect context
-    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_PAYLOAD_WHILE_NO_NOTE_BEING_PROCESSED
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED
     # => [input_note_ptr, pad(15)]
 
-    # get the note payload length
-    dup exec.memory::get_input_note_payload_len swap
-    # => [input_note_ptr, payload_len, pad(16)]
+    # get the note inputs length
+    dup exec.memory::get_input_note_num_inputs swap
+    # => [input_note_ptr, num_inputs, pad(16)]
 
-    # get the payload commitment
-    exec.memory::get_input_note_payload_commitment
-    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(16)]
+    # get the inputs commitment
+    exec.memory::get_input_note_inputs_commitment
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
     repeat.5
         movup.5 drop
     end
-    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11)]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 end
 
 #! Returns the script root of the specified input note.

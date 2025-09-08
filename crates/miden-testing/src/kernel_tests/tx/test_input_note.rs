@@ -242,10 +242,10 @@ fn test_get_assets() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// Check that the number of the payload values and their commitment of a note with one asset
-/// obtained from the `input_note::get_payload_info` procedure is correct.
+/// Check that the number of the inputs and their commitment of a note with one asset
+/// obtained from the `input_note::get_inputs_info` procedure is correct.
 #[test]
-fn test_get_payload_info() -> anyhow::Result<()> {
+fn test_get_inputs_info() -> anyhow::Result<()> {
     let TestSetup {
         mock_chain,
         account,
@@ -259,25 +259,25 @@ fn test_get_payload_info() -> anyhow::Result<()> {
         use.miden::input_note
 
         begin
-            # get the payload commitment and length from the input note with index 0 (the only one 
+            # get the inputs commitment and length from the input note with index 0 (the only one 
             # we have)
             push.0
-            exec.input_note::get_payload_info
-            # => [NOTE_PAYLOAD_COMMITMENT, payload_len]
+            exec.input_note::get_inputs_info
+            # => [NOTE_INPUTS_COMMITMENT, inputs_num]
 
-            # assert the correctness of the payload commitment
-            push.{PAYLOAD_COMMITMENT}
-            assert_eqw.err="note 0 has incorrect payload commitment"
-            # => [payload_len]
+            # assert the correctness of the inputs commitment
+            push.{INPUTS_COMMITMENT}
+            assert_eqw.err="note 0 has incorrect inputs commitment"
+            # => [inputs_num]
 
-            # assert the payload has correct length
-            push.{payload_len}
-            assert_eq.err="note 0 has incorrect payload length"
+            # assert the inputs have correct length
+            push.{inputs_num}
+            assert_eq.err="note 0 has incorrect inputs length"
             # => []
         end
     "#,
-        PAYLOAD_COMMITMENT = p2id_note_1_asset.inputs().commitment(),
-        payload_len = p2id_note_1_asset.inputs().num_values(),
+        INPUTS_COMMITMENT = p2id_note_1_asset.inputs().commitment(),
+        inputs_num = p2id_note_1_asset.inputs().num_values(),
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(code)?;

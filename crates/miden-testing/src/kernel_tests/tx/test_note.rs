@@ -267,7 +267,7 @@ fn test_get_assets() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_payload() -> anyhow::Result<()> {
+fn test_get_inputs() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -286,23 +286,23 @@ fn test_get_payload() -> anyhow::Result<()> {
             .build()?
     };
 
-    fn construct_payload_assertions(note: &Note) -> String {
+    fn construct_inputs_assertions(note: &Note) -> String {
         let mut code = String::new();
-        for payload_chunk in note.inputs().values().chunks(WORD_SIZE) {
-            let mut payload_word = EMPTY_WORD;
-            payload_word.as_mut_slice()[..payload_chunk.len()].copy_from_slice(payload_chunk);
+        for inputs_chunk in note.inputs().values().chunks(WORD_SIZE) {
+            let mut inputs_word = EMPTY_WORD;
+            inputs_word.as_mut_slice()[..inputs_chunk.len()].copy_from_slice(inputs_chunk);
 
             code += &format!(
                 r#"
-                # assert the payload is correct
+                # assert the inputs are correct
                 # => [dest_ptr]
-                dup padw movup.4 mem_loadw push.{payload_word} assert_eqw.err="payload is incorrect"
+                dup padw movup.4 mem_loadw push.{inputs_word} assert_eqw.err="inputs are incorrect"
                 # => [dest_ptr]
                 
                 push.4 add
                 # => [dest_ptr+4]
                 "#,
-                payload_word = payload_word
+                inputs_word = inputs_word
             );
         }
         code
@@ -328,17 +328,17 @@ fn test_get_payload() -> anyhow::Result<()> {
             dropw dropw dropw dropw
             # => []
 
-            push.{NOTE_0_PTR} exec.note::get_payload
-            # => [payload_len, dest_ptr]
+            push.{NOTE_0_PTR} exec.note::get_inputs
+            # => [num_inputs, dest_ptr]
 
-            eq.{payload_len} assert
+            eq.{num_inputs} assert
             # => [dest_ptr]
 
             dup eq.{NOTE_0_PTR} assert
             # => [dest_ptr]
 
-            # apply note 1 payload assertions
-            {payload_assertions}
+            # apply note 1 inputs assertions
+            {inputs_assertions}
             # => [dest_ptr]
 
             # clear the stack
@@ -346,8 +346,8 @@ fn test_get_payload() -> anyhow::Result<()> {
             # => []
         end
         ",
-        payload_len = note0.inputs().num_values(),
-        payload_assertions = construct_payload_assertions(note0),
+        num_inputs = note0.inputs().num_values(),
+        inputs_assertions = construct_inputs_assertions(note0),
         NOTE_0_PTR = 100000000,
     );
 
@@ -355,15 +355,14 @@ fn test_get_payload() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// This test checks the scenario when an input note has exactly 8 payload values, and the
-/// transaction script attempts to load the payload to memory using the `miden::note::get_payload`
-/// procedure.
+/// This test checks the scenario when an input note has exactly 8 inputs, and the transaction
+/// script attempts to load the inputs to memory using the `miden::note::get_inputs` procedure.
 ///
-/// Previously this setup was leading to the incorrect number of note payload values computed during
-/// the `get_payload` procedure, see the
-/// [issue #1363](https://github.com/0xMiden/miden-base/issues/1363) for more details.
+/// Previously this setup was leading to the incorrect number of note inputs computed during the
+/// `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
+/// for more details.
 #[test]
-fn test_get_exactly_8_payload_values() -> anyhow::Result<()> {
+fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -402,7 +401,7 @@ fn test_get_exactly_8_payload_values() -> anyhow::Result<()> {
             Felt::new(7),
             Felt::new(8),
         ])
-        .context("failed to create note payload")?,
+        .context("failed to create note inputs")?,
     );
     let input_note = Note::new(vault.clone(), metadata, recipient);
 
@@ -418,12 +417,12 @@ fn test_get_exactly_8_payload_values() -> anyhow::Result<()> {
             begin
                 exec.prologue::prepare_transaction
 
-                # execute the `get_payload` procedure to trigger note payload length assertion
-                push.0 exec.note::get_payload
-                # => [payload_len, 0]
+                # execute the `get_inputs` procedure to trigger note inputs length assertion
+                push.0 exec.note::get_inputs
+                # => [num_inputs, 0]
 
-                # assert that the payload length is 8
-                push.8 assert_eq.err=\"number of payload values should be equal to 8\"
+                # assert that the inputs length is 8
+                push.8 assert_eq.err=\"number of inputs values should be equal to 8\"
 
                 # clean the stack
                 drop
@@ -636,24 +635,24 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
-            # execute the `compute_payload_commitment` procedure for 5 values
-            exec.note::compute_payload_commitment
+            # execute the `compute_inputs_commitment` procedure for 5 values
+            exec.note::compute_inputs_commitment
             # => [HASH_5]
 
             push.8.4000
-            # execute the `compute_payload_commitment` procedure for 8 values
-            exec.note::compute_payload_commitment
+            # execute the `compute_inputs_commitment` procedure for 8 values
+            exec.note::compute_inputs_commitment
             # => [HASH_8, HASH_5]
 
             push.15.4000
-            # execute the `compute_payload_commitment` procedure for 15 values
-            exec.note::compute_payload_commitment
+            # execute the `compute_inputs_commitment` procedure for 15 values
+            exec.note::compute_inputs_commitment
             # => [HASH_15, HASH_8, HASH_5]
 
             push.0.4000
-            # check that calling `compute_payload_commitment` procedure with 0 elements will result in an
+            # check that calling `compute_inputs_commitment` procedure with 0 elements will result in an
             # empty word
-            exec.note::compute_payload_commitment
+            exec.note::compute_inputs_commitment
             # => [0, 0, 0, 0, HASH_15, HASH_8, HASH_5]
 
             # truncate the stack
@@ -830,7 +829,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
 
       begin
           # store the note inputs to memory starting at address 0
-          push.0 exec.note::get_payload
+          push.0 exec.note::get_inputs
           # => [num_inputs, inputs_ptr]
 
           # make sure the number of inputs is 1

@@ -9,9 +9,9 @@ use.miden::account_id
 
 const.ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT="note data does not match the commitment"
 
-const.ERR_PROLOGUE_NOTE_PAYLOAD_LEN_EXCEEDED_LIMIT="number of note payload values exceeded the maximum limit of 128"
+const.ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT="number of note inputs exceeded the maximum limit of 128"
 
-const.ERR_NOTE_INVALID_NUMBER_OF_PAYLOAD_VALUES="the specified number of payload values does not match the actual number"
+const.ERR_NOTE_INVALID_NUMBER_OF_INPUTS="the specified number of note inputs does not match the actual number"
 
 # PROCEDURES
 # =================================================================================================
@@ -87,47 +87,47 @@ export.get_recipient
     # => [RECIPIENT]
 end
 
-#! Writes the note's payload to `dest_ptr`.
+#! Writes the note's inputs to `dest_ptr`.
 #!
 #! Inputs:
 #!   Stack: [dest_ptr]
-#!   Advice Map: { NOTE_PAYLOAD_COMMITMENT: [PAYLOAD] }
+#!   Advice Map: { NOTE_INPUTS_COMMITMENT: [INPUTS] }
 #! Outputs:
-#!   Stack: [payload_len, dest_ptr]
+#!   Stack: [num_inputs, dest_ptr]
 #!
 #! Where:
-#! - dest_ptr is the memory address to write the payload.
-#! - NOTE_PAYLOAD_COMMITMENT is the sequential hash of the padded note's payload.
-#! - PAYLOAD is the data corresponding to the note's payload.
+#! - dest_ptr is the memory address to write the note inputs.
+#! - NOTE_INPUTS_COMMITMENT is the sequential hash of the padded note's inputs.
+#! - INPUTS is the data corresponding to the note's inputs.
 #!
 #! Panics if:
 #! - no note is being processed.
 #!
 #! Invocation: exec
-export.get_payload
+export.get_inputs
     # pad the stack
     padw padw padw push.0.0
     # => [pad(14), dest_ptr]
 
-    # push the flag indicating that we want to request payload info from the currently processing 
+    # push the flag indicating that we want to request inputs info from the currently processing 
     # note
     push.1
     # => [is_current_note = 1, pad(14), dest_ptr]
 
-    exec.kernel_proc_offsets::input_note_get_payload_info_offset
+    exec.kernel_proc_offsets::input_note_get_inputs_info_offset
     # => [offset, is_current_note = 1, pad(14), dest_ptr]
 
     syscall.exec_kernel_proc
-    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, pad(11), dest_ptr]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11), dest_ptr]
 
     # clean the stack
     swapdw dropw dropw
     movup.5 drop movup.5 drop movup.5 drop
-    # => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
 
-    # write the payload values to the memory using the provided destination pointer
-    exec.write_payload_to_memory
-    # => [payload_len, dest_ptr]
+    # write the inputs to the memory using the provided destination pointer
+    exec.write_inputs_to_memory
+    # => [num_inputs, dest_ptr]
 end
 
 #! Returns the sender of the note currently being processed.
@@ -200,43 +200,42 @@ export.get_serial_number
     # => [SERIAL_NUMBER]
 end
 
-#! Computes commitment to the output note payload starting at the specified memory address.
+#! Computes the commitment to the output note inputs starting at the specified memory address.
 #!
-#! This procedure checks that the provided number of payload values is within limits and then 
-#! computes the commitment.
+#! This procedure checks that the provided number of note inputs is within limits and then computes
+#! the commitment.
 #!
-#! Notice that the note payload values are padded with zeros in case their number is not a multiple
-#! of 8.
+#! Notice that the note inputs are padded with zeros in case their number is not a multiple of 8.
 #!
-#! If the number if payload values is 0, procedure returns the empty word: [0, 0, 0, 0].
+#! If the number of note inputs is 0, procedure returns the empty word: [0, 0, 0, 0].
 #!
-#! Inputs:  [payload_ptr, payload_len]
-#! Outputs: [PAYLOAD_COMMITMENT]
+#! Inputs:  [inputs_ptr, num_inputs]
+#! Outputs: [INPUTS_COMMITMENT]
 #!
 #! Cycles:
 #! - If number of elements divides by 8: 56 cycles + 3 * words
 #! - Else: 189 cycles + 3 * words
 #!
 #! Panics if:
-#! - payload_ptr is not word-aligned (i.e., is not a multiple of 4).
-#! - payload_len is greater than 128.
+#! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
+#! - num_inputs is greater than 128.
 #!
 #! Invocation: exec
-export.compute_payload_commitment
-    # check that number of payload values is less than 128
-    dup.1 push.128 u32assert2.err=ERR_PROLOGUE_NOTE_PAYLOAD_LEN_EXCEEDED_LIMIT
-    u32lte assert.err=ERR_PROLOGUE_NOTE_PAYLOAD_LEN_EXCEEDED_LIMIT
-    # => [payload_ptr, payload_len]
+export.compute_inputs_commitment
+    # check that number of inputs is less than 128
+    dup.1 push.128 u32assert2.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
+    u32lte assert.err=ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT
+    # => [inputs_ptr, num_inputs]
 
-    # push 1 as the pad_inputs flag: we should pad the stack while computing the note payload
+    # push 1 as the pad_inputs flag: we should pad the stack while computing the note inputs
     # commitment
     push.1 movdn.2
-    # => [payload_ptr, payload_len, pad_payload_flag]
+    # => [inputs_ptr, num_inputs, pad_inputs_flag]
 
     exec.rpo::prepare_hasher_state
 
     exec.rpo::hash_memory_with_state
-    # => [PAYLOAD_COMMITMENT]
+    # => [INPUTS_COMMITMENT]
 end
 
 #! Returns the script root of the note currently being processed.
@@ -372,55 +371,55 @@ end
 # HELPER PROCEDURES
 # =================================================================================================
 
-#! Writes the payload values stored in the advice map to the memory specified by the provided 
+#! Writes the note inputs stored in the advice map to the memory specified by the provided 
 #! destination pointer.
 #!
 #! Inputs:
-#!   Operand stack: [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
+#!   Operand stack: [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
 #!   Advice map: {
-#!     NOTE_PAYLOAD_COMMITMENT: [[PAYLOAD_VALUES]]
+#!     NOTE_INPUTS_COMMITMENT: [[INPUT_VALUES]]
 #!   }
 #! Outputs:
-#!   Operand stack: [payload_len, dest_ptr]
-proc.write_payload_to_memory
-    # load the payload from the advice map to the advice stack
+#!   Operand stack: [num_inputs, dest_ptr]
+proc.write_inputs_to_memory
+    # load the inputs from the advice map to the advice stack
     adv.push_mapvaln
-    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [advice_payload_len, [PAYLOAD_VALUES]]
+    # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [advice_num_inputs, [INPUT_VALUES]]
 
-    # move the number of payload values obtained from advice map to the operand stack
+    # move the number of inputs obtained from advice map to the operand stack
     adv_push.1 dup.5
-    # OS => [payload_len, advice_payload_len, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
+    # OS => [num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
 
-    # Validate the note payload length. Round up the number of payload values to the next multiple 
-    # of 8: that value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
+    # Validate the note inputs length. Round up the number of inputs to the next multiple of 8: that
+    # value should be equal to the length obtained from the `adv.push_mapvaln` procedure.
     u32divmod.8 neq.0 add mul.8
-    # OS => [rounded_up_payload_len, advice_payload_len, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
+    # OS => [rounded_up_num_inputs, advice_num_inputs, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
 
-    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_PAYLOAD_VALUES
-    # OS => [NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
+    assert_eq.err=ERR_NOTE_INVALID_NUMBER_OF_INPUTS
+    # OS => [NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
 
-    # calculate the number of words required to store the payload
+    # calculate the number of words required to store the inputs
     dup.4 u32divmod.4 neq.0 add
-    # OS => [num_words, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
+    # OS => [num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
 
     # round up the number of words to the next multiple of 2
     dup is_odd add
-    # OS => [even_num_words, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
+    # OS => [even_num_words, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
 
     # prepare the stack for the `pipe_preimage_to_memory` procedure
     dup.6 swap
-    # OS => [even_num_words, dest_ptr, NOTE_PAYLOAD_COMMITMENT, payload_len, dest_ptr]
-    # AS => [[PAYLOAD_VALUES]]
+    # OS => [even_num_words, dest_ptr, NOTE_INPUTS_COMMITMENT, num_inputs, dest_ptr]
+    # AS => [[INPUT_VALUES]]
 
-    # write the payload values from the advice stack into memory
+    # write the inputs from the advice stack into memory
     exec.mem::pipe_preimage_to_memory drop
-    # OS => [payload_len, dest_ptr]
+    # OS => [num_inputs, dest_ptr]
     # AS => []
 end
 
