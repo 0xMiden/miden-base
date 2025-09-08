@@ -38,7 +38,7 @@ use crate::{AccountError, Felt, Word};
 ///
 /// Under the `testing` feature, it is possible to:
 /// - Build an existing account using [`AccountBuilder::build_existing`] which will set the
-///   account's nonce to `1`.
+///   account's nonce to `1` by default, or to the configured value.
 /// - Add assets to the account's vault, however this will only succeed when using
 ///   [`AccountBuilder::build_existing`].
 ///
@@ -56,6 +56,8 @@ use crate::{AccountError, Felt, Word};
 pub struct AccountBuilder {
     #[cfg(any(feature = "testing", test))]
     assets: Vec<crate::asset::Asset>,
+    #[cfg(any(feature = "testing", test))]
+    nonce: Option<Felt>,
     components: Vec<AccountComponent>,
     auth_component: Option<AccountComponent>,
     account_type: AccountType,
@@ -73,6 +75,8 @@ impl AccountBuilder {
         Self {
             #[cfg(any(feature = "testing", test))]
             assets: vec![],
+            #[cfg(any(feature = "testing", test))]
+            nonce: None,
             components: vec![],
             auth_component: None,
             init_seed,
@@ -236,6 +240,15 @@ impl AccountBuilder {
         self
     }
 
+    /// Sets the nonce of an existing account.
+    ///
+    /// This method is optional. It must only be used when using [`Self::build_existing`]
+    /// instead of [`Self::build`] since new accounts must have a nonce of `0`.
+    pub fn nonce(mut self, nonce: Felt) -> Self {
+        self.nonce = Some(nonce);
+        self
+    }
+
     /// Builds the account as an existing account, that is, with the nonce set to [`Felt::ONE`].
     ///
     /// The [`AccountId`] is constructed by slightly modifying `init_seed[0..8]` to be a valid ID.
@@ -255,7 +268,10 @@ impl AccountBuilder {
             )
         };
 
-        Ok(Account::from_parts(account_id, vault, storage, code, Felt::ONE))
+        // Use the nonce value set by the Self::nonce method or Felt::ONE as a default.
+        let nonce = self.nonce.unwrap_or(Felt::ONE);
+
+        Ok(Account::from_parts(account_id, vault, storage, code, nonce))
     }
 }
 

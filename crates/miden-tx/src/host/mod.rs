@@ -22,10 +22,14 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::memory::{CURRENT_INPUT_NOTE_PTR, NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR};
+use miden_lib::transaction::memory::{
+    ACCOUNT_STACK_TOP_PTR,
+    CURRENT_INPUT_NOTE_PTR,
+    NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
+};
 use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
-use miden_objects::account::{AccountDelta, PartialAccount};
-use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::account::{AccountDelta, AccountHeader, AccountId, PartialAccount};
+use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::NoteId;
 use miden_objects::transaction::{
     InputNote,
@@ -38,6 +42,7 @@ use miden_objects::transaction::{
 use miden_objects::vm::RowIndex;
 use miden_objects::{Hasher, Word};
 use miden_processor::{
+    AdviceError,
     AdviceMutation,
     ContextId,
     EventError,
@@ -63,6 +68,9 @@ pub struct TransactionBaseHost<'store, STORE> {
     /// MAST store which contains the forests of all scripts involved in the transaction. These
     /// include input note scripts and the transaction script, but not account code.
     scripts_mast_store: ScriptMastForestStore,
+
+    /// The header of the account at the beginning of transaction execution.
+    initial_account_header: AccountHeader,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -104,6 +112,7 @@ where
         Self {
             mast_store,
             scripts_mast_store,
+            initial_account_header: account.into(),
             account_delta: AccountDeltaTracker::new(
                 account.id(),
                 account.storage().header().clone(),
@@ -132,6 +141,12 @@ where
         &self.tx_progress
     }
 
+    /// Returns a reference to the initial account header of the native account, which represents
+    /// the state at the beginning of the transaction.
+    pub fn initial_account_header(&self) -> &AccountHeader {
+        &self.initial_account_header
+    }
+
     /// Returns a reference to the account delta tracker of this transaction host.
     pub fn account_delta_tracker(&self) -> &AccountDeltaTracker {
         &self.account_delta
@@ -143,7 +158,6 @@ where
     }
 
     /// Returns the input notes consumed in this transaction.
-    #[allow(unused)]
     pub fn input_notes(&self) -> InputNotes<InputNote> {
         self.input_notes.clone()
     }
@@ -184,12 +198,16 @@ where
         }
 
         let advice_mutations = match transaction_event {
-            TransactionEvent::AccountVaultBeforeAddAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::AccountVaultBeforeAddAsset => {
+                Self::on_account_vault_before_add_or_remove_asset(process)
+            },
             TransactionEvent::AccountVaultAfterAddAsset => {
                 self.on_account_vault_after_add_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
-            TransactionEvent::AccountVaultBeforeRemoveAsset => Ok(TransactionEventHandling::Handled(Vec::new())),
+            TransactionEvent::AccountVaultBeforeRemoveAsset => {
+                Self::on_account_vault_before_add_or_remove_asset(process)
+            },
             TransactionEvent::AccountVaultAfterRemoveAsset => {
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
@@ -270,7 +288,7 @@ where
                 self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
                 Ok(TransactionEventHandling::Handled(vec![]))
             }
-            TransactionEvent::EpilogueTxFeeComputed => self.on_tx_fee_computed(process),
+            TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount => self.on_before_tx_fee_removed_from_account(process),
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
@@ -367,14 +385,15 @@ where
         TransactionKernelError::Unauthorized(Box::new(tx_summary))
     }
 
-    /// Extracts all necessary data to handle [`TransactionEvent::EpilogueTxFeeComputed`].
+    /// Extracts all necessary data to handle
+    /// [`TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount`].
     ///
     /// Expected stack state:
     ///
     /// ```text
     /// [FEE_ASSET]
     /// ```
-    fn on_tx_fee_computed(
+    fn on_before_tx_fee_removed_from_account(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
@@ -590,6 +609,67 @@ where
         Ok(())
     }
 
+    /// Checks if the necessary witness for accessing the asset is already in the merkle store,
+    /// and if not, extracts all necessary data for requesting it.
+    ///
+    /// Expected stack state: `[ASSET, account_vault_root_ptr]`
+    pub fn on_account_vault_before_add_or_remove_asset(
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let asset: Asset = process.get_stack_word(0).try_into().map_err(|source| {
+            TransactionKernelError::MalformedAssetInEventHandler {
+                handler: "on_account_vault_before_add_or_remove_asset",
+                source,
+            }
+        })?;
+
+        let vault_root_ptr = process.get_stack_item(4);
+        let vault_root_ptr = u32::try_from(vault_root_ptr).map_err(|_err| {
+            TransactionKernelError::other(format!(
+                "vault root ptr should fit into a u32, but was {vault_root_ptr}"
+            ))
+        })?;
+        let vault_root = process
+            .get_mem_word(process.ctx(), vault_root_ptr)
+            .map_err(|_err| {
+                TransactionKernelError::other(format!(
+                    "vault root ptr {vault_root_ptr} is not word-aligned"
+                ))
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "vault root ptr {vault_root_ptr} was not initialized"
+                ))
+            })?;
+
+        let current_account_id = Self::get_current_account_id(process)?;
+
+        let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
+        match process.advice_provider().get_merkle_path(
+            vault_root,
+            &Felt::from(AssetVault::DEPTH),
+            &leaf_index,
+        ) {
+            // Merkle path is already in the store; consider the event handled.
+            Ok(_) => Ok(TransactionEventHandling::Handled(Vec::new())),
+            // This means the merkle path is missing in the advice provider.
+            Err(AdviceError::MerkleStoreLookupFailed(_)) => {
+                Ok(TransactionEventHandling::Unhandled(
+                    TransactionEventData::AccountVaultAssetWitness {
+                        current_account_id,
+                        vault_root,
+                        asset,
+                    },
+                ))
+            },
+            // We should never encounter this as long as our inputs to get_merkle_path are correct.
+            Err(err) => Err(TransactionKernelError::other_with_source(
+                "unexpected get_merkle_path error",
+                err,
+            )),
+        }
+    }
+
     /// Extracts the asset that is being removed from the account's vault from the process state
     /// and updates the appropriate fungible or non-fungible asset map.
     ///
@@ -643,6 +723,40 @@ where
                 .map_err(ExecutionError::MemoryError)?
                 .map(NoteId::from))
         }
+    }
+
+    /// Returns the ID of the currently executing account.
+    fn get_current_account_id(process: &ProcessState) -> Result<AccountId, TransactionKernelError> {
+        let account_stack_top_ptr =
+            process.get_mem_value(process.ctx(), ACCOUNT_STACK_TOP_PTR).ok_or_else(|| {
+                TransactionKernelError::other("account stack top ptr should be initialized")
+            })?;
+        let account_stack_top_ptr = u32::try_from(account_stack_top_ptr).map_err(|_| {
+            TransactionKernelError::other("account stack top ptr should fit into a u32")
+        })?;
+
+        let current_account_ptr = process
+            .get_mem_value(process.ctx(), account_stack_top_ptr)
+            .ok_or_else(|| TransactionKernelError::other("account id should be initialized"))?;
+        let current_account_ptr = u32::try_from(current_account_ptr).map_err(|_| {
+            TransactionKernelError::other("current account ptr should fit into a u32")
+        })?;
+
+        let current_account_id_and_nonce = process
+            .get_mem_word(process.ctx(), current_account_ptr)
+            .map_err(|_| {
+                TransactionKernelError::other("current account ptr should be word-aligned")
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other("current account id should be initialized")
+            })?;
+
+        AccountId::try_from([current_account_id_and_nonce[1], current_account_id_and_nonce[0]])
+            .map_err(|_| {
+                TransactionKernelError::other(
+                    "current account id ptr should point to a valid account ID",
+                )
+            })
     }
 
     /// Returns the number of storage slots initialized for the current account.
@@ -726,6 +840,13 @@ where
     }
 }
 
+impl<'store, STORE> TransactionBaseHost<'store, STORE> {
+    /// Returns the underlying store of the base host.
+    pub fn store(&self) -> &'store STORE {
+        self.mast_store
+    }
+}
+
 /// Extracts a word from a slice of field elements.
 pub(crate) fn extract_word(commitments: &[Felt], start: usize) -> Word {
     Word::from([
@@ -760,5 +881,14 @@ pub(super) enum TransactionEventData {
     TransactionFeeComputed {
         /// The fee asset extracted from the stack.
         fee_asset: FungibleAsset,
+    },
+    /// The data necessary to request an asset witness from the data store.
+    AccountVaultAssetWitness {
+        /// The account ID for whose vault a witness is requested.
+        current_account_id: AccountId,
+        /// The vault root identifying the asset vault from which a witness is requested.
+        vault_root: Word,
+        /// The asset for which a witness is requested.
+        asset: Asset,
     },
 }

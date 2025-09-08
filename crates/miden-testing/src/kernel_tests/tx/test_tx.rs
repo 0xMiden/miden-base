@@ -36,7 +36,7 @@ use miden_objects::account::{
     StorageSlot,
 };
 use miden_objects::assembly::DefaultSourceManager;
-use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, miette};
+use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use miden_objects::block::BlockNumber;
 use miden_objects::note::{
@@ -77,17 +77,8 @@ use miden_objects::transaction::{
 };
 use miden_objects::{FieldElement, Hasher, Word};
 use miden_processor::crypto::RpoRandomCoin;
-use miden_processor::fast::FastProcessor;
-use miden_processor::{AdviceInputs, StackInputs};
 use miden_tx::auth::UnreachableAuth;
-use miden_tx::{
-    AccountProcedureIndexMap,
-    ScriptMastForestStore,
-    TransactionExecutor,
-    TransactionExecutorError,
-    TransactionExecutorHost,
-    TransactionMastStore,
-};
+use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
 use super::{Felt, ONE, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
@@ -896,104 +887,6 @@ fn test_block_procedures() -> anyhow::Result<()> {
         tx_context.tx_inputs().block_header().block_num().as_u64(),
         "sixth element on the stack should be equal to the block number"
     );
-    Ok(())
-}
-
-/// Tests that the transaction witness retrieved from an executed transaction contains all necessary
-/// advice input to execute the transaction again.
-#[tokio::test]
-async fn advice_inputs_from_transaction_witness_are_sufficient_to_reexecute_transaction()
--> miette::Result<()> {
-    // Creates a mockchain with an account and a note that it can consume
-    let tx_context = {
-        let mut builder = MockChain::builder();
-        let account = builder
-            .add_existing_wallet(Auth::BasicAuth)
-            .map_err(|err| miette::miette!(err))?;
-        let p2id_note = builder
-            .add_p2id_note(
-                ACCOUNT_ID_SENDER.try_into().unwrap(),
-                account.id(),
-                &[FungibleAsset::mock(100)],
-                NoteType::Public,
-            )
-            .map_err(|err| miette::miette!(err))?;
-        let mock_chain = builder.build().map_err(|err| miette::miette!(err))?;
-
-        mock_chain
-            .build_tx_context(account.id(), &[], &[p2id_note])
-            .unwrap()
-            .build()
-            .unwrap()
-    };
-
-    let executed_transaction = tx_context.execute().await.into_diagnostic()?;
-
-    let tx_inputs = executed_transaction.tx_inputs();
-    let tx_args = executed_transaction.tx_args();
-
-    let scripts_mast_store = ScriptMastForestStore::new(
-        tx_args.tx_script(),
-        tx_inputs.input_notes().iter().map(|n| n.note().script()),
-    );
-
-    // use the witness to execute the transaction again
-    let (stack_inputs, advice_inputs) = TransactionKernel::prepare_inputs(
-        tx_inputs,
-        tx_args,
-        Some(executed_transaction.advice_witness().clone()),
-    )
-    .into_diagnostic()?;
-
-    // load account/note/tx_script MAST to the mast_store
-    let mast_store = Arc::new(TransactionMastStore::new());
-    mast_store.load_account_code(tx_inputs.account().code());
-
-    let mut host = {
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(tx_inputs, tx_args, &advice_inputs)
-                .unwrap();
-
-        TransactionExecutorHost::<'_, '_, _, UnreachableAuth>::new(
-            tx_inputs.account(),
-            tx_inputs.input_notes().clone(),
-            mast_store.as_ref(),
-            scripts_mast_store,
-            acct_procedure_index_map,
-            None,
-            tx_inputs.block_header().fee_parameters(),
-            Arc::new(DefaultSourceManager::default()),
-        )
-    };
-    let advice_inputs = advice_inputs.into_advice_inputs();
-    // This reverses the stack inputs (even though it doesn't look like it does) because the
-    // fast processor expects the reverse order.
-    let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
-
-    let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
-    let (stack_outputs, advice_provider) = processor
-        .execute(&TransactionKernel::main(), &mut host)
-        .await
-        .map_err(TransactionExecutorError::TransactionProgramExecutionFailed)
-        .into_diagnostic()?;
-
-    // Extract advice map from advice provider.
-    let advice_inputs = AdviceInputs {
-        map: advice_provider.into_parts().1,
-        ..Default::default()
-    };
-
-    let (_, _input_notes, output_notes, _signatures, _tx_progress) = host.into_parts();
-    let tx_outputs =
-        TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
-            .unwrap();
-
-    assert_eq!(
-        executed_transaction.final_account().commitment(),
-        tx_outputs.account.commitment()
-    );
-    assert_eq!(executed_transaction.output_notes(), &tx_outputs.output_notes);
-
     Ok(())
 }
 

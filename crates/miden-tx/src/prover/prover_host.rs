@@ -123,6 +123,9 @@ where
                     TransactionEventData::AuthRequest { .. } => {
                         Err(EventError::from("base host should have handled auth request event"))
                     },
+                    // Witnesses should be in the advice provider at proving time, so there is
+                    // nothing to do.
+                    TransactionEventData::AccountVaultAssetWitness { .. } => Ok(Vec::new()),
                     // We don't track enough information to handle this event. Since this just
                     // improves error messages for users and the error should not be relevant during
                     // proving, we ignore it.

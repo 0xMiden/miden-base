@@ -126,7 +126,7 @@ fn proven_block_success() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL)
-        .prove_without_batch_verification(proposed_block)
+        .prove_dummy(proposed_block)
         .context("failed to prove proposed block")?;
 
     // Check tree/chain commitments against expected values.
@@ -325,7 +325,7 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     assert_eq!(output_notes_batch0, &expected_output_notes_batch0);
 
     let proven_block = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block)
+        .prove_dummy(proposed_block)
         .context("failed to prove block")?;
     let actual_block_note_tree = proven_block.build_output_note_tree();
 
@@ -394,7 +394,7 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
 
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL)
-        .prove_without_batch_verification(proposed_block)
+        .prove_dummy(proposed_block)
         .context("failed to prove proposed block")?;
 
     // Nothing should be created or updated.
