@@ -21,7 +21,7 @@ pub use witness::StorageMapWitness;
 /// Empty storage map root.
 pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::DEPTH, 0);
 
-/// An account storage map is a sparse merkle tree of depth [`Self::TREE_DEPTH`] (64).
+/// An account storage map is a sparse merkle tree of depth [`Self::DEPTH`].
 ///
 /// It can be used to store a large amount of data in an account than would be otherwise possible
 /// using just the account's storage slots. This works by storing the root of the map's underlying
