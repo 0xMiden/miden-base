@@ -12,6 +12,7 @@ use miden_objects::EMPTY_WORD;
 use miden_objects::account::Account;
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -77,6 +78,7 @@ pub struct TransactionContextBuilder {
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
+    signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
 }
 
 impl TransactionContextBuilder {
@@ -95,6 +97,7 @@ impl TransactionContextBuilder {
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
             auth_args: EMPTY_WORD,
+            signatures: Vec::new(),
         }
     }
 
@@ -224,6 +227,17 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Add a new signature for the message and the public key.
+    pub fn add_signature(
+        mut self,
+        public_key: PublicKey,
+        message: Word,
+        signature: Vec<Felt>,
+    ) -> Self {
+        self.signatures.push((public_key, message, signature));
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
@@ -271,6 +285,10 @@ impl TransactionContextBuilder {
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
+        for (public_key, message, signature) in self.signatures {
+            tx_args.add_signature(public_key, message, signature);
+        }
+
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
@@ -283,6 +301,7 @@ impl TransactionContextBuilder {
         };
 
         Ok(TransactionContext {
+            account: self.account,
             expected_output_notes: self.expected_output_notes,
             tx_args,
             tx_inputs,

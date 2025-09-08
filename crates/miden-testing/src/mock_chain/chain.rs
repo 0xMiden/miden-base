@@ -1,4 +1,3 @@
-use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::ToString;
 use alloc::vec::Vec;
@@ -579,17 +578,13 @@ impl MockChain {
     ///   from the chain for the public account identified by the ID.
     /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
     ///   account is passed as-is to the inputs.
-    /// - [`TxContextInput::ExecutedTransaction`]: Initialize the builder with [`TransactionInputs`]
-    ///   where the account passed to the inputs is the final account of the executed transaction.
-    ///   This is the initial account of the transaction with the account delta applied.
     ///
     /// In all cases, if the chain contains a seed or authenticator for the account, they are added
     /// to the builder.
     ///
-    /// [`TxContextInput::Account`] and [`TxContextInput::ExecutedTransaction`] can be used to build
-    /// a chain of transactions against the same account that build on top of each other. For
-    /// example, transaction A modifies an account from state 0 to 1, and transaction B modifies
-    /// it from state 1 to 2.
+    /// [`TxContextInput::Account`] can be used to build a chain of transactions against the same
+    /// account that build on top of each other. For example, transaction A modifies an account
+    /// from state 0 to 1, and transaction B modifies it from state 1 to 2.
     pub fn build_tx_context_at(
         &self,
         reference_block: impl Into<BlockNumber>,
@@ -627,14 +622,6 @@ impl MockChain {
                     .clone()
             },
             TxContextInput::Account(account) => account,
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                let mut initial_account = executed_transaction.initial_account().clone();
-                initial_account
-                    .apply_delta(executed_transaction.account_delta())
-                    .context("could not apply delta from previous transaction")?;
-
-                initial_account
-            },
         };
 
         let tx_inputs = self
@@ -905,10 +892,7 @@ impl MockChain {
     pub fn add_pending_executed_transaction(
         &mut self,
         transaction: &ExecutedTransaction,
-    ) -> anyhow::Result<Account> {
-        let mut account = transaction.initial_account().clone();
-        account.apply_delta(transaction.account_delta())?;
-
+    ) -> anyhow::Result<()> {
         // Transform the executed tx into a proven tx with a dummy proof.
         let proven_tx = LocalTransactionProver::default()
             .prove_dummy(transaction.clone())
@@ -916,7 +900,7 @@ impl MockChain {
 
         self.pending_transactions.push(proven_tx);
 
-        Ok(account)
+        Ok(())
     }
 
     /// Adds the given [`ProvenTransaction`] to the list of pending transactions.
@@ -1332,7 +1316,6 @@ impl Deserializable for AccountCredentials {
 pub enum TxContextInput {
     AccountId(AccountId),
     Account(Account),
-    ExecutedTransaction(Box<ExecutedTransaction>),
 }
 
 impl TxContextInput {
@@ -1341,9 +1324,6 @@ impl TxContextInput {
         match self {
             TxContextInput::AccountId(account_id) => *account_id,
             TxContextInput::Account(account) => account.id(),
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                executed_transaction.account_id()
-            },
         }
     }
 }
@@ -1357,12 +1337,6 @@ impl From<AccountId> for TxContextInput {
 impl From<Account> for TxContextInput {
     fn from(account: Account) -> Self {
         Self::Account(account)
-    }
-}
-
-impl From<ExecutedTransaction> for TxContextInput {
-    fn from(tx: ExecutedTransaction) -> Self {
-        Self::ExecutedTransaction(Box::new(tx))
     }
 }
 
