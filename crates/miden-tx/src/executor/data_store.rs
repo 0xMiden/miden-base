@@ -47,8 +47,11 @@ pub trait DataStore: MastForestStore {
         vault_key: Word,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>>;
 
-    /// Returns a witness for a storage map item in the requested account's storage with the
-    /// requested storage map root.
+    /// Returns a witness for a storage map item identified by `map_key` in the requested account's
+    /// storage with the requested storage `map_root`.
+    ///
+    /// Note that the `map_key` needs to be hashed in order to get the actual key into the storage
+    /// map.
     ///
     /// This is the witness that needs to be added to the advice provider's merkle store and advice
     /// map to make access to the specified storage map item possible.

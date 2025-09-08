@@ -598,11 +598,12 @@ where
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let current_account_id = Self::get_current_account_id(process)?;
-
         let hashed_map_key = StorageMap::hash_key(map_key);
         let leaf_index = StorageMap::vault_key_to_leaf_index(hashed_map_key);
 
-        if Self::advice_provider_has_merkle_path(process, map_root, leaf_index)? {
+        if Self::advice_provider_has_merkle_path::<{ StorageMap::DEPTH }>(
+            process, map_root, leaf_index,
+        )? {
             // If the merkle path is already in the store there is nothing to do.
             Ok(TransactionEventHandling::Handled(Vec::new()))
         } else {
@@ -733,31 +734,22 @@ where
             })?;
 
         let current_account_id = Self::get_current_account_id(process)?;
-
-        // TODO: Replace with has_merkle_path.
         let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
-        match process.advice_provider().get_merkle_path(
-            vault_root,
-            &Felt::from(AssetVault::DEPTH),
-            &leaf_index,
-        ) {
-            // Merkle path is already in the store; consider the event handled.
-            Ok(_) => Ok(TransactionEventHandling::Handled(Vec::new())),
-            // This means the merkle path is missing in the advice provider.
-            Err(AdviceError::MerkleStoreLookupFailed(_)) => {
-                Ok(TransactionEventHandling::Unhandled(
-                    TransactionEventData::AccountVaultAssetWitness {
-                        current_account_id,
-                        vault_root,
-                        asset,
-                    },
-                ))
-            },
-            // We should never encounter this as long as our inputs to get_merkle_path are correct.
-            Err(err) => Err(TransactionKernelError::other_with_source(
-                "unexpected get_merkle_path error",
-                err,
-            )),
+
+        if Self::advice_provider_has_merkle_path::<{ AssetVault::DEPTH }>(
+            process, vault_root, leaf_index,
+        )? {
+            // If the merkle path is already in the store there is nothing to do.
+            Ok(TransactionEventHandling::Handled(Vec::new()))
+        } else {
+            // If the merkle path is not in the store return the data to request it.
+            Ok(TransactionEventHandling::Unhandled(
+                TransactionEventData::AccountVaultAssetWitness {
+                    current_account_id,
+                    vault_root,
+                    asset,
+                },
+            ))
         }
     }
 
@@ -932,16 +924,15 @@ where
 
     /// Returns `true` if the advice provider has a merkle path for the provided root and leaf
     /// index, `false` otherwise.
-    fn advice_provider_has_merkle_path(
+    fn advice_provider_has_merkle_path<const TREE_DEPTH: u8>(
         process: &ProcessState,
         root: Word,
         leaf_index: Felt,
     ) -> Result<bool, TransactionKernelError> {
-        match process.advice_provider().get_merkle_path(
-            root,
-            &Felt::from(StorageMap::DEPTH),
-            &leaf_index,
-        ) {
+        match process
+            .advice_provider()
+            .get_merkle_path(root, &Felt::from(TREE_DEPTH), &leaf_index)
+        {
             // Merkle path is already in the store; consider the event handled.
             Ok(_) => Ok(true),
             // This means the merkle path is missing in the advice provider.
