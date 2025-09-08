@@ -213,8 +213,8 @@ end
 
 #! Builds the recipient hash from note inputs, script root, and serial number.
 #!
-#! This procedure computes the commitment to the note inputs and then builds the recipient
-#! hash using the provided script root and serial number.
+#! This procedure computes the commitment of the note inputs and then uses it to calculate the note
+#! recipient by hashing this commit, the provided script root, and the serial number.
 #!
 #! Inputs:  [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
 #! Outputs: [RECIPIENT]
@@ -224,7 +224,7 @@ end
 #! - num_inputs is the number of input values.
 #! - SCRIPT_ROOT is the script root of the note.
 #! - SERIAL_NUM is the serial number of the note.
-#! - RECIPIENT is the computed recipient hash.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
 #!
 #! Panics if:
 #! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
