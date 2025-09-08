@@ -246,11 +246,11 @@ where
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
         // For now, we only support getting witnesses for the native account, so return early if the
         // requested account is not the native one.
-        if current_account_id != self.base_host.native_account_header().id() {
+        if current_account_id != self.base_host.initial_account_header().id() {
             return Ok(Vec::new());
         }
 
-        let vault_root = self.base_host.native_account_header().vault_root();
+        let vault_root = self.base_host.initial_account_header().vault_root();
         let vault_key = asset.vault_key();
         let asset_witness = self
             .base_host

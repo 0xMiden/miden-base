@@ -70,7 +70,7 @@ pub struct TransactionBaseHost<'store, STORE> {
     scripts_mast_store: ScriptMastForestStore,
 
     /// The header of the account at the beginning of transaction execution.
-    native_account_header: AccountHeader,
+    initial_account_header: AccountHeader,
 
     /// Account state changes accumulated during transaction execution.
     ///
@@ -112,7 +112,7 @@ where
         Self {
             mast_store,
             scripts_mast_store,
-            native_account_header: account.into(),
+            initial_account_header: account.into(),
             account_delta: AccountDeltaTracker::new(
                 account.id(),
                 account.storage().header().clone(),
@@ -141,10 +141,10 @@ where
         &self.tx_progress
     }
 
-    /// Returns a reference to the account header of the native account, which represents the state
-    /// at the beginning of the transaction.
-    pub fn native_account_header(&self) -> &AccountHeader {
-        &self.native_account_header
+    /// Returns a reference to the initial account header of the native account, which represents
+    /// the state at the beginning of the transaction.
+    pub fn initial_account_header(&self) -> &AccountHeader {
+        &self.initial_account_header
     }
 
     /// Returns a reference to the account delta tracker of this transaction host.
