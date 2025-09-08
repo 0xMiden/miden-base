@@ -35,7 +35,12 @@ mod data_store;
 pub use data_store::DataStore;
 
 mod notes_checker;
-pub use notes_checker::{FailedNote, NoteConsumptionChecker, NoteConsumptionInfo};
+pub use notes_checker::{
+    FailedNote,
+    MAX_NUM_CHECKER_NOTES,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
+};
 
 // TRANSACTION EXECUTOR
 // ================================================================================================
@@ -298,13 +303,12 @@ where
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
-            &tx_inputs.account().into(),
+            tx_inputs.account(),
             input_notes.clone(),
             self.data_store,
             script_mast_store,
             acct_procedure_index_map,
             self.authenticator,
-            tx_inputs.block_header().fee_parameters(),
             self.source_manager.clone(),
         );
 
@@ -327,7 +331,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
-    let (pre_fee_account_delta, output_notes, generated_signatures, tx_progress) =
+    let (pre_fee_account_delta, _input_notes, output_notes, generated_signatures, tx_progress) =
         host.into_parts();
 
     let tx_outputs =

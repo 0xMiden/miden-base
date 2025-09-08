@@ -34,8 +34,6 @@ pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the
 pub const ERR_ACCOUNT_NONCE_AT_MAX: MasmError = MasmError::from_static_str("account nonce is already at its maximum possible value");
 /// Error Message: "account nonce can only be incremented once"
 pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
-/// Error Message: "account nonce did not increase after a state changing transaction"
-pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = MasmError::from_static_str("account nonce did not increase after a state changing transaction");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
@@ -181,10 +179,8 @@ pub const ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_COMMITMENT: Mas
 pub const ERR_PROLOGUE_GLOBAL_INPUTS_PROVIDED_DO_NOT_MATCH_BLOCK_NUMBER_COMMITMENT: MasmError = MasmError::from_static_str("the provided global inputs do not match the block number commitment");
 /// Error Message: "note commitment computed from the input note data does not match given note commitment"
 pub const ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("note commitment computed from the input note data does not match given note commitment");
-/// Error Message: "sequential hash over kernel commitments does not match tx kernel commitment from block"
-pub const ERR_PROLOGUE_KERNEL_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel commitments does not match tx kernel commitment from block");
-/// Error Message: "sequential hash over kernel procedures does not match kernel commitment"
-pub const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel procedures does not match kernel commitment");
+/// Error Message: "sequential hash over kernel procedures does not match kernel commitment from block"
+pub const ERR_PROLOGUE_KERNEL_PROCEDURE_COMMITMENT_MISMATCH: MasmError = MasmError::from_static_str("sequential hash over kernel procedures does not match kernel commitment from block");
 /// Error Message: "account IDs provided via global inputs and advice provider do not match"
 pub const ERR_PROLOGUE_MISMATCH_OF_ACCOUNT_IDS_FROM_GLOBAL_INPUTS_AND_ADVICE_PROVIDER: MasmError = MasmError::from_static_str("account IDs provided via global inputs and advice provider do not match");
 /// Error Message: "reference block MMR and note's authentication MMR must match"

@@ -46,6 +46,77 @@ impl Deserializable for TransactionWitness {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
+
         Ok(Self { tx_inputs, tx_args, advice_witness })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use anyhow::Context;
+    use miden_crypto::Word;
+
+    use crate::account::{AccountBuilder, AccountComponent, StorageSlot};
+    use crate::assembly::Assembler;
+    use crate::asset::FungibleAsset;
+    use crate::block::{BlockHeader, BlockNumber};
+    use crate::testing::noop_auth_component::NoopAuthComponent;
+    use crate::transaction::{
+        InputNotes,
+        PartialBlockchain,
+        TransactionArgs,
+        TransactionInputs,
+        TransactionWitness,
+    };
+    use crate::vm::AdviceInputs;
+
+    #[test]
+    fn transaction_witness_serialization_roundtrip() -> anyhow::Result<()> {
+        use crate::utils::serde::{Deserializable, Serializable};
+
+        let component = AccountComponent::compile(
+            "export.foo add.1 end",
+            Assembler::default(),
+            vec![StorageSlot::Value(Word::empty())],
+        )?
+        .with_supports_all_types();
+        let asset = FungibleAsset::mock(200);
+        let account = AccountBuilder::new([1; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(component)
+            .with_assets([asset])
+            .build_existing()?;
+
+        let partial_blockchain = PartialBlockchain::default();
+        let block_header = BlockHeader::mock(
+            BlockNumber::GENESIS,
+            Some(partial_blockchain.peaks().hash_peaks()),
+            None,
+            &[],
+            Word::empty(),
+        );
+
+        let tx_inputs = TransactionInputs::new(
+            account,
+            None,
+            block_header.clone(),
+            partial_blockchain.clone(),
+            InputNotes::default(),
+        )
+        .unwrap();
+
+        let witness = TransactionWitness {
+            tx_inputs,
+            tx_args: TransactionArgs::default(),
+            advice_witness: AdviceInputs::default(),
+        };
+
+        let bytes = witness.to_bytes();
+        let deserialized = TransactionWitness::read_from_bytes(&bytes)
+            .context("failed to deserialize tx witness")?;
+
+        assert_eq!(witness, deserialized);
+
+        Ok(())
     }
 }

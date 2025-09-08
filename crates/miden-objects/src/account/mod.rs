@@ -17,7 +17,6 @@ pub use account_id::{
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
-    NetworkId,
 };
 
 pub mod auth;
@@ -213,7 +212,7 @@ impl Account {
     /// [crate::EMPTY_WORD] to distinguish new accounts from existing accounts. The actual
     /// commitment of the initial account state (and the initial state itself), are provided to
     /// the VM via the advice provider.
-    pub fn init_commitment(&self) -> Word {
+    pub fn initial_commitment(&self) -> Word {
         if self.is_new() {
             Word::empty()
         } else {
@@ -261,10 +260,10 @@ impl Account {
         self.id.is_regular_account()
     }
 
-    /// Returns `true` if the full state of the account is on chain, i.e. if the storage modes are
+    /// Returns `true` if the full state of the account is public on chain, i.e. if the modes are
     /// [`AccountStorageMode::Public`] or [`AccountStorageMode::Network`], `false` otherwise.
-    pub fn is_onchain(&self) -> bool {
-        self.id().is_onchain()
+    pub fn has_public_state(&self) -> bool {
+        self.id().has_public_state()
     }
 
     /// Returns `true` if the storage mode is [`AccountStorageMode::Public`], `false` otherwise.

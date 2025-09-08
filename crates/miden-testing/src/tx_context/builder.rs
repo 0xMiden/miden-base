@@ -9,9 +9,11 @@ use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
-use miden_objects::account::Account;
+use miden_objects::account::{Account, AccountHeader, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
+use miden_objects::asset::PartialVault;
+use miden_objects::crypto::dsa::rpo_falcon512::PublicKey;
 use miden_objects::note::{Note, NoteId};
 use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE;
 use miden_objects::testing::noop_auth_component::NoopAuthComponent;
@@ -77,6 +79,8 @@ pub struct TransactionContextBuilder {
     note_args: BTreeMap<NoteId, Word>,
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
+    signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
+    load_partial_account: bool,
 }
 
 impl TransactionContextBuilder {
@@ -95,6 +99,8 @@ impl TransactionContextBuilder {
             note_args: BTreeMap::new(),
             foreign_account_inputs: vec![],
             auth_args: EMPTY_WORD,
+            signatures: Vec::new(),
+            load_partial_account: false,
         }
     }
 
@@ -193,7 +199,21 @@ impl TransactionContextBuilder {
 
     /// Set the desired transaction inputs
     pub fn tx_inputs(mut self, tx_inputs: TransactionInputs) -> Self {
+        assert_eq!(
+            AccountHeader::from(&self.account),
+            tx_inputs.account().into(),
+            "account in context and account provided via tx inputs are not the same account"
+        );
         self.transaction_inputs = Some(tx_inputs);
+        self
+    }
+
+    /// Causes the transaction to only construct a minimal partial account as the transaction
+    /// input, causing lazy loading of assets throughout transaction execution.
+    ///
+    /// This exists to test lazy loading selectively and should go away in the future.
+    pub fn enable_partial_loading(mut self) -> Self {
+        self.load_partial_account = true;
         self
     }
 
@@ -224,6 +244,17 @@ impl TransactionContextBuilder {
         self
     }
 
+    /// Add a new signature for the message and the public key.
+    pub fn add_signature(
+        mut self,
+        public_key: PublicKey,
+        message: Word,
+        signature: Vec<Felt>,
+    ) -> Self {
+        self.signatures.push((public_key, message, signature));
+        self
+    }
+
     /// Builds the [TransactionContext].
     ///
     /// If no transaction inputs were provided manually, an ad-hoc MockChain is created in order
@@ -245,16 +276,46 @@ impl TransactionContextBuilder {
 
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
+                let account = PartialAccount::from(&self.account);
 
                 mock_chain
-                    .get_transaction_inputs(
-                        self.account.clone(),
-                        self.account_seed,
-                        &input_note_ids,
-                        &[],
-                    )
+                    .get_transaction_inputs(account, self.account_seed, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
+        };
+
+        // If partial loading is enabled, construct an account that doesn't contain all
+        // merkle paths of assets, in order to test lazy loading. Otherwise, load the full
+        // account.
+        let tx_inputs = if self.load_partial_account {
+            let (account, account_seed, block_header, partial_blockchain, input_notes) =
+                tx_inputs.into_parts();
+            // Construct a partial vault that tracks the empty word, but none of the assets
+            // that are actually in the asset tree. That way, the partial vault has the same
+            // root as the full vault, but will not add any relevant merkle paths to the
+            // merkle store, which will test lazy loading of assets.
+            // Note that we use self.account instead of account, because we cannot do the same
+            // operation on a partial vault.
+            let mut partial_vault = PartialVault::default();
+            partial_vault.add(self.account.vault().open(Word::empty()).into())?;
+
+            let account = PartialAccount::new(
+                account.id(),
+                account.nonce(),
+                account.code().clone(),
+                account.storage().clone(),
+                partial_vault,
+            );
+
+            TransactionInputs::new(
+                account,
+                account_seed,
+                block_header,
+                partial_blockchain,
+                input_notes,
+            )?
+        } else {
+            tx_inputs
         };
 
         let tx_args = TransactionArgs::new(AdviceMap::default(), self.foreign_account_inputs)
@@ -271,6 +332,10 @@ impl TransactionContextBuilder {
         tx_args.extend_advice_inputs(self.advice_inputs.clone());
         tx_args.extend_output_note_recipients(self.expected_output_notes.clone());
 
+        for (public_key, message, signature) in self.signatures {
+            tx_args.add_signature(public_key, message, signature);
+        }
+
         let mast_store = {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
@@ -283,6 +348,7 @@ impl TransactionContextBuilder {
         };
 
         Ok(TransactionContext {
+            account: self.account,
             expected_output_notes: self.expected_output_notes,
             tx_args,
             tx_inputs,

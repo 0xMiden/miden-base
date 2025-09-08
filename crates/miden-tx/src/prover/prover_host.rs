@@ -72,7 +72,9 @@ where
     }
 
     /// Consumes `self` and returns the account delta, output notes and transaction progress.
-    pub fn into_parts(self) -> (AccountDelta, Vec<OutputNote>, TransactionProgress) {
+    pub fn into_parts(
+        self,
+    ) -> (AccountDelta, InputNotes<InputNote>, Vec<OutputNote>, TransactionProgress) {
         self.base_host.into_parts()
     }
 }
@@ -121,6 +123,9 @@ where
                     TransactionEventData::AuthRequest { .. } => {
                         Err(EventError::from("base host should have handled auth request event"))
                     },
+                    // Witnesses should be in the advice provider at proving time, so there is
+                    // nothing to do.
+                    TransactionEventData::AccountVaultAssetWitness { .. } => Ok(Vec::new()),
                     // We don't track enough information to handle this event. Since this just
                     // improves error messages for users and the error should not be relevant during
                     // proving, we ignore it.

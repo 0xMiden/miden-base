@@ -5,6 +5,7 @@
 - [Introduction](./index.md)
 - [Accounts](./account/overview.md)
   - [ID](./account/id.md)
+  - [Address](./account/address.md)
   - [Code](./account/code.md)
   - [Storage](./account/storage.md)
   - [Component](./account/component.md)
@@ -13,3 +14,4 @@
 - [Transactions](./transaction.md)
 - [State](./state.md)
 - [Blockchain](./blockchain.md)
+- [Miden Protocol Library](./protocol_library.md)
