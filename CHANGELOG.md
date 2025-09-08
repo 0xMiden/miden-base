@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.2 (2025-09-08)
+
+- Fixed foreign account inputs not being loaded in `LocalTransactionProver` ([#1866](https://github.com/0xMiden/miden-base/pull/#1866)).
+
 ## 0.11.1 (2025-08-28)
 
 - Added `AddressInterface::Unspecified` to represent default addresses ([#1801](https://github.com/0xMiden/miden-base/pull/#1801)).
