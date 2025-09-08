@@ -138,6 +138,9 @@ fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
 /// Tests that a transaction against an account with a non-empty vault successfully loads the fee
 /// asset during the epilogue.
+///
+/// The non-empty vault is important for the test because the advice provider's merkle store has all
+/// merkle paths for an empty vault by default, and so there would be nothing to load.
 #[test]
 fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
     let mut builder =
