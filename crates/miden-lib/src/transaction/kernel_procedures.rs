@@ -6,17 +6,21 @@ use miden_objects::{Word, word};
 // ================================================================================================
 
 /// Hashes of all dynamically executed kernel procedures.
-pub const KERNEL_PROCEDURES: [Word; 48] = [
+pub const KERNEL_PROCEDURES: [Word; 50] = [
     // account_get_initial_commitment
     word!("0x920898348bacd6d98a399301eb308478fd32b32eab019a5a6ef7a6b44abb61f6"),
     // account_compute_current_commitment
     word!("0x1aed40e2cc4d3798448f4efdce1a14c9598611da065eebe58432f144c3bca9de"),
     // account_get_id
     word!("0xc9f7e71b294e16d7a297ba283afb2f8c864817e40e73b6ef1d64efc310937fc7"),
+    // account_get_native_id
+    word!("0x05eb568956d0174066a1277442cc4602fcbbc6790bd64975416958d28274cb73"),
     // account_get_nonce
     word!("0x4a1f11db21ddb1f0ebf7c9fd244f896a95e99bb136008185da3e7d6aa85827a3"),
     // account_incr_nonce
     word!("0x72f4595fd7030542ab303c77be42962671948ef18ffeda49b0e88a374f0969f6"),
+    // account_get_native_nonce
+    word!("0xeae4dcae877e64a1951aa1ca35ac2adda724e359ee9c7689e55c42dde55d70c4"),
     // account_get_code_commitment
     word!("0x02e55aa37f40207bc2a3882383d4c0f1f6633b5f3ea5b7ef814d827632aa7ae8"),
     // account_get_initial_storage_commitment
@@ -36,9 +40,9 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     // account_get_vault_root
     word!("0x42a2bfb8eac4fce9bbf75ea15215b00729faeeaf7fff784692948d3f618a9bb7"),
     // account_add_asset
-    word!("0xf0d6be80cdd2a62cab2b4ad5606dde01af1968e3ab3357dcb63fe36aea7f8b80"),
+    word!("0x9a96c031f9ca6d839acc5ce6aa01b63ddba91fe312ea824ccd224c365cc1327d"),
     // account_remove_asset
-    word!("0x7a8f7b23afe3d6264686c4895f78744fbccda957e901247c8f3585427d470039"),
+    word!("0x8372d56ed394254481026d264b8ea97c2342ba42db21c61b2e96c6bf06d950a9"),
     // account_get_balance
     word!("0xb4e92ae0196ca128a451e40dd8a5ff56c13919efa67f63dca488214fbba3ffbc"),
     // account_has_non_fungible_asset

@@ -1,15 +1,17 @@
 mod r#type;
 
 mod interface;
+mod network_id;
 use alloc::string::{String, ToString};
 
 use bech32::Bech32m;
 use bech32::primitives::decode::{ByteIter, CheckedHrpstring};
 pub use interface::AddressInterface;
+pub use network_id::{CustomNetworkId, NetworkId};
 pub use r#type::AddressType;
 
 use crate::AddressError;
-use crate::account::{AccountId, AccountStorageMode, NetworkId};
+use crate::account::{AccountId, AccountStorageMode};
 use crate::errors::Bech32Error;
 use crate::note::NoteTag;
 
@@ -331,7 +333,8 @@ mod tests {
     use bech32::{Bech32, NoChecksum};
 
     use super::*;
-    use crate::account::{AccountType, CustomNetworkId};
+    use crate::account::AccountType;
+    use crate::address::CustomNetworkId;
     use crate::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, AccountIdBuilder};
 
     /// Tests that an account ID address can be encoded and decoded.

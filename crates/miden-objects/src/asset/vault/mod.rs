@@ -1,5 +1,7 @@
 use alloc::string::ToString;
 
+use miden_processor::SMT_DEPTH;
+
 use super::{
     AccountType,
     Asset,
@@ -13,10 +15,13 @@ use super::{
 };
 use crate::account::{AccountId, AccountVaultDelta, NonFungibleDeltaAction};
 use crate::crypto::merkle::Smt;
-use crate::{AssetVaultError, Word};
+use crate::{AssetVaultError, Felt, Word};
 
 mod partial;
 pub use partial::PartialVault;
+
+mod asset_witness;
+pub use asset_witness::AssetWitness;
 
 // ASSET VAULT
 // ================================================================================================
@@ -38,8 +43,15 @@ pub struct AssetVault {
 }
 
 impl AssetVault {
+    // CONSTANTS
+    // --------------------------------------------------------------------------------------------
+
+    /// The depth of the SMT that represents the asset vault.
+    pub const DEPTH: u8 = SMT_DEPTH;
+
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+
     /// Returns a new [AssetVault] initialized with the provided assets.
     pub fn new(assets: &[Asset]) -> Result<Self, AssetVaultError> {
         Ok(Self {
@@ -89,6 +101,15 @@ impl AssetVault {
         self.asset_tree.entries().map(|x| Asset::new_unchecked(x.1))
     }
 
+    /// Returns an opening of the leaf associated with `vault_key`.
+    ///
+    /// The `vault_key` can be obtained with [`Asset::vault_key`].
+    pub fn open(&self, vault_key: Word) -> AssetWitness {
+        let smt_proof = self.asset_tree.open(&vault_key);
+        // SAFETY: The asset vault should only contain valid assets.
+        AssetWitness::new_unchecked(smt_proof)
+    }
+
     /// Returns a reference to the Sparse Merkle Tree underling this asset vault.
     pub fn asset_tree(&self) -> &Smt {
         &self.asset_tree
@@ -97,6 +118,12 @@ impl AssetVault {
     /// Returns a bool indicating whether the vault is empty.
     pub fn is_empty(&self) -> bool {
         self.asset_tree.is_empty()
+    }
+
+    /// Returns the leaf index of a vault key.
+    pub fn vault_key_to_leaf_index(vault_key: Word) -> Felt {
+        // The third element in an SMT key is the index.
+        vault_key[3]
     }
 
     // PUBLIC MODIFIERS

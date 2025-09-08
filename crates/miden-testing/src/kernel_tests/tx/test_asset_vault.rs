@@ -73,7 +73,7 @@ fn peek_balance_returns_correct_amount() -> anyhow::Result<()> {
         begin
             exec.prologue::prepare_transaction
 
-            exec.memory::get_acct_vault_root_ptr
+            exec.memory::get_account_vault_root_ptr
             push.{suffix}.{prefix}
             # => [prefix, suffix, account_vault_root_ptr, balance]
 

@@ -385,6 +385,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
+    #[error("vault key {actual} does not match expected vault key {expected}")]
+    VaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
@@ -434,6 +436,8 @@ pub enum PartialAssetVaultError {
     VaultKeyMismatch { expected: Word, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
+    #[error("asset is not tracked in the partial vault")]
+    UntrackedAsset(#[source] MerkleError),
 }
 
 // NOTE ERROR

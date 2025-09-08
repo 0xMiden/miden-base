@@ -475,7 +475,7 @@ fn test_epilogue_increment_nonce_success() -> anyhow::Result<()> {
             # clean the stack
             dropw dropw dropw dropw
 
-            exec.memory::get_acct_nonce
+            exec.memory::get_account_nonce
             push.{expected_nonce} assert_eq
         end
         "

@@ -496,7 +496,7 @@ export.was_nonce_incremented
     exec.memory::get_init_nonce
     # => [init_nonce]
 
-    exec.memory::get_acct_nonce
+    exec.memory::get_account_nonce
     # => [current_nonce, init_nonce]
 
     neq
