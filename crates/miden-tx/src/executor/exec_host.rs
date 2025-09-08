@@ -8,7 +8,7 @@ use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
@@ -208,7 +208,7 @@ where
             });
         }
 
-        Ok(vec![AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes())])
+        Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
     /// Handles a request to an asset witness by querying the data store for a merkle path.
@@ -261,17 +261,7 @@ where
                 source: Box::new(err),
             })?;
 
-        // Get the nodes in the proof and insert them into the merkle store.
-        let merkle_store_ext =
-            AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
-
-        let smt_proof = SmtProof::from(asset_witness);
-        let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
-            smt_proof.leaf().hash(),
-            smt_proof.leaf().to_elements(),
-        )]));
-
-        Ok(vec![merkle_store_ext, map_ext])
+        Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
@@ -360,4 +350,22 @@ where
             }
         }
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Converts an [`AssetWitness`] into the set of advice mutations that need to be inserted in order
+/// to access the asset.
+fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> Vec<AdviceMutation> {
+    // Get the nodes in the proof and insert them into the merkle store.
+    let merkle_store_ext = AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
+
+    let smt_proof = SmtProof::from(asset_witness);
+    let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
+        smt_proof.leaf().hash(),
+        smt_proof.leaf().to_elements(),
+    )]));
+
+    vec![merkle_store_ext, map_ext]
 }

@@ -10,6 +10,9 @@ use crate::{AssetError, Word};
 pub struct AssetWitness(SmtProof);
 
 impl AssetWitness {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
     /// Creates a new [`AssetWitness`] from an SMT proof.
     ///
     /// # Errors
@@ -38,6 +41,9 @@ impl AssetWitness {
     pub fn new_unchecked(smt_proof: SmtProof) -> Self {
         Self(smt_proof)
     }
+
+    // PUBLIC ACCESSORS
+    // --------------------------------------------------------------------------------------------
 
     /// Searches for an [`Asset`] in the witness with the given `vault_key`.
     pub fn find(&self, vault_key: Word) -> Option<Asset> {
