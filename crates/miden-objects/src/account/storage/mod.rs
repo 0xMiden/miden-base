@@ -112,6 +112,8 @@ impl AccountStorage {
     }
 
     /// Returns a reference to the storage slots.
+    /// 
+    /// TODO: Return slice?
     pub fn slots(&self) -> &Vec<StorageSlot> {
         &self.slots
     }

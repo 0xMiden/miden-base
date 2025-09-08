@@ -613,7 +613,7 @@ where
                     // Slot index should always fit into a usize.
                     slot_index: slot_index.as_int() as usize,
                     map_root,
-                    map_key: hashed_map_key,
+                    map_key,
                 },
             ))
         }
