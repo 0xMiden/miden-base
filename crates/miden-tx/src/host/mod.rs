@@ -288,7 +288,7 @@ where
                 self.tx_progress.epilogue_after_tx_cycles_obtained(process.clk());
                 Ok(TransactionEventHandling::Handled(vec![]))
             }
-            TransactionEvent::EpilogueTxFeeComputed => self.on_tx_fee_computed(process),
+            TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount => self.on_before_tx_fee_removed_from_account(process),
             TransactionEvent::EpilogueEnd => {
                 self.tx_progress.end_epilogue(process.clk());
                 Ok(TransactionEventHandling::Handled(Vec::new()))
@@ -385,14 +385,15 @@ where
         TransactionKernelError::Unauthorized(Box::new(tx_summary))
     }
 
-    /// Extracts all necessary data to handle [`TransactionEvent::EpilogueTxFeeComputed`].
+    /// Extracts all necessary data to handle
+    /// [`TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount`].
     ///
     /// Expected stack state:
     ///
     /// ```text
     /// [FEE_ASSET]
     /// ```
-    fn on_tx_fee_computed(
+    fn on_before_tx_fee_removed_from_account(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {

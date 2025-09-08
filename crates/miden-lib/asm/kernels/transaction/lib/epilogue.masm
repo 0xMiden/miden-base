@@ -25,7 +25,7 @@ const.ERR_AUTH_PROCEDURE_CALLED_FROM_WRONG_CONTEXT="auth procedure had been call
 const.EPILOGUE_AFTER_TX_CYCLES_OBTAINED=131097
 
 # Event emitted to signal that the fee was computed.
-const.EPILOGUE_TX_FEE_COMPUTED=131098
+const.EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT=131098
 
 # An additional number of cyclces to account for the number of cycles that smt::set will take when
 # removing the computed fee from the asset vault.
@@ -307,7 +307,7 @@ proc.compute_and_remove_fee
     exec.build_native_fee_asset
     # => [FEE_ASSET]
 
-    emit.EPILOGUE_TX_FEE_COMPUTED
+    emit.EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT
     # => [FEE_ASSET]
 
     # remove the fee from the native account's vault
