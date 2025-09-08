@@ -21,12 +21,14 @@ impl StorageMapWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Searches for a value in the witness with the given `map_key`.
-    pub fn find(&self, map_key: Word) -> Option<Word> {
+    pub fn find(&self, hashed_map_key: Word) -> Option<Word> {
         self.entries()
-            .find_map(|(key, value)| if *key == map_key { Some(*value) } else { None })
+            .find_map(|(key, value)| if *key == hashed_map_key { Some(*value) } else { None })
     }
 
     /// Returns an iterator over the key-value pairs in this witness.
+    ///
+    /// Note that the returned key is the hashed map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
         // Convert &(Word, Word) into (&Word, &Word) as it is more flexible.
         self.0.leaf().entries().into_iter().map(|(key, value)| (key, value))

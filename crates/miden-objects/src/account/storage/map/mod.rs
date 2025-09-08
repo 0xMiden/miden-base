@@ -12,8 +12,8 @@ use crate::{Felt, Hasher};
 mod partial;
 pub use partial::PartialStorageMap;
 
-mod storage_map_witness;
-pub use storage_map_witness::StorageMapWitness;
+mod witness;
+pub use witness::StorageMapWitness;
 
 // ACCOUNT STORAGE MAP
 // ================================================================================================
@@ -182,9 +182,9 @@ impl StorageMap {
 
     // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
     /// Returns the leaf index of a map key.
-    pub fn vault_key_to_leaf_index(map_key: Word) -> Felt {
+    pub fn hashed_map_key_to_leaf_index(hashed_map_key: Word) -> Felt {
         // The third element in an SMT key is the index.
-        map_key[3]
+        hashed_map_key[3]
     }
 }
 

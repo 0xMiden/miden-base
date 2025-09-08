@@ -599,7 +599,7 @@ where
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let current_account_id = Self::get_current_account_id(process)?;
         let hashed_map_key = StorageMap::hash_key(map_key);
-        let leaf_index = StorageMap::vault_key_to_leaf_index(hashed_map_key);
+        let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
 
         if Self::advice_provider_has_merkle_path::<{ StorageMap::DEPTH }>(
             process, map_root, leaf_index,
@@ -1005,7 +1005,7 @@ pub(super) enum TransactionEventData {
         slot_index: usize,
         /// The root of the storage map in the account.
         map_root: Word,
-        /// The map key for which a witness is requested.
+        /// The unhashed map key for which a witness is requested.
         map_key: Word,
     },
 }
