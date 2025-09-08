@@ -156,15 +156,11 @@ where
                 source: Box::new(err),
             })?;
 
-        // Find asset in the witness or default to 0 if it isn't present.
-        let initial_native_asset = asset_witness
-            .assets()
-            .find_map(|asset| match asset {
-                Asset::Fungible(fungible_asset)
-                    if fungible_asset.vault_key() == fee_asset.vault_key() =>
-                {
-                    Some(fungible_asset)
-                },
+        // Find fee asset in the witness or default to 0 if it isn't present.
+        let initial_fee_asset = asset_witness
+            .find(fee_asset.vault_key())
+            .and_then(|asset| match asset {
+                Asset::Fungible(fungible_asset) => Some(fungible_asset),
                 _ => None,
             })
             .unwrap_or(
@@ -174,40 +170,40 @@ where
 
         // Compute the current balance of the native asset in the account based on the initial value
         // and the delta.
-        let current_native_asset = {
-            let native_asset_amount_delta = self
+        let current_fee_asset = {
+            let fee_asset_amount_delta = self
                 .base_host
                 .account_delta_tracker()
                 .vault_delta()
                 .fungible()
-                .amount(&initial_native_asset.faucet_id())
+                .amount(&initial_fee_asset.faucet_id())
                 .unwrap_or(0);
 
             // SAFETY: Initial native asset faucet ID should be a fungible faucet and amount should
             // be less than MAX_AMOUNT as checked by the account delta.
-            let native_asset_delta = FungibleAsset::new(
-                initial_native_asset.faucet_id(),
-                native_asset_amount_delta.unsigned_abs(),
+            let fee_asset_delta = FungibleAsset::new(
+                initial_fee_asset.faucet_id(),
+                fee_asset_amount_delta.unsigned_abs(),
             )
             .expect("faucet ID and amount should be valid");
 
             // SAFETY: These computations are essentially the same as the ones executed by the
             // transaction kernel, which should have aborted if they weren't valid.
-            if native_asset_amount_delta > 0 {
-                initial_native_asset
-                    .add(native_asset_delta)
+            if fee_asset_amount_delta > 0 {
+                initial_fee_asset
+                    .add(fee_asset_delta)
                     .expect("transaction kernel should ensure amounts do not exceed MAX_AMOUNT")
             } else {
-                initial_native_asset
-                    .sub(native_asset_delta)
+                initial_fee_asset
+                    .sub(fee_asset_delta)
                     .expect("transaction kernel should ensure amount is not negative")
             }
         };
 
         // Return an error if the balance in the account does not cover the fee.
-        if current_native_asset.amount() < fee_asset.amount() {
+        if current_fee_asset.amount() < fee_asset.amount() {
             return Err(TransactionKernelError::InsufficientFee {
-                account_balance: current_native_asset.amount(),
+                account_balance: current_fee_asset.amount(),
                 tx_fee: fee_asset.amount(),
             });
         }
