@@ -27,8 +27,9 @@ impl StorageMapWitness {
     }
 
     /// Returns an iterator over the key-value pairs in this witness.
-    pub fn entries(&self) -> impl Iterator<Item = &(Word, Word)> {
-        self.0.leaf().entries().into_iter()
+    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
+        // Convert &(Word, Word) into (&Word, &Word) as it is more flexible.
+        self.0.leaf().entries().into_iter().map(|(key, value)| (key, value))
     }
 
     /// Returns an iterator over every inner node of this witness' merkle path.

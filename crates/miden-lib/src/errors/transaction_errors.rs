@@ -90,7 +90,7 @@ pub enum TransactionKernelError {
         source: Box<dyn Error + Send + Sync + 'static>,
     },
     #[error(
-        "failed to get vault asset witness from data store for map root {map_root} and map_key {map_key}"
+        "failed to get storage map witness from data store for map root {map_root} and map_key {map_key}"
     )]
     GetStorageMapWitness {
         map_root: Word,
