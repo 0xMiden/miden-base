@@ -71,6 +71,23 @@ proc.assert_new_tx
     # => []
 end
 
+
+export.update_signers_and_threshold
+    push.111 debug.stack drop
+
+    # new threshold:
+    # => [0, 0, num_of_approvers, threshold]
+
+    push.THRESHOLD_CONFIG_SLOT
+    # => [slot, NEW_THRESHOLD_CONFIG] 
+
+    exec.account::set_item
+
+    dropw dropw
+
+end
+
+
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
 #!
 #! This procedure implements multi-signature authentication by:

@@ -1336,6 +1336,7 @@ dependencies = [
  "anyhow",
  "assert_matches",
  "itertools 0.14.0",
+ "miden-assembly",
  "miden-block-prover",
  "miden-lib",
  "miden-objects",
