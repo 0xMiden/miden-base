@@ -233,3 +233,58 @@ fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// Tests that getting a map item from a storage map succeeds when lazy loading is enabled.
+#[test]
+fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
+    // Fetch a random existing key from the map.
+    let mock_map = AccountStorage::mock_map();
+    let (existing_key, existing_value) = mock_map.entries().next().unwrap();
+
+    let non_existent_key = Word::from([5, 5, 5, 5u32]);
+    assert!(
+        mock_map.open(&non_existent_key).find(non_existent_key).is_none(),
+        "test setup requires that the non existent key does not exist"
+    );
+
+    let code = format!(
+        r#"
+      use.std::word
+      use.mock::account
+
+      begin
+          # Fetch value from existing key.
+          push.{existing_key}
+          push.2
+          # => [index, KEY]
+          call.account::get_map_item
+
+          push.{existing_value}
+          assert_eqw.err="existing value does not match expected value"
+
+          # Fetch a non-existent key.
+          push.{non_existent_key}
+          push.2
+          # => [index, KEY]
+          call.account::get_map_item
+
+          padw assert_eqw.err="non-existent value should be the empty word"
+
+          exec.::std::sys::truncate_stack
+      end
+      "#
+    );
+
+    let builder = ScriptBuilder::with_mock_libraries()?;
+    let source_manager = builder.source_manager();
+    let tx_script = builder.compile_tx_script(code)?;
+
+    TransactionContextBuilder::with_existing_mock_account()
+        .tx_script(tx_script)
+        .enable_partial_loading()
+        .with_source_manager(source_manager)
+        .build()?
+        .execute_blocking()?;
+
+    Ok(())
+}
