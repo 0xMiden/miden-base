@@ -237,6 +237,7 @@ impl LocalTransactionProver {
     pub fn prove_dummy(
         &self,
         executed_tx: ExecutedTransaction,
+        // executed_tx:impl Into<TransactionWitness>
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
 

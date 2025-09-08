@@ -19,10 +19,10 @@ use miden_objects::transaction::{
     TransactionScript,
 };
 use miden_objects::{Felt, ONE, Word, ZERO};
+use miden_tx::LocalTransactionProver;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
-use crate::mock_chain::ProvenTransactionExt;
 use crate::{Auth, MockChain, TxContextInput};
 
 pub struct TestSetup {
@@ -105,7 +105,7 @@ pub fn generate_tx_with_authenticated_notes(
     notes: &[NoteId],
 ) -> ProvenTransaction {
     let executed_tx = generate_executed_tx_with_authenticated_notes(chain, account_id, notes);
-    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
+    LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
 }
 
 /// Generates a transaction, which depending on the `modify_storage` flag, does the following:
@@ -158,7 +158,7 @@ pub fn generate_tx_with_expiration(
         .build()
         .unwrap();
     let executed_tx = tx_context.execute_blocking().unwrap();
-    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
+    LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
 }
 
 pub fn generate_tx_with_unauthenticated_notes(
@@ -172,7 +172,7 @@ pub fn generate_tx_with_unauthenticated_notes(
         .build()
         .unwrap();
     let executed_tx = tx_context.execute_blocking().unwrap();
-    ProvenTransaction::from_executed_transaction_mocked(executed_tx)
+    LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
 }
 
 fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
