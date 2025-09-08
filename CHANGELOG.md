@@ -14,6 +14,7 @@
 ### Changes
 
 - [BREAKING] Incremented MSRV to 1.89.
+- Added `AccountExport` and `AuthenticationExport` structs for separate export of account data and private keys ([#1790](https://github.com/0xMiden/miden-base/issues/1790)).
 - [BREAKING] Remove versioning of the transaction kernel, leaving only one latest version ([#1793](https://github.com/0xMiden/miden-base/pull/1793)).
 - [BREAKING] Move `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).
 - [BREAKING] Replaced `Account` with `PartialAccount` in `TransactionInputs` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
