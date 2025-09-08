@@ -159,17 +159,7 @@ export.get_sender
     # => [METADATA, pad(12)]
 
     # extract the sender ID from the metadata word
-    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix, pad(12)]
-
-    drop drop
-    # => [merged_sender_id_type_hint_tag, sender_id_prefix, pad(12)]
-
-    # extract suffix of sender from merged layout, which means clearing the least significant byte
-    exec.account_id::shape_suffix
-    # => [sender_id_suffix, sender_id_prefix, pad(12)]
-
-    # rearrange suffix and prefix
-    swap
+    exec.extract_sender_from_metadata
     # => [sender_id_prefix, sender_id_suffix, pad(12)]
 
     # clean the stack
@@ -432,4 +422,29 @@ proc.write_payload_to_memory
     exec.mem::pipe_preimage_to_memory drop
     # OS => [payload_len, dest_ptr]
     # AS => []
+end
+
+#! Extracts the sender ID from the provided metadata word.
+#!
+#! Inputs:  [METADATA]
+#! Outputs: [sender_id_prefix, sender_id_suffix]
+#!
+#! Where:
+#! - METADATA is the metadata of some note.
+#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender ID of the note which 
+#!   metadata was provided.
+proc.extract_sender_from_metadata
+    # => [aux, merged_tag_hint_payload, merged_sender_id_type_hint_tag, sender_id_prefix]
+
+    # drop aux felt and the felt containing tag, execution hint and payload
+    drop drop
+    # => [merged_sender_id_type_hint_tag, sender_id_prefix]
+
+    # extract suffix of sender from merged layout, which means clearing the least significant byte
+    exec.account_id::shape_suffix
+    # => [sender_id_suffix, sender_id_prefix]
+
+    # rearrange suffix and prefix
+    swap
+    # => [sender_id_prefix, sender_id_suffix]
 end

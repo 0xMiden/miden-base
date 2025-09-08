@@ -1465,8 +1465,14 @@ export.exec_kernel_proc
     # => [<procedure_outputs>, <pad>]
 end
 
+# HELPER PROCEDURES
+# =================================================================================================
+
 #! Returns the memory pointer to the input note, depending on whether the requested note is current
 #! or it was requested by index.
+#!
+#! If the pointer to the currently processing note was requested, but no note is being executed, 0 
+#! is returned.
 #!
 #! Inputs:  [is_current_note, note_index]
 #! Outputs: [input_note_ptr]
