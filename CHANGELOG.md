@@ -20,7 +20,7 @@
 - [BREAKING] Renamed `Account::init_commitment` to `Account::initial_commitment` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
 - [BREAKING] Rename the `is_onchain` method to `has_public_state` for `AccountId`, `AccountIdPrefix`, `Account`, `AccountInterface` and `AccountStorageMode` ([#1846](https://github.com/0xMiden/miden-base/pull/1846)).
 - [BREAKING] Move `NetworkId` from account ID to address module ([#1851](https://github.com/0xMiden/miden-base/pull/1851)).
-- Remove `ProvenTransactionExt`([1867](https://github.com/0xMiden/miden-base/pull/1867)).
+- Remove `ProvenTransactionExt`([#1867](https://github.com/0xMiden/miden-base/pull/1867)).
 
 ## 0.11.1 (2025-08-28)
 
