@@ -298,11 +298,10 @@ fn test_get_inputs() -> anyhow::Result<()> {
                 # => [dest_ptr]
                 dup padw movup.4 mem_loadw push.{inputs_word} assert_eqw.err="inputs are incorrect"
                 # => [dest_ptr]
-                
+
                 push.4 add
                 # => [dest_ptr+4]
-                "#,
-                inputs_word = inputs_word
+                "#
             );
         }
         code

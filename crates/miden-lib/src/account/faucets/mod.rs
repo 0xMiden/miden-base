@@ -432,6 +432,14 @@ mod tests {
         );
 
         assert!(faucet_account.is_faucet());
+
+        assert_eq!(faucet_account.account_type(), AccountType::FungibleFaucet);
+
+        // Verify the faucet can be extracted and has correct metadata
+        let faucet_component = BasicFungibleFaucet::try_from(faucet_account.clone()).unwrap();
+        assert_eq!(faucet_component.symbol(), token_symbol);
+        assert_eq!(faucet_component.decimals(), decimals);
+        assert_eq!(faucet_component.max_supply(), max_supply);
     }
 
     #[test]

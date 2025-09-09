@@ -23,6 +23,9 @@
 - [BREAKING] Removed some of the `note` kernel procedures and use `input_note` procedures instead ([#1834](https://github.com/0xMiden/miden-base/pull/1834)).
 - [BREAKING] Replaced `Account` with `PartialAccount` in `TransactionInputs` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
 - [BREAKING] Renamed `Account::init_commitment` to `Account::initial_commitment` ([#1840](https://github.com/0xMiden/miden-base/pull/1840)).
+- [BREAKING] Rename the `is_onchain` method to `has_public_state` for `AccountId`, `AccountIdPrefix`, `Account`, `AccountInterface` and `AccountStorageMode` ([#1846](https://github.com/0xMiden/miden-base/pull/1846)).
+- [BREAKING] Move `NetworkId` from account ID to address module ([#1851](https://github.com/0xMiden/miden-base/pull/1851)).
+- Remove `ProvenTransactionExt`([#1867](https://github.com/0xMiden/miden-base/pull/1867)).
 - [BREAKING] Renamed the `is_onchain` method to `has_public_state` for `AccountId`, `AccountIdPrefix`, `Account`, `AccountInterface` and `AccountStorageMode` ([#1846](https://github.com/0xMiden/miden-base/pull/1846)).
 - [BREAKING] Moved `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).
 - [BREAKING] Moved `NetworkId` from account ID to address module ([#1851](https://github.com/0xMiden/miden-base/pull/1851)).

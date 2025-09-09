@@ -8,9 +8,10 @@ use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::NoteInclusionProof;
 use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use miden_objects::transaction::{OutputNote, ProvenTransaction};
+use miden_objects::transaction::OutputNote;
 use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
 use miden_processor::crypto::MerklePath;
+use miden_tx::LocalTransactionProver;
 
 use super::utils::{
     TestSetup,
@@ -26,7 +27,6 @@ use super::utils::{
     generate_untracked_note,
     setup_chain,
 };
-use crate::ProvenTransactionExt;
 use crate::utils::create_spawn_note;
 
 /// Tests that too many batches produce an error.
@@ -607,8 +607,8 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.
-    let tx0 = ProvenTransaction::from_executed_transaction_mocked(executed_tx0.clone());
-    let tx2 = ProvenTransaction::from_executed_transaction_mocked(executed_tx2.clone());
+    let tx0 = LocalTransactionProver::default().prove_dummy(executed_tx0.clone())?;
+    let tx2 = LocalTransactionProver::default().prove_dummy(executed_tx2.clone())?;
 
     let batch0 = generate_batch(&mut chain, vec![tx0]);
     let batch1 = generate_batch(&mut chain, vec![tx2]);
