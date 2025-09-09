@@ -2,7 +2,6 @@ use.miden::kernel_proc_offsets
 use.std::crypto::hashes::rpo
 use.std::mem
 use.miden::contracts::wallets::basic->wallet
-use.miden::tx
 use.miden::account_id
 
 # ERRORS
