@@ -1006,7 +1006,7 @@ export.output_note_add_asset
     movdn.4 dupw movup.8
     # => [note_idx, ASSET, ASSET, pad(11)]
 
-    exec.tx::add_asset_to_note
+    exec.output_note::add_asset_to_note
     # => [note_idx, ASSET, pad(11)]
 end
 

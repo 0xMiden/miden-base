@@ -419,9 +419,9 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
         use.std::sys
 
         use.miden::tx
+        use.miden::output_note
 
         use.$kernel::prologue
-        use.mock::account
 
         begin
             # => [BH, acct_id, IAH, NC]
@@ -438,7 +438,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{asset_1}
-            call.tx::add_asset_to_note
+            call.output_note::add_asset
             # => [ASSET, note_idx]
 
             dropw drop
@@ -454,7 +454,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{asset_2}
-            call.tx::add_asset_to_note
+            call.output_note::add_asset
             # => [ASSET, note_idx]
 
             dropw drop
@@ -527,6 +527,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
+        use.miden::output_note
 
         use.$kernel::prologue
         use.mock::account
@@ -544,7 +545,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{asset}
-            call.tx::add_asset_to_note
+            call.output_note::add_asset
             # => [ASSET, note_idx]
 
             dropw
@@ -599,6 +600,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
+        use.miden::output_note
 
         use.$kernel::prologue
         use.mock::account
@@ -615,19 +617,19 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             # => [note_idx]
 
             push.{asset}
-            call.tx::add_asset_to_note dropw
+            call.output_note::add_asset dropw
             # => [note_idx]
 
             push.{asset_2}
-            call.tx::add_asset_to_note dropw
+            call.output_note::add_asset dropw
             # => [note_idx]
 
             push.{asset_3}
-            call.tx::add_asset_to_note dropw
+            call.output_note::add_asset dropw
             # => [note_idx]
 
             push.{nft}
-            call.tx::add_asset_to_note dropw
+            call.output_note::add_asset dropw
             # => [note_idx]
 
             # truncate the stack
@@ -683,8 +685,8 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.mock::account
         use.miden::tx
+        use.miden::output_note
 
         begin
             exec.prologue::prepare_transaction
@@ -701,12 +703,12 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             # => [note_idx, pad(15)]
 
             push.{nft}
-            call.tx::add_asset_to_note
+            call.output_note::add_asset
             # => [NFT, note_idx, pad(15)]
             dropw
 
             push.{nft}
-            call.tx::add_asset_to_note
+            call.output_note::add_asset
             # => [NFT, note_idx, pad(15)]
 
             repeat.5 dropw end

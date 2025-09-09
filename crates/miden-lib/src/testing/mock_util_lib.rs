@@ -6,6 +6,7 @@ use crate::transaction::TransactionKernel;
 
 const MOCK_UTIL_LIBRARY_CODE: &str = "
     use.miden::tx
+    use.miden::output_note
 
     # Inputs:  []
     # Outputs: [note_idx]
@@ -30,7 +31,7 @@ const MOCK_UTIL_LIBRARY_CODE: &str = "
         movdn.4
         # => [ASSET, note_idx]
 
-        exec.tx::add_asset_to_note dropw
+        exec.output_note::add_asset dropw
         # => [note_idx]
     end
 ";

@@ -1589,7 +1589,7 @@ export.set_input_note_args
     mem_storew
 end
 
-#! Returns the number of inputs of the note currently being processed.
+#! Returns the number of inputs of the note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
 #! Outputs: [num_inputs]

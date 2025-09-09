@@ -155,7 +155,7 @@ pub fn create_spawn_note(sender_id: AccountId, output_notes: Vec<&Note>) -> anyh
 
 /// Returns the code for a note that creates all notes in `output_notes`
 fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
-    let mut out = String::from("use.miden::tx\nuse.mock::account\n\nbegin\n");
+    let mut out = String::from("use.miden::tx\nuse.miden::output_note\n\nbegin\n");
 
     for (idx, note) in output_notes.iter().enumerate() {
         if idx == 0 {
@@ -181,7 +181,7 @@ fn note_script_that_creates_notes(output_notes: Vec<&Note>) -> String {
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
-                  call.tx::add_asset_to_note\n",
+                  call.output_note::add_asset\n",
             ));
         }
     }
