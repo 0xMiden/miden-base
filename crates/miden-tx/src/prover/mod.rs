@@ -127,6 +127,9 @@ impl LocalTransactionProver {
                 .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
         self.mast_store.load_account_code(tx_inputs.account().code());
+        for account_inputs in tx_args.foreign_account_inputs() {
+            self.mast_store.load_account_code(account_inputs.code());
+        }
 
         let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),

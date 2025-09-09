@@ -17,8 +17,6 @@ pub use account_id::{
     AccountIdVersion,
     AccountStorageMode,
     AccountType,
-    CustomNetworkId,
-    NetworkId,
 };
 
 pub mod auth;

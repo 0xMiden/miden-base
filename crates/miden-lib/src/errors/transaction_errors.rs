@@ -1,4 +1,5 @@
 use alloc::boxed::Box;
+use alloc::string::String;
 use alloc::vec::Vec;
 use core::error::Error;
 
@@ -52,6 +53,7 @@ pub enum TransactionKernelError {
         data: Vec<Felt>,
         // This is always a DeserializationError, but we can't import it directly here without
         // adding dependencies, so we make it a trait object instead.
+        // thiserror will return this when calling Error::source on TransactionKernelError.
         source: Box<dyn Error + Send + Sync + 'static>,
     },
     #[error("recipient data `{0:?}` in the advice provider is not well formed")]
@@ -77,6 +79,17 @@ pub enum TransactionKernelError {
     #[error("failed to convert fee asset into fungible asset")]
     FailedToConvertFeeAsset(#[source] AssetError),
     #[error(
+        "failed to get vault asset witness from data store for vault root {vault_root} and vault_key {vault_key}"
+    )]
+    GetVaultAssetWitness {
+        vault_root: Word,
+        vault_key: Word,
+        // TODO: Change to DataStoreError when this error moves to miden-tx.
+        // This is always a DataStoreError, but we can't import it from miden-tx here.
+        // thiserror will return this when calling Error::source on TransactionKernelError.
+        source: Box<dyn Error + Send + Sync + 'static>,
+    },
+    #[error(
         "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
     )]
     InsufficientFee { account_balance: u64, tx_fee: u64 },
@@ -84,6 +97,35 @@ pub enum TransactionKernelError {
     /// missing.
     #[error("transaction requires a signature")]
     Unauthorized(Box<TransactionSummary>),
+    /// A generic error returned when the transaction kernel did not behave as expected.
+    #[error("{message}")]
+    Other {
+        message: Box<str>,
+        // thiserror will return this when calling Error::source on TransactionKernelError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl TransactionKernelError {
+    /// Creates a custom error using the [`TransactionKernelError::Other`] variant from an error
+    /// message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { message: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`TransactionKernelError::Other`] variant from an error
+    /// message and a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            message: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
 }
 
 // TRANSACTION EVENT PARSING ERROR

@@ -1,10 +1,7 @@
-use.std::sys
-
 use.$kernel::account
 use.$kernel::account_delta
 use.$kernel::account_id
 use.$kernel::asset_vault
-use.$kernel::constants
 use.$kernel::faucet
 use.$kernel::input_note
 use.$kernel::memory
@@ -31,6 +28,18 @@ const.ERR_FAUCET_TOTAL_ISSUANCE_PROC_CAN_ONLY_BE_CALLED_ON_FUNGIBLE_FAUCET="the 
 const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUCET="the faucet_is_non_fungible_asset_issued procedure can only be called on a non-fungible faucet"
 
 const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of current note because no note is currently being processed"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note recipient of current note because no note is currently being processed"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of current note because no note is currently being processed"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of current note because no note is currently being processed"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of current note because no note is currently being processed"
+
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note serial number of current note because no note is currently being processed"
 
 # AUTHENTICATION
 # =================================================================================================
@@ -140,32 +149,53 @@ export.account_compute_delta_commitment
     # => [ACCOUNT_COMMITMENT, pad(12)]
 end
 
-#! Returns the account ID.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  [pad(16)]
-#! Outputs: [acct_id_prefix, acct_id_suffix, pad(14)]
+#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
 #!
 #! Where:
-#! - acct_id is the account ID.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
+#!   accessing account.
 #!
 #! Invocation: dynexec
 export.account_get_id
-    # get the account ID
+    # get the current account ID
     exec.account::get_id
-    # => [acct_id_prefix, acct_id_suffix, pad(16)]
+    # => [account_id_prefix, account_id_suffix, pad(16)]
 
     # truncate the stack
     movup.2 drop movup.2 drop
-    # => [acct_id_prefix, acct_id_suffix, pad(14)]
+    # => [account_id_prefix, account_id_suffix, pad(14)]
 end
 
-#! Returns the account nonce.
+#! Returns the native account ID.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [account_id_prefix, account_id_suffix, pad(14)]
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
+#!   transaction.
+#!
+#! Invocation: dynexec
+export.account_get_native_id
+    # get the native account ID
+    exec.memory::get_native_account_id
+    # => [account_id_prefix, account_id_suffix, pad(16)]
+
+    # truncate the stack
+    movup.2 drop movup.2 drop
+    # => [account_id_prefix, account_id_suffix, pad(14)]
+end
+
+#! Returns the current account nonce.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [nonce, pad(15)]
 #!
 #! Where:
-#! - nonce is the account nonce.
+#! - nonce is the current account's nonce.
 #!
 #! Invocation: dynexec
 export.account_get_nonce
@@ -176,6 +206,25 @@ export.account_get_nonce
     # truncate the stack
     swap drop
     # => [nonce, pad(15)]
+end
+
+#! Returns the native account nonce.
+#!
+#! Inputs:  [pad(16)]
+#! Outputs: [native_nonce, pad(15)]
+#!
+#! Where:
+#! - native_nonce is the nonce of the native account.
+#!
+#! Invocation: dynexec
+export.account_get_native_nonce
+    # get the native account nonce
+    exec.memory::get_native_account_nonce
+    # => [native_nonce, pad(16)]
+
+    # truncate the stack
+    swap drop
+    # => [native_nonce, pad(15)]
 end
 
 #! Increments the account nonce by one and returns the new nonce.
@@ -433,18 +482,18 @@ export.account_get_initial_vault_root
     # => [INIT_VAULT_ROOT, pad(12)]
 end
 
-#! Returns a commitment to the account vault the transaction is being executed against.
+#! Returns the vault root of the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [VAULT_ROOT, pad(12)]
 #!
 #! Where:
-#! - VAULT_ROOT is the commitment to the account vault.
+#! - VAULT_ROOT is the root of the account vault.
 #!
 #! Invocation: dynexec
 export.account_get_vault_root
     # fetch the account vault root
-    exec.memory::get_acct_vault_root
+    exec.memory::get_account_vault_root
     # => [VAULT_ROOT, pad(16)]
 
     # truncate the stack
@@ -515,7 +564,7 @@ export.account_remove_asset
     # => [ASSET, pad(12)]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix, pad(14)]
 #! Outputs: [balance, pad(15)]
@@ -531,15 +580,15 @@ end
 #! Invocation: dynexec
 export.account_get_balance
     # get the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.2
-    # => [faucet_id_prefix, faucet_id_suffix, acct_vault_root_ptr, pad(14)]
+    exec.memory::get_account_vault_root_ptr movdn.2
+    # => [faucet_id_prefix, faucet_id_suffix, account_vault_root_ptr, pad(14)]
 
     # get the asset balance
     exec.asset_vault::get_balance
     # => [balance, pad(15)]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
 #!
 #! Inputs:  [ASSET, pad(12)]
 #! Outputs: [has_asset, pad(15)]
@@ -554,7 +603,7 @@ end
 #! Invocation: dynexec
 export.account_has_non_fungible_asset
     # get the vault root
-    exec.memory::get_acct_vault_root_ptr movdn.4
+    exec.memory::get_account_vault_root_ptr movdn.4
     # => [ASSET, vault_root_ptr, pad(12)]
 
     # check if the account vault has the non-fungible asset
@@ -562,7 +611,7 @@ export.account_has_non_fungible_asset
     # => [has_asset, pad(15)]
 end
 
-### FAUCET #####################################
+### FAUCET ######################################
 
 #! Mint an asset from the faucet the transaction is being executed against.
 #!
@@ -691,32 +740,249 @@ export.faucet_is_non_fungible_asset_issued
     # => [is_issued, pad(15)]
 end
 
-### NOTE ########################################
+### INPUT NOTE ##################################
 
-#! Returns the information about assets in the input note with the specified index.
+#! Returns the assets information of the specified input note.
 #!
-#! Inputs:  [pad(16)]
+#! Inputs:  [is_current_note, note_index, pad(14)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
 #!
 #! Where:
-#! - num_assets is the number of assets in the note currently being processed.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the note currently being processed.
+#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose assets info should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
+#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified input note.
+#! - num_assets is the number of assets in the specified input note.
 #!
 #! Panics if:
-#! - a note is not being processed.
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
 #!
 #! Invocation: dynexec
-export.note_get_assets_info
+export.input_note_get_assets_info
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
+
     # get the assets info
-    exec.note::get_assets_info
-    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
+    exec.input_note::get_assets_info
+    # => [ASSETS_COMMITMENT, num_assets, pad(15)]
+
+    # truncate the stack
+    movupw.2 dropw
+    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+end
+
+#! Returns the recipient of the specified input note.
+#!
+#! Inputs:  [is_current_note, note_index, pad(15)]
+#! Outputs: [RECIPIENT, pad(12)]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return the assets data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose assets info should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
+#!
+#! Invocation: dynexec
+export.input_note_get_recipient
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
+
+    # get the recipient
+    exec.memory::get_input_note_recipient
+    # => [RECIPIENT, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [RECIPIENT, pad(12)]
+end
+
+#! Returns the metadata of the specified input note.
+#!
+#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Outputs: [METADATA, pad(12)]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return the metadata from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose metadata should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
+#! - METADATA is the metadata of the specified input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
+#!
+#! Invocation: dynexec
+export.input_note_get_metadata
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
+
+    # get the metadata
+    exec.memory::get_input_note_metadata
+    # => [METADATA, pad(15)]
+
+    # truncate the stack
+    swapw drop drop drop movdn.4
+    # => [METADATA, pad(12)]
+end
+
+#! Returns the serial number of the specified input note.
+#!
+#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Outputs: [SERIAL_NUMBER, pad(12)]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return the serial number
+#!   of the currently processing note or of the note with the specified index.
+#! - note_index is the index of the input note whose serial number should be returned. Notice that 
+#!   if is_current_note is 1, note_index is ignored.
+#! - SERIAL_NUMBER is the serial number of the specified input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
+#!
+#! Invocation: dynexec
+export.input_note_get_serial_number
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
+
+    # get the serial number using the note pointer
+    exec.memory::get_input_note_serial_num
+    # => [SERIAL_NUMBER, pad(15)]
+
+    # truncate the stack
+    repeat.3
+        movup.4 drop
+    end
+    # => [SERIAL_NUMBER, pad(12)]
+end
+
+#! Returns the inputs commitment and length of the specified input note.
+#!
+#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
+#!   and length from the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose data should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
+#! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
+#! - num_inputs is the number of inputs of the specified input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
+#!
+#! Invocation: dynexec
+export.input_note_get_inputs_info
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
+
+    # get the note inputs length
+    dup exec.memory::get_input_note_num_inputs swap
+    # => [input_note_ptr, num_inputs, pad(16)]
+
+    # get the inputs commitment
+    exec.memory::get_input_note_inputs_commitment
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
 
     # truncate the stack
     repeat.5
         movup.5 drop
     end
-    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
+    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 end
+
+#! Returns the script root of the specified input note.
+#!
+#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Outputs: [SCRIPT_ROOT, pad(12)]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
+#!   and length from the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose data should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
+#! - SCRIPT_ROOT is the script root of the specified input note.
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#!   from incorrect context).
+#!
+#! Invocation: dynexec
+export.input_note_get_script_root
+    # get the input note pointer depending on whether the requested note is current or it was 
+    # requested by index.
+    exec.get_requested_note_ptr
+    # => [input_note_ptr, pad(15)]
+
+    # assert the pointer is not zero - this would suggest the procedure has been called from an
+    # incorrect context
+    dup neq.0 assert.err=ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED
+    # => [input_note_ptr, pad(15)]
+
+    # get the script root using the note pointer
+    exec.memory::get_input_note_script_root
+    # => [SCRIPT_ROOT, pad(15)]
+
+    # truncate the stack
+    repeat.3
+        movup.4 drop
+    end
+    # => [SCRIPT_ROOT, pad(12)]
+end
+
+### OUTPUT NOTE #################################
 
 #! Adds the ASSET to the note specified by the index.
 #!
@@ -728,10 +994,10 @@ end
 #! - ASSET can be a fungible or non-fungible asset.
 #!
 #! Panics if:
-#! - the procedure is called from a non-account context.
+#! - the procedure is called when the current account is not the native one.
 #!
 #! Invocation: dynexec
-export.note_add_asset
+export.output_note_add_asset
     # check that this procedure was executed against the native account
     exec.memory::assert_native_account
     # => [note_idx, ASSET, pad(11)]
@@ -742,98 +1008,6 @@ export.note_add_asset
 
     exec.tx::add_asset_to_note
     # => [note_idx, ASSET, pad(11)]
-end
-
-#! Returns the information about assets in the input note with the specified index.
-#!
-#! Inputs:  [note_index, pad(15)]
-#! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
-#!
-#! Where:
-#! - note_index is the index of the input note whose assets info should be returned.
-#! - num_assets is the number of assets in the specified note.
-#! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified note.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of input notes.
-#!
-#! Invocation: dynexec
-export.input_note_get_assets_info
-    # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
-
-    # get the assets info
-    exec.input_note::get_assets_info
-    # => [ASSETS_COMMITMENT, num_assets, pad(16)]
-
-    # truncate the stack
-    repeat.5
-        movup.5 drop
-    end
-    # => [ASSETS_COMMITMENT, num_assets, pad(11)]
-end
-
-#! Returns the recipient of the input note with the specified index.
-#!
-#! Inputs:  [note_index, pad(15)]
-#! Outputs: [RECIPIENT, pad(12)]
-#!
-#! Where:
-#! - note_index is the index of the input note whose recipient should be returned.
-#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of input notes.
-#!
-#! Invocation: dynexec
-export.input_note_get_recipient
-    # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
-
-    # get the note data pointer by the provided index
-    exec.memory::get_input_note_ptr
-    # => [note_ptr, pad(15)]
-
-    # get the recipient
-    exec.memory::get_input_note_recipient
-    # => [RECIPIENT, pad(15)]
-
-    # truncate the stack
-    swapw drop drop drop movdn.4
-    # => [RECIPIENT, pad(12)]
-end
-
-#! Returns the metadata of the input note with the specified index.
-#!
-#! Inputs:  [note_index, pad(15)]
-#! Outputs: [METADATA, pad(12)]
-#!
-#! Where:
-#! - note_index is the index of the input note whose metadata should be returned.
-#! - METADATA is the metadata of the input note.
-#!
-#! Panics if:
-#! - the note index is greater or equal to the total number of input notes.
-#!
-#! Invocation: dynexec
-export.input_note_get_metadata
-    # assert that the provided note index is less than the total number of input notes
-    exec.input_note::assert_note_index_in_bounds
-    # => [note_index, pad(15)]
-
-    # get the note data pointer by the provided index
-    exec.memory::get_input_note_ptr
-    # => [note_ptr, pad(15)]
-
-    # get the metadata
-    exec.memory::get_input_note_metadata
-    # => [METADATA, pad(15)]
-
-    # truncate the stack
-    swapw drop drop drop movdn.4
-    # => [METADATA, pad(12)]
 end
 
 #! Returns the information about assets in the output note with the specified index.
@@ -926,92 +1100,6 @@ export.output_note_get_metadata
     # truncate the stack
     swapw drop drop drop movdn.4
     # => [METADATA, pad(12)]
-end
-
-#! Returns the serial number of the note currently being processed.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [SERIAL_NUMBER, pad(12)]
-#!
-#! Where:
-#! - SERIAL_NUMBER is the serial number of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is not being processed.
-#!
-#! Invocation: dynexec
-export.note_get_serial_number
-    exec.note::get_serial_number
-    # => [SERIAL_NUMBER, pad(16)]
-
-    # truncate the stack
-    swapw dropw
-    # => [SERIAL_NUMBER, pad(12)]
-end
-
-#! Returns the current note's inputs commitment and length.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
-#!
-#! Where:
-#! - NOTE_INPUTS_COMMITMENT is the current note's inputs commitment.
-#! - num_inputs is the number of input values of the current note.
-#!
-#! Invocation: dynexec
-export.note_get_inputs_commitment_and_len
-    exec.memory::get_input_note_num_inputs
-    # => [num_inputs, pad(16)]
-
-    exec.note::get_note_inputs_commitment
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(16)]
-
-    # truncate the stack
-    swapdw dropw dropw
-    # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
-end
-
-#! Returns the sender of the note currently being processed.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [sender_id_prefix, sender_id_suffix, pad(14)]
-#!
-#! Where:
-#! - sender_{prefix,suffix} are the prefix and suffix felts of the sender account ID of the note
-#!   currently being processed.
-#!
-#! Panics if:
-#! - a note is not being processed.
-#!
-#! Invocation: dynexec
-export.note_get_sender
-    exec.note::get_sender
-    # => [sender_id_prefix, sender_id_suffix, pad(16)]
-
-    # truncate the stack
-    movup.2 drop movup.2 drop
-    # => [sender_id_prefix, sender_id_suffix, pad(14)]
-end
-
-#! Returns the script root of the note currently being processed.
-#!
-#! Inputs:  [pad(16)]
-#! Outputs: [script_root, pad(12)]
-#!
-#! Where:
-#! - SCRIPT_ROOT is the script root of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is not being processed.
-#!
-#! Invocation: dynexec
-export.note_get_script_root
-    exec.note::get_script_root
-    # => [SCRIPT_ROOT, pad(16)]
-
-    # truncate the stack
-    swapw dropw
-    # => [SCRIPT_ROOT, pad(12)]
 end
 
 ### TRANSACTION #################################
@@ -1175,10 +1263,11 @@ export.tx_get_block_timestamp
     # => [timestamp, pad(15)]
 end
 
-#! Tells the transaction kernel that we are about to execute a procedure on a foreign account.
+#! Starts a foreign account context.
 #!
-#! Checks whether the current foreign account was already loaded to the memory, and loads it if not.
-#! Moves the account pointer to the currently accessing foreign account.
+#! This allows calling procedures on an account different from the native account. It loads the
+#! foreign account into memory, unless already loaded. It pushes the foreign account onto the
+#! account stack, which makes the foreign account the current account.
 #!
 #! Inputs:
 #!   Operand stack: [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
@@ -1232,12 +1321,12 @@ export.tx_start_foreign_context
 
         # store the id and nonce of the foreign account to the memory
         dropw adv_loadw
-        exec.memory::set_acct_id_and_nonce dropw
+        exec.memory::set_account_id_and_nonce dropw
         # OS => [pad(16)]
         # AS => [VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
 
         # store the vault root of the foreign account to the memory
-        adv_loadw exec.memory::set_acct_vault_root dropw
+        adv_loadw exec.memory::set_account_vault_root dropw
         # OS => [pad(16)]
         # AS => [STORAGE_ROOT, CODE_ROOT]
 
@@ -1247,7 +1336,7 @@ export.tx_start_foreign_context
         # AS => []
 
         # store the code root into the memory
-        exec.memory::set_acct_code_commitment
+        exec.memory::set_account_code_commitment
         # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
         # AS => []
 
@@ -1257,7 +1346,7 @@ export.tx_start_foreign_context
         # AS => []
 
         # store the storage root to the memory
-        exec.memory::set_acct_storage_commitment
+        exec.memory::set_account_storage_commitment
         # OS => [STORAGE_ROOT, pad(16)]
         # AS => []
 
@@ -1273,13 +1362,15 @@ export.tx_start_foreign_context
     # => [pad(16)]
 end
 
-#! Tells the transaction kernel that we are done executing a procedure on a foreign account.
+#! Ends a foreign account context.
+#!
+#! This pops the top of the account stack, making the previous account the current account.
 #!
 #! Inputs:  [pad(16)]
 #! Outputs: [pad(16)]
 #!
 #! Panics if:
-#! - the current context is a native context.
+#! - the current account is the native account.
 #!
 #! Invocation: dynexec
 export.tx_end_foreign_context
@@ -1323,7 +1414,7 @@ export.tx_get_expiration_delta
     # => [block_height_delta, pad(15)]
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Inputs:  [PROC_ROOT, pad(12)]
 #! Outputs: [was_called, pad(15)]
@@ -1372,4 +1463,40 @@ export.exec_kernel_proc
     # execute loaded procedure
     dynexec
     # => [<procedure_outputs>, <pad>]
+end
+
+# HELPER PROCEDURES
+# =================================================================================================
+
+#! Returns the memory pointer to the input note, depending on whether the requested note is current
+#! or it was requested by index.
+#!
+#! If the pointer to the currently processing note was requested, but no note is being executed, 0 
+#! is returned.
+#!
+#! Inputs:  [is_current_note, note_index]
+#! Outputs: [input_note_ptr]
+#!
+#! Where:
+#! - is_current_note is the boolean flag indicating whether we should return requested data from
+#!   the currently processing note or from the note with the specified index.
+#! - note_index is the index of the input note whose data should be returned. Notice that if
+#!   is_current_note is 1, note_index is ignored.
+#! - input_note_ptr is the pointer to the correct input note. 
+#!
+#! Panics if:
+#! - the note index is greater or equal to the total number of input notes.
+proc.get_requested_note_ptr
+    # get the memory pointer to the note with the specified index and verify it is valid
+    swap exec.input_note::get_input_note_ptr swap
+    # => [is_current_note, indexed_input_note_ptr]
+
+    # get the memory pointer to the currently processed input note
+    exec.memory::get_current_input_note_ptr swap
+    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr]
+
+    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
+    # on the stack. If it is false, indexed_input_note_ptr remains instead.
+    cdrop
+    # => [input_note_ptr]
 end

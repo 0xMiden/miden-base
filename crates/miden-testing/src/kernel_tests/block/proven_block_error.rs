@@ -10,9 +10,10 @@ use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountI
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
+use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, NullifierTreeError, Word};
+use miden_tx::LocalTransactionProver;
 use winterfell::Proof;
 
 use super::utils::{
@@ -22,7 +23,7 @@ use super::utils::{
     generate_tracked_note,
     setup_chain,
 };
-use crate::{Auth, MockChain, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{Auth, MockChain, TransactionContextBuilder};
 
 struct WitnessTestSetup {
     stale_block_inputs: BlockInputs,
@@ -96,9 +97,7 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block0)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block0).unwrap_err();
 
     assert_matches!(
         error,
@@ -135,9 +134,7 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block2)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block2).unwrap_err();
 
     assert_matches!(
         error,
@@ -183,9 +180,7 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block1)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block1).unwrap_err();
 
     assert_matches!(
         error,
@@ -233,9 +228,7 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block3)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block3).unwrap_err();
 
     assert_matches!(
         error,
@@ -301,7 +294,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         .tx_inputs(tx_inputs)
         .build()?;
     let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
-    let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
+    let tx = LocalTransactionProver::default().prove_dummy(tx)?;
 
     let batch = generate_batch(&mut mock_chain, vec![tx]);
     let batches = [batch];
@@ -330,7 +323,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_without_batch_verification(block).unwrap_err();
+    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     assert_matches!(
@@ -425,7 +418,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_without_batch_verification(block).unwrap_err();
+    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     assert_matches!(

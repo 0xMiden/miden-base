@@ -484,16 +484,20 @@ impl TransactionKernel {
             .with_debug_mode(true)
     }
 
-    /// Returns an [`Assembler`] with the mock account and faucet libraries.
+    /// Returns an [`Assembler`] with the `mock::{account, faucet, util}` libraries.
     ///
     /// This assembler is the same as [`TransactionKernel::with_kernel_library`] but additionally
-    /// includes the [`MockAccountCodeExt::mock_account_library`][account_lib]
-    /// and [`MockAccountCodeExt::mock_faucet_library`][faucet_lib], which are the standard
-    /// testing account libraries.
+    /// includes:
+    /// - [`MockAccountCodeExt::mock_account_library`][account_lib],
+    /// - [`MockAccountCodeExt::mock_faucet_library`][faucet_lib],
+    /// - [`mock_util_library`][util_lib]
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
+    /// [util_lib]: crate::testing::mock_util_lib::mock_util_library
     pub fn with_mock_libraries(source_manager: Arc<dyn SourceManagerSync>) -> Assembler {
+        use crate::testing::mock_util_lib::mock_util_library;
+
         let mut assembler = Self::with_kernel_library(source_manager);
 
         for library in Self::mock_libraries() {
@@ -501,6 +505,10 @@ impl TransactionKernel {
                 .link_dynamic_library(library)
                 .expect("failed to add mock account libraries");
         }
+
+        assembler
+            .link_static_library(mock_util_library())
+            .expect("failed to add mock test library");
 
         assembler
     }

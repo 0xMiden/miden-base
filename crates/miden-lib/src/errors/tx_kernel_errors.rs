@@ -34,8 +34,6 @@ pub const ERR_ACCOUNT_IS_NOT_NATIVE: MasmError = MasmError::from_static_str("the
 pub const ERR_ACCOUNT_NONCE_AT_MAX: MasmError = MasmError::from_static_str("account nonce is already at its maximum possible value");
 /// Error Message: "account nonce can only be incremented once"
 pub const ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE: MasmError = MasmError::from_static_str("account nonce can only be incremented once");
-/// Error Message: "account nonce did not increase after a state changing transaction"
-pub const ERR_ACCOUNT_NONCE_DID_NOT_INCREASE_AFTER_STATE_CHANGE: MasmError = MasmError::from_static_str("account nonce did not increase after a state changing transaction");
 /// Error Message: "provided procedure index is out of bounds"
 pub const ERR_ACCOUNT_PROC_INDEX_OUT_OF_BOUNDS: MasmError = MasmError::from_static_str("provided procedure index is out of bounds");
 /// Error Message: "account procedure is not the authentication procedure; some procedures (e.g. `incr_nonce`) can be called only from the authentication procedure"
@@ -145,12 +143,18 @@ pub const ERR_NON_FUNGIBLE_ASSET_FORMAT_MOST_SIGNIFICANT_BIT_MUST_BE_ZERO: MasmE
 /// Error Message: "failed to build the non-fungible asset because the provided faucet id is not from a non-fungible faucet"
 pub const ERR_NON_FUNGIBLE_ASSET_PROVIDED_FAUCET_ID_IS_INVALID: MasmError = MasmError::from_static_str("failed to build the non-fungible asset because the provided faucet id is not from a non-fungible faucet");
 
-/// Error Message: "attempted to access note assets from incorrect context"
-pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note assets from incorrect context");
-/// Error Message: "attempted to access note inputs from incorrect context"
-pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note inputs from incorrect context");
-/// Error Message: "attempted to access note sender from incorrect context"
-pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SENDER_FROM_INCORRECT_CONTEXT: MasmError = MasmError::from_static_str("attempted to access note sender from incorrect context");
+/// Error Message: "failed to access note assets of current note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note assets of current note because no note is currently being processed");
+/// Error Message: "failed to access note inputs of current note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note inputs of current note because no note is currently being processed");
+/// Error Message: "failed to access note metadata of current note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note metadata of current note because no note is currently being processed");
+/// Error Message: "failed to access note recipient of current note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note recipient of current note because no note is currently being processed");
+/// Error Message: "failed to access note script root of current note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note script root of current note because no note is currently being processed");
+/// Error Message: "failed to access note serial number of current note because no note is currently being processed"
+pub const ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED: MasmError = MasmError::from_static_str("failed to access note serial number of current note because no note is currently being processed");
 /// Error Message: "note data does not match the commitment"
 pub const ERR_NOTE_DATA_DOES_NOT_MATCH_COMMITMENT: MasmError = MasmError::from_static_str("note data does not match the commitment");
 /// Error Message: "adding a fungible asset to a note cannot exceed the max_amount of 9223372036854775807"
@@ -160,7 +164,7 @@ pub const ERR_NOTE_INVALID_INDEX: MasmError = MasmError::from_static_str("failed
 /// Error Message: "invalid note type for the given note tag prefix"
 pub const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX: MasmError = MasmError::from_static_str("invalid note type for the given note tag prefix");
 /// Error Message: "the specified number of note inputs does not match the actual number"
-pub const ERR_NOTE_INVALID_NUMBER_OF_NOTE_INPUTS: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
+pub const ERR_NOTE_INVALID_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
 /// Error Message: "invalid note type"
 pub const ERR_NOTE_INVALID_TYPE: MasmError = MasmError::from_static_str("invalid note type");
 /// Error Message: "network execution mode with a specific target can only target network accounts"
@@ -203,6 +207,8 @@ pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_INVALID_TYPE: MasmE
 pub const ERR_PROLOGUE_NEW_NON_FUNGIBLE_FAUCET_RESERVED_SLOT_MUST_BE_VALID_EMPTY_SMT: MasmError = MasmError::from_static_str("reserved slot for non-fungible faucet is not a valid empty SMT");
 /// Error Message: "failed to authenticate note inclusion in block"
 pub const ERR_PROLOGUE_NOTE_AUTHENTICATION_FAILED: MasmError = MasmError::from_static_str("failed to authenticate note inclusion in block");
+/// Error Message: "number of note inputs exceeded the maximum limit of 128"
+pub const ERR_PROLOGUE_NOTE_INPUTS_LEN_EXCEEDED_LIMIT: MasmError = MasmError::from_static_str("number of note inputs exceeded the maximum limit of 128");
 /// Error Message: "number of input notes exceeds the kernel's maximum limit of 1024"
 pub const ERR_PROLOGUE_NUMBER_OF_INPUT_NOTES_EXCEEDS_LIMIT: MasmError = MasmError::from_static_str("number of input notes exceeds the kernel's maximum limit of 1024");
 /// Error Message: "number of note assets exceeds the maximum limit of 256"
