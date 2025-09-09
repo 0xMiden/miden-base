@@ -226,7 +226,7 @@ pub enum TransactionKernelError {
     )]
     MissingAuthenticator,
     #[error("failed to generate signature")]
-    SignatureGenerationFailed(#[source] Box<dyn Error + Send + Sync + 'static>),
+    SignatureGenerationFailed(#[source] AuthenticationError),
     #[error("transaction returned unauthorized event but a commitment did not match: {0}")]
     TransactionSummaryCommitmentMismatch(#[source] Box<dyn Error + Send + Sync + 'static>),
     #[error("failed to construct transaction summary")]
