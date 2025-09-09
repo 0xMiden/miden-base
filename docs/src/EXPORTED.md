@@ -14,3 +14,4 @@
     - [Transaction](./transaction.md)
     - [State](./state.md)
     - [Blockchain](./blockchain.md)
+    - [Miden Protocol Library](./protocol_library.md)

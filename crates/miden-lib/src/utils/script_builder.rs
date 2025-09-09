@@ -294,23 +294,27 @@ impl ScriptBuilder {
     // TESTING CONVENIENCE FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns a [`ScriptBuilder`] with the mock account and faucet libraries.
+    /// Returns a [`ScriptBuilder`] with the `mock::{account, faucet, util}` libraries.
     ///
-    /// This script builder includes the [`MockAccountCodeExt::mock_account_library`][account_lib]
-    /// and [`MockAccountCodeExt::mock_faucet_library`][faucet_lib], which are the standard
-    /// testing account libraries.
+    /// This script builder includes:
+    /// - [`MockAccountCodeExt::mock_account_library`][account_lib],
+    /// - [`MockAccountCodeExt::mock_faucet_library`][faucet_lib],
+    /// - [`mock_util_library`][util_lib]
     ///
     /// [account_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_account_library
     /// [faucet_lib]: crate::testing::mock_account_code::MockAccountCodeExt::mock_faucet_library
+    /// [util_lib]: crate::testing::mock_util_lib::mock_util_library
     #[cfg(any(feature = "testing", test))]
     pub fn with_mock_libraries() -> Result<Self, ScriptBuilderError> {
         use miden_objects::account::AccountCode;
 
         use crate::testing::mock_account_code::MockAccountCodeExt;
+        use crate::testing::mock_util_lib::mock_util_library;
 
         Self::new(true)
             .with_dynamically_linked_library(&AccountCode::mock_account_library())?
-            .with_dynamically_linked_library(&AccountCode::mock_faucet_library())
+            .with_dynamically_linked_library(&AccountCode::mock_faucet_library())?
+            .with_statically_linked_library(&mock_util_library())
     }
 }
 

@@ -6,9 +6,6 @@ pub use id_prefix::AccountIdPrefix;
 
 mod seed;
 
-mod network_id;
-pub use network_id::{CustomNetworkId, NetworkId};
-
 mod account_type;
 pub use account_type::AccountType;
 

@@ -13,10 +13,14 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     word!("0x1aed40e2cc4d3798448f4efdce1a14c9598611da065eebe58432f144c3bca9de"),
     // account_get_id
     word!("0xc9f7e71b294e16d7a297ba283afb2f8c864817e40e73b6ef1d64efc310937fc7"),
+    // account_get_native_id
+    word!("0x05eb568956d0174066a1277442cc4602fcbbc6790bd64975416958d28274cb73"),
     // account_get_nonce
     word!("0x4a1f11db21ddb1f0ebf7c9fd244f896a95e99bb136008185da3e7d6aa85827a3"),
     // account_incr_nonce
     word!("0x72f4595fd7030542ab303c77be42962671948ef18ffeda49b0e88a374f0969f6"),
+    // account_get_native_nonce
+    word!("0xeae4dcae877e64a1951aa1ca35ac2adda724e359ee9c7689e55c42dde55d70c4"),
     // account_get_code_commitment
     word!("0x02e55aa37f40207bc2a3882383d4c0f1f6633b5f3ea5b7ef814d827632aa7ae8"),
     // account_get_initial_storage_commitment
@@ -36,9 +40,9 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     // account_get_vault_root
     word!("0x42a2bfb8eac4fce9bbf75ea15215b00729faeeaf7fff784692948d3f618a9bb7"),
     // account_add_asset
-    word!("0xf0d6be80cdd2a62cab2b4ad5606dde01af1968e3ab3357dcb63fe36aea7f8b80"),
+    word!("0x9a96c031f9ca6d839acc5ce6aa01b63ddba91fe312ea824ccd224c365cc1327d"),
     // account_remove_asset
-    word!("0x7a8f7b23afe3d6264686c4895f78744fbccda957e901247c8f3585427d470039"),
+    word!("0x8372d56ed394254481026d264b8ea97c2342ba42db21c61b2e96c6bf06d950a9"),
     // account_get_balance
     word!("0xb4e92ae0196ca128a451e40dd8a5ff56c13919efa67f63dca488214fbba3ffbc"),
     // account_has_non_fungible_asset
@@ -55,30 +59,26 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     word!("0x7d32952d4dc0edd0311e3424b8128df2d48cf949f800c28218fbc851a8db42b5"),
     // faucet_is_non_fungible_asset_issued
     word!("0xc827d2430763c70880216804d3523c14e70e5cf926d5d8a72844c6476add5ef7"),
-    // note_get_assets_info
-    word!("0x13a1496a239fa95b3b376c53d899ce2d495e956cdae0f121666408462784673a"),
-    // note_add_asset
-    word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
-    // note_get_serial_number
-    word!("0x6989241a99d9aa1630daae03fc55ecac269e184d6b455c7c0bc996d15ef7f9a8"),
-    // note_get_inputs_commitment_and_len
-    word!("0x6ae9f25739a4368330c40e9bd21e5beed4583656443877f3f59cad5040decee1"),
-    // note_get_sender
-    word!("0x125832eac0e511f2d86c508b5fa79b7ea6a302c4200222c7f58e1832260bde8f"),
-    // note_get_script_root
-    word!("0x317c3f724d57093c98927f7820dc00f5cf3509d2de4306dccaef4e2266fcd5b6"),
-    // input_note_get_assets_info
-    word!("0x0816c7215676487f3ce03d372bf5512afb528ab62466074921829d7d2974147c"),
-    // output_note_get_assets_info
-    word!("0x71d0e246d52c4d896e6508564207e049d4d68da187a143fe95bf5e7f5602f967"),
-    // input_note_get_recipient
-    word!("0x1e612cf8aa3cca674363d9e1fb15c666a0cf2febc80bf9d7800920941133a3f4"),
-    // output_note_get_recipient
-    word!("0xc824115ed79a2e1670daed8c18fba1bc15f54c5ec0ec6699de69a00b21d9df92"),
     // input_note_get_metadata
-    word!("0x4b0c2a8560a007abadd55013c3b3c620b2de2189c08109500ba46a4222b37d89"),
+    word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
+    // input_note_get_assets_info
+    word!("0x159439fe48dbc11e674c5d05830d0408dcfa033c26e85e01256002c6cbc07e9a"),
+    // input_note_get_script_root
+    word!("0x527036257e58c3a84cf0aa170fb3f219a4553db17d269279355ad164a2b90ac5"),
+    // input_note_get_inputs_info
+    word!("0xdd8bbf4cdb48051da346bc89760b77fdf4c948904276a99d96409922a00bd322"),
+    // input_note_get_serial_number
+    word!("0x25815e02b7976d8e5c297dde60d372cc142c81f702f424ac0920190528c547ee"),
+    // input_note_get_recipient
+    word!("0xd3c255177f9243bb1a523a87615bbe76dd5a3605fcae87eb9d3a626d4ecce33c"),
     // output_note_get_metadata
     word!("0xde4a5b57f9d53692459383e6cf6302ef3602a348896ed6ab6fdf67e07fa483ff"),
+    // output_note_get_assets_info
+    word!("0x71d0e246d52c4d896e6508564207e049d4d68da187a143fe95bf5e7f5602f967"),
+    // output_note_get_recipient
+    word!("0xc824115ed79a2e1670daed8c18fba1bc15f54c5ec0ec6699de69a00b21d9df92"),
+    // output_note_add_asset
+    word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
     // tx_create_note
     word!("0x52b37f8b25e26517f22f1f600acae7fbfffa84094595ba961af2af807a484736"),
     // tx_get_input_notes_commitment
