@@ -5,7 +5,6 @@ use.std::mem
 
 use.$kernel::account_id
 use.$kernel::asset_vault
-use.$kernel::asset
 use.$kernel::account_delta
 use.$kernel::constants
 use.$kernel::memory
@@ -121,6 +120,9 @@ const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 
 # EVENTS
 # =================================================================================================
+
+# Event emitted before an account is loaded from the advice inputs.
+const.ACCOUNT_BEFORE_LOAD=131104
 
 # Event emitted before an asset is added to the account vault.
 const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=131072
@@ -954,6 +956,9 @@ end
 #! - the number of account storage slots exceeded the maximum limit of 255.
 #! - the computed account storage commitment does not match the provided account storage commitment.
 export.load_from_advice
+    emit.ACCOUNT_BEFORE_LOAD
+    # => [account_id_prefix, account_id_suffix]
+
     # construct the word with account ID to load the core account data from the advice map
     push.0.0
     # OS => [0, 0, account_id_prefix, account_id_suffix]

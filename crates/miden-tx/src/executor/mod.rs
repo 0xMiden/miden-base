@@ -309,6 +309,7 @@ where
             script_mast_store,
             acct_procedure_index_map,
             self.authenticator,
+            tx_inputs.block_header().block_num(),
             self.source_manager.clone(),
         );
 
