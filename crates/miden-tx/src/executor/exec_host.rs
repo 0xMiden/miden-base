@@ -5,12 +5,13 @@ use alloc::vec::Vec;
 
 use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
-use miden_objects::account::{AccountDelta, PartialAccount};
+use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
-use miden_objects::asset::FungibleAsset;
-use miden_objects::block::FeeParameters;
+use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
+use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
+use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Hasher, Word};
 use miden_processor::{
     AdviceMutation,
@@ -19,11 +20,9 @@ use miden_processor::{
     EventError,
     FutureMaybeSend,
     MastForest,
-    MastForestStore,
     ProcessState,
 };
 
-use crate::AccountProcedureIndexMap;
 use crate::auth::{SigningInputs, TransactionAuthenticator};
 use crate::host::{
     ScriptMastForestStore,
@@ -32,6 +31,7 @@ use crate::host::{
     TransactionEventHandling,
     TransactionProgress,
 };
+use crate::{AccountProcedureIndexMap, DataStore};
 
 // TRANSACTION EXECUTOR HOST
 // ================================================================================================
@@ -45,7 +45,7 @@ use crate::host::{
 /// execution.
 pub struct TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore,
+    STORE: DataStore,
     AUTH: TransactionAuthenticator,
 {
     /// The underlying base transaction host.
@@ -62,9 +62,6 @@ where
     /// authenticator that produced it.
     generated_signatures: BTreeMap<Word, Vec<Felt>>,
 
-    /// The balance of the native asset in the account at the beginning of transaction execution.
-    initial_native_asset: FungibleAsset,
-
     /// The source manager to track source code file span information, improving any MASM related
     /// error messages.
     source_manager: Arc<dyn SourceManagerSync>,
@@ -72,7 +69,7 @@ where
 
 impl<'store, 'auth, STORE, AUTH> TransactionExecutorHost<'store, 'auth, STORE, AUTH>
 where
-    STORE: MastForestStore + Sync,
+    STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
     // CONSTRUCTORS
@@ -86,32 +83,8 @@ where
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
-        fee_parameters: &FeeParameters,
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
-        // TODO: Once we have lazy account loading, this should be loaded in on_tx_fee_computed to
-        // avoid the use of PartialVault entirely, which in the future, may or may not track
-        // all assets in the account at this point. Here we assume it does track _all_ assets of the
-        // account.
-        let initial_native_asset = {
-            let native_asset = FungibleAsset::new(fee_parameters.native_asset_id(), 0)
-                .expect("native asset ID should be a valid fungible faucet ID");
-
-            // Map Asset to FungibleAsset.
-            // SAFETY: We requested a fungible vault key, so if Some is returned, it should be a
-            // fungible asset.
-            // A returned error means the vault does not track or does not contain the asset.
-            // However, since in practice, the partial vault represents the entire account vault,
-            // we can assume the second case. A returned None means the asset's amount is
-            // zero.
-            // So in both Err and None cases, use the default native_asset with amount 0.
-            account
-                .vault()
-                .get(native_asset.vault_key())
-                .map(|asset| asset.map(|asset| asset.unwrap_fungible()).unwrap_or(native_asset))
-                .unwrap_or(native_asset)
-        };
-
         let base_host = TransactionBaseHost::new(
             account,
             input_notes,
@@ -124,7 +97,6 @@ where
             base_host,
             authenticator,
             generated_signatures: BTreeMap::new(),
-            initial_native_asset,
             source_manager,
         }
     }
@@ -163,63 +135,150 @@ where
         Ok(vec![AdviceMutation::extend_stack(signature)])
     }
 
-    /// Handles the [`TransactionEvent::EpilogueTxFeeComputed`] and returns an error if the account
-    /// cannot pay the fee.
-    fn on_tx_fee_computed(
+    /// Handles the [`TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount`] and returns an error
+    /// if the account cannot pay the fee.
+    async fn on_before_tx_fee_removed_from_account(
         &self,
         fee_asset: FungibleAsset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let asset_witness = self
+            .base_host
+            .store()
+            .get_vault_asset_witness(
+                self.base_host.initial_account_header().id(),
+                self.base_host.initial_account_header().vault_root(),
+                fee_asset.vault_key(),
+            )
+            .await
+            .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
+                vault_root: self.base_host.initial_account_header().vault_root(),
+                vault_key: fee_asset.vault_key(),
+                source: Box::new(err),
+            })?;
+
+        // Find fee asset in the witness or default to 0 if it isn't present.
+        let initial_fee_asset = asset_witness
+            .find(fee_asset.vault_key())
+            .and_then(|asset| match asset {
+                Asset::Fungible(fungible_asset) => Some(fungible_asset),
+                _ => None,
+            })
+            .unwrap_or(
+                FungibleAsset::new(fee_asset.faucet_id(), 0)
+                    .expect("fungible asset created from fee asset should be valid"),
+            );
+
         // Compute the current balance of the native asset in the account based on the initial value
         // and the delta.
-        let current_native_asset = {
-            let native_asset_amount_delta = self
+        let current_fee_asset = {
+            let fee_asset_amount_delta = self
                 .base_host
                 .account_delta_tracker()
                 .vault_delta()
                 .fungible()
-                .amount(&self.initial_native_asset.faucet_id())
+                .amount(&initial_fee_asset.faucet_id())
                 .unwrap_or(0);
 
             // SAFETY: Initial native asset faucet ID should be a fungible faucet and amount should
             // be less than MAX_AMOUNT as checked by the account delta.
-            let native_asset_delta = FungibleAsset::new(
-                self.initial_native_asset.faucet_id(),
-                native_asset_amount_delta.unsigned_abs(),
+            let fee_asset_delta = FungibleAsset::new(
+                initial_fee_asset.faucet_id(),
+                fee_asset_amount_delta.unsigned_abs(),
             )
             .expect("faucet ID and amount should be valid");
 
             // SAFETY: These computations are essentially the same as the ones executed by the
             // transaction kernel, which should have aborted if they weren't valid.
-            if native_asset_amount_delta > 0 {
-                self.initial_native_asset
-                    .add(native_asset_delta)
+            if fee_asset_amount_delta > 0 {
+                initial_fee_asset
+                    .add(fee_asset_delta)
                     .expect("transaction kernel should ensure amounts do not exceed MAX_AMOUNT")
             } else {
-                self.initial_native_asset
-                    .sub(native_asset_delta)
+                initial_fee_asset
+                    .sub(fee_asset_delta)
                     .expect("transaction kernel should ensure amount is not negative")
             }
         };
 
         // Return an error if the balance in the account does not cover the fee.
-        if current_native_asset.amount() < fee_asset.amount() {
+        if current_fee_asset.amount() < fee_asset.amount() {
             return Err(TransactionKernelError::InsufficientFee {
-                account_balance: current_native_asset.amount(),
+                account_balance: current_fee_asset.amount(),
                 tx_fee: fee_asset.amount(),
             });
         }
 
-        Ok(Vec::new())
+        Ok(asset_witness_to_advice_mutation(asset_witness))
+    }
+
+    /// Handles a request to an asset witness by querying the data store for a merkle path.
+    ///
+    /// ## Native Account
+    ///
+    /// For the native account we always request witnesses for the initial vault root, because the
+    /// data store only has the state of the account vault at the beginning of the transaction.
+    /// Since the vault root can change as the transaction progresses, this means the witnesses
+    /// may become _partially_ or fully outdated. To see why they can only be _partially_ outdated,
+    /// consider the following example:
+    ///
+    /// ```text
+    ///      A               A'
+    ///     / \             /  \
+    ///    B   C    ->    B'    C
+    ///   / \  / \       /  \  / \
+    ///  D  E F   G     D   E' F  G
+    /// ```
+    ///
+    /// Leaf E was updated to E', in turn updating nodes B and A. If we now request the merkle path
+    /// to G against root A (the initial vault root), we'll get nodes F and B. F is a node in the
+    /// updated tree, while B is not. We insert both into the merkle store anyway. Now, if the
+    /// transaction attempts to verify the merkle path to G, it can do so because F and B' are in
+    /// the merkle store. Note that B' is in the store because the transaction inserted it into the
+    /// merkle store as part of updating E, not because we inserted it. B is present in the store,
+    /// but is simply ignored for the purpose of verifying G's inclusion.
+    async fn on_account_vault_asset_witness_requested(
+        &self,
+        current_account_id: AccountId,
+        _vault_root: Word,
+        asset: Asset,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        // For now, we only support getting witnesses for the native account, so return early if the
+        // requested account is not the native one.
+        if current_account_id != self.base_host.initial_account_header().id() {
+            return Ok(Vec::new());
+        }
+
+        let vault_root = self.base_host.initial_account_header().vault_root();
+        let vault_key = asset.vault_key();
+        let asset_witness = self
+            .base_host
+            .store()
+            .get_vault_asset_witness(current_account_id, vault_root, vault_key)
+            .await
+            .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
+                vault_root,
+                vault_key,
+                source: Box::new(err),
+            })?;
+
+        Ok(asset_witness_to_advice_mutation(asset_witness))
     }
 
     /// Consumes `self` and returns the account delta, output notes, generated signatures and
     /// transaction progress.
+    #[allow(clippy::type_complexity)]
     pub fn into_parts(
         self,
-    ) -> (AccountDelta, Vec<OutputNote>, BTreeMap<Word, Vec<Felt>>, TransactionProgress) {
-        let (account_delta, output_notes, tx_progress) = self.base_host.into_parts();
+    ) -> (
+        AccountDelta,
+        InputNotes<InputNote>,
+        Vec<OutputNote>,
+        BTreeMap<Word, Vec<Felt>>,
+        TransactionProgress,
+    ) {
+        let (account_delta, input_notes, output_notes, tx_progress) = self.base_host.into_parts();
 
-        (account_delta, output_notes, self.generated_signatures, tx_progress)
+        (account_delta, input_notes, output_notes, self.generated_signatures, tx_progress)
     }
 }
 
@@ -228,7 +287,7 @@ where
 
 impl<STORE, AUTH> BaseHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: MastForestStore,
+    STORE: DataStore,
     AUTH: TransactionAuthenticator,
 {
     fn get_mast_forest(&self, procedure_root: &Word) -> Option<Arc<MastForest>> {
@@ -248,7 +307,7 @@ where
 
 impl<STORE, AUTH> AsyncHost for TransactionExecutorHost<'_, '_, STORE, AUTH>
 where
-    STORE: MastForestStore + Sync,
+    STORE: DataStore + Sync,
     AUTH: TransactionAuthenticator + Sync,
 {
     fn on_event(
@@ -276,10 +335,37 @@ where
                     .on_auth_requested(pub_key_hash, signing_inputs)
                     .await
                     .map_err(EventError::from),
-                TransactionEventData::TransactionFeeComputed { fee_asset } => {
-                    self.on_tx_fee_computed(fee_asset).map_err(EventError::from)
-                },
+                TransactionEventData::TransactionFeeComputed { fee_asset } => self
+                    .on_before_tx_fee_removed_from_account(fee_asset)
+                    .await
+                    .map_err(EventError::from),
+                TransactionEventData::AccountVaultAssetWitness {
+                    current_account_id,
+                    vault_root,
+                    asset,
+                } => self
+                    .on_account_vault_asset_witness_requested(current_account_id, vault_root, asset)
+                    .await
+                    .map_err(EventError::from),
             }
         }
     }
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Converts an [`AssetWitness`] into the set of advice mutations that need to be inserted in order
+/// to access the asset.
+fn asset_witness_to_advice_mutation(asset_witness: AssetWitness) -> Vec<AdviceMutation> {
+    // Get the nodes in the proof and insert them into the merkle store.
+    let merkle_store_ext = AdviceMutation::extend_merkle_store(asset_witness.authenticated_nodes());
+
+    let smt_proof = SmtProof::from(asset_witness);
+    let map_ext = AdviceMutation::extend_map(AdviceMap::from_iter([(
+        smt_proof.leaf().hash(),
+        smt_proof.leaf().to_elements(),
+    )]));
+
+    vec![merkle_store_ext, map_ext]
 }

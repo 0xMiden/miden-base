@@ -3,13 +3,14 @@ use.miden::kernel_proc_offsets
 # NATIVE ACCOUNT PROCEDURES
 # =================================================================================================
 
-#! Returns the account ID.
+#! Returns the ID of the current account.
 #!
 #! Inputs:  []
-#! Outputs: [acct_id_prefix, acct_id_suffix]
+#! Outputs: [account_id_prefix, account_id_suffix]
 #!
 #! Where:
-#! - acct_id_{prefix,suffix} are the prefix and suffix felts of the account ID.
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the account ID of the currently
+#!   accessing account.
 #!
 #! Invocation: exec
 export.get_id
@@ -24,14 +25,43 @@ export.get_id
     # => [offset, pad(15)]
 
     syscall.exec_kernel_proc
-    # => [acct_id_prefix, acct_id_suffix, pad(14)]
+    # => [account_id_prefix, account_id_suffix, pad(14)]
 
     # clean the stack
     swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
-    # => [acct_id_prefix, acct_id_suffix]
+    # => [account_id_prefix, account_id_suffix]
 end
 
-#! Returns the account nonce.
+#! Returns the ID of the native account of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [account_id_prefix, account_id_suffix]
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the native account ID of the
+#!   transaction.
+#!
+#! Invocation: exec
+export.get_native_id
+    # start padding the stack
+    push.0.0.0
+
+    exec.kernel_proc_offsets::account_get_native_id_offset
+    # => [offset, 0, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [account_id_prefix, account_id_suffix, pad(14)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 movdn.3 drop drop
+    # => [account_id_prefix, account_id_suffix]
+end
+
+#! Returns the nonce of the current account.
 #!
 #! This procedure always returns the initial account nonce, as the nonce can only be incremented
 #! in the authentication procedure when signing the transaction after all user code has been 
@@ -41,7 +71,7 @@ end
 #! Outputs: [nonce]
 #!
 #! Where:
-#! - nonce is the nonce of the current account.
+#! - nonce is the current account's nonce.
 #!
 #! Invocation: exec
 export.get_nonce
@@ -61,6 +91,65 @@ export.get_nonce
     # clean the stack
     swapdw dropw dropw swapw dropw movdn.3 drop drop drop
     # => [nonce]
+end
+
+#! Returns the nonce of the native account of the transaction.
+#!
+#! Inputs:  []
+#! Outputs: [nonce]
+#!
+#! Where:
+#! - nonce is the nonce of the native account of the transaction.
+#!
+#! Invocation: exec
+export.get_native_nonce
+    # start padding the stack
+    push.0.0.0
+
+    exec.kernel_proc_offsets::account_get_native_nonce_offset
+    # => [offset, 0, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [nonce, pad(15)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
+    # => [nonce]
+end
+
+#! Increments the account nonce by one and returns the new nonce.
+#!
+#! Inputs:  []
+#! Outputs: [final_nonce]
+#!
+#! Where:
+#! - final_nonce is the new nonce of the account. Since it cannot be incremented again, this will
+#!   also be the final nonce of the account after transaction execution.
+#!
+#! Panics if:
+#! - the invocation of this procedure does not originate from the native account.
+#! - the invocation of this procedure does not originate from the authentication procedure
+#!   of the account.
+#! - the nonce has already been incremented.
+#!
+#! Invocation: exec
+export.incr_nonce
+    # pad the stack
+    padw padw padw push.0.0.0
+    # => [pad(15)]
+
+    exec.kernel_proc_offsets::account_incr_nonce_offset
+    # => [offset, pad(15)]
+
+    syscall.exec_kernel_proc
+    # => [final_nonce, pad(15)]
+
+    swap.15 dropw dropw dropw drop drop drop
+    # => [final_nonce]
 end
 
 #! Returns the native account commitment at the beginning of the transaction.
@@ -141,37 +230,6 @@ export.compute_delta_commitment
     # clean the stack
     swapdw dropw dropw swapw dropw
     # => [DELTA_COMMITMENT]
-end
-
-#! Increments the account nonce by one and returns the new nonce.
-#!
-#! Inputs:  []
-#! Outputs: [final_nonce]
-#!
-#! Where:
-#! - final_nonce is the new nonce of the account. Since it cannot be incremented again, this will
-#!   also be the final nonce of the account after transaction execution.
-#!
-#! Panics if:
-#! - the invocation of this procedure does not originate from the native account.
-#! - the invocation of this procedure does not originate from the authentication procedure
-#!   of the account.
-#! - the nonce has already been incremented.
-#!
-#! Invocation: exec
-export.incr_nonce
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::account_incr_nonce_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [final_nonce, pad(15)]
-
-    swap.15 dropw dropw dropw drop drop drop
-    # => [final_nonce]
 end
 
 #! Gets an item from the account storage. Panics if the index is out of bounds.
@@ -383,7 +441,7 @@ export.compute_storage_commitment
     # => [STORAGE_COMMITMENT]
 end
 
-#! Returns the balance of a fungible asset associated with a faucet_id.
+#! Returns the balance of the fungible asset associated with the provided faucet_id in the current account's vault.
 #!
 #! Inputs:  [faucet_id_prefix, faucet_id_suffix]
 #! Outputs: [balance]
@@ -413,7 +471,7 @@ export.get_balance
     # => [balance]
 end
 
-#! Returns a boolean indicating whether the non-fungible asset is present in the vault.
+#! Returns a boolean indicating whether the non-fungible asset is present in the current account's vault.
 #!
 #! Inputs:  [ASSET]
 #! Outputs: [has_asset]
@@ -530,13 +588,13 @@ export.get_initial_vault_root
     # => [INIT_VAULT_ROOT]
 end
 
-#! Returns a commitment to the account vault.
+#! Returns the vault root of the current account.
 #!
 #! Inputs:  []
 #! Outputs: [VAULT_ROOT]
 #!
 #! Where:
-#! - VAULT_ROOT is a commitment to the account vault.
+#! - VAULT_ROOT is the root of the account vault.
 #!
 #! Invocation: exec
 export.get_vault_root
@@ -555,7 +613,7 @@ export.get_vault_root
     # => [VAULT_ROOT]
 end
 
-#! Checks if a procedure has been called during transaction execution.
+#! Returns 1 if a procedure was called during transaction execution, and 0 otherwise.
 #!
 #! Note: This returns 1 only if the procedure invoked account-restricted kernel APIs (e.g.,
 #! `exec.faucet::mint`) which trigger `authenticate_and_track_procedure`. Procedures that execute

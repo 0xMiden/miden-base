@@ -10,23 +10,24 @@ name                   = "miden-testing"
 readme                 = "README.md"
 repository.workspace   = true
 rust-version.workspace = true
-version                = "0.11.0"
+version.workspace      = true
 
 [features]
 std = ["miden-lib/std"]
 
 [dependencies]
 # Workspace dependencies
-miden-block-prover = { features = ["testing"], workspace = true }
-miden-lib          = { features = ["testing"], workspace = true }
-miden-objects      = { features = ["testing"], workspace = true }
-miden-tx           = { features = ["testing"], workspace = true }
+miden-block-prover    = { features = ["testing"], workspace = true }
+miden-lib             = { features = ["testing"], workspace = true }
+miden-objects         = { features = ["testing"], workspace = true }
+miden-tx              = { features = ["testing"], workspace = true }
+miden-tx-batch-prover = { features = ["testing"], workspace = true }
 
 # Miden dependencies
 miden-processor = { workspace = true }
 
 # External dependencies
-anyhow      = { default-features = false, version = "1.0" }
+anyhow      = { workspace = true }
 itertools   = { default-features = false, features = ["use_alloc"], version = "0.14" }
 rand        = { features = ["os_rng", "small_rng"], workspace = true }
 rand_chacha = { default-features = false, version = "0.9" }
@@ -36,8 +37,8 @@ tokio      = { features = ["macros", "rt"], workspace = true }
 winterfell = { version = "0.13" }
 
 [dev-dependencies]
-anyhow            = { features = ["backtrace", "std"], version = "1.0" }
+anyhow            = { features = ["backtrace", "std"], workspace = true }
 assert_matches    = { workspace = true }
 miden-objects     = { features = ["std"], workspace = true }
-rstest            = { version = "0.25" }
+rstest            = { workspace = true }
 winter-rand-utils = { version = "0.13" }

@@ -5,9 +5,10 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId};
+use miden_objects::account::{Account, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
+use miden_objects::asset::AssetWitness;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
@@ -49,6 +50,7 @@ use crate::tx_context::builder::MockAuthenticator;
 /// It implements [`DataStore`], so transactions may be executed with
 /// [TransactionExecutor](miden_tx::TransactionExecutor)
 pub struct TransactionContext {
+    pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
     pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
@@ -154,7 +156,7 @@ impl TransactionContext {
     }
 
     pub fn account(&self) -> &Account {
-        self.tx_inputs.account()
+        &self.account
     }
 
     pub fn expected_output_notes(&self) -> &[Note] {
@@ -193,11 +195,36 @@ impl DataStore for TransactionContext {
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
     ) -> impl FutureMaybeSend<
-        Result<(Account, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
+        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     > {
         assert_eq!(account_id, self.account().id());
-        let (account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
-        async move { Ok((account, seed, header, mmr)) }
+        assert_eq!(account_id, self.tx_inputs.account().id());
+
+        let (partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
+
+        async move { Ok((partial_account, seed, header, mmr)) }
+    }
+
+    fn get_vault_asset_witness(
+        &self,
+        account_id: AccountId,
+        vault_root: Word,
+        vault_key: Word,
+    ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
+        assert_eq!(
+            account_id,
+            self.account.id(),
+            "only native account vault witnesses can be requested (for now)"
+        );
+        assert_eq!(
+            vault_root,
+            self.account.vault().root(),
+            "vault root should match the native account's root (for now)"
+        );
+
+        let asset_witness = self.account().vault().open(vault_key);
+
+        async { Ok(asset_witness) }
     }
 }
 

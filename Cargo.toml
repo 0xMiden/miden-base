@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "bin/bench-note-checker",
   "bin/bench-prover",
   "bin/bench-tx",
   "crates/miden-block-prover",
@@ -18,7 +19,8 @@ exclude      = [".github/"]
 homepage     = "https://miden.xyz"
 license      = "MIT"
 repository   = "https://github.com/0xMiden/miden-base"
-rust-version = "1.88"
+rust-version = "1.89"
+version      = "0.12.0"
 
 [profile.release]
 codegen-units = 1
@@ -39,25 +41,28 @@ lto           = true
 
 [workspace.dependencies]
 # Workspace crates
-miden-block-prover    = { default-features = false, path = "crates/miden-block-prover", version = "0.11" }
-miden-lib             = { default-features = false, path = "crates/miden-lib", version = "0.11" }
-miden-objects         = { default-features = false, path = "crates/miden-objects", version = "0.11" }
-miden-testing         = { default-features = false, path = "crates/miden-testing", version = "0.11" }
-miden-tx              = { default-features = false, path = "crates/miden-tx", version = "0.11" }
-miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.11" }
+miden-block-prover    = { default-features = false, path = "crates/miden-block-prover", version = "0.12" }
+miden-lib             = { default-features = false, path = "crates/miden-lib", version = "0.12" }
+miden-objects         = { default-features = false, path = "crates/miden-objects", version = "0.12" }
+miden-testing         = { default-features = false, path = "crates/miden-testing", version = "0.12" }
+miden-tx              = { default-features = false, path = "crates/miden-tx", version = "0.12" }
+miden-tx-batch-prover = { default-features = false, path = "crates/miden-tx-batch-prover", version = "0.12" }
 
 # Miden dependencies
-miden-assembly   = { default-features = false, version = "0.17" }
-miden-core       = { default-features = false, version = "0.17" }
-miden-crypto     = { default-features = false, version = "0.15.6" }
-miden-processor  = { default-features = false, version = "0.17" }
-miden-prover     = { default-features = false, version = "0.17" }
-miden-stdlib     = { default-features = false, version = "0.17" }
-miden-utils-sync = { default-features = false, version = "0.17" }
-miden-verifier   = { default-features = false, version = "0.17" }
+miden-assembly     = { default-features = false, version = "0.17" }
+miden-core         = { default-features = false, version = "0.17" }
+miden-crypto       = { default-features = false, version = "0.15.6" }
+miden-mast-package = { default-features = false, version = "0.17" }
+miden-processor    = { default-features = false, version = "0.17" }
+miden-prover       = { default-features = false, version = "0.17" }
+miden-stdlib       = { default-features = false, version = "0.17" }
+miden-utils-sync   = { default-features = false, version = "0.17" }
+miden-verifier     = { default-features = false, version = "0.17" }
 
 # External dependencies
+anyhow         = { default-features = false, version = "1.0" }
 assert_matches = { default-features = false, version = "1.5" }
 rand           = { default-features = false, version = "0.9" }
+rstest         = { version = "0.26" }
 thiserror      = { default-features = false, version = "2.0" }
 tokio          = { default-features = false, features = ["sync"], version = "1" }

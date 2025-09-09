@@ -37,6 +37,7 @@ mod test_faucet;
 mod test_fee;
 mod test_fpi;
 mod test_input_note;
+mod test_lazy_loading;
 mod test_link_map;
 mod test_note;
 mod test_output_note;

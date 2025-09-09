@@ -3,7 +3,7 @@
 [![LICENSE](https://img.shields.io/badge/license-MIT-blue.svg)](https://github.com/0xMiden/miden-base/blob/main/LICENSE)
 [![test](https://github.com/0xMiden/miden-base/actions/workflows/test.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/test.yml)
 [![build](https://github.com/0xMiden/miden-base/actions/workflows/build.yml/badge.svg)](https://github.com/0xMiden/miden-base/actions/workflows/build.yml)
-[![RUST_VERSION](https://img.shields.io/badge/rustc-1.88+-lightgray.svg)](https://www.rust-lang.org/tools/install)
+[![RUST_VERSION](https://img.shields.io/badge/rustc-1.89+-lightgray.svg)](https://www.rust-lang.org/tools/install)
 [![GitHub Release](https://img.shields.io/github/release/0xMiden/miden-base)](https://github.com/0xMiden/miden-base/releases/)
 
 Description and core structures for the Miden Rollup protocol.
@@ -23,7 +23,7 @@ If you want to join the technical discussion or learn more about the project, pl
 
 ## Status and features
 
-Miden is currently on release v0.11. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
+Miden is currently on release v0.12. This is an early version of the protocol and its components. We expect to keep making changes (including breaking changes) to all components.
 
 ### Feature highlights
 

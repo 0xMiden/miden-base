@@ -22,6 +22,48 @@ use miden_processor::ExecutionError;
 use miden_verifier::VerificationError;
 use thiserror::Error;
 
+// NOTE EXECUTION ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum NoteCheckerError {
+    #[error("invalid input note count {0} is out of range)")]
+    InputNoteCountOutOfRange(usize),
+    #[error("transaction preparation failed: {0}")]
+    TransactionPreparation(#[source] TransactionExecutorError),
+    #[error("transaction execution prologue failed: {0}")]
+    PrologueExecution(#[source] TransactionExecutorError),
+}
+
+// TRANSACTION CHECKER ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub(crate) enum TransactionCheckerError {
+    #[error("transaction preparation failed: {0}")]
+    TransactionPreparation(#[source] TransactionExecutorError),
+    #[error("transaction execution prologue failed: {0}")]
+    PrologueExecution(#[source] TransactionExecutorError),
+    #[error("transaction execution epilogue failed: {0}")]
+    EpilogueExecution(#[source] TransactionExecutorError),
+    #[error("transaction note execution failed on note index {failed_note_index}: {error}")]
+    NoteExecution {
+        failed_note_index: usize,
+        error: TransactionExecutorError,
+    },
+}
+
+impl From<TransactionCheckerError> for TransactionExecutorError {
+    fn from(error: TransactionCheckerError) -> Self {
+        match error {
+            TransactionCheckerError::TransactionPreparation(error) => error,
+            TransactionCheckerError::PrologueExecution(error) => error,
+            TransactionCheckerError::EpilogueExecution(error) => error,
+            TransactionCheckerError::NoteExecution { error, .. } => error,
+        }
+    }
+}
+
 // TRANSACTION EXECUTOR ERROR
 // ================================================================================================
 
@@ -61,6 +103,10 @@ pub enum TransactionExecutorError {
     },
     #[error("expected account nonce delta to be {expected}, found {actual}")]
     InconsistentAccountNonceDelta { expected: Felt, actual: Felt },
+    #[error(
+        "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
+    )]
+    InsufficientFee { account_balance: u64, tx_fee: u64 },
     #[error("account witness provided for account ID {0} is invalid")]
     InvalidAccountWitness(AccountId, #[source] SmtProofError),
     #[error(

@@ -47,7 +47,7 @@ const TX_SCRIPT_PROCESSING_END: u32 = 0x2_0017; // 131095
 
 const EPILOGUE_START: u32 = 0x2_0018; // 131096
 const EPILOGUE_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
-const EPILOGUE_TX_FEE_COMPUTED: u32 = 0x2_001a; // 131098
+const EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT: u32 = 0x2_001a; // 131098
 const EPILOGUE_END: u32 = 0x2_001b; // 131099
 
 const LINK_MAP_SET_EVENT: u32 = 0x2_001c; // 131100
@@ -104,7 +104,7 @@ pub enum TransactionEvent {
 
     EpilogueStart = EPILOGUE_START,
     EpilogueTxCyclesObtained = EPILOGUE_TX_CYCLES_OBTAINED,
-    EpilogueTxFeeComputed = EPILOGUE_TX_FEE_COMPUTED,
+    EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
     EpilogueEnd = EPILOGUE_END,
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
@@ -185,7 +185,9 @@ impl TryFrom<u32> for TransactionEvent {
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
             EPILOGUE_TX_CYCLES_OBTAINED => Ok(TransactionEvent::EpilogueTxCyclesObtained),
-            EPILOGUE_TX_FEE_COMPUTED => Ok(TransactionEvent::EpilogueTxFeeComputed),
+            EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT => {
+                Ok(TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount)
+            },
             EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),

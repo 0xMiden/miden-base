@@ -10,7 +10,7 @@ name                   = "miden-objects"
 readme                 = "README.md"
 repository.workspace   = true
 rust-version.workspace = true
-version                = "0.11.0"
+version.workspace      = true
 
 [[bench]]
 harness = false
@@ -34,13 +34,14 @@ testing = ["dep:rand", "dep:rand_xoshiro", "dep:winter-rand-utils"]
 
 [dependencies]
 # Miden dependencies
-miden-assembly    = { workspace = true }
-miden-core        = { workspace = true }
-miden-crypto      = { workspace = true }
-miden-processor   = { workspace = true }
-miden-utils-sync  = { workspace = true }
-miden-verifier    = { workspace = true }
-winter-rand-utils = { optional = true, version = "0.13" }
+miden-assembly     = { workspace = true }
+miden-core         = { workspace = true }
+miden-crypto       = { workspace = true }
+miden-mast-package = { workspace = true }
+miden-processor    = { workspace = true }
+miden-utils-sync   = { workspace = true }
+miden-verifier     = { workspace = true }
+winter-rand-utils  = { optional = true, version = "0.13" }
 
 # External dependencies
 bech32       = { default-features = false, features = ["alloc"], version = "0.11" }
@@ -50,17 +51,17 @@ rand_xoshiro = { default-features = false, optional = true, version = "0.7" }
 semver       = { features = ["serde"], version = "1.0" }
 serde        = { features = ["derive"], optional = true, version = "1.0" }
 thiserror    = { workspace = true }
-toml         = { optional = true, version = "0.8" }
+toml         = { optional = true, version = "0.9" }
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { features = ["wasm_js"], version = "0.3" }
 
 [dev-dependencies]
-anyhow         = { default-features = false, features = ["backtrace", "std"], version = "1.0" }
+anyhow         = { features = ["backtrace", "std"], workspace = true }
 assert_matches = { workspace = true }
 criterion      = { default-features = false, features = ["html_reports"], version = "0.5" }
 miden-objects  = { features = ["testing"], path = "." }
-pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.14" }
-rstest         = { version = "0.25" }
+pprof          = { default-features = false, features = ["criterion", "flamegraph"], version = "0.15" }
+rstest         = { workspace = true }
 tempfile       = { version = "3.19" }
 winter-air     = { version = "0.13" }

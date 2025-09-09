@@ -96,9 +96,7 @@ fn proven_block_fails_on_stale_account_witnesses() -> anyhow::Result<()> {
     let proposed_block0 = ProposedBlock::new(invalid_account_tree_block_inputs, batches.clone())
         .context("failed to propose block 0")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block0)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block0).unwrap_err();
 
     assert_matches!(
         error,
@@ -135,9 +133,7 @@ fn proven_block_fails_on_stale_nullifier_witnesses() -> anyhow::Result<()> {
     let proposed_block2 = ProposedBlock::new(invalid_nullifier_tree_block_inputs, batches.clone())
         .context("failed to propose block 2")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block2)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block2).unwrap_err();
 
     assert_matches!(
         error,
@@ -183,9 +179,7 @@ fn proven_block_fails_on_account_tree_root_mismatch() -> anyhow::Result<()> {
     let proposed_block1 = ProposedBlock::new(stale_account_witness_block_inputs, batches.clone())
         .context("failed to propose block 1")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block1)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block1).unwrap_err();
 
     assert_matches!(
         error,
@@ -233,9 +227,7 @@ fn proven_block_fails_on_nullifier_tree_root_mismatch() -> anyhow::Result<()> {
     let proposed_block3 = ProposedBlock::new(invalid_nullifier_witness_block_inputs, batches)
         .context("failed to propose block 3")?;
 
-    let error = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block3)
-        .unwrap_err();
+    let error = LocalBlockProver::new(0).prove_dummy(proposed_block3).unwrap_err();
 
     assert_matches!(
         error,
@@ -286,7 +278,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         existing_id.suffix(),
         "test should work if suffixes are different, so we want to ensure it"
     );
-    assert_eq!(account.init_commitment(), Word::empty());
+    assert_eq!(account.initial_commitment(), Word::empty());
 
     let existing_account = Account::mock(existing_id.into(), auth_component);
     builder.add_account(existing_account.clone())?;
@@ -330,7 +322,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_without_batch_verification(block).unwrap_err();
+    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
 
     // This should fail when we try to _insert_ the same two prefixes into the partial tree.
     assert_matches!(
@@ -425,7 +417,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
 
     let block = mock_chain.propose_block(batches).context("failed to propose block")?;
 
-    let err = LocalBlockProver::new(0).prove_without_batch_verification(block).unwrap_err();
+    let err = LocalBlockProver::new(0).prove_dummy(block).unwrap_err();
 
     // This should fail when we try to _track_ the same two prefixes in the partial tree.
     assert_matches!(

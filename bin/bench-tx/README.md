@@ -22,4 +22,4 @@ Results of the benchmark are stored in the [bench-tx.json](bench-tx.json) file.
 
 ## License
 
-This project is [MIT licensed](../LICENSE).
+This project is [MIT licensed](../../LICENSE).

@@ -9,7 +9,6 @@ use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
 use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::note::{Note, NoteScript};
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
@@ -36,38 +35,12 @@ mod data_store;
 pub use data_store::DataStore;
 
 mod notes_checker;
-pub use notes_checker::NoteConsumptionChecker;
-
-// NOTE CONSUMPTION INFO
-// ================================================================================================
-
-/// Represents a failed note consumption.
-#[derive(Debug)]
-#[non_exhaustive]
-pub struct FailedNote {
-    pub note: Note,
-    pub error: TransactionExecutorError,
-}
-
-/// Contains information about the successful and failed consumption of notes.
-#[derive(Default, Debug)]
-#[non_exhaustive]
-pub struct NoteConsumptionInfo {
-    pub successful: Vec<Note>,
-    pub failed: Vec<FailedNote>,
-}
-
-impl NoteConsumptionInfo {
-    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful notes.
-    pub fn new_successful(successful: Vec<Note>) -> Self {
-        Self { successful, ..Default::default() }
-    }
-
-    /// Creates a new [`NoteConsumptionInfo`] instance with the given successful and failed notes.
-    pub fn new(successful: Vec<Note>, failed: Vec<FailedNote>) -> Self {
-        Self { successful, failed }
-    }
-}
+pub use notes_checker::{
+    FailedNote,
+    MAX_NUM_CHECKER_NOTES,
+    NoteConsumptionChecker,
+    NoteConsumptionInfo,
+};
 
 // TRANSACTION EXECUTOR
 // ================================================================================================
@@ -208,53 +181,8 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
-        ref_blocks.insert(block_ref);
-
-        let (account, seed, ref_block, mmr) = self
-            .data_store
-            .get_transaction_inputs(account_id, ref_blocks)
-            .await
-            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-
-        validate_account_inputs(&tx_args, &ref_block)?;
-
-        let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
-
-        let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
-                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
-        // This reverses the stack inputs (even though it doesn't look like it does) because the
-        // fast processor expects the reverse order.
-        //
-        // Once we use the FastProcessor for execution and proving, we can change the way these
-        // inputs are constructed in TransactionKernel::prepare_inputs.
-        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
-
-        let input_notes = tx_inputs.input_notes();
-
-        let script_mast_store = ScriptMastForestStore::new(
-            tx_args.tx_script(),
-            input_notes.iter().map(|n| n.note().script()),
-        );
-
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
-
-        let mut host = TransactionExecutorHost::new(
-            &tx_inputs.account().into(),
-            input_notes.clone(),
-            self.data_store,
-            script_mast_store,
-            acct_procedure_index_map,
-            self.authenticator,
-            tx_inputs.block_header().fee_parameters(),
-            self.source_manager.clone(),
-        );
-
-        let advice_inputs = advice_inputs.into_advice_inputs();
+        let (mut host, tx_inputs, stack_inputs, advice_inputs) =
+            self.prepare_transaction(account_id, block_ref, notes, &tx_args, None).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let (stack_outputs, advice_provider) = processor
@@ -292,46 +220,18 @@ where
         advice_inputs: AdviceInputs,
         foreign_account_inputs: Vec<AccountInputs>,
     ) -> Result<[Felt; 16], TransactionExecutorError> {
-        let ref_blocks = [block_ref].into_iter().collect();
-        let (account, seed, ref_block, mmr) = self
-            .data_store
-            .get_transaction_inputs(account_id, ref_blocks)
-            .await
-            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
         let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
 
-        validate_account_inputs(&tx_args, &ref_block)?;
-
-        let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, Default::default())
-            .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
-
-        let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_inputs))
-                .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
-        // This reverses the stack inputs (even though it doesn't look like it does) because the
-        // fast processor expects the reverse order.
-        let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
-
-        let scripts_mast_store =
-            ScriptMastForestStore::new(tx_args.tx_script(), core::iter::empty::<&NoteScript>());
-
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
-
-        let mut host = TransactionExecutorHost::new(
-            &tx_inputs.account().into(),
-            tx_inputs.input_notes().clone(),
-            self.data_store,
-            scripts_mast_store,
-            acct_procedure_index_map,
-            self.authenticator,
-            tx_inputs.block_header().fee_parameters(),
-            self.source_manager.clone(),
-        );
-
-        let advice_inputs = advice_inputs.into_advice_inputs();
+        let (mut host, _, stack_inputs, advice_inputs) = self
+            .prepare_transaction(
+                account_id,
+                block_ref,
+                InputNotes::default(),
+                &tx_args,
+                Some(advice_inputs),
+            )
+            .await?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -343,132 +243,78 @@ where
         Ok(*stack_outputs)
     }
 
-    // CHECK CONSUMABILITY
-    // ============================================================================================
+    // HELPER METHODS
+    // --------------------------------------------------------------------------------------------
 
-    /// Validates input notes, transaction inputs, and account inputs before executing the
-    /// transaction with specified notes. Keeps track and returns both successfully consumed notes
-    /// as well as notes that failed to be consumed.
+    /// Prepares the data needed for transaction execution.
     ///
-    /// # Errors:
-    /// Returns an error if:
-    /// - If required data can not be fetched from the [`DataStore`].
-    /// - If the transaction host can not be created from the provided values.
-    /// - If the execution of the provided program fails on the stage other than note execution.
-    pub(crate) async fn try_execute_notes(
+    /// Preparation includes loading transaction inputs from the data store, validating them, and
+    /// instantiating a transaction host.
+    async fn prepare_transaction(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
-        tx_args: TransactionArgs,
-    ) -> Result<NoteConsumptionInfo, TransactionExecutorError> {
-        if notes.is_empty() {
-            return Ok(NoteConsumptionInfo::default());
-        }
-        // Validate input notes.
+        tx_args: &TransactionArgs,
+        init_advice_inputs: Option<AdviceInputs>,
+    ) -> Result<
+        (
+            TransactionExecutorHost<'store, 'auth, STORE, AUTH>,
+            TransactionInputs,
+            StackInputs,
+            AdviceInputs,
+        ),
+        TransactionExecutorError,
+    > {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        // Validate account inputs.
         let (account, seed, ref_block, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-        validate_account_inputs(&tx_args, &ref_block)?;
 
-        // Prepare transaction inputs.
+        validate_account_inputs(tx_args, &ref_block)?;
+
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
+
         let (stack_inputs, advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, None)
+            TransactionKernel::prepare_inputs(&tx_inputs, tx_args, init_advice_inputs)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
+
         // This reverses the stack inputs (even though it doesn't look like it does) because the
         // fast processor expects the reverse order.
+        //
+        // Once we use the FastProcessor for execution and proving, we can change the way these
+        // inputs are constructed in TransactionKernel::prepare_inputs.
         let stack_inputs = StackInputs::new(stack_inputs.iter().copied().collect()).unwrap();
 
-        // Prepare host for transaction execution.
         let input_notes = tx_inputs.input_notes();
-        let scripts_mast_store = ScriptMastForestStore::new(
+
+        let script_mast_store = ScriptMastForestStore::new(
             tx_args.tx_script(),
             input_notes.iter().map(|n| n.note().script()),
         );
+
         let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
+            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, tx_args, &advice_inputs)
                 .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
-        let mut host = TransactionExecutorHost::new(
-            &tx_inputs.account().into(),
+
+        let host = TransactionExecutorHost::new(
+            tx_inputs.account(),
             input_notes.clone(),
             self.data_store,
-            scripts_mast_store,
+            script_mast_store,
             acct_procedure_index_map,
             self.authenticator,
-            tx_inputs.block_header().fee_parameters(),
             self.source_manager.clone(),
         );
+
         let advice_inputs = advice_inputs.into_advice_inputs();
 
-        let processor =
-            FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
-        let result = processor
-            .execute(&TransactionKernel::main(), &mut host)
-            .await
-            .map_err(TransactionExecutorError::TransactionProgramExecutionFailed);
-
-        let (_, _, _, _, input_notes) = tx_inputs.into_parts();
-        match result {
-            Ok(_) => {
-                // Return all the input notes as successful.
-                Ok(NoteConsumptionInfo::new_successful(
-                    input_notes.into_iter().map(|note| note.into_note()).collect::<Vec<_>>(),
-                ))
-            },
-            Err(error) => {
-                let notes = host.tx_progress().note_execution();
-
-                // Empty notes vector means that we didn't process the notes, so an error
-                // occurred.
-                if notes.is_empty() {
-                    return Err(error);
-                }
-
-                let ((last_note, last_note_interval), success_notes) = notes
-                    .split_last()
-                    .expect("notes vector should not be empty because we just checked");
-
-                // If the interval end of the last note is specified, then an error occurred after
-                // notes processing.
-                if last_note_interval.end().is_some() {
-                    return Err(error);
-                }
-
-                // Partition the input notes into successful and failed results.
-                let mut successful = Vec::with_capacity(success_notes.len());
-                let mut failed = Vec::with_capacity(1);
-                for (i, note) in input_notes.into_iter().enumerate() {
-                    if i < success_notes.len() {
-                        debug_assert_eq!(
-                            success_notes[i].0,
-                            note.id(),
-                            "notes should be processed in the same order as they appear in the input notes"
-                        );
-                        successful.push(note.into_note());
-                    } else {
-                        // This is the last (failed) note.
-                        debug_assert_eq!(
-                            *last_note,
-                            note.id(),
-                            "notes should be processed in the same order as they appear in the input notes"
-                        );
-                        failed.push(FailedNote { note: note.into_note(), error });
-                        break;
-                    }
-                }
-
-                // Return information about all the consumed notes.
-                Ok(NoteConsumptionInfo::new(successful, failed))
-            },
-        }
+        Ok((host, tx_inputs, stack_inputs, advice_inputs))
     }
 }
 
@@ -485,7 +331,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
-    let (pre_fee_account_delta, output_notes, generated_signatures, tx_progress) =
+    let (pre_fee_account_delta, _input_notes, output_notes, generated_signatures, tx_progress) =
         host.into_parts();
 
     let tx_outputs =
@@ -608,6 +454,12 @@ fn map_execution_error(exec_err: ExecutionError) -> TransactionExecutorError {
             match error.downcast_ref::<TransactionKernelError>() {
                 Some(TransactionKernelError::Unauthorized(summary)) => {
                     TransactionExecutorError::Unauthorized(summary.clone())
+                },
+                Some(TransactionKernelError::InsufficientFee { account_balance, tx_fee }) => {
+                    TransactionExecutorError::InsufficientFee {
+                        account_balance: *account_balance,
+                        tx_fee: *tx_fee,
+                    }
                 },
                 _ => TransactionExecutorError::TransactionProgramExecutionFailed(exec_err),
             }
