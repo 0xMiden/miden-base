@@ -235,7 +235,7 @@ export.compute_inputs_commitment
 
     exec.rpo::prepare_hasher_state
     exec.rpo::hash_memory_with_state
-    # => [COMMITMENT]
+    # => [INPUTS_COMMITMENT]
 end
 
 #! Returns the script root of the note currently being processed.
