@@ -38,6 +38,7 @@ use miden_objects::assembly::diagnostics::NamedSource;
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::AccountInputs;
 use miden_processor::{AdviceInputs, Felt};
+use miden_tx::LocalTransactionProver;
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -842,7 +843,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .with_dynamically_linked_library(first_foreign_account_component.library())?
         .compile_tx_script(code)?;
 
-    mock_chain
+    let executed_transaction = mock_chain
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
@@ -850,6 +851,9 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .tx_script(tx_script)
         .build()?
         .execute_blocking()?;
+
+    // TODO: Remove later and add a integration test using FPI.
+    LocalTransactionProver::default().prove(executed_transaction.into())?;
 
     Ok(())
 }
