@@ -774,11 +774,8 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
+        use.miden::note
         use.$kernel::prologue
-
-        proc.build_recipient_hash
-            exec.tx::build_recipient_hash
-        end
 
         begin
             exec.prologue::prepare_transaction
@@ -794,7 +791,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             push.{output_serial_no}
             # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT, pad(4)]
 
-            call.build_recipient_hash
+            exec.note::build_recipient_hash
             # => [RECIPIENT, pad(12)]
 
             push.{execution_hint}
@@ -1327,17 +1324,15 @@ fn test_tx_script_inputs() -> anyhow::Result<()> {
 
         begin
             # push the tx script input key onto the stack
-            push.{key}
+            push.{tx_script_input_key}
 
             # load the tx script input value from the map and read it onto the stack
             adv.push_mapval adv_loadw
 
             # assert that the value is correct
-            push.{value} assert_eqw
+            push.{tx_script_input_value} assert_eqw
         end
-        ",
-        key = tx_script_input_key,
-        value = tx_script_input_value
+        "
     );
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_script_src)?;

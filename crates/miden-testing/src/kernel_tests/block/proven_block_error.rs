@@ -10,9 +10,10 @@ use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountI
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
-use miden_objects::transaction::{ProvenTransaction, ProvenTransactionBuilder};
+use miden_objects::transaction::ProvenTransactionBuilder;
 use miden_objects::vm::ExecutionProof;
 use miden_objects::{AccountTreeError, NullifierTreeError, Word};
+use miden_tx::LocalTransactionProver;
 use winterfell::Proof;
 
 use super::utils::{
@@ -22,7 +23,7 @@ use super::utils::{
     generate_tracked_note,
     setup_chain,
 };
-use crate::{Auth, MockChain, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{Auth, MockChain, TransactionContextBuilder};
 
 struct WitnessTestSetup {
     stale_block_inputs: BlockInputs,
@@ -293,7 +294,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
         .tx_inputs(tx_inputs)
         .build()?;
     let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
-    let tx = ProvenTransaction::from_executed_transaction_mocked(tx);
+    let tx = LocalTransactionProver::default().prove_dummy(tx)?;
 
     let batch = generate_batch(&mut mock_chain, vec![tx]);
     let batches = [batch];

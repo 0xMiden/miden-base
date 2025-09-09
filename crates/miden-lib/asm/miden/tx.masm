@@ -241,7 +241,7 @@ end
 #!
 #! Invocation: exec
 export.add_asset_to_note
-    movup.4 exec.kernel_proc_offsets::note_add_asset_offset
+    movup.4 exec.kernel_proc_offsets::output_note_add_asset_offset
     # => [offset, note_idx, ASSET]
 
     # pad the stack before the syscall to prevent accidental modification of the deeper stack
@@ -255,29 +255,6 @@ export.add_asset_to_note
     # remove excess PADs from the stack
     swapdw dropw dropw swapw movdn.7 drop drop drop movdn.4
     # => [ASSET, note_idx]
-end
-
-#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
-#!
-#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
-#! Outputs: [RECIPIENT]
-#!
-#! Where:
-#! - SERIAL_NUM is the serial number of the recipient.
-#! - SCRIPT_ROOT is the commitment of the note script.
-#! - INPUT_COMMITMENT is the commitment of the note inputs.
-#! - RECIPIENT is the recipient of the note.
-#!
-#! Invocation: exec
-export.build_recipient_hash
-    padw hmerge
-    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
-
-    swapw hmerge
-    # => [MERGE_SCRIPT, INPUT_COMMITMENT]
-
-    swapw hmerge
-    # [RECIPIENT]
 end
 
 #! Executes the provided procedure against the foreign account.

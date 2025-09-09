@@ -126,50 +126,43 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{tmp_slot_0_value}
+          push.{slot_0_tmp_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_0_value}
+          push.{slot_0_final_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_1_value}
+          push.{slot_1_final_value}
           push.1
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_2_value}
+          push.{slot_2_final_value}
           push.2
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{tmp_slot_3_value}
+          push.{slot_3_tmp_value}
           push.3
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_3_value}
+          push.{slot_3_final_value}
           push.3
           # => [index, VALUE]
           exec.set_item
           # => []
       end
-      ",
-        // Set slot 0 to some other value initially.
-        tmp_slot_0_value = slot_0_tmp_value,
-        final_slot_0_value = slot_0_final_value,
-        final_slot_1_value = slot_1_final_value,
-        final_slot_2_value = slot_2_final_value,
-        tmp_slot_3_value = slot_3_tmp_value,
-        final_slot_3_value = slot_3_final_value,
+      "
     ))?;
 
     let executed_tx = mock_chain
@@ -260,7 +253,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{key0_value}.{key0}.0
+          push.{key0_final_value}.{key0}.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -270,17 +263,17 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
-          push.{key1_value}.{key1}.0
+          push.{key1_final_value}.{key1}.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key2_value}.{key2}.1
+          push.{key2_final_value}.{key2}.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key3_value}.{key3}.1
+          push.{key3_final_value}.{key3}.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -290,7 +283,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
-          push.{key4_value}.{key4}.1
+          push.{key4_final_value}.{key4}.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -300,27 +293,12 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
-          push.{key5_value}.{key5}.2
+          push.{key5_final_value}.{key5}.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
       end
-      ",
-        key0 = key0,
-        key1 = key1,
-        key2 = key2,
-        key3 = key3,
-        key4 = key4,
-        key5 = key5,
-        key0_value = key0_final_value,
-        key1_tmp_value = key1_tmp_value,
-        key1_value = key1_final_value,
-        key2_value = key2_final_value,
-        key3_value = key3_final_value,
-        key4_tmp_value = key4_tmp_value,
-        key4_value = key4_final_value,
-        key5_tmp_value = key5_tmp_value,
-        key5_value = key5_final_value,
+      "
     ))?;
 
     let executed_tx = mock_chain
@@ -667,7 +645,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             ## Update account storage item
             ## ------------------------------------------------------------------------------------
             # push a new value for the storage slot onto the stack
-            push.{UPDATED_SLOT_VALUE}
+            push.{updated_slot_value}
             # => [13, 11, 9, 7]
 
             # get the index of account storage slot
@@ -680,11 +658,11 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             ## Update account storage map
             ## ------------------------------------------------------------------------------------
             # push a new VALUE for the storage map onto the stack
-            push.{UPDATED_MAP_VALUE}
+            push.{updated_map_value}
             # => [18, 19, 20, 21]
 
             # push a new KEY for the storage map onto the stack
-            push.{UPDATED_MAP_KEY}
+            push.{updated_map_key}
             # => [14, 15, 16, 17, 18, 19, 20, 21]
 
             # get the index of account storage slot
@@ -701,10 +679,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
             dropw dropw dropw dropw
         end
-    ",
-        UPDATED_SLOT_VALUE = updated_slot_value,
-        UPDATED_MAP_VALUE = updated_map_value,
-        UPDATED_MAP_KEY = updated_map_key,
+    "
     );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_src)?;
