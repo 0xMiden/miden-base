@@ -125,7 +125,7 @@ where
         let signature: Vec<Felt> = authenticator
             .get_signature(pub_key_hash, &signing_inputs)
             .await
-            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(err))?;
+            .map_err(TransactionKernelError::SignatureGenerationFailed)?;
 
         let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
 
