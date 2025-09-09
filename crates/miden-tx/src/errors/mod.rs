@@ -211,7 +211,7 @@ pub enum TransactionHostError {
 pub enum TransactionKernelError {
     #[error("failed to add asset to account delta")]
     AccountDeltaAddAssetFailed(#[source] AccountDeltaError),
-    #[error("failed to remove asset to account delta")]
+    #[error("failed to remove asset from account delta")]
     AccountDeltaRemoveAssetFailed(#[source] AccountDeltaError),
     #[error("failed to add asset to note")]
     FailedToAddAssetToNote(#[source] NoteError),
