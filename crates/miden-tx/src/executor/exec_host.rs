@@ -2,7 +2,7 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionEvent;
+use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent};
 use miden_objects::account::{AccountDelta, AccountId, PartialAccount, StorageSlotType};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
@@ -120,10 +120,47 @@ where
     /// Handles a request for a foreign account by querying the data store for its
     /// [`PartialForeignAccount`] data.
     async fn on_foreign_account_requested(
-        &self,
-        _foreign_account_id: AccountId,
+        &mut self,
+        foreign_account_id: AccountId,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        todo!()
+        let foreign_account_inputs = self
+            .base_host
+            .store()
+            .get_partial_foreign_account(foreign_account_id, self.ref_block)
+            .await
+            .map_err(|err| TransactionKernelError::GetPartialForeignAccount {
+                foreign_account_id,
+                ref_block: self.ref_block,
+                source: err,
+            })?;
+
+        let mut tx_advice_inputs = TransactionAdviceInputs::default();
+        tx_advice_inputs
+            .add_foreign_accounts([&foreign_account_inputs])
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!(
+                        "failed to construct advice inputs for foreign account {}",
+                        foreign_account_inputs.id()
+                    ),
+                    err,
+                )
+            })?;
+
+        self.base_host
+            .account_procedure_index_map_mut()
+            .insert_procedures(foreign_account_inputs.code().commitment(), &tx_advice_inputs)
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!(
+                        "failed to insert account procedures for foreign account {}",
+                        foreign_account_inputs.id()
+                    ),
+                    err,
+                )
+            })?;
+
+        Ok(tx_advice_inputs.into_advice_mutations().collect())
     }
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.

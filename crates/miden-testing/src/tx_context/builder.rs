@@ -12,6 +12,7 @@ use miden_objects::EMPTY_WORD;
 use miden_objects::account::{
     Account,
     AccountHeader,
+    AccountId,
     PartialAccount,
     PartialStorage,
     PartialStorageMap,
@@ -79,7 +80,7 @@ pub struct TransactionContextBuilder {
     advice_inputs: AdviceInputs,
     authenticator: Option<MockAuthenticator>,
     expected_output_notes: Vec<Note>,
-    foreign_account_inputs: Vec<AccountInputs>,
+    foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
     input_notes: Vec<Note>,
     tx_script: Option<TransactionScript>,
     tx_script_args: Word,
@@ -104,7 +105,7 @@ impl TransactionContextBuilder {
             advice_inputs: Default::default(),
             transaction_inputs: None,
             note_args: BTreeMap::new(),
-            foreign_account_inputs: vec![],
+            foreign_account_inputs: BTreeMap::new(),
             auth_args: EMPTY_WORD,
             signatures: Vec::new(),
             load_partial_account: false,
@@ -175,8 +176,9 @@ impl TransactionContextBuilder {
     }
 
     /// Set foreign account codes that are used by the transaction
-    pub fn foreign_accounts(mut self, inputs: Vec<AccountInputs>) -> Self {
-        self.foreign_account_inputs = inputs;
+    pub fn foreign_accounts(mut self, inputs: impl IntoIterator<Item = AccountInputs>) -> Self {
+        self.foreign_account_inputs
+            .extend(inputs.into_iter().map(|account_inputs| (account_inputs.id(), account_inputs)));
         self
     }
 
@@ -344,7 +346,13 @@ impl TransactionContextBuilder {
             tx_inputs
         };
 
-        let tx_args = TransactionArgs::new(AdviceMap::default(), self.foreign_account_inputs)
+        let foreign_account_inputs = if self.load_partial_account {
+            Vec::new()
+        } else {
+            self.foreign_account_inputs.values().cloned().collect()
+        };
+
+        let tx_args = TransactionArgs::new(AdviceMap::default(), foreign_account_inputs)
             .with_note_args(self.note_args);
 
         let mut tx_args = if let Some(tx_script) = self.tx_script {
@@ -366,7 +374,7 @@ impl TransactionContextBuilder {
             let mast_forest_store = TransactionMastStore::new();
             mast_forest_store.load_account_code(tx_inputs.account().code());
 
-            for acc_inputs in tx_args.foreign_account_inputs() {
+            for acc_inputs in self.foreign_account_inputs.values() {
                 mast_forest_store.insert(acc_inputs.code().mast());
             }
 
@@ -376,6 +384,7 @@ impl TransactionContextBuilder {
         Ok(TransactionContext {
             account: self.account,
             expected_output_notes: self.expected_output_notes,
+            foreign_account_inputs: self.foreign_account_inputs,
             tx_args,
             tx_inputs,
             mast_store,

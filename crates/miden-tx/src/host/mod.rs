@@ -200,6 +200,14 @@ where
         )
     }
 
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a mutable reference to the [`AccountProcedureIndexMap`].
+    pub fn account_procedure_index_map_mut(&mut self) -> &mut AccountProcedureIndexMap {
+        &mut self.acct_procedure_index_map
+    }
+
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 

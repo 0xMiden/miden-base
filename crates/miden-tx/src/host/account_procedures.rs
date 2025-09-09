@@ -27,14 +27,14 @@ impl AccountProcedureIndexMap {
         account_code_commitments: impl IntoIterator<Item = Word>,
         adv_provider: &AdviceInputs,
     ) -> Result<Self, TransactionHostError> {
-        let mut result = BTreeMap::new();
+        let mut index_map = BTreeMap::new();
 
         for code_commitment in account_code_commitments {
             let account_procs_map = build_account_procedure_map(code_commitment, adv_provider)?;
-            result.insert(code_commitment, account_procs_map);
+            index_map.insert(code_commitment, account_procs_map);
         }
 
-        Ok(Self(result))
+        Ok(Self(index_map))
     }
 
     /// Builds an [`AccountProcedureIndexMap`] for the specified transaction inputs and arguments.
@@ -51,6 +51,20 @@ impl AccountProcedureIndexMap {
         account_code_commitments.insert(tx_inputs.account().code().commitment());
 
         Self::new(account_code_commitments, tx_advice_inputs.as_advice_inputs())
+    }
+
+    /// Inserts the account procedures at the provided `code_commitment` key in the advice inputs
+    /// into the account procedure index map.
+    pub fn insert_procedures(
+        &mut self,
+        code_commitment: Word,
+        tx_advice_inputs: &TransactionAdviceInputs,
+    ) -> Result<(), TransactionHostError> {
+        let procedure_map =
+            build_account_procedure_map(code_commitment, tx_advice_inputs.as_advice_inputs())?;
+        self.0.insert(code_commitment, procedure_map);
+
+        Ok(())
     }
 
     /// Returns index of the procedure whose root is currently at the top of the operand stack in

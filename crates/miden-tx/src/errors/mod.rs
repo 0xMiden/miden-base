@@ -272,6 +272,15 @@ pub enum TransactionKernelError {
     #[error("failed to convert fee asset into fungible asset")]
     FailedToConvertFeeAsset(#[source] AssetError),
     #[error(
+        "failed to get partial data for foreign account {foreign_account_id} from data store at reference block {ref_block}"
+    )]
+    GetPartialForeignAccount {
+        foreign_account_id: AccountId,
+        ref_block: BlockNumber,
+        // thiserror will return this when calling Error::source on TransactionKernelError.
+        source: DataStoreError,
+    },
+    #[error(
         "failed to get vault asset witness from data store for vault root {vault_root} and vault_key {vault_key}"
     )]
     GetVaultAssetWitness {

@@ -5,6 +5,7 @@ use miden_objects::block::AccountWitness;
 use miden_objects::crypto::SequentialCommit;
 use miden_objects::crypto::merkle::InnerNodeInfo;
 use miden_objects::transaction::{
+    AccountInputs,
     InputNote,
     PartialBlockchain,
     TransactionArgs,
@@ -12,6 +13,7 @@ use miden_objects::transaction::{
 };
 use miden_objects::vm::AdviceInputs;
 use miden_objects::{EMPTY_WORD, Felt, FieldElement, Word, ZERO};
+use miden_processor::AdviceMutation;
 use thiserror::Error;
 
 use super::TransactionKernel;
@@ -21,7 +23,7 @@ use super::TransactionKernel;
 
 /// Advice inputs wrapper for inputs that are meant to be used exclusively in the transaction
 /// kernel.
-#[derive(Default, Clone, Debug)]
+#[derive(Debug, Clone, Default)]
 pub struct TransactionAdviceInputs(AdviceInputs);
 
 impl TransactionAdviceInputs {
@@ -67,19 +69,7 @@ impl TransactionAdviceInputs {
         }
 
         // --- foreign account injection --------------------------------------
-
-        for foreign_acc in tx_args.foreign_account_inputs() {
-            inputs.add_account(foreign_acc.account())?;
-            inputs.add_account_witness(foreign_acc.witness());
-
-            // for foreign accounts, we need to insert the id to state mapping
-            // NOTE: keep this in sync with the start_foreign_context kernel procedure
-            let account_id_key = build_account_id_key(foreign_acc.id());
-            let header = AccountHeader::from(foreign_acc.account());
-
-            // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
-            inputs.add_map_entry(account_id_key, header.as_elements());
-        }
+        inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
 
         // any extra user-supplied advice
         inputs.extend(tx_args.advice_inputs().clone());
@@ -97,12 +87,45 @@ impl TransactionAdviceInputs {
         self.0
     }
 
+    /// Consumes self and returns an iterator of [`AdviceMutation`]s.
+    pub fn into_advice_mutations(self) -> impl Iterator<Item = AdviceMutation> {
+        [
+            AdviceMutation::ExtendMap { other: self.0.map },
+            AdviceMutation::ExtendMerkleStore {
+                infos: self.0.store.inner_nodes().collect(),
+            },
+            AdviceMutation::ExtendStack { values: self.0.stack },
+        ]
+        .into_iter()
+    }
+
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
     /// Extends these advice inputs with the provided advice inputs.
     pub fn extend(&mut self, adv_inputs: AdviceInputs) {
         self.0.extend(adv_inputs);
+    }
+
+    /// Adds the provided account inputs into the advice inputs.
+    pub fn add_foreign_accounts<'inputs>(
+        &mut self,
+        foreign_account_inputs: impl IntoIterator<Item = &'inputs AccountInputs>,
+    ) -> Result<(), TransactionAdviceMapMismatch> {
+        for foreign_acc in foreign_account_inputs {
+            self.add_account(foreign_acc.account())?;
+            self.add_account_witness(foreign_acc.witness());
+
+            // for foreign accounts, we need to insert the id to state mapping
+            // NOTE: keep this in sync with the account::load_from_advice procedure
+            let account_id_key = build_account_id_key(foreign_acc.id());
+            let header = AccountHeader::from(foreign_acc.account());
+
+            // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
+            self.add_map_entry(account_id_key, header.as_elements());
+        }
+
+        Ok(())
     }
 
     /// Extend the advice stack with the transaction inputs.
@@ -381,6 +404,7 @@ impl TransactionAdviceInputs {
         }
 
         self.add_map_entry(tx_inputs.input_notes().commitment(), note_data);
+
         Ok(())
     }
 
