@@ -1310,50 +1310,8 @@ export.tx_start_foreign_context
         exec.memory::push_ptr_to_account_stack
         # OS => [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
 
-        # construct the word with account ID to load the core account data from the advice map
-        push.0.0
-        # OS => [0, 0, foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
-
-        # move the core account data to the advice stack
-        adv.push_mapval
-        # OS => [0, 0, foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
-        # AS => [[foreign_account_id_prefix, foreign_account_id_suffix, 0, account_nonce], VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
-
-        # store the id and nonce of the foreign account to the memory
-        dropw adv_loadw
-        exec.memory::set_account_id_and_nonce dropw
-        # OS => [pad(16)]
-        # AS => [VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
-
-        # store the vault root of the foreign account to the memory
-        adv_loadw exec.memory::set_account_vault_root dropw
-        # OS => [pad(16)]
-        # AS => [STORAGE_ROOT, CODE_ROOT]
-
-        # move the storage root and the code root to the operand stack
-        adv_loadw padw adv_loadw
-        # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # store the code root into the memory
-        exec.memory::set_account_code_commitment
-        # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # save the account procedure data into the memory
-        exec.account::save_account_procedure_data
-        # OS => [STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # store the storage root to the memory
-        exec.memory::set_account_storage_commitment
-        # OS => [STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # save the storage slots data into the memory
-        exec.account::save_account_storage_data
-        # OS => [pad(16)]
-        # AS => []
+        # load the advice data into the current account memory section
+        exec.account::load_from_advice
     end
 
     # make sure that the state of the loaded foreign account corresponds to this commitment in the
