@@ -100,8 +100,9 @@ pub fn verify_minted_output_note(
 // TESTS MINT FUNGIBLE ASSET
 // ================================================================================================
 
+/// Tests that minting assets on an existing faucet succeeds.
 #[test]
-fn prove_new_faucet_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
+fn minting_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, None)?;
     let mut mock_chain = builder.build()?;
@@ -182,8 +183,9 @@ fn faucet_contract_mint_fungible_asset_fails_exceeds_max_supply() -> anyhow::Res
 // TESTS FOR NEW FAUCET EXECUTION ENVIRONMENT
 // ================================================================================================
 
+/// Tests that minting assets on a new faucet succeeds.
 #[test]
-fn prove_new_faucet_execution_mint_fungible_asset_succeeds() -> anyhow::Result<()> {
+fn minting_fungible_asset_on_new_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.create_new_faucet(Auth::BasicAuth, "TST", 200)?;
     let mut mock_chain = builder.build()?;
@@ -211,8 +213,9 @@ fn prove_new_faucet_execution_mint_fungible_asset_succeeds() -> anyhow::Result<(
 // TESTS BURN FUNGIBLE ASSET
 // ================================================================================================
 
+/// Tests that burning a fungible asset on an existing faucet succeeds and proves the transaction.
 #[test]
-fn prove_existing_faucet_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
+fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let faucet = builder.add_existing_faucet(Auth::BasicAuth, "TST", 200, Some(100))?;
     let mut mock_chain = builder.build()?;
