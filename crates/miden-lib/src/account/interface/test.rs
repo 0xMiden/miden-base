@@ -32,6 +32,7 @@ use crate::account::interface::{
     AccountComponentInterface,
     AccountInterface,
     NoteAccountCompatibility,
+    get_public_keys_from_account,
 };
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
@@ -862,26 +863,6 @@ fn test_account_interface_get_auth_scheme() {
 
     // Note: We don't test the case where an account has no auth components because
     // accounts are required to have auth components in the current system design
-}
-
-fn get_public_keys_from_account(account: &Account) -> Vec<Word> {
-    let mut pub_keys = vec![];
-    let interface: AccountInterface = account.into();
-
-    for auth in interface.auth() {
-        match auth {
-            AuthScheme::NoAuth => {},
-            AuthScheme::RpoFalcon512 { pub_key } => pub_keys.push(Word::from(*pub_key)),
-            AuthScheme::RpoFalcon512Multisig { pub_keys: multisig_keys, .. } => {
-                for key in multisig_keys {
-                    pub_keys.push(Word::from(*key));
-                }
-            },
-            AuthScheme::Unknown => {},
-        }
-    }
-
-    pub_keys
 }
 
 #[test]

@@ -71,20 +71,58 @@ proc.assert_new_tx
     # => []
 end
 
-
+#! Update threshold config and add / remove owners
+#!
+#! Inputs:  [NEW_THRESHOLD_CONFIG]
+#! Outputs: []
+#!
 export.update_signers_and_threshold
-    push.111 debug.stack drop
-
-    # new threshold:
-    # => [0, 0, num_of_approvers, threshold]
+    dupw
+    # => [NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
 
     push.THRESHOLD_CONFIG_SLOT
-    # => [slot, NEW_THRESHOLD_CONFIG] 
+    # => [slot, NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG] 
 
     exec.account::set_item
+    # => [OLD_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
 
-    dropw dropw
+    dropw
+    # => [NEW_THRESHOLD_CONFIG]
 
+    # TODO assert threshold <= num_approvers
+    # TODO only enter loop if pub keys exist in AdviceMap
+
+    drop drop swap drop 
+    # => [num_approvers]
+
+    dup neq.0
+    while.true
+        sub.1
+
+        dup
+        push.0.0.0
+        # => [[0, 0, 0, i-1], i-1]
+
+        adv.push_mapval
+        # => [[0, 0, 0, i-1], i-1]
+
+        padw adv_loadw
+        # => [PUB_KEY, [0, 0, 0, i-1], i-1]
+ 
+        swapw
+        # => [[0, 0, 0, i-1], PUB_KEY, i-1]
+
+        push.PUBLIC_KEYS_MAP_SLOT
+        # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1]
+
+        exec.account::set_map_item
+
+        dropw dropw
+        # => [i-1]
+
+        dup neq.0
+        # => [is_zero]
+    end
 end
 
 
