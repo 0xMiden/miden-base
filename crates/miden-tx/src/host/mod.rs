@@ -368,10 +368,10 @@ where
         let contains_account_id_key =
             process.advice_provider().contains_map_key(&account_id_map_key);
 
-        // The native account data is loaded before transaction execution begins, so there is
-        // nothing to do.
-        // Similarly, if a foreign account's key is already in the advice map, it doesn't need to be
-        // loaded again.
+        // If a foreign account's key is already in the advice map, it doesn't need to be loaded
+        // again.
+        // The native account's data is loaded before transaction execution begins, so it does not
+        // have to be loaded either.
         if contains_account_id_key || self.initial_account_header().id() == account_id {
             Ok(TransactionEventHandling::Handled(Vec::new()))
         } else {
