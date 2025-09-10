@@ -32,6 +32,7 @@
 - [BREAKING] Moved `miden::asset::{create_fungible_asset, create_non_fungible_asset}` procedures to `miden::faucet` ([#1850](https://github.com/0xMiden/miden-base/pull/1850)).
 - [BREAKING] Moved `NetworkId` from account ID to address module ([#1851](https://github.com/0xMiden/miden-base/pull/1851)).
 - [BREAKING] Move `TransactionKernelError` to miden-tx ([#1859](https://github.com/0xMiden/miden-base/pull/1859)).
+- [BREAKING] Move note related procedures from `miden::tx` to `miden::input_note` and `miden::output_note` ([#1874](https://github.com/0xMiden/miden-base/pull/1874)).
 
 ## 0.11.2 (2025-09-08)
 
