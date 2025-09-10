@@ -1180,9 +1180,9 @@ end
 #! - num_input_notes is the total number of input notes consumed by this transaction.
 #!
 #! Invocation: dynexec
-export.tx_get_num_input_notes
+export.input_note_get_num_notes
     # get the number of input notes
-    exec.tx::get_num_input_notes
+    exec.input_note::get_num_notes
     # => [num_input_notes, pad(16)]
 
     # truncate the stack
@@ -1199,9 +1199,9 @@ end
 #! - num_output_notes is the number of output notes created in this transaction so far.
 #!
 #! Invocation: dynexec
-export.tx_get_num_output_notes
+export.output_note_get_num_notes
     # get the number of input notes
-    exec.tx::get_num_output_notes
+    exec.output_note::get_num_notes
     # => [num_output_notes, pad(16)]
 
     # truncate the stack

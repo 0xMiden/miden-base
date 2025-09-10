@@ -146,59 +146,6 @@ export.get_output_notes_commitment
     # => [OUTPUT_NOTES_COMMITMENT]
 end
 
-#! Returns the total number of input notes consumed by this transaction.
-#!
-#! Inputs:  []
-#! Outputs: [num_input_notes]
-#!
-#! Where:
-#! - num_input_notes is the total number of input notes consumed by this transaction.
-#!
-#! Invocation: exec
-export.get_num_input_notes
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::tx_get_num_input_notes_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [num_input_notes, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [num_input_notes]
-end
-
-#! Returns the current number of output notes created in this transaction.
-#!
-#! The number of output notes can changes during transaction execution. This will happen any time
-#! as new output notes is created.
-#!
-#! Inputs:  []
-#! Outputs: [num_output_notes]
-#!
-#! Where:
-#! - num_output_notes is the number of output notes created in this transaction so far.
-#!
-#! Invocation: exec
-export.get_num_output_notes
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::tx_get_num_output_notes_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [num_output_notes, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [num_output_notes]
-end
-
 #! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
 #!
 #! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]

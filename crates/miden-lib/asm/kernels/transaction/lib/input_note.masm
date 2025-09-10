@@ -8,6 +8,15 @@ const.ERR_INPUT_NOTE_INDEX_OUT_OF_BOUNDS="requested input note index should be l
 # INPUT NOTE PROCEDURES
 # =================================================================================================
 
+#! Returns the total number of input notes consumed by this transaction.
+#!
+#! Inputs:  []
+#! Outputs: [num_input_notes]
+#!
+#! Where:
+#! - num_input_notes is the total number of input notes consumed by this transaction.
+export.memory::get_num_input_notes->get_num_notes
+
 #! Returns the information about assets in the input note with the specified memory pointer.
 #!
 #! Inputs:  [input_note_ptr]
