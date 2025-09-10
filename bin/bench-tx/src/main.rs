@@ -68,10 +68,10 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(150)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(150)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .build()?
@@ -86,11 +86,11 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
 #[allow(clippy::arc_with_non_send_sync)]
 pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
     // Create assets
-    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap();
-    let fungible_asset: Asset = FungibleAsset::new(faucet_id, 100).unwrap().into();
+    let faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET)?;
+    let fungible_asset: Asset = FungibleAsset::new(faucet_id, 100)?.into();
 
     // Create sender and target account
-    let sender_account_id = AccountId::try_from(ACCOUNT_ID_SENDER).unwrap();
+    let sender_account_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
     let (target_pub_key, falcon_auth) = get_new_pk_and_authenticator();
 
@@ -110,8 +110,7 @@ pub fn benchmark_p2id() -> anyhow::Result<TransactionMeasurements> {
         NoteType::Public,
         Felt::new(0),
         &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
-    )
-    .unwrap();
+    )?;
 
     let tx_context = TransactionContextBuilder::new(target_account.clone())
         .extend_input_notes(vec![note])
