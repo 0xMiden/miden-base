@@ -27,7 +27,7 @@ pub use notes::{InputNote, InputNotes, ToInputNoteCommitments};
 pub struct TransactionInputs {
     account: PartialAccount,
     block_header: BlockHeader,
-    block_chain: PartialBlockchain,
+    blockchain: PartialBlockchain,
     input_notes: InputNotes<InputNote>,
 }
 
@@ -85,7 +85,7 @@ impl TransactionInputs {
         Ok(Self {
             account: partial_account,
             block_header,
-            block_chain,
+            blockchain: block_chain,
             input_notes,
         })
     }
@@ -106,7 +106,7 @@ impl TransactionInputs {
     /// Returns partial blockchain containing authentication paths for all notes consumed by the
     /// transaction.
     pub fn blockchain(&self) -> &PartialBlockchain {
-        &self.block_chain
+        &self.blockchain
     }
 
     /// Returns the notes to be consumed in the transaction.
@@ -121,7 +121,7 @@ impl TransactionInputs {
     pub fn into_parts(
         self,
     ) -> (PartialAccount, BlockHeader, PartialBlockchain, InputNotes<InputNote>) {
-        (self.account, self.block_header, self.block_chain, self.input_notes)
+        (self.account, self.block_header, self.blockchain, self.input_notes)
     }
 }
 
@@ -129,7 +129,7 @@ impl Serializable for TransactionInputs {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
         self.account.write_into(target);
         self.block_header.write_into(target);
-        self.block_chain.write_into(target);
+        self.blockchain.write_into(target);
         self.input_notes.write_into(target);
     }
 }
@@ -138,10 +138,10 @@ impl Deserializable for TransactionInputs {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let partial_account = PartialAccount::read_from(source)?;
         let block_header = BlockHeader::read_from(source)?;
-        let block_chain = PartialBlockchain::read_from(source)?;
+        let blockchain = PartialBlockchain::read_from(source)?;
         let input_notes = InputNotes::read_from(source)?;
 
-        Self::new(partial_account, block_header, block_chain, input_notes)
+        Self::new(partial_account, block_header, blockchain, input_notes)
             .map_err(|err| DeserializationError::InvalidValue(format!("{err}")))
     }
 }

@@ -130,7 +130,7 @@ pub enum AccountError {
     SeedDigestTooFewTrailingZeros { expected: u32, actual: u32 },
     #[error("account ID seed was provided for an existing account")]
     SeedForExistingAccount,
-    #[error("invalid account ID seed: {message}")]
+    #[error("{message}")]
     InvalidAccountIdSeed {
         message: Box<str>,
         source: Option<AccountIdError>,
@@ -171,7 +171,8 @@ pub enum AccountError {
 }
 
 impl AccountError {
-    /// Creates a custom error using the [`AccountError::Other`] variant from an error message.
+    /// Creates a custom error using the [`AccountError::InvalidAccountIdSeed`] variant from an
+    /// error message.
     pub fn invalid_account_id_seed(message: impl Into<String>) -> Self {
         let message: String = message.into();
         Self::InvalidAccountIdSeed { message: message.into(), source: None }

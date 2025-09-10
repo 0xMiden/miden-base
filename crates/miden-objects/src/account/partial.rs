@@ -182,14 +182,7 @@ impl TryFrom<&Account> for PartialAccount {
     /// Constructs a [`PartialAccount`] from the provided account with an empty seed, assuming it is
     /// an existing account.
     fn try_from(account: &Account) -> Result<Self, Self::Error> {
-        PartialAccount::new(
-            account.id(),
-            account.nonce(),
-            account.code().clone(),
-            account.storage().into(),
-            account.vault().into(),
-            None,
-        )
+        Self::try_from_seeded_account(account, None)
     }
 }
 
