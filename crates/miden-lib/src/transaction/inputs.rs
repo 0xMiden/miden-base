@@ -64,7 +64,7 @@ impl TransactionAdviceInputs {
         // if a seed was provided, extend the map appropriately
         if let Some(seed) = tx_inputs.account_seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
-            let account_id_key = build_account_id_key(partial_native_acc.id());
+            let account_id_key = Self::account_id_map_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
@@ -118,7 +118,7 @@ impl TransactionAdviceInputs {
 
             // for foreign accounts, we need to insert the id to state mapping
             // NOTE: keep this in sync with the account::load_from_advice procedure
-            let account_id_key = build_account_id_key(foreign_acc.id());
+            let account_id_key = Self::account_id_map_key(foreign_acc.id());
             let header = AccountHeader::from(foreign_acc.account());
 
             // ACCOUNT_ID |-> [ID_AND_NONCE, VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
@@ -126,6 +126,13 @@ impl TransactionAdviceInputs {
         }
 
         Ok(())
+    }
+
+    /// Returns the advice map key where:
+    /// - the seed for native accounts is stored.
+    /// - the account header for foreign accounts is stored.
+    pub fn account_id_map_key(id: AccountId) -> Word {
+        Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
     }
 
     /// Extend the advice stack with the transaction inputs.
@@ -445,13 +452,6 @@ impl From<AdviceInputs> for TransactionAdviceInputs {
     fn from(inner: AdviceInputs) -> Self {
         Self(inner)
     }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-fn build_account_id_key(id: AccountId) -> Word {
-    Word::from([id.suffix(), id.prefix().as_felt(), ZERO, ZERO])
 }
 
 // CONFLICT ERROR

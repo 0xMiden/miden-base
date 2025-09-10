@@ -3,7 +3,13 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent};
-use miden_objects::account::{AccountDelta, AccountId, PartialAccount, StorageSlotType};
+use miden_objects::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    PartialAccount,
+    StorageSlotType,
+};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
@@ -58,6 +64,11 @@ where
     /// The reference block of the transaction.
     ref_block: BlockNumber,
 
+    /// The foreign account code that was lazy loaded during transaction execution.
+    ///
+    /// This is required for re-executing the transaction, e.g. as part of transaction proving.
+    accessed_foreign_account_code: Vec<AccountCode>,
+
     /// Contains generated signatures (as a message |-> signature map) required for transaction
     /// execution. Once a signature was created for a given message, it is inserted into this map.
     /// After transaction execution, these can be inserted into the advice inputs to re-execute the
@@ -101,6 +112,7 @@ where
             base_host,
             authenticator,
             ref_block,
+            accessed_foreign_account_code: Vec::new(),
             generated_signatures: BTreeMap::new(),
             source_manager,
         }
@@ -159,6 +171,9 @@ where
                     err,
                 )
             })?;
+
+        // Add the foreign account's code to the list of accessed code.
+        self.accessed_foreign_account_code.push(foreign_account_inputs.code().clone());
 
         Ok(tx_advice_inputs.into_advice_mutations().collect())
     }

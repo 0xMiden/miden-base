@@ -27,7 +27,7 @@ use miden_lib::transaction::memory::{
     CURRENT_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_lib::transaction::{TransactionEvent, TransactionEventError};
+use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent, TransactionEventError};
 use miden_objects::account::{
     AccountDelta,
     AccountHeader,
@@ -362,9 +362,17 @@ where
                 )
             })?;
 
+        // Check if a foreign account is already loaded by checking for the presence of its account
+        // ID key in the advice map.
+        let account_id_map_key = TransactionAdviceInputs::account_id_map_key(account_id);
+        let contains_account_id_key =
+            process.advice_provider().contains_map_key(&account_id_map_key);
+
         // The native account data is loaded before transaction execution begins, so there is
         // nothing to do.
-        if self.initial_account_header().id() == account_id {
+        // Similarly, if a foreign account's key is already in the advice map, it doesn't need to be
+        // loaded again.
+        if contains_account_id_key || self.initial_account_header().id() == account_id {
             Ok(TransactionEventHandling::Handled(Vec::new()))
         } else {
             Ok(TransactionEventHandling::Unhandled(TransactionEventData::ForeignAccount {
