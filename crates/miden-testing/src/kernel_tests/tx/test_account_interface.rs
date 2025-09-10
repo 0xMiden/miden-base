@@ -53,7 +53,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
         &mut RpoRandomCoin::new(Word::from([2u32; 4])),
     )?;
 
-    let notes = vec![p2ide_note, p2id_note];
+    let notes = vec![p2id_note, p2ide_note];
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .extend_input_notes(notes.clone())
         .build()?;

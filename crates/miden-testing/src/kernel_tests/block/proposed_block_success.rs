@@ -9,7 +9,8 @@ use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::block::{BlockInputs, ProposedBlock};
 use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use miden_objects::transaction::{OutputNote, ProvenTransaction, TransactionHeader};
+use miden_objects::transaction::{OutputNote, TransactionHeader};
+use miden_tx::LocalTransactionProver;
 use rand::Rng;
 
 use super::utils::{
@@ -24,7 +25,7 @@ use super::utils::{
     setup_chain,
 };
 use crate::kernel_tests::block::utils::generate_conditional_tx;
-use crate::{AccountState, Auth, MockChain, ProvenTransactionExt};
+use crate::{AccountState, Auth, MockChain};
 
 /// Tests that we can build empty blocks.
 #[test]
@@ -142,7 +143,7 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
 
     let [tx0, tx1, tx2] = [executed_tx0, executed_tx1, executed_tx2]
         .into_iter()
-        .map(ProvenTransaction::from_executed_transaction_mocked)
+        .map(|tx| LocalTransactionProver::default().prove_dummy(tx).unwrap())
         .collect::<Vec<_>>()
         .try_into()
         .expect("we should have provided three executed txs");
@@ -293,8 +294,8 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
         state_updating_tx.final_account().commitment()
     );
 
-    let tx0 = ProvenTransaction::from_executed_transaction_mocked(noop_tx);
-    let tx1 = ProvenTransaction::from_executed_transaction_mocked(state_updating_tx);
+    let tx0 = LocalTransactionProver::default().prove_dummy(noop_tx)?;
+    let tx1 = LocalTransactionProver::default().prove_dummy(state_updating_tx)?;
 
     let batch0 = generate_batch(&mut chain, vec![tx0]);
     let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
