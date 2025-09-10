@@ -538,7 +538,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
     // create an empty output note in the transaction script
     let tx_script_source = format!(
         r#"
-        use.miden::tx
+        use.miden::output_note
         use.$kernel::prologue
         use.$kernel::epilogue
         use.$kernel::note
@@ -559,7 +559,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
             # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, GARBAGE(15)]
 
             # make sure that output note was created: compare the output note hash with an empty

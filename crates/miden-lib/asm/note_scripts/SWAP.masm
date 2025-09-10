@@ -1,5 +1,5 @@
 use.miden::note
-use.miden::tx
+use.miden::output_note
 use.miden::contracts::wallets::basic->wallet
 
 # CONSTANTS
@@ -66,7 +66,7 @@ begin
     # => [tag, aux, note_type, execution_hint, PAYBACK_NOTE_RECIPIENT, REQUESTED_ASSET]
 
     # create payback P2ID note
-    exec.tx::create_note
+    exec.output_note::create
     # => [note_idx, REQUESTED_ASSET]
 
     movdn.4

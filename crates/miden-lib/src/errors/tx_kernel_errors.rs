@@ -167,8 +167,6 @@ pub const ERR_NOTE_INVALID_NOTE_TYPE_FOR_NOTE_TAG_PREFIX: MasmError = MasmError:
 pub const ERR_NOTE_INVALID_NUMBER_OF_INPUTS: MasmError = MasmError::from_static_str("the specified number of note inputs does not match the actual number");
 /// Error Message: "invalid note type"
 pub const ERR_NOTE_INVALID_TYPE: MasmError = MasmError::from_static_str("invalid note type");
-/// Error Message: "network execution mode with a specific target can only target network accounts"
-pub const ERR_NOTE_NETWORK_EXECUTION_DOES_NOT_TARGET_NETWORK_ACCOUNT: MasmError = MasmError::from_static_str("network execution mode with a specific target can only target network accounts");
 /// Error Message: "number of assets in a note exceed 255"
 pub const ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT: MasmError = MasmError::from_static_str("number of assets in a note exceed 255");
 /// Error Message: "the note's tag must fit into a u32 so the 32 most significant bits must be zero"

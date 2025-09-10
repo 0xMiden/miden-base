@@ -784,12 +784,12 @@ fn test_build_note_metadata() -> miette::Result<()> {
         let code = format!(
             "
         use.$kernel::prologue
-        use.$kernel::tx
+        use.$kernel::output_note
 
         begin
           exec.prologue::prepare_transaction
           push.{execution_hint}.{note_type}.{aux}.{tag}
-          exec.tx::build_note_metadata
+          exec.output_note::build_note_metadata
 
           # truncate the stack
           swapw dropw

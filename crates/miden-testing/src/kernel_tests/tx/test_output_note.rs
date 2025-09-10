@@ -72,7 +72,6 @@ fn test_get_asset_info() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use.miden::tx
         use.miden::output_note
         use.std::sys
 
@@ -83,7 +82,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             push.{note_type}
             push.0              # aux
             push.{tag}
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx]
 
             # move the asset 0 to the note
@@ -189,7 +188,6 @@ fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         r#"
-        use.miden::tx
         use.miden::output_note
         use.std::sys
 
@@ -304,7 +302,6 @@ fn test_get_assets() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-        use.miden::tx
         use.miden::output_note
         use.std::sys
 
@@ -362,7 +359,7 @@ fn create_output_note(note: &Note) -> String {
         push.{note_type}
         push.0              # aux
         push.{tag}
-        call.tx::create_note
+        call.output_note::create
         # => [note_idx]
     ",
         RECIPIENT = note.recipient().digest(),

@@ -82,7 +82,7 @@ export.distribute.4
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     # create a note
-    exec.tx::create_note
+    exec.output_note::create
     # => [note_idx, pad(15)]
 
     # load the ASSET and add it to the note

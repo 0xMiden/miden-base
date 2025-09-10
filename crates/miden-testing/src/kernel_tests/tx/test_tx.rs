@@ -190,7 +190,7 @@ fn test_create_note() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::tx
+        use.miden::output_note
 
         use.$kernel::prologue
 
@@ -203,7 +203,7 @@ fn test_create_note() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.tx::create_note
+            call.output_note::create
 
             # truncate the stack
             swapdw dropw dropw
@@ -271,7 +271,7 @@ fn test_create_note_with_invalid_tag() -> anyhow::Result<()> {
 fn note_creation_script(tag: Felt) -> String {
     format!(
         "
-            use.miden::tx
+            use.miden::output_note
             use.$kernel::prologue
 
             begin
@@ -283,7 +283,7 @@ fn note_creation_script(tag: Felt) -> String {
                 push.{aux}
                 push.{tag}
 
-                call.tx::create_note
+                call.output_note::create
 
                 # clean the stack
                 dropw dropw
@@ -302,7 +302,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::tx
+        use.miden::output_note
         use.$kernel::constants
         use.$kernel::memory
         use.$kernel::prologue
@@ -318,7 +318,7 @@ fn test_create_note_too_many_notes() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.tx::create_note
+            call.output_note::create
         end
         ",
         tag = NoteTag::for_local_use_case(1234, 5678).unwrap(),
@@ -434,7 +434,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             push.{PUBLIC_NOTE}
             push.{aux_1}
             push.{tag_1}
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx]
 
             push.{asset_1}
@@ -450,7 +450,7 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             push.{PUBLIC_NOTE}
             push.{aux_2}
             push.{tag_2}
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx]
 
             push.{asset_2}
@@ -526,7 +526,6 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::tx
         use.miden::output_note
 
         use.$kernel::prologue
@@ -541,7 +540,7 @@ fn test_create_note_and_add_asset() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx]
 
             push.{asset}
@@ -599,7 +598,6 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
 
     let code = format!(
         "
-        use.miden::tx
         use.miden::output_note
 
         use.$kernel::prologue
@@ -613,7 +611,7 @@ fn test_create_note_and_add_multiple_assets() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx]
 
             push.{asset}
@@ -685,7 +683,6 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
     let code = format!(
         "
         use.$kernel::prologue
-        use.miden::tx
         use.miden::output_note
 
         begin
@@ -699,7 +696,7 @@ fn test_create_note_and_add_same_nft_twice() -> anyhow::Result<()> {
             push.{aux}
             push.{tag}
 
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             push.{nft}
@@ -776,6 +773,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let code = format!(
         "
         use.miden::tx
+        use.miden::output_note
         use.$kernel::prologue
 
         proc.build_recipient_hash
@@ -805,7 +803,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             push.{tag}
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(12)]
 
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(19)]
 
             # clean the stack
@@ -959,7 +957,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.miden::contracts::wallets::basic->wallet
-        use.miden::tx
+        use.miden::output_note
         use.mock::account
 
         # Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
@@ -970,7 +968,7 @@ fn executed_transaction_output_notes() -> anyhow::Result<()> {
             padw padw swapdw
             # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
 
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             # remove excess PADs from the stack

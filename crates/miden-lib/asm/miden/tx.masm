@@ -199,37 +199,6 @@ export.get_num_output_notes
     # => [num_output_notes]
 end
 
-#! Creates a new note and returns the index of the note.
-#!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]
-#! Outputs: [note_idx]
-#!
-#! Where:
-#! - tag is the tag to be included in the note.
-#! - aux is the auxiliary metadata to be included in the note.
-#! - note_type is the storage type of the note.
-#! - execution_hint is the note's execution hint.
-#! - RECIPIENT is the recipient of the note.
-#! - note_idx is the index of the created note.
-#!
-#! Invocation: exec
-export.create_note
-    # pad the stack before the syscall to prevent accidental modification of the deeper stack
-    # elements
-    padw padw swapdw movup.8 drop
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    exec.kernel_proc_offsets::tx_create_note_offset
-    # => [offset, tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
-
-    syscall.exec_kernel_proc
-    # => [note_idx, pad(15)]
-
-    # remove excess PADs from the stack
-    swapdw dropw dropw movdn.7 dropw drop drop drop
-    # => [note_idx]
-end
-
 #! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
 #!
 #! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
