@@ -17,6 +17,7 @@ use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
 use super::proven_tx_builder::MockProvenTxBuilder;
+use crate::kernel_tests::block::utils::generate_untracked_note;
 use crate::{AccountState, Auth, MockChain, MockChainBuilder};
 
 fn mock_account_id(num: u8) -> AccountId {
@@ -36,16 +37,20 @@ struct TestSetup {
     chain: MockChain,
     account1: Account,
     account2: Account,
+    note1: Note,
 }
 
 fn setup_chain() -> TestSetup {
     let mut builder = MockChain::builder();
     let account1 = generate_account(&mut builder);
     let account2 = generate_account(&mut builder);
+    let note1 = builder
+        .add_p2id_note(account1.id(), account2.id(), &[], NoteType::Public)
+        .expect("adding p2id note1 should work");
     let mut chain = builder.build().expect("genesis should be valid");
     chain.prove_next_block().expect("valid setup");
 
-    TestSetup { chain, account1, account2 }
+    TestSetup { chain, account1, account2, note1 }
 }
 
 fn generate_account(chain: &mut MockChainBuilder) -> Account {
@@ -77,7 +82,7 @@ fn empty_transaction_batch() -> anyhow::Result<()> {
 /// output note commitments.
 #[test]
 fn note_created_and_consumed_in_same_batch() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2 } = setup_chain();
+    let TestSetup { mut chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
@@ -110,7 +115,7 @@ fn note_created_and_consumed_in_same_batch() -> anyhow::Result<()> {
 /// times in different transactions.
 #[test]
 fn duplicate_unauthenticated_input_notes() -> anyhow::Result<()> {
-    let TestSetup { chain, account1, account2 } = setup_chain();
+    let TestSetup { chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
 
     let note = mock_note(50);
@@ -149,20 +154,19 @@ fn duplicate_unauthenticated_input_notes() -> anyhow::Result<()> {
 /// times in different transactions.
 #[test]
 fn duplicate_authenticated_input_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2 } = setup_chain();
-    let note = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Public)?;
+    let TestSetup { mut chain, account1, account2, note1 } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Word::empty(), account1.commitment())
             .ref_block_commitment(block1.commitment())
-            .authenticated_notes(vec![note.clone()])
+            .authenticated_notes(vec![note1.clone()])
             .build()?;
     let tx2 =
         MockProvenTxBuilder::with_account(account2.id(), Word::empty(), account2.commitment())
             .ref_block_commitment(block1.commitment())
-            .authenticated_notes(vec![note.clone()])
+            .authenticated_notes(vec![note1.clone()])
             .build()?;
 
     let error = ProposedBatch::new(
@@ -177,7 +181,7 @@ fn duplicate_authenticated_input_notes() -> anyhow::Result<()> {
         note_nullifier,
         first_transaction_id,
         second_transaction_id
-      } if note_nullifier == note.nullifier() &&
+      } if note_nullifier == note1.nullifier() &&
         first_transaction_id == tx1.id() &&
         second_transaction_id == tx2.id()
     );
@@ -189,20 +193,19 @@ fn duplicate_authenticated_input_notes() -> anyhow::Result<()> {
 /// transactions as an unauthenticated or authenticated note.
 #[test]
 fn duplicate_mixed_input_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2 } = setup_chain();
-    let note = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Public)?;
+    let TestSetup { mut chain, account1, account2, note1 } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Word::empty(), account1.commitment())
             .ref_block_commitment(block1.commitment())
-            .unauthenticated_notes(vec![note.clone()])
+            .unauthenticated_notes(vec![note1.clone()])
             .build()?;
     let tx2 =
         MockProvenTxBuilder::with_account(account2.id(), Word::empty(), account2.commitment())
             .ref_block_commitment(block1.commitment())
-            .authenticated_notes(vec![note.clone()])
+            .authenticated_notes(vec![note1.clone()])
             .build()?;
 
     let error = ProposedBatch::new(
@@ -217,7 +220,7 @@ fn duplicate_mixed_input_notes() -> anyhow::Result<()> {
         note_nullifier,
         first_transaction_id,
         second_transaction_id
-      } if note_nullifier == note.nullifier() &&
+      } if note_nullifier == note1.nullifier() &&
         first_transaction_id == tx1.id() &&
         second_transaction_id == tx2.id()
     );
@@ -229,7 +232,7 @@ fn duplicate_mixed_input_notes() -> anyhow::Result<()> {
 /// transactions.
 #[test]
 fn duplicate_output_notes() -> anyhow::Result<()> {
-    let TestSetup { chain, account1, account2 } = setup_chain();
+    let TestSetup { chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
 
     let note0 = mock_output_note(50);
@@ -265,28 +268,53 @@ fn duplicate_output_notes() -> anyhow::Result<()> {
 
 /// Test that an unauthenticated input note for which a proof exists is converted into an
 /// authenticated one and becomes part of the batch's input note commitment.
-#[test]
-fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2 } = setup_chain();
-    let note0 = chain.add_pending_p2id_note(account2.id(), account1.id(), &[], NoteType::Public)?;
-    let note1 = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Public)?;
-    // The just created note will be provable against block2.
+#[tokio::test]
+async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
+    let mut builder = MockChain::builder();
+    let account1 = generate_account(&mut builder);
+    let note1 = generate_untracked_note(account1.id(), account1.id());
+    let note2 = generate_untracked_note(account1.id(), account1.id());
+    let spawn_note = builder.add_spawn_note([&note1, &note2])?;
+    let mut chain = builder.build()?;
+
+    let tx = chain
+        .build_tx_context(account1.clone(), &[spawn_note.id()], &[])?
+        .extend_expected_output_notes(vec![
+            OutputNote::Full(note1.clone()),
+            OutputNote::Full(note2.clone()),
+        ])
+        .build()?
+        .execute()
+        .await?;
+    chain.add_pending_executed_transaction(&tx)?;
+
+    // Note1 and note2 are included and therefore provable against block1.
+    let block1 = chain.prove_next_block()?;
     let block2 = chain.prove_next_block()?;
     let block3 = chain.prove_next_block()?;
-    let block4 = chain.prove_next_block()?;
+
+    assert_eq!(block1.output_notes().count(), 2, "block 1 should contain note1 and note2");
+    assert!(
+        block1.output_notes().any(|(_, note)| note.commitment() == note1.commitment()),
+        "block 1 should contain note1"
+    );
+    assert!(
+        block1.output_notes().any(|(_, note)| note.commitment() == note2.commitment()),
+        "block 1 should contain note2"
+    );
 
     // Consume the authenticated note as an unauthenticated one in the transaction.
     let tx1 =
         MockProvenTxBuilder::with_account(account1.id(), Word::empty(), account1.commitment())
-            .ref_block_commitment(block3.commitment())
-            .unauthenticated_notes(vec![note1.clone()])
+            .ref_block_commitment(block2.commitment())
+            .unauthenticated_notes(vec![note2.clone()])
             .build()?;
-
-    let input_note0 = chain.get_public_note(&note0.id()).expect("note not found");
-    let note_inclusion_proof0 = input_note0.proof().expect("note should be of type authenticated");
 
     let input_note1 = chain.get_public_note(&note1.id()).expect("note not found");
     let note_inclusion_proof1 = input_note1.proof().expect("note should be of type authenticated");
+
+    let input_note2 = chain.get_public_note(&note2.id()).expect("note not found");
+    let note_inclusion_proof2 = input_note2.proof().expect("note should be of type authenticated");
 
     // The partial blockchain will contain all blocks in the mock chain, in particular block2 which
     // both note inclusion proofs need for verification.
@@ -297,9 +325,9 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
 
     let error = ProposedBatch::new(
         [tx1.clone()].into_iter().map(Arc::new).collect(),
-        block4.header().clone(),
+        block3.header().clone(),
         partial_blockchain.clone(),
-        BTreeMap::from_iter([(input_note1.id(), note_inclusion_proof0.clone())]),
+        BTreeMap::from_iter([(input_note2.id(), note_inclusion_proof1.clone())]),
     )
     .unwrap_err();
 
@@ -307,27 +335,29 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
         note_id,
         block_num,
         source: MerkleError::ConflictingRoots { .. },
-      } if note_id == note1.id() &&
-        block_num == block2.header().block_num()
+      } => {
+          assert_eq!(note_id, note2.id());
+          assert_eq!(block_num, block1.header().block_num());
+      }
     );
 
     // Case 2: Error: The block referenced by the (valid) note inclusion proof is missing.
     // --------------------------------------------------------------------------------------------
 
-    // Make a clone of the partial blockchain where block2 is missing.
+    // Make a clone of the partial blockchain where block1 is missing.
     let mut mmr = partial_blockchain.mmr().clone();
-    mmr.untrack(block2.header().block_num().as_usize());
+    mmr.untrack(block1.header().block_num().as_usize());
     let blocks = partial_blockchain
         .block_headers()
-        .filter(|header| header.block_num() != block2.header().block_num())
+        .filter(|header| header.block_num() != block1.header().block_num())
         .cloned();
 
     let error = ProposedBatch::new(
         [tx1.clone()].into_iter().map(Arc::new).collect(),
-        block4.header().clone(),
+        block3.header().clone(),
         PartialBlockchain::new(mmr, blocks)
             .context("failed to build partial blockchain with missing block")?,
-        BTreeMap::from_iter([(input_note1.id(), note_inclusion_proof1.clone())]),
+        BTreeMap::from_iter([(input_note2.id(), note_inclusion_proof2.clone())]),
     )
     .unwrap_err();
 
@@ -336,8 +366,10 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
         ProposedBatchError::UnauthenticatedInputNoteBlockNotInPartialBlockchain {
           block_number,
           note_id
-        } if block_number == note_inclusion_proof1.location().block_num() &&
-          note_id == input_note1.id()
+        } => {
+            assert_eq!(block_number, note_inclusion_proof2.location().block_num());
+            assert_eq!(note_id, input_note2.id());
+        }
     );
 
     // Case 3: Success: The correct proof is passed.
@@ -345,9 +377,9 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
 
     let batch = ProposedBatch::new(
         [tx1].into_iter().map(Arc::new).collect(),
-        block4.header().clone(),
+        block3.header().clone(),
         partial_blockchain,
-        BTreeMap::from_iter([(input_note1.id(), note_inclusion_proof1.clone())]),
+        BTreeMap::from_iter([(input_note2.id(), note_inclusion_proof2.clone())]),
     )?;
 
     // We expect the unauthenticated input note to have become an authenticated one,
@@ -357,7 +389,7 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
         batch
             .input_notes()
             .iter()
-            .any(|commitment| commitment == &InputNoteCommitment::from(&input_note1))
+            .any(|commitment| commitment == &InputNoteCommitment::from(&input_note2))
     );
     assert_eq!(batch.output_notes().len(), 0);
 
@@ -376,8 +408,7 @@ fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()> {
 ///   attack vector.
 #[test]
 fn authenticated_note_created_in_same_batch() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2 } = setup_chain();
-    let note = chain.add_pending_p2id_note(account1.id(), account2.id(), &[], NoteType::Public)?;
+    let TestSetup { mut chain, account1, account2, note1 } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
@@ -390,7 +421,7 @@ fn authenticated_note_created_in_same_batch() -> anyhow::Result<()> {
     let tx2 =
         MockProvenTxBuilder::with_account(account2.id(), Word::empty(), account2.commitment())
             .ref_block_commitment(block1.commitment())
-            .authenticated_notes(vec![note.clone()])
+            .authenticated_notes(vec![note1.clone()])
             .build()?;
 
     let batch = ProposedBatch::new(
@@ -481,7 +512,7 @@ fn multiple_transactions_against_same_account() -> anyhow::Result<()> {
 /// - The output note commitment is sorted by [`NoteId`].
 #[test]
 fn input_and_output_notes_commitment() -> anyhow::Result<()> {
-    let TestSetup { chain, account1, account2 } = setup_chain();
+    let TestSetup { chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
 
     let note0 = mock_output_note(50);
@@ -536,7 +567,7 @@ fn input_and_output_notes_commitment() -> anyhow::Result<()> {
 /// Tests that the expiration block number of a batch is the minimum of all contained transactions.
 #[test]
 fn batch_expiration() -> anyhow::Result<()> {
-    let TestSetup { chain, account1, account2 } = setup_chain();
+    let TestSetup { chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
 
     let tx1 =
@@ -594,7 +625,7 @@ fn duplicate_transaction() -> anyhow::Result<()> {
 /// TX 2: Inputs [Y] -> Outputs [X]
 #[test]
 fn circular_note_dependency() -> anyhow::Result<()> {
-    let TestSetup { chain, account1, account2 } = setup_chain();
+    let TestSetup { chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
 
     let note_x = mock_note(20);
@@ -629,7 +660,7 @@ fn circular_note_dependency() -> anyhow::Result<()> {
 /// Tests that expired transactions cannot be included in a batch.
 #[test]
 fn expired_transaction() -> anyhow::Result<()> {
-    let TestSetup { chain, account1, account2 } = setup_chain();
+    let TestSetup { chain, account1, account2, .. } = setup_chain();
     let block1 = chain.block_header(1);
 
     // This transaction expired at the batch's reference block.

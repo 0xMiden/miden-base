@@ -338,7 +338,7 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
         );
         let note = create_p2any_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
-            &[FungibleAsset::new(account.id(), 100u64).unwrap().into()],
+            [FungibleAsset::new(account.id(), 100u64).unwrap().into()],
         );
         TransactionContextBuilder::new(account).extend_input_notes(vec![note]).build()?
     };
