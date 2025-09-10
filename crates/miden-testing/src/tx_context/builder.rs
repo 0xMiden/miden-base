@@ -314,8 +314,10 @@ impl TransactionContextBuilder {
                     |storage_slot| match storage_slot {
                         StorageSlot::Map(storage_map) => {
                             let mut partial_storage_map = PartialStorageMap::default();
+                            let key = Word::empty();
+                            let witness = storage_map.open(&key);
                             partial_storage_map
-                                .add(storage_map.open(&Word::empty()))
+                                .add(&key, &storage_map.get(&key), witness)
                                 .expect("adding the first proof should never error");
                             Some(partial_storage_map)
                         },
