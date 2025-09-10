@@ -27,7 +27,7 @@ use miden_lib::transaction::memory::{
     CURRENT_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_lib::transaction::{TransactionEvent, TransactionEventError, TransactionKernelError};
+use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{AccountDelta, AccountHeader, AccountId, PartialAccount};
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::NoteId;
@@ -55,6 +55,7 @@ use miden_processor::{
 pub use tx_progress::TransactionProgress;
 
 use crate::auth::SigningInputs;
+use crate::errors::TransactionKernelError;
 
 // TRANSACTION BASE HOST
 // ================================================================================================

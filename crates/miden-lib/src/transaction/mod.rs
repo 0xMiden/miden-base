@@ -42,11 +42,7 @@ pub use outputs::{
     parse_final_account_header,
 };
 
-pub use crate::errors::{
-    TransactionEventError,
-    TransactionKernelError,
-    TransactionTraceParsingError,
-};
+pub use crate::errors::{TransactionEventError, TransactionTraceParsingError};
 
 mod kernel_procedures;
 use kernel_procedures::KERNEL_PROCEDURES;

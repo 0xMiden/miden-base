@@ -1,9 +1,7 @@
-use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionEvent;
 use miden_objects::account::{AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
@@ -24,6 +22,7 @@ use miden_processor::{
 };
 
 use crate::auth::{SigningInputs, TransactionAuthenticator};
+use crate::errors::TransactionKernelError;
 use crate::host::{
     ScriptMastForestStore,
     TransactionBaseHost,
@@ -126,7 +125,7 @@ where
         let signature: Vec<Felt> = authenticator
             .get_signature(pub_key_hash, &signing_inputs)
             .await
-            .map_err(|err| TransactionKernelError::SignatureGenerationFailed(Box::new(err)))?;
+            .map_err(TransactionKernelError::SignatureGenerationFailed)?;
 
         let signature_key = Hasher::merge(&[pub_key_hash, signing_inputs.to_commitment()]);
 
@@ -153,7 +152,7 @@ where
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root: self.base_host.initial_account_header().vault_root(),
                 vault_key: fee_asset.vault_key(),
-                source: Box::new(err),
+                source: err,
             })?;
 
         // Find fee asset in the witness or default to 0 if it isn't present.
@@ -258,7 +257,7 @@ where
             .map_err(|err| TransactionKernelError::GetVaultAssetWitness {
                 vault_root,
                 vault_key,
-                source: Box::new(err),
+                source: err,
             })?;
 
         Ok(asset_witness_to_advice_mutation(asset_witness))

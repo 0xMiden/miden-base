@@ -1,5 +1,6 @@
 use alloc::boxed::Box;
 use alloc::string::String;
+use alloc::vec::Vec;
 use core::error::Error;
 
 use miden_lib::transaction::TransactionAdviceMapMismatch;
@@ -7,18 +8,20 @@ use miden_objects::account::AccountId;
 use miden_objects::assembly::diagnostics::reporting::PrintDiagnostic;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProofError;
-use miden_objects::note::NoteId;
+use miden_objects::note::{NoteId, NoteMetadata};
 use miden_objects::transaction::TransactionSummary;
 use miden_objects::{
     AccountDeltaError,
     AccountError,
+    AssetError,
     Felt,
+    NoteError,
     ProvenTransactionError,
     TransactionInputError,
     TransactionOutputError,
     Word,
 };
-use miden_processor::ExecutionError;
+use miden_processor::{DeserializationError, ExecutionError};
 use miden_verifier::VerificationError;
 use thiserror::Error;
 
@@ -201,6 +204,120 @@ pub enum TransactionHostError {
     AccountProcedureInfoCreationFailed(#[source] AccountError),
 }
 
+// TRANSACTION KERNEL ERROR
+// ================================================================================================
+
+#[derive(Debug, Error)]
+pub enum TransactionKernelError {
+    #[error("failed to add asset to account delta")]
+    AccountDeltaAddAssetFailed(#[source] AccountDeltaError),
+    #[error("failed to remove asset from account delta")]
+    AccountDeltaRemoveAssetFailed(#[source] AccountDeltaError),
+    #[error("failed to add asset to note")]
+    FailedToAddAssetToNote(#[source] NoteError),
+    #[error("note input data has hash {actual} but expected hash {expected}")]
+    InvalidNoteInputs { expected: Word, actual: Word },
+    #[error(
+        "storage slot index {actual} is invalid, must be smaller than the number of account storage slots {max}"
+    )]
+    InvalidStorageSlotIndex { max: u64, actual: u64 },
+    #[error(
+        "failed to respond to signature requested since no authenticator is assigned to the host"
+    )]
+    MissingAuthenticator,
+    #[error("failed to generate signature")]
+    SignatureGenerationFailed(#[source] AuthenticationError),
+    #[error("transaction returned unauthorized event but a commitment did not match: {0}")]
+    TransactionSummaryCommitmentMismatch(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("failed to construct transaction summary")]
+    TransactionSummaryConstructionFailed(#[source] Box<dyn Error + Send + Sync + 'static>),
+    #[error("asset data extracted from the stack by event handler `{handler}` is not well formed")]
+    MalformedAssetInEventHandler {
+        handler: &'static str,
+        source: AssetError,
+    },
+    #[error(
+        "note inputs data extracted from the advice map by the event handler is not well formed"
+    )]
+    MalformedNoteInputs(#[source] NoteError),
+    #[error("note metadata created by the event handler is not well formed")]
+    MalformedNoteMetadata(#[source] NoteError),
+    #[error(
+        "note script data `{data:?}` extracted from the advice map by the event handler is not well formed"
+    )]
+    MalformedNoteScript {
+        data: Vec<Felt>,
+        source: DeserializationError,
+    },
+    #[error("recipient data `{0:?}` in the advice provider is not well formed")]
+    MalformedRecipientData(Vec<Felt>),
+    #[error("cannot add asset to note with index {0}, note does not exist in the advice provider")]
+    MissingNote(u64),
+    #[error(
+        "public note with metadata {0:?} and recipient digest {1} is missing details in the advice provider"
+    )]
+    PublicNoteMissingDetails(NoteMetadata, Word),
+    #[error(
+        "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
+    )]
+    TooFewElementsForNoteInputs { specified: u64, actual: u64 },
+    #[error("account procedure with procedure root {0} is not in the advice provider")]
+    UnknownAccountProcedure(Word),
+    #[error("code commitment {0} is not in the advice provider")]
+    UnknownCodeCommitment(Word),
+    #[error("account storage slots number is missing in memory at address {0}")]
+    AccountStorageSlotsNumMissing(u32),
+    #[error("account nonce can only be incremented once")]
+    NonceCanOnlyIncrementOnce,
+    #[error("failed to convert fee asset into fungible asset")]
+    FailedToConvertFeeAsset(#[source] AssetError),
+    #[error(
+        "failed to get vault asset witness from data store for vault root {vault_root} and vault_key {vault_key}"
+    )]
+    GetVaultAssetWitness {
+        vault_root: Word,
+        vault_key: Word,
+        source: DataStoreError,
+    },
+    #[error(
+        "native asset amount {account_balance} in the account vault is not sufficient to cover the transaction fee of {tx_fee}"
+    )]
+    InsufficientFee { account_balance: u64, tx_fee: u64 },
+    /// This variant signals that a signature over the contained commitments is required, but
+    /// missing.
+    #[error("transaction requires a signature")]
+    Unauthorized(Box<TransactionSummary>),
+    /// A generic error returned when the transaction kernel did not behave as expected.
+    #[error("{message}")]
+    Other {
+        message: Box<str>,
+        // thiserror will return this when calling Error::source on TransactionKernelError.
+        source: Option<Box<dyn Error + Send + Sync + 'static>>,
+    },
+}
+
+impl TransactionKernelError {
+    /// Creates a custom error using the [`TransactionKernelError::Other`] variant from an error
+    /// message.
+    pub fn other(message: impl Into<String>) -> Self {
+        let message: String = message.into();
+        Self::Other { message: message.into(), source: None }
+    }
+
+    /// Creates a custom error using the [`TransactionKernelError::Other`] variant from an error
+    /// message and a source error.
+    pub fn other_with_source(
+        message: impl Into<String>,
+        source: impl Error + Send + Sync + 'static,
+    ) -> Self {
+        let message: String = message.into();
+        Self::Other {
+            message: message.into(),
+            source: Some(Box::new(source)),
+        }
+    }
+}
+
 // DATA STORE ERROR
 // ================================================================================================
 
@@ -294,6 +411,10 @@ mod error_assertions {
     }
 
     fn _assert_authentication_error_bounds(err: AuthenticationError) {
+        _assert_error_is_send_sync_static(err);
+    }
+
+    fn _assert_transaction_kernel_error_bounds(err: TransactionKernelError) {
         _assert_error_is_send_sync_static(err);
     }
 }
