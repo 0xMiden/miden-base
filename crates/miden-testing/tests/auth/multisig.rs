@@ -410,6 +410,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script)
+        .tx_script_args(tx_script_args)
         .add_signature(public_keys[0], msg, sig_1)
         .add_signature(public_keys[1], msg, sig_2)
         .auth_args(salt)
@@ -449,10 +450,8 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     /* TODO: Get this to work
     // Extract public keys from the updated account
     let final_pub_keys = get_public_keys_from_account(&updated_multisig_account);
-
     // Verify that we have the expected number of public keys (4 new ones)
     assert_eq!(final_pub_keys.len(), 4, "Expected 4 public keys after update");
-
     // Verify that the public keys match the new ones we set
     for (i, expected_key) in new_public_keys.iter().enumerate() {
         let expected_word: Word = (*expected_key).into();

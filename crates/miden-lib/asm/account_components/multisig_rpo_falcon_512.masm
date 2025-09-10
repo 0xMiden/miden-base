@@ -97,6 +97,8 @@ export.update_signers_and_threshold
 
     dup neq.0
     while.true
+        push.101 debug.stack drop
+
         sub.1
 
         dup
@@ -108,7 +110,9 @@ export.update_signers_and_threshold
 
         padw adv_loadw
         # => [PUB_KEY, [0, 0, 0, i-1], i-1]
- 
+    
+        push.111 debug.stack drop
+
         swapw
         # => [[0, 0, 0, i-1], PUB_KEY, i-1]
 
@@ -123,6 +127,10 @@ export.update_signers_and_threshold
         dup neq.0
         # => [is_zero]
     end
+
+    push.222 debug.stack drop
+
+
 end
 
 
