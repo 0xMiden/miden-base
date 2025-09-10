@@ -624,7 +624,7 @@ impl MockChain {
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
-        account: impl Into<PartialAccount>,
+        account: PartialAccount,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
@@ -691,7 +691,7 @@ impl MockChain {
     /// Returns a valid [`TransactionInputs`] for the specified entities.
     pub fn get_transaction_inputs(
         &self,
-        account: impl Into<PartialAccount>,
+        account: PartialAccount,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {

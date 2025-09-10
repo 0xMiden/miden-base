@@ -591,16 +591,8 @@ pub enum TransactionScriptError {
 
 #[derive(Debug, Error)]
 pub enum TransactionInputError {
-    #[error("account seed must be provided for new accounts")]
-    AccountSeedNotProvidedForNewAccount,
-    #[error("account seed must not be provided for existing accounts")]
-    AccountSeedProvidedForExistingAccount,
     #[error("transaction input note with nullifier {0} is a duplicate")]
     DuplicateInputNote(Nullifier),
-    #[error(
-        "ID {expected} of the new account does not match the ID {actual} computed from the provided seed"
-    )]
-    InconsistentAccountSeed { expected: AccountId, actual: AccountId },
     #[error("partial blockchain has length {actual} which does not match block number {expected}")]
     InconsistentChainLength {
         expected: BlockNumber,
@@ -614,8 +606,6 @@ pub enum TransactionInputError {
     InputNoteBlockNotInPartialBlockchain(NoteId),
     #[error("input note with id {0} was not created in block {1}")]
     InputNoteNotInBlock(NoteId, BlockNumber),
-    #[error("account ID computed from seed is invalid")]
-    InvalidAccountIdSeed(#[source] AccountIdError),
     #[error(
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]

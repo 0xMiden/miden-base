@@ -1,7 +1,8 @@
 use core::fmt::Debug;
 
 use super::PartialBlockchain;
-use crate::account::{AccountId, PartialAccount};
+use crate::TransactionInputError;
+use crate::account::PartialAccount;
 use crate::block::BlockHeader;
 use crate::note::{Note, NoteInclusionProof};
 use crate::utils::serde::{
@@ -11,7 +12,6 @@ use crate::utils::serde::{
     DeserializationError,
     Serializable,
 };
-use crate::{TransactionInputError, Word};
 
 mod account;
 pub use account::AccountInputs;
@@ -34,23 +34,21 @@ pub struct TransactionInputs {
 impl TransactionInputs {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
-    /// Returns new [TransactionInputs] instantiated with the specified parameters.
+
+    /// Returns new [`TransactionInputs`] instantiated with the specified parameters.
     ///
     /// # Errors
+    ///
     /// Returns an error if:
-    /// - For a new account, account seed is not provided or the provided seed is invalid.
-    /// - For an existing account, account seed was provided.
+    /// - The partial blockchain's length is not the number of the reference block.
+    /// - The partial blockchain's commitment does not match the reference block's chain commitment.
+    /// - The partial blockchain does not proof inclusion of an authenticated input note.
     pub fn new(
-        account: impl Into<PartialAccount>,
+        partial_account: PartialAccount,
         block_header: BlockHeader,
         block_chain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
     ) -> Result<Self, TransactionInputError> {
-        let partial_account: PartialAccount = account.into();
-
-        // validate the seed
-        validate_account_seed(&partial_account, partial_account.seed())?;
-
         // check the block_chain and block_header are consistent
         let block_num = block_header.block_num();
         if block_chain.chain_length() != block_header.block_num() {
@@ -150,36 +148,6 @@ impl Deserializable for TransactionInputs {
 
 // HELPER FUNCTIONS
 // ================================================================================================
-
-/// Validates that the provided seed is valid for this account.
-fn validate_account_seed(
-    account: &PartialAccount,
-    account_seed: Option<Word>,
-) -> Result<(), TransactionInputError> {
-    match (account.is_new(), account_seed) {
-        (true, Some(seed)) => {
-            let account_id = AccountId::new(
-                seed,
-                account.id().version(),
-                account.code().commitment(),
-                account.storage().commitment(),
-            )
-            .map_err(TransactionInputError::InvalidAccountIdSeed)?;
-
-            if account_id != account.id() {
-                return Err(TransactionInputError::InconsistentAccountSeed {
-                    expected: account.id(),
-                    actual: account_id,
-                });
-            }
-
-            Ok(())
-        },
-        (true, None) => Err(TransactionInputError::AccountSeedNotProvidedForNewAccount),
-        (false, Some(_)) => Err(TransactionInputError::AccountSeedProvidedForExistingAccount),
-        (false, None) => Ok(()),
-    }
-}
 
 /// Validates whether the provided note belongs to the note tree of the specified block.
 fn validate_is_in_block(
