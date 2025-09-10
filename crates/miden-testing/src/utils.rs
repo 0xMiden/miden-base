@@ -186,7 +186,7 @@ fn note_script_that_creates_notes<'note>(
     for (idx, note) in output_notes.into_iter().enumerate() {
         anyhow::ensure!(
             note.metadata().sender() == sender_id,
-            "sender IDs of output notes passed to SPAWN note are inconcistent"
+            "sender IDs of output notes passed to SPAWN note are inconsistent"
         );
 
         // Make sure that the transaction's native account matches the note sender.
