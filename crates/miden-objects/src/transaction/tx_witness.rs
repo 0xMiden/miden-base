@@ -1,4 +1,7 @@
+use alloc::vec::Vec;
+
 use super::{AdviceInputs, TransactionArgs, TransactionInputs};
+use crate::account::AccountCode;
 use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Serializable};
 
 // TRANSACTION WITNESS
@@ -16,8 +19,9 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 /// - Optional transaction arguments which may contain a transaction script, note arguments,
 ///   transaction script arguments and any additional advice data to initialize the advice provider
 ///   with prior to transaction execution.
-/// - Advice witness which contains all data requested by the VM from the advice provider while
-///   executing the transaction program.
+/// - Account code needed for invoking procedures on foreign accounts.
+/// - Advice witness which contains all data that is in the advice provider by the end of the
+///   transaction execution.
 ///
 /// TODO: currently, the advice witness contains redundant and irrelevant data (e.g., tx inputs
 /// and tx outputs; account codes and a subset of that data in advice inputs).
@@ -27,6 +31,7 @@ use crate::utils::serde::{ByteReader, Deserializable, DeserializationError, Seri
 pub struct TransactionWitness {
     pub tx_inputs: TransactionInputs,
     pub tx_args: TransactionArgs,
+    pub foreign_account_code: Vec<AccountCode>,
     pub advice_witness: AdviceInputs,
 }
 
@@ -37,6 +42,7 @@ impl Serializable for TransactionWitness {
     fn write_into<W: miden_crypto::utils::ByteWriter>(&self, target: &mut W) {
         self.tx_inputs.write_into(target);
         self.tx_args.write_into(target);
+        self.foreign_account_code.write_into(target);
         self.advice_witness.write_into(target);
     }
 }
@@ -45,9 +51,15 @@ impl Deserializable for TransactionWitness {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         let tx_inputs = TransactionInputs::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
+        let foreign_account_code = <Vec<AccountCode>>::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
 
-        Ok(Self { tx_inputs, tx_args, advice_witness })
+        Ok(Self {
+            tx_inputs,
+            tx_args,
+            foreign_account_code,
+            advice_witness,
+        })
     }
 }
 
@@ -97,7 +109,7 @@ mod tests {
         );
 
         let tx_inputs = TransactionInputs::new(
-            account,
+            account.clone(),
             None,
             block_header.clone(),
             partial_blockchain.clone(),
@@ -108,6 +120,7 @@ mod tests {
         let witness = TransactionWitness {
             tx_inputs,
             tx_args: TransactionArgs::default(),
+            foreign_account_code: vec![account.code().clone()],
             advice_witness: AdviceInputs::default(),
         };
 

@@ -280,7 +280,7 @@ where
         let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
-        let (stack_inputs, advice_inputs) =
+        let (stack_inputs, tx_advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, tx_args, init_advice_inputs)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
@@ -298,9 +298,13 @@ where
             input_notes.iter().map(|n| n.note().script()),
         );
 
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, tx_args, &advice_inputs)
-                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        // To start executing the transaction, the procedure index map only needs to contain the
+        // native account's procedures. Foreign accounts are inserted into the map on first access.
+        let acct_procedure_index_map = AccountProcedureIndexMap::new(
+            [tx_inputs.account().code().commitment()],
+            tx_advice_inputs.as_advice_inputs(),
+        )
+        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
             tx_inputs.account(),
@@ -313,7 +317,7 @@ where
             self.source_manager.clone(),
         );
 
-        let advice_inputs = advice_inputs.into_advice_inputs();
+        let advice_inputs = tx_advice_inputs.into_advice_inputs();
 
         Ok((host, tx_inputs, stack_inputs, advice_inputs))
     }
@@ -332,8 +336,14 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
     // Note that the account delta does not contain the removed transaction fee, so it is the
     // "pre-fee" delta of the transaction.
-    let (pre_fee_account_delta, _input_notes, output_notes, generated_signatures, tx_progress) =
-        host.into_parts();
+    let (
+        pre_fee_account_delta,
+        _input_notes,
+        output_notes,
+        accessed_foreign_account_code,
+        generated_signatures,
+        tx_progress,
+    ) = host.into_parts();
 
     let tx_outputs =
         TransactionKernel::from_transaction_parts(&stack_outputs, &advice_inputs, output_notes)
@@ -381,6 +391,7 @@ fn build_executed_transaction<STORE: DataStore + Sync, AUTH: TransactionAuthenti
         tx_outputs,
         post_fee_account_delta,
         tx_args,
+        accessed_foreign_account_code,
         advice_inputs,
         tx_progress.into(),
     ))

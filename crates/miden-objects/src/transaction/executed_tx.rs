@@ -16,7 +16,7 @@ use super::{
     TransactionOutputs,
     TransactionWitness,
 };
-use crate::account::PartialAccount;
+use crate::account::{AccountCode, PartialAccount};
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
 use crate::utils::serde::{
@@ -47,6 +47,7 @@ pub struct ExecutedTransaction {
     tx_outputs: TransactionOutputs,
     account_delta: AccountDelta,
     tx_args: TransactionArgs,
+    foreign_account_code: Vec<AccountCode>,
     advice_witness: AdviceInputs,
     tx_measurements: TransactionMeasurements,
 }
@@ -64,6 +65,7 @@ impl ExecutedTransaction {
         tx_outputs: TransactionOutputs,
         account_delta: AccountDelta,
         tx_args: TransactionArgs,
+        foreign_account_code: Vec<AccountCode>,
         advice_witness: AdviceInputs,
         tx_measurements: TransactionMeasurements,
     ) -> Self {
@@ -85,6 +87,7 @@ impl ExecutedTransaction {
             tx_outputs,
             account_delta,
             tx_args,
+            foreign_account_code,
             advice_witness,
             tx_measurements,
         }
@@ -175,6 +178,7 @@ impl ExecutedTransaction {
         let tx_witness = TransactionWitness {
             tx_inputs: self.tx_inputs,
             tx_args: self.tx_args,
+            foreign_account_code: self.foreign_account_code,
             advice_witness: self.advice_witness,
         };
 
@@ -202,6 +206,7 @@ impl Serializable for ExecutedTransaction {
         self.tx_outputs.write_into(target);
         self.account_delta.write_into(target);
         self.tx_args.write_into(target);
+        self.foreign_account_code.write_into(target);
         self.advice_witness.write_into(target);
         self.tx_measurements.write_into(target);
     }
@@ -213,6 +218,7 @@ impl Deserializable for ExecutedTransaction {
         let tx_outputs = TransactionOutputs::read_from(source)?;
         let account_delta = AccountDelta::read_from(source)?;
         let tx_args = TransactionArgs::read_from(source)?;
+        let foreign_account_code = <Vec<AccountCode>>::read_from(source)?;
         let advice_witness = AdviceInputs::read_from(source)?;
         let tx_measurements = TransactionMeasurements::read_from(source)?;
 
@@ -221,6 +227,7 @@ impl Deserializable for ExecutedTransaction {
             tx_outputs,
             account_delta,
             tx_args,
+            foreign_account_code,
             advice_witness,
             tx_measurements,
         ))

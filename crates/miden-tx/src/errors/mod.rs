@@ -261,9 +261,9 @@ pub enum TransactionKernelError {
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]
     TooFewElementsForNoteInputs { specified: u64, actual: u64 },
-    #[error("account procedure with procedure root {0} is not in the advice provider")]
+    #[error("account procedure with procedure root {0} is not in the account procedure index map")]
     UnknownAccountProcedure(Word),
-    #[error("code commitment {0} is not in the advice provider")]
+    #[error("code commitment {0} is not in the account procedure index map")]
     UnknownCodeCommitment(Word),
     #[error("account storage slots number is missing in memory at address {0}")]
     AccountStorageSlotsNumMissing(u32),

@@ -5,6 +5,7 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
+    AccountCode,
     AccountDelta,
     AccountStorage,
     PartialAccount,
@@ -120,15 +121,20 @@ impl LocalTransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
+        let TransactionWitness {
+            tx_inputs,
+            tx_args,
+            foreign_account_code,
+            advice_witness,
+        } = tx_witness;
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
                 .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
         self.mast_store.load_account_code(tx_inputs.account().code());
-        for account_inputs in tx_args.foreign_account_inputs() {
-            self.mast_store.load_account_code(account_inputs.code());
+        for account_code in &foreign_account_code {
+            self.mast_store.load_account_code(account_code);
         }
 
         let script_mast_store = ScriptMastForestStore::new(
@@ -136,9 +142,12 @@ impl LocalTransactionProver {
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
-                .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+        let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
+            &tx_inputs,
+            foreign_account_code.iter().map(AccountCode::commitment).collect(),
+            &advice_inputs,
+        )
+        .map_err(TransactionProverError::TransactionHostCreationFailed)?;
 
         let (partial_account, _, ref_block, _, input_notes) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(

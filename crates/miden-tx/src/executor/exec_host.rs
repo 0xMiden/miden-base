@@ -400,12 +400,20 @@ where
         AccountDelta,
         InputNotes<InputNote>,
         Vec<OutputNote>,
+        Vec<AccountCode>,
         BTreeMap<Word, Vec<Felt>>,
         TransactionProgress,
     ) {
         let (account_delta, input_notes, output_notes, tx_progress) = self.base_host.into_parts();
 
-        (account_delta, input_notes, output_notes, self.generated_signatures, tx_progress)
+        (
+            account_delta,
+            input_notes,
+            output_notes,
+            self.accessed_foreign_account_code,
+            self.generated_signatures,
+            tx_progress,
+        )
     }
 }
 

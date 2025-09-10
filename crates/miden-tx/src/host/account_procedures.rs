@@ -1,9 +1,10 @@
+use alloc::collections::BTreeSet;
 use alloc::string::ToString;
 
 use miden_lib::transaction::TransactionAdviceInputs;
 use miden_lib::transaction::memory::{ACCOUNT_STACK_TOP_PTR, ACCT_CODE_COMMITMENT_OFFSET};
 use miden_objects::account::{AccountCode, AccountProcedureInfo};
-use miden_objects::transaction::{TransactionArgs, TransactionInputs};
+use miden_objects::transaction::TransactionInputs;
 use miden_processor::AdviceInputs;
 
 use super::{BTreeMap, Felt, ProcessState, Word};
@@ -25,29 +26,30 @@ impl AccountProcedureIndexMap {
     /// foreign account codes commitments
     pub fn new(
         account_code_commitments: impl IntoIterator<Item = Word>,
-        adv_provider: &AdviceInputs,
+        advice_inputs: &AdviceInputs,
     ) -> Result<Self, TransactionHostError> {
         let mut index_map = BTreeMap::new();
 
         for code_commitment in account_code_commitments {
-            let account_procs_map = build_account_procedure_map(code_commitment, adv_provider)?;
+            let account_procs_map = build_account_procedure_map(code_commitment, advice_inputs)?;
             index_map.insert(code_commitment, account_procs_map);
         }
 
         Ok(Self(index_map))
     }
 
-    /// Builds an [`AccountProcedureIndexMap`] for the specified transaction inputs and arguments.
+    /// Builds an [`AccountProcedureIndexMap`] from the native account's code commitment in the
+    /// transaction inputs and all foreign account code commitments.
     ///
     /// The resulting instance will map all account code commmitments to a mapping of
     /// `proc_root |-> proc_index` for any account that is expected to be involved in the
-    /// transaction, enabling easy procedure index lookups on runtime.
+    /// transaction, enabling easy procedure index lookups at runtime.
     pub fn from_transaction_params(
         tx_inputs: &TransactionInputs,
-        tx_args: &TransactionArgs,
+        foreign_account_code_commitments: BTreeSet<Word>,
         tx_advice_inputs: &TransactionAdviceInputs,
     ) -> Result<Self, TransactionHostError> {
-        let mut account_code_commitments = tx_args.to_foreign_account_code_commitments();
+        let mut account_code_commitments = foreign_account_code_commitments;
         account_code_commitments.insert(tx_inputs.account().code().commitment());
 
         Self::new(account_code_commitments, tx_advice_inputs.as_advice_inputs())
