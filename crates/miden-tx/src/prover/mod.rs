@@ -142,7 +142,7 @@ impl LocalTransactionProver {
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let acct_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
+        let account_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
             &tx_inputs,
             foreign_account_code.iter().map(AccountCode::commitment).collect(),
             &advice_inputs,
@@ -155,7 +155,7 @@ impl LocalTransactionProver {
             input_notes,
             self.mast_store.as_ref(),
             script_mast_store,
-            acct_procedure_index_map,
+            account_procedure_index_map,
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
