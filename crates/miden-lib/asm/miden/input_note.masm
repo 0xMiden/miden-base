@@ -28,10 +28,10 @@ export.get_assets_info
     # push the flag indicating that we want to request assets info from the note with the specified
     # index
     push.0
-    # => [is_current_note = 0, note_index, 0]
+    # => [is_active_note = 0, note_index, 0]
 
     exec.kernel_proc_offsets::input_note_get_assets_info_offset
-    # => [offset, is_current_note = 0, note_index, 0]
+    # => [offset, is_active_note = 0, note_index, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
@@ -102,10 +102,10 @@ export.get_recipient
     # push the flag indicating that we want to request assets info from the note with the specified
     # index
     push.0
-    # => [is_current_note = 0, note_index, 0]
+    # => [is_active_note = 0, note_index, 0]
 
     exec.kernel_proc_offsets::input_note_get_recipient_offset
-    # => [offset, is_current_note = 0, note_index, 0]
+    # => [offset, is_active_note = 0, note_index, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
@@ -140,14 +140,14 @@ export.get_metadata
     # push the flag indicating that we want to request metadata from the note with the specified
     # index
     push.0
-    # => [is_current_note = 0, note_index, 0]
+    # => [is_active_note = 0, note_index, 0]
 
     exec.kernel_proc_offsets::input_note_get_metadata_offset
-    # => [offset, is_current_note = 0, note_index, 0]
+    # => [offset, is_active_note = 0, note_index, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, is_current_note = 0, note_index, pad(13)]
+    # => [offset, is_active_note = 0, note_index, pad(13)]
 
     syscall.exec_kernel_proc
     # => [METADATA, pad(12)]
@@ -179,14 +179,14 @@ export.get_inputs_info
     # push the flag indicating that we want to request inputs info from the note with the specified
     # index
     push.0
-    # => [is_current_note = 0, note_index, 0]
+    # => [is_active_note = 0, note_index, 0]
 
     exec.kernel_proc_offsets::input_note_get_inputs_info_offset
-    # => [offset, is_current_note = 0, note_index, 0]
+    # => [offset, is_active_note = 0, note_index, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, is_current_note = 0, note_index, pad(13)]
+    # => [offset, is_active_note = 0, note_index, pad(13)]
 
     syscall.exec_kernel_proc
     # => [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
@@ -220,14 +220,14 @@ export.get_script_root
     # push the flag indicating that we want to request script root from the note with the specified
     # index
     push.0
-    # => [is_current_note = 0, note_index, 0]
+    # => [is_active_note = 0, note_index, 0]
 
     exec.kernel_proc_offsets::input_note_get_script_root_offset
-    # => [offset, is_current_note = 0, note_index, 0]
+    # => [offset, is_active_note = 0, note_index, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, is_current_note = 0, note_index, pad(13)]
+    # => [offset, is_active_note = 0, note_index, pad(13)]
 
     syscall.exec_kernel_proc
     # => [SCRIPT_ROOT, pad(12)]
@@ -258,14 +258,14 @@ export.get_serial_number
     # push the flag indicating that we want to request serial number from the note with the 
     # specified index
     push.0
-    # => [is_current_note = 0, note_index, 0]
+    # => [is_active_note = 0, note_index, 0]
 
     exec.kernel_proc_offsets::input_note_get_serial_number_offset
-    # => [offset, is_current_note = 0, note_index, 0]
+    # => [offset, is_active_note = 0, note_index, 0]
 
     # pad the stack
     padw swapw padw padw swapdw
-    # => [offset, is_current_note = 0, note_index, pad(13)]
+    # => [offset, is_active_note = 0, note_index, pad(13)]
 
     syscall.exec_kernel_proc
     # => [SERIAL_NUMBER, pad(12)]

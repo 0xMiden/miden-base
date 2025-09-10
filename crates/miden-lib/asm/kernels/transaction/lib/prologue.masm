@@ -995,7 +995,7 @@ proc.process_input_notes_data
     # - On the top of the stack is the hasher state containing the input notes commitment. The
     #   hasher state will be updated by `process_input_note`. After the loop the commitment is
     #   extracted.
-    # - Below the hasher state in the stack is the current note index. This number is used for two
+    # - Below the hasher state in the stack is the active note index. This number is used for two
     #   purposes:
     #   1. Compute the input note's memory addresses, the index works as an offset.
     #   2. Determine the loop condition. The loop below runs until all input notes have been
