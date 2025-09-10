@@ -2,6 +2,7 @@
 # -------------------------------------------------------------------------------------------------
 
 ### Account #####################################
+
 # Entire account commitment
 const.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET=0
 const.ACCOUNT_COMPUTE_CURRENT_COMMITMENT_OFFSET=1
@@ -41,6 +42,7 @@ const.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET=20
 const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=21
 
 ### Faucet ######################################
+
 const.FAUCET_MINT_ASSET_OFFSET=22
 const.FAUCET_BURN_ASSET_OFFSET=23
 const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=24
@@ -66,6 +68,7 @@ const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=37
 const.OUTPUT_NOTE_ADD_ASSET_OFFSET=38
 
 ### Tx ##########################################
+
 # notes commitment
 const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=39
 const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=40

@@ -101,7 +101,7 @@ export.memory::get_num_output_notes->get_num_notes
 export.create
     emit.NOTE_BEFORE_CREATED_EVENT
 
-    exec.build_note_metadata
+    exec.build_metadata
     # => [NOTE_METADATA, RECIPIENT]
 
     # get the index for the next note to be created and increment counter
@@ -194,7 +194,7 @@ end
 #! - the max amount of fungible assets is exceeded.
 #! - the non-fungible asset already exists in the note.
 #! - the total number of ASSETs exceeds the maximum of 256.
-export.add_asset_to_note
+export.add_asset
     # check if the note exists, it must be within [0, num_of_notes]
     dup exec.memory::get_num_output_notes lte assert.err=ERR_NOTE_INVALID_INDEX
     # => [note_idx, ASSET]
@@ -221,11 +221,11 @@ export.add_asset_to_note
 
     if.true
         # ASSET to add is fungible
-        exec.add_fungible_asset_to_note
+        exec.add_fungible_asset
         # => [note_ptr, note_idx]
     else
         # ASSET to add is non-fungible
-        exec.add_non_fungible_asset_to_note
+        exec.add_non_fungible_asset
         # => [note_ptr, note_idx]
     end
     # => [note_ptr, note_idx]
@@ -272,8 +272,7 @@ end
 #!   or off-chain).
 #! - execution_hint is the hint which specifies when a note is ready to be consumed.
 #! - NOTE_METADATA is the metadata associated with a note.
-export.build_note_metadata
-
+export.build_metadata
     # Validate the note type.
     # --------------------------------------------------------------------------------------------
 
@@ -400,7 +399,7 @@ end
 #!
 #! Panics if
 #! - the summed amounts exceed the maximum amount of fungible assets.
-proc.add_fungible_asset_to_note
+proc.add_fungible_asset
     dup.4 exec.memory::get_output_note_asset_data_ptr
     # => [asset_ptr, ASSET, note_ptr, num_of_assets, note_idx]
 
@@ -490,7 +489,7 @@ end
 #!
 #! Panics if:
 #! - the non-fungible asset already exists in the note.
-proc.add_non_fungible_asset_to_note
+proc.add_non_fungible_asset
     dup.4 exec.memory::get_output_note_asset_data_ptr
     # => [asset_ptr, ASSET, note_ptr, num_of_assets, note_idx]
 

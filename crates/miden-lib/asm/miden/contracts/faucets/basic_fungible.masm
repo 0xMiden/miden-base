@@ -10,9 +10,7 @@
 
 use.miden::account
 use.miden::faucet
-use.miden::tx
 use.miden::output_note
-use.miden::contracts::auth::basic
 
 # CONSTANTS
 # =================================================================================================

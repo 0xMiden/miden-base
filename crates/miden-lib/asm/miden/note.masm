@@ -87,7 +87,7 @@ export.get_recipient
     # => [RECIPIENT]
 end
 
-#! Writes the active note's inputs to memory starting at dest_ptr
+#! Writes the active note's inputs to memory starting at the specified address.
 #!
 #! Inputs:
 #!   Stack: [dest_ptr]

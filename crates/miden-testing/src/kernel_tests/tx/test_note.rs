@@ -753,7 +753,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_build_note_metadata() -> miette::Result<()> {
+fn test_build_metadata() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
@@ -789,7 +789,7 @@ fn test_build_note_metadata() -> miette::Result<()> {
         begin
           exec.prologue::prepare_transaction
           push.{execution_hint}.{note_type}.{aux}.{tag}
-          exec.output_note::build_note_metadata
+          exec.output_note::build_metadata
 
           # truncate the stack
           swapw dropw
