@@ -1,4 +1,4 @@
-use std::string::ToString;
+use alloc::string::ToString;
 
 use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
@@ -30,7 +30,7 @@ pub struct PartialAccount {
     /// Partial representation of the account's vault, containing the vault root and necessary
     /// proof information for asset verification
     partial_vault: PartialVault,
-    /// TODO
+    /// The seed of the account ID, if any.
     seed: Option<Word>,
 }
 
@@ -38,7 +38,15 @@ impl PartialAccount {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new instance of a partial account with the specified components.
+    /// Creates a new [`PartialAccount`] with the provided account parts and seed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - an account seed is provided but the account's nonce indicates the account already exists.
+    /// - an account seed is not provided but the account's nonce indicates the account is new.
+    /// - an account seed is provided but the account ID derived from it is invalid or does not
+    ///   match the provided ID.
     pub fn new(
         id: AccountId,
         nonce: Felt,
@@ -61,7 +69,15 @@ impl PartialAccount {
         Ok(account)
     }
 
-    /// TODO
+    /// Creates a new [`PartialAccount`] from the provided account and seed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - an account seed is provided but the account's nonce indicates the account already exists.
+    /// - an account seed is not provided but the account's nonce indicates the account is new.
+    /// - an account seed is provided but the account ID derived from it is invalid or does not
+    ///   match the provided account's ID.
     pub fn try_from_seeded_account(
         account: &Account,
         seed: Option<Word>,
@@ -104,7 +120,7 @@ impl PartialAccount {
         &self.partial_vault
     }
 
-    /// TODO
+    /// Returns the seed of the account ID, if any.
     pub fn seed(&self) -> Option<Word> {
         self.seed
     }
@@ -163,6 +179,8 @@ impl PartialAccount {
 impl TryFrom<&Account> for PartialAccount {
     type Error = AccountError;
 
+    /// Constructs a [`PartialAccount`] from the provided account with an empty seed, assuming it is
+    /// an existing account.
     fn try_from(account: &Account) -> Result<Self, Self::Error> {
         PartialAccount::new(
             account.id(),
