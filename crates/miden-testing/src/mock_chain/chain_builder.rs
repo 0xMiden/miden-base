@@ -511,14 +511,16 @@ impl MockChainBuilder {
     /// # Errors
     ///
     /// Returns an error if:
-    /// - the sender of any of the provided output notes does not match `sender_id`.
-    pub fn add_spawn_note<'note>(
+    /// - the sender account ID of the provided output notes is not consistent or does not match the
+    ///   transaction's sender.
+    pub fn add_spawn_note<'note, I>(
         &mut self,
-        sender_id: AccountId,
-        output_notes: impl IntoIterator<Item = &'note Note>,
-    ) -> anyhow::Result<Note> {
-        let note = create_spawn_note(sender_id, output_notes)?;
-
+        output_notes: impl IntoIterator<Item = &'note Note, IntoIter = I>,
+    ) -> anyhow::Result<Note>
+    where
+        I: ExactSizeIterator<Item = &'note Note>,
+    {
+        let note = create_spawn_note(output_notes)?;
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)

@@ -281,8 +281,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 
     // Create two different notes that will create the same output note. Their IDs will be different
     // due to having a different serial number generated from contained RNG.
-    let note0 = create_spawn_note(account.id(), vec![&output_note])?;
-    let note1 = create_spawn_note(account.id(), vec![&output_note])?;
+    let note0 = create_spawn_note([&output_note])?;
+    let note1 = create_spawn_note([&output_note])?;
 
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));

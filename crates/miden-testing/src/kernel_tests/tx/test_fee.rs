@@ -172,7 +172,7 @@ fn create_output_notes() -> anyhow::Result<ExecutedTransaction> {
     let output_note0 = create_p2any_note(account.id(), [note_asset0.into()]);
     let output_note1 = create_p2any_note(account.id(), [note_asset1.into()]);
 
-    let spawn_note = builder.add_spawn_note(account.id(), [&output_note0, &output_note1])?;
+    let spawn_note = builder.add_spawn_note([&output_note0, &output_note1])?;
     builder
         .build()?
         .build_tx_context(account, &[asset_note.id(), spawn_note.id()], &[])?

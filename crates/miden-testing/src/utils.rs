@@ -147,11 +147,25 @@ pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Ass
 /// # Errors
 ///
 /// Returns an error if:
-/// - the sender of any of the provided output notes does not match `sender_id`.
-pub fn create_spawn_note<'note>(
-    sender_id: AccountId,
-    output_notes: impl IntoIterator<Item = &'note Note>,
-) -> anyhow::Result<Note> {
+/// - the sender account ID of the provided output notes is not consistent or does not match the
+///   transaction's sender.
+pub fn create_spawn_note<'note, I>(
+    output_notes: impl IntoIterator<Item = &'note Note, IntoIter = I>,
+) -> anyhow::Result<Note>
+where
+    I: ExactSizeIterator<Item = &'note Note>,
+{
+    let mut output_notes = output_notes.into_iter().peekable();
+    if output_notes.len() == 0 {
+        anyhow::bail!("at least one output note is needed to create a SPAWN note");
+    }
+
+    let sender_id = output_notes
+        .peek()
+        .expect("at least one output note should be present")
+        .metadata()
+        .sender();
+
     let note_code = note_script_that_creates_notes(sender_id, output_notes)?;
 
     let note = NoteBuilder::new(sender_id, SmallRng::from_os_rng())
@@ -164,30 +178,43 @@ pub fn create_spawn_note<'note>(
 
 /// Returns the code for a note that creates all notes in `output_notes`
 fn note_script_that_creates_notes<'note>(
-    spawn_note_sender_id: AccountId,
-    output_notes: impl IntoIterator<Item = &'note Note>,
+    sender_id: AccountId,
+    output_notes: impl Iterator<Item = &'note Note>,
 ) -> anyhow::Result<String> {
     let mut out = String::from("use.miden::tx\nuse.mock::account\n\nbegin\n");
 
     for (idx, note) in output_notes.into_iter().enumerate() {
         anyhow::ensure!(
-            note.metadata().sender() == spawn_note_sender_id,
-            "spawn note sender does not match sender of provided output notes"
+            note.metadata().sender() == sender_id,
+            "sender IDs of output notes passed to SPAWN note are inconcistent"
         );
+
+        // Make sure that the transaction's native account matches the note sender.
+        out.push_str(&format!(
+            r#"exec.::miden::account::get_native_id
+             # => [native_account_id_prefix, native_account_id_suffix]
+             push.{sender_prefix} assert_eq.err="sender ID prefix does not match native account ID's prefix"
+             # => [native_account_id_suffix]
+             push.{sender_suffix} assert_eq.err="sender ID suffix does not match native account ID's suffix"
+             # => []
+        "#,
+          sender_prefix = sender_id.prefix().as_felt(),
+          sender_suffix = sender_id.suffix()
+        ));
 
         if idx == 0 {
             out.push_str("padw padw\n");
         } else {
             out.push_str("dropw dropw dropw\n");
         }
-        let assets_str = prepare_assets(note.assets());
         out.push_str(&format!(
-            " push.{recipient}
-              push.{hint}
-              push.{note_type}
-              push.{aux}
-              push.{tag}
-              call.tx::create_note\n",
+            "
+            push.{recipient}
+            push.{hint}
+            push.{note_type}
+            push.{aux}
+            push.{tag}
+            call.tx::create_note\n",
             recipient = note.recipient().digest(),
             hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,
@@ -195,6 +222,7 @@ fn note_script_that_creates_notes<'note>(
             tag = note.metadata().tag(),
         ));
 
+        let assets_str = prepare_assets(note.assets());
         for asset in assets_str {
             out.push_str(&format!(
                 " push.{asset}
@@ -204,5 +232,6 @@ fn note_script_that_creates_notes<'note>(
     }
 
     out.push_str("repeat.5 dropw end\nend");
+
     Ok(out)
 }

@@ -134,7 +134,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     let account1 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
     let account2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
     let output_note = create_p2any_note(account1.id(), [asset]);
-    let spawn_note = builder.add_spawn_note(account1.id(), [&output_note])?;
+    let spawn_note = builder.add_spawn_note([&output_note])?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
@@ -744,7 +744,7 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
         &[FungibleAsset::mock(0)],
         NoteType::Private,
     )?;
-    let input_note = builder.add_spawn_note(account.id(), [&output_note])?;
+    let input_note = builder.add_spawn_note([&output_note])?;
     let chain = builder.build()?;
 
     chain
@@ -1183,7 +1183,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         Felt::ZERO,
         &mut rng,
     )?;
-    let input_note = create_spawn_note(account.id(), vec![&output_note])?;
+    let input_note = create_spawn_note(vec![&output_note])?;
 
     let mut mock_chain = MockChain::new();
 
@@ -1227,7 +1227,7 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
         Felt::ZERO,
         &mut rng,
     )?;
-    let spawn_note = builder.add_spawn_note(account.id(), [&p2id_note])?;
+    let spawn_note = builder.add_spawn_note([&p2id_note])?;
     let chain = builder.build()?;
 
     let tx = chain

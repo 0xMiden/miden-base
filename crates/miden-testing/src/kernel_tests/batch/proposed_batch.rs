@@ -274,7 +274,7 @@ async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()>
     let account1 = generate_account(&mut builder);
     let note1 = generate_untracked_note(account1.id(), account1.id());
     let note2 = generate_untracked_note(account1.id(), account1.id());
-    let spawn_note = builder.add_spawn_note(account1.id(), [&note1, &note2])?;
+    let spawn_note = builder.add_spawn_note([&note1, &note2])?;
     let mut chain = builder.build()?;
 
     let tx = chain
