@@ -154,7 +154,7 @@ fn duplicate_unauthenticated_input_notes() -> anyhow::Result<()> {
 /// times in different transactions.
 #[test]
 fn duplicate_authenticated_input_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2, note1, .. } = setup_chain();
+    let TestSetup { mut chain, account1, account2, note1 } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
@@ -193,7 +193,7 @@ fn duplicate_authenticated_input_notes() -> anyhow::Result<()> {
 /// transactions as an unauthenticated or authenticated note.
 #[test]
 fn duplicate_mixed_input_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2, note1, .. } = setup_chain();
+    let TestSetup { mut chain, account1, account2, note1 } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
@@ -408,7 +408,7 @@ async fn unauthenticated_note_converted_to_authenticated() -> anyhow::Result<()>
 ///   attack vector.
 #[test]
 fn authenticated_note_created_in_same_batch() -> anyhow::Result<()> {
-    let TestSetup { mut chain, account1, account2, note1, .. } = setup_chain();
+    let TestSetup { mut chain, account1, account2, note1 } = setup_chain();
     let block1 = chain.block_header(1);
     let block2 = chain.prove_next_block()?;
 
