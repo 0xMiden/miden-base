@@ -153,8 +153,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create block 11.
     mock_chain.prove_next_block()?;
 
-    // Get as input note, and assert that the note was created after block 1 (which we'll
-    // use as reference)
+    // Get the input note and assert that the note was created after block 11.
     let input_note = mock_chain.get_public_note(&output_note.id()).expect("note not found");
     assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
