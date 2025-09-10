@@ -15,5 +15,5 @@ Miden transactions pay a fee that is computed and charged automatically by the t
 
 ## How fees are paid
 
-- Users should ensure their account’s vault holds sufficient balance of the native asset to cover the fee. The fee is charged automatically; no explicit transaction kernel API must be called. 
+- Users should ensure their account’s vault holds sufficient balance of the native asset to cover the fee. The fee is charged automatically; no explicit transaction kernel API must be called.
 - If the account does not contain enough of the native asset to cover the computed fee, the transaction fails during the epilogue.
