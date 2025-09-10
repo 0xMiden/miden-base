@@ -84,7 +84,7 @@ export.memory::get_num_input_notes
 #! - num_output_notes is the number of output notes created in this transaction so far.
 export.memory::get_num_output_notes
 
-#! Updates the transaction expiration block number.
+#! Updates the transaction expiration block delta.
 #!
 #! The input block_height_delta is added to the block reference number in order to output an upper
 #! limit at which the transaction will be considered valid (not expired).
@@ -95,7 +95,7 @@ export.memory::get_num_output_notes
 #!
 #! Where:
 #! - block_height_delta is the desired expiration time delta (1 to 0xFFFF).
-export.update_expiration_block_num
+export.update_expiration_block_delta
     # Ensure block_height_delta is between 1 and 0xFFFF (inclusive)
     dup neq.0 assert.err=ERR_TX_INVALID_EXPIRATION_DELTA
     # => [block_height_delta]

@@ -83,7 +83,7 @@ const.TX_END_FOREIGN_CONTEXT_OFFSET=45
 
 # expiration data
 const.TX_GET_EXPIRATION_DELTA_OFFSET=46               # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=47        # mutator
+const.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=47        # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -650,16 +650,16 @@ export.tx_end_foreign_context_offset
     push.TX_END_FOREIGN_CONTEXT_OFFSET
 end
 
-#! Returns the offset of the `tx_update_expiration_block_num` kernel procedure.
+#! Returns the offset of the `tx_update_expiration_block_delta` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `tx_update_expiration_block_num` kernel procedure required to
-#!   get the address where this procedure is stored.
-export.tx_update_expiration_block_num_offset
-    push.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET
+#! - proc_offset is the offset of the `tx_update_expiration_block_delta` kernel procedure required
+#!   to get the address where this procedure is stored.
+export.tx_update_expiration_block_delta_offset
+    push.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET
 end
 
 #! Returns the offset of the `tx_get_expiration_delta` kernel procedure.

@@ -85,6 +85,7 @@ Output note procedures can be used to fetch data on output notes created by the 
 
 | Procedure | Description | Context |
 | --- | --- | --- |
+| `create` | Creates a new note and returns the index of the note.<br><br>Inputs: `[tag, aux, note_type, execution_hint, RECIPIENT]`<br>Outputs: `[note_idx]` | Native & Account |
 | `get_assets_info` | Returns the information about assets in the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[ASSETS_COMMITMENT, num_assets]` | Any |
 | `get_assets` | Writes the assets of the output note with the specified index into memory starting at the specified address.<br><br>Inputs: `[dest_ptr, note_index]`<br>Outputs: `[num_assets, dest_ptr, note_index]` | Any |
 | `add_asset` | Adds the ASSET to the note specified by the index.<br><br>Inputs: `[ASSET, note_idx]`<br>Outputs: `[ASSET, note_idx]` | Native |
@@ -104,7 +105,6 @@ Transaction procedures manage transaction-level operations including note creati
 | `get_output_notes_commitment` | Returns the output notes commitment hash.<br><br>Inputs: `[]`<br>Outputs: `[OUTPUT_NOTES_COMMITMENT]` | Any |
 | `get_num_input_notes` | Returns the total number of input notes consumed by this transaction.<br><br>Inputs: `[]`<br>Outputs: `[num_input_notes]` | Any |
 | `get_num_output_notes` | Returns the current number of output notes created in this transaction.<br><br>Inputs: `[]`<br>Outputs: `[num_output_notes]` | Any |
-| `create_note` | Creates a new note and returns the index of the note.<br><br>Inputs: `[tag, aux, note_type, execution_hint, RECIPIENT]`<br>Outputs: `[note_idx]` | Native & Account |
 | `build_recipient_hash` | Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
 | `execute_foreign_procedure` | Executes the provided procedure against the foreign account.<br><br>Inputs: `[foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, <inputs>, pad(n)]`<br>Outputs: `[<outputs>]` | Any |
 | `get_expiration_block_delta` | Returns the transaction expiration delta, or 0 if not set.<br><br>Inputs: `[]`<br>Outputs: `[block_height_delta]` | Any |

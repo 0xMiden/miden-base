@@ -292,7 +292,7 @@ end
 #!
 #! Annotation hint: is not used anywhere
 export.update_expiration_block_delta
-    exec.kernel_proc_offsets::tx_update_expiration_block_num_offset
+    exec.kernel_proc_offsets::tx_update_expiration_block_delta_offset
     # => [offset, expiration_delta, ...]
 
     # pad the stack

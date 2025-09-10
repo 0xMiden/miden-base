@@ -101,6 +101,6 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta
     word!("0xa60286e820a755128b2269db5057b0e2d9b79fef6f813bf3fe3337553a8fbb53"),
-    // tx_update_expiration_block_num
+    // tx_update_expiration_block_delta
     word!("0xa16440a9a8cd2a6d0ff7f5c3bcce2958976e5d3e6e8a6935ff40ae1863c324f0"),
 ];

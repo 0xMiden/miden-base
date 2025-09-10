@@ -364,9 +364,9 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         begin
             exec.prologue::prepare_transaction
             push.{value_1}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
             push.{value_2}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
 
@@ -405,7 +405,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
         begin
             push.{value_1}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
         end
         ";
 
