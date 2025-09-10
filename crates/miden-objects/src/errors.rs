@@ -128,6 +128,8 @@ pub enum AccountError {
         "digest of the seed has {actual} trailing zeroes but must have at least {expected} trailing zeroes"
     )]
     SeedDigestTooFewTrailingZeros { expected: u32, actual: u32 },
+    #[error("account ID seed was provided for an existing account")]
+    SeedForExistingAccount,
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
     #[error("storage slot at index {0} is not of type map")]

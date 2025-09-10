@@ -287,10 +287,14 @@ impl TransactionContextBuilder {
 
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
-                let account = PartialAccount::from(&self.account);
+
+                let mut partial_account = PartialAccount::from(&self.account);
+                if let Some(seed) = self.account_seed {
+                    partial_account.set_seed(seed)?;
+                }
 
                 mock_chain
-                    .get_transaction_inputs(account, self.account_seed, &input_note_ids, &[])
+                    .get_transaction_inputs(partial_account, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
         };
@@ -299,8 +303,7 @@ impl TransactionContextBuilder {
         // merkle paths of assets and storage maps, in order to test lazy loading.
         // Otherwise, load the full account.
         let tx_inputs = if self.is_lazy_loading_enabled {
-            let (account, account_seed, block_header, partial_blockchain, input_notes) =
-                tx_inputs.into_parts();
+            let (account, block_header, partial_blockchain, input_notes) = tx_inputs.into_parts();
             // Construct a partial vault that tracks the empty word, but none of the assets
             // that are actually in the asset tree. That way, the partial vault has the same
             // root as the full vault, but will not add any relevant merkle paths to the
@@ -337,13 +340,7 @@ impl TransactionContextBuilder {
                 partial_vault,
             );
 
-            TransactionInputs::new(
-                account,
-                account_seed,
-                block_header,
-                partial_blockchain,
-                input_notes,
-            )?
+            TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
         } else {
             tx_inputs
         };

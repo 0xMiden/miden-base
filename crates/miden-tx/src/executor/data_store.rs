@@ -31,9 +31,7 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
-    >;
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>;
 
     /// Returns a partial foreign account state together with a witness, proving its validity in the
     /// specified transaction reference block.

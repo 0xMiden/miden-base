@@ -146,7 +146,7 @@ impl LocalTransactionProver {
         )
         .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
 
-        let (partial_account, _, ref_block, _, input_notes) = tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(
             &partial_account,
             input_notes,
@@ -249,7 +249,7 @@ impl LocalTransactionProver {
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
 
-        let (partial_account, _, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
 
         self.build_proven_transaction(
             &input_notes,

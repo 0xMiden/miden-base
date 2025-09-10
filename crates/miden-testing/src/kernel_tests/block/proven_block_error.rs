@@ -6,7 +6,14 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
+use miden_objects::account::{
+    Account,
+    AccountBuilder,
+    AccountComponent,
+    AccountId,
+    PartialAccount,
+    StorageSlot,
+};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
@@ -288,7 +295,8 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    let tx_inputs = mock_chain.get_transaction_inputs(account.clone(), Some(seed), &[], &[])?;
+    let partial_account = PartialAccount::from(account.clone()).with_seed(seed)?;
+    let tx_inputs = mock_chain.get_transaction_inputs(partial_account, &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))
         .tx_inputs(tx_inputs)

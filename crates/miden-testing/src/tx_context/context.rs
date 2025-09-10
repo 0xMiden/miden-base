@@ -195,15 +195,14 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
-    > {
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>
+    {
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
 
-        let (partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
+        let (partial_account, header, mmr, _) = self.tx_inputs.clone().into_parts();
 
-        async move { Ok((partial_account, seed, header, mmr)) }
+        async move { Ok((partial_account, header, mmr)) }
     }
 
     fn get_foreign_account_inputs(

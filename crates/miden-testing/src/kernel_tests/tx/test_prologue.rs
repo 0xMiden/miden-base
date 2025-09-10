@@ -72,6 +72,7 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
+    PartialAccount,
     StorageMap,
     StorageSlot,
 };
@@ -726,8 +727,9 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         .with_component(BasicWallet)
         .build()?;
 
+    let partial_account = PartialAccount::from(account.clone()).with_seed(seed)?;
     let tx_inputs = mock_chain
-        .get_transaction_inputs(account.clone(), Some(seed), &[], &[])
+        .get_transaction_inputs(partial_account, &[], &[])
         .expect("failed to get transaction inputs from mock chain");
 
     // override the seed with an invalid seed to ensure the kernel fails

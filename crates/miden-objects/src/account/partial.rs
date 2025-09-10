@@ -1,10 +1,13 @@
+use std::string::ToString;
+
 use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
-use crate::Word;
 use crate::account::hash_account;
 use crate::asset::PartialVault;
+use crate::utils::serde::DeserializationError;
+use crate::{AccountError, Word};
 
 /// A partial representation of an account.
 ///
@@ -27,9 +30,14 @@ pub struct PartialAccount {
     /// Partial representation of the account's vault, containing the vault root and necessary
     /// proof information for asset verification
     partial_vault: PartialVault,
+    /// TODO
+    seed: Option<Word>,
 }
 
 impl PartialAccount {
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
     /// Creates a new instance of a partial account with the specified components.
     pub fn new(
         id: AccountId,
@@ -44,8 +52,12 @@ impl PartialAccount {
             account_code,
             partial_storage,
             partial_vault,
+            seed: None,
         }
     }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
 
     /// Returns the account's unique identifier.
     pub fn id(&self) -> AccountId {
@@ -70,6 +82,11 @@ impl PartialAccount {
     /// Returns a reference to the partial vault representation of the account.
     pub fn vault(&self) -> &PartialVault {
         &self.partial_vault
+    }
+
+    /// TODO
+    pub fn seed(&self) -> Option<Word> {
+        self.seed
     }
 
     /// Returns true if the account is new (i.e. its nonce is zero and it hasn't been registered on
@@ -121,6 +138,29 @@ impl PartialAccount {
     pub fn into_parts(self) -> (AccountId, Felt, AccountCode, PartialStorage, PartialVault) {
         (self.id, self.nonce, self.account_code, self.partial_storage, self.partial_vault)
     }
+
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// TODO
+    pub fn set_seed(&mut self, seed: Word) -> Result<(), AccountError> {
+        if !self.is_new() {
+            return Err(AccountError::SeedForExistingAccount);
+        }
+        self.seed = Some(seed);
+
+        Ok(())
+    }
+
+    /// TODO
+    pub fn with_seed(mut self, seed: Word) -> Result<Self, AccountError> {
+        if !self.is_new() {
+            return Err(AccountError::SeedForExistingAccount);
+        }
+        self.seed = Some(seed);
+
+        Ok(self)
+    }
 }
 
 impl From<Account> for PartialAccount {
@@ -148,6 +188,7 @@ impl Serializable for PartialAccount {
         target.write(&self.account_code);
         target.write(&self.partial_storage);
         target.write(&self.partial_vault);
+        target.write(self.seed);
     }
 }
 
@@ -160,13 +201,17 @@ impl Deserializable for PartialAccount {
         let account_code = source.read()?;
         let partial_storage = source.read()?;
         let partial_vault = source.read()?;
+        let seed: Option<Word> = source.read()?;
 
-        Ok(PartialAccount {
-            id: account_id,
-            nonce,
-            account_code,
-            partial_storage,
-            partial_vault,
-        })
+        let mut account =
+            PartialAccount::new(account_id, nonce, account_code, partial_storage, partial_vault);
+
+        if let Some(seed) = seed {
+            account
+                .set_seed(seed)
+                .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
+        }
+
+        Ok(account)
     }
 }

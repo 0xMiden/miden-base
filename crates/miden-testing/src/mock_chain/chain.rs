@@ -583,11 +583,15 @@ impl MockChain {
             TxContextInput::Account(account) => account,
         };
 
+        let mut partial_account = PartialAccount::from(account.clone());
+        if let Some(seed) = seed {
+            partial_account.set_seed(seed)?;
+        }
+
         let tx_inputs = self
             .get_transaction_inputs_at(
                 reference_block,
-                account.clone(),
-                seed,
+                partial_account,
                 note_ids,
                 unauthenticated_notes,
             )
@@ -624,7 +628,6 @@ impl MockChain {
         &self,
         reference_block: BlockNumber,
         account: impl Into<PartialAccount>,
-        account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
@@ -682,7 +685,6 @@ impl MockChain {
 
         Ok(TransactionInputs::new(
             account,
-            account_seed,
             ref_block.clone(),
             partial_blockchain,
             input_notes,
@@ -693,18 +695,11 @@ impl MockChain {
     pub fn get_transaction_inputs(
         &self,
         account: impl Into<PartialAccount>,
-        account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
         let latest_block_num = self.latest_block_header().block_num();
-        self.get_transaction_inputs_at(
-            latest_block_num,
-            account,
-            account_seed,
-            notes,
-            unauthenticated_notes,
-        )
+        self.get_transaction_inputs_at(latest_block_num, account, notes, unauthenticated_notes)
     }
 
     /// Returns inputs for a transaction batch for all the reference blocks of the provided

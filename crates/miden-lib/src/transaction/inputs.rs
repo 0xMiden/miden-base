@@ -62,7 +62,7 @@ impl TransactionAdviceInputs {
         inputs.add_account(partial_native_acc)?;
 
         // if a seed was provided, extend the map appropriately
-        if let Some(seed) = tx_inputs.account_seed() {
+        if let Some(seed) = tx_inputs.account().seed() {
             // ACCOUNT_ID |-> ACCOUNT_SEED
             let account_id_key = Self::account_id_map_key(partial_native_acc.id());
             inputs.add_map_entry(account_id_key, seed.to_vec());

@@ -269,7 +269,7 @@ where
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, seed, ref_block, mmr) = self
+        let (account, ref_block, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
             .await
@@ -277,7 +277,7 @@ where
 
         validate_account_inputs(tx_args, &ref_block)?;
 
-        let tx_inputs = TransactionInputs::new(account, seed, ref_block, mmr, notes)
+        let tx_inputs = TransactionInputs::new(account, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
         let (stack_inputs, tx_advice_inputs) =
