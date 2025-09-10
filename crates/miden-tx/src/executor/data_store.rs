@@ -35,10 +35,9 @@ pub trait DataStore: MastForestStore {
         Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
     >;
 
-    // TODO: Rename to get_foreign_account_inputs?
-    /// Returns a partial foreign account state together with a proof that it is a valid account
-    /// state as of the specified transaction reference block.
-    fn get_partial_foreign_account(
+    /// Returns a partial foreign account state together with a witness, proving its validity in the
+    /// specified transaction reference block.
+    fn get_foreign_account_inputs(
         &self,
         foreign_account_id: AccountId,
         ref_block: BlockNumber,

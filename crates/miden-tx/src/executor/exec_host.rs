@@ -129,8 +129,7 @@ where
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
-    /// Handles a request for a foreign account by querying the data store for its
-    /// [`PartialForeignAccount`] data.
+    /// Handles a request for a foreign account by querying the data store for its account inputs.
     async fn on_foreign_account_requested(
         &mut self,
         foreign_account_id: AccountId,
@@ -138,9 +137,9 @@ where
         let foreign_account_inputs = self
             .base_host
             .store()
-            .get_partial_foreign_account(foreign_account_id, self.ref_block)
+            .get_foreign_account_inputs(foreign_account_id, self.ref_block)
             .await
-            .map_err(|err| TransactionKernelError::GetPartialForeignAccount {
+            .map_err(|err| TransactionKernelError::GetForeignAccountInputs {
                 foreign_account_id,
                 ref_block: self.ref_block,
                 source: err,

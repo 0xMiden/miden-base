@@ -207,7 +207,7 @@ impl DataStore for TransactionContext {
         async move { Ok((partial_account, seed, header, mmr)) }
     }
 
-    fn get_partial_foreign_account(
+    fn get_foreign_account_inputs(
         &self,
         foreign_account_id: AccountId,
         _ref_block: BlockNumber,
