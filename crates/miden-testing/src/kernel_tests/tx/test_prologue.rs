@@ -727,7 +727,7 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         .with_component(BasicWallet)
         .build()?;
 
-    let partial_account = PartialAccount::from(account.clone()).with_seed(seed)?;
+    let partial_account = PartialAccount::try_from_seeded_account(&account, Some(seed))?;
     let tx_inputs = mock_chain
         .get_transaction_inputs(partial_account, &[], &[])
         .expect("failed to get transaction inputs from mock chain");

@@ -288,10 +288,8 @@ impl TransactionContextBuilder {
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
-                let mut partial_account = PartialAccount::from(&self.account);
-                if let Some(seed) = self.account_seed {
-                    partial_account.set_seed(seed)?;
-                }
+                let partial_account =
+                    PartialAccount::try_from_seeded_account(&self.account, self.account_seed)?;
 
                 mock_chain
                     .get_transaction_inputs(partial_account, &input_note_ids, &[])
@@ -338,7 +336,8 @@ impl TransactionContextBuilder {
                 account.code().clone(),
                 partial_storage,
                 partial_vault,
-            );
+                None,
+            )?;
 
             TransactionInputs::new(account, block_header, partial_blockchain, input_notes)?
         } else {

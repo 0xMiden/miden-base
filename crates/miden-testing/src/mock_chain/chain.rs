@@ -583,10 +583,7 @@ impl MockChain {
             TxContextInput::Account(account) => account,
         };
 
-        let mut partial_account = PartialAccount::from(account.clone());
-        if let Some(seed) = seed {
-            partial_account.set_seed(seed)?;
-        }
+        let partial_account = PartialAccount::try_from_seeded_account(&account, seed)?;
 
         let tx_inputs = self
             .get_transaction_inputs_at(
@@ -737,7 +734,9 @@ impl MockChain {
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        Ok(AccountInputs::new(account.into(), account_witness))
+        let partial_account = PartialAccount::try_from(account)?;
+
+        Ok(AccountInputs::new(partial_account, account_witness))
     }
 
     /// Gets the inputs for a block for the provided batches.

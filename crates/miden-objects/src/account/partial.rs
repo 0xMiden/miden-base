@@ -45,15 +45,35 @@ impl PartialAccount {
         account_code: AccountCode,
         partial_storage: PartialStorage,
         partial_vault: PartialVault,
-    ) -> Self {
-        Self {
+        seed: Option<Word>,
+    ) -> Result<Self, AccountError> {
+        let account = Self {
             id,
             nonce,
             account_code,
             partial_storage,
             partial_vault,
-            seed: None,
-        }
+            seed,
+        };
+
+        validate_partial_account(&account)?;
+
+        Ok(account)
+    }
+
+    /// TODO
+    pub fn try_from_seeded_account(
+        account: &Account,
+        seed: Option<Word>,
+    ) -> Result<Self, AccountError> {
+        Self::new(
+            account.id(),
+            account.nonce(),
+            account.code().clone(),
+            account.storage().into(),
+            account.vault().into(),
+            seed,
+        )
     }
 
     // ACCESSORS
@@ -138,45 +158,19 @@ impl PartialAccount {
     pub fn into_parts(self) -> (AccountId, Felt, AccountCode, PartialStorage, PartialVault) {
         (self.id, self.nonce, self.account_code, self.partial_storage, self.partial_vault)
     }
-
-    // MUTATORS
-    // --------------------------------------------------------------------------------------------
-
-    /// TODO
-    pub fn set_seed(&mut self, seed: Word) -> Result<(), AccountError> {
-        if !self.is_new() {
-            return Err(AccountError::SeedForExistingAccount);
-        }
-        self.seed = Some(seed);
-
-        Ok(())
-    }
-
-    /// TODO
-    pub fn with_seed(mut self, seed: Word) -> Result<Self, AccountError> {
-        if !self.is_new() {
-            return Err(AccountError::SeedForExistingAccount);
-        }
-        self.seed = Some(seed);
-
-        Ok(self)
-    }
 }
 
-impl From<Account> for PartialAccount {
-    fn from(account: Account) -> Self {
-        PartialAccount::from(&account)
-    }
-}
+impl TryFrom<&Account> for PartialAccount {
+    type Error = AccountError;
 
-impl From<&Account> for PartialAccount {
-    fn from(account: &Account) -> Self {
+    fn try_from(account: &Account) -> Result<Self, Self::Error> {
         PartialAccount::new(
             account.id(),
             account.nonce(),
             account.code().clone(),
             account.storage().into(),
             account.vault().into(),
+            None,
         )
     }
 }
@@ -203,15 +197,45 @@ impl Deserializable for PartialAccount {
         let partial_vault = source.read()?;
         let seed: Option<Word> = source.read()?;
 
-        let mut account =
-            PartialAccount::new(account_id, nonce, account_code, partial_storage, partial_vault);
+        PartialAccount::new(account_id, nonce, account_code, partial_storage, partial_vault, seed)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
+    }
+}
 
-        if let Some(seed) = seed {
-            account
-                .set_seed(seed)
-                .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
-        }
+// HELPER FUNCTIONS
+// ================================================================================================
 
-        Ok(account)
+/// Validates that the provided seed is valid for this account.
+fn validate_partial_account(account: &PartialAccount) -> Result<(), AccountError> {
+    match (account.is_new(), account.seed) {
+        (true, Some(seed)) => {
+            let account_id = AccountId::new(
+                seed,
+                account.id().version(),
+                account.code().commitment(),
+                account.storage().commitment(),
+            )
+            .map_err(|err| AccountError::InvalidAccountIdSeed {
+                message: "failed to create account ID from seed".into(),
+                source: Some(err),
+            })?;
+
+            if account_id != account.id() {
+                return Err(AccountError::invalid_account_id_seed(format!(
+                    "account ID {actual} computed from seed does not match ID {expected} on account",
+                    expected = account.id(),
+                    actual = account_id
+                )));
+            }
+
+            Ok(())
+        },
+        (true, None) => Err(AccountError::invalid_account_id_seed(
+            "account seed must be provided for a new account",
+        )),
+        (false, Some(_)) => Err(AccountError::invalid_account_id_seed(
+            "account seed must not be provided for existing accounts",
+        )),
+        (false, None) => Ok(()),
     }
 }

@@ -295,7 +295,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    let partial_account = PartialAccount::from(account.clone()).with_seed(seed)?;
+    let partial_account = PartialAccount::try_from_seeded_account(&account, Some(seed))?;
     let tx_inputs = mock_chain.get_transaction_inputs(partial_account, &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account)
         .account_seed(Some(seed))

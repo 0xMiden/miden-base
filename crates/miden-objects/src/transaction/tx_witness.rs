@@ -68,7 +68,7 @@ mod tests {
     use anyhow::Context;
     use miden_crypto::Word;
 
-    use crate::account::{AccountBuilder, AccountComponent, StorageSlot};
+    use crate::account::{AccountBuilder, AccountComponent, PartialAccount, StorageSlot};
     use crate::assembly::Assembler;
     use crate::asset::FungibleAsset;
     use crate::block::{BlockHeader, BlockNumber};
@@ -109,7 +109,7 @@ mod tests {
         );
 
         let tx_inputs = TransactionInputs::new(
-            account.clone(),
+            PartialAccount::try_from(&account)?,
             block_header.clone(),
             partial_blockchain.clone(),
             InputNotes::default(),

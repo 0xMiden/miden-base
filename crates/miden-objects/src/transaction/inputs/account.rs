@@ -101,7 +101,7 @@ mod tests {
     use miden_crypto::merkle::MerklePath;
     use miden_processor::SMT_DEPTH;
 
-    use crate::account::{Account, AccountCode, AccountId, AccountStorage};
+    use crate::account::{Account, AccountCode, AccountId, AccountStorage, PartialAccount};
     use crate::asset::AssetVault;
     use crate::block::AccountWitness;
     use crate::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE;
@@ -124,7 +124,7 @@ mod tests {
         let merkle_path = MerklePath::new(merkle_nodes);
 
         let fpi_inputs = AccountInputs::new(
-            account.into(),
+            PartialAccount::try_from(&account).unwrap(),
             AccountWitness::new(id, commitment, merkle_path).unwrap(),
         );
 

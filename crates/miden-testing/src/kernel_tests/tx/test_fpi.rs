@@ -1209,7 +1209,8 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         foreign_account.code().clone(),
         foreign_account.storage().into(),
         foreign_account.vault().into(),
-    );
+        None,
+    )?;
     let overridden_foreign_account_inputs =
         AccountInputs::new(overridden_partial_accounts, foreign_account_inputs.witness().clone());
 
