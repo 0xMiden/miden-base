@@ -634,7 +634,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts([foreign_account_inputs])
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .tx_script(tx_script)
         .with_source_manager(source_manager)
         .build()?
@@ -854,7 +854,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .with_source_manager(source_manager)
@@ -1023,7 +1023,7 @@ fn test_nested_fpi_stack_overflow() {
                 .build_tx_context(native_account.id(), &[], &[])
                 .expect("failed to build tx context")
                 .foreign_accounts(foreign_accounts)
-                .enable_partial_loading()
+                .enable_lazy_loading()
                 .tx_script(tx_script)
                 .build().unwrap();
 
@@ -1137,7 +1137,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build()?
@@ -1363,7 +1363,7 @@ fn test_fpi_get_account_id() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
         .execute_blocking()?;
@@ -1474,7 +1474,7 @@ fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
         .execute_blocking()?;

@@ -88,7 +88,7 @@ pub struct TransactionContextBuilder {
     transaction_inputs: Option<TransactionInputs>,
     auth_args: Word,
     signatures: Vec<(PublicKey, Word, Vec<Felt>)>,
-    load_partial_account: bool,
+    is_lazy_loading_enabled: bool,
 }
 
 impl TransactionContextBuilder {
@@ -108,7 +108,7 @@ impl TransactionContextBuilder {
             foreign_account_inputs: BTreeMap::new(),
             auth_args: EMPTY_WORD,
             signatures: Vec::new(),
-            load_partial_account: false,
+            is_lazy_loading_enabled: false,
         }
     }
 
@@ -218,11 +218,13 @@ impl TransactionContextBuilder {
     }
 
     /// Causes the transaction to only construct a minimal partial account as the transaction
-    /// input, causing lazy loading of assets throughout transaction execution.
+    /// input, causing lazy loading of assets and storage map items throughout transaction
+    /// execution. Additionally, foreign accounts aren't provided via the transaction args but are
+    /// lazy loaded as well.
     ///
     /// This exists to test lazy loading selectively and should go away in the future.
-    pub fn enable_partial_loading(mut self) -> Self {
-        self.load_partial_account = true;
+    pub fn enable_lazy_loading(mut self) -> Self {
+        self.is_lazy_loading_enabled = true;
         self
     }
 
@@ -296,7 +298,7 @@ impl TransactionContextBuilder {
         // If partial loading is enabled, construct an account that doesn't contain all
         // merkle paths of assets and storage maps, in order to test lazy loading.
         // Otherwise, load the full account.
-        let tx_inputs = if self.load_partial_account {
+        let tx_inputs = if self.is_lazy_loading_enabled {
             let (account, account_seed, block_header, partial_blockchain, input_notes) =
                 tx_inputs.into_parts();
             // Construct a partial vault that tracks the empty word, but none of the assets
@@ -346,7 +348,7 @@ impl TransactionContextBuilder {
             tx_inputs
         };
 
-        let foreign_account_inputs = if self.load_partial_account {
+        let foreign_account_inputs = if self.is_lazy_loading_enabled {
             Vec::new()
         } else {
             self.foreign_account_inputs.values().cloned().collect()
