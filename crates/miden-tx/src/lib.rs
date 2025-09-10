@@ -41,6 +41,7 @@ pub use errors::{
     DataStoreError,
     NoteCheckerError,
     TransactionExecutorError,
+    TransactionKernelError,
     TransactionProverError,
     TransactionVerifierError,
 };

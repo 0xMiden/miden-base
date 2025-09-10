@@ -155,8 +155,8 @@ mod tests {
 
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);
-        let proof = map_1.open(&map_key_present);
-        let partial_smt = PartialSmt::from_proofs([proof])?;
+        let witness = map_1.open(&map_key_present);
+        let partial_smt = PartialSmt::from_proofs([witness.into()])?;
 
         let partial_storage = PartialStorage::new(storage_header, [partial_smt.into()])
             .context("creating partial storage")?;

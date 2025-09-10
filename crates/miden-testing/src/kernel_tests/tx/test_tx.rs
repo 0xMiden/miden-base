@@ -130,25 +130,31 @@ fn transaction_with_stale_foreign_account_inputs_fails() -> anyhow::Result<()> {
 async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Create a chain with an account
     let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let asset = FungibleAsset::mock(400);
+    let account1 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
+    let account2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
+    let output_note = create_p2any_note(account1.id(), [asset]);
+    let spawn_note = builder.add_spawn_note([&output_note])?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;
 
-    // Create a note that will be contained in block 11.
-    let note = mock_chain
-        .add_pending_p2id_note(
-            account.id(),
-            ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE.try_into().unwrap(),
-            &[],
-            NoteType::Private,
-        )
-        .unwrap();
+    // Consume the spawn note which creates a note for account 2 to consume. It will be contained in
+    // block 11. We use account 1 for this, so that account 2 remains unchanged and is still valid
+    // against reference block 1 which we'll use for the later transaction.
+    let tx = mock_chain
+        .build_tx_context(account1.id(), &[spawn_note.id()], &[])?
+        .extend_expected_output_notes(vec![OutputNote::Full(output_note.clone())])
+        .build()?
+        .execute()
+        .await?;
+
+    // Add the transaction to the mock chain's mempool so it will be included in the next block.
+    mock_chain.add_pending_executed_transaction(&tx)?;
     // Create block 11.
     mock_chain.prove_next_block()?;
 
-    // Get as input note, and assert that the note was created after block 1 (which we'll
-    // use as reference)
-    let input_note = mock_chain.get_public_note(&note.id()).expect("note not found");
+    // Get the input note and assert that the note was created after block 11.
+    let input_note = mock_chain.get_public_note(&output_note.id()).expect("note not found");
     assert_eq!(input_note.location().unwrap().block_num().as_u32(), 11);
 
     mock_chain.prove_next_block()?;
@@ -156,7 +162,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
 
     // Attempt to execute a transaction against reference block 1 with the note created in block 11
     // - which should fail.
-    let tx_context = mock_chain.build_tx_context(account.id(), &[], &[])?.build()?;
+    let tx_context = mock_chain.build_tx_context(account2.id(), &[], &[])?.build()?;
 
     let tx_executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context)
         .with_source_manager(tx_context.source_manager());
@@ -164,7 +170,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     // Try to execute with block_ref==1
     let error = tx_executor
         .execute_transaction(
-            account.id(),
+            account2.id(),
             BlockNumber::from(1),
             InputNotes::new(vec![input_note]).unwrap(),
             TransactionArgs::default(),
@@ -341,13 +347,13 @@ fn test_get_output_notes_commitment() -> anyhow::Result<()> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, &[FungibleAsset::mock(200)]);
+            create_p2any_note(ACCOUNT_ID_PRIVATE_SENDER.try_into()?, [FungibleAsset::mock(200)]);
 
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
@@ -736,7 +742,7 @@ fn creating_note_with_fungible_asset_amount_zero_works() -> anyhow::Result<()> {
         &[FungibleAsset::mock(0)],
         NoteType::Private,
     )?;
-    let input_note = builder.add_spawn_note(account.id(), [&output_note])?;
+    let input_note = builder.add_spawn_note([&output_note])?;
     let chain = builder.build()?;
 
     chain
@@ -754,7 +760,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
 
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1])
             .build()?
@@ -772,13 +778,9 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
     let recipient = NoteRecipient::new(output_serial_no, input_note_1.script().clone(), inputs);
     let code = format!(
         "
-        use.miden::tx
         use.miden::output_note
+        use.miden::note
         use.$kernel::prologue
-
-        proc.build_recipient_hash
-            exec.tx::build_recipient_hash
-        end
 
         begin
             exec.prologue::prepare_transaction
@@ -794,7 +796,7 @@ fn test_build_recipient_hash() -> anyhow::Result<()> {
             push.{output_serial_no}
             # => [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT, pad(4)]
 
-            call.build_recipient_hash
+            exec.note::build_recipient_hash
             # => [RECIPIENT, pad(12)]
 
             push.{execution_hint}
@@ -1176,7 +1178,7 @@ fn user_code_can_abort_transaction_with_summary() -> anyhow::Result<()> {
         Felt::ZERO,
         &mut rng,
     )?;
-    let input_note = create_spawn_note(account.id(), vec![&output_note])?;
+    let input_note = create_spawn_note(vec![&output_note])?;
 
     let mut mock_chain = MockChain::new();
 
@@ -1220,7 +1222,7 @@ fn tx_summary_commitment_is_signed_by_falcon_auth() -> anyhow::Result<()> {
         Felt::ZERO,
         &mut rng,
     )?;
-    let spawn_note = builder.add_spawn_note(account.id(), [&p2id_note])?;
+    let spawn_note = builder.add_spawn_note([&p2id_note])?;
     let chain = builder.build()?;
 
     let tx = chain

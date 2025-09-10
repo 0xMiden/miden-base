@@ -66,6 +66,7 @@ pub use storage::{
     PartialStorage,
     PartialStorageMap,
     StorageMap,
+    StorageMapWitness,
     StorageSlot,
     StorageSlotType,
 };

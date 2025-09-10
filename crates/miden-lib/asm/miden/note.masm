@@ -200,6 +200,39 @@ export.get_serial_number
     # => [SERIAL_NUMBER]
 end
 
+#! Returns the script root of the note currently being processed.
+#!
+#! Inputs:  []
+#! Outputs: [SCRIPT_ROOT]
+#!
+#! Where:
+#! - SCRIPT_ROOT is the script root of the note currently being processed.
+#!
+#! Panics if:
+#! - no note is being processed.
+#!
+#! Invocation: exec
+export.get_script_root
+    # pad the stack
+    padw padw padw push.0.0
+    # => [pad(14)]
+
+    # push the flag indicating that we want to request script root from the currently processing
+    # note
+    push.1
+    # => [is_current_note = 1, pad(14)]
+
+    exec.kernel_proc_offsets::input_note_get_script_root_offset
+    # => [offset, is_current_note = 1, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [SCRIPT_ROOT, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [SCRIPT_ROOT]
+end
+
 #! Computes the commitment to the output note inputs starting at the specified memory address.
 #!
 #! This procedure checks that the provided number of note inputs is within limits and then computes
@@ -233,42 +266,8 @@ export.compute_inputs_commitment
     # => [inputs_ptr, num_inputs, pad_inputs_flag]
 
     exec.rpo::prepare_hasher_state
-
     exec.rpo::hash_memory_with_state
     # => [INPUTS_COMMITMENT]
-end
-
-#! Returns the script root of the note currently being processed.
-#!
-#! Inputs:  []
-#! Outputs: [SCRIPT_ROOT]
-#!
-#! Where:
-#! - SCRIPT_ROOT is the script root of the note currently being processed.
-#!
-#! Panics if:
-#! - no note is being processed.
-#!
-#! Invocation: exec
-export.get_script_root
-    # pad the stack
-    padw padw padw push.0.0
-    # => [pad(14)]
-
-    # push the flag indicating that we want to request script root from the currently processing
-    # note
-    push.1
-    # => [is_current_note = 1, pad(14)]
-
-    exec.kernel_proc_offsets::input_note_get_script_root_offset
-    # => [offset, is_current_note = 1, pad(14)]
-
-    syscall.exec_kernel_proc
-    # => [SCRIPT_ROOT, pad(12)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw
-    # => [SCRIPT_ROOT]
 end
 
 #! Returns the max allowed number of input values per note.
@@ -366,6 +365,60 @@ export.write_assets_to_memory
     exec.mem::pipe_preimage_to_memory drop
     # OS => [num_assets, dest_ptr]
     # AS => []
+end
+
+#! Builds the recipient hash from note inputs, script root, and serial number.
+#!
+#! This procedure computes the commitment of the note inputs and then uses it to calculate the note
+#! recipient by hashing this commit, the provided script root, and the serial number.
+#!
+#! Inputs:  [inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - inputs_ptr is the memory address where the note inputs are stored.
+#! - num_inputs is the number of input values.
+#! - SCRIPT_ROOT is the script root of the note.
+#! - SERIAL_NUM is the serial number of the note.
+#! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
+#!
+#! Panics if:
+#! - inputs_ptr is not word-aligned (i.e., is not a multiple of 4).
+#! - num_inputs is greater than 128.
+#!
+#! Invocation: exec
+export.build_recipient
+    exec.compute_inputs_commitment
+    # => [INPUTS_HASH, SERIAL_NUM, SCRIPT_ROOT]
+
+    movdnw.2
+    # => [SERIAL_NUM, SCRIPT_ROOT, INPUTS_HASH]
+
+    exec.build_recipient_hash
+    # => [RECIPIENT]
+end
+
+#! Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.
+#!
+#! Inputs:  [SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]
+#! Outputs: [RECIPIENT]
+#!
+#! Where:
+#! - SERIAL_NUM is the serial number of the recipient.
+#! - SCRIPT_ROOT is the commitment of the note script.
+#! - INPUT_COMMITMENT is the commitment of the note inputs.
+#! - RECIPIENT is the recipient of the note.
+#!
+#! Invocation: exec
+export.build_recipient_hash
+    padw hmerge
+    # => [SERIAL_NUM_HASH, SCRIPT_ROOT, INPUT_COMMITMENT]
+
+    swapw hmerge
+    # => [MERGE_SCRIPT, INPUT_COMMITMENT]
+
+    swapw hmerge
+    # [RECIPIENT]
 end
 
 # HELPER PROCEDURES

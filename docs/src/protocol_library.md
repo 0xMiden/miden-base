@@ -63,7 +63,11 @@ Note procedures can be used to fetch data from the note that is currently being 
 | `get_serial_number` | Returns the serial number of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
 | `get_script_root` | Returns the script root of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
 | `compute_inputs_commitment` | Computes the commitment to the output note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[INPUTS_COMMITMENT]` | Any |
+| `get_max_inputs_per_note` | Returns the max allowed number of input values per note.<br><br>Inputs: `[]`<br>Outputs: `[max_inputs_per_note]` | Any |
 | `add_assets_to_account` | Adds all assets from the currently executing note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]` | Note |
+| `write_assets_to_memory` | Writes the assets data stored in the advice map to the memory specified by the provided destination pointer.<br><br>Inputs: `[ASSETS_COMMITMENT, num_assets, dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Any |
+| `build_recipient_hash` | Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
+| `build_recipient` | Builds the recipient hash from note inputs, script root, and serial number.<br><br>Inputs: `[inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]`<br>Outputs: `[RECIPIENT]` | Any |
 
 ## Input Note Procedures (`miden::input_note`)
 
@@ -105,7 +109,6 @@ Transaction procedures manage transaction-level operations including note creati
 | `get_block_timestamp` | Returns the timestamp of the reference block for this transaction.<br><br>Inputs: `[]`<br>Outputs: `[timestamp]` | Any |
 | `get_input_notes_commitment` | Returns the input notes commitment hash.<br><br>Inputs: `[]`<br>Outputs: `[INPUT_NOTES_COMMITMENT]` | Any |
 | `get_output_notes_commitment` | Returns the output notes commitment hash.<br><br>Inputs: `[]`<br>Outputs: `[OUTPUT_NOTES_COMMITMENT]` | Any |
-| `build_recipient_hash` | Returns the RECIPIENT for a specified SERIAL_NUM, SCRIPT_ROOT, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
 | `execute_foreign_procedure` | Executes the provided procedure against the foreign account.<br><br>Inputs: `[foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, <inputs>, pad(n)]`<br>Outputs: `[<outputs>]` | Any |
 | `get_expiration_block_delta` | Returns the transaction expiration delta, or 0 if not set.<br><br>Inputs: `[]`<br>Outputs: `[block_height_delta]` | Any |
 | `update_expiration_block_delta` | Updates the transaction expiration delta.<br><br>Inputs: `[block_height_delta]`<br>Outputs: `[]` | Any |

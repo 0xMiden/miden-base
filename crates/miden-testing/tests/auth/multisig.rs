@@ -115,7 +115,7 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     )?;
 
     // Create spawn note that will create the output note
-    let input_note = mock_chain_builder.add_spawn_note(multisig_account.id(), [&output_note])?;
+    let input_note = mock_chain_builder.add_spawn_note([&output_note])?;
 
     let mut mock_chain = mock_chain_builder.build().unwrap();
 

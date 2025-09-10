@@ -9,7 +9,14 @@ use anyhow::Context;
 use miden_lib::testing::account_component::IncrNonceAuthComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::EMPTY_WORD;
-use miden_objects::account::{Account, AccountHeader, PartialAccount};
+use miden_objects::account::{
+    Account,
+    AccountHeader,
+    PartialAccount,
+    PartialStorage,
+    PartialStorageMap,
+    StorageSlot,
+};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::PartialVault;
@@ -285,8 +292,8 @@ impl TransactionContextBuilder {
         };
 
         // If partial loading is enabled, construct an account that doesn't contain all
-        // merkle paths of assets, in order to test lazy loading. Otherwise, load the full
-        // account.
+        // merkle paths of assets and storage maps, in order to test lazy loading.
+        // Otherwise, load the full account.
         let tx_inputs = if self.load_partial_account {
             let (account, account_seed, block_header, partial_blockchain, input_notes) =
                 tx_inputs.into_parts();
@@ -299,11 +306,30 @@ impl TransactionContextBuilder {
             let mut partial_vault = PartialVault::default();
             partial_vault.add(self.account.vault().open(Word::empty()).into())?;
 
+            // Construct a partial storage that tracks the empty word in all storage maps, but none
+            // of the other keys, following the same rationale as the partial vault above.
+            let storage_header = self.account.storage().to_header();
+            let storage_maps =
+                self.account.storage().slots().iter().filter_map(
+                    |storage_slot| match storage_slot {
+                        StorageSlot::Map(storage_map) => {
+                            let mut partial_storage_map = PartialStorageMap::default();
+                            partial_storage_map
+                                .add(storage_map.open(&Word::empty()))
+                                .expect("adding the first proof should never error");
+                            Some(partial_storage_map)
+                        },
+                        _ => None,
+                    },
+                );
+            let partial_storage = PartialStorage::new(storage_header, storage_maps)
+                .expect("provided storage maps should match storage header");
+
             let account = PartialAccount::new(
                 account.id(),
                 account.nonce(),
                 account.code().clone(),
-                account.storage().clone(),
+                partial_storage,
                 partial_vault,
             );
 
