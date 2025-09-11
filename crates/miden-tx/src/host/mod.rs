@@ -27,7 +27,7 @@ use miden_lib::transaction::memory::{
     CURRENT_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
-use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent, TransactionEventError};
+use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{
     AccountCode,
     AccountDelta,
@@ -229,7 +229,7 @@ where
 
         let advice_mutations = match transaction_event {
             TransactionEvent::AccountBeforeLoadForeign => {
-                self.on_account_before_load(process)
+                self.on_account_before_load_foreign(process)
             }
 
             TransactionEvent::AccountVaultBeforeAddAsset => {
@@ -349,11 +349,11 @@ where
         Ok(advice_mutations)
     }
 
-    /// Checks if the necessary data for accessing the account is already in the advice inputs,
-    /// and if not, extracts all necessary data for requesting it.
+    /// Extract all necessary data for requesting the data to access the foreign account that is
+    /// being loaded.
     ///
     /// Expected stack state: `[account_id_prefix, account_id_suffix]`
-    pub fn on_account_before_load(
+    pub fn on_account_before_load_foreign(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
@@ -366,23 +366,9 @@ where
                 )
             })?;
 
-        // Check if a foreign account is already loaded by checking for the presence of its account
-        // ID key in the advice map.
-        let account_id_map_key = TransactionAdviceInputs::account_id_map_key(account_id);
-        let contains_account_id_key =
-            process.advice_provider().contains_map_key(&account_id_map_key);
-
-        // If a foreign account's key is already in the advice map, it doesn't need to be loaded
-        // again.
-        // The native account's data is loaded before transaction execution begins, so it does not
-        // have to be loaded either.
-        if contains_account_id_key || self.initial_account_header().id() == account_id {
-            Ok(TransactionEventHandling::Handled(Vec::new()))
-        } else {
-            Ok(TransactionEventHandling::Unhandled(TransactionEventData::ForeignAccount {
-                account_id,
-            }))
-        }
+        Ok(TransactionEventHandling::Unhandled(TransactionEventData::ForeignAccount {
+            account_id,
+        }))
     }
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
