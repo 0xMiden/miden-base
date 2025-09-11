@@ -3,7 +3,6 @@
 # See the `AuthRpoFalcon512Acl` Rust type's documentation for more details.
 
 use.miden::account
-use.miden::input_note
 use.miden::tx
 use.std::word
 
