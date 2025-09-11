@@ -35,7 +35,7 @@ pub struct MockHost {
 }
 
 impl MockHost {
-    /// Returns a new [`MockHost`] instance with the provided [`AdviceInputs`].
+    /// Returns a new [`MockHost`] instance with the provided inputs.
     pub fn new(
         native_account_code: &AccountCode,
         mast_store: Rc<TransactionMastStore>,
