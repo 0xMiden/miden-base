@@ -12,7 +12,7 @@ use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{Account, AccountBuilder, AccountId, PartialAccount};
+use miden_objects::account::{Account, AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::miette::{self, miette};
 use miden_objects::asset::FungibleAsset;
@@ -951,12 +951,10 @@ pub fn test_timelock() -> anyhow::Result<()> {
     mock_chain
         .prove_next_block_at(lock_timestamp - 100)
         .context("failed to prove next block at lock timestamp - 100")?;
-    let partial_account = PartialAccount::try_from(&account)?;
 
     // Attempt to consume note too early.
     // ----------------------------------------------------------------------------------------
-    let tx_inputs =
-        mock_chain.get_transaction_inputs(partial_account.clone(), &[timelock_note.id()], &[])?;
+    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account.clone())
         .with_source_manager(source_manager.clone())
         .tx_inputs(tx_inputs.clone())
@@ -970,8 +968,7 @@ pub fn test_timelock() -> anyhow::Result<()> {
         .prove_next_block_at(lock_timestamp)
         .context("failed to prove next block at lock timestamp")?;
 
-    let tx_inputs =
-        mock_chain.get_transaction_inputs(partial_account.clone(), &[timelock_note.id()], &[])?;
+    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[timelock_note.id()], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
     tx_context.execute_blocking()?;
 

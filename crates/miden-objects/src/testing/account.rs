@@ -1,11 +1,26 @@
 use super::constants::{FUNGIBLE_ASSET_AMOUNT, NON_FUNGIBLE_ASSET_DATA};
-use crate::account::AccountId;
+use crate::Felt;
+use crate::account::{Account, AccountCode, AccountId, AccountStorage};
 use crate::asset::{Asset, AssetVault, FungibleAsset, NonFungibleAsset};
 use crate::testing::account_id::{
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
     ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_2,
 };
+
+impl Account {
+    /// Returns an [`Account`] instantiated with the provided components.
+    pub fn new_existing(
+        id: AccountId,
+        vault: AssetVault,
+        storage: AccountStorage,
+        code: AccountCode,
+        nonce: Felt,
+    ) -> Self {
+        assert!(nonce.as_int() > 0, "nonce for existing accounts must be greater than 0");
+        Self::new(id, vault, storage, code, nonce, None)
+    }
+}
 
 impl AssetVault {
     /// Creates an [AssetVault] with 4 default assets.

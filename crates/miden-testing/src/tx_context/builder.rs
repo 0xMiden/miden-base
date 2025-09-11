@@ -76,7 +76,6 @@ pub type MockAuthenticator = BasicAuthenticator<ChaCha20Rng>;
 pub struct TransactionContextBuilder {
     source_manager: Arc<dyn SourceManagerSync>,
     account: Account,
-    account_seed: Option<Word>,
     advice_inputs: AdviceInputs,
     authenticator: Option<MockAuthenticator>,
     expected_output_notes: Vec<Note>,
@@ -96,7 +95,6 @@ impl TransactionContextBuilder {
         Self {
             source_manager: Arc::new(DefaultSourceManager::default()),
             account,
-            account_seed: None,
             input_notes: Vec::new(),
             expected_output_notes: Vec::new(),
             tx_script: None,
@@ -146,12 +144,6 @@ impl TransactionContextBuilder {
     pub fn with_non_fungible_faucet(acct_id: u128) -> Self {
         let account = Account::mock_non_fungible_faucet(acct_id);
         Self::new(account)
-    }
-
-    /// Override and set the account seed manually
-    pub fn account_seed(mut self, account_seed: Option<Word>) -> Self {
-        self.account_seed = account_seed;
-        self
     }
 
     /// Extend the advice inputs with the provided [AdviceInputs] instance.
@@ -288,11 +280,8 @@ impl TransactionContextBuilder {
                 let input_note_ids: Vec<NoteId> =
                     mock_chain.committed_notes().values().map(MockChainNote::id).collect();
 
-                let partial_account =
-                    PartialAccount::try_from_seeded_account(&self.account, self.account_seed)?;
-
                 mock_chain
-                    .get_transaction_inputs(partial_account, &input_note_ids, &[])
+                    .get_transaction_inputs(&self.account, &input_note_ids, &[])
                     .context("failed to get transaction inputs from mock chain")?
             },
         };

@@ -49,7 +49,7 @@ mod tests {
     #[test]
     fn test_no_auth_component() {
         // Create an account using the NoAuth component
-        let (_account, _) = AccountBuilder::new([0; 32])
+        let _account = AccountBuilder::new([0; 32])
             .with_auth_component(NoAuth)
             .with_component(BasicWallet)
             .build()

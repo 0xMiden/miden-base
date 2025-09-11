@@ -72,7 +72,6 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    PartialAccount,
     StorageMap,
     StorageSlot,
 };
@@ -545,14 +544,13 @@ fn input_notes_memory_assertions(
 /// [`TransactionContext::execute_code`]).
 #[test]
 fn create_simple_account() -> anyhow::Result<()> {
-    let (account, seed) = AccountBuilder::new([6; 32])
+    let account = AccountBuilder::new([6; 32])
         .storage_mode(AccountStorageMode::Public)
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_empty_slots())
         .build()?;
 
     let tx = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
         .build()?
         .execute_blocking()
         .context("failed to execute account-creating transaction")?;
@@ -572,13 +570,8 @@ fn create_simple_account() -> anyhow::Result<()> {
 /// `seed` is valid in the context of the given `mock_chain`.
 pub fn create_account_test(
     account: Account,
-    seed: Word,
 ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-    TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .build()
-        .unwrap()
-        .execute_blocking()
+    TransactionContextBuilder::new(account).build().unwrap().execute_blocking()
 }
 
 pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow::Result<()> {
@@ -590,7 +583,7 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
         AccountType::FungibleFaucet,
         AccountType::NonFungibleFaucet,
     ] {
-        let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
             .account_type(account_type)
             .storage_mode(storage_mode)
             .with_auth_component(Auth::IncrNonce)
@@ -600,12 +593,12 @@ pub fn create_multiple_accounts_test(storage_mode: AccountStorageMode) -> anyhow
             .build()
             .context("account build failed")?;
 
-        accounts.push((account, seed));
+        accounts.push(account);
     }
 
-    for (account, seed) in accounts {
+    for account in accounts {
         let account_type = account.account_type();
-        create_account_test(account, seed).context(format!(
+        create_account_test(account).context(format!(
             "create_multiple_accounts_test test failed for account type {account_type}"
         ))?;
     }
@@ -625,7 +618,7 @@ pub fn create_accounts_with_all_storage_modes() -> anyhow::Result<()> {
 
 /// Takes an account with a placeholder ID and returns the same account but with its ID replaced
 /// with a newly generated one.
-fn compute_valid_account_id(account: Account) -> (Account, Word) {
+fn compute_valid_account_id(account: Account) -> Account {
     let init_seed: [u8; 32] = [5; 32];
     let seed = AccountId::compute_account_seed(
         init_seed,
@@ -646,10 +639,8 @@ fn compute_valid_account_id(account: Account) -> (Account, Word) {
     .unwrap();
 
     // Overwrite old ID with generated ID.
-    let (_, vault, storage, code, nonce) = account.into_parts();
-    let account = Account::from_parts(account_id, vault, storage, code, nonce);
-
-    (account, seed)
+    let (_, vault, storage, code, nonce, _seed) = account.into_parts();
+    Account::new(account_id, vault, storage, code, nonce, Some(seed))
 }
 
 /// Tests that creating a fungible faucet account with a non-empty initial balance in its reserved
@@ -662,18 +653,18 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
         .with_component(MockAccountComponent::with_empty_slots())
         .build_existing()
         .expect("account should be valid");
-    let (id, vault, mut storage, code, _nonce) = account.into_parts();
+    let (id, vault, mut storage, code, _nonce, seed) = account.into_parts();
 
     // Set the initial balance to a non-zero value manually, since the builder would not allow us to
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
     storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
     // Set the nonce to zero so this is considered a new account.
-    let account = Account::from_parts(id, vault, storage, code, ZERO);
+    let account = Account::new(id, vault, storage, code, ZERO, seed);
 
-    let (account, account_seed) = compute_valid_account_id(account);
+    let account = compute_valid_account_id(account);
 
-    let result = create_account_test(account, account_seed);
+    let result = create_account_test(account);
 
     assert_transaction_executor_error!(
         result,
@@ -693,19 +684,19 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
         StorageMap::with_entries([(asset.vault_key(), asset.into())]).unwrap();
     let storage = AccountStorage::new(vec![StorageSlot::Map(non_fungible_storage_map)]).unwrap();
 
-    let (account, _seed) = AccountBuilder::new([1; 32])
+    let account = AccountBuilder::new([1; 32])
         .account_type(AccountType::NonFungibleFaucet)
         .with_auth_component(NoopAuthComponent)
         .with_component(MockAccountComponent::with_empty_slots())
         .build()
         .expect("account should be valid");
-    let (id, vault, _storage, code, nonce) = account.into_parts();
+    let (id, vault, _storage, code, nonce, seed) = account.into_parts();
 
     // Set the nonce to zero so this is considered a new account.
-    let account = Account::from_parts(id, vault, storage, code, nonce);
-    let (account, account_seed) = compute_valid_account_id(account);
+    let account = Account::new(id, vault, storage, code, nonce, seed);
+    let account = compute_valid_account_id(account);
 
-    let result = create_account_test(account, account_seed);
+    let result = create_account_test(account);
 
     assert_transaction_executor_error!(
         result,
@@ -721,15 +712,14 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
     let mut mock_chain = MockChain::new();
     mock_chain.prove_next_block()?;
 
-    let (account, seed) = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+    let account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .account_type(AccountType::RegularAccountUpdatableCode)
         .with_auth_component(Auth::IncrNonce)
         .with_component(BasicWallet)
         .build()?;
 
-    let partial_account = PartialAccount::try_from_seeded_account(&account, Some(seed))?;
     let tx_inputs = mock_chain
-        .get_transaction_inputs(partial_account, &[], &[])
+        .get_transaction_inputs(&account, &[], &[])
         .expect("failed to get transaction inputs from mock chain");
 
     // override the seed with an invalid seed to ensure the kernel fails
@@ -738,7 +728,6 @@ pub fn create_account_invalid_seed() -> anyhow::Result<()> {
         AdviceInputs::default().with_map([(Word::from(account_seed_key), vec![ZERO; WORD_SIZE])]);
 
     let tx_context = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
         .tx_inputs(tx_inputs)
         .extend_advice_inputs(adv_inputs)
         .build()?;

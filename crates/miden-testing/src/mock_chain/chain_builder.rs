@@ -361,19 +361,16 @@ impl MockChainBuilder {
         let (auth_component, authenticator) = auth_method.build_component();
         account_builder = account_builder.with_auth_component(auth_component);
 
-        let (account, seed) = if let AccountState::New = account_state {
-            let (account, seed) =
-                account_builder.build().context("failed to build account from builder")?;
-            (account, Some(seed))
+        let account = if let AccountState::New = account_state {
+            account_builder.build().context("failed to build account from builder")?
         } else {
-            let account = account_builder
+            account_builder
                 .build_existing()
-                .context("failed to build account from builder")?;
-            (account, None)
+                .context("failed to build account from builder")?
         };
 
         self.account_credentials
-            .insert(account.id(), AccountCredentials::new(seed, authenticator));
+            .insert(account.id(), AccountCredentials::new(authenticator));
 
         if let AccountState::Exists = account_state {
             self.accounts.insert(account.id(), account.clone());

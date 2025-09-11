@@ -108,21 +108,33 @@ pub struct Account {
     storage: AccountStorage,
     code: AccountCode,
     nonce: Felt,
+    seed: Option<Word>,
 }
 
 impl Account {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns an [Account] instantiated with the provided components.
-    pub fn from_parts(
+    /// Returns an [`Account`] instantiated with the provided components.
+    ///
+    /// TODO
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - an account seed is provided but the account's nonce indicates the account already exists.
+    /// - an account seed is not provided but the account's nonce indicates the account is new.
+    /// - an account seed is provided but the account ID derived from it is invalid or does not
+    ///   match the provided account's ID.
+    pub fn new(
         id: AccountId,
         vault: AssetVault,
         storage: AccountStorage,
         code: AccountCode,
         nonce: Felt,
+        seed: Option<Word>,
     ) -> Self {
-        Self { id, vault, storage, code, nonce }
+        Self { id, vault, storage, code, nonce, seed }
     }
 
     /// Creates an account's [`AccountCode`] and [`AccountStorage`] from the provided components.
@@ -251,6 +263,11 @@ impl Account {
         self.nonce
     }
 
+    /// Returns the seed of the account's ID, if any.
+    pub fn seed(&self) -> Option<Word> {
+        self.seed
+    }
+
     /// Returns true if this account can issue assets.
     pub fn is_faucet(&self) -> bool {
         self.id.is_faucet()
@@ -288,8 +305,10 @@ impl Account {
     }
 
     /// Decomposes the account into the underlying account components.
-    pub fn into_parts(self) -> (AccountId, AssetVault, AccountStorage, AccountCode, Felt) {
-        (self.id, self.vault, self.storage, self.code, self.nonce)
+    pub fn into_parts(
+        self,
+    ) -> (AccountId, AssetVault, AccountStorage, AccountCode, Felt, Option<Word>) {
+        (self.id, self.vault, self.storage, self.code, self.nonce, self.seed)
     }
 
     // DATA MUTATORS
@@ -363,13 +382,14 @@ impl Account {
 
 impl Serializable for Account {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        let Account { id, vault, storage, code, nonce } = self;
+        let Account { id, vault, storage, code, nonce, seed } = self;
 
         id.write_into(target);
         vault.write_into(target);
         storage.write_into(target);
         code.write_into(target);
         nonce.write_into(target);
+        seed.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {
@@ -378,6 +398,7 @@ impl Serializable for Account {
             + self.storage.get_size_hint()
             + self.code.get_size_hint()
             + self.nonce.get_size_hint()
+            + self.seed.get_size_hint()
     }
 }
 
@@ -388,8 +409,9 @@ impl Deserializable for Account {
         let storage = AccountStorage::read_from(source)?;
         let code = AccountCode::read_from(source)?;
         let nonce = Felt::read_from(source)?;
+        let seed = <Option<Word>>::read_from(source)?;
 
-        Ok(Self::from_parts(id, vault, storage, code, nonce))
+        Ok(Self::new(id, vault, storage, code, nonce, seed))
     }
 }
 
@@ -676,7 +698,7 @@ mod tests {
 
         let storage = AccountStorage::new(slots).unwrap();
 
-        Account::from_parts(id, vault, storage, code, nonce)
+        Account::new_existing(id, vault, storage, code, nonce)
     }
 
     /// Tests that initializing code and storage from a component which does not support the given

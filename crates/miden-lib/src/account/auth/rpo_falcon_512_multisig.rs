@@ -101,7 +101,7 @@ mod tests {
             .expect("multisig component creation failed");
 
         // Build account with multisig component
-        let (account, _) = AccountBuilder::new([0; 32])
+        let account = AccountBuilder::new([0; 32])
             .with_auth_component(multisig_component)
             .with_component(BasicWallet)
             .build()
@@ -131,7 +131,7 @@ mod tests {
         let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
             .expect("multisig component creation failed");
 
-        let (account, _) = AccountBuilder::new([0; 32])
+        let account = AccountBuilder::new([0; 32])
             .with_auth_component(multisig_component)
             .with_component(BasicWallet)
             .build()

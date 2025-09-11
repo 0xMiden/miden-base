@@ -28,7 +28,6 @@ use miden_objects::account::{
     AccountStorage,
     AccountStorageMode,
     AccountType,
-    PartialAccount,
     StorageSlot,
 };
 use miden_objects::assembly::diagnostics::{IntoDiagnostic, NamedSource, Report, WrapErr, miette};
@@ -747,17 +746,14 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
 #[test]
 fn create_account_with_empty_storage_slots() -> anyhow::Result<()> {
     for account_type in [AccountType::FungibleFaucet, AccountType::RegularAccountUpdatableCode] {
-        let (account, seed) = AccountBuilder::new([5; 32])
+        let account = AccountBuilder::new([5; 32])
             .account_type(account_type)
             .with_auth_component(Auth::IncrNonce)
             .with_component(MockAccountComponent::with_empty_slots())
             .build()
             .context("failed to build account")?;
 
-        TransactionContextBuilder::new(account)
-            .account_seed(Some(seed))
-            .build()?
-            .execute_blocking()?;
+        TransactionContextBuilder::new(account).build()?.execute_blocking()?;
     }
 
     Ok(())
@@ -798,14 +794,11 @@ fn create_procedure_metadata_test_account(
     let id = AccountId::new(seed, version, code.commitment(), storage.commitment())
         .context("failed to compute ID")?;
 
-    let account = Account::from_parts(id, AssetVault::default(), storage, code, Felt::from(0u32));
+    let account =
+        Account::new(id, AssetVault::default(), storage, code, Felt::from(0u32), Some(seed));
 
-    let partial_account = PartialAccount::try_from_seeded_account(&account, Some(seed))?;
-    let tx_inputs = mock_chain.get_transaction_inputs(partial_account, &[], &[])?;
-    let tx_context = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .tx_inputs(tx_inputs)
-        .build()?;
+    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
+    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
 
     let result = tx_context.execute_blocking().map_err(|err| {
         let TransactionExecutorError::TransactionProgramExecutionFailed(exec_err) = err else {
@@ -1251,16 +1244,13 @@ fn incrementing_nonce_twice_fails() -> anyhow::Result<()> {
     let faulty_auth_component =
         AccountComponent::compile(source_code, TransactionKernel::assembler(), vec![])?
             .with_supports_all_types();
-    let (account, seed) = AccountBuilder::new([5; 32])
+    let account = AccountBuilder::new([5; 32])
         .with_auth_component(faulty_auth_component)
         .with_component(MockAccountComponent::with_empty_slots())
         .build()
         .context("failed to build account")?;
 
-    let result = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .build()?
-        .execute_blocking();
+    let result = TransactionContextBuilder::new(account).build()?.execute_blocking();
 
     assert_transaction_executor_error!(result, ERR_ACCOUNT_NONCE_CAN_ONLY_BE_INCREMENTED_ONCE);
 

@@ -113,7 +113,7 @@ mod tests {
         let code = AccountCode::mock();
         let vault = AssetVault::new(&[]).unwrap();
         let storage = AccountStorage::new(vec![]).unwrap();
-        let account = Account::from_parts(id, vault, storage, code, Felt::new(10));
+        let account = Account::new_existing(id, vault, storage, code, Felt::new(10));
 
         let commitment = account.commitment();
 
@@ -124,7 +124,7 @@ mod tests {
         let merkle_path = MerklePath::new(merkle_nodes);
 
         let fpi_inputs = AccountInputs::new(
-            PartialAccount::try_from(&account).unwrap(),
+            PartialAccount::from(&account),
             AccountWitness::new(id, commitment, merkle_path).unwrap(),
         );
 

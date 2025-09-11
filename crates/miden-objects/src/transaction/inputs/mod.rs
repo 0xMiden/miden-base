@@ -44,7 +44,7 @@ impl TransactionInputs {
     /// - The partial blockchain's commitment does not match the reference block's chain commitment.
     /// - The partial blockchain does not proof inclusion of an authenticated input note.
     pub fn new(
-        partial_account: PartialAccount,
+        partial_account: impl Into<PartialAccount>,
         block_header: BlockHeader,
         block_chain: PartialBlockchain,
         input_notes: InputNotes<InputNote>,
@@ -83,7 +83,7 @@ impl TransactionInputs {
         }
 
         Ok(Self {
-            account: partial_account,
+            account: partial_account.into(),
             block_header,
             blockchain: block_chain,
             input_notes,

@@ -557,7 +557,6 @@ impl MockChain {
         let credentials = self.account_credentials.get(&input.id());
         let authenticator =
             credentials.and_then(|credentials| credentials.authenticator().cloned());
-        let seed = credentials.and_then(|credentials| credentials.seed());
 
         anyhow::ensure!(
             reference_block.as_usize() < self.blocks.len(),
@@ -583,20 +582,12 @@ impl MockChain {
             TxContextInput::Account(account) => account,
         };
 
-        let partial_account = PartialAccount::try_from_seeded_account(&account, seed)?;
-
         let tx_inputs = self
-            .get_transaction_inputs_at(
-                reference_block,
-                partial_account,
-                note_ids,
-                unauthenticated_notes,
-            )
+            .get_transaction_inputs_at(reference_block, &account, note_ids, unauthenticated_notes)
             .context("failed to gather transaction inputs")?;
 
         let tx_context_builder = TransactionContextBuilder::new(account)
             .authenticator(authenticator)
-            .account_seed(seed)
             .tx_inputs(tx_inputs);
 
         Ok(tx_context_builder)
@@ -624,7 +615,7 @@ impl MockChain {
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
-        account: PartialAccount,
+        account: impl Into<PartialAccount>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
@@ -691,7 +682,7 @@ impl MockChain {
     /// Returns a valid [`TransactionInputs`] for the specified entities.
     pub fn get_transaction_inputs(
         &self,
-        account: PartialAccount,
+        account: impl Into<PartialAccount>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
@@ -734,7 +725,7 @@ impl MockChain {
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        let partial_account = PartialAccount::try_from(account)?;
+        let partial_account = PartialAccount::from(account);
 
         Ok(AccountInputs::new(partial_account, account_witness))
     }
@@ -1135,37 +1126,33 @@ pub enum AccountState {
 // ACCOUNT CREDENTIALS
 // ================================================================================================
 
-/// A wrapper around the seed and authenticator of an account.
+/// A wrapper around the authenticator of an account.
+///
+/// TODO: Consider removings credentials and only tracking raw authenticator?
 #[derive(Debug, Clone)]
 pub(super) struct AccountCredentials {
-    seed: Option<Word>,
     authenticator: Option<BasicAuthenticator<ChaCha20Rng>>,
 }
 
 impl AccountCredentials {
-    pub fn new(seed: Option<Word>, authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
-        Self { seed, authenticator }
+    pub fn new(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+        Self { authenticator }
     }
 
     pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
         self.authenticator.as_ref()
     }
-
-    pub fn seed(&self) -> Option<Word> {
-        self.seed
-    }
 }
 
 impl PartialEq for AccountCredentials {
     fn eq(&self, other: &Self) -> bool {
-        let authenticator_eq = match (&self.authenticator, &other.authenticator) {
+        match (&self.authenticator, &other.authenticator) {
             (Some(a), Some(b)) => {
                 a.keys().keys().zip(b.keys().keys()).all(|(a_key, b_key)| a_key == b_key)
             },
             (None, None) => true,
             _ => false,
-        };
-        authenticator_eq && self.seed == other.seed
+        }
     }
 }
 
@@ -1174,7 +1161,6 @@ impl PartialEq for AccountCredentials {
 
 impl Serializable for AccountCredentials {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.seed.write_into(target);
         self.authenticator
             .as_ref()
             .map(|auth| auth.keys().iter().collect::<Vec<_>>())
@@ -1184,13 +1170,12 @@ impl Serializable for AccountCredentials {
 
 impl Deserializable for AccountCredentials {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let seed = Option::<Word>::read_from(source)?;
         let authenticator = Option::<Vec<(Word, AuthSecretKey)>>::read_from(source)?;
 
         let authenticator = authenticator
             .map(|keys| BasicAuthenticator::new_with_rng(&keys, ChaCha20Rng::from_os_rng()));
 
-        Ok(Self { seed, authenticator })
+        Ok(Self { authenticator })
     }
 }
 
@@ -1199,6 +1184,7 @@ impl Deserializable for AccountCredentials {
 
 /// Helper type to abstract over the inputs to [`MockChain::build_tx_context`]. See that method's
 /// docs for details.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum TxContextInput {
     AccountId(AccountId),

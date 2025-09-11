@@ -196,7 +196,7 @@ impl Default for LocalTransactionProver {
 }
 
 fn partial_account_to_full(partial_account: PartialAccount) -> Account {
-    let (id, nonce, code, partial_storage, partial_vault) = partial_account.into_parts();
+    let (id, partial_vault, partial_storage, code, nonce, seed) = partial_account.into_parts();
 
     // For new accounts, the partial storage must represent the full initial account
     // storage.
@@ -206,7 +206,7 @@ fn partial_account_to_full(partial_account: PartialAccount) -> Account {
     debug_assert_eq!(partial_vault.leaves().count(), 0);
     let vault = AssetVault::default();
 
-    Account::from_parts(id, vault, storage, code, nonce)
+    Account::new(id, vault, storage, code, nonce, seed)
 }
 
 fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {

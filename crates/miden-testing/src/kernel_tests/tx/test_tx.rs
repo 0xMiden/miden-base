@@ -782,7 +782,7 @@ fn inputs_created_correctly() -> anyhow::Result<()> {
             .is_some()
     );
 
-    let account = Account::from_parts(
+    let account = Account::new_existing(
         ACCOUNT_ID_PRIVATE_SENDER.try_into()?,
         AssetVault::mock(),
         AccountStorage::mock(),

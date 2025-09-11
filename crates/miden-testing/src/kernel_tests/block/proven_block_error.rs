@@ -6,14 +6,7 @@ use miden_block_prover::{LocalBlockProver, ProvenBlockError};
 use miden_lib::testing::account_component::{IncrNonceAuthComponent, MockAccountComponent};
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{
-    Account,
-    AccountBuilder,
-    AccountComponent,
-    AccountId,
-    PartialAccount,
-    StorageSlot,
-};
+use miden_objects::account::{Account, AccountBuilder, AccountComponent, AccountId, StorageSlot};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
@@ -256,7 +249,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
 
     let auth_component: AccountComponent = IncrNonceAuthComponent.into();
 
-    let (account, seed) = AccountBuilder::new([5; 32])
+    let account = AccountBuilder::new([5; 32])
         .with_auth_component(auth_component.clone())
         .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
             [5u32; 4],
@@ -295,12 +288,8 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     // Execute the account-creating transaction.
     // --------------------------------------------------------------------------------------------
 
-    let partial_account = PartialAccount::try_from_seeded_account(&account, Some(seed))?;
-    let tx_inputs = mock_chain.get_transaction_inputs(partial_account, &[], &[])?;
-    let tx_context = TransactionContextBuilder::new(account)
-        .account_seed(Some(seed))
-        .tx_inputs(tx_inputs)
-        .build()?;
+    let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
+    let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;
     let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
     let tx = LocalTransactionProver::default().prove_dummy(tx)?;
 
@@ -350,7 +339,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // Construct a new account.
     // --------------------------------------------------------------------------------------------
     let mut mock_chain = MockChain::new();
-    let (account, _) = AccountBuilder::new([5; 32])
+    let account = AccountBuilder::new([5; 32])
         .with_auth_component(Auth::IncrNonce)
         .with_component(MockAccountComponent::with_slots(vec![StorageSlot::Value(Word::from(
             [5u32; 4],
