@@ -87,7 +87,7 @@ impl TransactionAdviceInputs {
         self.0
     }
 
-    /// Consumes self and returns an iterator of [`AdviceMutation`]s.
+    /// Consumes self and returns an iterator of [`AdviceMutation`]s in arbitrary order.
     pub fn into_advice_mutations(self) -> impl Iterator<Item = AdviceMutation> {
         [
             AdviceMutation::ExtendMap { other: self.0.map },
