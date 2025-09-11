@@ -37,7 +37,7 @@ use miden_objects::{Felt, FieldElement, MAX_OUTPUT_NOTES_PER_BATCH, NoteError, W
 use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
-use crate::mock_chain::chain::AccountCredentials;
+use crate::mock_chain::chain::AccountAuthenticator;
 use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
@@ -45,7 +45,7 @@ use crate::{AccountState, Auth, MockChain};
 #[derive(Debug, Clone)]
 pub struct MockChainBuilder {
     accounts: BTreeMap<AccountId, Account>,
-    account_credentials: BTreeMap<AccountId, AccountCredentials>,
+    account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
     notes: Vec<OutputNote>,
     rng: RpoRandomCoin,
     // Fee parameters.
@@ -69,7 +69,7 @@ impl MockChainBuilder {
 
         Self {
             accounts: BTreeMap::new(),
-            account_credentials: BTreeMap::new(),
+            account_authenticators: BTreeMap::new(),
             notes: Vec::new(),
             rng: RpoRandomCoin::new(Default::default()),
             native_asset_id,
@@ -79,9 +79,9 @@ impl MockChainBuilder {
 
     /// Initializes a new mock chain builder with the provided accounts.
     ///
-    /// This method only adds the accounts and cannot not register any seed or authenticator for it.
+    /// This method only adds the accounts and cannot not register any authenticators for them.
     /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if the
-    /// account is new or if they need an authenticator.
+    /// account needs an authenticator.
     ///
     /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
     /// [`MockChainBuilder::add_account_from_builder`].
@@ -186,17 +186,17 @@ impl MockChainBuilder {
             transactions,
         );
 
-        MockChain::from_genesis_block(genesis_block, account_tree, self.account_credentials)
+        MockChain::from_genesis_block(genesis_block, account_tree, self.account_authenticators)
     }
 
     // ACCOUNT METHODS
     // ----------------------------------------------------------------------------------------
 
-    /// Creates a new public [`BasicWallet`] account and registers the authenticator (if any) and
-    /// seed.
+    /// Creates a new public [`BasicWallet`] account and registers the authenticator (if any) for
+    /// it.
     ///
     /// This does not add the account to the chain state, but it can still be used to call
-    /// [`MockChain::build_tx_context`] to automatically handle the authenticator and seed.
+    /// [`MockChain::build_tx_context`] to automatically add the authenticator.
     pub fn create_new_wallet(&mut self, auth_method: Auth) -> anyhow::Result<Account> {
         let account_builder = AccountBuilder::new(self.rng.random())
             .storage_mode(AccountStorageMode::Public)
@@ -227,10 +227,10 @@ impl MockChainBuilder {
     }
 
     /// Creates a new public [`BasicFungibleFaucet`] account and registers the authenticator (if
-    /// any) and seed.
+    /// any) for it.
     ///
     /// This does not add the account to the chain state, but it can still be used to call
-    /// [`MockChain::build_tx_context`] to automatically handle the authenticator and seed.
+    /// [`MockChain::build_tx_context`] to automatically add the authenticator.
     pub fn create_new_faucet(
         &mut self,
         auth_method: Auth,
@@ -349,9 +349,9 @@ impl MockChainBuilder {
     ///   to the initial chain state. It can then be used in a transaction without having to
     ///   validate its seed.
     /// - If [`AccountState::New`] is given the account is built as a new account and is **not**
-    ///   added to the chain. Its seed and authenticator are registered (if any). Its first
-    ///   transaction will be its creation transaction. [`MockChain::build_tx_context`] can be
-    ///   called with the account to automatically handle the authenticator and seed.
+    ///   added to the chain. Its authenticator is registered (if present). Its first transaction
+    ///   will be its creation transaction. [`MockChain::build_tx_context`] can be called with the
+    ///   account to automatically add the authenticator.
     pub fn add_account_from_builder(
         &mut self,
         auth_method: Auth,
@@ -369,8 +369,8 @@ impl MockChainBuilder {
                 .context("failed to build account from builder")?
         };
 
-        self.account_credentials
-            .insert(account.id(), AccountCredentials::new(authenticator));
+        self.account_authenticators
+            .insert(account.id(), AccountAuthenticator::new(authenticator));
 
         if let AccountState::Exists = account_state {
             self.accounts.insert(account.id(), account.clone());
@@ -381,9 +381,9 @@ impl MockChainBuilder {
 
     /// Adds the provided account to the list of genesis accounts.
     ///
-    /// This method only adds the account and does not store its account credentials (seed and
-    /// authenticator) for it. Calling [`MockChain::build_tx_context`] on accounts added in this
-    /// way will not work if the account is new or if they need an authenticator.
+    /// This method only adds the account and does not store its account authenticator for it.
+    /// Calling [`MockChain::build_tx_context`] on accounts added in this way will not work if
+    /// the account needs an authenticator.
     ///
     /// Due to these limitations, prefer using other methods to add accounts to the chain, e.g.
     /// [`MockChainBuilder::add_account_from_builder`].
