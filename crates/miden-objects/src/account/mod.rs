@@ -356,9 +356,12 @@ impl Account {
         self.increment_nonce(delta.nonce_delta())?;
 
         // Maintain internal consistency of the account, i.e. the seed should not be present for
-        // existing accounts. Since existing accounts are defined as nonce > 0 and we've just
-        // incremented the nonce, we should remove the seed if it was present.
-        self.seed = None;
+        // existing accounts, where existing accounts are defined as having a nonce > 0.
+        // If we've incremented the nonce, then we should remove the seed (if it was present at
+        // all).
+        if delta.nonce_delta().as_int() > 0 {
+            self.seed = None;
+        }
 
         Ok(())
     }
