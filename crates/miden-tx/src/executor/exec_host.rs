@@ -159,8 +159,7 @@ where
             })?;
 
         self.base_host
-            .account_procedure_index_map_mut()
-            .insert_code(foreign_account_inputs.code())
+            .load_foreign_account_code(foreign_account_inputs.code())
             .map_err(|err| {
                 TransactionKernelError::other_with_source(
                     format!(

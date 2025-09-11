@@ -29,6 +29,7 @@ use miden_lib::transaction::memory::{
 };
 use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent, TransactionEventError};
 use miden_objects::account::{
+    AccountCode,
     AccountDelta,
     AccountHeader,
     AccountId,
@@ -62,7 +63,7 @@ use miden_processor::{
 pub use tx_progress::TransactionProgress;
 
 use crate::auth::SigningInputs;
-use crate::errors::TransactionKernelError;
+use crate::errors::{TransactionHostError, TransactionKernelError};
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -204,8 +205,11 @@ where
     // --------------------------------------------------------------------------------------------
 
     /// Returns a mutable reference to the [`AccountProcedureIndexMap`].
-    pub fn account_procedure_index_map_mut(&mut self) -> &mut AccountProcedureIndexMap {
-        &mut self.acct_procedure_index_map
+    pub fn load_foreign_account_code(
+        &mut self,
+        account_code: &AccountCode,
+    ) -> Result<(), TransactionHostError> {
+        self.acct_procedure_index_map.insert_code(account_code)
     }
 
     // EVENT HANDLERS
