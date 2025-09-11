@@ -116,10 +116,9 @@ impl TransactionContext {
         let advice_inputs = advice_inputs.into_advice_inputs();
         CodeExecutor::new(
             MockHost::new(
-                self.tx_inputs.account().into(),
-                &advice_inputs,
+                self.tx_inputs().account().code(),
                 mast_store,
-                self.tx_args.to_foreign_account_code_commitments(),
+                self.tx_args.foreign_account_inputs(),
             )
             .with_source_manager(self.source_manager()),
         )

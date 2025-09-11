@@ -300,18 +300,16 @@ where
 
         // To start executing the transaction, the procedure index map only needs to contain the
         // native account's procedures. Foreign accounts are inserted into the map on first access.
-        let acct_procedure_index_map = AccountProcedureIndexMap::new(
-            [tx_inputs.account().code().commitment()],
-            tx_advice_inputs.as_advice_inputs(),
-        )
-        .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
+        let account_procedure_index_map =
+            AccountProcedureIndexMap::new([tx_inputs.account().code()])
+                .map_err(TransactionExecutorError::TransactionHostCreationFailed)?;
 
         let host = TransactionExecutorHost::new(
             tx_inputs.account(),
             input_notes.clone(),
             self.data_store,
             script_mast_store,
-            acct_procedure_index_map,
+            account_procedure_index_map,
             self.authenticator,
             tx_inputs.block_header().block_num(),
             self.source_manager.clone(),

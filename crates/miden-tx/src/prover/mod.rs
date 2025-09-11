@@ -5,7 +5,6 @@ use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
-    AccountCode,
     AccountDelta,
     AccountStorage,
     PartialAccount,
@@ -142,12 +141,10 @@ impl LocalTransactionProver {
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let account_procedure_index_map = AccountProcedureIndexMap::from_transaction_params(
-            &tx_inputs,
-            foreign_account_code.iter().map(AccountCode::commitment).collect(),
-            &advice_inputs,
+        let account_procedure_index_map = AccountProcedureIndexMap::new(
+            foreign_account_code.iter().chain([tx_inputs.account().code()]),
         )
-        .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+        .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
 
         let (partial_account, _, ref_block, _, input_notes) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(

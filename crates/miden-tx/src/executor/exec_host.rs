@@ -160,7 +160,7 @@ where
 
         self.base_host
             .account_procedure_index_map_mut()
-            .insert_procedures(foreign_account_inputs.code().commitment(), &tx_advice_inputs)
+            .insert_code(foreign_account_inputs.code())
             .map_err(|err| {
                 TransactionKernelError::other_with_source(
                     format!(

@@ -149,6 +149,8 @@ pub enum TransactionProverError {
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
+    #[error("failed to create account procedure index map")]
+    CreateAccountProcedureIndexMap(#[source] TransactionHostError),
     #[error("failed to create transaction host")]
     TransactionHostCreationFailed(#[source] TransactionHostError),
     /// Custom error variant for errors not covered by the other variants.

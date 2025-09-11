@@ -1,16 +1,15 @@
 use alloc::boxed::Box;
-use alloc::collections::BTreeSet;
 use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
-use miden_objects::account::{AccountHeader, AccountVaultDelta};
+use miden_objects::account::{AccountCode, AccountVaultDelta};
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::assembly::{DefaultSourceManager, SourceManager};
+use miden_objects::transaction::AccountInputs;
 use miden_objects::{Felt, Word};
 use miden_processor::{
-    AdviceInputs,
     AdviceMutation,
     BaseHost,
     ContextId,
@@ -38,15 +37,17 @@ pub struct MockHost {
 impl MockHost {
     /// Returns a new [`MockHost`] instance with the provided [`AdviceInputs`].
     pub fn new(
-        account: AccountHeader,
-        advice_inputs: &AdviceInputs,
+        native_account_code: &AccountCode,
         mast_store: Rc<TransactionMastStore>,
-        mut foreign_code_commitments: BTreeSet<Word>,
+        foreign_account_inputs: &[AccountInputs],
     ) -> Self {
-        foreign_code_commitments.insert(account.code_commitment());
-        let account_procedure_index_map =
-            AccountProcedureIndexMap::new(foreign_code_commitments, advice_inputs)
-                .expect("account procedure index map should be valid");
+        let account_procedure_index_map = AccountProcedureIndexMap::new(
+            foreign_account_inputs
+                .iter()
+                .map(AccountInputs::code)
+                .chain([native_account_code]),
+        )
+        .expect("account procedure index map should be valid");
 
         Self {
             acct_procedure_index_map: account_procedure_index_map,
