@@ -10,6 +10,14 @@ use crate::testing::account_id::{
 
 impl Account {
     /// Returns an [`Account`] instantiated with the provided components.
+    ///
+    /// This is a thin wrapper around [`Account::new`] that assumes the provided components are for
+    /// an existing account. See that method's docs for details on when this function panics.
+    ///
+    /// # Panics
+    ///
+    /// Panics if:
+    /// - the provided components are not for an existing account.
     pub fn new_existing(
         id: AccountId,
         vault: AssetVault,
@@ -17,8 +25,8 @@ impl Account {
         code: AccountCode,
         nonce: Felt,
     ) -> Self {
-        assert!(nonce.as_int() > 0, "nonce for existing accounts must be greater than 0");
         Self::new(id, vault, storage, code, nonce, None)
+            .expect("account seed is invalid for provided account")
     }
 }
 

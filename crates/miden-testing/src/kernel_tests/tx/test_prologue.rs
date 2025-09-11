@@ -87,7 +87,7 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionScript,
 };
-use miden_objects::{EMPTY_WORD, WORD_SIZE};
+use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
 use miden_processor::{AdviceInputs, Process, Word};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
@@ -639,8 +639,9 @@ fn compute_valid_account_id(account: Account) -> Account {
     .unwrap();
 
     // Overwrite old ID with generated ID.
-    let (_, vault, storage, code, nonce, _seed) = account.into_parts();
-    Account::new(account_id, vault, storage, code, nonce, Some(seed))
+    let (_, vault, storage, code, _nonce, _seed) = account.into_parts();
+    // Set nonce to zero so this is considered a new account.
+    Account::new(account_id, vault, storage, code, ZERO, Some(seed)).unwrap()
 }
 
 /// Tests that creating a fungible faucet account with a non-empty initial balance in its reserved
@@ -653,15 +654,16 @@ pub fn create_account_fungible_faucet_invalid_initial_balance() -> anyhow::Resul
         .with_component(MockAccountComponent::with_empty_slots())
         .build_existing()
         .expect("account should be valid");
-    let (id, vault, mut storage, code, _nonce, seed) = account.into_parts();
+    let (id, vault, mut storage, code, _nonce, _seed) = account.into_parts();
 
     // Set the initial balance to a non-zero value manually, since the builder would not allow us to
     // do that.
     let faucet_data_slot = Word::from([0, 0, 0, 100u32]);
     storage.set_item(FAUCET_STORAGE_DATA_SLOT, faucet_data_slot).unwrap();
-    // Set the nonce to zero so this is considered a new account.
-    let account = Account::new(id, vault, storage, code, ZERO, seed);
 
+    // The compute account ID function will set the nonce to zero so this is considered a new
+    // account.
+    let account = Account::new(id, vault, storage, code, ONE, None)?;
     let account = compute_valid_account_id(account);
 
     let result = create_account_test(account);
@@ -690,10 +692,11 @@ pub fn create_account_non_fungible_faucet_invalid_initial_reserved_slot() -> any
         .with_component(MockAccountComponent::with_empty_slots())
         .build()
         .expect("account should be valid");
-    let (id, vault, _storage, code, nonce, seed) = account.into_parts();
+    let (id, vault, _storage, code, _nonce, _seed) = account.into_parts();
 
-    // Set the nonce to zero so this is considered a new account.
-    let account = Account::new(id, vault, storage, code, nonce, seed);
+    // The compute account ID function will set the nonce to zero so this is considered a new
+    // account.
+    let account = Account::new(id, vault, storage, code, ONE, None)?;
     let account = compute_valid_account_id(account);
 
     let result = create_account_test(account);

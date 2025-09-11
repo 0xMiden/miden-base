@@ -795,7 +795,7 @@ fn create_procedure_metadata_test_account(
         .context("failed to compute ID")?;
 
     let account =
-        Account::new(id, AssetVault::default(), storage, code, Felt::from(0u32), Some(seed));
+        Account::new(id, AssetVault::default(), storage, code, Felt::from(0u32), Some(seed))?;
 
     let tx_inputs = mock_chain.get_transaction_inputs(&account, &[], &[])?;
     let tx_context = TransactionContextBuilder::new(account).tx_inputs(tx_inputs).build()?;

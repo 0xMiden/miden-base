@@ -223,7 +223,10 @@ impl AccountBuilder {
         debug_assert_eq!(account_id.account_type(), self.account_type);
         debug_assert_eq!(account_id.storage_mode(), self.storage_mode);
 
-        let account = Account::new(account_id, vault, storage, code, Felt::ZERO, Some(seed));
+        // SAFETY: The account ID was derived from the seed and the seed is provided, so it is safe
+        // to bypass the checks of `Account::new`.
+        let account =
+            Account::new_unchecked(account_id, vault, storage, code, Felt::ZERO, Some(seed));
 
         Ok(account)
     }

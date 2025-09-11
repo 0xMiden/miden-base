@@ -1,3 +1,5 @@
+use alloc::string::ToString;
+
 use crate::asset::AssetVault;
 use crate::utils::serde::{
     ByteReader,
@@ -117,8 +119,6 @@ impl Account {
 
     /// Returns an [`Account`] instantiated with the provided components.
     ///
-    /// TODO
-    ///
     /// # Errors
     ///
     /// Returns an error if:
@@ -127,6 +127,25 @@ impl Account {
     /// - an account seed is provided but the account ID derived from it is invalid or does not
     ///   match the provided account's ID.
     pub fn new(
+        id: AccountId,
+        vault: AssetVault,
+        storage: AccountStorage,
+        code: AccountCode,
+        nonce: Felt,
+        seed: Option<Word>,
+    ) -> Result<Self, AccountError> {
+        validate_account_seed(id, code.commitment(), storage.commitment(), seed, nonce)?;
+
+        Ok(Self::new_unchecked(id, vault, storage, code, nonce, seed))
+    }
+
+    /// Returns an [`Account`] instantiated with the provided components.
+    ///
+    /// # Warning
+    ///
+    /// This does not check that the provided seed is valid with respect to the provided components.
+    /// Prefer using [`Account::new`] whenever possible.
+    pub fn new_unchecked(
         id: AccountId,
         vault: AssetVault,
         storage: AccountStorage,
@@ -336,6 +355,11 @@ impl Account {
         // update nonce
         self.increment_nonce(delta.nonce_delta())?;
 
+        // Maintain internal consistency of the account, i.e. the seed should not be present for
+        // existing accounts. Since existing accounts are defined as nonce > 0 and we've just
+        // incremented the nonce, we should remove the seed if it was present.
+        self.seed = None;
+
         Ok(())
     }
 
@@ -411,7 +435,8 @@ impl Deserializable for Account {
         let nonce = Felt::read_from(source)?;
         let seed = <Option<Word>>::read_from(source)?;
 
-        Ok(Self::new(id, vault, storage, code, nonce, seed))
+        Self::new(id, vault, storage, code, nonce, seed)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }
 
@@ -438,6 +463,49 @@ pub fn hash_account(
     elements[8..12].copy_from_slice(&*storage_commitment);
     elements[12..].copy_from_slice(&*code_commitment);
     Hasher::hash_elements(&elements)
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Validates that the provided seed is valid for the provided account components.
+pub(super) fn validate_account_seed(
+    id: AccountId,
+    code_commitment: Word,
+    storage_commitment: Word,
+    seed: Option<Word>,
+    nonce: Felt,
+) -> Result<(), AccountError> {
+    let account_is_new = nonce == ZERO;
+
+    match (account_is_new, seed) {
+        (true, Some(seed)) => {
+            let account_id =
+                AccountId::new(seed, id.version(), code_commitment, storage_commitment).map_err(
+                    |err| AccountError::InvalidAccountIdSeed {
+                        message: "failed to create account ID from seed".into(),
+                        source: Some(err),
+                    },
+                )?;
+
+            if account_id != id {
+                return Err(AccountError::invalid_account_id_seed(format!(
+                    "account ID {actual} computed from seed does not match ID {expected} on account",
+                    expected = id,
+                    actual = account_id
+                )));
+            }
+
+            Ok(())
+        },
+        (true, None) => Err(AccountError::invalid_account_id_seed(
+            "account seed must be provided for a new account",
+        )),
+        (false, Some(_)) => Err(AccountError::invalid_account_id_seed(
+            "account seed must not be provided for existing accounts",
+        )),
+        (false, None) => Ok(()),
+    }
 }
 
 /// Validates that all `components` support the given `account_type`.

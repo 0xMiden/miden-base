@@ -4,7 +4,7 @@ use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
-use crate::account::hash_account;
+use crate::account::{hash_account, validate_account_seed};
 use crate::asset::PartialVault;
 use crate::utils::serde::DeserializationError;
 use crate::{AccountError, Word};
@@ -55,6 +55,8 @@ impl PartialAccount {
         partial_vault: PartialVault,
         seed: Option<Word>,
     ) -> Result<Self, AccountError> {
+        validate_account_seed(id, code.commitment(), partial_storage.commitment(), seed, nonce)?;
+
         let account = Self {
             id,
             nonce,
@@ -63,8 +65,6 @@ impl PartialAccount {
             partial_vault,
             seed,
         };
-
-        validate_partial_account(&account)?;
 
         Ok(account)
     }
@@ -202,43 +202,5 @@ impl Deserializable for PartialAccount {
 
         PartialAccount::new(account_id, nonce, account_code, partial_storage, partial_vault, seed)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
-    }
-}
-
-// HELPER FUNCTIONS
-// ================================================================================================
-
-/// Validates that the provided seed is valid for this account.
-fn validate_partial_account(account: &PartialAccount) -> Result<(), AccountError> {
-    match (account.is_new(), account.seed) {
-        (true, Some(seed)) => {
-            let account_id = AccountId::new(
-                seed,
-                account.id().version(),
-                account.code().commitment(),
-                account.storage().commitment(),
-            )
-            .map_err(|err| AccountError::InvalidAccountIdSeed {
-                message: "failed to create account ID from seed".into(),
-                source: Some(err),
-            })?;
-
-            if account_id != account.id() {
-                return Err(AccountError::invalid_account_id_seed(format!(
-                    "account ID {actual} computed from seed does not match ID {expected} on account",
-                    expected = account.id(),
-                    actual = account_id
-                )));
-            }
-
-            Ok(())
-        },
-        (true, None) => Err(AccountError::invalid_account_id_seed(
-            "account seed must be provided for a new account",
-        )),
-        (false, Some(_)) => Err(AccountError::invalid_account_id_seed(
-            "account seed must not be provided for existing accounts",
-        )),
-        (false, None) => Ok(()),
     }
 }

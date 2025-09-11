@@ -207,6 +207,7 @@ fn partial_account_to_full(partial_account: PartialAccount) -> Account {
     let vault = AssetVault::default();
 
     Account::new(id, vault, storage, code, nonce, seed)
+        .expect("partial account should ensure internal consistency for seed")
 }
 
 fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
