@@ -1311,7 +1311,7 @@ export.tx_start_foreign_context
         # OS => [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
 
         # load the advice data into the current account memory section
-        exec.account::load_from_advice
+        exec.account::load_foreign_account
     end
 
     # make sure that the state of the loaded foreign account corresponds to this commitment in the

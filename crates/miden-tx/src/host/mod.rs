@@ -224,7 +224,7 @@ where
         }
 
         let advice_mutations = match transaction_event {
-            TransactionEvent::AccountBeforeLoad => {
+            TransactionEvent::AccountBeforeLoadForeign => {
                 self.on_account_before_load(process)
             }
 
