@@ -70,15 +70,6 @@ const.NOTE_AFTER_ADD_ASSET_EVENT=131086
 # OUTPUT NOTE PROCEDURES
 # =================================================================================================
 
-#! Returns the current number of output notes created in this transaction.
-#!
-#! Inputs:  []
-#! Outputs: [num_output_notes]
-#!
-#! Where:
-#! - num_output_notes is the number of output notes created in this transaction so far.
-export.memory::get_num_output_notes->get_num_notes
-
 #! Creates a new note and returns the index of the note.
 #!
 #! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT]

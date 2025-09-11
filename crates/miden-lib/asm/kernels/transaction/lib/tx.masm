@@ -66,6 +66,24 @@ export.memory::get_input_notes_commitment
 #! - OUTPUT_NOTES_COMMITMENT is the output notes commitment.
 export.note::compute_output_notes_commitment->get_output_notes_commitment
 
+#! Returns the total number of input notes consumed by this transaction.
+#!
+#! Inputs:  []
+#! Outputs: [num_input_notes]
+#!
+#! Where:
+#! - num_input_notes is the total number of input notes consumed by this transaction.
+export.memory::get_num_input_notes
+
+#! Returns the current number of output notes created in this transaction.
+#!
+#! Inputs:  []
+#! Outputs: [num_output_notes]
+#!
+#! Where:
+#! - num_output_notes is the number of output notes created in this transaction so far.
+export.memory::get_num_output_notes
+
 #! Updates the transaction expiration block delta.
 #!
 #! The input block_height_delta is added to the block reference number in order to output an upper

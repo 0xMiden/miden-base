@@ -36,34 +36,6 @@ export.create
     # => [note_idx]
 end
 
-#! Returns the current number of output notes created in this transaction.
-#!
-#! The number of output notes can changes during transaction execution. This will happen any time
-#! as new output notes is created.
-#!
-#! Inputs:  []
-#! Outputs: [num_output_notes]
-#!
-#! Where:
-#! - num_output_notes is the number of output notes created in this transaction so far.
-#!
-#! Invocation: exec
-export.get_num_notes
-    # pad the stack
-    padw padw padw push.0.0.0
-    # => [pad(15)]
-
-    exec.kernel_proc_offsets::output_note_get_num_notes_offset
-    # => [offset, pad(15)]
-
-    syscall.exec_kernel_proc
-    # => [num_output_notes, pad(15)]
-
-    # clean the stack
-    swapdw dropw dropw swapw dropw movdn.3 drop drop drop
-    # => [num_output_notes]
-end
-
 #! Returns the information about assets in the output note with the specified index.
 #!
 #! This information can then be used to retrieve the actual assets from the advice map.
