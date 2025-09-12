@@ -984,6 +984,29 @@ end
 
 ### OUTPUT NOTE #################################
 
+#! Creates a new note and returns its index.
+#!
+#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+#! Outputs: [note_idx, pad(15)]
+#!
+#! Where:
+#! - tag is the tag to be included in the note.
+#! - aux is the auxiliary metadata to be included in the note.
+#! - note_type is the note storage type.
+#! - execution_hint is the note execution hint tag and payload.
+#! - RECIPIENT is the recipient of the note.
+#! - note_idx is the index of the created note.
+#!
+#! Invocation: dynexec
+export.output_note_create
+    # check that this procedure was executed against the native account
+    exec.memory::assert_native_account
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+    exec.output_note::create
+    # => [note_idx, pad(15)]
+end
+
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [note_idx, ASSET, pad(11)]
@@ -1006,7 +1029,7 @@ export.output_note_add_asset
     movdn.4 dupw movup.8
     # => [note_idx, ASSET, ASSET, pad(11)]
 
-    exec.tx::add_asset_to_note
+    exec.output_note::add_asset
     # => [note_idx, ASSET, pad(11)]
 end
 
@@ -1103,29 +1126,6 @@ export.output_note_get_metadata
 end
 
 ### TRANSACTION #################################
-
-#! Creates a new note and returns the index of the note.
-#!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-#! Outputs: [note_idx, pad(15)]
-#!
-#! Where:
-#! - tag is the tag to be included in the note.
-#! - aux is the auxiliary metadata to be included in the note.
-#! - note_type is the note storage type.
-#! - execution_hint is the note execution hint tag and payload.
-#! - RECIPIENT is the recipient of the note.
-#! - note_idx is the index of the created note.
-#!
-#! Invocation: dynexec
-export.tx_create_note
-    # check that this procedure was executed against the native account
-    exec.memory::assert_native_account
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    exec.tx::create_note
-    # => [note_idx, pad(15)]
-end
 
 #! Returns the input notes commitment.
 #!
@@ -1378,7 +1378,8 @@ export.tx_end_foreign_context
     # => [pad(16)]
 end
 
-#! Updates the transaction expiration time delta.
+#! Updates the transaction expiration block delta.
+#!
 #! Once set, the delta can be decreased but not increased.
 #!
 #! The input block height delta is added to the reference block in order to output an upper limit
@@ -1391,8 +1392,8 @@ end
 #! - block_height_delta is the desired expiration time delta (1 to 0xFFFF).
 #!
 #! Invocation: dynexec
-export.tx_update_expiration_block_num
-    exec.tx::update_expiration_block_num
+export.tx_update_expiration_block_delta
+    exec.tx::update_expiration_block_delta
     # => [pad(16)]
 end
 

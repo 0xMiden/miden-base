@@ -2,7 +2,6 @@ use.miden::account
 use.miden::account_id
 use.miden::note
 use.miden::tx
-use.note_scripts::utils
 
 # ERRORS
 # =================================================================================================

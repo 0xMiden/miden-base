@@ -14,6 +14,7 @@ use tokio::sync::RwLock;
 
 use super::signatures::get_falcon_signature;
 use crate::errors::AuthenticationError;
+use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
 // SIGNATURE DATA
 // ================================================================================================
@@ -67,6 +68,51 @@ impl SigningInputs {
     /// Returns a representation of the [SigningInputs] as a sequence of field elements.
     pub fn to_elements(&self) -> Vec<Felt> {
         <Self as SequentialCommit>::to_elements(self)
+    }
+}
+
+// SERIALIZATION
+// ================================================================================================
+
+impl Serializable for SigningInputs {
+    fn write_into<W: ByteWriter>(&self, target: &mut W) {
+        match self {
+            SigningInputs::TransactionSummary(tx_summary) => {
+                target.write_u8(0);
+                tx_summary.as_ref().write_into(target);
+            },
+            SigningInputs::Arbitrary(elements) => {
+                target.write_u8(1);
+                elements.write_into(target);
+            },
+            SigningInputs::Blind(word) => {
+                target.write_u8(2);
+                word.write_into(target);
+            },
+        }
+    }
+}
+
+impl Deserializable for SigningInputs {
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let discriminant = source.read_u8()?;
+        match discriminant {
+            0 => {
+                let tx_summary: TransactionSummary = source.read()?;
+                Ok(SigningInputs::TransactionSummary(Box::new(tx_summary)))
+            },
+            1 => {
+                let elements: Vec<Felt> = source.read()?;
+                Ok(SigningInputs::Arbitrary(elements))
+            },
+            2 => {
+                let word: Word = source.read()?;
+                Ok(SigningInputs::Blind(word))
+            },
+            other => Err(DeserializationError::InvalidValue(format!(
+                "invalid SigningInputs variant: {other}"
+            ))),
+        }
     }
 }
 
@@ -216,6 +262,9 @@ mod test {
     use miden_lib::utils::{Deserializable, Serializable};
     use miden_objects::account::AuthSecretKey;
     use miden_objects::crypto::dsa::rpo_falcon512::SecretKey;
+    use miden_objects::{Felt, Word};
+
+    use super::SigningInputs;
 
     #[test]
     fn serialize_auth_key() {
@@ -226,6 +275,45 @@ mod test {
 
         match deserialized {
             AuthSecretKey::RpoFalcon512(key) => assert_eq!(secret_key.to_bytes(), key.to_bytes()),
+        }
+    }
+
+    #[test]
+    fn serialize_deserialize_signing_inputs_arbitrary() {
+        let elements = vec![
+            Felt::new(0),
+            Felt::new(1),
+            Felt::new(2),
+            Felt::new(3),
+            Felt::new(4),
+            Felt::new(5),
+            Felt::new(6),
+            Felt::new(7),
+        ];
+        let inputs = SigningInputs::Arbitrary(elements.clone());
+        let bytes = inputs.to_bytes();
+        let decoded = SigningInputs::read_from_bytes(&bytes).unwrap();
+
+        match decoded {
+            SigningInputs::Arbitrary(decoded_elements) => {
+                assert_eq!(decoded_elements, elements);
+            },
+            _ => panic!("expected Arbitrary variant"),
+        }
+    }
+
+    #[test]
+    fn serialize_deserialize_signing_inputs_blind() {
+        let word = Word::from([Felt::new(10), Felt::new(20), Felt::new(30), Felt::new(40)]);
+        let inputs = SigningInputs::Blind(word);
+        let bytes = inputs.to_bytes();
+        let decoded = SigningInputs::read_from_bytes(&bytes).unwrap();
+
+        match decoded {
+            SigningInputs::Blind(w) => {
+                assert_eq!(w, word);
+            },
+            _ => panic!("expected Blind variant"),
         }
     }
 }

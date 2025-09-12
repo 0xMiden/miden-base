@@ -361,9 +361,9 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         begin
             exec.prologue::prepare_transaction
             push.{value_1}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
             push.{value_2}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
 
@@ -402,7 +402,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
         begin
             push.{value_1}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
         end
         ";
 
@@ -535,7 +535,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
     // create an empty output note in the transaction script
     let tx_script_source = format!(
         r#"
-        use.miden::tx
+        use.miden::output_note
         use.$kernel::prologue
         use.$kernel::epilogue
         use.$kernel::note
@@ -556,7 +556,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
             # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, GARBAGE(15)]
 
             # make sure that output note was created: compare the output note hash with an empty

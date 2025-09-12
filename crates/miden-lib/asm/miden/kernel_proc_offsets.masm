@@ -2,6 +2,7 @@
 # -------------------------------------------------------------------------------------------------
 
 ### Account #####################################
+
 # Entire account commitment
 const.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET=0
 const.ACCOUNT_COMPUTE_CURRENT_COMMITMENT_OFFSET=1
@@ -41,6 +42,7 @@ const.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET=20
 const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=21
 
 ### Faucet ######################################
+
 const.FAUCET_MINT_ASSET_OFFSET=22
 const.FAUCET_BURN_ASSET_OFFSET=23
 const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=24
@@ -57,22 +59,21 @@ const.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET=30
 const.INPUT_NOTE_GET_RECIPIENT_OFFSET=31
 
 # output notes
-const.OUTPUT_NOTE_GET_METADATA_OFFSET=32
-const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=33
-const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=34
-const.OUTPUT_NOTE_ADD_ASSET_OFFSET=35
+const.OUTPUT_NOTE_CREATE_OFFSET=32
+const.OUTPUT_NOTE_GET_METADATA_OFFSET=33
+const.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET=34
+const.OUTPUT_NOTE_GET_RECIPIENT_OFFSET=35
+const.OUTPUT_NOTE_ADD_ASSET_OFFSET=36
 
 ### Tx ##########################################
-# creation
-const.TX_CREATE_NOTE_OFFSET=36
 
-# input/output notes
+# input notes
+const.TX_GET_NUM_INPUT_NOTES_OFFSET=37
+const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=38
 
-const.TX_GET_INPUT_NOTES_COMMITMENT_OFFSET=37
-const.TX_GET_NUM_INPUT_NOTES_OFFSET=38
-
-const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=39
-const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=40
+# output notes
+const.TX_GET_NUM_OUTPUT_NOTES_OFFSET=39
+const.TX_GET_OUTPUT_NOTES_COMMITMENT_OFFSET=40
 
 # block info
 const.TX_GET_BLOCK_COMMITMENT_OFFSET=41
@@ -85,7 +86,7 @@ const.TX_END_FOREIGN_CONTEXT_OFFSET=45
 
 # expiration data
 const.TX_GET_EXPIRATION_DELTA_OFFSET=46               # accessor
-const.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET=47        # mutator
+const.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=47      # mutator
 
 # ACCESSORS
 # -------------------------------------------------------------------------------------------------
@@ -406,7 +407,19 @@ export.faucet_is_non_fungible_asset_issued_offset
     push.FAUCET_IS_NON_FUNGIBLE_ASSET_ISSUED_OFFSET
 end
 
-### NOTE ########################################
+### OUTPUT NOTE ########################################
+
+#! Returns the offset of the `output_note_create` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `output_note_create` kernel procedure required to get the
+#!   address where this procedure is stored.
+export.output_note_create_offset
+    push.OUTPUT_NOTE_CREATE_OFFSET
+end
 
 #! Returns the offset of the `output_note_add_asset` kernel procedure.
 #!
@@ -418,18 +431,6 @@ end
 #!   address where this procedure is stored.
 export.output_note_add_asset_offset
     push.OUTPUT_NOTE_ADD_ASSET_OFFSET
-end
-
-#! Returns the offset of the `input_note_get_assets_info` kernel procedure.
-#!
-#! Inputs:  []
-#! Outputs: [proc_offset]
-#!
-#! Where:
-#! - proc_offset is the offset of the `input_note_get_assets_info` kernel procedure required to get
-#! the address where this procedure is stored.
-export.input_note_get_assets_info_offset
-    push.INPUT_NOTE_GET_ASSETS_INFO_OFFSET
 end
 
 #! Returns the offset of the `output_note_get_assets_info` kernel procedure.
@@ -444,18 +445,6 @@ export.output_note_get_assets_info_offset
     push.OUTPUT_NOTE_GET_ASSETS_INFO_OFFSET
 end
 
-#! Returns the offset of the `input_note_get_recipient` kernel procedure.
-#!
-#! Inputs:  []
-#! Outputs: [proc_offset]
-#!
-#! Where:
-#! - proc_offset is the offset of the `input_note_get_recipient` kernel procedure required to get
-#!  the address where this procedure is stored.
-export.input_note_get_recipient_offset
-    push.INPUT_NOTE_GET_RECIPIENT_OFFSET
-end
-
 #! Returns the offset of the `output_note_get_recipient` kernel procedure.
 #!
 #! Inputs:  []
@@ -468,18 +457,6 @@ export.output_note_get_recipient_offset
     push.OUTPUT_NOTE_GET_RECIPIENT_OFFSET
 end
 
-#! Returns the offset of the `input_note_get_metadata` kernel procedure.
-#!
-#! Inputs:  []
-#! Outputs: [proc_offset]
-#!
-#! Where:
-#! - proc_offset is the offset of the `input_note_get_metadata` kernel procedure required to get
-#!  the address where this procedure is stored.
-export.input_note_get_metadata_offset
-    push.INPUT_NOTE_GET_METADATA_OFFSET
-end
-
 #! Returns the offset of the `output_note_get_metadata` kernel procedure.
 #!
 #! Inputs:  []
@@ -490,6 +467,44 @@ end
 #!  the address where this procedure is stored.
 export.output_note_get_metadata_offset
     push.OUTPUT_NOTE_GET_METADATA_OFFSET
+end
+
+### INPUT NOTE ########################################
+
+#! Returns the offset of the `input_note_get_assets_info` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `input_note_get_assets_info` kernel procedure required to get
+#! the address where this procedure is stored.
+export.input_note_get_assets_info_offset
+    push.INPUT_NOTE_GET_ASSETS_INFO_OFFSET
+end
+
+#! Returns the offset of the `input_note_get_recipient` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `input_note_get_recipient` kernel procedure required to get
+#!  the address where this procedure is stored.
+export.input_note_get_recipient_offset
+    push.INPUT_NOTE_GET_RECIPIENT_OFFSET
+end
+
+#! Returns the offset of the `input_note_get_metadata` kernel procedure.
+#!
+#! Inputs:  []
+#! Outputs: [proc_offset]
+#!
+#! Where:
+#! - proc_offset is the offset of the `input_note_get_metadata` kernel procedure required to get
+#!  the address where this procedure is stored.
+export.input_note_get_metadata_offset
+    push.INPUT_NOTE_GET_METADATA_OFFSET
 end
 
 #! Returns the offset of the `input_note_get_serial_number` kernel procedure.
@@ -530,18 +545,6 @@ end
 
 ### TRANSACTION #################################
 
-#! Returns the offset of the `tx_create_note` kernel procedure.
-#!
-#! Inputs:  []
-#! Outputs: [proc_offset]
-#!
-#! Where:
-#! - proc_offset is the offset of the `tx_create_note` kernel procedure required to get the address
-#!   where this procedure is stored.
-export.tx_create_note_offset
-    push.TX_CREATE_NOTE_OFFSET
-end
-
 #! Returns the offset of the `tx_get_input_notes_commitment` kernel procedure.
 #!
 #! Inputs:  []
@@ -572,7 +575,7 @@ end
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `tx_get_num_input_notes` kernel procedure required to get the 
+#! - proc_offset is the offset of the `tx_get_num_input_notes` kernel procedure required to get the
 #!   address where this procedure is stored.
 export.tx_get_num_input_notes_offset
     push.TX_GET_NUM_INPUT_NOTES_OFFSET
@@ -584,7 +587,7 @@ end
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `tx_get_num_output_notes` kernel procedure required to get the 
+#! - proc_offset is the offset of the `tx_get_num_output_notes` kernel procedure required to get the
 #!   address where this procedure is stored.
 export.tx_get_num_output_notes_offset
     push.TX_GET_NUM_OUTPUT_NOTES_OFFSET
@@ -650,16 +653,16 @@ export.tx_end_foreign_context_offset
     push.TX_END_FOREIGN_CONTEXT_OFFSET
 end
 
-#! Returns the offset of the `tx_update_expiration_block_num` kernel procedure.
+#! Returns the offset of the `tx_update_expiration_block_delta` kernel procedure.
 #!
 #! Inputs:  []
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `tx_update_expiration_block_num` kernel procedure required to
-#!   get the address where this procedure is stored.
-export.tx_update_expiration_block_num_offset
-    push.TX_UPDATE_EXPIRATION_BLOCK_NUM_OFFSET
+#! - proc_offset is the offset of the `tx_update_expiration_block_delta` kernel procedure required
+#!   to get the address where this procedure is stored.
+export.tx_update_expiration_block_delta_offset
+    push.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET
 end
 
 #! Returns the offset of the `tx_get_expiration_delta` kernel procedure.

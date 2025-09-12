@@ -589,7 +589,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             # move an asset to the created note to partially deplete fungible asset balance
@@ -611,7 +611,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.mock::account
-        use.miden::tx
+        use.miden::output_note
 
         ## TRANSACTION SCRIPT
         ## ========================================================================================
@@ -820,7 +820,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.mock::account
-      use.miden::tx
+      use.miden::output_note
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []
@@ -873,7 +873,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-          call.tx::create_note
+          call.output_note::create
           # => [note_idx, pad(15)]
 
           repeat.15 swap drop end

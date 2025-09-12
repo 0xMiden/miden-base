@@ -35,11 +35,11 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
-use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
+use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word, ZERO};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-use super::{Felt, Process, ZERO};
+use super::Process;
 use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::utils::{create_p2any_note, input_note_data_ptr};
 use crate::{
@@ -837,7 +837,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_build_note_metadata() -> miette::Result<()> {
+fn test_build_metadata() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
@@ -868,12 +868,12 @@ fn test_build_note_metadata() -> miette::Result<()> {
         let code = format!(
             "
         use.$kernel::prologue
-        use.$kernel::tx
+        use.$kernel::output_note
 
         begin
           exec.prologue::prepare_transaction
           push.{execution_hint}.{note_type}.{aux}.{tag}
-          exec.tx::build_note_metadata
+          exec.output_note::build_metadata
 
           # truncate the stack
           swapw dropw

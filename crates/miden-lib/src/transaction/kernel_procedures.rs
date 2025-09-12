@@ -71,6 +71,8 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     word!("0x25815e02b7976d8e5c297dde60d372cc142c81f702f424ac0920190528c547ee"),
     // input_note_get_recipient
     word!("0xd3c255177f9243bb1a523a87615bbe76dd5a3605fcae87eb9d3a626d4ecce33c"),
+    // output_note_create
+    word!("0x52b37f8b25e26517f22f1f600acae7fbfffa84094595ba961af2af807a484736"),
     // output_note_get_metadata
     word!("0xde4a5b57f9d53692459383e6cf6302ef3602a348896ed6ab6fdf67e07fa483ff"),
     // output_note_get_assets_info
@@ -79,16 +81,14 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     word!("0xc824115ed79a2e1670daed8c18fba1bc15f54c5ec0ec6699de69a00b21d9df92"),
     // output_note_add_asset
     word!("0x47673b932aac8c186cb0979bbc3c4c2afa00fa1b80c0afb5e5efb4924bba48d9"),
-    // tx_create_note
-    word!("0x52b37f8b25e26517f22f1f600acae7fbfffa84094595ba961af2af807a484736"),
-    // tx_get_input_notes_commitment
-    word!("0xc3a334434daa7d4ea15e1b2cb1a8000ad757f9348560a7246336662b77b0d89a"),
     // tx_get_num_input_notes
     word!("0xfcc186d4b65c584f3126dda1460b01eef977efd76f9e36f972554af28e33c685"),
-    // tx_get_output_notes_commitment
-    word!("0xd5b22dae48ec4b20ed479f2c43573d34930720886371ef6b484310a3bea4e818"),
+    // tx_get_input_notes_commitment
+    word!("0xc3a334434daa7d4ea15e1b2cb1a8000ad757f9348560a7246336662b77b0d89a"),
     // tx_get_num_output_notes
     word!("0x2511fca9c078cd96e526fd488d1362cbfd597eb3db8452aedb00beffee9782b4"),
+    // tx_get_output_notes_commitment
+    word!("0xd5b22dae48ec4b20ed479f2c43573d34930720886371ef6b484310a3bea4e818"),
     // tx_get_block_commitment
     word!("0xe474b491a64d222397fcf83ee5db7b048061988e5e83ce99b91bae6fd75a3522"),
     // tx_get_block_number
@@ -101,6 +101,6 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta
     word!("0xa60286e820a755128b2269db5057b0e2d9b79fef6f813bf3fe3337553a8fbb53"),
-    // tx_update_expiration_block_num
+    // tx_update_expiration_block_delta
     word!("0xa16440a9a8cd2a6d0ff7f5c3bcce2958976e5d3e6e8a6935ff40ae1863c324f0"),
 ];
