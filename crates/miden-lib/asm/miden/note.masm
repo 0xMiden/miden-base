@@ -214,10 +214,10 @@ export.get_script_root
 
     # push the flag indicating that we want to request script root from the active note
     push.1
-    # => [is_current_note = 1, pad(14)]
+    # => [is_active_note = 1, pad(14)]
 
     exec.kernel_proc_offsets::input_note_get_script_root_offset
-    # => [offset, is_current_note = 1, pad(14)]
+    # => [offset, is_active_note = 1, pad(14)]
 
     syscall.exec_kernel_proc
     # => [SCRIPT_ROOT, pad(12)]
