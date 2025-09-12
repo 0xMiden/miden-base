@@ -24,7 +24,7 @@ use alloc::vec::Vec;
 
 use miden_lib::transaction::memory::{
     ACCOUNT_STACK_TOP_PTR,
-    CURRENT_INPUT_NOTE_PTR,
+    ACTIVE_INPUT_NOTE_PTR,
     NATIVE_NUM_ACCT_STORAGE_SLOTS_PTR,
 };
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
@@ -284,7 +284,7 @@ where
             },
 
             TransactionEvent::NoteExecutionStart => {
-                let note_id = Self::get_current_note_id(process)?.expect(
+                let note_id = Self::get_active_note_id(process)?.expect(
                     "Note execution interval measurement is incorrect: check the placement of the start and the end of the interval",
                 );
                 self.tx_progress.start_note_execution(process.clk(), note_id);
@@ -779,16 +779,16 @@ where
     // HELPER FUNCTIONS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the ID of the currently executing input note, or None if the note execution hasn't
-    /// started yet or has already ended.
+    /// Returns the ID of the active note, or None if the note execution hasn't started yet or has
+    /// already ended.
     ///
     /// # Errors
-    /// Returns an error if the address of the currently executing input note is invalid (e.g.,
-    /// greater than `u32::MAX`).
-    fn get_current_note_id(process: &ProcessState) -> Result<Option<NoteId>, EventError> {
+    /// Returns an error if the address of the active note is invalid (e.g., greater than
+    /// `u32::MAX`).
+    fn get_active_note_id(process: &ProcessState) -> Result<Option<NoteId>, EventError> {
         // get the note address in `Felt` or return `None` if the address hasn't been accessed
         // previously.
-        let note_address_felt = match process.get_mem_value(process.ctx(), CURRENT_INPUT_NOTE_PTR) {
+        let note_address_felt = match process.get_mem_value(process.ctx(), ACTIVE_INPUT_NOTE_PTR) {
             Some(addr) => addr,
             None => return Ok(None),
         };

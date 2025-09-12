@@ -108,7 +108,7 @@ impl WellKnownNote {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the expected inputs number of the current note.
+    /// Returns the expected inputs number of the active note.
     pub fn num_expected_inputs(&self) -> usize {
         match self {
             Self::P2ID => Self::P2ID_NUM_INPUTS,

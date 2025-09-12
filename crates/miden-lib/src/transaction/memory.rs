@@ -73,8 +73,8 @@ pub const FAUCET_STORAGE_DATA_SLOT: StorageSlot = 0;
 // BOOKKEEPING
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which a pointer to the input note being executed is stored.
-pub const CURRENT_INPUT_NOTE_PTR: MemoryAddress = 0;
+/// The memory address at which a pointer to the currently active input note is stored.
+pub const ACTIVE_INPUT_NOTE_PTR: MemoryAddress = 0;
 
 /// The memory address at which the number of output notes is stored.
 pub const NUM_OUTPUT_NOTES_PTR: MemoryAddress = 4;
@@ -415,7 +415,7 @@ pub const INPUT_NOTE_ASSETS_OFFSET: MemoryOffset = 40;
 //
 // Dirty flag is set to 0 after every recomputation of the assets commitment in the
 // `kernel::note::compute_output_note_assets_commitment` procedure. It is set to 1 in the
-// `kernel::tx::add_asset_to_note` procedure after any change was made to the assets data .
+// `kernel::output_note::add_asset` procedure after any change was made to the assets data.
 
 /// The memory address at which the output notes section begins.
 pub const OUTPUT_NOTE_SECTION_OFFSET: MemoryOffset = 16_777_216;

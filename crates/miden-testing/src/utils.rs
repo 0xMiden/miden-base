@@ -181,7 +181,7 @@ fn note_script_that_creates_notes<'note>(
     sender_id: AccountId,
     output_notes: impl Iterator<Item = &'note Note>,
 ) -> anyhow::Result<String> {
-    let mut out = String::from("use.miden::tx\nuse.mock::account\n\nbegin\n");
+    let mut out = String::from("use.miden::output_note\n\nbegin\n");
 
     for (idx, note) in output_notes.into_iter().enumerate() {
         anyhow::ensure!(
@@ -214,7 +214,7 @@ fn note_script_that_creates_notes<'note>(
             push.{note_type}
             push.{aux}
             push.{tag}
-            call.tx::create_note\n",
+            call.output_note::create\n",
             recipient = note.recipient().digest(),
             hint = Felt::from(note.metadata().execution_hint()),
             note_type = note.metadata().note_type() as u8,

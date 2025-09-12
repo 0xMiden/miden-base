@@ -7,10 +7,10 @@
 # - max_supply is the maximum supply of the token.
 # - decimals are the decimals of the token.
 # - token_symbol as three chars encoded in a Felt.
+
 use.miden::account
 use.miden::faucet
-use.miden::tx
-use.miden::contracts::auth::basic
+use.miden::output_note
 
 # CONSTANTS
 # =================================================================================================
@@ -80,11 +80,11 @@ export.distribute.4
     # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(7)]
 
     # create a note
-    exec.tx::create_note
+    exec.output_note::create
     # => [note_idx, pad(15)]
 
     # load the ASSET and add it to the note
-    movdn.4 loc_loadw.0 exec.tx::add_asset_to_note movup.4
+    movdn.4 loc_loadw.0 exec.output_note::add_asset movup.4
     # => [note_idx, ASSET, pad(11)]
 end
 

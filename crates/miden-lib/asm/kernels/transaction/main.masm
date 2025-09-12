@@ -107,8 +107,8 @@ proc.main.1
         dropw dropw dropw dropw
         # => [pad(16)]
 
-        exec.note::increment_current_input_note_ptr
-        # => [current_input_note_ptr, pad(16)]
+        exec.note::increment_active_input_note_ptr
+        # => [active_input_note_ptr, pad(16)]
 
         # loop condition, exit when the memory ptr is after all input notes
         loc_load.0 neq

@@ -23,8 +23,8 @@ const.ERR_LINK_MAP_MAX_ENTRIES_EXCEEDED="number of link map entries exceeds maxi
 # BOOK KEEPING
 # -------------------------------------------------------------------------------------------------
 
-# The memory address at which a pointer to the input note being executed is stored.
-const.CURRENT_INPUT_NOTE_PTR=0
+# The memory address at which a pointer to the currently active input note is stored.
+const.ACTIVE_INPUT_NOTE_PTR=0
 
 # The memory address at which the number of output notes is stored.
 const.NUM_OUTPUT_NOTES_PTR=4
@@ -294,26 +294,26 @@ export.set_num_output_notes
     mem_store.NUM_OUTPUT_NOTES_PTR
 end
 
-#! Returns a pointer to the input note being executed.
+#! Returns a pointer to the active input note.
 #!
 #! Inputs:  []
 #! Outputs: [note_ptr]
 #!
 #! Where:
-#! - note_ptr is the memory address of the data segment for the current input note.
-export.get_current_input_note_ptr
-    mem_load.CURRENT_INPUT_NOTE_PTR
+#! - note_ptr is the memory address of the data segment for the active note.
+export.get_active_input_note_ptr
+    mem_load.ACTIVE_INPUT_NOTE_PTR
 end
 
-#! Sets the current input note pointer to the input note being executed.
+#! Sets the active note pointer to the specified value.
 #!
 #! Inputs:  [note_ptr]
 #! Outputs: []
 #!
 #! Where:
 #! - note_ptr is the new memory address of the data segment for the input note.
-export.set_current_input_note_ptr
-    mem_store.CURRENT_INPUT_NOTE_PTR
+export.set_active_input_note_ptr
+    mem_store.ACTIVE_INPUT_NOTE_PTR
 end
 
 #! Returns a pointer to the memory address at which the input vault root is stored.
@@ -1589,7 +1589,7 @@ export.set_input_note_args
     mem_storew
 end
 
-#! Returns the number of inputs of the note currently being processed.
+#! Returns the number of inputs of the note located at the specified memory address.
 #!
 #! Inputs:  [note_ptr]
 #! Outputs: [num_inputs]

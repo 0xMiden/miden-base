@@ -29,17 +29,17 @@ const.ERR_FAUCET_IS_NF_ASSET_ISSUED_PROC_CAN_ONLY_BE_CALLED_ON_NON_FUNGIBLE_FAUC
 
 const.ERR_KERNEL_PROCEDURE_OFFSET_OUT_OF_BOUNDS="provided kernel procedure offset is out of bounds"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_ASSETS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note assets of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note recipient of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_RECIPIENT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note recipient of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADATA_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note metadata of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_INPUTS_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note inputs of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SCRIPT_ROOT_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note script root of active note because no note is currently being processed"
 
-const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note serial number of current note because no note is currently being processed"
+const.ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_SERIAL_NUMBER_WHILE_NO_NOTE_BEING_PROCESSED="failed to access note serial number of active note because no note is currently being processed"
 
 # AUTHENTICATION
 # =================================================================================================
@@ -744,20 +744,20 @@ end
 
 #! Returns the assets information of the specified input note.
 #!
-#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Inputs:  [is_active_note, note_index, pad(14)]
 #! Outputs: [ASSETS_COMMITMENT, num_assets, pad(11)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the assets data from
-#!   the currently processing note or from the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return the assets data from
+#!   the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose assets info should be returned. Notice that if
-#!   is_current_note is 1, note_index is ignored.
+#!   is_active_note is 1, note_index is ignored.
 #! - ASSETS_COMMITMENT is a sequential hash of the assets in the specified input note.
 #! - num_assets is the number of assets in the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -783,19 +783,19 @@ end
 
 #! Returns the recipient of the specified input note.
 #!
-#! Inputs:  [is_current_note, note_index, pad(15)]
+#! Inputs:  [is_active_note, note_index, pad(15)]
 #! Outputs: [RECIPIENT, pad(12)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the assets data from
-#!   the currently processing note or from the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return the assets data from
+#!   the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose assets info should be returned. Notice that if
-#!   is_current_note is 1, note_index is ignored.
+#!   is_active_note is 1, note_index is ignored.
 #! - RECIPIENT is the commitment to the input note's script, inputs, the serial number.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -821,19 +821,19 @@ end
 
 #! Returns the metadata of the specified input note.
 #!
-#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Inputs:  [is_active_note, note_index, pad(14)]
 #! Outputs: [METADATA, pad(12)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the metadata from
-#!   the currently processing note or from the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return the metadata from
+#!   the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose metadata should be returned. Notice that if
-#!   is_current_note is 1, note_index is ignored.
+#!   is_active_note is 1, note_index is ignored.
 #! - METADATA is the metadata of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -859,19 +859,19 @@ end
 
 #! Returns the serial number of the specified input note.
 #!
-#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Inputs:  [is_active_note, note_index, pad(14)]
 #! Outputs: [SERIAL_NUMBER, pad(12)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the serial number
-#!   of the currently processing note or of the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return the serial number
+#!   of the active note or of the note with the specified index.
 #! - note_index is the index of the input note whose serial number should be returned. Notice that 
-#!   if is_current_note is 1, note_index is ignored.
+#!   if is_active_note is 1, note_index is ignored.
 #! - SERIAL_NUMBER is the serial number of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -899,20 +899,20 @@ end
 
 #! Returns the inputs commitment and length of the specified input note.
 #!
-#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Inputs:  [is_active_note, note_index, pad(14)]
 #! Outputs: [NOTE_INPUTS_COMMITMENT, num_inputs, pad(11)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
-#!   and length from the currently processing note or from the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return the inputs commitment 
+#!   and length from the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
-#!   is_current_note is 1, note_index is ignored.
+#!   is_active_note is 1, note_index is ignored.
 #! - NOTE_INPUTS_COMMITMENT is the inputs commitment of the specified input note.
 #! - num_inputs is the number of inputs of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -944,19 +944,19 @@ end
 
 #! Returns the script root of the specified input note.
 #!
-#! Inputs:  [is_current_note, note_index, pad(14)]
+#! Inputs:  [is_active_note, note_index, pad(14)]
 #! Outputs: [SCRIPT_ROOT, pad(12)]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return the inputs commitment 
-#!   and length from the currently processing note or from the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return the inputs commitment 
+#!   and length from the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
-#!   is_current_note is 1, note_index is ignored.
+#!   is_active_note is 1, note_index is ignored.
 #! - SCRIPT_ROOT is the script root of the specified input note.
 #!
 #! Panics if:
 #! - the note index is greater or equal to the total number of input notes.
-#! - is_current_note is 1 and no input note is not being processed (attempted to access note inputs
+#! - is_active_note is 1 and no input note is not being processed (attempted to access note inputs
 #!   from incorrect context).
 #!
 #! Invocation: dynexec
@@ -984,6 +984,29 @@ end
 
 ### OUTPUT NOTE #################################
 
+#! Creates a new note and returns its index.
+#!
+#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+#! Outputs: [note_idx, pad(15)]
+#!
+#! Where:
+#! - tag is the tag to be included in the note.
+#! - aux is the auxiliary metadata to be included in the note.
+#! - note_type is the note storage type.
+#! - execution_hint is the note execution hint tag and payload.
+#! - RECIPIENT is the recipient of the note.
+#! - note_idx is the index of the created note.
+#!
+#! Invocation: dynexec
+export.output_note_create
+    # check that this procedure was executed against the native account
+    exec.memory::assert_native_account
+    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
+
+    exec.output_note::create
+    # => [note_idx, pad(15)]
+end
+
 #! Adds the ASSET to the note specified by the index.
 #!
 #! Inputs:  [note_idx, ASSET, pad(11)]
@@ -1006,7 +1029,7 @@ export.output_note_add_asset
     movdn.4 dupw movup.8
     # => [note_idx, ASSET, ASSET, pad(11)]
 
-    exec.tx::add_asset_to_note
+    exec.output_note::add_asset
     # => [note_idx, ASSET, pad(11)]
 end
 
@@ -1103,29 +1126,6 @@ export.output_note_get_metadata
 end
 
 ### TRANSACTION #################################
-
-#! Creates a new note and returns the index of the note.
-#!
-#! Inputs:  [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-#! Outputs: [note_idx, pad(15)]
-#!
-#! Where:
-#! - tag is the tag to be included in the note.
-#! - aux is the auxiliary metadata to be included in the note.
-#! - note_type is the note storage type.
-#! - execution_hint is the note execution hint tag and payload.
-#! - RECIPIENT is the recipient of the note.
-#! - note_idx is the index of the created note.
-#!
-#! Invocation: dynexec
-export.tx_create_note
-    # check that this procedure was executed against the native account
-    exec.memory::assert_native_account
-    # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
-
-    exec.tx::create_note
-    # => [note_idx, pad(15)]
-end
 
 #! Returns the input notes commitment.
 #!
@@ -1378,7 +1378,8 @@ export.tx_end_foreign_context
     # => [pad(16)]
 end
 
-#! Updates the transaction expiration time delta.
+#! Updates the transaction expiration block delta.
+#!
 #! Once set, the delta can be decreased but not increased.
 #!
 #! The input block height delta is added to the reference block in order to output an upper limit
@@ -1391,8 +1392,8 @@ end
 #! - block_height_delta is the desired expiration time delta (1 to 0xFFFF).
 #!
 #! Invocation: dynexec
-export.tx_update_expiration_block_num
-    exec.tx::update_expiration_block_num
+export.tx_update_expiration_block_delta
+    exec.tx::update_expiration_block_delta
     # => [pad(16)]
 end
 
@@ -1471,17 +1472,17 @@ end
 #! Returns the memory pointer to the input note, depending on whether the requested note is current
 #! or it was requested by index.
 #!
-#! If the pointer to the currently processing note was requested, but no note is being executed, 0 
+#! If the pointer to the active note was requested, but no note is being executed, 0 
 #! is returned.
 #!
-#! Inputs:  [is_current_note, note_index]
+#! Inputs:  [is_active_note, note_index]
 #! Outputs: [input_note_ptr]
 #!
 #! Where:
-#! - is_current_note is the boolean flag indicating whether we should return requested data from
-#!   the currently processing note or from the note with the specified index.
+#! - is_active_note is the boolean flag indicating whether we should return requested data from
+#!   the active note or from the note with the specified index.
 #! - note_index is the index of the input note whose data should be returned. Notice that if
-#!   is_current_note is 1, note_index is ignored.
+#!   is_active_note is 1, note_index is ignored.
 #! - input_note_ptr is the pointer to the correct input note. 
 #!
 #! Panics if:
@@ -1489,13 +1490,13 @@ end
 proc.get_requested_note_ptr
     # get the memory pointer to the note with the specified index and verify it is valid
     swap exec.input_note::get_input_note_ptr swap
-    # => [is_current_note, indexed_input_note_ptr]
+    # => [is_active_note, indexed_input_note_ptr]
 
     # get the memory pointer to the currently processed input note
-    exec.memory::get_current_input_note_ptr swap
-    # => [is_current_note, current_input_note_ptr, indexed_input_note_ptr]
+    exec.memory::get_active_input_note_ptr swap
+    # => [is_active_note, active_input_note_ptr, indexed_input_note_ptr]
 
-    # If is_current_note flag is true (current note processing case), current_input_note_ptr remains
+    # If is_active_note flag is true (active note processing case), active_input_note_ptr remains
     # on the stack. If it is false, indexed_input_note_ptr remains instead.
     cdrop
     # => [input_note_ptr]
