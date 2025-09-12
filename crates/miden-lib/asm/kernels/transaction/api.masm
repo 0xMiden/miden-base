@@ -1493,10 +1493,10 @@ proc.get_requested_note_ptr
     # => [is_active_note, indexed_input_note_ptr]
 
     # get the memory pointer to the currently processed input note
-    exec.memory::get_current_input_note_ptr swap
-    # => [is_active_note, current_input_note_ptr, indexed_input_note_ptr]
+    exec.memory::get_active_input_note_ptr swap
+    # => [is_active_note, active_input_note_ptr, indexed_input_note_ptr]
 
-    # If is_active_note flag is true (active note processing case), current_input_note_ptr remains
+    # If is_active_note flag is true (active note processing case), active_input_note_ptr remains
     # on the stack. If it is false, indexed_input_note_ptr remains instead.
     cdrop
     # => [input_note_ptr]

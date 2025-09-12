@@ -10,7 +10,7 @@ use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADAT
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
+use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
@@ -243,8 +243,8 @@ fn test_get_assets() -> anyhow::Result<()> {
             # process note 0
             call.process_note_0
 
-            # increment current input note pointer
-            exec.note_internal::increment_current_input_note_ptr
+            # increment active input note pointer
+            exec.note_internal::increment_active_input_note_ptr
 
             # prepare note 1
             exec.note_internal::prepare_note
@@ -523,7 +523,7 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
             repeat.11 movup.4 drop end
             # => [NOTE_ARGS0, pad(16)]
 
-            exec.note::increment_current_input_note_ptr drop
+            exec.note::increment_active_input_note_ptr drop
             # => [NOTE_ARGS0, pad(16)]
 
             exec.note::prepare_note drop
@@ -572,7 +572,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
 fn note_setup_memory_assertions(process: &Process) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        process.get_kernel_mem_word(CURRENT_INPUT_NOTE_PTR)[0],
+        process.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }

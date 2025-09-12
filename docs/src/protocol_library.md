@@ -52,19 +52,19 @@ Account procedures can be used to read and write to account storage, add or remo
 
 ## Note Procedures (`miden::note`)
 
-Note procedures can be used to fetch data from the note that is currently being processed.
+Note procedures can be used to fetch data from the active note.
 
 | Procedure | Description | Context |
 | --- | --- | --- |
-| `get_assets` | Writes the assets of the currently executing note into memory starting at the specified address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Note |
-| `get_recipient` | Returns the recipient of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[RECIPIENT]` | Note |
+| `get_assets` | Writes the assets of the active note into memory starting at the specified address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Note |
+| `get_recipient` | Returns the recipient of the active note.<br><br>Inputs: `[]`<br>Outputs: `[RECIPIENT]` | Note |
 | `get_inputs` | Writes the note's inputs to the specified memory address.<br><br>Inputs: `[dest_ptr]`<br>Outputs: `[num_inputs, dest_ptr]` | Note |
-| `get_sender` | Returns the sender of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Note |
-| `get_serial_number` | Returns the serial number of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
-| `get_script_root` | Returns the script root of the note currently being processed.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
+| `get_sender` | Returns the sender of the active note.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Note |
+| `get_serial_number` | Returns the serial number of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
+| `get_script_root` | Returns the script root of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
 | `compute_inputs_commitment` | Computes the commitment to the output note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[INPUTS_COMMITMENT]` | Any |
 | `get_max_inputs_per_note` | Returns the max allowed number of input values per note.<br><br>Inputs: `[]`<br>Outputs: `[max_inputs_per_note]` | Any |
-| `add_assets_to_account` | Adds all assets from the currently executing note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]` | Note |
+| `add_assets_to_account` | Adds all assets from the active note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]` | Note |
 | `write_assets_to_memory` | Writes the assets data stored in the advice map to the memory specified by the provided destination pointer.<br><br>Inputs: `[ASSETS_COMMITMENT, num_assets, dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Any |
 | `build_recipient_hash` | Returns the `RECIPIENT` for a specified `SERIAL_NUM`, `SCRIPT_ROOT`, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
 | `build_recipient` | Builds the recipient hash from note inputs, script root, and serial number.<br><br>Inputs: `[inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]`<br>Outputs: `[RECIPIENT]` | Any |

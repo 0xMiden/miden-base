@@ -1037,10 +1037,10 @@ proc.process_input_notes_data
     assert_eqw.err=ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH
     # => [idx+1, num_notes]
 
-    # set the current input note ptr to the address of the first input note
+    # set the active input note ptr to the address of the first input note
     push.0
     exec.memory::get_input_note_ptr
-    exec.memory::set_current_input_note_ptr
+    exec.memory::set_active_input_note_ptr
     # => [idx+1, num_notes]
 
     drop drop

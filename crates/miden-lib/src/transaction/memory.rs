@@ -73,8 +73,8 @@ pub const FAUCET_STORAGE_DATA_SLOT: StorageSlot = 0;
 // BOOKKEEPING
 // ------------------------------------------------------------------------------------------------
 
-/// The memory address at which a pointer to the input note being executed is stored.
-pub const CURRENT_INPUT_NOTE_PTR: MemoryAddress = 0;
+/// The memory address at which a pointer to the currently active input note is stored.
+pub const ACTIVE_INPUT_NOTE_PTR: MemoryAddress = 0;
 
 /// The memory address at which the number of output notes is stored.
 pub const NUM_OUTPUT_NOTES_PTR: MemoryAddress = 4;
