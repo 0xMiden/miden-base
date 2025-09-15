@@ -228,8 +228,8 @@ where
         }
 
         let advice_mutations = match transaction_event {
-            TransactionEvent::AccountBeforeLoadForeign => {
-                self.on_account_before_load_foreign(process)
+            TransactionEvent::AccountBeforeForeignLoad => {
+                self.on_account_before_foreign_load(process)
             }
 
             TransactionEvent::AccountVaultBeforeAddAsset => {
@@ -353,7 +353,7 @@ where
     /// being loaded.
     ///
     /// Expected stack state: `[account_id_prefix, account_id_suffix]`
-    pub fn on_account_before_load_foreign(
+    pub fn on_account_before_foreign_load(
         &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
