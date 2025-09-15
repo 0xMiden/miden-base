@@ -287,10 +287,20 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage, storage_index: u8) -> 
         .expect("invalid storage index of the multisig configuration");
 
     let threshold = config[0].as_int() as u32;
-    let num_approvers = config[1].as_int() as u8;
+    let num_approvers = config[1].as_int() as u32;
+
+    // Validate multisig invariants to guard against corrupted storage
+    if threshold == 0 || threshold > num_approvers {
+        panic!(
+            "Invalid multisig configuration at storage index {}: threshold={}, num_approvers={}",
+            storage_index, threshold, num_approvers
+        );
+    }
 
     // The public keys are stored in a map at the next slot (storage_index + 1)
-    let pub_keys_map_slot = storage_index + 1;
+    let pub_keys_map_slot = storage_index
+        .checked_add(1)
+        .expect("invalid storage index for multisig public keys map");
 
     let mut pub_keys = Vec::new();
 
