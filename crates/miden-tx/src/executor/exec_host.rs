@@ -277,24 +277,21 @@ where
 
     /// Handles a request for a storage map witness by querying the data store for a merkle path.
     ///
-    /// Note that we request witnesses against the initial map root for native accounts. See also
+    /// Note that we request witnesses against the _initial_ map root of the accounts. See also
     /// [`Self::on_account_vault_asset_witness_requested`] for more on this topic.
     async fn on_account_storage_map_witness_requested(
         &self,
         current_account_id: AccountId,
         slot_index: usize,
-        _map_root: Word,
+        current_map_root: Word,
         map_key: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // For now, we only support getting witnesses for the native account, so return early if the
-        // requested account is not the native one.
-        if current_account_id != self.base_host.initial_account_header().id() {
-            return Ok(Vec::new());
-        }
-
-        // For native accounts, we have to request witnesses against the initial root instead of the
-        // _current_ one, since the data store only has witnesses for initial one.
-        let map_root = {
+        // For the native account we need to explicitly request the initial map root, while for
+        // foreign accounts the current map root is always the initial one.
+        let map_root = if current_account_id == self.base_host.initial_account_header().id() {
+            // For native accounts, we have to request witnesses against the initial root instead of
+            // the _current_ one, since the data store only has witnesses for initial
+            // one.
             let (slot_type, slot_value) =
                 self.base_host.initial_account_storage_header().slot(slot_index).map_err(
                     |err| {
@@ -310,6 +307,8 @@ where
                 )));
             }
             *slot_value
+        } else {
+            current_map_root
         };
 
         let storage_map_witness = self
@@ -361,19 +360,26 @@ where
     /// the merkle store. Note that B' is in the store because the transaction inserted it into the
     /// merkle store as part of updating E, not because we inserted it. B is present in the store,
     /// but is simply ignored for the purpose of verifying G's inclusion.
+    ///
+    /// ## Foreign Accounts
+    ///
+    /// Foreign accounts are read-only and so their _current_ vault root is always equivalent to the
+    /// _initial_ vault root. So, for foreign accounts, just like for the native account, we also
+    /// always request witnesses for the initial vault root.
     async fn on_account_vault_asset_witness_requested(
         &self,
         current_account_id: AccountId,
-        _vault_root: Word,
+        current_vault_root: Word,
         asset: Asset,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // For now, we only support getting witnesses for the native account, so return early if the
-        // requested account is not the native one.
-        if current_account_id != self.base_host.initial_account_header().id() {
-            return Ok(Vec::new());
-        }
+        // For the native account we need to explicitly request the initial vault root, while for
+        // foreign accounts the current vault root is always the initial one.
+        let vault_root = if current_account_id == self.base_host.initial_account_header().id() {
+            self.base_host.initial_account_header().vault_root()
+        } else {
+            current_vault_root
+        };
 
-        let vault_root = self.base_host.initial_account_header().vault_root();
         let vault_key = asset.vault_key();
         let asset_witness = self
             .base_host
@@ -477,22 +483,26 @@ where
                 },
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,
-                    vault_root,
+                    current_vault_root,
                     asset,
                 } => self
-                    .on_account_vault_asset_witness_requested(current_account_id, vault_root, asset)
+                    .on_account_vault_asset_witness_requested(
+                        current_account_id,
+                        current_vault_root,
+                        asset,
+                    )
                     .await
                     .map_err(EventError::from),
                 TransactionEventData::AccountStorageMapWitness {
                     current_account_id,
                     slot_index,
-                    map_root,
+                    current_map_root,
                     map_key,
                 } => self
                     .on_account_storage_map_witness_requested(
                         current_account_id,
                         slot_index,
-                        map_root,
+                        current_map_root,
                         map_key,
                     )
                     .await
