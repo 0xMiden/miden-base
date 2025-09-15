@@ -132,7 +132,7 @@ pub enum AccountError {
     AccountIdSeedMismatch { actual: AccountId, expected: AccountId },
     #[error("account ID seed was provided for an existing account")]
     ExistingAccountWithSeed,
-    #[error("account ID seed was provided for an existing account")]
+    #[error("account ID seed was not provided for a new account")]
     NewAccountMissingSeed,
     #[error("seed converts to an invalid account ID")]
     SeedConvertsToInvalidAccountId(#[source] AccountIdError),
