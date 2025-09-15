@@ -1,23 +1,31 @@
 {
-  "simple": {
-    "prologue": 4178,
-    "notes_processing": 2624,
+  "consume single P2ID note": {
+    "prologue": 3057,
+    "notes_processing": 1693,
     "note_execution": {
-      "0x2a96867a0f22d54d1e3530c074c3ad9ba9542b5060edf2f8398202f5d2e3f557": 1308,
-      "0xc52584ba513fd5eaaec47234263a1b20ce4d848488430e577dbdd6d9254d5bae": 1275
+      "0x0c0fd9566093a189a4b3a66e57a457dc09e80eb961e5a8ec0520612faa90a99a": 1659
     },
-    "tx_script_processing": 39,
-    "epilogue": 1663,
+    "tx_script_processing": 40,
+    "epilogue": 62443,
     "after_tx_cycles_obtained": 500
   },
-  "p2id": {
-    "prologue": 2779,
-    "notes_processing": 1653,
+  "consume multiple P2ID notes": {
+    "prologue": 3726,
+    "notes_processing": 3394,
     "note_execution": {
-      "0xb3044cb915c500d7678047e7f6cdfc9581efd8ebd07ff1977ef86f7072c51463": 1620
+      "0x04bc450620af6b9fc4a3a0ae676d9a4aa1f3a0429b496f3f97bfeabf1be91e2f": 1692,
+      "0x6319f813753ae6781cbb34b6d331e8708852e268a008e0418ffccdc70abde8a9": 1659
     },
-    "tx_script_processing": 39,
-    "epilogue": 62466,
+    "tx_script_processing": 40,
+    "epilogue": 62443,
+    "after_tx_cycles_obtained": 500
+  },
+  "create single P2ID note": {
+    "prologue": 1549,
+    "notes_processing": 26,
+    "note_execution": {},
+    "tx_script_processing": 1484,
+    "epilogue": 63157,
     "after_tx_cycles_obtained": 500
   }
 }
