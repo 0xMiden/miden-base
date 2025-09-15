@@ -34,7 +34,7 @@ impl AccountProcedureIndexMap {
     /// Inserts the procedures from the provided [`AccountCode`] into the advice inputs, using
     /// [`AccountCode::commitment`] as the key.
     ///
-    /// The resulting instance will map the account code commmitment to a mapping of
+    /// The resulting instance will map the account code commitment to a mapping of
     /// `proc_root |-> proc_index` for any account that is expected to be involved in the
     /// transaction, enabling fast procedure index lookups at runtime.
     pub fn insert_code(&mut self, code: &AccountCode) -> Result<(), TransactionHostError> {
