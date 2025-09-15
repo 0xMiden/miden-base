@@ -579,12 +579,7 @@ end
 #!
 #! Invocation: dynexec
 export.account_get_balance
-    # get the vault root
-    exec.memory::get_account_vault_root_ptr movdn.2
-    # => [faucet_id_prefix, faucet_id_suffix, account_vault_root_ptr, pad(14)]
-
-    # get the asset balance
-    exec.asset_vault::get_balance
+    exec.account::get_balance
     # => [balance, pad(15)]
 end
 
@@ -602,12 +597,7 @@ end
 #!
 #! Invocation: dynexec
 export.account_has_non_fungible_asset
-    # get the vault root
-    exec.memory::get_account_vault_root_ptr movdn.4
-    # => [ASSET, vault_root_ptr, pad(12)]
-
-    # check if the account vault has the non-fungible asset
-    exec.asset_vault::has_non_fungible_asset
+    exec.account::has_non_fungible_asset
     # => [has_asset, pad(15)]
 end
 

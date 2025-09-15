@@ -16,6 +16,10 @@ const ACCOUNT_VAULT_AFTER_ADD_ASSET: u32 = 0x2_0001; // 131073
 const ACCOUNT_VAULT_BEFORE_REMOVE_ASSET: u32 = 0x2_0002; // 131074
 const ACCOUNT_VAULT_AFTER_REMOVE_ASSET: u32 = 0x2_0003; // 131075
 
+const ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT: u32 = 0x2_0021; // 131105
+
+const ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT: u32 = 0x2_0022; // 131106
+
 const ACCOUNT_STORAGE_BEFORE_SET_ITEM: u32 = 0x2_0004; // 131076
 const ACCOUNT_STORAGE_AFTER_SET_ITEM: u32 = 0x2_0005; // 131077
 
@@ -76,6 +80,10 @@ pub enum TransactionEvent {
 
     AccountVaultBeforeRemoveAsset = ACCOUNT_VAULT_BEFORE_REMOVE_ASSET,
     AccountVaultAfterRemoveAsset = ACCOUNT_VAULT_AFTER_REMOVE_ASSET,
+
+    AccountVaultBeforeGetBalanceEvent = ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT,
+
+    AccountVaultBeforeHasNonFungibleAssetEvent = ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT,
 
     AccountStorageBeforeSetItem = ACCOUNT_STORAGE_BEFORE_SET_ITEM,
     AccountStorageAfterSetItem = ACCOUNT_STORAGE_AFTER_SET_ITEM,
@@ -157,6 +165,14 @@ impl TryFrom<u32> for TransactionEvent {
                 Ok(TransactionEvent::AccountVaultBeforeRemoveAsset)
             },
             ACCOUNT_VAULT_AFTER_REMOVE_ASSET => Ok(TransactionEvent::AccountVaultAfterRemoveAsset),
+
+            ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT => {
+                Ok(TransactionEvent::AccountVaultBeforeGetBalanceEvent)
+            },
+
+            ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT => {
+                Ok(TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent)
+            },
 
             ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
             ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEvent::AccountStorageAfterSetItem),
