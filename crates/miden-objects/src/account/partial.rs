@@ -97,13 +97,17 @@ impl PartialAccount {
         &self.partial_vault
     }
 
-    /// Returns the seed of the account's ID, if any.
+    /// Returns the seed of the account's ID if the account is new.
+    ///
+    /// That is, if [`PartialAccount::is_new`] returns `true`, the seed will be `Some`.
     pub fn seed(&self) -> Option<Word> {
         self.seed
     }
 
-    /// Returns true if the account is new (i.e. its nonce is zero and it hasn't been registered on
-    /// chain yet).
+    /// Returns `true` if the account is new, `false` otherwise.
+    ///
+    /// An account is considered new if the account's nonce is zero and it hasn't been registered on
+    /// chain yet.
     pub fn is_new(&self) -> bool {
         self.nonce == ZERO
     }

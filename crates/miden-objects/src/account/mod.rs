@@ -282,7 +282,9 @@ impl Account {
         self.nonce
     }
 
-    /// Returns the seed of the account's ID, if any.
+    /// Returns the seed of the account's ID if the account is new.
+    ///
+    /// That is, if [`Account::is_new`] returns `true`, the seed will be `Some`.
     pub fn seed(&self) -> Option<Word> {
         self.seed
     }
@@ -318,7 +320,10 @@ impl Account {
         self.id().is_network()
     }
 
-    /// Returns true if the account is new (i.e. it has not been initialized yet).
+    /// Returns `true` if the account is new, `false` otherwise.
+    ///
+    /// An account is considered new if the account's nonce is zero and it hasn't been registered on
+    /// chain yet.
     pub fn is_new(&self) -> bool {
         self.nonce == ZERO
     }
