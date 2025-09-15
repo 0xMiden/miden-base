@@ -80,7 +80,7 @@ export.update_signers_and_threshold
     # => [NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
 
     push.THRESHOLD_CONFIG_SLOT
-    # => [slot, NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG] 
+    # => [slot, NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
 
     exec.account::set_item
     # => [OLD_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
@@ -91,13 +91,11 @@ export.update_signers_and_threshold
     # TODO assert threshold <= num_approvers
     # TODO only enter loop if pub keys exist in AdviceMap
 
-    drop drop swap drop 
+    drop drop swap drop
     # => [num_approvers]
 
     dup neq.0
     while.true
-        push.101 debug.stack drop
-
         sub.1
 
         dup
@@ -109,8 +107,6 @@ export.update_signers_and_threshold
 
         padw adv_loadw
         # => [PUB_KEY, [0, 0, 0, i-1], i-1]
-    
-        push.111 debug.stack drop
 
         swapw
         # => [[0, 0, 0, i-1], PUB_KEY, i-1]
@@ -126,12 +122,7 @@ export.update_signers_and_threshold
         dup neq.0
         # => [is_zero]
     end
-
-    push.222 debug.stack drop
-
-
 end
-
 
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
 #!
@@ -186,7 +177,7 @@ export.auth__tx_rpo_falcon512_multisig
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_item
+    exec.account::get_item_init
     # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop
@@ -219,4 +210,6 @@ export.auth__tx_rpo_falcon512_multisig
 
     exec.assert_new_tx
     # => [TX_SUMMARY_COMMITMENT]
+
+    push.111 debug.stack drop
 end

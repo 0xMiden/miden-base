@@ -403,6 +403,8 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
+    println!("tx_summary: {:?}", tx_summary.to_commitment());
+
     let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
     let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
@@ -417,7 +419,10 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .extend_advice_inputs(advice_inputs)
         .build()?
         .execute()
-        .await?;
+        .await
+        .unwrap();
+
+    println!("here");
 
     // Verify the transaction executed successfully
     assert_eq!(tx_context_execute.account_delta().nonce_delta(), Felt::new(1));
