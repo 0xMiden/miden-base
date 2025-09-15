@@ -6,6 +6,7 @@ pub mod block;
 pub mod block_note_tree;
 pub mod constants;
 pub mod noop_auth_component;
+pub mod add_component;
 pub mod note;
 pub mod partial_blockchain;
 pub mod storage;

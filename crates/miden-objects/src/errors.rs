@@ -128,13 +128,14 @@ pub enum AccountError {
         "digest of the seed has {actual} trailing zeroes but must have at least {expected} trailing zeroes"
     )]
     SeedDigestTooFewTrailingZeros { expected: u32, actual: u32 },
+    #[error("account ID {actual} computed from seed does not match ID {expected} on account")]
+    AccountIdSeedMismatch { actual: AccountId, expected: AccountId },
     #[error("account ID seed was provided for an existing account")]
-    SeedForExistingAccount,
-    #[error("{message}")]
-    InvalidAccountIdSeed {
-        message: Box<str>,
-        source: Option<AccountIdError>,
-    },
+    ExistingAccountWithSeed,
+    #[error("account ID seed was provided for an existing account")]
+    NewAccountMissingSeed,
+    #[error("seed converts to an invalid account ID")]
+    SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
     #[error("storage slot at index {0} is not of type map")]
@@ -171,13 +172,6 @@ pub enum AccountError {
 }
 
 impl AccountError {
-    /// Creates a custom error using the [`AccountError::InvalidAccountIdSeed`] variant from an
-    /// error message.
-    pub fn invalid_account_id_seed(message: impl Into<String>) -> Self {
-        let message: String = message.into();
-        Self::InvalidAccountIdSeed { message: message.into(), source: None }
-    }
-
     /// Creates a custom error using the [`AccountError::Other`] variant from an error message.
     pub fn other(message: impl Into<String>) -> Self {
         let message: String = message.into();

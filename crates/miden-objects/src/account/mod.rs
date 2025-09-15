@@ -489,29 +489,20 @@ pub(super) fn validate_account_seed(
     match (account_is_new, seed) {
         (true, Some(seed)) => {
             let account_id =
-                AccountId::new(seed, id.version(), code_commitment, storage_commitment).map_err(
-                    |err| AccountError::InvalidAccountIdSeed {
-                        message: "failed to create account ID from seed".into(),
-                        source: Some(err),
-                    },
-                )?;
+                AccountId::new(seed, id.version(), code_commitment, storage_commitment)
+                    .map_err(AccountError::SeedConvertsToInvalidAccountId)?;
 
             if account_id != id {
-                return Err(AccountError::invalid_account_id_seed(format!(
-                    "account ID {actual} computed from seed does not match ID {expected} on account",
-                    expected = id,
-                    actual = account_id
-                )));
+                return Err(AccountError::AccountIdSeedMismatch {
+                    expected: id,
+                    actual: account_id,
+                });
             }
 
             Ok(())
         },
-        (true, None) => Err(AccountError::invalid_account_id_seed(
-            "account seed must be provided for a new account",
-        )),
-        (false, Some(_)) => Err(AccountError::invalid_account_id_seed(
-            "account seed must not be provided for existing accounts",
-        )),
+        (true, None) => Err(AccountError::NewAccountMissingSeed),
+        (false, Some(_)) => Err(AccountError::ExistingAccountWithSeed),
         (false, None) => Ok(()),
     }
 }
@@ -542,6 +533,7 @@ mod tests {
 
     use assert_matches::assert_matches;
     use miden_assembly::Assembler;
+    use miden_core::FieldElement;
     use miden_crypto::utils::{Deserializable, Serializable};
     use miden_crypto::{Felt, Word};
 
@@ -554,9 +546,12 @@ mod tests {
         AccountVaultDelta,
     };
     use crate::AccountError;
+    use crate::account::AccountStorageMode::Network;
     use crate::account::{
         Account,
+        AccountBuilder,
         AccountComponent,
+        AccountIdVersion,
         AccountType,
         StorageMap,
         StorageMapDelta,
@@ -567,6 +562,7 @@ mod tests {
         ACCOUNT_ID_PRIVATE_SENDER,
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_IMMUTABLE_CODE,
     };
+    use crate::testing::add_component::AddComponent;
     use crate::testing::noop_auth_component::NoopAuthComponent;
     use crate::testing::storage::AccountStorageDeltaBuilder;
 
@@ -826,5 +822,71 @@ mod tests {
         .unwrap_err();
 
         assert_matches!(err, AccountError::AccountComponentDuplicateProcedureRoot(_))
+    }
+
+    /// Tests all cases of account ID seed validation.
+    #[test]
+    fn seed_validation() -> anyhow::Result<()> {
+        let account = AccountBuilder::new([5; 32])
+            .with_auth_component(NoopAuthComponent)
+            .with_component(AddComponent)
+            .build()?;
+        let (id, vault, storage, code, _nonce, seed) = account.into_parts();
+        assert!(seed.is_some());
+
+        let other_seed = AccountId::compute_account_seed(
+            [9; 32],
+            AccountType::FungibleFaucet,
+            Network,
+            AccountIdVersion::Version0,
+            code.commitment(),
+            storage.commitment(),
+        )?;
+
+        // Set nonce to 1 so the account is considered existing and provide the seed.
+        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, seed)
+            .unwrap_err();
+        assert_matches!(err, AccountError::ExistingAccountWithSeed);
+
+        // Set nonce to 0 so the account is considered new but don't provide the seed.
+        let err = Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, None)
+            .unwrap_err();
+        assert_matches!(err, AccountError::NewAccountMissingSeed);
+
+        // Set nonce to 0 so the account is considered new and provide a valid seed that results in
+        // a different ID than the provided one.
+        let err = Account::new(
+            id,
+            vault.clone(),
+            storage.clone(),
+            code.clone(),
+            Felt::ZERO,
+            Some(other_seed),
+        )
+        .unwrap_err();
+        assert_matches!(err, AccountError::AccountIdSeedMismatch { .. });
+
+        // Set nonce to 0 so the account is considered new and provide a seed that results in an
+        // invalid ID.
+        let err = Account::new(
+            id,
+            vault.clone(),
+            storage.clone(),
+            code.clone(),
+            Felt::ZERO,
+            Some(Word::from([1, 2, 3, 4u32])),
+        )
+        .unwrap_err();
+        assert_matches!(err, AccountError::SeedConvertsToInvalidAccountId(_));
+
+        // Set nonce to 1 so the account is considered existing and don't provide the seed, which
+        // should be valid.
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ONE, None)?;
+
+        // Set nonce to 0 so the account is considered new and provide the original seed, which
+        // should be valid.
+        Account::new(id, vault.clone(), storage.clone(), code.clone(), Felt::ZERO, seed)?;
+
+        Ok(())
     }
 }
