@@ -363,9 +363,10 @@ where
     ///
     /// ## Foreign Accounts
     ///
-    /// Foreign accounts are read-only and so their _current_ vault root is always equivalent to the
-    /// _initial_ vault root. So, for foreign accounts, just like for the native account, we also
-    /// always request witnesses for the initial vault root.
+    /// Foreign accounts are read-only and so they cannot change throughout transaction execution.
+    /// This means their _current_ vault root is always equivalent to their _initial_ vault root.
+    /// So, for foreign accounts, just like for the native account, we also always request
+    /// witnesses for the initial vault root.
     async fn on_account_vault_asset_witness_requested(
         &self,
         current_account_id: AccountId,
