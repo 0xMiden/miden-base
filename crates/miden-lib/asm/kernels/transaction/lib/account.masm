@@ -929,10 +929,10 @@ end
 #! Inputs:
 #!   Operand stack: [account_id_prefix, account_id_suffix]
 #!   Advice map: {
-#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce],
-#!                          VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT],
+#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce]],
+#!                   VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT],
 #!     STORAGE_COMMITMENT: [[STORAGE_SLOT_DATA]],
-#!     CODE_COMMITMENT: [num_procs, [ACCOUNT_PROCEDURE_DATA]]
+#!     CODE_COMMITMENT: [[ACCOUNT_PROCEDURE_DATA]],
 #!   }
 #! Outputs:
 #!   Operand stack: []
@@ -969,13 +969,13 @@ export.load_foreign_account
     # AS => [[account_id_prefix, account_id_suffix, 0, account_nonce], VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
 
     # store the id and nonce of the foreign account to the memory
-    dropw adv_loadw
-    exec.memory::set_account_id_and_nonce dropw
+    adv_loadw
+    exec.memory::set_account_id_and_nonce
     # OS => []
     # AS => [VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
 
     # store the vault root of the foreign account to the memory
-    adv_loadw exec.memory::set_account_vault_root dropw
+    adv_loadw exec.memory::set_account_vault_root
     # OS => []
     # AS => [STORAGE_COMMITMENT, CODE_COMMITMENT]
 
