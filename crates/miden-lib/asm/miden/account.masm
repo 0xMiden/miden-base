@@ -264,6 +264,39 @@ export.get_item
     # => [VALUE]
 end
 
+#! Gets an item from the account storage at its initial state (beginning of transaction).
+#! Panics if the index is out of bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [INIT_VALUE]
+#!
+#! Where:
+#! - index is the index of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the index of the requested item is out of bounds.
+#!
+#! Invocation: exec
+export.get_item_init
+    push.0.0 movup.2
+    # => [index, 0, 0]
+
+    exec.kernel_proc_offsets::account_get_item_init_offset
+    # => [offset, index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_VALUE, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_VALUE]
+end
+
 #! Sets an item in the account storage. Panics if the index is out of bounds.
 #!
 #! Inputs:  [index, VALUE]
@@ -356,6 +389,37 @@ export.set_map_item
     # clean the stack
     swapdw dropw dropw
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+end
+
+#! Gets a map item from the account storage at its initial state (beginning of transaction).
+#!
+#! Inputs:  [index, KEY]
+#! Outputs: [INIT_VALUE]
+#!
+#! Where:
+#! - index is the index of the map where the KEY VALUE should be read.
+#! - KEY is the key of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the index for the map is out of bounds, meaning > 255.
+#! - the slot item at index is not a map.
+#!
+#! Invocation: exec
+export.get_map_item_init
+    exec.kernel_proc_offsets::account_get_map_item_init_offset
+    # => [offset, index, KEY]
+
+    # pad the stack
+    push.0.0 movdn.7 movdn.7 padw padw swapdw
+    # => [offset, index, KEY, pad(10)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_VALUE, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_VALUE]
 end
 
 #! Gets the account code commitment of the current account.
