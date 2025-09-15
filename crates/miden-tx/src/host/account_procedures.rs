@@ -31,12 +31,12 @@ impl AccountProcedureIndexMap {
         Ok(index_map)
     }
 
-    /// Inserts the account procedures at the provided `code_commitment` key in the advice inputs
-    /// into the account procedure index map.
+    /// Inserts the procedures from the provided [`AccountCode`] into the advice inputs, using
+    /// [`AccountCode::commitment`] as the key.
     ///
-    /// The resulting instance will map all account code commmitments to a mapping of
+    /// The resulting instance will map the account code commmitment to a mapping of
     /// `proc_root |-> proc_index` for any account that is expected to be involved in the
-    /// transaction, enabling easy procedure index lookups at runtime.
+    /// transaction, enabling fast procedure index lookups at runtime.
     pub fn insert_code(&mut self, code: &AccountCode) -> Result<(), TransactionHostError> {
         let mut procedure_map = BTreeMap::new();
         for (proc_idx, proc_info) in code.procedures().iter().enumerate() {
