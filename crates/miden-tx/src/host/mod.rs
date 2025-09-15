@@ -836,7 +836,7 @@ where
 
         // Construct the fungible asset so we can easily fetch the vault key.
         // TODO: Replace this once we have a AssetKey type that can be constructed from a faucet ID
-        // directly.
+        // directly: https://github.com/0xMiden/miden-base/issues/1890.
         let asset = FungibleAsset::new(faucet_id, 0).map_err(|err| {
             TransactionKernelError::other_with_source(
                 "provided faucet ID is not valid for fungible assets",
