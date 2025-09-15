@@ -137,6 +137,9 @@ const.ACCOUNT_STORAGE_BEFORE_SET_ITEM_EVENT=131076
 # Event emitted after an account storage item is updated.
 const.ACCOUNT_STORAGE_AFTER_SET_ITEM_EVENT=131077
 
+# Event emitted before an account storage map item is accessed.
+const.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT=131103
+
 # Event emitted before an account storage map item is updated.
 const.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT=131078
 # Event emitted after an account storage map item is updated.
@@ -465,6 +468,27 @@ export.get_item
     # => [VALUE]
 end
 
+#! Gets an item from the account storage at its initial state (beginning of transaction).
+#!
+#! Note:
+#! - We assume that index has been validated and is within bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [INIT_VALUE]
+#!
+#! Where:
+#! - index is the index of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+export.get_item_init
+    # get account initial storage slots section offset
+    exec.memory::get_account_initial_storage_slots_ptr
+    # => [account_initial_storage_slots_ptr, index]
+
+    # get the item from initial storage
+    swap mul.8 add padw movup.4 mem_loadw
+    # => [INIT_VALUE]
+end
+
 #! Sets an item in the account storage.
 #!
 #! Note:
@@ -533,21 +557,81 @@ export.get_map_item
     assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
     # => [index, KEY]
 
+    dup movdn.5
+    # => [index, KEY, index]
+
     # fetch the account storage item, which is ROOT of the map
     exec.get_item swapw
-    # => [KEY, ROOT]
+    # => [KEY, ROOT, index]
+
+    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
+    # => [KEY, ROOT, index]
 
     # see hash_map_key's docs for why this is done
     exec.hash_map_key
-    # => [HASHED_KEY, ROOT]
+    # => [HASHED_KEY, ROOT, index]
 
     # fetch the VALUE located under HASHED_KEY in the tree
     exec.smt::get
-    # => [VALUE, ROOT]
+    # => [VALUE, ROOT, index]
 
     # remove the ROOT from the stack
     swapw dropw
+    # => [VALUE, index]
+
+    movup.4 drop
     # => [VALUE]
+end
+
+#! Returns the VALUE located under the specified KEY within the map contained in the given
+#! account storage slot at its initial state (beginning of transaction).
+#!
+#! Inputs:  [index, KEY]
+#! Outputs: [INIT_VALUE]
+#!
+#! Note:
+#! - We assume that index has been validated and is within bounds.
+#!
+#! Where:
+#! - index is the index of the storage slot that contains the map root.
+#! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the requested storage slot type is not map.
+export.get_map_item_init
+    # get the storage slot type
+    dup exec.get_storage_slot_type
+    # => [slot_type, index, KEY]
+
+    # check if storage slot type is map
+    exec.constants::get_storage_slot_type_map eq
+    assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
+    # => [index, KEY]
+
+    dup movdn.5
+    # => [index, KEY, index]
+
+    # fetch the initial account storage item, which is ROOT of the map
+    exec.get_item_init swapw
+    # => [KEY, INIT_ROOT, index]
+
+    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
+    # => [KEY, INIT_ROOT, index]
+
+    # see hash_map_key's docs for why this is done
+    exec.hash_map_key
+    # => [HASHED_KEY, INIT_ROOT, index]
+
+    # fetch the VALUE located under HASHED_KEY in the tree
+    exec.smt::get
+    # => [INIT_VALUE, INIT_ROOT, index]
+
+    # remove the ROOT from the stack
+    swapw dropw
+    # => [INIT_VALUE, index]
+
+    movup.4 drop
+    # => [INIT_VALUE]
 end
 
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
@@ -576,6 +660,9 @@ export.set_map_item.12
     movdnw.2 loc_load.0
     # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
 
+    emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
+    # => [index, KEY, NEW_VALUE, OLD_ROOT, ...]
+
     # check if storage type is map
     exec.get_storage_slot_type
     # => [slot_type, KEY, NEW_VALUE, OLD_ROOT]
@@ -583,9 +670,6 @@ export.set_map_item.12
     # check if slot_type == map
     exec.constants::get_storage_slot_type_map eq
     assert.err=ERR_ACCOUNT_SETTING_MAP_ITEM_ON_NON_MAP_SLOT
-    # => [KEY, NEW_VALUE, OLD_ROOT]
-
-    emit.ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM_EVENT
     # => [KEY, NEW_VALUE, OLD_ROOT]
 
     # duplicate the original KEY and the NEW_VALUE to be able to emit an event after the

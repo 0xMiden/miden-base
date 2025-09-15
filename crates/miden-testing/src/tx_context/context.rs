@@ -5,7 +5,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::{Account, AccountId, PartialAccount};
+use miden_objects::account::{Account, AccountId, PartialAccount, StorageMapWitness, StorageSlot};
 use miden_objects::assembly::debuginfo::{SourceLanguage, Uri};
 use miden_objects::assembly::{SourceManager, SourceManagerSync};
 use miden_objects::asset::AssetWitness;
@@ -225,6 +225,41 @@ impl DataStore for TransactionContext {
         let asset_witness = self.account().vault().open(vault_key);
 
         async { Ok(asset_witness) }
+    }
+
+    fn get_storage_map_witness(
+        &self,
+        account_id: AccountId,
+        map_root: Word,
+        map_key: Word,
+    ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>> {
+        assert_eq!(
+            account_id,
+            self.account.id(),
+            "only native account storage map witnesses can be requested (for now)"
+        );
+
+        async move {
+            // Iterate the account storage to find the map with the requested root.
+            let storage_map = self
+                .account()
+                .storage()
+                .slots()
+                .iter()
+                .find_map(|slot| match slot {
+                    StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
+                        Some(storage_map)
+                    },
+                    _ => None,
+                })
+                .ok_or_else(|| {
+                    DataStoreError::other(format!(
+                        "failed to find storage map with root {map_root} in account storage"
+                    ))
+                })?;
+
+            Ok(storage_map.open(&map_key))
+        }
     }
 }
 

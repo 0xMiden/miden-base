@@ -17,6 +17,8 @@ const ACCOUNT_VAULT_AFTER_REMOVE_ASSET: u32 = 0x2_0003; // 131075
 const ACCOUNT_STORAGE_BEFORE_SET_ITEM: u32 = 0x2_0004; // 131076
 const ACCOUNT_STORAGE_AFTER_SET_ITEM: u32 = 0x2_0005; // 131077
 
+const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT: u32 = 0x2_001f; // 131103
+
 const ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM: u32 = 0x2_0006; // 131078
 const ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM: u32 = 0x2_0007; // 131079
 
@@ -73,6 +75,8 @@ pub enum TransactionEvent {
 
     AccountStorageBeforeSetItem = ACCOUNT_STORAGE_BEFORE_SET_ITEM,
     AccountStorageAfterSetItem = ACCOUNT_STORAGE_AFTER_SET_ITEM,
+
+    AccountStorageBeforeGetMapItem = ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT,
 
     AccountStorageBeforeSetMapItem = ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM,
     AccountStorageAfterSetMapItem = ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM,
@@ -150,6 +154,10 @@ impl TryFrom<u32> for TransactionEvent {
 
             ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
             ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEvent::AccountStorageAfterSetItem),
+
+            ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT => {
+                Ok(TransactionEvent::AccountStorageBeforeGetMapItem)
+            },
 
             ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM => {
                 Ok(TransactionEvent::AccountStorageBeforeSetMapItem)

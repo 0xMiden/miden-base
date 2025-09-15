@@ -10,7 +10,7 @@ use miden_lib::errors::tx_kernel_errors::ERR_NOTE_ATTEMPT_TO_ACCESS_NOTE_METADAT
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::TransactionKernel;
-use miden_lib::transaction::memory::CURRENT_INPUT_NOTE_PTR;
+use miden_lib::transaction::memory::ACTIVE_INPUT_NOTE_PTR;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountBuilder, AccountId};
 use miden_objects::assembly::DefaultSourceManager;
@@ -35,11 +35,11 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_objects::transaction::{AccountInputs, OutputNote, TransactionArgs};
-use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE, Word};
+use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word, ZERO};
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 
-use super::{Felt, Process, ZERO};
+use super::Process;
 use crate::kernel_tests::tx::ProcessMemoryExt;
 use crate::utils::{create_p2any_note, input_note_data_ptr};
 use crate::{
@@ -98,7 +98,7 @@ fn test_get_sender() -> anyhow::Result<()> {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let input_note =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()?
@@ -243,8 +243,8 @@ fn test_get_assets() -> anyhow::Result<()> {
             # process note 0
             call.process_note_0
 
-            # increment current input note pointer
-            exec.note_internal::increment_current_input_note_ptr
+            # increment active input note pointer
+            exec.note_internal::increment_active_input_note_ptr
 
             # prepare note 1
             exec.note_internal::prepare_note
@@ -523,7 +523,7 @@ fn test_note_script_and_note_args() -> miette::Result<()> {
             repeat.11 movup.4 drop end
             # => [NOTE_ARGS0, pad(16)]
 
-            exec.note::increment_current_input_note_ptr drop
+            exec.note::increment_active_input_note_ptr drop
             # => [NOTE_ARGS0, pad(16)]
 
             exec.note::prepare_note drop
@@ -572,7 +572,7 @@ fn note_setup_stack_assertions(process: &Process, inputs: &TransactionContext) {
 fn note_setup_memory_assertions(process: &Process) {
     // assert that the correct pointer is stored in bookkeeping memory
     assert_eq!(
-        process.get_kernel_mem_word(CURRENT_INPUT_NOTE_PTR)[0],
+        process.get_kernel_mem_word(ACTIVE_INPUT_NOTE_PTR)[0],
         Felt::from(input_note_data_ptr(0))
     );
 }
@@ -617,20 +617,121 @@ fn test_get_note_serial_number() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_inputs_hash() -> anyhow::Result<()> {
+fn test_build_recipient() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
 
-    let code = "
+    // Create test script and serial number
+    let note_script = ScriptBuilder::default().compile_note_script("begin nop end")?;
+    let serial_num = Word::default();
+
+    // Define test values as Words
+    let word_1 = Word::from([1, 2, 3, 4u32]);
+    let word_2 = Word::from([5, 6, 7, 8u32]);
+    let word_3 = Word::from([9, 10, 11, 12u32]);
+    let word_4 = Word::from([13, 14, 15, 16u32]);
+    const BASE_ADDR: u32 = 4000;
+
+    let code = format!(
+        "
         use.std::sys
 
         use.miden::note
 
         begin
             # put the values that will be hashed into the memory
-            push.1.2.3.4.4000 mem_storew dropw
-            push.5.6.7.8.4004 mem_storew dropw
-            push.9.10.11.12.4008 mem_storew dropw
-            push.13.14.15.16.4012 mem_storew dropw
+            push.{word_1}.{base_addr} mem_storew dropw
+            push.{word_2}.{addr_1} mem_storew dropw
+            push.{word_3}.{addr_2} mem_storew dropw
+            push.{word_4}.{addr_3} mem_storew dropw
+
+            # Test with 4 values
+            push.{script_root}  # SCRIPT_ROOT
+            push.{serial_num}   # SERIAL_NUM
+            push.4.4000         # num_inputs, inputs_ptr
+            exec.note::build_recipient
+            # => [RECIPIENT_4]
+
+            # Test with 5 values
+            push.{script_root}  # SCRIPT_ROOT
+            push.{serial_num}   # SERIAL_NUM
+            push.5.4000         # num_inputs, inputs_ptr
+            exec.note::build_recipient
+            # => [RECIPIENT_5, RECIPIENT_4]
+
+            # Test with 13 values
+            push.{script_root}  # SCRIPT_ROOT
+            push.{serial_num}   # SERIAL_NUM
+            push.13.4000        # num_inputs, inputs_ptr
+            exec.note::build_recipient
+            # => [RECIPIENT_13, RECIPIENT_5, RECIPIENT_4]
+
+            # truncate the stack
+            exec.sys::truncate_stack
+        end
+    ",
+        word_1 = word_1,
+        word_2 = word_2,
+        word_3 = word_3,
+        word_4 = word_4,
+        base_addr = BASE_ADDR,
+        addr_1 = BASE_ADDR + 4,
+        addr_2 = BASE_ADDR + 8,
+        addr_3 = BASE_ADDR + 12,
+        script_root = note_script.root(),
+        serial_num = serial_num,
+    );
+
+    let process = &tx_context.execute_code(&code)?;
+
+    // Create expected recipients and get their digests
+    let note_inputs_4 = NoteInputs::new(word_1.to_vec())?;
+    let recipient_4 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_4);
+
+    let mut inputs_5 = word_1.to_vec();
+    inputs_5.push(word_2[0]);
+    let note_inputs_5 = NoteInputs::new(inputs_5)?;
+    let recipient_5 = NoteRecipient::new(serial_num, note_script.clone(), note_inputs_5);
+
+    let mut inputs_13 = word_1.to_vec();
+    inputs_13.extend_from_slice(&word_2.to_vec());
+    inputs_13.extend_from_slice(&word_3.to_vec());
+    inputs_13.push(word_4[0]);
+    let note_inputs_13 = NoteInputs::new(inputs_13)?;
+    let recipient_13 = NoteRecipient::new(serial_num, note_script, note_inputs_13);
+
+    let mut expected_stack = alloc::vec::Vec::new();
+    expected_stack.extend_from_slice(recipient_4.digest().as_elements());
+    expected_stack.extend_from_slice(recipient_5.digest().as_elements());
+    expected_stack.extend_from_slice(recipient_13.digest().as_elements());
+    expected_stack.reverse();
+
+    assert_eq!(process.stack.get_state_at(process.system.clk())[0..12], expected_stack);
+    Ok(())
+}
+
+#[test]
+fn test_compute_inputs_commitment() -> anyhow::Result<()> {
+    let tx_context = TransactionContextBuilder::with_existing_mock_account().build()?;
+
+    // Define test values as Words
+    let word_1 = Word::from([1, 2, 3, 4u32]);
+    let word_2 = Word::from([5, 6, 7, 8u32]);
+    let word_3 = Word::from([9, 10, 11, 12u32]);
+    let word_4 = Word::from([13, 14, 15, 16u32]);
+    const BASE_ADDR: u32 = 4000;
+
+    let code = format!(
+        "
+        use.std::sys
+
+        use.miden::note
+
+        begin
+            # put the values that will be hashed into the memory
+            push.{word_1}.{base_addr} mem_storew dropw
+            push.{word_2}.{addr_1} mem_storew dropw
+            push.{word_3}.{addr_2} mem_storew dropw
+            push.{word_4}.{addr_3} mem_storew dropw
 
             # push the number of values and pointer to the inputs on the stack
             push.5.4000
@@ -657,49 +758,32 @@ fn test_get_inputs_hash() -> anyhow::Result<()> {
             # truncate the stack
             exec.sys::truncate_stack
         end
-    ";
+    ",
+        word_1 = word_1,
+        word_2 = word_2,
+        word_3 = word_3,
+        word_4 = word_4,
+        base_addr = BASE_ADDR,
+        addr_1 = BASE_ADDR + 4,
+        addr_2 = BASE_ADDR + 8,
+        addr_3 = BASE_ADDR + 12,
+    );
 
-    let process = &tx_context.execute_code(code)?;
+    let process = &tx_context.execute_code(&code)?;
 
-    let note_inputs_5_hash = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-    ])?
-    .commitment();
+    let mut inputs_5 = word_1.to_vec();
+    inputs_5.push(word_2[0]);
+    let note_inputs_5_hash = NoteInputs::new(inputs_5)?.commitment();
 
-    let note_inputs_8_hash = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-        Felt::new(6),
-        Felt::new(7),
-        Felt::new(8),
-    ])?
-    .commitment();
+    let mut inputs_8 = word_1.to_vec();
+    inputs_8.extend_from_slice(&word_2.to_vec());
+    let note_inputs_8_hash = NoteInputs::new(inputs_8)?.commitment();
 
-    let note_inputs_15_hash = NoteInputs::new(vec![
-        Felt::new(1),
-        Felt::new(2),
-        Felt::new(3),
-        Felt::new(4),
-        Felt::new(5),
-        Felt::new(6),
-        Felt::new(7),
-        Felt::new(8),
-        Felt::new(9),
-        Felt::new(10),
-        Felt::new(11),
-        Felt::new(12),
-        Felt::new(13),
-        Felt::new(14),
-        Felt::new(15),
-    ])?
-    .commitment();
+    let mut inputs_15 = word_1.to_vec();
+    inputs_15.extend_from_slice(&word_2.to_vec());
+    inputs_15.extend_from_slice(&word_3.to_vec());
+    inputs_15.extend_from_slice(&word_4[0..3]);
+    let note_inputs_15_hash = NoteInputs::new(inputs_15)?.commitment();
 
     let mut expected_stack = alloc::vec::Vec::new();
 
@@ -753,7 +837,7 @@ fn test_get_current_script_root() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_build_note_metadata() -> miette::Result<()> {
+fn test_build_metadata() -> miette::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account().build().unwrap();
 
     let sender = tx_context.account().id();
@@ -784,12 +868,12 @@ fn test_build_note_metadata() -> miette::Result<()> {
         let code = format!(
             "
         use.$kernel::prologue
-        use.$kernel::tx
+        use.$kernel::output_note
 
         begin
           exec.prologue::prepare_transaction
           push.{execution_hint}.{note_type}.{aux}.{tag}
-          exec.tx::build_note_metadata
+          exec.output_note::build_metadata
 
           # truncate the stack
           swapw dropw

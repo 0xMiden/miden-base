@@ -54,12 +54,12 @@ fn test_epilogue() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let tx_context = {
         let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
 
         // input_note_1 is needed for maintaining cohesion of involved assets
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), &[FungibleAsset::mock(100)]);
-        let input_note_2 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account.clone())
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
@@ -153,12 +153,12 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         // input_note_1 is needed for maintaining cohesion of involved assets
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, &[FungibleAsset::mock(100)]);
-        let input_note_2 = create_spawn_note(ACCOUNT_ID_SENDER.try_into()?, vec![&output_note_1])?;
+            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
+        let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .extend_expected_output_notes(vec![OutputNote::Full(output_note_1)])
@@ -235,7 +235,7 @@ fn test_epilogue_asset_preservation_violation_too_few_input() -> anyhow::Result<
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()?;
 
-    let input_note = create_spawn_note(account.id(), vec![&output_note_1, &output_note_2])?;
+    let input_note = create_spawn_note([&output_note_1, &output_note_2])?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
@@ -309,10 +309,7 @@ fn test_epilogue_asset_preservation_violation_too_many_fungible_input() -> anyho
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()?;
 
-    let input_note = create_spawn_note(
-        ACCOUNT_ID_SENDER.try_into()?,
-        vec![&output_note_1, &output_note_2, &output_note_3],
-    )?;
+    let input_note = create_spawn_note([&output_note_1, &output_note_2, &output_note_3])?;
 
     let tx_context = mock_chain
         .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[input_note])?
@@ -364,9 +361,9 @@ fn test_block_expiration_height_monotonically_decreases() -> anyhow::Result<()> 
         begin
             exec.prologue::prepare_transaction
             push.{value_1}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
             push.{value_2}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
 
             push.{min_value} exec.tx::get_expiration_delta assert_eq
 
@@ -405,7 +402,7 @@ fn test_invalid_expiration_deltas() -> anyhow::Result<()> {
 
         begin
             push.{value_1}
-            exec.tx::update_expiration_block_num
+            exec.tx::update_expiration_block_delta
         end
         ";
 
@@ -538,7 +535,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
     // create an empty output note in the transaction script
     let tx_script_source = format!(
         r#"
-        use.miden::tx
+        use.miden::output_note
         use.$kernel::prologue
         use.$kernel::epilogue
         use.$kernel::note
@@ -559,7 +556,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
             # => [tag, aux, execution_hint, note_type, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, GARBAGE(15)]
 
             # make sure that output note was created: compare the output note hash with an empty

@@ -56,8 +56,7 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::Noop)?;
-    let p2any_note =
-        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[])?;
+    let p2any_note = builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), [])?;
     let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
@@ -77,7 +76,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
-    let TestSetup { mock_chain, account_id } = setup_test([], [])?;
+    let TestSetup { mock_chain, account_id, .. } = setup_test([], [], [])?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
@@ -113,13 +112,14 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
 
-    let TestSetup { mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
             StorageSlot::Value(slot_0_init_value),
             StorageSlot::Value(slot_1_init_value),
             StorageSlot::Value(slot_2_init_value),
             StorageSlot::Value(slot_3_init_value),
         ],
+        [],
         [],
     )?;
 
@@ -237,7 +237,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let mut map2 = StorageMap::new();
     map2.insert(key5, key5_init_value);
 
-    let TestSetup { mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
             StorageSlot::Map(map0),
             StorageSlot::Map(map1),
@@ -247,6 +247,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             // slot.
             StorageSlot::Map(StorageMap::new()),
         ],
+        [],
         [],
     )?;
 
@@ -370,24 +371,11 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     let removed_asset2 = FungibleAsset::new(faucet2, 100)?;
     let removed_asset3 = FungibleAsset::new(faucet3, FungibleAsset::MAX_AMOUNT)?;
 
-    let TestSetup { mut mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, notes } = setup_test(
         [],
         [original_asset0, original_asset1, original_asset2, original_asset3].map(Asset::from),
+        [added_asset0, added_asset1, added_asset2, added_asset4].map(Asset::from),
     )?;
-
-    let mut added_notes = vec![];
-    for added_asset in [added_asset0, added_asset1, added_asset2, added_asset4] {
-        let added_note = mock_chain
-            .add_pending_p2id_note(
-                account_id,
-                account_id,
-                &[Asset::from(added_asset)],
-                NoteType::Public,
-            )
-            .context("failed to add note with asset")?;
-        added_notes.push(added_note);
-    }
-    mock_chain.prove_next_block()?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -409,7 +397,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
+        .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
         .execute_blocking()
@@ -477,22 +465,8 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let asset2 = NonFungibleAssetBuilder::new(faucet2.prefix(), &mut rng)?.build()?;
     let asset3 = NonFungibleAssetBuilder::new(faucet3.prefix(), &mut rng)?.build()?;
 
-    let TestSetup { mut mock_chain, account_id } =
-        setup_test([], [asset1, asset3].map(Asset::from))?;
-
-    let mut added_notes = vec![];
-    for added_asset in [asset0, asset2] {
-        let added_note = mock_chain
-            .add_pending_p2id_note(
-                account_id,
-                account_id,
-                &[Asset::from(added_asset)],
-                NoteType::Public,
-            )
-            .context("failed to add note with asset")?;
-        added_notes.push(added_note);
-    }
-    mock_chain.prove_next_block()?;
+    let TestSetup { mock_chain, account_id, notes } =
+        setup_test([], [asset1, asset3].map(Asset::from), [asset0, asset2].map(Asset::from))?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -516,7 +490,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
+        .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
         .execute_blocking()
@@ -615,7 +589,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             # move an asset to the created note to partially deplete fungible asset balance
@@ -637,7 +611,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.mock::account
-        use.miden::tx
+        use.miden::output_note
 
         ## TRANSACTION SCRIPT
         ## ========================================================================================
@@ -695,7 +669,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
         let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
-        create_p2any_note(account.id(), &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
+        create_p2any_note(account.id(), [fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
     };
 
     let tx_context = TransactionContextBuilder::new(account)
@@ -798,22 +772,36 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
 struct TestSetup {
     mock_chain: MockChain,
     account_id: AccountId,
+    notes: Vec<Note>,
 }
 
 fn setup_test(
     storage_slots: impl IntoIterator<Item = StorageSlot>,
-    assets: impl IntoIterator<Item = Asset>,
+    vault_assets: impl IntoIterator<Item = Asset>,
+    note_assets: impl IntoIterator<Item = Asset>,
 ) -> anyhow::Result<TestSetup> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         storage_slots,
-        assets,
+        vault_assets,
     )?;
+
+    let mut notes = vec![];
+    for note_asset in note_assets {
+        let added_note = builder
+            .add_p2id_note(account.id(), account.id(), &[note_asset], NoteType::Public)
+            .context("failed to add note with asset")?;
+        notes.push(added_note);
+    }
 
     let mock_chain = builder.build()?;
 
-    Ok(TestSetup { mock_chain, account_id: account.id() })
+    Ok(TestSetup {
+        mock_chain,
+        account_id: account.id(),
+        notes,
+    })
 }
 
 fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
@@ -832,7 +820,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.mock::account
-      use.miden::tx
+      use.miden::output_note
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []
@@ -885,7 +873,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-          call.tx::create_note
+          call.output_note::create
           # => [note_idx, pad(15)]
 
           repeat.15 swap drop end

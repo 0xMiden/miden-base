@@ -414,7 +414,7 @@ impl MockChainBuilder {
     pub fn add_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: &[Asset],
+        asset: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
         let note = create_p2any_note(sender_account_id, asset);
 
@@ -507,14 +507,20 @@ impl MockChainBuilder {
     ///
     /// A `SPAWN` note contains a note script that creates all `output_notes` that get passed as a
     /// parameter.
-    pub fn add_spawn_note<'note>(
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the sender account ID of the provided output notes is not consistent or does not match the
+    ///   transaction's sender.
+    pub fn add_spawn_note<'note, I>(
         &mut self,
-        sender_id: AccountId,
-        output_notes: impl IntoIterator<Item = &'note Note>,
-    ) -> anyhow::Result<Note> {
-        let output_notes = output_notes.into_iter().collect();
-        let note = create_spawn_note(sender_id, output_notes)?;
-
+        output_notes: impl IntoIterator<Item = &'note Note, IntoIter = I>,
+    ) -> anyhow::Result<Note>
+    where
+        I: ExactSizeIterator<Item = &'note Note>,
+    {
+        let note = create_spawn_note(output_notes)?;
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)

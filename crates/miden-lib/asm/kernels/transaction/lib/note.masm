@@ -15,38 +15,38 @@ const.ERR_NOTE_NUM_OF_ASSETS_EXCEED_LIMIT="number of assets in a note exceed 255
 # generating the output notes commitment. Must be NOTE_MEM_SIZE - 8;
 const.OUTPUT_NOTE_HASHING_MEM_DIFF=2040
 
-# CURRENTLY EXECUTING NOTE PROCEDURES
+# ACTIVE NOTE PROCEDURES
 # =================================================================================================
 
-#! Move the current input note pointer to the next note and returns the pointer value.
+#! Move the active input note pointer to the next note and returns the pointer value.
 #!
 #! Inputs:  []
-#! Outputs: [current_input_note_ptr]
+#! Outputs: [active_input_note_ptr]
 #!
 #! Where:
-#! - current_input_note_ptr is the pointer to the next note to be processed.
-export.increment_current_input_note_ptr
-    # get the current input note pointer
-    exec.memory::get_current_input_note_ptr
+#! - active_input_note_ptr is the pointer to the next note to be processed.
+export.increment_active_input_note_ptr
+    # get the active input note pointer
+    exec.memory::get_active_input_note_ptr
     # => [orig_input_note_ptr]
 
     # increment the pointer
     exec.constants::get_note_mem_size add
-    # => [current_input_note_ptr]
+    # => [active_input_note_ptr]
 
-    # set the current input note pointer to the incremented value
-    dup exec.memory::set_current_input_note_ptr
-    # => [current_input_note_ptr]
+    # set the active input note pointer to the incremented value
+    dup exec.memory::set_active_input_note_ptr
+    # => [active_input_note_ptr]
 end
 
-#! Sets the current input note pointer to 0. This should be called after all input notes have
+#! Sets the active input note pointer to 0. This should be called after all input notes have
 #! been processed.
 #!
 #! Inputs:  []
 #! Outputs: []
 export.note_processing_teardown
-    # set the current input note pointer to 0
-    push.0 exec.memory::set_current_input_note_ptr
+    # set the active input note pointer to 0
+    push.0 exec.memory::set_active_input_note_ptr
     # => []
 end
 
@@ -64,7 +64,7 @@ export.prepare_note
     padw padw push.0.0.0
     # => [pad(11)]
 
-    exec.memory::get_current_input_note_ptr
+    exec.memory::get_active_input_note_ptr
     # => [note_ptr, pad(11)]
 
     dup exec.memory::get_input_note_args movup.4

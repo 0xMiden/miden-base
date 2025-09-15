@@ -995,7 +995,7 @@ proc.process_input_notes_data
     # - On the top of the stack is the hasher state containing the input notes commitment. The
     #   hasher state will be updated by `process_input_note`. After the loop the commitment is
     #   extracted.
-    # - Below the hasher state in the stack is the current note index. This number is used for two
+    # - Below the hasher state in the stack is the active note index. This number is used for two
     #   purposes:
     #   1. Compute the input note's memory addresses, the index works as an offset.
     #   2. Determine the loop condition. The loop below runs until all input notes have been
@@ -1037,10 +1037,10 @@ proc.process_input_notes_data
     assert_eqw.err=ERR_PROLOGUE_INPUT_NOTES_COMMITMENT_MISMATCH
     # => [idx+1, num_notes]
 
-    # set the current input note ptr to the address of the first input note
+    # set the active input note ptr to the address of the first input note
     push.0
     exec.memory::get_input_note_ptr
-    exec.memory::set_current_input_note_ptr
+    exec.memory::set_active_input_note_ptr
     # => [idx+1, num_notes]
 
     drop drop

@@ -120,6 +120,7 @@ impl AssetVault {
         self.asset_tree.is_empty()
     }
 
+    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
     /// Returns the leaf index of a vault key.
     pub fn vault_key_to_leaf_index(vault_key: Word) -> Felt {
         // The third element in an SMT key is the index.

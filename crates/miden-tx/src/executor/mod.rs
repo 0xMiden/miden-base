@@ -2,7 +2,6 @@ use alloc::collections::BTreeSet;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::errors::TransactionKernelError;
 use miden_lib::transaction::TransactionKernel;
 use miden_objects::account::AccountId;
 use miden_objects::assembly::DefaultSourceManager;
@@ -26,6 +25,7 @@ pub use miden_processor::{ExecutionOptions, MastForestStore};
 
 use super::TransactionExecutorError;
 use crate::auth::TransactionAuthenticator;
+use crate::errors::TransactionKernelError;
 use crate::host::{AccountProcedureIndexMap, ScriptMastForestStore};
 
 mod exec_host;

@@ -29,6 +29,16 @@ impl StorageSlotType {
             StorageSlotType::Map => Word::from([1, 0, 0, 0u32]),
         }
     }
+
+    /// Returns `true` if the slot is a value slot, `false` otherwise.
+    pub fn is_value(&self) -> bool {
+        matches!(self, Self::Value)
+    }
+
+    /// Returns `true` if the slot is a map slot, `false` otherwise.
+    pub fn is_map(&self) -> bool {
+        matches!(self, Self::Map)
+    }
 }
 
 impl TryFrom<Felt> for StorageSlotType {
