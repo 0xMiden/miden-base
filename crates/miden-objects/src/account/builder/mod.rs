@@ -116,7 +116,7 @@ impl AccountBuilder {
     /// Adds a designated authentication [`AccountComponent`] to the builder.
     ///
     /// This component may contain multiple procedures, but is expected to contain exactly one
-    /// authentication procedure (named `auth__*`).
+    /// authentication procedure (named `auth_*`).
     /// Calling this method multiple times will override the previous auth component.
     ///
     /// Procedures from this component will be placed at the beginning of the account procedure

@@ -10,7 +10,7 @@ use crate::account::components::no_auth_library;
 /// they differ. This avoids unnecessary nonce increments for transactions that don't
 /// modify the account state.
 ///
-/// It exports the procedure `auth__no_auth`, which:
+/// It exports the procedure `auth_no_auth`, which:
 /// - Checks if the account state has changed by comparing initial and final commitments
 /// - Only increments the nonce if the account state has actually changed
 /// - Provides no cryptographic authentication

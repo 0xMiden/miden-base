@@ -186,6 +186,7 @@
 - Add a new auth component `RpoFalcon512Acl` ([#1531](https://github.com/0xMiden/miden-base/pull/1531)).
 - [BREAKING] Change `BasicFungibleFaucet` to use `RpoFalcon512Acl` for authentication ([#1531](https://github.com/0xMiden/miden-base/pull/1531)).
 - Introduce `MockChain` methods for executing at an older block (#1541).
+- [BREAKING] Change authentication component procedure name prefix from `auth__*` to `auth_*` ([#1861](https://github.com/0xMiden/miden-base/issues/1861)).
 
 ### Fixes
 
