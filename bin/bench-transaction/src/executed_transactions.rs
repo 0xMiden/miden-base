@@ -95,7 +95,7 @@ pub fn tx_consume_single_p2id() -> Result<ExecutedTransaction> {
         .execute_blocking()?;
 
     // Apply delta to the target account to verify it is no longer new
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset]).unwrap(),
         target_account.storage().clone(),

@@ -12,6 +12,7 @@ use miden_processor::MastForestStore;
 ///
 /// A [ScriptMastForestStore] is meant to exclusively store MAST forests related to both
 /// transaction and input note scripts.
+#[derive(Debug, Clone, Default)]
 pub struct ScriptMastForestStore {
     mast_forests: BTreeMap<Word, Arc<MastForest>>,
     advice_map: AdviceMap,

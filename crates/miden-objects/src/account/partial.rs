@@ -1,10 +1,13 @@
+use alloc::string::ToString;
+
 use miden_core::utils::{Deserializable, Serializable};
 use miden_core::{Felt, ZERO};
 
 use super::{Account, AccountCode, AccountId, PartialStorage};
-use crate::Word;
-use crate::account::hash_account;
+use crate::account::{hash_account, validate_account_seed};
 use crate::asset::PartialVault;
+use crate::utils::serde::DeserializationError;
+use crate::{AccountError, Word};
 
 /// A partial representation of an account.
 ///
@@ -17,35 +20,57 @@ use crate::asset::PartialVault;
 pub struct PartialAccount {
     /// The ID for the partial account
     id: AccountId,
-    /// The current transaction nonce of the account
-    nonce: Felt,
-    /// Account code
-    account_code: AccountCode,
-    /// Partial representation of the account's storage, containing the storage commitment and
-    /// proofs for specific storage slots that need to be accessed
-    partial_storage: PartialStorage,
     /// Partial representation of the account's vault, containing the vault root and necessary
     /// proof information for asset verification
     partial_vault: PartialVault,
+    /// Partial representation of the account's storage, containing the storage commitment and
+    /// proofs for specific storage slots that need to be accessed
+    partial_storage: PartialStorage,
+    /// Account code
+    code: AccountCode,
+    /// The current transaction nonce of the account
+    nonce: Felt,
+    /// The seed of the account ID, if any.
+    seed: Option<Word>,
 }
 
 impl PartialAccount {
-    /// Creates a new instance of a partial account with the specified components.
+    // CONSTRUCTORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Creates a new [`PartialAccount`] with the provided account parts and seed.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - an account seed is provided but the account's nonce indicates the account already exists.
+    /// - an account seed is not provided but the account's nonce indicates the account is new.
+    /// - an account seed is provided but the account ID derived from it is invalid or does not
+    ///   match the provided ID.
     pub fn new(
         id: AccountId,
         nonce: Felt,
-        account_code: AccountCode,
+        code: AccountCode,
         partial_storage: PartialStorage,
         partial_vault: PartialVault,
-    ) -> Self {
-        Self {
+        seed: Option<Word>,
+    ) -> Result<Self, AccountError> {
+        validate_account_seed(id, code.commitment(), partial_storage.commitment(), seed, nonce)?;
+
+        let account = Self {
             id,
             nonce,
-            account_code,
+            code,
             partial_storage,
             partial_vault,
-        }
+            seed,
+        };
+
+        Ok(account)
     }
+
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
 
     /// Returns the account's unique identifier.
     pub fn id(&self) -> AccountId {
@@ -59,7 +84,7 @@ impl PartialAccount {
 
     /// Returns a reference to the account code.
     pub fn code(&self) -> &AccountCode {
-        &self.account_code
+        &self.code
     }
 
     /// Returns a reference to the partial storage representation of the account.
@@ -72,8 +97,17 @@ impl PartialAccount {
         &self.partial_vault
     }
 
-    /// Returns true if the account is new (i.e. its nonce is zero and it hasn't been registered on
-    /// chain yet).
+    /// Returns the seed of the account's ID if the account is new.
+    ///
+    /// That is, if [`PartialAccount::is_new`] returns `true`, the seed will be `Some`.
+    pub fn seed(&self) -> Option<Word> {
+        self.seed
+    }
+
+    /// Returns `true` if the account is new, `false` otherwise.
+    ///
+    /// An account is considered new if the account's nonce is zero and it hasn't been registered on
+    /// chain yet.
     pub fn is_new(&self) -> bool {
         self.nonce == ZERO
     }
@@ -118,26 +152,33 @@ impl PartialAccount {
     }
 
     /// Consumes self and returns the underlying parts of the partial account.
-    pub fn into_parts(self) -> (AccountId, Felt, AccountCode, PartialStorage, PartialVault) {
-        (self.id, self.nonce, self.account_code, self.partial_storage, self.partial_vault)
-    }
-}
-
-impl From<Account> for PartialAccount {
-    fn from(account: Account) -> Self {
-        PartialAccount::from(&account)
+    pub fn into_parts(
+        self,
+    ) -> (AccountId, PartialVault, PartialStorage, AccountCode, Felt, Option<Word>) {
+        (
+            self.id,
+            self.partial_vault,
+            self.partial_storage,
+            self.code,
+            self.nonce,
+            self.seed,
+        )
     }
 }
 
 impl From<&Account> for PartialAccount {
+    /// Constructs a [`PartialAccount`] from the provided account with an empty seed, assuming it is
+    /// an existing account.
     fn from(account: &Account) -> Self {
-        PartialAccount::new(
+        Self::new(
             account.id(),
             account.nonce(),
             account.code().clone(),
             account.storage().into(),
             account.vault().into(),
+            account.seed(),
         )
+        .expect("account should ensure that seed is valid for account")
     }
 }
 
@@ -145,9 +186,10 @@ impl Serializable for PartialAccount {
     fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(self.id);
         target.write(self.nonce);
-        target.write(&self.account_code);
+        target.write(&self.code);
         target.write(&self.partial_storage);
         target.write(&self.partial_vault);
+        target.write(self.seed);
     }
 }
 
@@ -160,13 +202,9 @@ impl Deserializable for PartialAccount {
         let account_code = source.read()?;
         let partial_storage = source.read()?;
         let partial_vault = source.read()?;
+        let seed: Option<Word> = source.read()?;
 
-        Ok(PartialAccount {
-            id: account_id,
-            nonce,
-            account_code,
-            partial_storage,
-            partial_vault,
-        })
+        PartialAccount::new(account_id, nonce, account_code, partial_storage, partial_vault, seed)
+            .map_err(|err| DeserializationError::InvalidValue(err.to_string()))
     }
 }

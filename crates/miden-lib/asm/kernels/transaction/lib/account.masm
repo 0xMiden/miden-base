@@ -5,7 +5,6 @@ use.std::mem
 
 use.$kernel::account_id
 use.$kernel::asset_vault
-use.$kernel::asset
 use.$kernel::account_delta
 use.$kernel::constants
 use.$kernel::memory
@@ -121,6 +120,9 @@ const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 
 # EVENTS
 # =================================================================================================
+
+# Event emitted before a foreign account is loaded from the advice inputs.
+const.ACCOUNT_BEFORE_FOREIGN_LOAD=131104
 
 # Event emitted before an asset is added to the account vault.
 const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=131072
@@ -922,6 +924,87 @@ end
 # DATA LOADERS
 # =================================================================================================
 
+#! Loads account data from the advice inputs into the _current_ account's memory section.
+#!
+#! Inputs:
+#!   Operand stack: [account_id_prefix, account_id_suffix]
+#!   Advice map: {
+#!     ACCOUNT_ID: [[account_id_suffix, account_id_prefix, 0, account_nonce]],
+#!                   VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT],
+#!     STORAGE_COMMITMENT: [[STORAGE_SLOT_DATA]],
+#!     CODE_COMMITMENT: [[ACCOUNT_PROCEDURE_DATA]],
+#!   }
+#! Outputs:
+#!   Operand stack: []
+#!
+#! Where:
+#! - account_id_{prefix,suffix} are the prefix and suffix felts of the ID of the account.
+#! - ACCOUNT_ID is the word constructed from the account_id as follows:
+#!   [account_id_suffix, account_id_prefix, 0, 0].
+#! - account_nonce is the nonce of the account.
+#! - VAULT_ROOT is the commitment of the account's vault.
+#! - STORAGE_COMMITMENT is the commitment to the account's storage.
+#! - STORAGE_SLOT_DATA is the data contained in the storage slot which is constructed as follows:
+#!   [SLOT_VALUE, slot_type, 0, 0, 0].
+#! - CODE_COMMITMENT is the commitment to the account's code.
+#! - ACCOUNT_PROCEDURE_DATA is the information about account procedures which is constructed as
+#!   follows: [PROCEDURE_MAST_ROOT, storage_offset, 0, 0, 0].
+#!
+#! Panics if:
+#! - the number of account procedures exceeded the maximum limit of 256.
+#! - the computed account code commitment does not match the provided account code commitment.
+#! - the number of account storage slots exceeded the maximum limit of 255.
+#! - the computed account storage commitment does not match the provided account storage commitment.
+export.load_foreign_account
+    emit.ACCOUNT_BEFORE_FOREIGN_LOAD
+    # => [account_id_prefix, account_id_suffix]
+
+    # construct the word with account ID to load the core account data from the advice map
+    push.0.0
+    # OS => [0, 0, account_id_prefix, account_id_suffix]
+
+    # move the core account data to the advice stack
+    adv.push_mapval
+    # OS => [0, 0, account_id_prefix, account_id_suffix]
+    # AS => [[account_id_prefix, account_id_suffix, 0, account_nonce], VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
+
+    # store the id and nonce of the foreign account to the memory
+    adv_loadw
+    exec.memory::set_account_id_and_nonce
+    # OS => []
+    # AS => [VAULT_ROOT, STORAGE_COMMITMENT, CODE_COMMITMENT]
+
+    # store the vault root of the foreign account to the memory
+    adv_loadw exec.memory::set_account_vault_root
+    # OS => []
+    # AS => [STORAGE_COMMITMENT, CODE_COMMITMENT]
+
+    # move the storage root and the code root to the operand stack
+    adv_loadw padw adv_loadw
+    # OS => [CODE_COMMITMENT, STORAGE_COMMITMENT]
+    # AS => []
+
+    # store the code root into the memory
+    exec.memory::set_account_code_commitment
+    # OS => [CODE_COMMITMENT, STORAGE_COMMITMENT]
+    # AS => []
+
+    # save the account procedure data into the memory
+    exec.save_account_procedure_data
+    # OS => [STORAGE_COMMITMENT]
+    # AS => []
+
+    # store the storage root to the memory
+    exec.memory::set_account_storage_commitment
+    # OS => [STORAGE_COMMITMENT]
+    # AS => []
+
+    # save the storage slots data into the memory
+    exec.save_account_storage_data
+    # OS => []
+    # AS => []
+end
+
 #! Saves storage slots data into memory and validates that the storage commitment matches the
 #! sequential storage hash.
 #!
@@ -940,7 +1023,7 @@ end
 #!
 #! Panics if:
 #! - the number of account storage slots exceeded the maximum limit of 255.
-#! - the computed account storage commitment does not match the provided account storage commitment
+#! - the computed account storage commitment does not match the provided account storage commitment.
 export.save_account_storage_data
     # move storage slot data from the advice map to the advice stack
     adv.push_mapvaln
@@ -1013,8 +1096,8 @@ end
 #!   follows: [PROCEDURE_MAST_ROOT, storage_offset, storage_size, 0, 0]
 #!
 #! Panics if:
-#! - the number of account procedures exceeded the maximum limit of 256
-#! - the computed account code commitment does not match the provided account code commitment
+#! - the number of account procedures exceeded the maximum limit of 256.
+#! - the computed account code commitment does not match the provided account code commitment.
 export.save_account_procedure_data
     # move procedure data from the advice map to the advice stack
     adv.push_mapvaln

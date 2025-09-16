@@ -53,7 +53,7 @@ use crate::{Auth, MockChainBuilder, assert_execution_error, assert_transaction_e
 // ================================================================================================
 
 #[test]
-fn test_fpi_memory() -> anyhow::Result<()> {
+fn test_fpi_memory_single_account() -> anyhow::Result<()> {
     // Prepare the test data
     let storage_slots =
         vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot];
@@ -78,9 +78,10 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         end
     ";
 
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::compile(
         foreign_account_code_source,
-        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+        TransactionKernel::with_kernel_library(source_manager.clone()),
         storage_slots.clone(),
     )?
     .with_supports_all_types();
@@ -100,6 +101,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
             .build()?;
     mock_chain.prove_next_block()?;
+
     let fpi_inputs = mock_chain
         .get_foreign_account_inputs(foreign_account.id())
         .expect("failed to get foreign account inputs");
@@ -108,6 +110,7 @@ fn test_fpi_memory() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![fpi_inputs])
+        .with_source_manager(source_manager)
         .build()?;
 
     // GET ITEM
@@ -531,9 +534,10 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         end
     ";
 
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let foreign_account_component = AccountComponent::compile(
         NamedSource::new("foreign_account", foreign_account_code_source),
-        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+        TransactionKernel::with_kernel_library(source_manager.clone()),
         storage_slots,
     )?
     .with_supports_all_types();
@@ -618,7 +622,7 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
         map_key = STORAGE_LEAVES_2[0].0,
     );
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(foreign_account_component.library())?
         .compile_tx_script(code)?;
 
@@ -629,8 +633,10 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
-        .foreign_accounts(vec![foreign_account_inputs])
+        .foreign_accounts([foreign_account_inputs])
+        .enable_lazy_loading()
         .tx_script(tx_script)
+        .with_source_manager(source_manager)
         .build()?
         .execute_blocking()?;
 
@@ -691,9 +697,10 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         end
     "#;
 
+    let source_manager = Arc::new(DefaultSourceManager::default());
     let second_foreign_account_component = AccountComponent::compile(
         second_foreign_account_code_source,
-        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+        TransactionKernel::with_kernel_library(source_manager.clone()),
         storage_slots,
     )?
     .with_supports_all_types();
@@ -751,7 +758,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
 
     let first_foreign_account_component = AccountComponent::compile(
         NamedSource::new("first_foreign_account", first_foreign_account_code_source),
-        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
+        TransactionKernel::with_kernel_library(source_manager.clone()),
         storage_slots,
     )?
     .with_supports_all_types();
@@ -839,7 +846,7 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         foreign_suffix = first_foreign_account.id().suffix(),
     );
 
-    let tx_script = ScriptBuilder::default()
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
         .with_dynamically_linked_library(first_foreign_account_component.library())?
         .compile_tx_script(code)?;
 
@@ -847,8 +854,10 @@ fn test_nested_fpi_cyclic_invocation() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(foreign_account_inputs)
+        .enable_lazy_loading()
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
+        .with_source_manager(source_manager)
         .build()?
         .execute_blocking()?;
 
@@ -1014,6 +1023,7 @@ fn test_nested_fpi_stack_overflow() {
                 .build_tx_context(native_account.id(), &[], &[])
                 .expect("failed to build tx context")
                 .foreign_accounts(foreign_accounts)
+                .enable_lazy_loading()
                 .tx_script(tx_script)
                 .build().unwrap();
 
@@ -1127,6 +1137,7 @@ fn test_nested_fpi_native_account_invocation() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
+        .enable_lazy_loading()
         .extend_advice_inputs(advice_inputs)
         .tx_script(tx_script)
         .build()?
@@ -1198,7 +1209,8 @@ fn test_fpi_stale_account() -> anyhow::Result<()> {
         foreign_account.code().clone(),
         foreign_account.storage().into(),
         foreign_account.vault().into(),
-    );
+        None,
+    )?;
     let overridden_foreign_account_inputs =
         AccountInputs::new(overridden_partial_accounts, foreign_account_inputs.witness().clone());
 
@@ -1352,6 +1364,7 @@ fn test_fpi_get_account_id() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
+        .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
         .execute_blocking()?;
@@ -1462,6 +1475,7 @@ fn test_fpi_get_account_nonce() -> anyhow::Result<()> {
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
         .foreign_accounts(vec![foreign_account_inputs])
+        .enable_lazy_loading()
         .tx_script(tx_script)
         .build()?
         .execute_blocking()?;

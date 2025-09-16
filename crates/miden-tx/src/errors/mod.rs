@@ -149,6 +149,8 @@ pub enum TransactionProverError {
     // case, the diagnostic is lost if the execution error is not explicitly unwrapped.
     #[error("failed to execute transaction kernel program:\n{}", PrintDiagnostic::new(.0))]
     TransactionProgramExecutionFailed(ExecutionError),
+    #[error("failed to create account procedure index map")]
+    CreateAccountProcedureIndexMap(#[source] TransactionHostError),
     #[error("failed to create transaction host")]
     TransactionHostCreationFailed(#[source] TransactionHostError),
     /// Custom error variant for errors not covered by the other variants.
@@ -261,9 +263,9 @@ pub enum TransactionKernelError {
         "note input data in advice provider contains fewer elements ({actual}) than specified ({specified}) by its inputs length"
     )]
     TooFewElementsForNoteInputs { specified: u64, actual: u64 },
-    #[error("account procedure with procedure root {0} is not in the advice provider")]
+    #[error("account procedure with procedure root {0} is not in the account procedure index map")]
     UnknownAccountProcedure(Word),
-    #[error("code commitment {0} is not in the advice provider")]
+    #[error("code commitment {0} is not in the account procedure index map")]
     UnknownCodeCommitment(Word),
     #[error("account storage slots number is missing in memory at address {0}")]
     AccountStorageSlotsNumMissing(u32),
@@ -271,6 +273,15 @@ pub enum TransactionKernelError {
     NonceCanOnlyIncrementOnce,
     #[error("failed to convert fee asset into fungible asset")]
     FailedToConvertFeeAsset(#[source] AssetError),
+    #[error(
+        "failed to get inputs for foreign account {foreign_account_id} from data store at reference block {ref_block}"
+    )]
+    GetForeignAccountInputs {
+        foreign_account_id: AccountId,
+        ref_block: BlockNumber,
+        // thiserror will return this when calling Error::source on TransactionKernelError.
+        source: DataStoreError,
+    },
     #[error(
         "failed to get vault asset witness from data store for vault root {vault_root} and vault_key {vault_key}"
     )]

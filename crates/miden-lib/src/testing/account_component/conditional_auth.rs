@@ -15,7 +15,7 @@ static CONDITIONAL_AUTH_CODE: LazyLock<String> = LazyLock::new(|| {
 
         const.WRONG_ARGS="{ERR_WRONG_ARGS_MSG}"
 
-        export.auth__conditional
+        export.auth_conditional
             # => [AUTH_ARGS]
 
             # If [97, 98, 99] is passed as an argument, all good.
@@ -42,7 +42,7 @@ static CONDITIONAL_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth__conditional` procedure that conditionally succeeds and
+/// The component defines an `auth_conditional` procedure that conditionally succeeds and
 /// conditionally increments the nonce based on the authentication arguments.
 ///
 /// The auth procedure expects the first three arguments as [99, 98, 97] to succeed.
