@@ -155,7 +155,7 @@ end
 #! - the same transaction has already been executed (replay protection).
 #!
 #! Invocation: call
-export.auth__tx_rpo_falcon512_multisig
+export.auth_tx_rpo_falcon512_multisig
     exec.account::incr_nonce drop
     # => [SALT]
 

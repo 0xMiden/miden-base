@@ -53,7 +53,7 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
         .execute_blocking()?;
 
     // vault delta
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset_1, fungible_asset_2]).unwrap(),
         target_account.storage().clone(),
@@ -113,7 +113,7 @@ fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
         .execute_blocking()?;
 
     // Apply delta to the target account to verify it is no longer new
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset]).unwrap(),
         target_account.storage().clone(),

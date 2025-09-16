@@ -10,8 +10,8 @@ use crate::account::components::rpo_falcon_512_library;
 /// component, the `miden` library (i.e. [`MidenLib`](crate::MidenLib)) must be available to the
 /// assembler which is the case when using [`TransactionKernel::assembler()`][kasm]. The procedures
 /// of this component are:
-/// - `auth__tx_rpo_falcon512`, which can be used to verify a signature provided via the advice
-///   stack to authenticate a transaction.
+/// - `auth_tx_rpo_falcon512`, which can be used to verify a signature provided via the advice stack
+///   to authenticate a transaction.
 ///
 /// This component supports all account types.
 ///

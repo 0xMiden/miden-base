@@ -131,8 +131,8 @@ mod tests {
         // create account and auth
         let vault = AssetVault::new(&[]).unwrap();
         let storage = AccountStorage::new(vec![]).unwrap();
-        let nonce = Felt::new(0);
-        let account = Account::from_parts(id, vault, storage, code, nonce);
+        let nonce = Felt::new(1);
+        let account = Account::new_existing(id, vault, storage, code, nonce);
         let account_seed = Some(Word::empty());
         let auth_secret_key = AuthSecretKey::RpoFalcon512(SecretKey::new());
         let auth_secret_key_2 = AuthSecretKey::RpoFalcon512(SecretKey::new());

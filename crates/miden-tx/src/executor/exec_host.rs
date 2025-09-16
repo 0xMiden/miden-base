@@ -2,11 +2,18 @@ use alloc::collections::BTreeMap;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
 
-use miden_lib::transaction::TransactionEvent;
-use miden_objects::account::{AccountDelta, AccountId, PartialAccount, StorageSlotType};
+use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent};
+use miden_objects::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    PartialAccount,
+    StorageSlotType,
+};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
+use miden_objects::block::BlockNumber;
 use miden_objects::crypto::merkle::SmtProof;
 use miden_objects::transaction::{InputNote, InputNotes, OutputNote};
 use miden_objects::vm::AdviceMap;
@@ -54,6 +61,14 @@ where
     /// not present in the `generated_signatures` field.
     authenticator: Option<&'auth AUTH>,
 
+    /// The reference block of the transaction.
+    ref_block: BlockNumber,
+
+    /// The foreign account code that was lazy loaded during transaction execution.
+    ///
+    /// This is required for re-executing the transaction, e.g. as part of transaction proving.
+    accessed_foreign_account_code: Vec<AccountCode>,
+
     /// Contains generated signatures (as a message |-> signature map) required for transaction
     /// execution. Once a signature was created for a given message, it is inserted into this map.
     /// After transaction execution, these can be inserted into the advice inputs to re-execute the
@@ -82,6 +97,7 @@ where
         scripts_mast_store: ScriptMastForestStore,
         acct_procedure_index_map: AccountProcedureIndexMap,
         authenticator: Option<&'auth AUTH>,
+        ref_block: BlockNumber,
         source_manager: Arc<dyn SourceManagerSync>,
     ) -> Self {
         let base_host = TransactionBaseHost::new(
@@ -95,6 +111,8 @@ where
         Self {
             base_host,
             authenticator,
+            ref_block,
+            accessed_foreign_account_code: Vec::new(),
             generated_signatures: BTreeMap::new(),
             source_manager,
         }
@@ -110,6 +128,53 @@ where
 
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
+
+    /// Handles a request for a foreign account by querying the data store for its account inputs.
+    async fn on_foreign_account_requested(
+        &mut self,
+        foreign_account_id: AccountId,
+    ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
+        let foreign_account_inputs = self
+            .base_host
+            .store()
+            .get_foreign_account_inputs(foreign_account_id, self.ref_block)
+            .await
+            .map_err(|err| TransactionKernelError::GetForeignAccountInputs {
+                foreign_account_id,
+                ref_block: self.ref_block,
+                source: err,
+            })?;
+
+        let mut tx_advice_inputs = TransactionAdviceInputs::default();
+        tx_advice_inputs
+            .add_foreign_accounts([&foreign_account_inputs])
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!(
+                        "failed to construct advice inputs for foreign account {}",
+                        foreign_account_inputs.id()
+                    ),
+                    err,
+                )
+            })?;
+
+        self.base_host
+            .load_foreign_account_code(foreign_account_inputs.code())
+            .map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    format!(
+                        "failed to insert account procedures for foreign account {}",
+                        foreign_account_inputs.id()
+                    ),
+                    err,
+                )
+            })?;
+
+        // Add the foreign account's code to the list of accessed code.
+        self.accessed_foreign_account_code.push(foreign_account_inputs.code().clone());
+
+        Ok(tx_advice_inputs.into_advice_mutations().collect())
+    }
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
     ///
@@ -333,12 +398,20 @@ where
         AccountDelta,
         InputNotes<InputNote>,
         Vec<OutputNote>,
+        Vec<AccountCode>,
         BTreeMap<Word, Vec<Felt>>,
         TransactionProgress,
     ) {
         let (account_delta, input_notes, output_notes, tx_progress) = self.base_host.into_parts();
 
-        (account_delta, input_notes, output_notes, self.generated_signatures, tx_progress)
+        (
+            account_delta,
+            input_notes,
+            output_notes,
+            self.accessed_foreign_account_code,
+            self.generated_signatures,
+            tx_progress,
+        )
     }
 }
 
@@ -399,6 +472,9 @@ where
                     .on_before_tx_fee_removed_from_account(fee_asset)
                     .await
                     .map_err(EventError::from),
+                TransactionEventData::ForeignAccount { account_id } => {
+                    self.on_foreign_account_requested(account_id).await.map_err(EventError::from)
+                },
                 TransactionEventData::AccountVaultAssetWitness {
                     current_account_id,
                     vault_root,

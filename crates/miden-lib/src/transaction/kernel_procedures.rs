@@ -32,13 +32,13 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     // account_set_item
     word!("0xd2232daa3895669f2bb34af764504d72432fb119eb0be0ce07481290c8701af8"),
     // account_get_map_item
-    word!("0x061afed82416f597aa87e2de48d7dad96a40c5f3e2c839d6522bafd3646414ca"),
+    word!("0x95449dd3a32ca3e069acc132e8f44fa87679e2f373f4ca7ae1807246802c5d0d"),
     // account_set_map_item
     word!("0xb539c160a862fedb3a4bd81bcea2076adc54c4e064a2c74b8770cef778ec5c59"),
     // account_get_item_init
     word!("0x46948d2c64c5b8979cbf1d628a90459b54b41491db5e0f1cff8747c9901da165"),
     // account_get_map_item_init
-    word!("0x94a0f8e9752c98aaca97e2e5688de6144a0bb2cc2aadc7cee71618e32caba311"),
+    word!("0x2e84c009a58b5fda1547865090ac446294d4db20d0aefef3d9e4c6a1a93df8fd"),
     // account_get_initial_vault_root
     word!("0x4d4d91079aaacad1bc86b29a0d61d25508ccb705c29d1b1357016f7373bf299e"),
     // account_get_vault_root
@@ -52,7 +52,7 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     // account_has_non_fungible_asset
     word!("0x9c0f7851d3211ff4744393b673ce4e1aeb05525dc9186a218c8ff8d6f1a04ee7"),
     // account_compute_delta_commitment
-    word!("0x95dab713c8f9fe01a4c81d1fb57737ac6a45171659456dbc03df049654db3d78"),
+    word!("0xde5f39d0adeab125693186306de47ff7169f90f688df20afa98a90279551cf1f"),
     // account_was_procedure_called
     word!("0x84c8c518a005605619909976ce54c41d6a88505e815421ff4b5516d0285b28bf"),
     // faucet_mint_asset
@@ -62,7 +62,7 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     // faucet_get_total_fungible_asset_issuance
     word!("0x7d32952d4dc0edd0311e3424b8128df2d48cf949f800c28218fbc851a8db42b5"),
     // faucet_is_non_fungible_asset_issued
-    word!("0xe0d7571e530b703ededf549f5ca8c57c5cffe0d1d9f59da20e5db05ca18de58b"),
+    word!("0xfe8db6e0903ad0d6a368cedd197f756ade6c17d275d131fc8e1a07f9cb96875e"),
     // input_note_get_metadata
     word!("0x7ad3e94585e7a397ee27443c98b376ed8d4ba762122af6413fde9314c00a6219"),
     // input_note_get_assets_info
@@ -100,7 +100,7 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x447889987e3a8b589b7852c32752df4e2a855e67076496195d40364c0b0730b0"),
+    word!("0x7fac8c3ab1af62226616bd157d01238ce3252f006bf4004e1b2ac6bc38f6c6f1"),
     // tx_end_foreign_context
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta

@@ -224,7 +224,7 @@ mod tests {
         let component =
             AuthRpoFalcon512Acl::new(public_key, acl_config).expect("component creation failed");
 
-        let (account, _) = AccountBuilder::new([0; 32])
+        let account = AccountBuilder::new([0; 32])
             .with_auth_component(component)
             .with_component(BasicWallet)
             .build()
