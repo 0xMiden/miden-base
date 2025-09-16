@@ -12,7 +12,7 @@ An address is an identifier that facilitates sending and receiving of [notes](..
 
 An address is designed for the note receiver to communicate information about themselves to the sender.
 
-The receiver can choose to disclose various pieces of information, which control both how the note itself is structured and how the note is to be communicated to the receiver.
+The receiver can choose to disclose various pieces of information that control how the note itself is structured.
 
 Consider a few examples that use different address mechanisms:
 
@@ -32,7 +32,7 @@ These different address mechanisms provide different levels of privacy and secur
 
 For notes which are sent privately, the sender needs to communicate the full note details to the receiver. This can be done via a side channel, such as a messenger, email, or via a QR code. We would like to avoid the necessity of operating two-way communication channels for each note. Rather, we operate under the assumption that once the receiver shares their `Address` (directly with the sender, or via a bulletin board, i.e. a one-way channel), they don't need to stay online and wait for the sender to send back the full note details.
 
-Instead, our Miden client connects to a _Note Transport Layer_, which stores encrypted note details together with the associated public metadata for each note. The receiver can query the Note Transport Layer for `NoteTag`s they are interested in. Typically, a `NoteTag` encodes a few leading bits (14 by default) of the receiver's `AccountId`. Querying the Note Transport Layer for 14-bit `NoteTag`s reduces the receiver's privacy while allowing them to perform less work downloading and trial-decrypting the notes.
+Instead, our Miden client connects to a _Note Transport Layer_, which stores encrypted note details together with the associated public metadata for each note. The receiver can query the Note Transport Layer for `NoteTag`s they are interested in. Typically, a `NoteTag` encodes a few leading bits (14 by default) of the receiver's `AccountId`. Querying the Note Transport Layer for 14-bit `NoteTag`s reduces the receiver's privacy, but at the same time allows them to perform less work downloading and trial-decrypting the notes than if less bits were encoded.
 
 With an `Address`, e.g. the [`Address::AccountId`](./address.md#addressaccountid) variant, the receiver could specify how many bits of their `AccountId` they want to disclose to the sender and thus choose their level of privacy.
 
