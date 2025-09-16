@@ -376,8 +376,10 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .compile_tx_script(tx_script_code)?;
 
     // Create AdviceInputs with the advice map
-    let mut advice_inputs = AdviceInputs::default();
-    advice_inputs.map = advice_map.clone();
+    let advice_inputs = AdviceInputs {
+        map: advice_map.clone(),
+        ..Default::default()
+    };
 
     let threshold = 3u64;
     let num_of_approvers = 4u64;
