@@ -16,14 +16,14 @@ const ACCOUNT_VAULT_AFTER_ADD_ASSET: u32 = 0x2_0001; // 131073
 const ACCOUNT_VAULT_BEFORE_REMOVE_ASSET: u32 = 0x2_0002; // 131074
 const ACCOUNT_VAULT_AFTER_REMOVE_ASSET: u32 = 0x2_0003; // 131075
 
-const ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT: u32 = 0x2_0021; // 131105
+const ACCOUNT_VAULT_BEFORE_GET_BALANCE: u32 = 0x2_0021; // 131105
 
-const ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT: u32 = 0x2_0022; // 131106
+const ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET: u32 = 0x2_0022; // 131106
 
 const ACCOUNT_STORAGE_BEFORE_SET_ITEM: u32 = 0x2_0004; // 131076
 const ACCOUNT_STORAGE_AFTER_SET_ITEM: u32 = 0x2_0005; // 131077
 
-const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT: u32 = 0x2_001f; // 131103
+const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM: u32 = 0x2_001f; // 131103
 
 const ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM: u32 = 0x2_0006; // 131078
 const ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM: u32 = 0x2_0007; // 131079
@@ -81,14 +81,14 @@ pub enum TransactionEvent {
     AccountVaultBeforeRemoveAsset = ACCOUNT_VAULT_BEFORE_REMOVE_ASSET,
     AccountVaultAfterRemoveAsset = ACCOUNT_VAULT_AFTER_REMOVE_ASSET,
 
-    AccountVaultBeforeGetBalanceEvent = ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT,
+    AccountVaultBeforeGetBalanceEvent = ACCOUNT_VAULT_BEFORE_GET_BALANCE,
 
-    AccountVaultBeforeHasNonFungibleAssetEvent = ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT,
+    AccountVaultBeforeHasNonFungibleAssetEvent = ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET,
 
     AccountStorageBeforeSetItem = ACCOUNT_STORAGE_BEFORE_SET_ITEM,
     AccountStorageAfterSetItem = ACCOUNT_STORAGE_AFTER_SET_ITEM,
 
-    AccountStorageBeforeGetMapItem = ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT,
+    AccountStorageBeforeGetMapItem = ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM,
 
     AccountStorageBeforeSetMapItem = ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM,
     AccountStorageAfterSetMapItem = ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM,
@@ -166,18 +166,18 @@ impl TryFrom<u32> for TransactionEvent {
             },
             ACCOUNT_VAULT_AFTER_REMOVE_ASSET => Ok(TransactionEvent::AccountVaultAfterRemoveAsset),
 
-            ACCOUNT_VAULT_BEFORE_GET_BALANCE_EVENT => {
+            ACCOUNT_VAULT_BEFORE_GET_BALANCE => {
                 Ok(TransactionEvent::AccountVaultBeforeGetBalanceEvent)
             },
 
-            ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET_EVENT => {
+            ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET => {
                 Ok(TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent)
             },
 
             ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
             ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEvent::AccountStorageAfterSetItem),
 
-            ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT => {
+            ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM => {
                 Ok(TransactionEvent::AccountStorageBeforeGetMapItem)
             },
 

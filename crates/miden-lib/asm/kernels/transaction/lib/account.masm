@@ -122,7 +122,7 @@ const.ACCOUNT_PROCEDURE_DATA_LENGTH=8
 # =================================================================================================
 
 # Event emitted before a foreign account is loaded from the advice inputs.
-const.ACCOUNT_BEFORE_FOREIGN_LOAD=131104
+const.ACCOUNT_BEFORE_FOREIGN_LOAD_EVENT=131104
 
 # Event emitted before an asset is added to the account vault.
 const.ACCOUNT_VAULT_BEFORE_ADD_ASSET_EVENT=131072
@@ -1017,7 +1017,7 @@ end
 #! - the number of account storage slots exceeded the maximum limit of 255.
 #! - the computed account storage commitment does not match the provided account storage commitment.
 export.load_foreign_account
-    emit.ACCOUNT_BEFORE_FOREIGN_LOAD
+    emit.ACCOUNT_BEFORE_FOREIGN_LOAD_EVENT
     # => [account_id_prefix, account_id_suffix]
 
     # construct the word with account ID to load the core account data from the advice map
