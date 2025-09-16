@@ -883,17 +883,22 @@ impl MockChain {
 
         for account_update in proven_block.updated_accounts() {
             match account_update.details() {
-                AccountUpdateDetails::New(account) => {
-                    self.committed_accounts.insert(account.id(), account.clone());
-                },
                 AccountUpdateDetails::Delta(account_delta) => {
-                    let committed_account =
-                        self.committed_accounts.get_mut(&account_update.account_id()).ok_or_else(
-                            || anyhow::anyhow!("account delta in block for non-existent account"),
-                        )?;
-                    committed_account
-                        .apply_delta(account_delta)
-                        .context("failed to apply account delta")?;
+                    if account_delta.is_full_state() {
+                        let account = Account::try_from(account_delta.clone())
+                            .context("failed to convert full state delta into full account")?;
+                        self.committed_accounts.insert(account.id(), account.clone());
+                    } else {
+                        let committed_account = self
+                            .committed_accounts
+                            .get_mut(&account_update.account_id())
+                            .ok_or_else(|| {
+                                anyhow::anyhow!("account delta in block for non-existent account")
+                            })?;
+                        committed_account
+                            .apply_delta(account_delta)
+                            .context("failed to apply account delta")?;
+                    }
                 },
                 // No state to keep for private accounts other than the commitment on the account
                 // tree

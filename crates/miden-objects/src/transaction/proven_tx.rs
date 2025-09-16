@@ -2,6 +2,7 @@ use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use super::{InputNote, ToInputNoteCommitments};
+use crate::account::Account;
 use crate::account::delta::AccountUpdateDetails;
 use crate::asset::FungibleAsset;
 use crate::block::BlockNumber;
@@ -174,34 +175,27 @@ impl ProvenTransaction {
                         self.account_id(),
                     ));
                 },
-                AccountUpdateDetails::New(account) => {
-                    if !is_new_account {
-                        return Err(
-                            ProvenTransactionError::ExistingPublicStateAccountRequiresDeltaDetails(
-                                self.account_id(),
-                            ),
-                        );
-                    }
-                    if account.id() != self.account_id() {
-                        return Err(ProvenTransactionError::AccountIdMismatch {
-                            tx_account_id: self.account_id(),
-                            details_account_id: account.id(),
-                        });
-                    }
-                    if account.commitment() != self.account_update.final_state_commitment() {
-                        return Err(ProvenTransactionError::AccountFinalCommitmentMismatch {
-                            tx_final_commitment: self.account_update.final_state_commitment(),
-                            details_commitment: account.commitment(),
-                        });
-                    }
-                },
-                AccountUpdateDetails::Delta(_) => {
+                AccountUpdateDetails::Delta(delta) => {
                     if is_new_account {
-                        return Err(
-                            ProvenTransactionError::NewPublicStateAccountRequiresFullDetails(
-                                self.account_id(),
-                            ),
-                        );
+                        // This will fail if it is not a full state delta, which means we validate
+                        // that the full state for the account can be constructed from the delta,
+                        // which must be the case for a new account.
+                        let account = Account::try_from(delta.clone()).expect("TODO");
+                        // TODO: ProvenTransactionError::NewPublicStateAccountRequiresFullDetails
+
+                        if account.id() != self.account_id() {
+                            return Err(ProvenTransactionError::AccountIdMismatch {
+                                tx_account_id: self.account_id(),
+                                details_account_id: delta.id(),
+                            });
+                        }
+
+                        if account.commitment() != self.account_update.final_state_commitment() {
+                            return Err(ProvenTransactionError::AccountFinalCommitmentMismatch {
+                                tx_final_commitment: self.account_update.final_state_commitment(),
+                                details_commitment: account.commitment(),
+                            });
+                        }
                     }
                 },
             }

@@ -31,6 +31,8 @@ pub use vault::{
 /// The [`AccountDelta`] stores the differences between two account states, which can result from
 /// one or more transaction.
 ///
+/// TODO: Explain "full state" vs "partial state".
+///
 /// The differences are represented as follows:
 /// - storage: an [AccountStorageDelta] that contains the changes to the account storage.
 /// - vault: an [AccountVaultDelta] object that contains the changes to the account vault.
@@ -97,6 +99,10 @@ impl AccountDelta {
             });
         }
 
+        if self.is_full_state() && other.is_full_state() {
+            panic!("TODO: cannot merge two full state deltas")
+        }
+
         self.nonce_delta = new_nonce_delta;
 
         self.storage.merge(other.storage)?;
@@ -119,6 +125,13 @@ impl AccountDelta {
     /// Returns true if this account delta does not contain any vault, storage or nonce updates.
     pub fn is_empty(&self) -> bool {
         self.storage.is_empty() && self.vault.is_empty() && self.nonce_delta == ZERO
+    }
+
+    /// Returns `true` if this delta is a "full state delta".
+    ///
+    /// This indicates whether the delta can be converted into a full [`Account`].
+    pub fn is_full_state(&self) -> bool {
+        self.code.is_some()
     }
 
     /// Returns storage updates for this account delta.
@@ -277,6 +290,7 @@ impl AccountDelta {
     }
 }
 
+// TODO: Change to TryFrom<&AccountDelta>?
 impl TryFrom<AccountDelta> for Account {
     type Error = AccountError;
 
@@ -375,9 +389,6 @@ pub enum AccountUpdateDetails {
     /// Account is private (no on-chain state change).
     Private,
 
-    /// The whole state is needed for new accounts.
-    New(Account),
-
     /// For existing accounts, only the delta is needed.
     Delta(AccountDelta),
 }
@@ -395,16 +406,6 @@ impl AccountUpdateDetails {
         let merged_update = match (self, other) {
             (AccountUpdateDetails::Private, AccountUpdateDetails::Private) => {
                 AccountUpdateDetails::Private
-            },
-            (AccountUpdateDetails::New(mut account), AccountUpdateDetails::Delta(delta)) => {
-                account.apply_delta(&delta).map_err(|err| {
-                    AccountDeltaError::AccountDeltaApplicationFailed {
-                        account_id: account.id(),
-                        source: err,
-                    }
-                })?;
-
-                AccountUpdateDetails::New(account)
             },
             (AccountUpdateDetails::Delta(mut delta), AccountUpdateDetails::Delta(new_delta)) => {
                 delta.merge(new_delta)?;
@@ -425,7 +426,6 @@ impl AccountUpdateDetails {
     pub(crate) const fn as_tag_str(&self) -> &'static str {
         match self {
             AccountUpdateDetails::Private => "private",
-            AccountUpdateDetails::New(_) => "new",
             AccountUpdateDetails::Delta(_) => "delta",
         }
     }
@@ -479,12 +479,8 @@ impl Serializable for AccountUpdateDetails {
             AccountUpdateDetails::Private => {
                 0_u8.write_into(target);
             },
-            AccountUpdateDetails::New(account) => {
-                1_u8.write_into(target);
-                account.write_into(target);
-            },
             AccountUpdateDetails::Delta(delta) => {
-                2_u8.write_into(target);
+                1_u8.write_into(target);
                 delta.write_into(target);
             },
         }
@@ -496,7 +492,6 @@ impl Serializable for AccountUpdateDetails {
 
         match self {
             AccountUpdateDetails::Private => u8_size,
-            AccountUpdateDetails::New(account) => u8_size + account.get_size_hint(),
             AccountUpdateDetails::Delta(account_delta) => u8_size + account_delta.get_size_hint(),
         }
     }
@@ -506,10 +501,9 @@ impl Deserializable for AccountUpdateDetails {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
         match u8::read_from(source)? {
             0 => Ok(Self::Private),
-            1 => Ok(Self::New(Account::read_from(source)?)),
-            2 => Ok(Self::Delta(AccountDelta::read_from(source)?)),
-            v => Err(DeserializationError::InvalidValue(format!(
-                "Unknown variant {v} for AccountDetails"
+            1 => Ok(Self::Delta(AccountDelta::read_from(source)?)),
+            variant => Err(DeserializationError::InvalidValue(format!(
+                "Unknown variant {variant} for AccountDetails"
             ))),
         }
     }
@@ -701,8 +695,5 @@ mod tests {
 
         let update_details_delta = AccountUpdateDetails::Delta(account_delta);
         assert_eq!(update_details_delta.to_bytes().len(), update_details_delta.get_size_hint());
-
-        let update_details_new = AccountUpdateDetails::New(account);
-        assert_eq!(update_details_new.to_bytes().len(), update_details_new.get_size_hint());
     }
 }

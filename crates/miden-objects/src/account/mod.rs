@@ -1,6 +1,9 @@
+use alloc::collections::BTreeMap;
 use alloc::string::ToString;
 
-use crate::asset::AssetVault;
+use miden_core::LexicographicWord;
+
+use crate::asset::{Asset, AssetVault};
 use crate::utils::serde::{
     ByteReader,
     ByteWriter,
@@ -406,6 +409,66 @@ impl Account {
     /// Returns a mutable reference to the storage of this account.
     pub fn storage_mut(&mut self) -> &mut AccountStorage {
         &mut self.storage
+    }
+}
+
+impl TryFrom<Account> for AccountDelta {
+    type Error = AccountError;
+
+    fn try_from(account: Account) -> Result<Self, Self::Error> {
+        let Account { id, vault, storage, code, nonce, seed } = account;
+        // TODO: Remove seed in build_executed_transaction?
+        if seed.is_some() {
+            panic!(
+                "account should not be converted to delta if seed is present, indicating it was not yet registered on chain"
+            );
+        }
+
+        let mut value_slots = BTreeMap::new();
+        let mut map_slots = BTreeMap::new();
+
+        for (slot_idx, slot) in (0..u8::MAX).zip(storage.into_slots().into_iter()) {
+            match slot {
+                StorageSlot::Value(word) => {
+                    value_slots.insert(slot_idx, word);
+                },
+                StorageSlot::Map(storage_map) => {
+                    let map_delta = StorageMapDelta::new(
+                        storage_map
+                            .into_entries()
+                            .into_iter()
+                            .map(|(key, value)| (LexicographicWord::from(key), value))
+                            .collect(),
+                    );
+                    map_slots.insert(slot_idx, map_delta);
+                },
+            }
+        }
+        let storage_delta = AccountStorageDelta::from_parts(value_slots, map_slots)
+            .expect("value and map slots from account storage should not overlap");
+
+        let mut fungible_delta = FungibleAssetDelta::default();
+        let mut non_fungible_delta = NonFungibleAssetDelta::default();
+        for asset in vault.assets() {
+            match asset {
+                Asset::Fungible(fungible_asset) => {
+                    fungible_delta.add(fungible_asset).expect("TODO");
+                },
+                Asset::NonFungible(non_fungible_asset) => {
+                    non_fungible_delta.add(non_fungible_asset).expect("TODO")
+                },
+            }
+        }
+        let vault_delta = AccountVaultDelta::new(fungible_delta, non_fungible_delta);
+
+        // TODO
+        let nonce_delta = nonce;
+
+        let mut delta =
+            AccountDelta::new(id, storage_delta, vault_delta, nonce_delta).expect("TODO");
+        delta.set_code(code);
+
+        Ok(delta)
     }
 }
 

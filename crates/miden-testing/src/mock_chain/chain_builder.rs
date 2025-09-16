@@ -122,11 +122,18 @@ impl MockChainBuilder {
             .accounts
             .into_values()
             .map(|account| {
-                BlockAccountUpdate::new(
-                    account.id(),
-                    account.commitment(),
-                    AccountUpdateDetails::New(account),
-                )
+                let account_id = account.id();
+                let account_commitment = account.commitment();
+                let update_details = AccountUpdateDetails::Delta(account.try_into().expect("TODO"));
+
+                // TODO?:
+                // let update_details = if account.is_private() {
+                //     AccountUpdateDetails::Private
+                // } else {
+                //     AccountUpdateDetails::Delta(account.try_into().expect("TODO"))
+                // };
+
+                BlockAccountUpdate::new(account_id, account_commitment, update_details)
             })
             .collect();
 

@@ -116,6 +116,11 @@ impl AccountStorage {
         &self.slots
     }
 
+    /// Consumes self and returns the storage slots of the account storage.
+    pub fn into_slots(self) -> Vec<StorageSlot> {
+        self.slots
+    }
+
     /// Returns an [AccountStorageHeader] for this account storage.
     pub fn to_header(&self) -> AccountStorageHeader {
         AccountStorageHeader::new(
