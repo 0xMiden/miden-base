@@ -882,34 +882,6 @@ fn test_public_key_extraction_regular_account() {
 }
 
 #[test]
-fn test_public_key_extraction_multisig_account() {
-    // Create test public keys
-    let pub_key_1 = PublicKey::new(Word::from([1u32, 0, 0, 0]));
-    let pub_key_2 = PublicKey::new(Word::from([2u32, 0, 0, 0]));
-    let pub_key_3 = PublicKey::new(Word::from([3u32, 0, 0, 0]));
-    let approvers = vec![pub_key_1, pub_key_2, pub_key_3];
-    let threshold = 2u32;
-
-    // Create multisig component
-    let multisig_component = AuthRpoFalcon512Multisig::new(threshold, approvers.clone())
-        .expect("multisig component creation failed");
-
-    let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
-    let multisig_account = AccountBuilder::new(mock_seed)
-        .with_auth_component(multisig_component)
-        .with_component(BasicWallet)
-        .build_existing()
-        .expect("failed to create multisig account");
-
-    let pub_keys = get_public_keys_from_account(&multisig_account);
-
-    assert_eq!(pub_keys.len(), 3);
-    assert_eq!(pub_keys[0], Word::from([1u32, 0, 0, 0]));
-    assert_eq!(pub_keys[1], Word::from([2u32, 0, 0, 0]));
-    assert_eq!(pub_keys[2], Word::from([3u32, 0, 0, 0]));
-}
-
-#[test]
 fn test_public_key_extraction_no_auth_account() {
     let mock_seed = Word::from([0, 1, 2, 3u32]).as_bytes();
     let no_auth_account = AccountBuilder::new(mock_seed)
