@@ -99,7 +99,8 @@ export.update_signers_and_threshold
         sub.1
 
         dup
-        push.0.0.0
+        # @dev using key [1,0,0,n] since [0,0,0,0] key is reserved
+        push.0.0.1
         # => [[0, 0, 0, i-1], i-1]
 
         adv.push_mapval

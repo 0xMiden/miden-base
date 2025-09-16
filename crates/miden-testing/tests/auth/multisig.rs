@@ -355,7 +355,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     // for public key in new public keys
     for (i, public_key) in new_public_keys.iter().enumerate() {
-        let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+        let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
         let value_word: Word = (*public_key).into();
         advice_map.insert(key_word, value_word.to_vec());
         println!("pub key: {:?}", public_key);
