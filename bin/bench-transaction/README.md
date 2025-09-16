@@ -34,10 +34,10 @@ This command will run both the execution and the proving benchmarks.
 
 ```bash
 # Run the execution benchmarks
-cargo run --bin bench-tx
+cargo run --bin bench-transaction
 
 # Run the proving benchmarks
-cargo bench --bin bench-tx --bench proving_benchmarks
+cargo bench --bin bench-transaction --bench proving_benchmarks
 ```
 
 ## License
