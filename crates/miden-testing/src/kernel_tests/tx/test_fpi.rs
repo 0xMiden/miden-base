@@ -1590,13 +1590,12 @@ fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Re
     )?
     .with_supports_all_types();
 
-    // Update the foreign account to use the new component
     let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
         .with_auth_component(Auth::IncrNonce)
         .with_component(foreign_account_component.clone())
         .build_existing()?;
 
-    // Rebuild the mock chain with the updated foreign account
+    // Create the mock chain with both accounts
     let mut mock_chain =
         MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
             .build()?;
