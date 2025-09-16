@@ -1,4 +1,5 @@
 use miden_lib::account::components::multisig_library;
+use miden_lib::account::interface::get_public_keys_from_account;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
 use miden_lib::utils::ScriptBuilder;
@@ -98,10 +99,8 @@ fn create_multisig_account(
 /// - 1 Multisig Contract
 #[tokio::test]
 async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
-    // Setup keys and authenticators
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    // Create multisig account
     let multisig_starting_balance = 10u64;
     let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
 
@@ -303,7 +302,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     mock_chain.add_pending_executed_transaction(&executed_tx)?;
     mock_chain.prove_next_block()?;
 
-    // Now attempt to execute the same transaction again - should fail due to replay protection
+    // Attempt to execute the same transaction again - should fail due to replay protection
     let tx_context_replay = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .add_signature(public_keys[0], msg, sig_1)
@@ -311,7 +310,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
         .auth_args(salt)
         .build()?;
 
-    // This should fail - due to replay protection
+    // This should fail due to replay protection
     let result = tx_context_replay.execute().await;
     assert_transaction_executor_error!(result, ERR_TX_ALREADY_EXECUTED);
 
@@ -332,15 +331,11 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
 /// - 1 Transaction Script calling multisig procedures
 #[tokio::test]
 async fn test_multisig_update_signers() -> anyhow::Result<()> {
-    // Setup keys and authenticators for the original multisig account
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    // Create multisig account
-    let multisig_starting_balance = 10u64;
-    let multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
+    let multisig_account = create_multisig_account(2, &public_keys, 0)?;
 
     let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
-
     let mut mock_chain = mock_chain_builder.build().unwrap();
 
     let salt = Word::from([Felt::new(1); 4]);
@@ -348,25 +343,21 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     // Get the multisig library
     let multisig_lib: miden_assembly::Library = multisig_library();
 
-    // new signer setup
+    // Setup new signers
     let mut advice_map = AdviceMap::default();
     let (_new_secret_keys, new_public_keys, _new_authenticators) =
         setup_keys_and_authenticators(4, 4)?;
 
-    // for public key in new public keys
+    // Add new public keys to advice map
     for (i, public_key) in new_public_keys.iter().enumerate() {
         let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
         let value_word: Word = (*public_key).into();
         advice_map.insert(key_word, value_word.to_vec());
-        println!("pub key: {:?}", public_key);
     }
 
     // Create a transaction script that calls the update_signers procedure
-    // The multisig library has an anonymous namespace, so we need to use it directly
     let tx_script_code = "
         begin
-            push.101 debug.stack drop
-            
             call.::update_signers_and_threshold
         end
     ";
@@ -375,7 +366,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .with_dynamically_linked_library(&multisig_lib)?
         .compile_tx_script(tx_script_code)?;
 
-    // Create AdviceInputs with the advice map
     let advice_inputs = AdviceInputs {
         map: advice_map.clone(),
         ..Default::default()
@@ -405,8 +395,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let msg = tx_summary.as_ref().to_commitment();
     let tx_summary = SigningInputs::TransactionSummary(tx_summary);
 
-    println!("tx_summary: {:?}", tx_summary.to_commitment());
-
     let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
     let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
 
@@ -424,8 +412,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         .await
         .unwrap();
 
-    println!("here");
-
     // Verify the transaction executed successfully
     assert_eq!(tx_context_execute.account_delta().nonce_delta(), Felt::new(1));
 
@@ -436,34 +422,51 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let mut updated_multisig_account = multisig_account.clone();
     updated_multisig_account.apply_delta(tx_context_execute.account_delta())?;
 
-    // Debug: Print account nonce to verify it was updated
-    println!("Original account nonce: {}", multisig_account.nonce());
-    println!("Updated account nonce: {}", updated_multisig_account.nonce());
+    // Verify that the public keys were actually updated in storage
+    for (i, expected_key) in new_public_keys.iter().enumerate() {
+        let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
+        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
 
-    // Debug: Print account delta to see what changed
-    println!("Account delta: {:?}", tx_context_execute.account_delta());
+        let expected_word: Word = (*expected_key).into();
 
-    // ========================================================================
-    // VERIFICATION: Check that the public keys were actually updated
-    // ========================================================================
+        assert_eq!(storage_item, expected_word, "Public key {} doesn't match expected value", i);
+    }
 
-    let storage_item = multisig_account
-        .storage()
-        .get_map_item(1, [Felt::new(1), Felt::new(0), Felt::new(0), Felt::new(0)].into())
-        .unwrap();
+    // Verify the threshold was updated by checking storage slot 0
+    let threshold_storage = updated_multisig_account.storage().get_item(0).unwrap();
 
-    println!("storage item: {:?}", storage_item);
+    // The threshold should be stored in the first element of slot 0
+    assert_eq!(
+        threshold_storage[0],
+        Felt::new(threshold),
+        "Threshold was not updated correctly"
+    );
 
-    /* TODO: Get this to work
-    // Extract public keys from the updated account
-    let final_pub_keys = get_public_keys_from_account(&updated_multisig_account);
+    // Extract public keys using the interface function
+    let extracted_pub_keys = get_public_keys_from_account(&updated_multisig_account);
+
     // Verify that we have the expected number of public keys (4 new ones)
-    assert_eq!(final_pub_keys.len(), 4, "Expected 4 public keys after update");
-    // Verify that the public keys match the new ones we set
+    assert_eq!(
+        extracted_pub_keys.len(),
+        4,
+        "get_public_keys_from_account should return 4 public keys after update"
+    );
+
+    // Verify that the extracted public keys match the new ones we set
     for (i, expected_key) in new_public_keys.iter().enumerate() {
         let expected_word: Word = (*expected_key).into();
-        assert_eq!(final_pub_keys[i], expected_word, "Public key {} doesn't match", i);
-    } */
+
+        // Find the matching key in extracted keys (order might be different)
+        let found_key = extracted_pub_keys.iter().find(|&key| *key == expected_word);
+
+        assert!(
+            found_key.is_some(),
+            "Public key {} not found in extracted keys: expected {:?}, got {:?}",
+            i,
+            expected_word,
+            extracted_pub_keys
+        );
+    }
 
     Ok(())
 }

@@ -212,5 +212,4 @@ export.auth_tx_rpo_falcon512_multisig
     exec.assert_new_tx
     # => [TX_SUMMARY_COMMITMENT]
 
-    push.111 debug.stack drop
 end

@@ -296,19 +296,32 @@ fn extract_multisig_auth_scheme(storage: &AccountStorage, storage_index: u8) -> 
 
     // Read each public key from the map
     for key_index in 0..num_approvers {
-        let map_key = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
+        // Try the new pattern first: [index, 0, 0, 1]
+        let map_key_new = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ONE];
 
-        match storage.get_map_item(pub_keys_map_slot, map_key.into()) {
+        match storage.get_map_item(pub_keys_map_slot, map_key_new.into()) {
             Ok(pub_key_word) => {
                 pub_keys.push(PublicKey::new(pub_key_word));
             },
             Err(_) => {
-                // If we can't read a public key, panic with a clear error message
-                panic!(
-                    "Failed to read public key {} from multisig configuration at storage index {}. \
-                        This indicates corrupted multisig storage or incorrect storage layout.",
-                    key_index, storage_index
-                );
+                // Try the old pattern: [index, 0, 0, 0]
+                let map_key_old = [Felt::new(key_index as u64), Felt::ZERO, Felt::ZERO, Felt::ZERO];
+
+                match storage.get_map_item(pub_keys_map_slot, map_key_old.into()) {
+                    Ok(pub_key_word) => {
+                        pub_keys.push(PublicKey::new(pub_key_word));
+                    },
+                    Err(_) => {
+                        // If we can't read a public key with either pattern, panic with a clear
+                        // error message
+                        panic!(
+                            "Failed to read public key {} from multisig configuration at storage index {}. \
+                                Tried both patterns [index, 0, 0, 1] and [index, 0, 0, 0]. \
+                                This indicates corrupted multisig storage or incorrect storage layout.",
+                            key_index, storage_index
+                        );
+                    },
+                }
             },
         }
     }
