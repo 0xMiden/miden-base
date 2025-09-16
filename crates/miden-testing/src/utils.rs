@@ -114,12 +114,12 @@ pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Ass
     let code = format!(
         "
         use.mock::account
-        use.miden::note
+        use.miden::active_note
         use.miden::contracts::wallets::basic->wallet
 
         begin
             # fetch pointer & number of assets
-            push.0 exec.note::get_assets          # [num_assets, dest_ptr]
+            push.0 exec.active_note::get_assets     # [num_assets, dest_ptr]
 
             # runtime-check we got the expected count
             push.{num_assets} assert_eq             # [dest_ptr]
