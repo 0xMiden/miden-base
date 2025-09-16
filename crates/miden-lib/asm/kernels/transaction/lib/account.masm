@@ -1072,11 +1072,6 @@ export.save_account_storage_data
     # verify hashed account storage slots match account storage commitment
     assert_eqw.err=ERR_ACCOUNT_STORAGE_COMMITMENT_MISMATCH
     # OS => []
-
-    # duplicate the initial storage slots in memory to enable a diff computation
-    # for the account delta
-    exec.memory::mem_copy_initial_storage_slots
-    # OS => []
 end
 
 #! Saves account procedure data into memory and validates that the code commitment matches the

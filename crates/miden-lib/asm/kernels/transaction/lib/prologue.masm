@@ -460,6 +460,10 @@ proc.process_account_data
 
     # process conditional logic depending on whether the account is new or existing
     if.true
+        # TODO: set the initial slot values to be empty
+        exec.memory::mem_copy_initial_storage_slots
+        # => []
+
         # set the initial account commitment
         exec.memory::set_init_account_commitment dropw
         # => []
@@ -468,6 +472,10 @@ proc.process_account_data
         exec.validate_new_account
         # => []
     else
+        # duplicate the storage slots in memory to be able to access the initial slot values
+        exec.memory::mem_copy_initial_storage_slots
+        # => []
+
         # assert that the existing account commitment matches the hash in global inputs
         exec.memory::get_init_account_commitment
         assert_eqw.err=ERR_PROLOGUE_PROVIDED_ACCOUNT_DATA_DOES_NOT_MATCH_ON_CHAIN_COMMITMENT
