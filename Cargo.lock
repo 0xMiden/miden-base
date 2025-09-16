@@ -214,7 +214,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "bench-tx"
+name = "bench-transaction"
 version = "0.1.0"
 dependencies = [
  "anyhow",

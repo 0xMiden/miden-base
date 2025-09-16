@@ -1,11 +1,7 @@
-extern crate alloc;
-
 use anyhow::Result;
-use miden_lib::note::create_p2id_note;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::Account;
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
-use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::transaction::{ExecutedTransaction, OutputNote};
@@ -13,23 +9,19 @@ use miden_objects::{Felt, Word};
 use miden_testing::{Auth, MockChain};
 
 /// Runs the transaction which creates a single P2ID note.
-pub fn tx_create_p2id() -> anyhow::Result<ExecutedTransaction> {
+pub fn tx_create_single_p2id() -> anyhow::Result<ExecutedTransaction> {
     let mut builder = MockChain::builder();
-
-    let fungible_asset: Asset = FungibleAsset::mock(100);
-
+    let fungible_asset = FungibleAsset::mock(150);
     let account = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [fungible_asset])?;
 
-    let mock_chain = builder.build()?;
-
-    let output_note = create_p2id_note(
+    let output_note = builder.add_p2id_note(
+        ACCOUNT_ID_SENDER.try_into().unwrap(),
         account.id(),
-        account.id(),
-        vec![fungible_asset],
+        &[fungible_asset],
         NoteType::Public,
-        Felt::new(0),
-        &mut RpoRandomCoin::new(Word::from([1, 2, 3, 4u32])),
     )?;
+
+    let mock_chain = builder.build()?;
 
     let tx_note_creation_script = format!(
         "
@@ -74,8 +66,8 @@ pub fn tx_create_p2id() -> anyhow::Result<ExecutedTransaction> {
     Ok(tx_context.execute_blocking()?)
 }
 
-/// Runs the transaction which consumes a P2ID note into a new basic wallet.
-pub fn tx_consume_p2id() -> Result<ExecutedTransaction> {
+/// Runs the transaction which consumes a single P2ID note into a new basic wallet.
+pub fn tx_consume_single_p2id() -> Result<ExecutedTransaction> {
     // Create assets
     let fungible_asset: Asset = FungibleAsset::mock(123);
 
@@ -119,8 +111,8 @@ pub fn tx_consume_p2id() -> Result<ExecutedTransaction> {
     Ok(executed_transaction)
 }
 
-/// Runs the transaction which consumes multiple P2ID notes into an existing basic wallet.
-pub fn tx_consume_multiple_p2id_notes() -> Result<ExecutedTransaction> {
+/// Runs the transaction which consumes two P2ID notes into an existing basic wallet.
+pub fn tx_consume_two_p2id_notes() -> Result<ExecutedTransaction> {
     let mut builder = MockChain::builder();
 
     let mut account = builder.add_existing_wallet(Auth::BasicAuth)?;

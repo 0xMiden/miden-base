@@ -9,7 +9,7 @@
     "epilogue": 62443,
     "after_tx_cycles_obtained": 500
   },
-  "consume multiple P2ID notes": {
+  "consume two P2ID notes": {
     "prologue": 3726,
     "notes_processing": 3394,
     "note_execution": {

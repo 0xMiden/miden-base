@@ -1,7 +1,7 @@
 [workspace]
 members = [
   "bin/bench-note-checker",
-  "bin/bench-tx",
+  "bin/bench-transaction",
   "crates/miden-block-prover",
   "crates/miden-lib",
   "crates/miden-objects",

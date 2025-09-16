@@ -127,8 +127,8 @@ build-no-std-testing: ## Build without the standard library. Includes the `testi
 
 .PHONY: bench-tx
 bench-tx: ## Run transaction benchmarks
-	cargo run --bin bench-tx
-	cargo bench --bin bench-tx --bench proving_benchmarks
+	cargo run --bin bench-transaction
+	cargo bench --bin bench-transaction --bench proving_benchmarks
 
 .PHONY: bench-note-checker
 bench-note-checker: ## Run note checker benchmarks

@@ -2,10 +2,10 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use anyhow::Result;
-use bench_tx::tx_variants::{tx_consume_multiple_p2id_notes, tx_consume_p2id};
+use bench_transaction::executed_transactions::{tx_consume_single_p2id, tx_consume_two_p2id_notes};
 use criterion::{Criterion, SamplingMode, criterion_group, criterion_main};
-use miden_objects::transaction::ExecutedTransaction;
-use miden_tx::{LocalTransactionProver, ProvingOptions};
+use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
+use miden_tx::LocalTransactionProver;
 
 // PROVING BENCHMARK NAMES
 // ================================================================================================
@@ -26,7 +26,7 @@ fn core_benchmarks(c: &mut Criterion) {
         .warm_up_time(Duration::from_millis(1000));
 
     group.bench_function(BENCH_CONSUME_NOTE_NEW_ACCOUNT, |b| {
-        let executed_transaction = tx_consume_p2id()
+        let executed_transaction = tx_consume_single_p2id()
             .expect("Failed to set up transaction for consuming note with new account");
 
         // Only benchmark proving and verification
@@ -34,7 +34,7 @@ fn core_benchmarks(c: &mut Criterion) {
     });
 
     group.bench_function(BENCH_CONSUME_MULTIPLE_NOTES, |b| {
-        let executed_transaction = tx_consume_multiple_p2id_notes()
+        let executed_transaction = tx_consume_two_p2id_notes()
             .expect("Failed to set up transaction for consuming multiple notes");
 
         // Only benchmark the proving and verification
@@ -46,11 +46,8 @@ fn core_benchmarks(c: &mut Criterion) {
 
 fn prove_transaction(executed_transaction: ExecutedTransaction) -> Result<()> {
     let executed_transaction_id = executed_transaction.id();
-
-    let proof_options = ProvingOptions::default();
-    let prover = LocalTransactionProver::new(proof_options);
-    let proven_transaction: miden_objects::transaction::ProvenTransaction =
-        prover.prove(executed_transaction.into()).unwrap();
+    let proven_transaction: ProvenTransaction =
+        LocalTransactionProver::default().prove(executed_transaction.into())?;
 
     assert_eq!(proven_transaction.id(), executed_transaction_id);
     Ok(())
