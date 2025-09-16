@@ -264,7 +264,7 @@ export.get_item
     # => [VALUE]
 end
 
-#! Gets an item from the account storage at its initial state (beginning of transaction).
+#! Gets the initial item from the account storage slot as it was at the beginning of the transaction.
 #!
 #! Inputs:  [index]
 #! Outputs: [INIT_VALUE]
@@ -390,7 +390,7 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets a map item from the account storage at its initial state (beginning of transaction).
+#! Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.
 #!
 #! Inputs:  [index, KEY]
 #! Outputs: [INIT_VALUE]
