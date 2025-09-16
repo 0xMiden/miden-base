@@ -1552,3 +1552,104 @@ fn foreign_account_data_memory_assertions(foreign_account: &Account, process: &P
         );
     }
 }
+
+/// Test that get_item_init and get_map_item_init work correctly with foreign accounts.
+#[test]
+fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> anyhow::Result<()> {
+    // Create a native account
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    let (map_key, map_value) = STORAGE_LEAVES_2[0];
+
+    // Create foreign procedures that test get_item_init and get_map_item_init
+    let foreign_account_code_source = "
+        use.miden::account
+        use.std::sys
+
+
+        export.test_get_item_init
+            push.0
+            exec.account::get_item_init
+            exec.sys::truncate_stack
+        end
+
+        export.test_get_map_item_init
+            exec.account::get_map_item_init
+            exec.sys::truncate_stack
+        end
+    ";
+
+    let foreign_account_component = AccountComponent::compile(
+        NamedSource::new("foreign_account", foreign_account_code_source),
+        TransactionKernel::assembler(),
+        vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot],
+    )?
+    .with_supports_all_types();
+
+    // Update the foreign account to use the new component
+    let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(foreign_account_component.clone())
+        .build_existing()?;
+
+    // Rebuild the mock chain with the updated foreign account
+    let mut mock_chain =
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
+    mock_chain.prove_next_block()?;
+
+    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
+
+    let code = format!(
+        "
+        use.std::sys
+        use.miden::tx
+
+        begin
+
+            # Test get_item_init on foreign account
+            padw padw padw push.0.0
+            push.0
+            procref.::foreign_account::test_get_item_init
+            push.{foreign_account_id_suffix}.{foreign_account_id_prefix}
+            exec.tx::execute_foreign_procedure
+            push.{expected_value_slot_0}
+            assert_eqw.err=\"foreign account get_item_init should work\"
+
+            # Test get_map_item_init on foreign account
+            padw padw push.0.0
+            push.{map_key}
+            push.1
+            procref.::foreign_account::test_get_map_item_init
+            push.{foreign_account_id_suffix}.{foreign_account_id_prefix}
+            exec.tx::execute_foreign_procedure
+            push.{map_value}
+            assert_eqw.err=\"foreign account get_map_item_init should work\"
+
+            exec.sys::truncate_stack
+        end
+        ",
+        foreign_account_id_prefix = foreign_account.id().prefix().as_felt(),
+        foreign_account_id_suffix = foreign_account.id().suffix(),
+        expected_value_slot_0 = &AccountStorage::mock_item_0().slot.value(),
+        map_key = &map_key,
+        map_value = &map_value,
+    );
+
+    let tx_script = ScriptBuilder::with_mock_libraries()?
+        .with_dynamically_linked_library(foreign_account_component.library())?
+        .compile_tx_script(code)?;
+
+    mock_chain
+        .build_tx_context(native_account.id(), &[], &[])?
+        .foreign_accounts(vec![foreign_account_inputs])
+        .tx_script(tx_script)
+        .build()?
+        .execute_blocking()?;
+
+    Ok(())
+}

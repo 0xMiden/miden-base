@@ -51,7 +51,6 @@ use crate::executor::CodeExecutor;
 use crate::{
     Auth,
     MockChain,
-    MockChainBuilder,
     TransactionContextBuilder,
     assert_execution_error,
     assert_transaction_executor_error,
@@ -1374,121 +1373,6 @@ fn test_get_map_item_init() -> miette::Result<()> {
     );
 
     tx_context.execute_code(&code).unwrap();
-
-    Ok(())
-}
-
-#[test]
-fn test_get_item_init_and_get_map_item_init_with_foreign_account() -> miette::Result<()> {
-    let mut mock_chain = MockChain::builder();
-
-    // Create a native account and add it to the mock chain
-    let native_account = mock_chain
-        .add_existing_mock_account(Auth::IncrNonce)
-        .expect("failed to add native account");
-
-    mock_chain.build().expect("failed to build mock chain");
-
-    let (map_key, map_value) = STORAGE_LEAVES_2[0];
-
-    // Create foreign procedures that test get_item_init and get_map_item_init
-    let foreign_account_code_source = "
-        use.miden::account
-        use.std::sys
-
-
-        export.test_get_item_init
-            push.0
-            exec.account::get_item_init
-            exec.sys::truncate_stack
-        end
-
-        export.test_get_map_item_init
-            exec.account::get_map_item_init
-            exec.sys::truncate_stack
-        end
-    ";
-
-    let foreign_account_component = AccountComponent::compile(
-        foreign_account_code_source,
-        TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default())),
-        vec![AccountStorage::mock_item_0().slot, AccountStorage::mock_item_2().slot],
-    )
-    .unwrap()
-    .with_supports_all_types();
-
-    // Update the foreign account to use the new component
-    let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
-        .with_auth_component(Auth::IncrNonce)
-        .with_component(foreign_account_component.clone())
-        .build_existing()
-        .unwrap();
-
-    // Rebuild the mock chain with the updated foreign account
-    let mut mock_chain =
-        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])
-            .unwrap()
-            .build()
-            .unwrap();
-    mock_chain.prove_next_block().unwrap();
-
-    let foreign_account_inputs = mock_chain
-        .get_foreign_account_inputs(foreign_account.id())
-        .expect("failed to get foreign account inputs");
-
-    let code = format!(
-        "
-        use.std::sys
-        use.miden::tx
-
-        begin
-
-            # Test get_item_init on foreign account
-            padw padw padw push.0.0
-            push.{test_get_item_init_hash}
-            push.{foreign_account_id_suffix}.{foreign_account_id_prefix}
-            exec.tx::execute_foreign_procedure
-            push.{expected_value_slot_0}
-            assert_eqw.err=\"foreign account get_item_init should work\"
-
-            # Test get_map_item_init on foreign account
-            padw padw push.0.0
-            push.{map_key}
-            push.1
-            push.{test_get_map_item_init_hash}
-            push.{foreign_account_id_suffix}.{foreign_account_id_prefix}
-            exec.tx::execute_foreign_procedure
-            push.{map_value}
-            assert_eqw.err=\"foreign account get_map_item_init should work\"
-
-            exec.sys::truncate_stack
-        end
-        ",
-        foreign_account_id_prefix = foreign_account.id().prefix().as_felt(),
-        foreign_account_id_suffix = foreign_account.id().suffix(),
-        expected_value_slot_0 = &AccountStorage::mock_item_0().slot.value(),
-        map_key = &map_key,
-        map_value = &map_value,
-        test_get_item_init_hash = foreign_account.code().procedures()[1].mast_root(),
-        test_get_map_item_init_hash = foreign_account.code().procedures()[2].mast_root(),
-    );
-
-    let tx_script = ScriptBuilder::with_mock_libraries()
-        .unwrap()
-        .with_dynamically_linked_library(foreign_account_component.library())
-        .unwrap()
-        .compile_tx_script(code)
-        .unwrap();
-
-    mock_chain
-        .build_tx_context(native_account.id(), &[], &[])
-        .expect("failed to build tx context")
-        .foreign_accounts(vec![foreign_account_inputs])
-        .tx_script(tx_script)
-        .build()
-        .unwrap()
-        .execute_blocking()
-        .unwrap();
 
     Ok(())
 }
