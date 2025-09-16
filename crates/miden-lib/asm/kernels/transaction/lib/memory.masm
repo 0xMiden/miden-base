@@ -1407,6 +1407,78 @@ export.mem_copy_initial_storage_slots
   # => []
 end
 
+#! Initializes the storage slots with their corresponding empty value.
+#!
+#! - Value slots are initialized to the empty word.
+#! - Map slots are initialized to the empty SMT root.
+#!
+#! Inputs:  []
+#! Outputs: []
+export.set_empty_initial_storage_slots
+    exec.get_native_account_initial_storage_slots_ptr
+    exec.get_native_account_storage_slots_ptr
+    # => [current_slots_ptr, init_slots_ptr]
+
+    exec.get_num_storage_slots movdn.2
+    # => [current_slots_ptr, init_slots_ptr, num_slots]
+
+    # push loop index
+    push.0
+    # => [slot_idx = 0, current_slots_ptr, init_slots_ptr, num_slots]
+
+    # enter loop if account has at least one storage slot
+    dup.1 neq.0
+    # => [should_loop, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+    while.true
+        # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # compute init slot ptr
+        dup dup.3 add
+        # => [init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # compute current slot ptr
+        dup.1 dup.3 add
+        # => [current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # load slot metadata from current ptr (which is offset by one word)
+        padw movup.4 add.4 mem_loadw
+        # => [SLOT_METADATA, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # copy metadata to initial slots section
+        dup.4 add.4 mem_storew
+        # => [SLOT_METADATA, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # extract slot type
+        drop drop drop
+        # => [slot_type, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        exec.constants::get_storage_slot_type_value eq
+        # => [is_value_slot_type, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # store the empty value into the initial section based on the slot type
+        if.true
+            padw movup.4 mem_storew dropw
+            # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+        else
+            exec.constants::get_empty_smt_root movup.4 mem_storew dropw
+            # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+        end
+        # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+        add.1
+        # => [slot_idx+1, current_slots_ptr, init_slots_ptr, num_slots]
+
+        # slot index and num_slots are guaranteed to fit into a u32
+        dup dup.4 u32lt
+        # => [should_continue, slot_idx+1, current_slots_ptr, init_slots_ptr, num_slots]
+    end
+    # => [slot_idx+1, current_slots_ptr, init_slots_ptr, num_slots]
+
+    dropw
+    # => []
+end
+
 # INPUT NOTES
 # -------------------------------------------------------------------------------------------------
 
