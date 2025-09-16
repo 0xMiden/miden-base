@@ -41,7 +41,7 @@ impl AccountDeltaTracker {
 
         Self {
             account_id: account.id(),
-            storage: StorageDeltaTracker::new(account.storage().header().clone()),
+            storage: StorageDeltaTracker::new(account),
             vault: AccountVaultDelta::default(),
             code,
             nonce_delta: ZERO,

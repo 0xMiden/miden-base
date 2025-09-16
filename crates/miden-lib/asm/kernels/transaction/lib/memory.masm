@@ -1442,38 +1442,46 @@ export.set_empty_initial_storage_slots
         # => [current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # load slot metadata from current ptr (which is offset by one word)
-        padw movup.4 add.4 mem_loadw
-        # => [SLOT_METADATA, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+        padw dup.4 add.4 mem_loadw
+        # => [SLOT_METADATA, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # copy metadata to initial slots section
-        dup.4 add.4 mem_storew
-        # => [SLOT_METADATA, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+        dup.5 add.4 mem_storew
+        # => [SLOT_METADATA, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # extract slot type
         drop drop drop
-        # => [slot_type, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+        # => [slot_type, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         exec.constants::get_storage_slot_type_value eq
-        # => [is_value_slot_type, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+        # => [is_value_slot_type, current_slot_ptr, init_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
-        # store the empty value into the initial section based on the slot type
         if.true
-            padw movup.4 mem_storew dropw
+            # store the empty word for value slots as the initial value
+            padw movup.5 mem_storew dropw drop
             # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
         else
-            exec.constants::get_empty_smt_root movup.4 mem_storew dropw
+            # store the empty SMT root for map slots as the initial value
+            exec.constants::get_empty_smt_root movup.5 mem_storew dropw
+            # => [current_slot_ptr, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
+
+            # TODO: Load _current_ root, lookup entries in advice provider and
+            # call account_delta::set_map_item in a loop
+
+            # for now drop the current slot ptr
+            drop
             # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
         end
         # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
-        add.1
-        # => [slot_idx+1, current_slots_ptr, init_slots_ptr, num_slots]
+        add.8
+        # => [next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
         # slot index and num_slots are guaranteed to fit into a u32
         dup dup.4 u32lt
-        # => [should_continue, slot_idx+1, current_slots_ptr, init_slots_ptr, num_slots]
+        # => [should_continue, next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
     end
-    # => [slot_idx+1, current_slots_ptr, init_slots_ptr, num_slots]
+    # => [next_slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
     dropw
     # => []
