@@ -8,6 +8,8 @@ use super::TransactionEventError;
 // TRANSACTION EVENT
 // ================================================================================================
 
+const ACCOUNT_BEFORE_FOREIGN_LOAD: u32 = 0x2_0020; // 131104
+
 const ACCOUNT_VAULT_BEFORE_ADD_ASSET: u32 = 0x2_0000; // 131072
 const ACCOUNT_VAULT_AFTER_ADD_ASSET: u32 = 0x2_0001; // 131073
 
@@ -67,6 +69,8 @@ const UNAUTHORIZED_EVENT: u32 = 0x2_001e; // 131102
 #[repr(u32)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TransactionEvent {
+    AccountBeforeForeignLoad = ACCOUNT_BEFORE_FOREIGN_LOAD,
+
     AccountVaultBeforeAddAsset = ACCOUNT_VAULT_BEFORE_ADD_ASSET,
     AccountVaultAfterAddAsset = ACCOUNT_VAULT_AFTER_ADD_ASSET,
 
@@ -144,6 +148,8 @@ impl TryFrom<u32> for TransactionEvent {
         }
 
         match value {
+            ACCOUNT_BEFORE_FOREIGN_LOAD => Ok(TransactionEvent::AccountBeforeForeignLoad),
+
             ACCOUNT_VAULT_BEFORE_ADD_ASSET => Ok(TransactionEvent::AccountVaultBeforeAddAsset),
             ACCOUNT_VAULT_AFTER_ADD_ASSET => Ok(TransactionEvent::AccountVaultAfterAddAsset),
 

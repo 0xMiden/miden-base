@@ -29,6 +29,7 @@ use miden_lib::transaction::memory::{
 };
 use miden_lib::transaction::{TransactionEvent, TransactionEventError};
 use miden_objects::account::{
+    AccountCode,
     AccountDelta,
     AccountHeader,
     AccountId,
@@ -62,7 +63,7 @@ use miden_processor::{
 pub use tx_progress::TransactionProgress;
 
 use crate::auth::SigningInputs;
-use crate::errors::TransactionKernelError;
+use crate::errors::{TransactionHostError, TransactionKernelError};
 
 // TRANSACTION BASE HOST
 // ================================================================================================
@@ -200,6 +201,17 @@ where
         )
     }
 
+    // MUTATORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a mutable reference to the [`AccountProcedureIndexMap`].
+    pub fn load_foreign_account_code(
+        &mut self,
+        account_code: &AccountCode,
+    ) -> Result<(), TransactionHostError> {
+        self.acct_procedure_index_map.insert_code(account_code)
+    }
+
     // EVENT HANDLERS
     // --------------------------------------------------------------------------------------------
 
@@ -216,6 +228,10 @@ where
         }
 
         let advice_mutations = match transaction_event {
+            TransactionEvent::AccountBeforeForeignLoad => {
+                self.on_account_before_foreign_load(process)
+            }
+
             TransactionEvent::AccountVaultBeforeAddAsset => {
                 Self::on_account_vault_before_add_or_remove_asset(process)
             },
@@ -331,6 +347,28 @@ where
         .map_err(EventError::from)?;
 
         Ok(advice_mutations)
+    }
+
+    /// Extract all necessary data for requesting the data to access the foreign account that is
+    /// being loaded.
+    ///
+    /// Expected stack state: `[account_id_prefix, account_id_suffix]`
+    pub fn on_account_before_foreign_load(
+        &self,
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let account_id_word = process.get_stack_word(0);
+        let account_id =
+            AccountId::try_from([account_id_word[3], account_id_word[2]]).map_err(|err| {
+                TransactionKernelError::other_with_source(
+                    "failed to convert account ID word into account ID",
+                    err,
+                )
+            })?;
+
+        Ok(TransactionEventHandling::Unhandled(TransactionEventData::ForeignAccount {
+            account_id,
+        }))
     }
 
     /// Pushes a signature to the advice stack as a response to the `AuthRequest` event.
@@ -988,6 +1026,11 @@ pub(super) enum TransactionEventData {
     TransactionFeeComputed {
         /// The fee asset extracted from the stack.
         fee_asset: FungibleAsset,
+    },
+    /// The data necessary to request a foreign account's data from the data store.
+    ForeignAccount {
+        /// The foreign account's ID.
+        account_id: AccountId,
     },
     /// The data necessary to request an asset witness from the data store.
     AccountVaultAssetWitness {

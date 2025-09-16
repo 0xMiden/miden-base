@@ -116,7 +116,7 @@ impl AccountBuilder {
     /// Adds a designated authentication [`AccountComponent`] to the builder.
     ///
     /// This component may contain multiple procedures, but is expected to contain exactly one
-    /// authentication procedure (named `auth__*`).
+    /// authentication procedure (named `auth_*`).
     /// Calling this method multiple times will override the previous auth component.
     ///
     /// Procedures from this component will be placed at the beginning of the account procedure
@@ -194,7 +194,7 @@ impl AccountBuilder {
     /// - [`MastForest::merge`](miden_processor::MastForest::merge) fails on the given components.
     /// - If duplicate assets were added to the builder (only under the `testing` feature).
     /// - If the vault is not empty on new accounts (only under the `testing` feature).
-    pub fn build(mut self) -> Result<(Account, Word), AccountError> {
+    pub fn build(mut self) -> Result<Account, AccountError> {
         let (vault, code, storage) = self.build_inner()?;
 
         #[cfg(any(feature = "testing", test))]
@@ -223,9 +223,12 @@ impl AccountBuilder {
         debug_assert_eq!(account_id.account_type(), self.account_type);
         debug_assert_eq!(account_id.storage_mode(), self.storage_mode);
 
-        let account = Account::from_parts(account_id, vault, storage, code, Felt::ZERO);
+        // SAFETY: The account ID was derived from the seed and the seed is provided, so it is safe
+        // to bypass the checks of `Account::new`.
+        let account =
+            Account::new_unchecked(account_id, vault, storage, code, Felt::ZERO, Some(seed));
 
-        Ok((account, seed))
+        Ok(account)
     }
 }
 
@@ -271,7 +274,7 @@ impl AccountBuilder {
         // Use the nonce value set by the Self::nonce method or Felt::ONE as a default.
         let nonce = self.nonce.unwrap_or(Felt::ONE);
 
-        Ok(Account::from_parts(account_id, vault, storage, code, nonce))
+        Ok(Account::new_existing(account_id, vault, storage, code, nonce))
     }
 }
 
@@ -352,7 +355,7 @@ mod tests {
         let storage_slot1 = 12;
         let storage_slot2 = 42;
 
-        let (account, seed) = Account::builder([5; 32])
+        let account = Account::builder([5; 32])
             .with_auth_component(NoopAuthComponent)
             .with_component(CustomComponent1 { slot0: storage_slot0 })
             .with_component(CustomComponent2 {
@@ -366,7 +369,7 @@ mod tests {
         assert_eq!(account.nonce(), Felt::ZERO);
 
         let computed_id = AccountId::new(
-            seed,
+            account.seed().unwrap(),
             AccountIdVersion::Version0,
             account.code.commitment(),
             account.storage.commitment(),

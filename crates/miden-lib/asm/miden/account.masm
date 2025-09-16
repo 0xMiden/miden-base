@@ -64,7 +64,7 @@ end
 #! Returns the nonce of the current account.
 #!
 #! This procedure always returns the initial account nonce, as the nonce can only be incremented
-#! in the authentication procedure when signing the transaction after all user code has been 
+#! in the authentication procedure when signing the transaction after all user code has been
 #! executed.
 #!
 #! Inputs:  []
@@ -264,8 +264,7 @@ export.get_item
     # => [VALUE]
 end
 
-#! Gets an item from the account storage at its initial state (beginning of transaction).
-#! Panics if the index is out of bounds.
+#! Gets the initial item from the account storage slot as it was at the beginning of the transaction.
 #!
 #! Inputs:  [index]
 #! Outputs: [INIT_VALUE]
@@ -391,7 +390,7 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
-#! Gets a map item from the account storage at its initial state (beginning of transaction).
+#! Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.
 #!
 #! Inputs:  [index, KEY]
 #! Outputs: [INIT_VALUE]
@@ -424,7 +423,7 @@ end
 
 #! Gets the account code commitment of the current account.
 #!
-#! Notice that the account code cannot be changed during the user code execution, so the code 
+#! Notice that the account code cannot be changed during the user code execution, so the code
 #! commitment doesn't change during transaction execution: commitment returned by this procedure
 #! could be used as both the initial and the current.
 #!
@@ -478,7 +477,7 @@ end
 
 #! Computes the latest account storage commitment of the current account.
 #!
-#! Notice that this procedure always returns the latest commitment, but it doesn't actually always 
+#! Notice that this procedure always returns the latest commitment, but it doesn't actually always
 #! recompute it: recomputation is performed only if the account's storage has been changed,
 #! otherwise the cached value is returned.
 #!

@@ -180,9 +180,9 @@ pub struct MockChain {
     /// remain at the last observed state.
     committed_accounts: BTreeMap<AccountId, Account>,
 
-    /// AccountId |-> AccountCredentials mapping to store the seed and authenticator for accounts
-    /// to simplify transaction creation.
-    account_credentials: BTreeMap<AccountId, AccountCredentials>,
+    /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
+    /// simplify transaction creation.
+    account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
 
     // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
     rng: ChaCha20Rng,
@@ -216,7 +216,7 @@ impl MockChain {
     pub(super) fn from_genesis_block(
         genesis_block: ProvenBlock,
         account_tree: AccountTree,
-        account_credentials: BTreeMap<AccountId, AccountCredentials>,
+        account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
     ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -227,7 +227,7 @@ impl MockChain {
             pending_transactions: Vec::new(),
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
-            account_credentials,
+            account_authenticators,
             // Initialize RNG with default seed.
             rng: ChaCha20Rng::from_seed(Default::default()),
         };
@@ -538,8 +538,8 @@ impl MockChain {
     /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
     ///   account is passed as-is to the inputs.
     ///
-    /// In all cases, if the chain contains a seed or authenticator for the account, they are added
-    /// to the builder.
+    /// In all cases, if the chain contains authenticator for the account, they are added to the
+    /// builder.
     ///
     /// [`TxContextInput::Account`] can be used to build a chain of transactions against the same
     /// account that build on top of each other. For example, transaction A modifies an account
@@ -554,10 +554,9 @@ impl MockChain {
         let input = input.into();
         let reference_block = reference_block.into();
 
-        let credentials = self.account_credentials.get(&input.id());
+        let authenticator = self.account_authenticators.get(&input.id());
         let authenticator =
-            credentials.and_then(|credentials| credentials.authenticator().cloned());
-        let seed = credentials.and_then(|credentials| credentials.seed());
+            authenticator.and_then(|authenticator| authenticator.authenticator().cloned());
 
         anyhow::ensure!(
             reference_block.as_usize() < self.blocks.len(),
@@ -584,18 +583,11 @@ impl MockChain {
         };
 
         let tx_inputs = self
-            .get_transaction_inputs_at(
-                reference_block,
-                account.clone(),
-                seed,
-                note_ids,
-                unauthenticated_notes,
-            )
+            .get_transaction_inputs_at(reference_block, &account, note_ids, unauthenticated_notes)
             .context("failed to gather transaction inputs")?;
 
         let tx_context_builder = TransactionContextBuilder::new(account)
             .authenticator(authenticator)
-            .account_seed(seed)
             .tx_inputs(tx_inputs);
 
         Ok(tx_context_builder)
@@ -624,7 +616,6 @@ impl MockChain {
         &self,
         reference_block: BlockNumber,
         account: impl Into<PartialAccount>,
-        account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
@@ -682,7 +673,6 @@ impl MockChain {
 
         Ok(TransactionInputs::new(
             account,
-            account_seed,
             ref_block.clone(),
             partial_blockchain,
             input_notes,
@@ -693,18 +683,11 @@ impl MockChain {
     pub fn get_transaction_inputs(
         &self,
         account: impl Into<PartialAccount>,
-        account_seed: Option<Word>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
         let latest_block_num = self.latest_block_header().block_num();
-        self.get_transaction_inputs_at(
-            latest_block_num,
-            account,
-            account_seed,
-            notes,
-            unauthenticated_notes,
-        )
+        self.get_transaction_inputs_at(latest_block_num, account, notes, unauthenticated_notes)
     }
 
     /// Returns inputs for a transaction batch for all the reference blocks of the provided
@@ -742,7 +725,9 @@ impl MockChain {
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        Ok(AccountInputs::new(account.into(), account_witness))
+        let partial_account = PartialAccount::from(account);
+
+        Ok(AccountInputs::new(partial_account, account_witness))
     }
 
     /// Gets the inputs for a block for the provided batches.
@@ -1097,7 +1082,7 @@ impl Serializable for MockChain {
         self.pending_transactions.write_into(target);
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
-        self.account_credentials.write_into(target);
+        self.account_authenticators.write_into(target);
     }
 }
 
@@ -1111,7 +1096,8 @@ impl Deserializable for MockChain {
         let pending_transactions = Vec::<ProvenTransaction>::read_from(source)?;
         let committed_accounts = BTreeMap::<AccountId, Account>::read_from(source)?;
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
-        let account_credentials = BTreeMap::<AccountId, AccountCredentials>::read_from(source)?;
+        let account_authenticators =
+            BTreeMap::<AccountId, AccountAuthenticator>::read_from(source)?;
 
         Ok(Self {
             chain,
@@ -1122,7 +1108,7 @@ impl Deserializable for MockChain {
             pending_transactions,
             committed_notes,
             committed_accounts,
-            account_credentials,
+            account_authenticators,
             rng: ChaCha20Rng::from_os_rng(),
         })
     }
@@ -1138,49 +1124,42 @@ pub enum AccountState {
     Exists,
 }
 
-// ACCOUNT CREDENTIALS
+// ACCOUNT AUTHENTICATOR
 // ================================================================================================
 
-/// A wrapper around the seed and authenticator of an account.
+/// A wrapper around the authenticator of an account.
 #[derive(Debug, Clone)]
-pub(super) struct AccountCredentials {
-    seed: Option<Word>,
+pub(super) struct AccountAuthenticator {
     authenticator: Option<BasicAuthenticator<ChaCha20Rng>>,
 }
 
-impl AccountCredentials {
-    pub fn new(seed: Option<Word>, authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
-        Self { seed, authenticator }
+impl AccountAuthenticator {
+    pub fn new(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+        Self { authenticator }
     }
 
     pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
         self.authenticator.as_ref()
     }
-
-    pub fn seed(&self) -> Option<Word> {
-        self.seed
-    }
 }
 
-impl PartialEq for AccountCredentials {
+impl PartialEq for AccountAuthenticator {
     fn eq(&self, other: &Self) -> bool {
-        let authenticator_eq = match (&self.authenticator, &other.authenticator) {
+        match (&self.authenticator, &other.authenticator) {
             (Some(a), Some(b)) => {
                 a.keys().keys().zip(b.keys().keys()).all(|(a_key, b_key)| a_key == b_key)
             },
             (None, None) => true,
             _ => false,
-        };
-        authenticator_eq && self.seed == other.seed
+        }
     }
 }
 
 // SERIALIZATION
 // ================================================================================================
 
-impl Serializable for AccountCredentials {
+impl Serializable for AccountAuthenticator {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.seed.write_into(target);
         self.authenticator
             .as_ref()
             .map(|auth| auth.keys().iter().collect::<Vec<_>>())
@@ -1188,15 +1167,14 @@ impl Serializable for AccountCredentials {
     }
 }
 
-impl Deserializable for AccountCredentials {
+impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let seed = Option::<Word>::read_from(source)?;
         let authenticator = Option::<Vec<(Word, AuthSecretKey)>>::read_from(source)?;
 
         let authenticator = authenticator
             .map(|keys| BasicAuthenticator::new_with_rng(&keys, ChaCha20Rng::from_os_rng()));
 
-        Ok(Self { seed, authenticator })
+        Ok(Self { authenticator })
     }
 }
 
@@ -1205,6 +1183,7 @@ impl Deserializable for AccountCredentials {
 
 /// Helper type to abstract over the inputs to [`MockChain::build_tx_context`]. See that method's
 /// docs for details.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum TxContextInput {
     AccountId(AccountId),
@@ -1360,6 +1339,6 @@ mod tests {
         assert_eq!(chain.pending_transactions, deserialized.pending_transactions);
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);
-        assert_eq!(chain.account_credentials, deserialized.account_credentials);
+        assert_eq!(chain.account_authenticators, deserialized.account_authenticators);
     }
 }

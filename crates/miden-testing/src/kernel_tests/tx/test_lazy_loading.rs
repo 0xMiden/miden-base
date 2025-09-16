@@ -59,7 +59,7 @@ fn adding_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
     let tx_context = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
         .extend_input_notes(vec![asset_note])
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?;
     let account = tx_context.account().clone();
@@ -125,7 +125,7 @@ fn removing_fungible_assets_with_lazy_loading_succeeds() -> anyhow::Result<()> {
         .build()?
         .build_tx_context(account, &[], &[])?
         .tx_script(tx_script)
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?;
     let account = tx_context.account().clone();
@@ -159,7 +159,7 @@ fn loading_fee_asset_succeeds() -> anyhow::Result<()> {
     builder
         .build()?
         .build_tx_context(account, &[], &[])?
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .build()?
         .execute_blocking()?;
 
@@ -219,7 +219,7 @@ fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let tx = TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?
         .execute_blocking()?;
@@ -281,7 +281,7 @@ fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     TransactionContextBuilder::with_existing_mock_account()
         .tx_script(tx_script)
-        .enable_partial_loading()
+        .enable_lazy_loading()
         .with_source_manager(source_manager)
         .build()?
         .execute_blocking()?;
