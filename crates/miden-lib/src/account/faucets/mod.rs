@@ -281,7 +281,7 @@ pub fn create_basic_fungible_faucet(
     max_supply: Felt,
     account_storage_mode: AccountStorageMode,
     auth_scheme: AuthScheme,
-) -> Result<(Account, Word), FungibleFaucetError> {
+) -> Result<Account, FungibleFaucetError> {
     let distribute_proc_root = BasicFungibleFaucet::distribute_digest();
 
     let auth_component: AccountComponent = match auth_scheme {
@@ -311,7 +311,7 @@ pub fn create_basic_fungible_faucet(
         },
     };
 
-    let (account, account_seed) = AccountBuilder::new(init_seed)
+    let account = AccountBuilder::new(init_seed)
         .account_type(AccountType::FungibleFaucet)
         .storage_mode(account_storage_mode)
         .with_auth_component(auth_component)
@@ -319,7 +319,7 @@ pub fn create_basic_fungible_faucet(
         .build()
         .map_err(FungibleFaucetError::AccountError)?;
 
-    Ok((account, account_seed))
+    Ok(account)
 }
 
 // FUNGIBLE FAUCET ERROR
@@ -388,7 +388,7 @@ mod tests {
         let decimals = 2u8;
         let storage_mode = AccountStorageMode::Private;
 
-        let (faucet_account, _) = create_basic_fungible_faucet(
+        let faucet_account = create_basic_fungible_faucet(
             init_seed,
             token_symbol,
             decimals,

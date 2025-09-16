@@ -1,5 +1,5 @@
 use alloc::borrow::ToOwned;
-use alloc::collections::BTreeSet;
+use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::rc::Rc;
 use alloc::sync::Arc;
 use alloc::vec::Vec;
@@ -12,6 +12,7 @@ use miden_objects::asset::AssetWitness;
 use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
 use miden_objects::transaction::{
+    AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
@@ -52,6 +53,7 @@ use crate::tx_context::builder::MockAuthenticator;
 pub struct TransactionContext {
     pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,
+    pub(super) foreign_account_inputs: BTreeMap<AccountId, AccountInputs>,
     pub(super) tx_args: TransactionArgs,
     pub(super) tx_inputs: TransactionInputs,
     pub(super) mast_store: TransactionMastStore,
@@ -114,10 +116,9 @@ impl TransactionContext {
         let advice_inputs = advice_inputs.into_advice_inputs();
         CodeExecutor::new(
             MockHost::new(
-                self.tx_inputs.account().into(),
-                &advice_inputs,
+                self.tx_inputs().account().code(),
                 mast_store,
-                self.tx_args.to_foreign_account_code_commitments(),
+                self.tx_args.foreign_account_inputs(),
             )
             .with_source_manager(self.source_manager()),
         )
@@ -194,15 +195,30 @@ impl DataStore for TransactionContext {
         &self,
         account_id: AccountId,
         _ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
-    > {
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>
+    {
         assert_eq!(account_id, self.account().id());
         assert_eq!(account_id, self.tx_inputs.account().id());
 
-        let (partial_account, seed, header, mmr, _) = self.tx_inputs.clone().into_parts();
+        let (partial_account, header, mmr, _) = self.tx_inputs.clone().into_parts();
 
-        async move { Ok((partial_account, seed, header, mmr)) }
+        async move { Ok((partial_account, header, mmr)) }
+    }
+
+    fn get_foreign_account_inputs(
+        &self,
+        foreign_account_id: AccountId,
+        _ref_block: BlockNumber,
+    ) -> impl FutureMaybeSend<Result<AccountInputs, DataStoreError>> {
+        // Note that we cannot validate that the foreign account inputs are valid for the
+        // transaction's reference block.
+        async move {
+            self.foreign_account_inputs.get(&foreign_account_id).cloned().ok_or_else(|| {
+                DataStoreError::other(format!(
+                    "failed to find foreign account {foreign_account_id}"
+                ))
+            })
+        }
     }
 
     fn get_vault_asset_witness(

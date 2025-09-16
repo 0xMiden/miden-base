@@ -3,7 +3,7 @@ use alloc::collections::BTreeSet;
 use miden_objects::account::{AccountId, PartialAccount, StorageMapWitness};
 use miden_objects::asset::AssetWitness;
 use miden_objects::block::{BlockHeader, BlockNumber};
-use miden_objects::transaction::PartialBlockchain;
+use miden_objects::transaction::{AccountInputs, PartialBlockchain};
 use miden_processor::{FutureMaybeSend, MastForestStore, Word};
 
 use crate::DataStoreError;
@@ -31,9 +31,15 @@ pub trait DataStore: MastForestStore {
         &self,
         account_id: AccountId,
         ref_blocks: BTreeSet<BlockNumber>,
-    ) -> impl FutureMaybeSend<
-        Result<(PartialAccount, Option<Word>, BlockHeader, PartialBlockchain), DataStoreError>,
-    >;
+    ) -> impl FutureMaybeSend<Result<(PartialAccount, BlockHeader, PartialBlockchain), DataStoreError>>;
+
+    /// Returns a partial foreign account state together with a witness, proving its validity in the
+    /// specified transaction reference block.
+    fn get_foreign_account_inputs(
+        &self,
+        foreign_account_id: AccountId,
+        ref_block: BlockNumber,
+    ) -> impl FutureMaybeSend<Result<AccountInputs, DataStoreError>>;
 
     /// Returns a witness for an asset in the requested account's vault with the requested vault
     /// root.
