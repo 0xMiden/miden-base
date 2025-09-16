@@ -12,7 +12,7 @@ use super::{
     Serializable,
     Word,
 };
-use crate::account::StorageMap;
+use crate::account::{StorageMap, StorageSlotType};
 use crate::{EMPTY_WORD, Felt, LexicographicWord, ZERO};
 
 // ACCOUNT STORAGE DELTA
@@ -57,6 +57,17 @@ impl AccountStorageDelta {
         delta.validate()?;
 
         Ok(delta)
+    }
+
+    /// TODO
+    pub fn slot_type(&self, slot_index: u8) -> Option<StorageSlotType> {
+        if self.values().contains_key(&slot_index) {
+            Some(StorageSlotType::Value)
+        } else if self.maps().contains_key(&slot_index) {
+            Some(StorageSlotType::Map)
+        } else {
+            None
+        }
     }
 
     /// Returns a reference to the updated values in this storage delta.

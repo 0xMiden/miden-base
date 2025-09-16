@@ -1,4 +1,10 @@
-use miden_objects::account::{AccountDelta, AccountId, AccountStorageHeader, AccountVaultDelta};
+use miden_objects::account::{
+    AccountCode,
+    AccountDelta,
+    AccountId,
+    AccountVaultDelta,
+    PartialAccount,
+};
 use miden_objects::{Felt, FieldElement, ZERO};
 
 use crate::host::storage_delta_tracker::StorageDeltaTracker;
@@ -20,16 +26,24 @@ pub struct AccountDeltaTracker {
     account_id: AccountId,
     storage: StorageDeltaTracker,
     vault: AccountVaultDelta,
+    code: Option<AccountCode>,
     nonce_delta: Felt,
 }
 
 impl AccountDeltaTracker {
     /// Returns a new [AccountDeltaTracker] instantiated for the specified account.
-    pub fn new(account_id: AccountId, storage_header: AccountStorageHeader) -> Self {
+    pub fn new(account: &PartialAccount) -> Self {
+        let code = if account.is_new() {
+            Some(account.code().clone())
+        } else {
+            None
+        };
+
         Self {
-            account_id,
-            storage: StorageDeltaTracker::new(storage_header),
+            account_id: account.id(),
+            storage: StorageDeltaTracker::new(account.storage().header().clone()),
             vault: AccountVaultDelta::default(),
+            code,
             nonce_delta: ZERO,
         }
     }
@@ -70,7 +84,13 @@ impl AccountDeltaTracker {
         let storage_delta = self.storage.into_delta();
         let vault_delta = self.vault;
 
-        AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta)
-            .expect("account delta created in delta tracker should be valid")
+        let mut delta = AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta)
+            .expect("account delta created in delta tracker should be valid");
+
+        if let Some(code) = self.code {
+            delta.set_code(code);
+        }
+
+        delta
     }
 }

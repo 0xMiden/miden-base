@@ -96,7 +96,7 @@ pub const KERNEL_PROCEDURES: [Word; 48] = [
     // tx_get_block_timestamp
     word!("0x7903185b847517debb6c2072364e3e757b99ee623e97c2bd0a4661316c5c5418"),
     // tx_start_foreign_context
-    word!("0x7fac8c3ab1af62226616bd157d01238ce3252f006bf4004e1b2ac6bc38f6c6f1"),
+    word!("0x4347b6c061a384621d758977ed1de185f1e84c93bf77f0e52074bb81577c61bd"),
     // tx_end_foreign_context
     word!("0xaa0018aa8da890b73511879487f65553753fb7df22de380dd84c11e6f77eec6f"),
     // tx_get_expiration_delta

@@ -1,10 +1,18 @@
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
-use crate::account::{Account, AccountId};
+use crate::account::{
+    Account,
+    AccountCode,
+    AccountId,
+    AccountStorage,
+    StorageSlot,
+    StorageSlotType,
+};
+use crate::asset::AssetVault;
 use crate::crypto::SequentialCommit;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
-use crate::{AccountDeltaError, Felt, Word, ZERO};
+use crate::{AccountDeltaError, AccountError, Felt, Word, ZERO};
 
 mod storage;
 pub use storage::{AccountStorageDelta, StorageMapDelta};
@@ -39,6 +47,8 @@ pub struct AccountDelta {
     storage: AccountStorageDelta,
     /// The delta of the account's asset vault.
     vault: AccountVaultDelta,
+    /// TODO
+    code: Option<AccountCode>,
     /// The value by which the nonce was incremented. Must be greater than zero if storage or vault
     /// are non-empty.
     nonce_delta: Felt,
@@ -47,6 +57,7 @@ pub struct AccountDelta {
 impl AccountDelta {
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
+
     /// Returns new [AccountDelta] instantiated from the provided components.
     ///
     /// # Errors
@@ -62,7 +73,13 @@ impl AccountDelta {
         // nonce must be updated if either account storage or vault were updated
         validate_nonce(nonce_delta, &storage, &vault)?;
 
-        Ok(Self { account_id, storage, vault, nonce_delta })
+        Ok(Self {
+            account_id,
+            storage,
+            vault,
+            code: None,
+            nonce_delta,
+        })
     }
 
     // PUBLIC MUTATORS
@@ -89,6 +106,11 @@ impl AccountDelta {
     /// Returns a mutable reference to the account vault delta.
     pub fn vault_mut(&mut self) -> &mut AccountVaultDelta {
         &mut self.vault
+    }
+
+    /// TODO
+    pub fn set_code(&mut self, code: AccountCode) {
+        self.code = Some(code);
     }
 
     // PUBLIC ACCESSORS
@@ -120,8 +142,8 @@ impl AccountDelta {
     }
 
     /// Converts this storage delta into individual delta components.
-    pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Felt) {
-        (self.storage, self.vault, self.nonce_delta)
+    pub fn into_parts(self) -> (AccountStorageDelta, AccountVaultDelta, Option<AccountCode>, Felt) {
+        (self.storage, self.vault, self.code, self.nonce_delta)
     }
 
     /// Computes the commitment to the account delta.
@@ -255,6 +277,44 @@ impl AccountDelta {
     }
 }
 
+impl TryFrom<AccountDelta> for Account {
+    type Error = AccountError;
+
+    /// TODO
+    fn try_from(account_delta: AccountDelta) -> Result<Self, Self::Error> {
+        let id = account_delta.id();
+        let (storage_delta, vault_delta, code, nonce_delta) = account_delta.into_parts();
+        // TODO: Change this to another detection mechanism once we have code upgrade support,
+        // at which point the presence of code may not be enough indication that a delta can be
+        // converted to a full account.
+        let Some(code) = code else {
+            return Err(AccountError::AccountConversion);
+        };
+
+        let mut vault = AssetVault::default();
+        vault.apply_delta(&vault_delta).expect("TODO");
+
+        let mut empty_storage_slots = Vec::new();
+        for slot_idx in 0..u8::MAX {
+            let slot = match storage_delta.slot_type(slot_idx) {
+                Some(StorageSlotType::Value) => StorageSlot::empty_value(),
+                Some(StorageSlotType::Map) => StorageSlot::empty_map(),
+                None => break,
+            };
+            empty_storage_slots.push(slot);
+        }
+        let mut storage = AccountStorage::new(empty_storage_slots)
+            .expect("storage delta should contain a valid number of slots");
+        storage.apply_delta(&storage_delta).expect("TODO");
+
+        // The nonce of the account is the initial nonce of 0 plus the nonce_delta, so the
+        // nonce_delta itself.
+        let nonce = nonce_delta;
+
+        Account::new(id, vault, storage, code, nonce, None)
+    }
+}
+
 impl SequentialCommit for AccountDelta {
     type Commitment = Word;
 
@@ -379,6 +439,7 @@ impl Serializable for AccountDelta {
         self.account_id.write_into(target);
         self.storage.write_into(target);
         self.vault.write_into(target);
+        self.code.write_into(target);
         self.nonce_delta.write_into(target);
     }
 
@@ -386,6 +447,7 @@ impl Serializable for AccountDelta {
         self.account_id.get_size_hint()
             + self.storage.get_size_hint()
             + self.vault.get_size_hint()
+            + self.code.get_size_hint()
             + self.nonce_delta.get_size_hint()
     }
 }
@@ -395,12 +457,19 @@ impl Deserializable for AccountDelta {
         let account_id = AccountId::read_from(source)?;
         let storage = AccountStorageDelta::read_from(source)?;
         let vault = AccountVaultDelta::read_from(source)?;
+        let code = <Option<AccountCode>>::read_from(source)?;
         let nonce_delta = Felt::read_from(source)?;
 
         validate_nonce(nonce_delta, &storage, &vault)
             .map_err(|err| DeserializationError::InvalidValue(err.to_string()))?;
 
-        Ok(Self { account_id, storage, vault, nonce_delta })
+        Ok(Self {
+            account_id,
+            storage,
+            vault,
+            code,
+            nonce_delta,
+        })
     }
 }
 

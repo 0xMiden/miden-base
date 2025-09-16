@@ -161,6 +161,8 @@ pub enum AccountError {
         account_type: AccountType,
         component_index: usize,
     },
+    #[error("only account deltas representing a full account can be converted to a full account")]
+    AccountConversion,
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]
