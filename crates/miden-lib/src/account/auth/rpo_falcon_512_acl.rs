@@ -199,7 +199,7 @@ mod tests {
         // Get the two trigger procedures from BasicWallet: `receive_asset`, `move_asset_to_note`.
         let procedures: Vec<Word> = WellKnownComponent::BasicWallet.procedure_digests().collect();
 
-        assert_eq!(procedures.len(), 2);
+        assert_eq!(procedures.len(), 3);
         procedures
     }
 
@@ -268,14 +268,14 @@ mod tests {
         });
     }
 
-    /// Test ACL component with two procedures and both authorization flags set to false
+    /// Test ACL component with three procedures and both authorization flags set to false
     #[test]
     fn test_rpo_falcon_512_acl_with_two_procedures() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: false,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([2u32, 0, 0, 0]),
+            expected_slot_1: Word::from([3u32, 0, 0, 0]),
         });
     }
 
@@ -290,14 +290,14 @@ mod tests {
         });
     }
 
-    /// Test ACL component with two procedures and allow_unauthorized_output_notes set to true
+    /// Test ACL component with three procedures and allow_unauthorized_output_notes set to true
     #[test]
     fn test_rpo_falcon_512_acl_with_procedures_and_allow_unauthorized_output_notes() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: false,
-            expected_slot_1: Word::from([2u32, 1, 0, 0]),
+            expected_slot_1: Word::from([3u32, 1, 0, 0]),
         });
     }
 
@@ -312,14 +312,14 @@ mod tests {
         });
     }
 
-    /// Test ACL component with two procedures and both authorization flags set to true
+    /// Test ACL component with three procedures and both authorization flags set to true
     #[test]
     fn test_rpo_falcon_512_acl_with_both_allow_flags() {
         test_acl_component(AclTestConfig {
             with_procedures: true,
             allow_unauthorized_output_notes: true,
             allow_unauthorized_input_notes: true,
-            expected_slot_1: Word::from([2u32, 1, 1, 0]),
+            expected_slot_1: Word::from([3u32, 1, 1, 0]),
         });
     }
 }
