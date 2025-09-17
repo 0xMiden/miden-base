@@ -34,7 +34,7 @@ use crate::{
 };
 
 #[test]
-fn test_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
+fn test_active_note_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note
     let mut builder = MockChain::builder();
     let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -74,7 +74,7 @@ fn test_get_sender_fails_from_tx_script() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_sender() -> anyhow::Result<()> {
+fn test_active_note_get_sender() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
@@ -111,7 +111,7 @@ fn test_get_sender() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_assets() -> anyhow::Result<()> {
+fn test_active_note_get_assets() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -248,7 +248,7 @@ fn test_get_assets() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_inputs() -> anyhow::Result<()> {
+fn test_active_note_get_inputs() -> anyhow::Result<()> {
     // Creates a mockchain with an account and a note that it can consume
     let tx_context = {
         let mut builder = MockChain::builder();
@@ -343,7 +343,7 @@ fn test_get_inputs() -> anyhow::Result<()> {
 /// `get_inputs` procedure, see the [issue #1363](https://github.com/0xMiden/miden-base/issues/1363)
 /// for more details.
 #[test]
-fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
+fn test_active_note_get_exactly_8_inputs() -> anyhow::Result<()> {
     let sender_id = ACCOUNT_ID_SENDER
         .try_into()
         .context("failed to convert ACCOUNT_ID_SENDER to account ID")?;
@@ -416,7 +416,7 @@ fn test_get_exactly_8_inputs() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_serial_number() -> anyhow::Result<()> {
+fn test_active_note_get_serial_number() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
@@ -455,7 +455,7 @@ fn test_get_serial_number() -> anyhow::Result<()> {
 }
 
 #[test]
-fn test_get_script_root() -> anyhow::Result<()> {
+fn test_active_note_get_script_root() -> anyhow::Result<()> {
     let tx_context = {
         let mut builder = MockChain::builder();
         let account = builder.add_existing_wallet(Auth::BasicAuth)?;
