@@ -8,32 +8,23 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
+use miden_objects::asset::FungibleAsset;
 use miden_objects::block::{BlockInputs, ProposedBlock};
-use miden_objects::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER};
+use miden_objects::note::NoteType;
+use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::transaction::{OutputNote, TransactionHeader};
 use miden_tx::LocalTransactionProver;
 use rand::Rng;
 
-use super::utils::{
-    MockChainBuilderBlockExt,
-    TestSetupBuilder,
-    generate_batch,
-    generate_executed_tx_with_authenticated_notes,
-    generate_fungible_asset,
-    generate_tracked_note_with_asset,
-    generate_tx_with_expiration,
-    generate_tx_with_unauthenticated_notes,
-    generate_untracked_note,
-    setup_chain_builder,
-};
+use super::utils::MockChainBuilderBlockExt;
 use crate::kernel_tests::block::utils::generate_conditional_tx;
 use crate::{AccountState, Auth, MockChain};
 
 /// Tests that we can build empty blocks.
 #[test]
 fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
-    let TestSetupBuilder { builder, .. } = setup_chain_builder(2);
-    let chain = builder.build()?;
+    let mut chain = MockChain::builder().build()?;
+    chain.prove_next_block()?;
 
     let block_inputs = BlockInputs::new(
         chain.latest_block_header(),
@@ -56,15 +47,18 @@ fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
 /// built.
 #[test]
 fn proposed_block_basic_success() -> anyhow::Result<()> {
-    let TestSetupBuilder { builder, mut accounts, notes } = setup_chain_builder(2);
-    let mut chain = builder.build()?;
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-    let proven_tx0 = chain.generate_tx_with_authenticated_notes(account0.id(), [notes[&0].id()]);
-    let proven_tx1 = chain.generate_tx_with_authenticated_notes(account1.id(), [notes[&1].id()]);
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(42)])?;
+    let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
+    let chain = builder.build()?;
 
-    let batch0 = generate_batch(&mut chain, vec![proven_tx0.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![proven_tx1.clone()]);
+    let proven_tx0 = chain.generate_tx_with_authenticated_notes(account0.id(), [note0.id()]);
+    let proven_tx1 = chain.generate_tx_with_authenticated_notes(account1.id(), [note1.id()]);
+
+    let batch0 = chain.generate_batch(vec![proven_tx0.clone()]);
+    let batch1 = chain.generate_batch(vec![proven_tx1.clone()]);
 
     let batches = [batch0, batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
@@ -116,35 +110,30 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
 /// Tests that account updates are correctly aggregated into a block-level account update.
 #[test]
 fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
-    // We need authentication because we're modifying accounts with the input notes.
-    let TestSetupBuilder { builder, mut accounts, .. } = setup_chain_builder(2);
+    let asset = FungibleAsset::mock(100);
+    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
+
+    let mut builder = MockChain::builder();
+    let mut account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2id_note(sender_id, account1.id(), &[asset], NoteType::Private)?;
+    let note1 = builder.add_p2id_note(sender_id, account1.id(), &[asset], NoteType::Public)?;
+    let note2 = builder.add_p2id_note(sender_id, account1.id(), &[asset], NoteType::Public)?;
     let mut chain = builder.build()?;
-    let asset = generate_fungible_asset(
-        100,
-        AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap(),
-    );
-
-    let account0 = accounts.remove(&0).unwrap();
-    let mut account1 = accounts.remove(&1).unwrap();
-
-    let note0 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-    let note1 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-    let note2 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
 
     // Add notes to the chain.
     chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
     let executed_tx0 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.id(), &[note0.id()]);
+        chain.generate_executed_tx_with_authenticated_notes(account1.id(), [note0.id()]);
 
     account1.apply_delta(executed_tx0.account_delta())?;
     let executed_tx1 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note1.id()]);
+        chain.generate_executed_tx_with_authenticated_notes(account1.clone(), [note1.id()]);
 
     account1.apply_delta(executed_tx1.account_delta())?;
     let executed_tx2 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note2.id()]);
+        chain.generate_executed_tx_with_authenticated_notes(account1.clone(), [note2.id()]);
 
     let [tx0, tx1, tx2] = [executed_tx0, executed_tx1, executed_tx2]
         .into_iter()
@@ -153,8 +142,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
         .try_into()
         .expect("we should have provided three executed txs");
 
-    let batch0 = generate_batch(&mut chain, vec![tx2.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![tx0.clone(), tx1.clone()]);
+    let batch0 = chain.generate_batch(vec![tx2.clone()]);
+    let batch1 = chain.generate_batch(vec![tx0.clone(), tx1.clone()]);
 
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches).unwrap();
@@ -190,24 +179,22 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
 /// Tests that unauthenticated notes can be authenticated when inclusion proofs are provided.
 #[test]
 fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
-    let TestSetupBuilder { builder, mut accounts, .. } = setup_chain_builder(3);
-    let mut chain = builder.build()?;
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-    let account2 = accounts.remove(&2).unwrap();
+    let sender_id = AccountId::try_from(ACCOUNT_ID_SENDER)?;
 
-    let note0 = generate_untracked_note(account0.id(), account1.id());
-    let note1 = generate_untracked_note(account0.id(), account2.id());
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2id_note(sender_id, account0.id(), &[], NoteType::Private)?;
+    let note1 = builder.add_p2id_note(sender_id, account1.id(), &[], NoteType::Public)?;
+    let mut chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
-    let tx0 =
-        generate_tx_with_unauthenticated_notes(&mut chain, account1.id(), slice::from_ref(&note0));
-    let tx1 =
-        generate_tx_with_unauthenticated_notes(&mut chain, account2.id(), slice::from_ref(&note1));
+    let tx0 = chain.generate_tx_with_unauthenticated_notes(account0.id(), slice::from_ref(&note0));
+    let tx1 = chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&note1));
 
     // These batches will use block1 as the reference block.
-    let batch0 = generate_batch(&mut chain, vec![tx0.clone()]);
-    let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
+    let batch0 = chain.generate_batch(vec![tx0.clone()]);
+    let batch1 = chain.generate_batch(vec![tx1.clone()]);
 
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));
@@ -242,18 +229,19 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
 /// Tests that a batch that expires at the block being proposed is still accepted.
 #[test]
 fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
-    let TestSetupBuilder { builder, mut accounts, .. } = setup_chain_builder(2);
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let mut chain = builder.build()?;
+
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
 
-    let tx0 = generate_tx_with_expiration(&mut chain, account0.id(), block1_num + 5);
-    let tx1 = generate_tx_with_expiration(&mut chain, account1.id(), block1_num + 2);
+    let tx0 = chain.generate_tx_with_expiration(account0.id(), block1_num + 5);
+    let tx1 = chain.generate_tx_with_expiration(account1.id(), block1_num + 2);
 
-    let batch0 = generate_batch(&mut chain, vec![tx0]);
-    let batch1 = generate_batch(&mut chain, vec![tx1]);
+    let batch0 = chain.generate_batch(vec![tx0]);
+    let batch1 = chain.generate_batch(vec![tx1]);
 
     // sanity check: batch 1 should expire at block 3.
     assert_eq!(batch1.batch_expiration_block_num().as_u32(), 3);
@@ -311,8 +299,8 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     let tx0 = LocalTransactionProver::default().prove_dummy(noop_tx)?;
     let tx1 = LocalTransactionProver::default().prove_dummy(state_updating_tx)?;
 
-    let batch0 = generate_batch(&mut chain, vec![tx0]);
-    let batch1 = generate_batch(&mut chain, vec![tx1.clone()]);
+    let batch0 = chain.generate_batch(vec![tx0]);
+    let batch1 = chain.generate_batch(vec![tx1.clone()]);
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
