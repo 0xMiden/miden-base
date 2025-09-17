@@ -6,6 +6,7 @@ use.$kernel::asset
 use.$kernel::asset_vault
 use.std::crypto::hashes::rpo
 use.std::math::u64
+use.std::word
 
 # ERRORS
 # =================================================================================================
@@ -176,7 +177,7 @@ proc.update_value_slot_delta
     dup.4 exec.get_item_initial
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-    eqw not
+    exec.word::test_eq not
     # => [was_changed, INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     # only include in delta if the slot's value has changed
@@ -252,7 +253,7 @@ proc.update_map_slot_delta.4
         swapw.2
         # => [NEW_VALUE, INIT_VALUE, KEY, ...]
 
-        eqw not
+        exec.word::test_eq not
         # => [was_changed, NEW_VALUE, INIT_VALUE, KEY, ...]
 
         # if the key-value pair has actually changed, update the hasher
