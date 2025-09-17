@@ -260,7 +260,8 @@ fn settle_coincidence_of_wants() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     // TODO: matcher account should be able to fill both SWAP notes without holding assets A & B
-    let matcher_account = builder.add_existing_wallet_with_assets(Auth::BasicAuth, vec![asset_a, asset_b])?;
+    let matcher_account =
+        builder.add_existing_wallet_with_assets(Auth::BasicAuth, vec![asset_a, asset_b])?;
     // Initial matching account balance should have two assets.
     assert_eq!(matcher_account.vault().assets().count(), 2);
 
