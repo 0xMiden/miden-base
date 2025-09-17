@@ -17,12 +17,11 @@ use miden_tx::LocalTransactionProver;
 use winterfell::Proof;
 
 use super::utils::{
-    TestSetup,
     generate_batch,
     generate_executed_tx_with_authenticated_notes,
     generate_tracked_note,
-    setup_chain,
 };
+use crate::kernel_tests::block::utils::{TestSetup, setup_chain};
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 struct WitnessTestSetup {

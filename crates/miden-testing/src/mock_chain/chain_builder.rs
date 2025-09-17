@@ -432,15 +432,12 @@ impl MockChainBuilder {
         asset: &[Asset],
         note_type: NoteType,
     ) -> Result<Note, NoteError> {
-        let note = create_p2id_note(
+        let note = self.create_p2id_note(
             sender_account_id,
             target_account_id,
-            asset.to_vec(),
+            asset.iter().copied(),
             note_type,
-            Default::default(),
-            &mut self.rng,
         )?;
-
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)
@@ -540,6 +537,29 @@ impl MockChainBuilder {
             target_account_id,
             &[Asset::from(fee_asset)],
             NoteType::Public,
+        )?;
+
+        Ok(note)
+    }
+
+    /// Creates a new P2ID note from the provided parameters _without_ adding it to the list of
+    /// genesis notes.
+    ///
+    /// This is a convenience wrapper around [`create_p2id_note`].
+    pub fn create_p2id_note(
+        &mut self,
+        sender_account_id: AccountId,
+        target_account_id: AccountId,
+        asset: impl IntoIterator<Item = Asset>,
+        note_type: NoteType,
+    ) -> Result<Note, NoteError> {
+        let note = create_p2id_note(
+            sender_account_id,
+            target_account_id,
+            asset.into_iter().collect::<Vec<_>>(),
+            note_type,
+            Default::default(),
+            &mut self.rng,
         )?;
 
         Ok(note)
