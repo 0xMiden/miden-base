@@ -22,8 +22,7 @@ pub struct MeasurementsPrinter {
     notes_processing: usize,
     note_execution: BTreeMap<String, usize>,
     tx_script_processing: usize,
-    epilogue: usize,
-    after_tx_cycles_obtained: usize,
+    epilogue: EpilogueMeasurements,
 }
 
 impl From<TransactionMeasurements> for MeasurementsPrinter {
@@ -39,8 +38,39 @@ impl From<TransactionMeasurements> for MeasurementsPrinter {
             notes_processing: tx_measurements.notes_processing,
             note_execution: note_execution_map,
             tx_script_processing: tx_measurements.tx_script_processing,
-            epilogue: tx_measurements.epilogue,
-            after_tx_cycles_obtained: tx_measurements.after_tx_cycles_obtained,
+            epilogue: EpilogueMeasurements::from_parts(
+                tx_measurements.epilogue,
+                tx_measurements.auth_procedure,
+                tx_measurements.after_tx_cycles_obtained,
+            ),
+        }
+    }
+}
+
+/// Helper structure holding the cycle count for different intervals in the epilogue, namely:
+/// - `total` interval holds the total number of cycles required to execute the epilogue
+/// - `auth_procedure` interval holds the number of cycles required to execute the authentication
+///   procedure
+/// - `after_tx_cycles_obtained` holds the number of cycles which was executed from the moment of
+///   the cycle count obtainment in the `epilogue::compute_fee` procedure to the end of the
+///   epilogue.
+#[derive(Debug, Clone, Serialize)]
+struct EpilogueMeasurements {
+    total: usize,
+    auth_procedure: usize,
+    after_tx_cycles_obtained: usize,
+}
+
+impl EpilogueMeasurements {
+    pub fn from_parts(
+        total: usize,
+        auth_procedure: usize,
+        after_tx_cycles_obtained: usize,
+    ) -> Self {
+        Self {
+            total,
+            auth_procedure,
+            after_tx_cycles_obtained,
         }
     }
 }

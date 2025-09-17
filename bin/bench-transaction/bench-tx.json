@@ -6,8 +6,11 @@
       "0x0c0fd9566093a189a4b3a66e57a457dc09e80eb961e5a8ec0520612faa90a99a": 1659
     },
     "tx_script_processing": 40,
-    "epilogue": 62443,
-    "after_tx_cycles_obtained": 500
+    "epilogue": {
+      "total": 62465,
+      "auth_procedure": 61328,
+      "after_tx_cycles_obtained": 500
+    }
   },
   "consume two P2ID notes": {
     "prologue": 3726,
@@ -17,15 +20,21 @@
       "0x6319f813753ae6781cbb34b6d331e8708852e268a008e0418ffccdc70abde8a9": 1659
     },
     "tx_script_processing": 40,
-    "epilogue": 62443,
-    "after_tx_cycles_obtained": 500
+    "epilogue": {
+      "total": 62465,
+      "auth_procedure": 61328,
+      "after_tx_cycles_obtained": 500
+    }
   },
   "create single P2ID note": {
     "prologue": 1549,
     "notes_processing": 26,
     "note_execution": {},
     "tx_script_processing": 1484,
-    "epilogue": 63157,
-    "after_tx_cycles_obtained": 500
+    "epilogue": {
+      "total": 63179,
+      "auth_procedure": 61509,
+      "after_tx_cycles_obtained": 500
+    }
   }
 }
