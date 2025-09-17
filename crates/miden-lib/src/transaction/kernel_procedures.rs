@@ -29,16 +29,16 @@ pub const KERNEL_PROCEDURES: [Word; 50] = [
     word!("0x2e508f8505188ce9b6c46be727e2c1a237806a19402486e38105665b87191526"),
     // account_get_item
     word!("0x011e508cf9b261c33e5f3da1afbf23caefa1f6bc7eac9de2cd123c77fa74f02a"),
+    // account_get_item_init
+    word!("0x46948d2c64c5b8979cbf1d628a90459b54b41491db5e0f1cff8747c9901da165"),
     // account_set_item
     word!("0xd2232daa3895669f2bb34af764504d72432fb119eb0be0ce07481290c8701af8"),
     // account_get_map_item
     word!("0x95449dd3a32ca3e069acc132e8f44fa87679e2f373f4ca7ae1807246802c5d0d"),
-    // account_set_map_item
-    word!("0x33309593aa405279a27907cee07b0cde54dbf4c088d0995a05f61e60236cfb0f"),
-    // account_get_item_init
-    word!("0x46948d2c64c5b8979cbf1d628a90459b54b41491db5e0f1cff8747c9901da165"),
     // account_get_map_item_init
     word!("0x2e84c009a58b5fda1547865090ac446294d4db20d0aefef3d9e4c6a1a93df8fd"),
+    // account_set_map_item
+    word!("0x33309593aa405279a27907cee07b0cde54dbf4c088d0995a05f61e60236cfb0f"),
     // account_get_initial_vault_root
     word!("0x4d4d91079aaacad1bc86b29a0d61d25508ccb705c29d1b1357016f7373bf299e"),
     // account_get_vault_root
