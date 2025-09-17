@@ -1,11 +1,10 @@
-use std::collections::BTreeMap;
 use std::vec;
 use std::vec::Vec;
 
 use miden_lib::note::create_p2id_note;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::{Account, AccountId};
+use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::BlockNumber;
@@ -17,13 +16,7 @@ use miden_tx::LocalTransactionProver;
 use rand::rngs::SmallRng;
 use rand::{Rng, SeedableRng};
 
-use crate::{Auth, MockChain, TxContextInput};
-
-pub struct TestSetup {
-    pub chain: MockChain,
-    pub accounts: BTreeMap<usize, Account>,
-    pub txs: BTreeMap<usize, ProvenTransaction>,
-}
+use crate::{MockChain, TxContextInput};
 
 pub fn generate_untracked_note(sender: AccountId, receiver: AccountId) -> Note {
     generate_untracked_note_internal(sender, receiver, vec![])
@@ -160,41 +153,6 @@ pub fn generate_batch(chain: &MockChain, txs: Vec<ProvenTransaction>) -> ProvenB
         .unwrap()
 }
 
-/// Setup a test mock chain with the number of accounts, notes and transactions.
-///
-/// This is merely generating some valid data for testing purposes.
-pub fn setup_chain(num_accounts: usize) -> TestSetup {
-    let mut builder = MockChain::builder();
-    let sender_account = builder
-        .add_existing_mock_account(Auth::IncrNonce)
-        .expect("adding account should be valid");
-    let mut accounts = BTreeMap::new();
-    let mut notes = BTreeMap::new();
-    let mut txs = BTreeMap::new();
-
-    for i in 0..num_accounts {
-        let account = builder
-            .add_existing_mock_account(Auth::IncrNonce)
-            .expect("adding account should be valid");
-        let note = builder
-            .add_p2id_note(sender_account.id(), account.id(), &[], NoteType::Public)
-            .expect("adding p2id note should be valid");
-        accounts.insert(i, account);
-        notes.insert(i, note);
-    }
-
-    let mut chain = builder.build().expect("building chain should be valid");
-
-    chain.prove_next_block().expect("failed to prove block");
-
-    for i in 0..num_accounts {
-        let tx = generate_tx_with_authenticated_notes(&chain, accounts[&i].id(), &[notes[&i].id()]);
-        txs.insert(i, tx);
-    }
-
-    TestSetup { chain, accounts, txs }
-}
-
 /// TODO
 pub trait MockChainBuilderBlockExt {
     fn generate_executed_tx_with_authenticated_notes(
@@ -215,7 +173,7 @@ pub trait MockChainBuilderBlockExt {
         notes: &[Note],
     ) -> ProvenTransaction;
 
-    fn generate_tx_with_expiration(
+    fn create_expiring_tx(
         &self,
         input: impl Into<TxContextInput>,
         expiration_block: BlockNumber,
@@ -251,7 +209,7 @@ impl MockChainBuilderBlockExt for MockChain {
         generate_tx_with_unauthenticated_notes(self, account_id, notes)
     }
 
-    fn generate_tx_with_expiration(
+    fn create_expiring_tx(
         &self,
         input: impl Into<TxContextInput>,
         expiration_block: BlockNumber,

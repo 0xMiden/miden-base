@@ -233,8 +233,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
 
-    let tx0 = chain.generate_tx_with_expiration(account0.id(), block1_num + 5);
-    let tx1 = chain.generate_tx_with_expiration(account1.id(), block1_num + 2);
+    let tx0 = chain.create_expiring_tx(account0.id(), block1_num + 5);
+    let tx1 = chain.create_expiring_tx(account1.id(), block1_num + 2);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);

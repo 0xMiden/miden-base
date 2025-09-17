@@ -12,7 +12,7 @@ use miden_processor::crypto::MerklePath;
 use miden_tx::LocalTransactionProver;
 
 use super::utils::{generate_executed_tx_with_authenticated_notes, generate_output_note};
-use crate::kernel_tests::block::utils::{MockChainBuilderBlockExt, TestSetup, setup_chain};
+use crate::kernel_tests::block::utils::MockChainBuilderBlockExt;
 use crate::{Auth, MockChain};
 
 /// Tests that too many batches produce an error.
@@ -85,13 +85,16 @@ fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
 /// Tests that an expired batch produces an error.
 #[test]
 fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
-    let block1_num = chain.block_header(1).block_num();
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let mut chain = builder.build()?;
 
-    let tx0 = chain.generate_tx_with_expiration(account0.id(), block1_num + 5);
-    let tx1 = chain.generate_tx_with_expiration(account1.id(), block1_num + 1);
+    chain.prove_next_block()?;
+    let block1_num = chain.block_header(1).block_num();
+
+    let tx0 = chain.create_expiring_tx(account0.id(), block1_num + 5);
+    let tx1 = chain.create_expiring_tx(account1.id(), block1_num + 1);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);
@@ -122,8 +125,11 @@ fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
 /// Tests that a timestamp at or before the previous block header produces an error.
 #[test]
 fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::Result<()> {
-    let TestSetup { chain, mut txs, .. } = setup_chain(1);
-    let proven_tx0 = txs.remove(&0).unwrap();
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let chain = builder.build()?;
+    let proven_tx0 = chain.create_authenticated_notes_tx(account, []);
+
     let batch0 = chain.create_batch(vec![proven_tx0]);
     let batches = vec![batch0];
     // Mock BlockInputs.
@@ -152,8 +158,11 @@ fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::R
 /// an error.
 #[test]
 fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> anyhow::Result<()> {
-    let TestSetup { chain, mut txs, .. } = setup_chain(1);
-    let proven_tx0 = txs.remove(&0).unwrap();
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let chain = builder.build()?;
+    let proven_tx0 = chain.create_authenticated_notes_tx(account, []);
+
     let batch0 = chain.create_batch(vec![proven_tx0]);
     let batches = vec![batch0];
 
@@ -205,8 +214,12 @@ fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> 
 /// produces an error.
 #[test]
 fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut txs, .. } = setup_chain(1);
-    let proven_tx0 = txs.remove(&0).unwrap();
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let mut chain = builder.build()?;
+    chain.prove_next_block()?;
+
+    let proven_tx0 = chain.create_authenticated_notes_tx(account, []);
 
     // This batch will reference the latest block with number 1.
     let batch0 = chain.create_batch(vec![proven_tx0.clone()]);
@@ -215,7 +228,7 @@ fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()>
     let block2 = chain.prove_next_block()?;
 
     let (_, partial_blockchain) =
-        chain.latest_selective_partial_blockchain([BlockNumber::from(0)]).unwrap();
+        chain.latest_selective_partial_blockchain([BlockNumber::GENESIS])?;
 
     // The proposed block references block 2 but the partial blockchain only contains block 0 but
     // not block 1 which is referenced by the batch.
@@ -533,9 +546,10 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
 /// Tests that a missing account witness produces an error.
 #[test]
 fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
-    let TestSetup { chain, mut accounts, mut txs, .. } = setup_chain(2);
-    let account0 = accounts.remove(&0).unwrap();
-    let tx0 = txs.remove(&0).unwrap();
+    let mut builder = MockChain::builder();
+    let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let chain = builder.build()?;
+    let tx0 = chain.create_authenticated_notes_tx(account.id(), []);
 
     let batch0 = chain.create_batch(vec![tx0]);
 
@@ -546,11 +560,11 @@ fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
     let mut block_inputs = chain.get_block_inputs(&batches)?;
     block_inputs
         .account_witnesses_mut()
-        .remove(&account0.id())
+        .remove(&account.id())
         .expect("account witness should have been fetched");
 
     let error = ProposedBlock::new(block_inputs, batches.clone()).unwrap_err();
-    assert_matches!(error, ProposedBlockError::MissingAccountWitness(account_id) if account_id == account0.id());
+    assert_matches!(error, ProposedBlockError::MissingAccountWitness(account_id) if account_id == account.id());
 
     Ok(())
 }
