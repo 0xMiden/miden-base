@@ -15,7 +15,8 @@ use miden_tx::LocalTransactionProver;
 use rand::Rng;
 
 use super::utils::{
-    TestSetup,
+    MockChainBuilderBlockExt,
+    TestSetupBuilder,
     generate_batch,
     generate_executed_tx_with_authenticated_notes,
     generate_fungible_asset,
@@ -23,7 +24,7 @@ use super::utils::{
     generate_tx_with_expiration,
     generate_tx_with_unauthenticated_notes,
     generate_untracked_note,
-    setup_chain,
+    setup_chain_builder,
 };
 use crate::kernel_tests::block::utils::generate_conditional_tx;
 use crate::{AccountState, Auth, MockChain};
@@ -31,7 +32,8 @@ use crate::{AccountState, Auth, MockChain};
 /// Tests that we can build empty blocks.
 #[test]
 fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
-    let TestSetup { chain, .. } = setup_chain(2);
+    let TestSetupBuilder { builder, .. } = setup_chain_builder(2);
+    let chain = builder.build()?;
 
     let block_inputs = BlockInputs::new(
         chain.latest_block_header(),
@@ -54,11 +56,12 @@ fn proposed_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
 /// built.
 #[test]
 fn proposed_block_basic_success() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, mut txs, .. } = setup_chain(2);
+    let TestSetupBuilder { builder, mut accounts, notes } = setup_chain_builder(2);
+    let mut chain = builder.build()?;
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
-    let proven_tx0 = txs.remove(&0).unwrap();
-    let proven_tx1 = txs.remove(&1).unwrap();
+    let proven_tx0 = chain.generate_tx_with_authenticated_notes(account0.id(), [notes[&0].id()]);
+    let proven_tx1 = chain.generate_tx_with_authenticated_notes(account1.id(), [notes[&1].id()]);
 
     let batch0 = generate_batch(&mut chain, vec![proven_tx0.clone()]);
     let batch1 = generate_batch(&mut chain, vec![proven_tx1.clone()]);
@@ -114,7 +117,8 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
 #[test]
 fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     // We need authentication because we're modifying accounts with the input notes.
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
+    let TestSetupBuilder { builder, mut accounts, .. } = setup_chain_builder(2);
+    let mut chain = builder.build()?;
     let asset = generate_fungible_asset(
         100,
         AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap(),
@@ -186,7 +190,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
 /// Tests that unauthenticated notes can be authenticated when inclusion proofs are provided.
 #[test]
 fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(3);
+    let TestSetupBuilder { builder, mut accounts, .. } = setup_chain_builder(3);
+    let mut chain = builder.build()?;
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
     let account2 = accounts.remove(&2).unwrap();
@@ -237,7 +242,9 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
 /// Tests that a batch that expires at the block being proposed is still accepted.
 #[test]
 fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
+    let TestSetupBuilder { builder, mut accounts, .. } = setup_chain_builder(2);
+    let mut chain = builder.build()?;
+    chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
     let account0 = accounts.remove(&0).unwrap();
     let account1 = accounts.remove(&1).unwrap();
