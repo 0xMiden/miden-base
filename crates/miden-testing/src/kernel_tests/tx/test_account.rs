@@ -72,6 +72,8 @@ pub fn compute_current_commitment() -> miette::Result<()> {
 
     let tx_script = format!(
         r#"
+        use.std::word
+
         use.miden::prologue
         use.miden::account
         use.mock::account->mock_account
@@ -115,10 +117,10 @@ pub fn compute_current_commitment() -> miette::Result<()> {
             swapdw dropw dropw swapw dropw
             # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
 
-            eqw not assert.err="storage commitment should have been updated by compute_current_commitment"
-            # => [STORAGE_COMMITMENT1, STORAGE_COMMITMENT0]
-
-            dropw dropw dropw dropw
+            # assert that the commitment has changed
+            exec.word::eq 
+            assertz.err="storage commitment should have been updated by compute_current_commitment"
+            # => []
         end
     "#,
         key = &key,
@@ -609,6 +611,7 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
     // We will then assert that we are able to retrieve the correct elements from storage
     // insuring consistent "set" and "get" using offsets.
     let source_code_component1 = "
+        use.std::word
         use.miden::account
 
         export.foo_write
@@ -621,13 +624,14 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
         export.foo_read
             push.0
             exec.account::get_item
-            push.1.2.3.4 eqw assert
-
-            dropw dropw
+            push.1.2.3.4 
+            
+            exec.word::eq assert
         end
     ";
 
     let source_code_component2 = "
+        use.std::word
         use.miden::account
 
         export.bar_write
@@ -640,9 +644,9 @@ fn test_account_component_storage_offset() -> miette::Result<()> {
         export.bar_read
             push.0
             exec.account::get_item
-            push.5.6.7.8 eqw assert
-
-            dropw dropw
+            push.5.6.7.8 
+            
+            exec.word::eq assert
         end
     ";
 
