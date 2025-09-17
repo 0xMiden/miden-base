@@ -5,7 +5,7 @@ use anyhow::Context;
 use itertools::Itertools;
 use miden_lib::account::faucets::BasicFungibleFaucet;
 use miden_lib::account::wallets::BasicWallet;
-use miden_lib::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use miden_lib::note::{create_if_swap_note, create_p2id_note, create_p2ide_note, create_swap_note};
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::transaction::{TransactionKernel, memory};
 use miden_objects::account::delta::AccountUpdateDetails;
@@ -498,6 +498,30 @@ impl MockChainBuilder {
         self.add_note(OutputNote::Full(swap_note.clone()));
 
         Ok((swap_note, payback_note))
+    }
+
+    /// Adds a public IF_SWAP [`OutputNote`] to the list of genesis notes.
+    pub fn add_if_swap_note(
+        &mut self,
+        sender: AccountId,
+        offered_asset: Asset,
+        requested_asset: Asset,
+        payback_note_type: NoteType,
+    ) -> anyhow::Result<(Note, NoteDetails)> {
+        let (if_swap_note, payback_note) = create_if_swap_note(
+            sender,
+            offered_asset,
+            requested_asset,
+            NoteType::Public,
+            Felt::ZERO,
+            payback_note_type,
+            Felt::ZERO,
+            &mut self.rng,
+        )?;
+
+        self.add_note(OutputNote::Full(if_swap_note.clone()));
+
+        Ok((if_swap_note, payback_note))
     }
 
     /// Adds a public `SPAWN` note to the list of genesis notes.

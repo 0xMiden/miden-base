@@ -4,3 +4,6 @@
 
 export.::miden::contracts::wallets::basic::receive_asset
 export.::miden::contracts::wallets::basic::move_asset_to_note
+
+# extended wallet procedure
+export.::miden::contracts::wallets::basic::transfer_asset_to_note

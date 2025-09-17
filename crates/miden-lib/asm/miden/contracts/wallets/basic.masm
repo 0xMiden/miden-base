@@ -56,3 +56,12 @@ export.move_asset_to_note
     exec.output_note::add_asset
     # => [ASSET, note_idx, pad(11) ...]
 end
+
+# Required for In-Flight-SWAPs™
+#! Inputs:  [ASSET, note_idx, pad(11)]
+#! Outputs: [ASSET, note_idx, pad(11)]
+export.transfer_asset_to_note
+    # add 'asset' to note
+    exec.output_note::add_asset
+    # => [ASSET, note_idx, pad(11)] 
+end
