@@ -1,9 +1,9 @@
-use.$kernel::memory
-use.$kernel::link_map
-use.$kernel::constants
 use.$kernel::account
 use.$kernel::asset
 use.$kernel::asset_vault
+use.$kernel::constants
+use.$kernel::link_map
+use.$kernel::memory
 use.std::crypto::hashes::rpo
 use.std::math::u64
 use.std::word
@@ -174,7 +174,7 @@ proc.update_value_slot_delta
     dup exec.account::get_item
     # => [CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
-    dup.4 exec.get_item_initial
+    dup.4 exec.account::get_item_init
     # => [INIT_VALUE, CURRENT_VALUE, slot_idx, RATE, RATE, PERM]
 
     exec.word::test_eq not
@@ -390,7 +390,6 @@ proc.update_fungible_asset_delta.2
     # => [RATE, RATE, PERM]
 end
 
-
 #! Updates the given delta hasher with the non-fungible asset vault delta.
 #!
 #! Inputs:  [RATE, RATE, PERM]
@@ -443,9 +442,9 @@ proc.update_non_fungible_asset_delta.2
             hperm
             # => [RATE, RATE, PERM]
         else
-          # discard the two key and value words loaded from the map
-          dropw dropw
-          # => [RATE, RATE, PERM]
+            # discard the two key and value words loaded from the map
+            dropw dropw
+            # => [RATE, RATE, PERM]
         end
         # => [RATE, RATE, PERM]
 
@@ -460,27 +459,6 @@ proc.update_non_fungible_asset_delta.2
     # drop iter
     drop
     # => [RATE, RATE, PERM]
-end
-
-#! Returns the initial value of a storage slot from the account storage.
-#!
-#! This is the value of the slot at the beginning of the transaction.
-#!
-#! If this this procedure is moved to the account, additional assertions are necessary to make it
-#! safe to use.
-#!
-#! Note: Assumes the index is within bounds.
-#!
-#! Inputs:  [index]
-#! Outputs: [INIT_VALUE]
-proc.get_item_initial
-    # get account storage slots section offset
-    exec.memory::get_native_account_initial_storage_slots_ptr
-    # => [account_delta_initial_storage_slots_ptr, index]
-
-    # get the item from storage
-    swap mul.8 add padw movup.4 mem_loadw
-    # => [INIT_VALUE]
 end
 
 # DELTA BOOKKEEPING
@@ -680,7 +658,6 @@ export.add_non_fungible_asset
     exec.link_map::set drop
     # => []
 end
-
 
 #! Removes the given non-fungible asset from the non-fungible asset vault delta.
 #!
