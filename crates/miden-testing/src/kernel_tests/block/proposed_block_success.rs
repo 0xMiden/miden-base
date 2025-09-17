@@ -5,10 +5,11 @@ use std::vec::Vec;
 use anyhow::Context;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
+use miden_lib::testing::note::NoteBuilder;
 use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::block::{BlockInputs, ProposedBlock};
-use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
+use miden_objects::testing::account_id::{ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET, ACCOUNT_ID_SENDER};
 use miden_objects::transaction::{OutputNote, TransactionHeader};
 use miden_tx::LocalTransactionProver;
 use rand::Rng;
@@ -279,11 +280,17 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
         AccountState::Exists,
     )?;
 
+    let noop_note0 =
+        NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng()).build()?;
+    let noop_note1 =
+        NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng()).build()?;
+    builder.add_note(OutputNote::Full(noop_note0.clone()));
+    builder.add_note(OutputNote::Full(noop_note1.clone()));
     let mut chain = builder.build()?;
 
-    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), false);
+    let noop_tx = generate_conditional_tx(&mut chain, account0.id(), noop_note0, false);
     account0.apply_delta(noop_tx.account_delta())?;
-    let state_updating_tx = generate_conditional_tx(&mut chain, account0.clone(), true);
+    let state_updating_tx = generate_conditional_tx(&mut chain, account0.clone(), noop_note1, true);
 
     // sanity check: NOOP transaction's init and final commitment should be the same.
     assert_eq!(noop_tx.initial_account().commitment(), noop_tx.final_account().commitment());

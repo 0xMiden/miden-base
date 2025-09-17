@@ -11,7 +11,6 @@ use miden_objects::batch::ProvenBatch;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::{Note, NoteId, NoteTag, NoteType};
-use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
 use miden_objects::transaction::{
     ExecutedTransaction,
     OutputNote,
@@ -114,16 +113,11 @@ pub fn generate_tx_with_authenticated_notes(
 ///
 /// To make this transaction (always) non-empty, it consumes one "noop note", which does nothing.
 pub fn generate_conditional_tx(
-    chain: &mut MockChain,
+    builder: &mut MockChain,
     input: impl Into<TxContextInput>,
+    noop_note: Note,
     modify_storage: bool,
 ) -> ExecutedTransaction {
-    let noop_note = NoteBuilder::new(ACCOUNT_ID_SENDER.try_into().unwrap(), &mut rand::rng())
-        .build()
-        .expect("failed to create the noop note");
-    chain.add_pending_note(OutputNote::Full(noop_note.clone()));
-    chain.prove_next_block().unwrap();
-
     let auth_args = [
         if modify_storage { ONE } else { ZERO }, // increment nonce if modify_storage is true
         Felt::new(99),
@@ -131,10 +125,9 @@ pub fn generate_conditional_tx(
         Felt::new(97),
     ];
 
-    let tx_context = chain
+    let tx_context = builder
         .build_tx_context(input.into(), &[noop_note.id()], &[])
         .unwrap()
-        .extend_input_notes(vec![noop_note])
         .auth_args(auth_args.into())
         .build()
         .unwrap();
