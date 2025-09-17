@@ -339,21 +339,18 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     // Setup a chain with a non-empty nullifier tree by consuming some notes.
     // --------------------------------------------------------------------------------------------
 
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
+    let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(100)])?;
+    let mut chain = builder.build()?;
 
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
+    let tx0 = chain.create_authenticated_notes_tx(account0.id(), [note0.id()]);
+    let tx1 = chain.create_authenticated_notes_tx(account1.id(), [note1.id()]);
 
-    // Add notes to the chain we can consume.
-    let note0 = generate_tracked_note(&mut chain, account1.id(), account0.id());
-    let note1 = generate_tracked_note(&mut chain, account0.id(), account1.id());
-    chain.prove_next_block()?;
-
-    let tx0 = generate_executed_tx_with_authenticated_notes(&chain, account0.id(), &[note0.id()]);
-    let tx1 = generate_executed_tx_with_authenticated_notes(&chain, account1.id(), &[note1.id()]);
-
-    chain.add_pending_executed_transaction(&tx0)?;
-    chain.add_pending_executed_transaction(&tx1)?;
+    chain.add_pending_proven_transaction(tx0);
+    chain.add_pending_proven_transaction(tx1);
     let blockx = chain.prove_next_block()?;
 
     // Build a block with empty inputs whose account tree and nullifier tree root are not the empty

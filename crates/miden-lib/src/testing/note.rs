@@ -103,6 +103,11 @@ impl NoteBuilder {
         self
     }
 
+    pub fn serial_number(mut self, serial_number: Word) -> Self {
+        self.serial_num = serial_number;
+        self
+    }
+
     pub fn aux(mut self, aux: Felt) -> Self {
         self.aux = aux;
         self

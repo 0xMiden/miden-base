@@ -3,9 +3,10 @@ use alloc::vec::Vec;
 
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::transaction::{TransactionKernel, memory};
+use miden_objects::Word;
 use miden_objects::account::AccountId;
 use miden_objects::asset::Asset;
-use miden_objects::note::Note;
+use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::storage::prepare_assets;
 use miden_processor::Felt;
 use rand::SeedableRng;
@@ -80,6 +81,37 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
 ///
 /// The created note does not require authentication and can be consumed by any account.
 pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Asset>) -> Note {
+    create_p2any_note_inner(sender, NoteType::Public, assets, Word::from([1, 2, 3, 4u32]))
+}
+
+pub fn create_public_p2any_note(
+    sender: AccountId,
+    assets: impl IntoIterator<Item = Asset>,
+    serial_number: Word,
+) -> Note {
+    create_p2any_note_inner(sender, NoteType::Public, assets, serial_number)
+}
+
+/// Creates a `P2ANY` note.
+///
+/// A `P2ANY` note carries `assets` and a script that moves the assets into the executing account's
+/// vault.
+///
+/// The created note does not require authentication and can be consumed by any account.
+pub fn create_private_p2any_note(
+    sender: AccountId,
+    assets: impl IntoIterator<Item = Asset>,
+    serial_number: Word,
+) -> Note {
+    create_p2any_note_inner(sender, NoteType::Private, assets, serial_number)
+}
+
+fn create_p2any_note_inner(
+    sender: AccountId,
+    note_type: NoteType,
+    assets: impl IntoIterator<Item = Asset>,
+    serial_number: Word,
+) -> Note {
     let assets: Vec<_> = assets.into_iter().collect();
     let mut code_body = String::new();
     for i in 0..assets.len() {
@@ -133,6 +165,8 @@ pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Ass
 
     NoteBuilder::new(sender, SmallRng::from_seed([0; 32]))
         .add_assets(assets.iter().copied())
+        .note_type(note_type)
+        .serial_number(serial_number)
         .code(code)
         .dynamically_linked_libraries(TransactionKernel::mock_libraries())
         .build()

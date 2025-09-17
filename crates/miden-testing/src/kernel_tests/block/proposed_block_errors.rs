@@ -17,7 +17,6 @@ use super::utils::{
     generate_executed_tx_with_authenticated_notes,
     generate_fungible_asset,
     generate_output_note,
-    generate_tracked_note,
     generate_tracked_note_with_asset,
 };
 use crate::kernel_tests::block::utils::{MockChainBuilderBlockExt, TestSetup, setup_chain};
@@ -251,13 +250,13 @@ fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()>
 /// Tests that duplicate input notes across batches produce an error.
 #[test]
 fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2any_note(account0.id(), [])?;
+    let note1 = builder.add_p2any_note(account0.id(), [])?;
+    let mut chain = builder.build()?;
 
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-
-    let note0 = generate_tracked_note(&mut chain, account0.id(), account1.id());
-    let note1 = generate_tracked_note(&mut chain, account0.id(), account1.id());
     // These notes should have different IDs.
     assert_ne!(note0.id(), note1.id());
 
@@ -407,12 +406,12 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
 /// Tests that a missing note inclusion proof produces an error.
 #[test]
 fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
-
-    let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
-
-    let note0 = generate_tracked_note(&mut chain, account0.id(), account1.id());
+    let mut builder = MockChain::builder();
+    let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    // Note that this note is not added to the chain state.
+    let note0 = builder.create_private_p2any_note(account0.id(), [])?;
+    let chain = builder.build()?;
 
     let tx0 = chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&note0));
 

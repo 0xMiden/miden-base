@@ -30,6 +30,7 @@ use miden_objects::block::{
     OutputNoteBatch,
     ProvenBlock,
 };
+use miden_objects::crypto::rand::FeltRng;
 use miden_objects::note::{Note, NoteDetails, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_NATIVE_ASSET_FAUCET;
 use miden_objects::transaction::{OrderedTransactionHeaders, OutputNote};
@@ -38,7 +39,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
-use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::utils::{create_private_p2any_note, create_public_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`].
@@ -413,7 +414,7 @@ impl MockChainBuilder {
         sender_account_id: AccountId,
         asset: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = create_p2any_note(sender_account_id, asset);
+        let note = create_public_p2any_note(sender_account_id, asset, self.rng.draw_word());
 
         self.add_note(OutputNote::Full(note.clone()));
 
@@ -563,6 +564,18 @@ impl MockChainBuilder {
         )?;
 
         Ok(note)
+    }
+
+    /// Creates a new P2ANY note from the provided parameters _without_ adding it to the list of
+    /// genesis notes.
+    ///
+    /// This note is similar to a P2ID note but can be consumed by any account.
+    pub fn create_private_p2any_note(
+        &mut self,
+        sender_account_id: AccountId,
+        asset: impl IntoIterator<Item = Asset>,
+    ) -> anyhow::Result<Note> {
+        Ok(create_private_p2any_note(sender_account_id, asset, self.rng.draw_word()))
     }
 
     // HELPER FUNCTIONS

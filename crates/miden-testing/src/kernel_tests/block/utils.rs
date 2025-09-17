@@ -30,16 +30,6 @@ pub struct TestSetup {
     pub txs: BTreeMap<usize, ProvenTransaction>,
 }
 
-pub fn generate_tracked_note(
-    chain: &mut MockChain,
-    sender: AccountId,
-    receiver: AccountId,
-) -> Note {
-    let note = generate_untracked_note_internal(sender, receiver, vec![]);
-    chain.add_pending_note(OutputNote::Full(note.clone()));
-    note
-}
-
 pub fn generate_tracked_note_with_asset(
     chain: &mut MockChain,
     sender: AccountId,
@@ -99,11 +89,11 @@ pub fn generate_executed_tx_with_authenticated_notes(
 }
 
 pub fn generate_tx_with_authenticated_notes(
-    chain: &mut MockChain,
-    account_id: AccountId,
+    chain: &MockChain,
+    input: impl Into<TxContextInput>,
     notes: &[NoteId],
 ) -> ProvenTransaction {
-    let executed_tx = generate_executed_tx_with_authenticated_notes(chain, account_id, notes);
+    let executed_tx = generate_executed_tx_with_authenticated_notes(chain, input, notes);
     LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
 }
 
@@ -136,7 +126,7 @@ pub fn generate_conditional_tx(
 
 /// Generates a transaction that expires at the given block number.
 pub fn generate_tx_with_expiration(
-    chain: &mut MockChain,
+    chain: &MockChain,
     input: impl Into<TxContextInput>,
     expiration_block: BlockNumber,
 ) -> ProvenTransaction {
@@ -155,7 +145,7 @@ pub fn generate_tx_with_expiration(
 }
 
 pub fn generate_tx_with_unauthenticated_notes(
-    chain: &mut MockChain,
+    chain: &MockChain,
     account_id: AccountId,
     notes: &[Note],
 ) -> ProvenTransaction {
@@ -183,7 +173,7 @@ fn update_expiration_tx_script(expiration_delta: u16) -> TransactionScript {
     ScriptBuilder::default().compile_tx_script(code).unwrap()
 }
 
-pub fn generate_batch(chain: &mut MockChain, txs: Vec<ProvenTransaction>) -> ProvenBatch {
+pub fn generate_batch(chain: &MockChain, txs: Vec<ProvenTransaction>) -> ProvenBatch {
     chain
         .propose_transaction_batch(txs)
         .map(|batch| chain.prove_transaction_batch(batch).unwrap())
@@ -218,10 +208,78 @@ pub fn setup_chain(num_accounts: usize) -> TestSetup {
     chain.prove_next_block().expect("failed to prove block");
 
     for i in 0..num_accounts {
-        let tx =
-            generate_tx_with_authenticated_notes(&mut chain, accounts[&i].id(), &[notes[&i].id()]);
+        let tx = generate_tx_with_authenticated_notes(&chain, accounts[&i].id(), &[notes[&i].id()]);
         txs.insert(i, tx);
     }
 
     TestSetup { chain, accounts, txs }
+}
+
+/// TODO
+pub trait MockChainBuilderBlockExt {
+    fn generate_executed_tx_with_authenticated_notes(
+        &self,
+        input: impl Into<TxContextInput>,
+        notes: impl IntoIterator<Item = NoteId>,
+    ) -> ExecutedTransaction;
+
+    fn create_authenticated_notes_tx(
+        &self,
+        input: impl Into<TxContextInput>,
+        notes: impl IntoIterator<Item = NoteId>,
+    ) -> ProvenTransaction;
+
+    fn generate_tx_with_unauthenticated_notes(
+        &self,
+        account_id: AccountId,
+        notes: &[Note],
+    ) -> ProvenTransaction;
+
+    fn generate_tx_with_expiration(
+        &self,
+        input: impl Into<TxContextInput>,
+        expiration_block: BlockNumber,
+    ) -> ProvenTransaction;
+
+    fn create_batch(&self, txs: Vec<ProvenTransaction>) -> ProvenBatch;
+}
+
+impl MockChainBuilderBlockExt for MockChain {
+    fn generate_executed_tx_with_authenticated_notes(
+        &self,
+        input: impl Into<TxContextInput>,
+        notes: impl IntoIterator<Item = NoteId>,
+    ) -> ExecutedTransaction {
+        let notes = notes.into_iter().collect::<Vec<_>>();
+        generate_executed_tx_with_authenticated_notes(self, input, &notes)
+    }
+
+    fn create_authenticated_notes_tx(
+        &self,
+        input: impl Into<TxContextInput>,
+        notes: impl IntoIterator<Item = NoteId>,
+    ) -> ProvenTransaction {
+        let notes = notes.into_iter().collect::<Vec<_>>();
+        generate_tx_with_authenticated_notes(self, input, &notes)
+    }
+
+    fn generate_tx_with_unauthenticated_notes(
+        &self,
+        account_id: AccountId,
+        notes: &[Note],
+    ) -> ProvenTransaction {
+        generate_tx_with_unauthenticated_notes(self, account_id, notes)
+    }
+
+    fn generate_tx_with_expiration(
+        &self,
+        input: impl Into<TxContextInput>,
+        expiration_block: BlockNumber,
+    ) -> ProvenTransaction {
+        generate_tx_with_expiration(self, input, expiration_block)
+    }
+
+    fn create_batch(&self, txs: Vec<ProvenTransaction>) -> ProvenBatch {
+        generate_batch(self, txs)
+    }
 }

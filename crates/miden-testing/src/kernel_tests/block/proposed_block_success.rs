@@ -54,11 +54,11 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
     let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
-    let proven_tx0 = chain.generate_tx_with_authenticated_notes(account0.id(), [note0.id()]);
-    let proven_tx1 = chain.generate_tx_with_authenticated_notes(account1.id(), [note1.id()]);
+    let proven_tx0 = chain.create_authenticated_notes_tx(account0.id(), [note0.id()]);
+    let proven_tx1 = chain.create_authenticated_notes_tx(account1.id(), [note1.id()]);
 
-    let batch0 = chain.generate_batch(vec![proven_tx0.clone()]);
-    let batch1 = chain.generate_batch(vec![proven_tx1.clone()]);
+    let batch0 = chain.create_batch(vec![proven_tx0.clone()]);
+    let batch1 = chain.create_batch(vec![proven_tx1.clone()]);
 
     let batches = [batch0, batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
@@ -142,8 +142,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
         .try_into()
         .expect("we should have provided three executed txs");
 
-    let batch0 = chain.generate_batch(vec![tx2.clone()]);
-    let batch1 = chain.generate_batch(vec![tx0.clone(), tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx2.clone()]);
+    let batch1 = chain.create_batch(vec![tx0.clone(), tx1.clone()]);
 
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches).unwrap();
@@ -186,19 +186,15 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let note0 = builder.add_p2id_note(sender_id, account0.id(), &[], NoteType::Private)?;
     let note1 = builder.add_p2id_note(sender_id, account1.id(), &[], NoteType::Public)?;
-    let mut chain = builder.build()?;
+    let chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
     let tx0 = chain.generate_tx_with_unauthenticated_notes(account0.id(), slice::from_ref(&note0));
     let tx1 = chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&note1));
 
     // These batches will use block1 as the reference block.
-    let batch0 = chain.generate_batch(vec![tx0.clone()]);
-    let batch1 = chain.generate_batch(vec![tx1.clone()]);
-
-    chain.add_pending_note(OutputNote::Full(note0.clone()));
-    chain.add_pending_note(OutputNote::Full(note1.clone()));
-    chain.prove_next_block()?;
+    let batch0 = chain.create_batch(vec![tx0.clone()]);
+    let batch1 = chain.create_batch(vec![tx1.clone()]);
 
     let batches = [batch0, batch1];
     // This block will use block2 as the reference block.
@@ -240,8 +236,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     let tx0 = chain.generate_tx_with_expiration(account0.id(), block1_num + 5);
     let tx1 = chain.generate_tx_with_expiration(account1.id(), block1_num + 2);
 
-    let batch0 = chain.generate_batch(vec![tx0]);
-    let batch1 = chain.generate_batch(vec![tx1]);
+    let batch0 = chain.create_batch(vec![tx0]);
+    let batch1 = chain.create_batch(vec![tx1]);
 
     // sanity check: batch 1 should expire at block 3.
     assert_eq!(batch1.batch_expiration_block_num().as_u32(), 3);
@@ -268,7 +264,6 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
         .with_component(MockAccountComponent::with_empty_slots());
 
     let mut builder = MockChain::builder();
-
     let mut account0 = builder.add_account_from_builder(
         Auth::Conditional,
         account_builder,
@@ -299,8 +294,8 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     let tx0 = LocalTransactionProver::default().prove_dummy(noop_tx)?;
     let tx1 = LocalTransactionProver::default().prove_dummy(state_updating_tx)?;
 
-    let batch0 = chain.generate_batch(vec![tx0]);
-    let batch1 = chain.generate_batch(vec![tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx0]);
+    let batch1 = chain.create_batch(vec![tx1.clone()]);
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
