@@ -23,11 +23,11 @@ const.ACCOUNT_GET_CODE_COMMITMENT_OFFSET=7
 const.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET=8
 const.ACCOUNT_COMPUTE_STORAGE_COMMITMENT_OFFSET=9
 const.ACCOUNT_GET_ITEM_OFFSET=10
-const.ACCOUNT_SET_ITEM_OFFSET=11
-const.ACCOUNT_GET_MAP_ITEM_OFFSET=12
-const.ACCOUNT_SET_MAP_ITEM_OFFSET=13
-const.ACCOUNT_GET_ITEM_INIT_OFFSET=14
-const.ACCOUNT_GET_MAP_ITEM_INIT_OFFSET=15
+const.ACCOUNT_GET_ITEM_INIT_OFFSET=11
+const.ACCOUNT_SET_ITEM_OFFSET=12
+const.ACCOUNT_GET_MAP_ITEM_OFFSET=13
+const.ACCOUNT_GET_MAP_ITEM_INIT_OFFSET=14
+const.ACCOUNT_SET_MAP_ITEM_OFFSET=15
 
 # Vault
 const.ACCOUNT_GET_INITIAL_VAULT_ROOT_OFFSET=16
@@ -44,7 +44,6 @@ const.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET=22
 const.ACCOUNT_WAS_PROCEDURE_CALLED_OFFSET=23
 
 ### Faucet ######################################
-
 const.FAUCET_MINT_ASSET_OFFSET=24
 const.FAUCET_BURN_ASSET_OFFSET=25
 const.FAUCET_GET_TOTAL_FUNGIBLE_ASSET_ISSUANCE_OFFSET=26
@@ -101,7 +100,7 @@ const.TX_UPDATE_EXPIRATION_BLOCK_DELTA_OFFSET=49      # mutator
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_get_initial_commitment` kernel procedure required to 
+#! - proc_offset is the offset of the `account_get_initial_commitment` kernel procedure required to
 #!   get the address where this procedure is stored.
 export.account_get_initial_commitment_offset
     push.ACCOUNT_GET_INITIAL_COMMITMENT_OFFSET
@@ -125,7 +124,7 @@ end
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_compute_delta_commitment` kernel procedure required 
+#! - proc_offset is the offset of the `account_compute_delta_commitment` kernel procedure required
 #!   to get the address where this procedure is stored.
 export.account_compute_delta_commitment_offset
     push.ACCOUNT_COMPUTE_DELTA_COMMITMENT_OFFSET
@@ -149,7 +148,7 @@ end
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_get_native_id` kernel procedure required to get the 
+#! - proc_offset is the offset of the `account_get_native_id` kernel procedure required to get the
 #!   address where this procedure is stored.
 export.account_get_native_id_offset
     push.ACCOUNT_GET_NATIVE_ID_OFFSET
@@ -209,7 +208,7 @@ end
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `account_get_initial_storage_commitment` kernel procedure 
+#! - proc_offset is the offset of the `account_get_initial_storage_commitment` kernel procedure
 #!   required to get the address where this procedure is stored.
 export.account_get_initial_storage_commitment_offset
     push.ACCOUNT_GET_INITIAL_STORAGE_COMMITMENT_OFFSET
@@ -539,7 +538,7 @@ end
 #! Outputs: [proc_offset]
 #!
 #! Where:
-#! - proc_offset is the offset of the `input_note_get_serial_number` kernel procedure required to 
+#! - proc_offset is the offset of the `input_note_get_serial_number` kernel procedure required to
 #!   get the address where this procedure is stored.
 export.input_note_get_serial_number_offset
     push.INPUT_NOTE_GET_SERIAL_NUMBER_OFFSET
