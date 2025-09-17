@@ -846,14 +846,6 @@ impl MockChain {
         self.pending_transactions.push(transaction);
     }
 
-    /// Adds the given [`OutputNote`] to the list of pending notes.
-    ///
-    /// A block has to be created to add the note to that block and make it available in the chain
-    /// state, e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_note(&mut self, note: OutputNote) {
-        self.pending_output_notes.push(note);
-    }
-
     // PRIVATE HELPERS
     // ----------------------------------------------------------------------------------------
 
