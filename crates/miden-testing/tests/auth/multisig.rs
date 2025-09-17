@@ -353,8 +353,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
         let value_word: Word = (*public_key).into();
         advice_map.insert(key_word, value_word.to_vec());
-
-        println!("pub key: {:?}", value_word);
     }
 
     // Create a transaction script that calls the update_signers procedure
