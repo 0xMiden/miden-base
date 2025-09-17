@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.11.4 (2025-09-17)
+
+- Updated `miden-vm` dependencies to `0.17.2` patch version. ([#1905](https://github.com/0xMiden/miden-base/pull/1905))
+
 ## 0.11.3 (2025-09-15)
 
 - Added Serialize and Deserialize Traits on `SigningInputs` ([#1858](https://github.com/0xMiden/miden-base/pull/1858))
