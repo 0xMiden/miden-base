@@ -18,8 +18,7 @@ use miden_objects::crypto::merkle::Smt;
 use miden_objects::note::NoteType;
 use miden_objects::transaction::InputNoteCommitment;
 
-use super::utils::{generate_executed_tx_with_authenticated_notes, generate_tracked_note};
-use crate::kernel_tests::block::utils::{MockChainBuilderBlockExt, TestSetup, setup_chain};
+use crate::kernel_tests::block::utils::MockChainBuilderBlockExt;
 use crate::{Auth, MockChain};
 
 /// Tests the outputs of a proven block with transactions that consume notes, create output notes

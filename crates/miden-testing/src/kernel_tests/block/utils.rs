@@ -6,17 +6,12 @@ use miden_lib::note::create_p2id_note;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{Account, AccountId};
-use miden_objects::asset::{Asset, FungibleAsset};
+use miden_objects::asset::Asset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::BlockNumber;
 use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::{Note, NoteId, NoteTag, NoteType};
-use miden_objects::transaction::{
-    ExecutedTransaction,
-    OutputNote,
-    ProvenTransaction,
-    TransactionScript,
-};
+use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction, TransactionScript};
 use miden_objects::{Felt, ONE, Word, ZERO};
 use miden_tx::LocalTransactionProver;
 use rand::rngs::SmallRng;
@@ -28,17 +23,6 @@ pub struct TestSetup {
     pub chain: MockChain,
     pub accounts: BTreeMap<usize, Account>,
     pub txs: BTreeMap<usize, ProvenTransaction>,
-}
-
-pub fn generate_tracked_note_with_asset(
-    chain: &mut MockChain,
-    sender: AccountId,
-    receiver: AccountId,
-    asset: Asset,
-) -> Note {
-    let note = generate_untracked_note_internal(sender, receiver, vec![asset]);
-    chain.add_pending_note(OutputNote::Full(note.clone()));
-    note
 }
 
 pub fn generate_untracked_note(sender: AccountId, receiver: AccountId) -> Note {
@@ -69,10 +53,6 @@ fn generate_untracked_note_internal(
     ]));
     create_p2id_note(sender, receiver, asset, NoteType::Public, Default::default(), &mut rng)
         .unwrap()
-}
-
-pub fn generate_fungible_asset(amount: u64, faucet_id: AccountId) -> Asset {
-    FungibleAsset::new(faucet_id, amount).unwrap().into()
 }
 
 pub fn generate_executed_tx_with_authenticated_notes(

@@ -3,22 +3,15 @@ use std::collections::BTreeMap;
 use std::vec::Vec;
 
 use assert_matches::assert_matches;
-use miden_objects::account::AccountId;
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::{NoteInclusionProof, NoteType};
-use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
 use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
 use miden_processor::crypto::MerklePath;
 use miden_tx::LocalTransactionProver;
 
-use super::utils::{
-    generate_executed_tx_with_authenticated_notes,
-    generate_fungible_asset,
-    generate_output_note,
-    generate_tracked_note_with_asset,
-};
+use super::utils::{generate_executed_tx_with_authenticated_notes, generate_output_note};
 use crate::kernel_tests::block::utils::{MockChainBuilderBlockExt, TestSetup, setup_chain};
 use crate::{Auth, MockChain};
 
@@ -566,35 +559,28 @@ fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
 /// build on top of each other produce an error when tx 1 is missing from the block.
 #[test]
 fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Result<()> {
-    let TestSetup { mut chain, mut accounts, .. } = setup_chain(2);
-    let asset = generate_fungible_asset(
-        100,
-        AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET).unwrap(),
-    );
+    let asset = FungibleAsset::mock(200);
 
-    let account0 = accounts.remove(&0).unwrap();
-    let mut account1 = accounts.remove(&1).unwrap();
-
-    let note0 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-    let note1 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-    let note2 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
-
-    // Add notes to the chain.
-    chain.prove_next_block()?;
+    let mut builder = MockChain::builder();
+    let mut account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+    let note0 = builder.add_p2any_note(account.id(), [asset])?;
+    let note1 = builder.add_p2any_note(account.id(), [asset])?;
+    let note2 = builder.add_p2any_note(account.id(), [asset])?;
+    let chain = builder.build()?;
 
     // Create three transactions on the same account that build on top of each other.
     let executed_tx0 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note0.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account.clone(), &[note0.id()]);
 
-    account1.apply_delta(executed_tx0.account_delta())?;
+    account.apply_delta(executed_tx0.account_delta())?;
     // Builds a tx on top of the account state from tx0.
     let executed_tx1 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note1.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account.clone(), &[note1.id()]);
 
-    account1.apply_delta(executed_tx1.account_delta())?;
+    account.apply_delta(executed_tx1.account_delta())?;
     // Builds a tx on top of the account state from tx1.
     let executed_tx2 =
-        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note2.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account.clone(), &[note2.id()]);
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.
@@ -612,7 +598,7 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
       account_id,
       state_commitment,
       remaining_state_commitments
-    } if account_id == account1.id() &&
+    } if account_id == account.id() &&
       state_commitment == executed_tx0.final_account().commitment() &&
       remaining_state_commitments == [executed_tx2.initial_account().commitment()]
     );
