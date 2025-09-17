@@ -101,19 +101,21 @@ export.update_signers_and_threshold
         dup
         # @dev using key [1,0,0,n] since [0,0,0,0] key is reserved
         push.0.0.1
-        # => [[0, 0, 0, i-1], i-1]
+        # => [[1, 0, 0, i-1], i-1]
 
         adv.push_mapval
-        # => [[0, 0, 0, i-1], i-1]
+        # => [[1, 0, 0, i-1], i-1]
 
         padw adv_loadw
-        # => [PUB_KEY, [0, 0, 0, i-1], i-1]
+        # => [PUB_KEY, [1, 0, 0, i-1], i-1]
 
-        swapw
+        swapw drop push.0
         # => [[0, 0, 0, i-1], PUB_KEY, i-1]
 
         push.PUBLIC_KEYS_MAP_SLOT
         # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1]
+
+        debug.stack
 
         exec.account::set_map_item
 

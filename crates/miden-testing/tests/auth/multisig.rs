@@ -353,6 +353,8 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
         let value_word: Word = (*public_key).into();
         advice_map.insert(key_word, value_word.to_vec());
+
+        println!("pub key: {:?}", value_word);
     }
 
     // Create a transaction script that calls the update_signers procedure
@@ -424,7 +426,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     // Verify that the public keys were actually updated in storage
     for (i, expected_key) in new_public_keys.iter().enumerate() {
-        let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
+        let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
         let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
 
         let expected_word: Word = (*expected_key).into();
