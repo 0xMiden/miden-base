@@ -98,12 +98,13 @@ pub fn create_public_p2any_note(
 /// vault.
 ///
 /// The created note does not require authentication and can be consumed by any account.
-pub fn create_private_p2any_note(
+pub fn create_p2any_note_with_type(
     sender: AccountId,
-    assets: impl IntoIterator<Item = Asset>,
+    note_type: NoteType,
     serial_number: Word,
+    assets: impl IntoIterator<Item = Asset>,
 ) -> Note {
-    create_p2any_note_inner(sender, NoteType::Private, assets, serial_number)
+    create_p2any_note_inner(sender, note_type, assets, serial_number)
 }
 
 fn create_p2any_note_inner(

@@ -1,26 +1,18 @@
-use std::vec;
 use std::vec::Vec;
 
-use miden_lib::note::create_p2id_note;
 use miden_lib::testing::note::NoteBuilder;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::AccountId;
-use miden_objects::asset::Asset;
 use miden_objects::batch::ProvenBatch;
 use miden_objects::block::BlockNumber;
-use miden_objects::crypto::rand::RpoRandomCoin;
 use miden_objects::note::{Note, NoteId, NoteTag, NoteType};
 use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction, TransactionScript};
-use miden_objects::{Felt, ONE, Word, ZERO};
+use miden_objects::{Felt, ONE, ZERO};
 use miden_tx::LocalTransactionProver;
+use rand::SeedableRng;
 use rand::rngs::SmallRng;
-use rand::{Rng, SeedableRng};
 
 use crate::{MockChain, TxContextInput};
-
-pub fn generate_untracked_note(sender: AccountId, receiver: AccountId) -> Note {
-    generate_untracked_note_internal(sender, receiver, vec![])
-}
 
 /// Creates a NOP output note sent by the given sender.
 pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
@@ -29,22 +21,6 @@ pub fn generate_output_note(sender: AccountId, seed: [u8; 32]) -> Note {
         .note_type(NoteType::Private)
         .tag(NoteTag::for_local_use_case(0, 0).unwrap().into())
         .build()
-        .unwrap()
-}
-
-fn generate_untracked_note_internal(
-    sender: AccountId,
-    receiver: AccountId,
-    asset: Vec<Asset>,
-) -> Note {
-    // Use OS-randomness so that notes with the same sender and target have different note IDs.
-    let mut rng = RpoRandomCoin::new(Word::new([
-        Felt::new(rand::rng().random()),
-        Felt::new(rand::rng().random()),
-        Felt::new(rand::rng().random()),
-        Felt::new(rand::rng().random()),
-    ]));
-    create_p2id_note(sender, receiver, asset, NoteType::Public, Default::default(), &mut rng)
         .unwrap()
 }
 

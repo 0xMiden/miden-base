@@ -425,7 +425,7 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     // Note that this note is not added to the chain state.
-    let note0 = builder.create_private_p2any_note(account0.id(), [])?;
+    let note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
     let chain = builder.build()?;
 
     let tx0 = chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&note0));

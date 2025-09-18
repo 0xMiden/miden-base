@@ -207,9 +207,9 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     // The builder will use an rng which randomizes the note IDs and therefore their position in the
     // output note batches. This is useful to test that the block note tree is correctly
     // computed no matter at what index the erased note ends up in.
-    let output_note0 = builder.create_private_p2any_note(account0.id(), [])?;
-    let output_note2 = builder.create_private_p2any_note(account2.id(), [])?;
-    let output_note3 = builder.create_private_p2any_note(account3.id(), [])?;
+    let output_note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
+    let output_note2 = builder.create_p2any_note(account2.id(), NoteType::Private, [])?;
+    let output_note3 = builder.create_p2any_note(account3.id(), NoteType::Private, [])?;
 
     // Sanity check that these notes have different IDs.
     assert_ne!(output_note0.id(), output_note2.id());

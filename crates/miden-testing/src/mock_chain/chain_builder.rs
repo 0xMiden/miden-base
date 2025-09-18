@@ -39,7 +39,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
-use crate::utils::{create_private_p2any_note, create_public_p2any_note, create_spawn_note};
+use crate::utils::{create_p2any_note_with_type, create_public_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`].
@@ -570,12 +570,18 @@ impl MockChainBuilder {
     /// genesis notes.
     ///
     /// This note is similar to a P2ID note but can be consumed by any account.
-    pub fn create_private_p2any_note(
+    pub fn create_p2any_note(
         &mut self,
         sender_account_id: AccountId,
-        asset: impl IntoIterator<Item = Asset>,
+        note_type: NoteType,
+        assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        Ok(create_private_p2any_note(sender_account_id, asset, self.rng.draw_word()))
+        Ok(create_p2any_note_with_type(
+            sender_account_id,
+            note_type,
+            self.rng.draw_word(),
+            assets,
+        ))
     }
 
     // HELPER FUNCTIONS
