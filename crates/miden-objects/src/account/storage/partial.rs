@@ -129,11 +129,8 @@ impl Deserializable for PartialStorage {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeMap;
-
     use anyhow::Context;
     use miden_core::Word;
-    use miden_crypto::merkle::PartialSmt;
 
     use crate::account::{
         AccountStorage,
@@ -159,11 +156,9 @@ mod tests {
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);
         let witness = map_1.open(&map_key_present);
-        let partial_smt = PartialSmt::from_proofs([witness.into()])?;
-        let partial_map = BTreeMap::from([(map_key_present, map_1.get(&map_key_present))]);
 
         let partial_storage =
-            PartialStorage::new(storage_header, [PartialStorageMap::new(partial_smt, partial_map)])
+            PartialStorage::new(storage_header, [PartialStorageMap::from_witnesses([witness])?])
                 .context("creating partial storage")?;
 
         let retrieved_map = partial_storage.maps.get(&partial_storage.header.slot(0)?.1).unwrap();

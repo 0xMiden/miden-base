@@ -335,6 +335,8 @@ pub enum AccountDeltaError {
 pub enum StorageMapError {
     #[error("map entries contain key {key} twice with values {value0} and {value1}")]
     DuplicateKey { key: Word, value0: Word, value1: Word },
+    #[error("map key {map_key} is not present in provided SMT proof")]
+    MissingKey { map_key: Word },
 }
 
 // BATCH ACCOUNT UPDATE ERROR

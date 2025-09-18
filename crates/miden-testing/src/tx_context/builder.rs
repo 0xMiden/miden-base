@@ -311,7 +311,7 @@ impl TransactionContextBuilder {
                             let key = Word::empty();
                             let witness = storage_map.open(&key);
                             partial_storage_map
-                                .add(&key, &storage_map.get(&key), witness)
+                                .add(witness)
                                 .expect("adding the first proof should never error");
                             Some(partial_storage_map)
                         },
