@@ -1,6 +1,6 @@
 use.miden::account
 use.miden::account_id
-use.miden::note
+use.miden::active_note
 
 # ERRORS
 # =================================================================================================
@@ -29,7 +29,7 @@ const.ERR_P2ID_TARGET_ACCT_MISMATCH="P2ID's target account address and transacti
 #!   greater than 2^63.
 begin
     # store the note inputs to memory starting at address 0
-    padw push.0 exec.note::get_inputs
+    padw push.0 exec.active_note::get_inputs
     # => [num_inputs, inputs_ptr, EMPTY_WORD]
 
     # make sure the number of inputs is 2
@@ -47,6 +47,6 @@ begin
     exec.account_id::is_equal assert.err=ERR_P2ID_TARGET_ACCT_MISMATCH
     # => []
 
-    exec.note::add_assets_to_account
+    exec.active_note::add_assets_to_account
     # => []
 end

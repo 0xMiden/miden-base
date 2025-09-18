@@ -119,15 +119,20 @@ impl LocalTransactionProver {
         &self,
         tx_witness: TransactionWitness,
     ) -> Result<ProvenTransaction, TransactionProverError> {
-        let TransactionWitness { tx_inputs, tx_args, advice_witness } = tx_witness;
+        let TransactionWitness {
+            tx_inputs,
+            tx_args,
+            foreign_account_code,
+            advice_witness,
+        } = tx_witness;
 
         let (stack_inputs, advice_inputs) =
             TransactionKernel::prepare_inputs(&tx_inputs, &tx_args, Some(advice_witness))
                 .map_err(TransactionProverError::ConflictingAdviceMapEntry)?;
 
         self.mast_store.load_account_code(tx_inputs.account().code());
-        for account_inputs in tx_args.foreign_account_inputs() {
-            self.mast_store.load_account_code(account_inputs.code());
+        for account_code in &foreign_account_code {
+            self.mast_store.load_account_code(account_code);
         }
 
         let script_mast_store = ScriptMastForestStore::new(
@@ -135,17 +140,18 @@ impl LocalTransactionProver {
             tx_inputs.input_notes().iter().map(|n| n.note().script()),
         );
 
-        let acct_procedure_index_map =
-            AccountProcedureIndexMap::from_transaction_params(&tx_inputs, &tx_args, &advice_inputs)
-                .map_err(TransactionProverError::TransactionHostCreationFailed)?;
+        let account_procedure_index_map = AccountProcedureIndexMap::new(
+            foreign_account_code.iter().chain([tx_inputs.account().code()]),
+        )
+        .map_err(TransactionProverError::CreateAccountProcedureIndexMap)?;
 
-        let (partial_account, _, ref_block, _, input_notes) = tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes) = tx_inputs.into_parts();
         let mut host = TransactionProverHost::new(
             &partial_account,
             input_notes,
             self.mast_store.as_ref(),
             script_mast_store,
-            acct_procedure_index_map,
+            account_procedure_index_map,
         );
 
         let advice_inputs = advice_inputs.into_advice_inputs();
@@ -189,7 +195,7 @@ impl Default for LocalTransactionProver {
 }
 
 fn partial_account_to_full(partial_account: PartialAccount) -> Account {
-    let (id, nonce, code, partial_storage, partial_vault) = partial_account.into_parts();
+    let (id, partial_vault, partial_storage, code, nonce, seed) = partial_account.into_parts();
 
     // For new accounts, the partial storage must represent the full initial account
     // storage.
@@ -199,7 +205,8 @@ fn partial_account_to_full(partial_account: PartialAccount) -> Account {
     debug_assert_eq!(partial_vault.leaves().count(), 0);
     let vault = AssetVault::default();
 
-    Account::from_parts(id, vault, storage, code, nonce)
+    Account::new(id, vault, storage, code, nonce, seed)
+        .expect("partial account should ensure internal consistency for seed")
 }
 
 fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
@@ -240,7 +247,7 @@ impl LocalTransactionProver {
     ) -> Result<ProvenTransaction, TransactionProverError> {
         let (account_delta, tx_outputs, tx_witness, _) = executed_tx.into_parts();
 
-        let (partial_account, _, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
+        let (partial_account, ref_block, _, input_notes) = tx_witness.tx_inputs.into_parts();
 
         self.build_proven_transaction(
             &input_notes,

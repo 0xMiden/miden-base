@@ -123,8 +123,9 @@ where
                     TransactionEventData::AuthRequest { .. } => {
                         Err(EventError::from("base host should have handled auth request event"))
                     },
-                    // Witnesses should be in the advice provider at proving time, so there is
-                    // nothing to do.
+                    // Foreign account data and witnesses should be in the advice provider at
+                    // proving time, so there is nothing to do.
+                    TransactionEventData::ForeignAccount { .. } => Ok(Vec::new()),
                     TransactionEventData::AccountVaultAssetWitness { .. } => Ok(Vec::new()),
                     TransactionEventData::AccountStorageMapWitness { .. } => Ok(Vec::new()),
                     // We don't track enough information to handle this event. Since this just

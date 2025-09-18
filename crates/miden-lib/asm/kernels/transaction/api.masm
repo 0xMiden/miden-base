@@ -426,6 +426,66 @@ export.account_get_map_item
     # => [VALUE, pad(12)]
 end
 
+#! Gets an item from the account storage at its initial state (beginning of transaction).
+#!
+#! Inputs:  [index, pad(15)]
+#! Outputs: [INIT_VALUE, pad(12)]
+#!
+#! Where:
+#! - index is the index of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the index is out of bounds.
+#!
+#! Invocation: dynexec
+export.account_get_item_init
+    # authenticate that the procedure invocation originates from the account context
+    exec.authenticate_account_origin
+    # => [storage_offset, storage_size, index, pad(15)]
+
+    # apply offset to storage slot index
+    exec.account::apply_storage_offset
+    # => [index_with_offset, pad(15)]
+
+    # fetch the initial account storage item
+    exec.account::get_item_init
+    # => [INIT_VALUE, pad(15)]
+
+    # truncate the stack
+    movup.4 drop movup.4 drop movup.4 drop
+    # => [INIT_VALUE, pad(12)]
+end
+
+#! Returns the initial VALUE located under the specified KEY within the map contained in the given
+#! account storage slot at the beginning of the transaction.
+#!
+#! Inputs:  [index, KEY, pad(11)]
+#! Outputs: [INIT_VALUE, pad(12)]
+#!
+#! Where:
+#! - index is the index of the storage slot that contains the map root.
+#! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the index is out of bounds (>255).
+#! - the requested storage slot type is not map.
+#!
+#! Invocation: dynexec
+export.account_get_map_item_init
+    # authenticate that the procedure invocation originates from the account context
+    exec.authenticate_account_origin
+    # => [storage_offset, storage_size, index, KEY, pad(11)]
+
+    # apply offset to storage slot index
+    exec.account::apply_storage_offset
+    # => [index_with_offset, KEY, pad(11)]
+
+    # fetch the initial map item from account storage
+    exec.account::get_map_item_init
+    # => [INIT_VALUE, pad(12)]
+end
+
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
 #!
 #! Inputs:  [index, KEY, NEW_VALUE, pad(7)]
@@ -1310,50 +1370,8 @@ export.tx_start_foreign_context
         exec.memory::push_ptr_to_account_stack
         # OS => [foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
 
-        # construct the word with account ID to load the core account data from the advice map
-        push.0.0
-        # OS => [0, 0, foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
-
-        # move the core account data to the advice stack
-        adv.push_mapval
-        # OS => [0, 0, foreign_account_id_prefix, foreign_account_id_suffix, pad(14)]
-        # AS => [[foreign_account_id_prefix, foreign_account_id_suffix, 0, account_nonce], VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
-
-        # store the id and nonce of the foreign account to the memory
-        dropw adv_loadw
-        exec.memory::set_account_id_and_nonce dropw
-        # OS => [pad(16)]
-        # AS => [VAULT_ROOT, STORAGE_ROOT, CODE_ROOT]
-
-        # store the vault root of the foreign account to the memory
-        adv_loadw exec.memory::set_account_vault_root dropw
-        # OS => [pad(16)]
-        # AS => [STORAGE_ROOT, CODE_ROOT]
-
-        # move the storage root and the code root to the operand stack
-        adv_loadw padw adv_loadw
-        # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # store the code root into the memory
-        exec.memory::set_account_code_commitment
-        # OS => [CODE_ROOT, STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # save the account procedure data into the memory
-        exec.account::save_account_procedure_data
-        # OS => [STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # store the storage root to the memory
-        exec.memory::set_account_storage_commitment
-        # OS => [STORAGE_ROOT, pad(16)]
-        # AS => []
-
-        # save the storage slots data into the memory
-        exec.account::save_account_storage_data
-        # OS => [pad(16)]
-        # AS => []
+        # load the advice data into the current account memory section
+        exec.account::load_foreign_account
     end
 
     # make sure that the state of the loaded foreign account corresponds to this commitment in the
