@@ -29,6 +29,7 @@ use crate::MockChain;
 mod test_account;
 mod test_account_delta;
 mod test_account_interface;
+mod test_active_note;
 mod test_asset;
 mod test_asset_vault;
 mod test_auth;
