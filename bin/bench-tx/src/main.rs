@@ -15,7 +15,7 @@ use miden_objects::testing::account_id::ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATA
 use miden_objects::transaction::TransactionMeasurements;
 use miden_objects::{Felt, Word};
 use miden_testing::TransactionContextBuilder;
-use miden_testing::utils::create_pub_p2any_note;
+use miden_testing::utils::create_public_p2any_note;
 
 mod utils;
 use utils::{
@@ -68,10 +68,10 @@ pub fn benchmark_default_tx() -> anyhow::Result<TransactionMeasurements> {
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, IncrNonceAuthComponent);
 
         let input_note_1 =
-            create_pub_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
+            create_public_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         let input_note_2 =
-            create_pub_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(150)]);
+            create_public_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(150)]);
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])
             .build()?

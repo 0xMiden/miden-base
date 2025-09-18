@@ -80,7 +80,10 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
 /// vault.
 ///
 /// The created note does not require authentication and can be consumed by any account.
-pub fn create_pub_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Asset>) -> Note {
+pub fn create_public_p2any_note(
+    sender: AccountId,
+    assets: impl IntoIterator<Item = Asset>,
+) -> Note {
     create_p2any_note(sender, NoteType::Public, Word::from([1, 2, 3, 4u32]), assets)
 }
 

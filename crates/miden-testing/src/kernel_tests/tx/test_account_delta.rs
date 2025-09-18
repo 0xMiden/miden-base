@@ -38,7 +38,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
 
-use crate::utils::create_pub_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 // ACCOUNT DELTA TESTS
@@ -670,7 +670,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
         let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
-        create_pub_p2any_note(
+        create_public_p2any_note(
             account.id(),
             [fungible_asset_1, fungible_asset_3, nonfungible_asset_1],
         )

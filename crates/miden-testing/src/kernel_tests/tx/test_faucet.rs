@@ -39,7 +39,7 @@ use miden_objects::testing::noop_auth_component::NoopAuthComponent;
 use miden_objects::testing::storage::FAUCET_STORAGE_DATA_SLOT;
 use miden_objects::{Felt, Word};
 
-use crate::utils::create_pub_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{TransactionContextBuilder, assert_execution_error, assert_transaction_executor_error};
 
 // FUNGIBLE FAUCET MINT TESTS
@@ -336,7 +336,7 @@ fn test_burn_fungible_asset_succeeds() -> anyhow::Result<()> {
             ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
             Felt::new(FUNGIBLE_FAUCET_INITIAL_BALANCE),
         );
-        let note = create_pub_p2any_note(
+        let note = create_public_p2any_note(
             ACCOUNT_ID_SENDER.try_into().unwrap(),
             [FungibleAsset::new(account.id(), 100u64).unwrap().into()],
         );
