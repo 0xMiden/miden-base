@@ -539,6 +539,7 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
     // create an empty output note in the transaction script
     let tx_script_source = format!(
         r#"
+        use.std::word
         use.miden::output_note
         use.$kernel::prologue
         use.$kernel::epilogue
@@ -566,10 +567,12 @@ fn test_epilogue_empty_transaction_with_empty_output_note() -> anyhow::Result<()
             # make sure that output note was created: compare the output note hash with an empty
             # word
             exec.note::compute_output_notes_commitment
-            padw eqw assertz.err="output note was created, but the output notes hash remains to be zeros"
+            exec.word::eqz assertz.err="output note was created, but the output notes hash remains to be zeros"
+            # => [note_idx, GARBAGE(15)]
 
             # clean the stack
             dropw dropw dropw dropw
+            # => []
 
             exec.epilogue::finalize_transaction
         end

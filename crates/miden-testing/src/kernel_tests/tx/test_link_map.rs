@@ -1,5 +1,4 @@
 use alloc::vec::Vec;
-use core::cmp::Ordering;
 use std::collections::BTreeMap;
 use std::string::String;
 
@@ -11,7 +10,6 @@ use rand::seq::IteratorRandom;
 use winter_rand_utils::rand_value;
 
 use crate::TransactionContextBuilder;
-use crate::executor::CodeExecutor;
 
 /// Tests the following properties:
 /// - Insertion into an empty map.
@@ -359,69 +357,6 @@ fn set_update_get_random_entries() -> anyhow::Result<()> {
     test_operations.extend(get_ops3);
 
     execute_link_map_test(test_operations)
-}
-
-// COMPARISON OPERATIONS TESTS
-// ================================================================================================
-
-#[test]
-fn is_key_greater() -> anyhow::Result<()> {
-    execute_comparison_test(Ordering::Greater)
-}
-
-#[test]
-fn is_key_less() -> anyhow::Result<()> {
-    execute_comparison_test(Ordering::Less)
-}
-
-fn execute_comparison_test(operation: Ordering) -> anyhow::Result<()> {
-    let procedure_name = match operation {
-        Ordering::Less => "is_key_less",
-        Ordering::Equal => anyhow::bail!("unsupported ordering operation for testing"),
-        Ordering::Greater => "is_key_greater",
-    };
-
-    let mut test_code = String::new();
-
-    for _ in 0..1000 {
-        let key0 = rand_value::<Word>();
-        let key1 = rand_value::<Word>();
-
-        let cmp = LexicographicWord::from(key0).cmp(&LexicographicWord::from(key1));
-        let expected = cmp == operation;
-
-        let code = format!(
-            r#"
-        push.{KEY_1}
-        push.{KEY_0}
-        exec.link_map::{proc_name}
-        push.{expected_value}
-        assert_eq.err="failed for procedure {proc_name} with keys {key0:?}, {key1:?}"
-      "#,
-            KEY_0 = key0,
-            KEY_1 = key1,
-            proc_name = procedure_name,
-            expected_value = expected as u8
-        );
-
-        test_code.push_str(&code);
-    }
-
-    let code = format!(
-        r#"
-        use.$kernel::link_map
-
-        begin
-          {test_code}
-        end
-        "#,
-    );
-
-    CodeExecutor::with_default_host()
-        .run(&code)
-        .with_context(|| format!("comparison test for {procedure_name} failed"))?;
-
-    Ok(())
 }
 
 // TEST HELPERS
