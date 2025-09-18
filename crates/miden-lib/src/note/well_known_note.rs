@@ -31,6 +31,13 @@ static SWAP_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
     NoteScript::new(program)
 });
 
+// Initialize the IF_SWAP note script only once
+static IF_SWAP_SCRIPT: LazyLock<NoteScript> = LazyLock::new(|| {
+    let bytes = include_bytes!(concat!(env!("OUT_DIR"), "/assets/note_scripts/IF_SWAP.masb"));
+    let program = Program::read_from_bytes(bytes).expect("Shipped IF_SWAP script is well-formed");
+    NoteScript::new(program)
+});
+
 /// Returns the P2ID (Pay-to-ID) note script.
 fn p2id() -> NoteScript {
     P2ID_SCRIPT.clone()
@@ -61,6 +68,16 @@ fn swap_root() -> Word {
     SWAP_SCRIPT.root()
 }
 
+/// Returns the IF_SWAP (If-Swap note) note script.
+fn if_swap() -> NoteScript {
+    IF_SWAP_SCRIPT.clone()
+}
+
+/// Returns the IF_SWAP (If-Swap note) note script root.
+fn if_swap_root() -> Word {
+    IF_SWAP_SCRIPT.root()
+}
+
 // WELL KNOWN NOTE
 // ================================================================================================
 
@@ -69,6 +86,7 @@ pub enum WellKnownNote {
     P2ID,
     P2IDE,
     SWAP,
+    IFSWAP,
 }
 
 impl WellKnownNote {
@@ -83,6 +101,9 @@ impl WellKnownNote {
 
     /// Expected number of inputs of the SWAP note.
     const SWAP_NUM_INPUTS: usize = 10;
+
+    /// Expected number of inputs of the IF_SWAP note.
+    const IF_SWAP_NUM_INPUTS: usize = 12;
 
     // CONSTRUCTOR
     // --------------------------------------------------------------------------------------------
@@ -101,6 +122,9 @@ impl WellKnownNote {
         if note_script_root == swap_root() {
             return Some(Self::SWAP);
         }
+        if note_script_root == if_swap_root() {
+            return Some(Self::IFSWAP);
+        }
 
         None
     }
@@ -114,6 +138,7 @@ impl WellKnownNote {
             Self::P2ID => Self::P2ID_NUM_INPUTS,
             Self::P2IDE => Self::P2IDE_NUM_INPUTS,
             Self::SWAP => Self::SWAP_NUM_INPUTS,
+            Self::IFSWAP => Self::IF_SWAP_NUM_INPUTS,
         }
     }
 
@@ -123,6 +148,7 @@ impl WellKnownNote {
             Self::P2ID => p2id(),
             Self::P2IDE => p2ide(),
             Self::SWAP => swap(),
+            Self::IFSWAP => if_swap(),
         }
     }
 
@@ -132,6 +158,7 @@ impl WellKnownNote {
             Self::P2ID => p2id_root(),
             Self::P2IDE => p2ide_root(),
             Self::SWAP => swap_root(),
+            Self::IFSWAP => if_swap_root(),
         }
     }
 
@@ -154,6 +181,11 @@ impl WellKnownNote {
                 // must be present in the provided account interface.
                 interface_proc_digests.contains(&BasicWallet::receive_asset_digest())
                     && interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
+            },
+            Self::IFSWAP => {
+                // To consume IF_SWAP note, only the `move_asset_to_note` procedure
+                // must be present in the provided account interface.
+                interface_proc_digests.contains(&BasicWallet::move_asset_to_note_digest())
             },
         }
     }
