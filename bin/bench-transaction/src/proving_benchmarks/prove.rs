@@ -18,8 +18,8 @@ const BENCH_EXECUTE_TX_CONSUME_TWO_P2ID: &str = "Execute transaction which consu
 const BENCH_GROUP_EXECUTE_AND_PROVE: &str = "Execute and prove transaction";
 const BENCH_EXECUTE_AND_PROVE_TX_CONSUME_SINGLE_P2ID: &str =
     "Execute and prove transaction which consumes single P2ID note";
-const BENCH_EXECUTE_AND_PROVE_TX_CONSUME_TWO_P2ID: &str = "Execute and prove transaction which
-    consumes two P2ID notes";
+const BENCH_EXECUTE_AND_PROVE_TX_CONSUME_TWO_P2ID: &str =
+    "Execute and prove transaction which consumes two P2ID notes";
 
 // CORE PROVING BENCHMARKS
 // ================================================================================================
