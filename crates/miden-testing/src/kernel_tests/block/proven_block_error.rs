@@ -35,9 +35,9 @@ fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account2 = builder.add_existing_mock_account(Auth::IncrNonce)?;
 
-    let note0 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
-    let note1 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
-    let note2 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
+    let note0 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
+    let note1 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
+    let note2 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
 
     let mut chain = builder.build()?;
 

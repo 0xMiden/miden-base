@@ -25,7 +25,7 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
         let mut notes = Vec::new();
         for _ in 0..count {
             let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-            let note = builder.add_p2any_note(account.id(), [FungibleAsset::mock(42)])?;
+            let note = builder.add_public_p2any_note(account.id(), [FungibleAsset::mock(42)])?;
 
             accounts.push(account);
             notes.push(note);
@@ -63,7 +63,7 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
 fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let sender_account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note = builder.add_p2any_note(sender_account.id(), [FungibleAsset::mock(42)])?;
+    let note = builder.add_public_p2any_note(sender_account.id(), [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
     let proven_tx0 =
@@ -264,8 +264,8 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note0 = builder.add_p2any_note(account0.id(), [])?;
-    let note1 = builder.add_p2any_note(account0.id(), [])?;
+    let note0 = builder.add_public_p2any_note(account0.id(), [])?;
+    let note1 = builder.add_public_p2any_note(account0.id(), [])?;
     let mut chain = builder.build()?;
 
     // These notes should have different IDs.
@@ -451,7 +451,7 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
 fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let p2id_note = builder.add_p2any_note(account.id(), [FungibleAsset::mock(50)])?;
+    let p2id_note = builder.add_public_p2any_note(account.id(), [FungibleAsset::mock(50)])?;
     let mut chain = builder.build()?;
     chain.prove_next_block()?;
 
@@ -489,7 +489,7 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let p2any_note = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(50)])?;
+    let p2any_note = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(50)])?;
     let mut chain = builder.build()?;
     chain.prove_next_block()?;
 
@@ -521,8 +521,8 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
 fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note0 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(100)])?;
-    let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(200)])?;
+    let note0 = builder.add_public_p2any_note(account1.id(), [FungibleAsset::mock(100)])?;
+    let note1 = builder.add_public_p2any_note(account1.id(), [FungibleAsset::mock(200)])?;
     let chain = builder.build()?;
 
     // These notes should have different IDs.
@@ -588,9 +588,9 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
 
     let mut builder = MockChain::builder();
     let mut account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note0 = builder.add_p2any_note(account.id(), [asset])?;
-    let note1 = builder.add_p2any_note(account.id(), [asset])?;
-    let note2 = builder.add_p2any_note(account.id(), [asset])?;
+    let note0 = builder.add_public_p2any_note(account.id(), [asset])?;
+    let note1 = builder.add_public_p2any_note(account.id(), [asset])?;
+    let note2 = builder.add_public_p2any_note(account.id(), [asset])?;
     let chain = builder.build()?;
 
     // Create three transactions on the same account that build on top of each other.

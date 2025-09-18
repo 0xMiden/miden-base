@@ -38,7 +38,7 @@ use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 use winter_rand_utils::rand_value;
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_pub_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 // ACCOUNT DELTA TESTS
@@ -56,7 +56,8 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::Noop)?;
-    let p2any_note = builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), [])?;
+    let p2any_note =
+        builder.add_public_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), [])?;
     let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
@@ -669,7 +670,10 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
         let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
-        create_p2any_note(account.id(), [fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
+        create_pub_p2any_note(
+            account.id(),
+            [fungible_asset_1, fungible_asset_3, nonfungible_asset_1],
+        )
     };
 
     let tx_context = TransactionContextBuilder::new(account)

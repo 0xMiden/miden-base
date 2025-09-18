@@ -39,7 +39,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
-use crate::utils::{create_p2any_note_with_type, create_spawn_note};
+use crate::utils::{create_p2any_note, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`].
@@ -404,18 +404,37 @@ impl MockChainBuilder {
         self.notes.push(note.into());
     }
 
-    /// Creates a new P2ANY note from the provided parameters and adds it to the list of genesis
-    /// notes. This note is similar to a P2ID note but can be consumed by any account.
+    /// Creates a new public P2ANY note from the provided parameters and adds it to the list of
+    /// genesis notes.
+    ///
+    /// This note is similar to a P2ID note but can be consumed by any account.
     ///
     /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
     /// and carries no additional reclaim or timelock conditions.
-    pub fn add_p2any_note(
+    pub fn add_public_p2any_note(
         &mut self,
         sender_account_id: AccountId,
         asset: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
         let note = self.create_p2any_note(sender_account_id, NoteType::Public, asset)?;
+        self.add_note(OutputNote::Full(note.clone()));
 
+        Ok(note)
+    }
+
+    /// Creates a new private P2ANY note from the provided parameters and adds it to the list of
+    /// genesis notes.
+    ///
+    /// This note is similar to a P2ID note but can be consumed by any account.
+    ///
+    /// In the created [`MockChain`], the note will be immediately spendable by `target_account_id`
+    /// and carries no additional reclaim or timelock conditions.
+    pub fn add_private_p2any_note(
+        &mut self,
+        sender_account_id: AccountId,
+        asset: impl IntoIterator<Item = Asset>,
+    ) -> anyhow::Result<Note> {
+        let note = self.create_p2any_note(sender_account_id, NoteType::Private, asset)?;
         self.add_note(OutputNote::Full(note.clone()));
 
         Ok(note)
@@ -576,12 +595,7 @@ impl MockChainBuilder {
         note_type: NoteType,
         assets: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        Ok(create_p2any_note_with_type(
-            sender_account_id,
-            note_type,
-            self.rng.draw_word(),
-            assets,
-        ))
+        Ok(create_p2any_note(sender_account_id, note_type, self.rng.draw_word(), assets))
     }
 
     // HELPER FUNCTIONS

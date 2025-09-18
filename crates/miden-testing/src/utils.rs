@@ -74,22 +74,14 @@ pub fn input_note_data_ptr(note_idx: u32) -> memory::MemoryAddress {
 // HELPER NOTES
 // ================================================================================================
 
-/// Creates a `P2ANY` note.
+/// Creates a public `P2ANY` note.
 ///
 /// A `P2ANY` note carries `assets` and a script that moves the assets into the executing account's
 /// vault.
 ///
 /// The created note does not require authentication and can be consumed by any account.
-pub fn create_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Asset>) -> Note {
-    create_p2any_note_inner(sender, NoteType::Public, assets, Word::from([1, 2, 3, 4u32]))
-}
-
-pub fn create_public_p2any_note(
-    sender: AccountId,
-    assets: impl IntoIterator<Item = Asset>,
-    serial_number: Word,
-) -> Note {
-    create_p2any_note_inner(sender, NoteType::Public, assets, serial_number)
+pub fn create_pub_p2any_note(sender: AccountId, assets: impl IntoIterator<Item = Asset>) -> Note {
+    create_p2any_note(sender, NoteType::Public, Word::from([1, 2, 3, 4u32]), assets)
 }
 
 /// Creates a `P2ANY` note.
@@ -98,20 +90,11 @@ pub fn create_public_p2any_note(
 /// vault.
 ///
 /// The created note does not require authentication and can be consumed by any account.
-pub fn create_p2any_note_with_type(
+pub fn create_p2any_note(
     sender: AccountId,
     note_type: NoteType,
     serial_number: Word,
     assets: impl IntoIterator<Item = Asset>,
-) -> Note {
-    create_p2any_note_inner(sender, note_type, assets, serial_number)
-}
-
-fn create_p2any_note_inner(
-    sender: AccountId,
-    note_type: NoteType,
-    assets: impl IntoIterator<Item = Asset>,
-    serial_number: Word,
 ) -> Note {
     let assets: Vec<_> = assets.into_iter().collect();
     let mut code_body = String::new();

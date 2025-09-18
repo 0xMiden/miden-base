@@ -222,8 +222,8 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let chain = builder.build()?;
 
     let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
-    let tx1 =
-        chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&output_note0))?;
+    let tx1 = chain
+        .create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&output_note0))?;
     let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()])?;
     let tx3 = chain.create_authenticated_notes_proven_tx(account3.id(), [note3.id()])?;
 
@@ -341,8 +341,8 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note0 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
-    let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(100)])?;
+    let note0 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(100)])?;
+    let note1 = builder.add_public_p2any_note(account1.id(), [FungibleAsset::mock(100)])?;
     let mut chain = builder.build()?;
 
     let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;

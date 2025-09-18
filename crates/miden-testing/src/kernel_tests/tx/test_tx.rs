@@ -60,7 +60,7 @@ use miden_tx::auth::UnreachableAuth;
 use miden_tx::{TransactionExecutor, TransactionExecutorError};
 
 use super::{Felt, ONE};
-use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::utils::{create_pub_p2any_note, create_spawn_note};
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 /// Tests that executing a transaction with a foreign account whose inputs are stale fails.
@@ -111,7 +111,7 @@ async fn consuming_note_created_in_future_block_fails() -> anyhow::Result<()> {
     let asset = FungibleAsset::mock(400);
     let account1 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
     let account2 = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [asset])?;
-    let output_note = create_p2any_note(account1.id(), [asset]);
+    let output_note = create_pub_p2any_note(account1.id(), [asset]);
     let spawn_note = builder.add_spawn_note([&output_note])?;
     let mut mock_chain = builder.build()?;
     mock_chain.prove_until_block(10u32)?;

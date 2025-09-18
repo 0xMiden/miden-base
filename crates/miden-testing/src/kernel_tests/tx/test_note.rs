@@ -41,7 +41,7 @@ use rand_chacha::ChaCha20Rng;
 
 use super::Process;
 use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::{create_p2any_note, input_note_data_ptr};
+use crate::utils::{create_pub_p2any_note, input_note_data_ptr};
 use crate::{
     Auth,
     MockChain,
@@ -97,8 +97,10 @@ fn test_get_sender() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-        let input_note =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let input_note = create_pub_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()?

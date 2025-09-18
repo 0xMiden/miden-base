@@ -39,7 +39,7 @@ use rand::rng;
 
 use super::{ZERO, create_mock_notes_procedure};
 use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::{create_p2any_note, create_spawn_note};
+use crate::utils::{create_pub_p2any_note, create_spawn_note};
 use crate::{
     Auth,
     MockChain,
@@ -53,12 +53,16 @@ use crate::{
 fn test_epilogue() -> anyhow::Result<()> {
     let account = Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
     let tx_context = {
-        let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let output_note_1 = create_pub_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
 
         // input_note_1 is needed for maintaining cohesion of involved assets
-        let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let input_note_1 = create_pub_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
         let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account.clone())
             .extend_input_notes(vec![input_note_1, input_note_2])
@@ -153,11 +157,11 @@ fn test_compute_output_note_id() -> anyhow::Result<()> {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
         let output_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
+            create_pub_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
 
         // input_note_1 is needed for maintaining cohesion of involved assets
         let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
+            create_pub_p2any_note(ACCOUNT_ID_SENDER.try_into()?, [FungibleAsset::mock(100)]);
         let input_note_2 = create_spawn_note([&output_note_1])?;
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2])

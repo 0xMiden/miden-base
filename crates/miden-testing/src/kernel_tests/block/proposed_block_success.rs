@@ -50,8 +50,8 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account0 = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let account1 = builder.add_existing_mock_account(Auth::IncrNonce)?;
-    let note0 = builder.add_p2any_note(account0.id(), [FungibleAsset::mock(42)])?;
-    let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
+    let note0 = builder.add_public_p2any_note(account0.id(), [FungibleAsset::mock(42)])?;
+    let note1 = builder.add_public_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
     let proven_tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
@@ -186,8 +186,10 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
-    let tx0 = chain.create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0))?;
-    let tx1 = chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1))?;
+    let tx0 =
+        chain.create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0))?;
+    let tx1 =
+        chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1))?;
 
     // These batches will use block1 as the reference block.
     let batch0 = chain.create_batch(vec![tx0.clone()])?;

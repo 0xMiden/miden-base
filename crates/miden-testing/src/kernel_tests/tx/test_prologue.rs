@@ -95,7 +95,7 @@ use rand_chacha::ChaCha20Rng;
 
 use super::{Felt, ZERO};
 use crate::kernel_tests::tx::ProcessMemoryExt;
-use crate::utils::{create_p2any_note, input_note_data_ptr};
+use crate::utils::{create_pub_p2any_note, input_note_data_ptr};
 use crate::{
     Auth,
     MockChain,
@@ -110,12 +110,18 @@ fn test_transaction_prologue() -> anyhow::Result<()> {
     let mut tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-        let input_note_1 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
-        let input_note_2 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
-        let input_note_3 =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(111)]);
+        let input_note_1 = create_pub_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
+        let input_note_2 = create_pub_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
+        let input_note_3 = create_pub_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(111)],
+        );
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note_1, input_note_2, input_note_3])
             .build()?
