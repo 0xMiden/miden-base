@@ -241,7 +241,7 @@ fn prove_burning_fungible_asset_on_existing_faucet_succeeds() -> anyhow::Result<
             padw padw padw padw
             # => [pad(16)]
 
-            exec.::miden::note::get_assets drop
+            exec.::miden::active_note::get_assets drop
             mem_loadw
             # => [ASSET, pad(12)]
 

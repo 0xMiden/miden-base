@@ -52,9 +52,9 @@ Account procedures can be used to read and write to account storage, add or remo
 | `get_vault_root` | Returns the vault root of the current account.<br><br>Inputs: `[]`<br>Outputs: `[VAULT_ROOT]` | Any |
 | `was_procedure_called` | Returns 1 if a procedure was called during transaction execution, and 0 otherwise.<br><br>Inputs: `[PROC_ROOT]`<br>Outputs: `[was_called]` | Any |
 
-## Note Procedures (`miden::note`)
+## Active Note Procedures (`miden::active_note`)
 
-Note procedures can be used to fetch data from the active note.
+Active note procedures can be used to fetch data from the note that is currently being processed by the transaction kernel.
 
 | Procedure | Description | Context |
 | --- | --- | --- |
@@ -64,12 +64,7 @@ Note procedures can be used to fetch data from the active note.
 | `get_sender` | Returns the sender of the active note.<br><br>Inputs: `[]`<br>Outputs: `[sender_id_prefix, sender_id_suffix]` | Note |
 | `get_serial_number` | Returns the serial number of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SERIAL_NUMBER]` | Note |
 | `get_script_root` | Returns the script root of the active note.<br><br>Inputs: `[]`<br>Outputs: `[SCRIPT_ROOT]` | Note |
-| `compute_inputs_commitment` | Computes the commitment to the output note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[INPUTS_COMMITMENT]` | Any |
-| `get_max_inputs_per_note` | Returns the max allowed number of input values per note.<br><br>Inputs: `[]`<br>Outputs: `[max_inputs_per_note]` | Any |
 | `add_assets_to_account` | Adds all assets from the active note to the account vault.<br><br>Inputs: `[]`<br>Outputs: `[]` | Note |
-| `write_assets_to_memory` | Writes the assets data stored in the advice map to the memory specified by the provided destination pointer.<br><br>Inputs: `[ASSETS_COMMITMENT, num_assets, dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Any |
-| `build_recipient_hash` | Returns the `RECIPIENT` for a specified `SERIAL_NUM`, `SCRIPT_ROOT`, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
-| `build_recipient` | Builds the recipient hash from note inputs, script root, and serial number.<br><br>Inputs: `[inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]`<br>Outputs: `[RECIPIENT]` | Any |
 
 ## Input Note Procedures (`miden::input_note`)
 
@@ -97,6 +92,18 @@ Output note procedures can be used to fetch data on output notes created by the 
 | `add_asset` | Adds the `ASSET` to the output note specified by the index.<br><br>Inputs: `[ASSET, note_idx]`<br>Outputs: `[ASSET, note_idx]` | Native |
 | `get_recipient` | Returns the [recipient](note.md#note-recipient-restricting-consumption) of the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[RECIPIENT]` | Any |
 | `get_metadata` | Returns the [metadata](note.md#metadata) of the output note with the specified index.<br><br>Inputs: `[note_index]`<br>Outputs: `[METADATA]` | Any |
+
+## Note Utility Procedures (`miden::note`)
+
+Note utility procedures can be used to compute the required utility data or write note data to memory.
+
+| Procedure | Description | Context |
+| --- | --- | --- |
+| `compute_inputs_commitment` | Computes the commitment to the output note inputs starting at the specified memory address.<br><br>Inputs: `[inputs_ptr, num_inputs]`<br>Outputs: `[INPUTS_COMMITMENT]` | Any |
+| `get_max_inputs_per_note` | Returns the max allowed number of input values per note.<br><br>Inputs: `[]`<br>Outputs: `[max_inputs_per_note]` | Any |
+| `write_assets_to_memory` | Writes the assets data stored in the advice map to the memory specified by the provided destination pointer.<br><br>Inputs: `[ASSETS_COMMITMENT, num_assets, dest_ptr]`<br>Outputs: `[num_assets, dest_ptr]` | Any |
+| `build_recipient_hash` | Returns the `RECIPIENT` for a specified `SERIAL_NUM`, `SCRIPT_ROOT`, and inputs commitment.<br><br>Inputs: `[SERIAL_NUM, SCRIPT_ROOT, INPUT_COMMITMENT]`<br>Outputs: `[RECIPIENT]` | Any |
+| `build_recipient` | Builds the recipient hash from note inputs, script root, and serial number.<br><br>Inputs: `[inputs_ptr, num_inputs, SERIAL_NUM, SCRIPT_ROOT]`<br>Outputs: `[RECIPIENT]` | Any |
 
 ## Transaction Procedures (`miden::tx`)
 

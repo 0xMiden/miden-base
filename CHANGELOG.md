@@ -38,12 +38,16 @@
 - [BREAKING] Move `TransactionKernelError` to miden-tx ([#1859](https://github.com/0xMiden/miden-base/pull/1859)).
 - Change terminology of "current note" to "active note" ([#1863](https://github.com/0xMiden/miden-base/issues/1863)).
 - [BREAKING] Move and rename `miden::tx::{add_asset_to_note, create_note}` procedures to `miden::output_note::{add_asset, create}` ([#1874](https://github.com/0xMiden/miden-base/pull/1874)).
+- [BREAKING] Move active note procedures from `miden::note` to `miden::active_note` module ([#1901](https://github.com/0xMiden/miden-base/pull/1901)).
 - Replace `eqw` usages with `exec.word::test_eq` and `exec.word::eq`, remove `is_key_greater` and `is_key_less` from `link_map` module ([#1897](https://github.com/0xMiden/miden-base/pull/1897)).
+
+## 0.11.4 (2025-09-17)
+
+- Updated `miden-vm` dependencies to `0.17.2` patch version. ([#1905](https://github.com/0xMiden/miden-base/pull/1905))
 
 ## 0.11.3 (2025-09-15)
 
 - Added Serialize and Deserialize Traits on `SigningInputs` ([#1858](https://github.com/0xMiden/miden-base/pull/1858)).
-
 
 ## 0.11.2 (2025-09-08)
 
