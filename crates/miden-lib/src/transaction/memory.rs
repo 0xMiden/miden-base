@@ -449,11 +449,11 @@ pub const LINK_MAP_USED_MEMORY_SIZE: MemoryAddress = 33_554_432;
 pub const LINK_MAP_ENTRY_SIZE: MemoryOffset = 16;
 
 const _: () = assert!(
-    LINK_MAP_REGION_START_PTR % LINK_MAP_ENTRY_SIZE == 0,
+    LINK_MAP_REGION_START_PTR.is_multiple_of(LINK_MAP_ENTRY_SIZE),
     "link map region start ptr should be aligned to entry size"
 );
 
 const _: () = assert!(
-    (LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR) % LINK_MAP_ENTRY_SIZE == 0,
+    (LINK_MAP_REGION_END_PTR - LINK_MAP_REGION_START_PTR).is_multiple_of(LINK_MAP_ENTRY_SIZE),
     "the link map memory range should cleanly contain a multiple of the entry size"
 );
