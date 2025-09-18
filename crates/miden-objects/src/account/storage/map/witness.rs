@@ -1,4 +1,4 @@
-use alloc::vec::Vec;
+use alloc::collections::BTreeMap;
 
 use miden_crypto::merkle::{InnerNodeInfo, SmtProof};
 
@@ -15,7 +15,7 @@ use crate::errors::StorageMapError;
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageMapWitness {
     proof: SmtProof,
-    map_keys: Vec<Word>,
+    map: BTreeMap<Word, Word>,
 }
 
 impl StorageMapWitness {
@@ -23,21 +23,36 @@ impl StorageMapWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Creates a new [`StorageMapWitness`] from an SMT proof.
-    pub fn new(proof: SmtProof, map_keys: Vec<Word>) -> Result<Self, StorageMapError> {
-        for map_key in &map_keys {
-            let hashed_map_key = StorageMap::hash_key(*map_key);
-            proof
-                .get(&hashed_map_key)
-                .ok_or(StorageMapError::MissingKey { map_key: *map_key })?;
+    pub fn new(
+        proof: SmtProof,
+        map_keys: impl IntoIterator<Item = Word>,
+    ) -> Result<Self, StorageMapError> {
+        let mut map = BTreeMap::new();
+
+        for map_key in map_keys.into_iter() {
+            let hashed_map_key = StorageMap::hash_key(map_key);
+            let value =
+                proof.get(&hashed_map_key).ok_or(StorageMapError::MissingKey { map_key })?;
+            map.insert(map_key, value);
         }
 
-        Ok(Self::new_unchecked(proof, map_keys))
+        Ok(Self { proof, map })
     }
 
-    /// Creates a new [`StorageMapWitness`] from an SMT proof without validating the guarantees of
-    /// the type.
-    pub fn new_unchecked(proof: SmtProof, map_keys: Vec<Word>) -> Self {
-        Self { proof, map_keys }
+    /// Creates a new [`StorageMapWitness`] from an SMT proof and a set of key value pairs.
+    ///
+    /// # Warning
+    ///
+    /// This does not validate any of the guarantees of this type. See the type-level docs for more
+    /// details.
+    pub fn new_unchecked(
+        proof: SmtProof,
+        key_values: impl IntoIterator<Item = (Word, Word)>,
+    ) -> Self {
+        Self {
+            proof,
+            map: key_values.into_iter().collect(),
+        }
     }
 
     // PUBLIC ACCESSORS
@@ -48,11 +63,6 @@ impl StorageMapWitness {
         &self.proof
     }
 
-    /// Returns the raw storage map keys in this witness.
-    pub fn map_keys(&self) -> &[Word] {
-        &self.map_keys
-    }
-
     /// Searches for a value in the witness with the given unhashed `map_key`.
     pub fn find(&self, map_key: Word) -> Option<Word> {
         let hashed_map_key = StorageMap::hash_key(map_key);
@@ -61,12 +71,8 @@ impl StorageMapWitness {
     }
 
     /// TODO
-    pub fn entries(&self) -> impl Iterator<Item = (Word, Word)> {
-        self.map_keys.iter().map(|map_key| {
-            let hashed_map_key = StorageMap::hash_key(*map_key);
-            let value = self.proof.get(&hashed_map_key).expect("TODO");
-            (*map_key, value)
-        })
+    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
+        self.map.iter()
     }
 
     /// Returns an iterator over the key-value pairs in this witness.

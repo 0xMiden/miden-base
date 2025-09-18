@@ -234,7 +234,7 @@ fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
 fn partial_storage_map_to_storage_map(partial_storage_map: PartialStorageMap) -> StorageMap {
     let mut storage_map = StorageMap::new();
     for (key, value) in partial_storage_map.entries() {
-        storage_map.insert(key, value);
+        storage_map.insert(*key, *value);
     }
     storage_map
 }

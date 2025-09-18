@@ -121,9 +121,13 @@ impl StorageMap {
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
     pub fn open(&self, map_key: &Word) -> StorageMapWitness {
         let hashed_map_key = Self::hash_key(*map_key);
-        // SAFETY: The map_key is guaranteed to be present in the provided proof since we open its
-        // hashed version.
-        StorageMapWitness::new_unchecked(self.smt.open(&hashed_map_key), vec![*map_key])
+        let smt_proof = self.smt.open(&hashed_map_key);
+
+        let value = self.map.get(map_key).copied().unwrap_or(Word::empty());
+
+        // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
+        // open its hashed version and because of the guarantees of the storage map.
+        StorageMapWitness::new_unchecked(smt_proof, [(*map_key, value)])
     }
 
     // ITERATORS

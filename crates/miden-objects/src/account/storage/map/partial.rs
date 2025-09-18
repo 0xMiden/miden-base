@@ -1,4 +1,4 @@
-use alloc::collections::BTreeSet;
+use alloc::collections::BTreeMap;
 
 use miden_core::utils::{Deserializable, Serializable};
 use miden_crypto::Word;
@@ -23,7 +23,7 @@ use crate::account::{StorageMap, StorageMapWitness};
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PartialStorageMap {
     partial_smt: PartialSmt,
-    map_keys: BTreeSet<Word>,
+    map: BTreeMap<Word, Word>,
 }
 
 impl PartialStorageMap {
@@ -36,15 +36,15 @@ impl PartialStorageMap {
         witnesses: impl IntoIterator<Item = StorageMapWitness>,
     ) -> Result<Self, MerkleError> {
         let mut partial_smt = PartialSmt::default();
-        let mut map_keys = BTreeSet::new();
+        let mut map = BTreeMap::new();
 
         for witness in witnesses.into_iter() {
-            map_keys.extend(witness.entries().map(|(key, _value)| key));
+            map.extend(witness.entries());
             let smt_proof = SmtProof::from(witness);
             partial_smt.add_proof(smt_proof)?;
         }
 
-        Ok(PartialStorageMap { partial_smt, map_keys })
+        Ok(PartialStorageMap { partial_smt, map })
     }
 
     pub fn partial_smt(&self) -> &PartialSmt {
@@ -79,11 +79,8 @@ impl PartialStorageMap {
     }
 
     /// Returns an iterator over the key value pairs of the map.
-    pub fn entries(&self) -> impl Iterator<Item = (Word, Word)> {
-        self.map_keys.iter().map(|key| {
-            let value = self.partial_smt.get_value(key).expect("TODO");
-            (*key, value)
-        })
+    pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
+        self.map.iter()
     }
 
     /// Returns an iterator over the inner nodes of the underlying [`PartialSmt`].
@@ -96,7 +93,7 @@ impl PartialStorageMap {
 
     /// Adds a [`StorageMapWitness`] for the specific key-value pair to this [`PartialStorageMap`].
     pub fn add(&mut self, witness: StorageMapWitness) -> Result<(), MerkleError> {
-        self.map_keys.extend(witness.entries().map(|(key, _value)| key));
+        self.map.extend(witness.entries().map(|(key, value)| (*key, *value)));
         self.partial_smt.add_proof(SmtProof::from(witness))
     }
 }
@@ -106,17 +103,14 @@ impl From<StorageMap> for PartialStorageMap {
         let smt = value.smt;
         let map = value.map;
 
-        PartialStorageMap {
-            partial_smt: smt.into(),
-            map_keys: map.into_keys().collect(),
-        }
+        PartialStorageMap { partial_smt: smt.into(), map }
     }
 }
 
 impl Serializable for PartialStorageMap {
     fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.partial_smt);
-        target.write_many(self.map_keys.iter());
+        target.write_many(self.map.iter());
     }
 }
 
@@ -125,10 +119,10 @@ impl Deserializable for PartialStorageMap {
         source: &mut R,
     ) -> Result<Self, miden_processor::DeserializationError> {
         let storage: PartialSmt = source.read()?;
-        let map_keys: BTreeSet<Word> = source.read()?;
+        let map_keys: BTreeMap<Word, Word> = source.read()?;
 
         // TODO: Validate.
 
-        Ok(PartialStorageMap { partial_smt: storage, map_keys })
+        Ok(PartialStorageMap { partial_smt: storage, map: map_keys })
     }
 }
