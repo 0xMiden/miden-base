@@ -39,7 +39,7 @@ use miden_processor::crypto::RpoRandomCoin;
 use rand::Rng;
 
 use crate::mock_chain::chain::AccountAuthenticator;
-use crate::utils::{create_p2any_note_with_type, create_public_p2any_note, create_spawn_note};
+use crate::utils::{create_p2any_note_with_type, create_spawn_note};
 use crate::{AccountState, Auth, MockChain};
 
 /// A builder for a [`MockChain`].
@@ -414,7 +414,7 @@ impl MockChainBuilder {
         sender_account_id: AccountId,
         asset: impl IntoIterator<Item = Asset>,
     ) -> anyhow::Result<Note> {
-        let note = create_public_p2any_note(sender_account_id, asset, self.rng.draw_word());
+        let note = self.create_p2any_note(sender_account_id, NoteType::Public, asset)?;
 
         self.add_note(OutputNote::Full(note.clone()));
 

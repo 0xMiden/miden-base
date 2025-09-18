@@ -19,27 +19,27 @@ pub trait MockChainBuilderBlockExt {
         &self,
         input: impl Into<TxContextInput>,
         notes: impl IntoIterator<Item = NoteId>,
-    ) -> ExecutedTransaction;
+    ) -> anyhow::Result<ExecutedTransaction>;
 
     fn create_authenticated_notes_proven_tx(
         &self,
         input: impl Into<TxContextInput>,
         notes: impl IntoIterator<Item = NoteId>,
-    ) -> ProvenTransaction;
+    ) -> anyhow::Result<ProvenTransaction>;
 
     fn create_unauthenticated_notes_proven_tx(
         &self,
         account_id: AccountId,
         notes: &[Note],
-    ) -> ProvenTransaction;
+    ) -> anyhow::Result<ProvenTransaction>;
 
     fn create_expiring_proven_tx(
         &self,
         input: impl Into<TxContextInput>,
         expiration_block: BlockNumber,
-    ) -> ProvenTransaction;
+    ) -> anyhow::Result<ProvenTransaction>;
 
-    fn create_batch(&self, txs: Vec<ProvenTransaction>) -> ProvenBatch;
+    fn create_batch(&self, txs: Vec<ProvenTransaction>) -> anyhow::Result<ProvenBatch>;
 }
 
 impl MockChainBuilderBlockExt for MockChain {
@@ -47,62 +47,51 @@ impl MockChainBuilderBlockExt for MockChain {
         &self,
         input: impl Into<TxContextInput>,
         notes: impl IntoIterator<Item = NoteId>,
-    ) -> ExecutedTransaction {
+    ) -> anyhow::Result<ExecutedTransaction> {
         let notes = notes.into_iter().collect::<Vec<_>>();
-        let tx_context = self
-            .build_tx_context(input, &notes, &[])
-            .expect("failed to build tx context")
-            .build()
-            .unwrap();
-        tx_context.execute_blocking().unwrap()
+        let tx_context = self.build_tx_context(input, &notes, &[])?.build()?;
+        tx_context.execute_blocking().map_err(From::from)
     }
 
     fn create_authenticated_notes_proven_tx(
         &self,
         input: impl Into<TxContextInput>,
         notes: impl IntoIterator<Item = NoteId>,
-    ) -> ProvenTransaction {
-        let executed_tx = self.create_authenticated_notes_tx(input, notes);
-        LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
+    ) -> anyhow::Result<ProvenTransaction> {
+        let executed_tx = self.create_authenticated_notes_tx(input, notes)?;
+        LocalTransactionProver::default().prove_dummy(executed_tx).map_err(From::from)
     }
 
     fn create_unauthenticated_notes_proven_tx(
         &self,
         account_id: AccountId,
         notes: &[Note],
-    ) -> ProvenTransaction {
-        let tx_context = self
-            .build_tx_context(account_id, &[], notes)
-            .expect("failed to build tx context")
-            .build()
-            .unwrap();
-        let executed_tx = tx_context.execute_blocking().unwrap();
-        LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
+    ) -> anyhow::Result<ProvenTransaction> {
+        let tx_context = self.build_tx_context(account_id, &[], notes)?.build()?;
+        let executed_tx = tx_context.execute_blocking()?;
+        LocalTransactionProver::default().prove_dummy(executed_tx).map_err(From::from)
     }
 
     fn create_expiring_proven_tx(
         &self,
         input: impl Into<TxContextInput>,
         expiration_block: BlockNumber,
-    ) -> ProvenTransaction {
+    ) -> anyhow::Result<ProvenTransaction> {
         let expiration_delta = expiration_block
             .checked_sub(self.latest_block_header().block_num().as_u32())
             .unwrap();
 
         let tx_context = self
-            .build_tx_context(input, &[], &[])
-            .expect("failed to build tx context")
+            .build_tx_context(input, &[], &[])?
             .tx_script(update_expiration_tx_script(expiration_delta.as_u32() as u16))
-            .build()
-            .unwrap();
-        let executed_tx = tx_context.execute_blocking().unwrap();
-        LocalTransactionProver::default().prove_dummy(executed_tx).unwrap()
+            .build()?;
+        let executed_tx = tx_context.execute_blocking()?;
+        LocalTransactionProver::default().prove_dummy(executed_tx).map_err(From::from)
     }
 
-    fn create_batch(&self, txs: Vec<ProvenTransaction>) -> ProvenBatch {
+    fn create_batch(&self, txs: Vec<ProvenTransaction>) -> anyhow::Result<ProvenBatch> {
         self.propose_transaction_batch(txs)
             .map(|batch| self.prove_transaction_batch(batch).unwrap())
-            .unwrap()
     }
 }
 

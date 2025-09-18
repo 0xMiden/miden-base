@@ -41,11 +41,11 @@ fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
 
     let mut chain = builder.build()?;
 
-    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]);
-    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]);
-    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()])?;
+    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()])?;
 
-    let batch1 = chain.create_batch(vec![tx1, tx2]);
+    let batch1 = chain.create_batch(vec![tx1, tx2])?;
     let batches = vec![batch1];
     let stale_block_inputs = chain.get_block_inputs(&batches).unwrap();
 
@@ -290,7 +290,7 @@ fn proven_block_fails_on_creating_account_with_existing_account_id_prefix() -> a
     let tx = tx_context.execute_blocking().context("failed to execute account creating tx")?;
     let tx = LocalTransactionProver::default().prove_dummy(tx)?;
 
-    let batch = mock_chain.create_batch(vec![tx]);
+    let batch = mock_chain.create_batch(vec![tx])?;
     let batches = [batch];
 
     let block_inputs = mock_chain.get_block_inputs(batches.iter())?;
@@ -389,7 +389,7 @@ fn proven_block_fails_on_creating_account_with_duplicate_account_id_prefix() -> 
     // Build a batch from these transactions and attempt to prove a block.
     // --------------------------------------------------------------------------------------------
 
-    let batch = mock_chain.create_batch(vec![tx0, tx1]);
+    let batch = mock_chain.create_batch(vec![tx0, tx1])?;
     let batches = [batch];
 
     // Sanity check: The block inputs should contain two account witnesses that point to the same

@@ -54,11 +54,11 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
     let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
-    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]);
-    let proven_tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]);
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()])?;
+    let proven_tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()])?;
 
-    let batch0 = chain.create_batch(vec![proven_tx0.clone()]);
-    let batch1 = chain.create_batch(vec![proven_tx1.clone()]);
+    let batch0 = chain.create_batch(vec![proven_tx0.clone()])?;
+    let batch1 = chain.create_batch(vec![proven_tx1.clone()])?;
 
     let batches = [batch0, batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
@@ -124,13 +124,13 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
-    let executed_tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()]);
+    let executed_tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()])?;
 
     account1.apply_delta(executed_tx0.account_delta())?;
-    let executed_tx1 = chain.create_authenticated_notes_tx(account1.clone(), [note1.id()]);
+    let executed_tx1 = chain.create_authenticated_notes_tx(account1.clone(), [note1.id()])?;
 
     account1.apply_delta(executed_tx1.account_delta())?;
-    let executed_tx2 = chain.create_authenticated_notes_tx(account1.clone(), [note2.id()]);
+    let executed_tx2 = chain.create_authenticated_notes_tx(account1.clone(), [note2.id()])?;
 
     let [tx0, tx1, tx2] = [executed_tx0, executed_tx1, executed_tx2]
         .into_iter()
@@ -139,8 +139,8 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
         .try_into()
         .expect("we should have provided three executed txs");
 
-    let batch0 = chain.create_batch(vec![tx2.clone()]);
-    let batch1 = chain.create_batch(vec![tx0.clone(), tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx2.clone()])?;
+    let batch1 = chain.create_batch(vec![tx0.clone(), tx1.clone()])?;
 
     let batches = vec![batch0.clone(), batch1.clone()];
     let block_inputs = chain.get_block_inputs(&batches).unwrap();
@@ -186,12 +186,12 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
-    let tx0 = chain.create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0));
-    let tx1 = chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1));
+    let tx0 = chain.create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0))?;
+    let tx1 = chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1))?;
 
     // These batches will use block1 as the reference block.
-    let batch0 = chain.create_batch(vec![tx0.clone()]);
-    let batch1 = chain.create_batch(vec![tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx0.clone()])?;
+    let batch1 = chain.create_batch(vec![tx1.clone()])?;
 
     let batches = [batch0, batch1];
     // This block will use block2 as the reference block.
@@ -230,11 +230,11 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
 
-    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5);
-    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 2);
+    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5)?;
+    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 2)?;
 
-    let batch0 = chain.create_batch(vec![tx0]);
-    let batch1 = chain.create_batch(vec![tx1]);
+    let batch0 = chain.create_batch(vec![tx0])?;
+    let batch1 = chain.create_batch(vec![tx1])?;
 
     // sanity check: batch 1 should expire at block 3.
     assert_eq!(batch1.batch_expiration_block_num().as_u32(), 3);
@@ -291,8 +291,8 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     let tx0 = LocalTransactionProver::default().prove_dummy(noop_tx)?;
     let tx1 = LocalTransactionProver::default().prove_dummy(state_updating_tx)?;
 
-    let batch0 = chain.create_batch(vec![tx0]);
-    let batch1 = chain.create_batch(vec![tx1.clone()]);
+    let batch0 = chain.create_batch(vec![tx0])?;
+    let batch1 = chain.create_batch(vec![tx1.clone()])?;
 
     let batches = vec![batch0.clone(), batch1.clone()];
 
