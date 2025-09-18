@@ -1,6 +1,6 @@
 # Miden Transaction Benchmarking
 
-This document describes how to run the benchmarks for the Miden transaction.
+Below we describe how to benchmark Miden transactions.
 
 Benchmarks consist of two parts:
 - Benchmarking the transaction execution.

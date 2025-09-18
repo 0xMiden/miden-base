@@ -50,6 +50,7 @@ use crate::tx_context::builder::MockAuthenticator;
 ///
 /// It implements [`DataStore`], so transactions may be executed with
 /// [TransactionExecutor](miden_tx::TransactionExecutor)
+#[derive(Clone)]
 pub struct TransactionContext {
     pub(super) account: Account,
     pub(super) expected_output_notes: Vec<Note>,

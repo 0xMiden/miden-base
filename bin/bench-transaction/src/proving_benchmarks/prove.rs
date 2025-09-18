@@ -2,46 +2,98 @@ use std::hint::black_box;
 use std::time::Duration;
 
 use anyhow::Result;
-use bench_transaction::executed_transactions::{tx_consume_single_p2id, tx_consume_two_p2id_notes};
+use bench_transaction::context_setups::{tx_consume_single_p2id, tx_consume_two_p2id_notes};
 use criterion::{Criterion, SamplingMode, criterion_group, criterion_main};
 use miden_objects::transaction::{ExecutedTransaction, ProvenTransaction};
 use miden_tx::LocalTransactionProver;
 
-// PROVING BENCHMARK NAMES
+// BENCHMARK NAMES
 // ================================================================================================
 
-const BENCH_CONSUME_NOTE_NEW_ACCOUNT: &str = "prove_consume_note_with_new_account";
-const BENCH_CONSUME_MULTIPLE_NOTES: &str = "prove_consume_multiple_notes";
-const BENCH_GROUP: &str = "miden_proving";
+const BENCH_GROUP_EXECUTE: &str = "Execute transaction";
+const BENCH_EXECUTE_TX_CONSUME_SINGLE_P2ID: &str =
+    "Execute transaction which consumes single P2ID note";
+const BENCH_EXECUTE_TX_CONSUME_TWO_P2ID: &str = "Execute transaction which consumes two P2ID notes";
+
+const BENCH_GROUP_EXECUTE_AND_PROVE: &str = "Execute and prove transaction";
+const BENCH_EXECUTE_AND_PROVE_TX_CONSUME_SINGLE_P2ID: &str =
+    "Execute and prove transaction which consumes single P2ID note";
+const BENCH_EXECUTE_AND_PROVE_TX_CONSUME_TWO_P2ID: &str = "Execute and prove transaction which
+    consumes two P2ID notes";
 
 // CORE PROVING BENCHMARKS
 // ================================================================================================
 
 fn core_benchmarks(c: &mut Criterion) {
-    let mut group = c.benchmark_group(BENCH_GROUP);
+    // EXECUTE GROUP
+    // --------------------------------------------------------------------------------------------
 
-    group
+    let mut execute_group = c.benchmark_group(BENCH_GROUP_EXECUTE);
+
+    execute_group
         .sampling_mode(SamplingMode::Flat)
         .sample_size(10)
         .warm_up_time(Duration::from_millis(1000));
 
-    group.bench_function(BENCH_CONSUME_NOTE_NEW_ACCOUNT, |b| {
-        let executed_transaction = tx_consume_single_p2id()
-            .expect("Failed to set up transaction for consuming note with new account");
+    execute_group.bench_function(BENCH_EXECUTE_TX_CONSUME_SINGLE_P2ID, |b| {
+        let tx_context = tx_consume_single_p2id()
+            .expect("failed to create a context which consumes single P2ID note");
 
-        // Only benchmark proving and verification
-        b.iter(|| black_box(prove_transaction(executed_transaction.clone())));
+        // benchmark only tx execution
+        b.iter(|| black_box(tx_context.clone().execute_blocking()));
     });
 
-    group.bench_function(BENCH_CONSUME_MULTIPLE_NOTES, |b| {
-        let executed_transaction = tx_consume_two_p2id_notes()
-            .expect("Failed to set up transaction for consuming multiple notes");
+    execute_group.bench_function(BENCH_EXECUTE_TX_CONSUME_TWO_P2ID, |b| {
+        let tx_context = tx_consume_two_p2id_notes()
+            .expect("failed to create a context which consumes two P2ID notes");
 
-        // Only benchmark the proving and verification
-        b.iter(|| black_box(prove_transaction(executed_transaction.clone())));
+        // benchmark only tx execution
+        b.iter(|| black_box(tx_context.clone().execute_blocking()));
     });
 
-    group.finish();
+    execute_group.finish();
+
+    // EXECUTE AND PROVE GROUP
+    // --------------------------------------------------------------------------------------------
+
+    let mut execute_and_prove_group = c.benchmark_group(BENCH_GROUP_EXECUTE_AND_PROVE);
+
+    execute_and_prove_group
+        .sampling_mode(SamplingMode::Flat)
+        .sample_size(10)
+        .warm_up_time(Duration::from_millis(1000));
+
+    execute_and_prove_group.bench_function(BENCH_EXECUTE_AND_PROVE_TX_CONSUME_SINGLE_P2ID, |b| {
+        let tx_context = tx_consume_single_p2id()
+            .expect("failed to create a context which consumes single P2ID note");
+
+        // benchmark tx execution and proving
+        b.iter(|| {
+            black_box(prove_transaction(
+                tx_context
+                    .clone()
+                    .execute_blocking()
+                    .expect("execution of the single P2ID note consumption tx failed"),
+            ))
+        });
+    });
+
+    execute_and_prove_group.bench_function(BENCH_EXECUTE_AND_PROVE_TX_CONSUME_TWO_P2ID, |b| {
+        let tx_context = tx_consume_two_p2id_notes()
+            .expect("failed to create a context which consumes two P2ID notes");
+
+        // benchmark tx execution and proving
+        b.iter(|| {
+            black_box(prove_transaction(
+                tx_context
+                    .clone()
+                    .execute_blocking()
+                    .expect("execution of the two P2ID note consumption tx failed"),
+            ))
+        });
+    });
+
+    execute_and_prove_group.finish();
 }
 
 fn prove_transaction(executed_transaction: ExecutedTransaction) -> Result<()> {

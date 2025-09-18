@@ -1,15 +1,15 @@
 use anyhow::Result;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::account::Account;
-use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
+use miden_objects::asset::{Asset, FungibleAsset};
 use miden_objects::note::NoteType;
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::transaction::{ExecutedTransaction, OutputNote};
+use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, Word};
-use miden_testing::{Auth, MockChain};
+use miden_testing::{Auth, MockChain, TransactionContext};
 
-/// Runs the transaction which creates a single P2ID note.
-pub fn tx_create_single_p2id() -> anyhow::Result<ExecutedTransaction> {
+/// Returns the transaction context which could be used to run the transaction which creates a
+/// single P2ID note.
+pub fn tx_create_single_p2id() -> Result<TransactionContext> {
     let mut builder = MockChain::builder();
     let fungible_asset = FungibleAsset::mock(150);
     let account = builder.add_existing_wallet_with_assets(Auth::BasicAuth, [fungible_asset])?;
@@ -57,17 +57,17 @@ pub fn tx_create_single_p2id() -> anyhow::Result<ExecutedTransaction> {
 
     let tx_script = ScriptBuilder::default().compile_tx_script(tx_note_creation_script)?;
 
-    let tx_context = mock_chain
+    // construct the transaction context
+    mock_chain
         .build_tx_context(account.id(), &[], &[])?
         .extend_expected_output_notes(vec![OutputNote::Full(output_note)])
         .tx_script(tx_script)
-        .build()?;
-
-    Ok(tx_context.execute_blocking()?)
+        .build()
 }
 
-/// Runs the transaction which consumes a single P2ID note into a new basic wallet.
-pub fn tx_consume_single_p2id() -> Result<ExecutedTransaction> {
+/// Returns the transaction context which could be used to run the transaction which consumes a
+/// single P2ID note into a new basic wallet.
+pub fn tx_consume_single_p2id() -> Result<TransactionContext> {
     // Create assets
     let fungible_asset: Asset = FungibleAsset::mock(123);
 
@@ -88,34 +88,16 @@ pub fn tx_consume_single_p2id() -> Result<ExecutedTransaction> {
 
     let mock_chain = builder.build()?;
 
-    // construct and execute transaction
-    let executed_transaction = mock_chain
-        .build_tx_context(target_account.clone(), &[note.id()], &[])?
-        .build()?
-        .execute_blocking()?;
-
-    // Apply delta to the target account to verify it is no longer new
-    let target_account_after: Account = Account::new_existing(
-        target_account.id(),
-        AssetVault::new(&[fungible_asset]).unwrap(),
-        target_account.storage().clone(),
-        target_account.code().clone(),
-        Felt::new(1),
-    );
-
-    assert_eq!(
-        executed_transaction.final_account().commitment(),
-        target_account_after.commitment()
-    );
-
-    Ok(executed_transaction)
+    // construct the transaction context
+    mock_chain.build_tx_context(target_account.clone(), &[note.id()], &[])?.build()
 }
 
-/// Runs the transaction which consumes two P2ID notes into an existing basic wallet.
-pub fn tx_consume_two_p2id_notes() -> Result<ExecutedTransaction> {
+/// Returns the transaction context which could be used to run the transaction which consumes two
+/// P2ID notes into an existing basic wallet.
+pub fn tx_consume_two_p2id_notes() -> Result<TransactionContext> {
     let mut builder = MockChain::builder();
 
-    let mut account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
     let fungible_asset_1: Asset = FungibleAsset::mock(100);
     let fungible_asset_2: Asset = FungibleAsset::mock(23);
 
@@ -134,19 +116,8 @@ pub fn tx_consume_two_p2id_notes() -> Result<ExecutedTransaction> {
 
     let mock_chain = builder.build()?;
 
-    let tx_context = mock_chain
+    // construct the transaction context
+    mock_chain
         .build_tx_context(account.id(), &[note_1.id(), note_2.id()], &[])?
-        .build()?;
-
-    let executed_transaction = tx_context.execute_blocking().unwrap();
-
-    account.apply_delta(executed_transaction.account_delta()).unwrap();
-    let resulting_asset = account.vault().assets().next().unwrap();
-    if let Asset::Fungible(asset) = resulting_asset {
-        assert_eq!(asset.amount(), 123u64);
-    } else {
-        panic!("Resulting asset should be fungible");
-    }
-
-    Ok(executed_transaction)
+        .build()
 }

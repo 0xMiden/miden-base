@@ -66,6 +66,13 @@ impl TransactionMastStore {
     }
 }
 
+impl Clone for TransactionMastStore {
+    fn clone(&self) -> Self {
+        let map = self.mast_forests.read();
+        Self { mast_forests: RwLock::new(map.clone()) }
+    }
+}
+
 // MAST FOREST STORE IMPLEMENTATION
 // ================================================================================================
 

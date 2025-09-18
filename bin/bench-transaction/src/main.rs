@@ -5,12 +5,8 @@ use std::path::Path;
 use anyhow::{Context, Result};
 use miden_objects::transaction::TransactionMeasurements;
 
-mod executed_transactions;
-use executed_transactions::{
-    tx_consume_single_p2id,
-    tx_consume_two_p2id_notes,
-    tx_create_single_p2id,
-};
+mod context_setups;
+use context_setups::{tx_consume_single_p2id, tx_consume_two_p2id_notes, tx_create_single_p2id};
 
 mod execution_benchmarks;
 use execution_benchmarks::ExecutionBenchmark;
@@ -26,15 +22,24 @@ fn main() -> Result<()> {
     let benchmark_results = vec![
         (
             ExecutionBenchmark::ConsumeSingleP2ID,
-            tx_consume_single_p2id().map(TransactionMeasurements::from)?.into(),
+            tx_consume_single_p2id()?
+                .execute_blocking()
+                .map(TransactionMeasurements::from)?
+                .into(),
         ),
         (
             ExecutionBenchmark::ConsumeTwoP2ID,
-            tx_consume_two_p2id_notes().map(TransactionMeasurements::from)?.into(),
+            tx_consume_two_p2id_notes()?
+                .execute_blocking()
+                .map(TransactionMeasurements::from)?
+                .into(),
         ),
         (
             ExecutionBenchmark::CreateSingleP2ID,
-            tx_create_single_p2id().map(TransactionMeasurements::from)?.into(),
+            tx_create_single_p2id()?
+                .execute_blocking()
+                .map(TransactionMeasurements::from)?
+                .into(),
         ),
     ];
 
