@@ -93,7 +93,7 @@ impl NoteAssets {
     /// because hashing the returned elements results in the note asset commitment.
     pub fn to_padded_assets(&self) -> Vec<Felt> {
         // if we have an odd number of assets with pad with a single word.
-        let padded_len = if self.assets.len() % 2 == 0 {
+        let padded_len = if self.assets.len().is_multiple_of(2) {
             self.assets.len() * WORD_SIZE
         } else {
             (self.assets.len() + 1) * WORD_SIZE
@@ -192,7 +192,7 @@ fn compute_asset_commitment(assets: &[Asset]) -> Word {
 
     // If we have an odd number of assets we pad the vector with 4 zero elements. This is to
     // ensure the number of elements is a multiple of 8 - the size of the hasher rate.
-    let word_capacity = if assets.len() % 2 == 0 {
+    let word_capacity = if assets.len().is_multiple_of(2) {
         assets.len()
     } else {
         assets.len() + 1
