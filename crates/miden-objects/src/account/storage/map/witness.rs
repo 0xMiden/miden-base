@@ -14,12 +14,6 @@ use crate::errors::StorageMapError;
 ///
 /// This type guarantees that the original key-value pairs it contains are all present in the
 /// contained SMT proof. Note that the inverse is not necessarily true. The proof may contain more
-/// entries than the map because a proof for a given original key A may actually contain an SMT leaf
-/// that contains both hash(A) and hash(B). However, B may not be present in the key-value pairs and
-/// this is a valid state.
-///
-/// This type guarantees that the original key-value pairs it contains are all present in the
-/// contained SMT proof. Note that the inverse is not necessarily true. The proof may contain more
 /// entries than the map because to prove inclusion of a given original key A an
 /// [`SmtLeaf::Multiple`](miden_crypto::merkle::SmtLeaf::Multiple) may be present that contains both
 /// keys hash(A) and hash(B). However, B may not be present in the key-value pairs and this is a
