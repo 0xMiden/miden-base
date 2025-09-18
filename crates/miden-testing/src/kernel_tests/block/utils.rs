@@ -14,7 +14,7 @@ use crate::{MockChain, TxContextInput};
 // ================================================================================================
 
 /// Provides convenience methods for testing.
-pub trait MockChainBuilderBlockExt {
+pub trait MockChainBlockExt {
     fn create_authenticated_notes_tx(
         &self,
         input: impl Into<TxContextInput>,
@@ -42,7 +42,7 @@ pub trait MockChainBuilderBlockExt {
     fn create_batch(&self, txs: Vec<ProvenTransaction>) -> anyhow::Result<ProvenBatch>;
 }
 
-impl MockChainBuilderBlockExt for MockChain {
+impl MockChainBlockExt for MockChain {
     fn create_authenticated_notes_tx(
         &self,
         input: impl Into<TxContextInput>,

@@ -11,7 +11,7 @@ use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
 use miden_processor::crypto::MerklePath;
 use miden_tx::LocalTransactionProver;
 
-use crate::kernel_tests::block::utils::MockChainBuilderBlockExt;
+use crate::kernel_tests::block::utils::MockChainBlockExt;
 use crate::{Auth, MockChain};
 
 /// Tests that too many batches produce an error.

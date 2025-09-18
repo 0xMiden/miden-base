@@ -17,7 +17,7 @@ use miden_objects::{Felt, FieldElement};
 use miden_tx::LocalTransactionProver;
 use rand::Rng;
 
-use super::utils::MockChainBuilderBlockExt;
+use super::utils::MockChainBlockExt;
 use crate::{AccountState, Auth, MockChain, TxContextInput};
 
 /// Tests that we can build empty blocks.

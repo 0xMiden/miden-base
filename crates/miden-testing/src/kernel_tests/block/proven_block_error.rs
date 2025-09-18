@@ -16,7 +16,7 @@ use miden_objects::{AccountTreeError, NullifierTreeError, Word};
 use miden_tx::LocalTransactionProver;
 use winterfell::Proof;
 
-use crate::kernel_tests::block::utils::MockChainBuilderBlockExt;
+use crate::kernel_tests::block::utils::MockChainBlockExt;
 use crate::{Auth, MockChain, TransactionContextBuilder};
 
 struct WitnessTestSetup {
