@@ -10,15 +10,15 @@ use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{Account, AccountId, AccountStorageMode};
 use miden_objects::asset::FungibleAsset;
 use miden_objects::block::{BlockInputs, ProposedBlock};
-use miden_objects::note::NoteType;
+use miden_objects::note::{Note, NoteType};
 use miden_objects::testing::account_id::ACCOUNT_ID_SENDER;
-use miden_objects::transaction::{OutputNote, TransactionHeader};
+use miden_objects::transaction::{ExecutedTransaction, OutputNote, TransactionHeader};
+use miden_objects::{Felt, FieldElement};
 use miden_tx::LocalTransactionProver;
 use rand::Rng;
 
 use super::utils::MockChainBuilderBlockExt;
-use crate::kernel_tests::block::utils::generate_conditional_tx;
-use crate::{AccountState, Auth, MockChain};
+use crate::{AccountState, Auth, MockChain, TxContextInput};
 
 /// Tests that we can build empty blocks.
 #[test]
@@ -54,8 +54,8 @@ fn proposed_block_basic_success() -> anyhow::Result<()> {
     let note1 = builder.add_p2any_note(account1.id(), [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
-    let proven_tx0 = chain.create_authenticated_notes_tx(account0.id(), [note0.id()]);
-    let proven_tx1 = chain.create_authenticated_notes_tx(account1.id(), [note1.id()]);
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]);
+    let proven_tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]);
 
     let batch0 = chain.create_batch(vec![proven_tx0.clone()]);
     let batch1 = chain.create_batch(vec![proven_tx1.clone()]);
@@ -124,16 +124,13 @@ fn proposed_block_aggregates_account_state_transition() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Create three transactions on the same account that build on top of each other.
-    let executed_tx0 =
-        chain.generate_executed_tx_with_authenticated_notes(account1.id(), [note0.id()]);
+    let executed_tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()]);
 
     account1.apply_delta(executed_tx0.account_delta())?;
-    let executed_tx1 =
-        chain.generate_executed_tx_with_authenticated_notes(account1.clone(), [note1.id()]);
+    let executed_tx1 = chain.create_authenticated_notes_tx(account1.clone(), [note1.id()]);
 
     account1.apply_delta(executed_tx1.account_delta())?;
-    let executed_tx2 =
-        chain.generate_executed_tx_with_authenticated_notes(account1.clone(), [note2.id()]);
+    let executed_tx2 = chain.create_authenticated_notes_tx(account1.clone(), [note2.id()]);
 
     let [tx0, tx1, tx2] = [executed_tx0, executed_tx1, executed_tx2]
         .into_iter()
@@ -189,8 +186,8 @@ fn proposed_block_authenticating_unauthenticated_notes() -> anyhow::Result<()> {
     let chain = builder.build()?;
 
     // These txs will use block1 as the reference block.
-    let tx0 = chain.generate_tx_with_unauthenticated_notes(account0.id(), slice::from_ref(&note0));
-    let tx1 = chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&note1));
+    let tx0 = chain.create_unauthenticated_notes_proven_tx(account0.id(), slice::from_ref(&note0));
+    let tx1 = chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note1));
 
     // These batches will use block1 as the reference block.
     let batch0 = chain.create_batch(vec![tx0.clone()]);
@@ -233,8 +230,8 @@ fn proposed_block_with_batch_at_expiration_limit() -> anyhow::Result<()> {
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
 
-    let tx0 = chain.create_expiring_tx(account0.id(), block1_num + 5);
-    let tx1 = chain.create_expiring_tx(account1.id(), block1_num + 2);
+    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5);
+    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 2);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);
@@ -307,4 +304,35 @@ fn noop_tx_and_state_updating_tx_against_same_account_in_same_block() -> anyhow:
     assert_eq!(update.final_state_commitment(), tx1.account_update().final_state_commitment());
 
     Ok(())
+}
+
+// HELPER FUNCTIONS
+// ================================================================================================
+
+/// Generates a transaction, which depending on the `modify_storage` flag, does the following:
+/// - if `modify_storage` is true, it increments the storage item of the account.
+/// - if `modify_storage` is false, it does nothing (NOOP).
+///
+/// To make this transaction (always) non-empty, it consumes one "noop note", which does nothing.
+fn generate_conditional_tx(
+    chain: &mut MockChain,
+    input: impl Into<TxContextInput>,
+    noop_note: Note,
+    modify_storage: bool,
+) -> ExecutedTransaction {
+    let auth_args = [
+        // increment nonce if modify_storage is true
+        if modify_storage { Felt::ONE } else { Felt::ZERO },
+        Felt::new(99),
+        Felt::new(98),
+        Felt::new(97),
+    ];
+
+    let tx_context = chain
+        .build_tx_context(input.into(), &[noop_note.id()], &[])
+        .unwrap()
+        .auth_args(auth_args.into())
+        .build()
+        .unwrap();
+    tx_context.execute_blocking().unwrap()
 }

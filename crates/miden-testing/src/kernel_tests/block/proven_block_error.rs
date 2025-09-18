@@ -41,9 +41,9 @@ fn witness_test_setup() -> anyhow::Result<WitnessTestSetup> {
 
     let mut chain = builder.build()?;
 
-    let tx0 = chain.create_authenticated_notes_tx(account0.id(), [note0.id()]);
-    let tx1 = chain.create_authenticated_notes_tx(account1.id(), [note1.id()]);
-    let tx2 = chain.create_authenticated_notes_tx(account2.id(), [note2.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [note0.id()]);
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]);
+    let tx2 = chain.create_authenticated_notes_proven_tx(account2.id(), [note2.id()]);
 
     let batch1 = chain.create_batch(vec![tx1, tx2]);
     let batches = vec![batch1];

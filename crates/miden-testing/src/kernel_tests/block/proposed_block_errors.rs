@@ -11,7 +11,6 @@ use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
 use miden_processor::crypto::MerklePath;
 use miden_tx::LocalTransactionProver;
 
-use super::utils::{generate_executed_tx_with_authenticated_notes, generate_output_note};
 use crate::kernel_tests::block::utils::MockChainBuilderBlockExt;
 use crate::{Auth, MockChain};
 
@@ -36,7 +35,8 @@ fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
 
         let mut batches = Vec::with_capacity(count);
         for i in 0..count {
-            let proven_tx = chain.create_authenticated_notes_tx(accounts[i].id(), [notes[i].id()]);
+            let proven_tx =
+                chain.create_authenticated_notes_proven_tx(accounts[i].id(), [notes[i].id()]);
             batches.push(chain.create_batch(vec![proven_tx]));
         }
 
@@ -66,7 +66,7 @@ fn proposed_block_fails_on_duplicate_batches() -> anyhow::Result<()> {
     let note = builder.add_p2any_note(sender_account.id(), [FungibleAsset::mock(42)])?;
     let chain = builder.build()?;
 
-    let proven_tx0 = chain.create_authenticated_notes_tx(sender_account.id(), [note.id()]);
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(sender_account.id(), [note.id()]);
     let batch0 = chain.create_batch(vec![proven_tx0]);
 
     let batches = vec![batch0.clone(), batch0.clone()];
@@ -97,8 +97,8 @@ fn proposed_block_fails_on_expired_batches() -> anyhow::Result<()> {
     chain.prove_next_block()?;
     let block1_num = chain.block_header(1).block_num();
 
-    let tx0 = chain.create_expiring_tx(account0.id(), block1_num + 5);
-    let tx1 = chain.create_expiring_tx(account1.id(), block1_num + 1);
+    let tx0 = chain.create_expiring_proven_tx(account0.id(), block1_num + 5);
+    let tx1 = chain.create_expiring_proven_tx(account1.id(), block1_num + 1);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);
@@ -132,7 +132,7 @@ fn proposed_block_fails_on_timestamp_not_increasing_monotonically() -> anyhow::R
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let chain = builder.build()?;
-    let proven_tx0 = chain.create_authenticated_notes_tx(account, []);
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, []);
 
     let batch0 = chain.create_batch(vec![proven_tx0]);
     let batches = vec![batch0];
@@ -165,7 +165,7 @@ fn proposed_block_fails_on_partial_blockchain_and_prev_block_inconsistency() -> 
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let chain = builder.build()?;
-    let proven_tx0 = chain.create_authenticated_notes_tx(account, []);
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, []);
 
     let batch0 = chain.create_batch(vec![proven_tx0]);
     let batches = vec![batch0];
@@ -223,7 +223,7 @@ fn proposed_block_fails_on_missing_batch_reference_block() -> anyhow::Result<()>
     let mut chain = builder.build()?;
     chain.prove_next_block()?;
 
-    let proven_tx0 = chain.create_authenticated_notes_tx(account, []);
+    let proven_tx0 = chain.create_authenticated_notes_proven_tx(account, []);
 
     // This batch will reference the latest block with number 1.
     let batch0 = chain.create_batch(vec![proven_tx0.clone()]);
@@ -274,8 +274,8 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Create two different transactions against the same account consuming the same note.
-    let tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id(), note1.id()]);
-    let tx1 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id(), note1.id()]);
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id()]);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);
@@ -295,8 +295,7 @@ fn proposed_block_fails_on_duplicate_input_note() -> anyhow::Result<()> {
 fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-
-    let output_note = generate_output_note(account.id(), [10; 32]);
+    let output_note = builder.create_p2any_note(account.id(), NoteType::Private, [])?;
 
     // Create two different notes that will create the same output note. Their IDs will be different
     // due to having a different serial number generated from contained RNG.
@@ -310,8 +309,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
     // We use the same account because the sender of the created output note is set to the account
     // of the transaction, so it is essential we use the same account to produce a duplicate output
     // note.
-    let tx0 = chain.create_authenticated_notes_tx(account.id(), [note0.id()]);
-    let tx1 = chain.create_authenticated_notes_tx(account.id(), [note1.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account.id(), [note0.id()]);
+    let tx1 = chain.create_authenticated_notes_proven_tx(account.id(), [note1.id()]);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);
@@ -342,7 +341,7 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
 
     // This tx will use block1 as the reference block.
     let tx0 =
-        chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&p2id_note));
+        chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&p2id_note));
 
     // This batch will use block1 as the reference block.
     // With this setup, the block inputs need to contain a reference to block2 in order to prove
@@ -428,7 +427,7 @@ fn proposed_block_fails_on_missing_note_inclusion_proof() -> anyhow::Result<()> 
     let note0 = builder.create_p2any_note(account0.id(), NoteType::Private, [])?;
     let chain = builder.build()?;
 
-    let tx0 = chain.generate_tx_with_unauthenticated_notes(account1.id(), slice::from_ref(&note0));
+    let tx0 = chain.create_unauthenticated_notes_proven_tx(account1.id(), slice::from_ref(&note0));
 
     let batch0 = chain.create_batch(vec![tx0]);
 
@@ -455,7 +454,7 @@ fn proposed_block_fails_on_missing_nullifier_witness() -> anyhow::Result<()> {
 
     // This tx will use block1 as the reference block.
     let tx0 =
-        chain.generate_tx_with_unauthenticated_notes(account.id(), slice::from_ref(&p2id_note));
+        chain.create_unauthenticated_notes_proven_tx(account.id(), slice::from_ref(&p2id_note));
 
     // This batch will use block1 as the reference block.
     let batch0 = chain.create_batch(vec![tx0]);
@@ -492,12 +491,12 @@ fn proposed_block_fails_on_spent_nullifier_witness() -> anyhow::Result<()> {
     chain.prove_next_block()?;
 
     // Consume the note with account 0 and add the transaction to a block.
-    let tx0 = chain.create_authenticated_notes_tx(account0.id(), [p2any_note.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account0.id(), [p2any_note.id()]);
     chain.add_pending_proven_transaction(tx0);
     chain.prove_next_block()?;
 
     // Consume the (already consumed) note with account 1 and build a batch from it.
-    let tx1 = chain.create_authenticated_notes_tx(account1.id(), [p2any_note.id()]);
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [p2any_note.id()]);
     let batch1 = chain.create_batch(vec![tx1]);
     let batches = vec![batch1];
     let block_inputs = chain.get_block_inputs(&batches)?;
@@ -528,8 +527,8 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
 
     // Create two different transactions against the same account consuming a different note so they
     // result in a different final state commitment for the account.
-    let tx0 = chain.create_authenticated_notes_tx(account1.id(), [note0.id()]);
-    let tx1 = chain.create_authenticated_notes_tx(account1.id(), [note1.id()]);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account1.id(), [note0.id()]);
+    let tx1 = chain.create_authenticated_notes_proven_tx(account1.id(), [note1.id()]);
 
     let batch0 = chain.create_batch(vec![tx0]);
     let batch1 = chain.create_batch(vec![tx1]);
@@ -558,7 +557,7 @@ fn proposed_block_fails_on_missing_account_witness() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
     let chain = builder.build()?;
-    let tx0 = chain.create_authenticated_notes_tx(account.id(), []);
+    let tx0 = chain.create_authenticated_notes_proven_tx(account.id(), []);
 
     let batch0 = chain.create_batch(vec![tx0]);
 
@@ -592,18 +591,15 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     let chain = builder.build()?;
 
     // Create three transactions on the same account that build on top of each other.
-    let executed_tx0 =
-        generate_executed_tx_with_authenticated_notes(&chain, account.clone(), &[note0.id()]);
+    let executed_tx0 = chain.create_authenticated_notes_tx(account.clone(), [note0.id()]);
 
     account.apply_delta(executed_tx0.account_delta())?;
     // Builds a tx on top of the account state from tx0.
-    let executed_tx1 =
-        generate_executed_tx_with_authenticated_notes(&chain, account.clone(), &[note1.id()]);
+    let executed_tx1 = chain.create_authenticated_notes_tx(account.clone(), [note1.id()]);
 
     account.apply_delta(executed_tx1.account_delta())?;
     // Builds a tx on top of the account state from tx1.
-    let executed_tx2 =
-        generate_executed_tx_with_authenticated_notes(&chain, account.clone(), &[note2.id()]);
+    let executed_tx2 = chain.create_authenticated_notes_tx(account.clone(), [note2.id()]);
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.
