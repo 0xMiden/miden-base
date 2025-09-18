@@ -246,6 +246,7 @@ pub struct TransactionMeasurements {
     pub note_execution: Vec<(NoteId, usize)>,
     pub tx_script_processing: usize,
     pub epilogue: usize,
+    pub auth_procedure: usize,
     /// The number of cycles the epilogue took to execute after compute_fee determined the cycle
     /// count.
     ///
@@ -275,6 +276,7 @@ impl Serializable for TransactionMeasurements {
         self.note_execution.write_into(target);
         self.tx_script_processing.write_into(target);
         self.epilogue.write_into(target);
+        self.auth_procedure.write_into(target);
         self.after_tx_cycles_obtained.write_into(target);
     }
 }
@@ -286,6 +288,7 @@ impl Deserializable for TransactionMeasurements {
         let note_execution = Vec::<(NoteId, usize)>::read_from(source)?;
         let tx_script_processing = usize::read_from(source)?;
         let epilogue = usize::read_from(source)?;
+        let auth_procedure = usize::read_from(source)?;
         let after_tx_cycles_obtained = usize::read_from(source)?;
 
         Ok(Self {
@@ -294,6 +297,7 @@ impl Deserializable for TransactionMeasurements {
             note_execution,
             tx_script_processing,
             epilogue,
+            auth_procedure,
             after_tx_cycles_obtained,
         })
     }

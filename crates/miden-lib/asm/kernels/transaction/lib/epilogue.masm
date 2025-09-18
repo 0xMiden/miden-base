@@ -27,6 +27,12 @@ const.EPILOGUE_AFTER_TX_CYCLES_OBTAINED=131097
 # Event emitted to signal that the fee was computed.
 const.EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT=131098
 
+# Event emitted to signal that an execution of the authentication procedure has started.
+const.EPILOGUE_AUTH_PROC_START=131105
+
+# Event emitted to signal that an execution of the authentication procedure has ended.
+const.EPILOGUE_AUTH_PROC_END=131106
+
 # An additional number of cyclces to account for the number of cycles that smt::set will take when
 # removing the computed fee from the asset vault.
 # Theoretically, this can safely be set to worst_case_cycles - best_case_cycles of smt::set. That's
@@ -198,6 +204,8 @@ end
 #! Inputs:  []
 #! Outputs: []
 proc.execute_auth_procedure
+    emit.EPILOGUE_AUTH_PROC_START
+
     padw padw padw
     # get the auth procedure arguments
     exec.memory::get_auth_args
@@ -221,6 +229,8 @@ proc.execute_auth_procedure
 
     # clean up auth procedure outputs
     dropw dropw dropw dropw
+
+    emit.EPILOGUE_AUTH_PROC_END
 end
 
 # FEE PROCEDURES

@@ -50,7 +50,7 @@ const TX_SCRIPT_PROCESSING_START: u32 = 0x2_0016; // 131094
 const TX_SCRIPT_PROCESSING_END: u32 = 0x2_0017; // 131095
 
 const EPILOGUE_START: u32 = 0x2_0018; // 131096
-const EPILOGUE_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
+const EPILOGUE_AFTER_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
 const EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT: u32 = 0x2_001a; // 131098
 const EPILOGUE_END: u32 = 0x2_001b; // 131099
 
@@ -58,6 +58,9 @@ const LINK_MAP_SET_EVENT: u32 = 0x2_001c; // 131100
 const LINK_MAP_GET_EVENT: u32 = 0x2_001d; // 131101
 
 const UNAUTHORIZED_EVENT: u32 = 0x2_001e; // 131102
+
+const EPILOGUE_AUTH_PROC_START: u32 = 0x2_0021; // 131105
+const EPILOGUE_AUTH_PROC_END: u32 = 0x2_0022; // 131106
 
 /// Events which may be emitted by a transaction kernel.
 ///
@@ -111,9 +114,13 @@ pub enum TransactionEvent {
     TxScriptProcessingEnd = TX_SCRIPT_PROCESSING_END,
 
     EpilogueStart = EPILOGUE_START,
-    EpilogueTxCyclesObtained = EPILOGUE_TX_CYCLES_OBTAINED,
-    EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
     EpilogueEnd = EPILOGUE_END,
+
+    EpilogueAuthProcStart = EPILOGUE_AUTH_PROC_START,
+    EpilogueAuthProcEnd = EPILOGUE_AUTH_PROC_END,
+
+    EpilogueAfterTxCyclesObtained = EPILOGUE_AFTER_TX_CYCLES_OBTAINED,
+    EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
     LinkMapGetEvent = LINK_MAP_GET_EVENT,
@@ -198,7 +205,11 @@ impl TryFrom<u32> for TransactionEvent {
             TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
-            EPILOGUE_TX_CYCLES_OBTAINED => Ok(TransactionEvent::EpilogueTxCyclesObtained),
+            EPILOGUE_AUTH_PROC_START => Ok(TransactionEvent::EpilogueAuthProcStart),
+            EPILOGUE_AUTH_PROC_END => Ok(TransactionEvent::EpilogueAuthProcEnd),
+            EPILOGUE_AFTER_TX_CYCLES_OBTAINED => {
+                Ok(TransactionEvent::EpilogueAfterTxCyclesObtained)
+            },
             EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT => {
                 Ok(TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount)
             },

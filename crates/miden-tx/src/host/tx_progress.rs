@@ -14,6 +14,7 @@ pub struct TransactionProgress {
     note_execution: Vec<(NoteId, CycleInterval)>,
     tx_script_processing: CycleInterval,
     epilogue: CycleInterval,
+    auth_procedure: CycleInterval,
     /// The cycle count of the processor at the point where compute_fee called clk to obtain the
     /// transaction's cycle count.
     ///
@@ -34,6 +35,7 @@ impl TransactionProgress {
             note_execution: Vec::new(),
             tx_script_processing: CycleInterval::default(),
             epilogue: CycleInterval::default(),
+            auth_procedure: CycleInterval::default(),
             epilogue_after_tx_cycles_obtained: None,
         }
     }
@@ -59,6 +61,10 @@ impl TransactionProgress {
 
     pub fn epilogue(&self) -> &CycleInterval {
         &self.epilogue
+    }
+
+    pub fn auth_procedure(&self) -> &CycleInterval {
+        &self.auth_procedure
     }
 
     // STATE MUTATORS
@@ -102,6 +108,14 @@ impl TransactionProgress {
         self.epilogue.set_start(cycle);
     }
 
+    pub fn start_auth_procedure(&mut self, cycle: RowIndex) {
+        self.auth_procedure.set_start(cycle);
+    }
+
+    pub fn end_auth_procedure(&mut self, cycle: RowIndex) {
+        self.auth_procedure.set_end(cycle);
+    }
+
     pub fn epilogue_after_tx_cycles_obtained(&mut self, cycle: RowIndex) {
         self.epilogue_after_tx_cycles_obtained = Some(cycle);
     }
@@ -133,6 +147,8 @@ impl From<TransactionProgress> for TransactionMeasurements {
 
         let epilogue = tx_progress.epilogue().len();
 
+        let auth_procedure = tx_progress.auth_procedure().len();
+
         // Compute the number of cycles that where not captured by the call to clk.
         let after_tx_cycles_obtained = if let Some(epilogue_after_tx_cycles_obtained) =
             tx_progress.epilogue_after_tx_cycles_obtained
@@ -149,6 +165,7 @@ impl From<TransactionProgress> for TransactionMeasurements {
             note_execution,
             tx_script_processing,
             epilogue,
+            auth_procedure,
             after_tx_cycles_obtained,
         }
     }
