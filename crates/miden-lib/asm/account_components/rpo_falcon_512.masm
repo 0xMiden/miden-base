@@ -26,7 +26,7 @@ const.PUBLIC_KEY_SLOT=0
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export.auth__tx_rpo_falcon512
+export.auth_tx_rpo_falcon512
     dropw
     # => [pad(16)]
 

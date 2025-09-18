@@ -128,6 +128,14 @@ pub enum AccountError {
         "digest of the seed has {actual} trailing zeroes but must have at least {expected} trailing zeroes"
     )]
     SeedDigestTooFewTrailingZeros { expected: u32, actual: u32 },
+    #[error("account ID {actual} computed from seed does not match ID {expected} on account")]
+    AccountIdSeedMismatch { actual: AccountId, expected: AccountId },
+    #[error("account ID seed was provided for an existing account")]
+    ExistingAccountWithSeed,
+    #[error("account ID seed was not provided for a new account")]
+    NewAccountMissingSeed,
+    #[error("seed converts to an invalid account ID")]
+    SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]
     StorageMapRootNotFound(Word),
     #[error("storage slot at index {0} is not of type map")]
@@ -385,6 +393,8 @@ pub enum AssetError {
       expected_ty = AccountType::NonFungibleFaucet
     )]
     NonFungibleFaucetIdTypeMismatch(AccountIdPrefix),
+    #[error("vault key {actual} does not match expected vault key {expected}")]
+    VaultKeyMismatch { actual: Word, expected: Word },
 }
 
 // TOKEN SYMBOL ERROR
@@ -434,6 +444,8 @@ pub enum PartialAssetVaultError {
     VaultKeyMismatch { expected: Word, actual: Word },
     #[error("failed to add asset proof")]
     FailedToAddProof(#[source] MerkleError),
+    #[error("asset is not tracked in the partial vault")]
+    UntrackedAsset(#[source] MerkleError),
 }
 
 // NOTE ERROR
@@ -574,16 +586,8 @@ pub enum TransactionScriptError {
 
 #[derive(Debug, Error)]
 pub enum TransactionInputError {
-    #[error("account seed must be provided for new accounts")]
-    AccountSeedNotProvidedForNewAccount,
-    #[error("account seed must not be provided for existing accounts")]
-    AccountSeedProvidedForExistingAccount,
     #[error("transaction input note with nullifier {0} is a duplicate")]
     DuplicateInputNote(Nullifier),
-    #[error(
-        "ID {expected} of the new account does not match the ID {actual} computed from the provided seed"
-    )]
-    InconsistentAccountSeed { expected: AccountId, actual: AccountId },
     #[error("partial blockchain has length {actual} which does not match block number {expected}")]
     InconsistentChainLength {
         expected: BlockNumber,
@@ -597,8 +601,6 @@ pub enum TransactionInputError {
     InputNoteBlockNotInPartialBlockchain(NoteId),
     #[error("input note with id {0} was not created in block {1}")]
     InputNoteNotInBlock(NoteId, BlockNumber),
-    #[error("account ID computed from seed is invalid")]
-    InvalidAccountIdSeed(#[source] AccountIdError),
     #[error(
         "total number of input notes is {0} which exceeds the maximum of {MAX_INPUT_NOTES_PER_TX}"
     )]
@@ -655,14 +657,14 @@ pub enum ProvenTransactionError {
     InputNotesError(TransactionInputError),
     #[error("private account {0} should not have account details")]
     PrivateAccountWithDetails(AccountId),
-    #[error("on-chain account {0} is missing its account details")]
-    OnChainAccountMissingDetails(AccountId),
-    #[error("new on-chain account {0} is missing its account details")]
-    NewOnChainAccountRequiresFullDetails(AccountId),
+    #[error("account {0} with public state is missing its account details")]
+    PublicStateAccountMissingDetails(AccountId),
+    #[error("new account {0} with public state is missing its account details")]
+    NewPublicStateAccountRequiresFullDetails(AccountId),
     #[error(
-        "existing on-chain account {0} should only provide delta updates instead of full details"
+        "existing account {0} with public state should only provide delta updates instead of full details"
     )]
-    ExistingOnChainAccountRequiresDeltaDetails(AccountId),
+    ExistingPublicStateAccountRequiresDeltaDetails(AccountId),
     #[error("failed to construct output notes for proven transaction")]
     OutputNotesError(TransactionOutputError),
     #[error(

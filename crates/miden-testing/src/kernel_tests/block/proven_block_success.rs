@@ -49,10 +49,10 @@ fn proven_block_success() -> anyhow::Result<()> {
     let output_note2 = generate_output_note(account2.id(), [2; 32]);
     let output_note3 = generate_output_note(account3.id(), [3; 32]);
 
-    let input_note0 = create_spawn_note(account0.id(), vec![&output_note0])?;
-    let input_note1 = create_spawn_note(account1.id(), vec![&output_note1])?;
-    let input_note2 = create_spawn_note(account2.id(), vec![&output_note2])?;
-    let input_note3 = create_spawn_note(account3.id(), vec![&output_note3])?;
+    let input_note0 = create_spawn_note([&output_note0])?;
+    let input_note1 = create_spawn_note([&output_note1])?;
+    let input_note2 = create_spawn_note([&output_note2])?;
+    let input_note3 = create_spawn_note([&output_note3])?;
 
     // Add input notes to chain so we can consume them.
     chain.add_pending_note(OutputNote::Full(input_note0.clone()));
@@ -126,7 +126,7 @@ fn proven_block_success() -> anyhow::Result<()> {
     // --------------------------------------------------------------------------------------------
 
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL)
-        .prove_without_batch_verification(proposed_block)
+        .prove_dummy(proposed_block)
         .context("failed to prove proposed block")?;
 
     // Check tree/chain commitments against expected values.
@@ -220,9 +220,9 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     let output_note3 = generate_output_note(account3.id(), rng.random());
 
     // Create notes that, when consumed, will create the above corresponding output notes.
-    let note0 = create_spawn_note(account0.id(), vec![&output_note0])?;
-    let note2 = create_spawn_note(account2.id(), vec![&output_note2])?;
-    let note3 = create_spawn_note(account3.id(), vec![&output_note3])?;
+    let note0 = create_spawn_note([&output_note0])?;
+    let note2 = create_spawn_note([&output_note2])?;
+    let note3 = create_spawn_note([&output_note3])?;
 
     // Add note{0,2,3} to the chain so we can consume them.
     chain.add_pending_note(OutputNote::Full(note0.clone()));
@@ -325,7 +325,7 @@ fn proven_block_erasing_unauthenticated_notes() -> anyhow::Result<()> {
     assert_eq!(output_notes_batch0, &expected_output_notes_batch0);
 
     let proven_block = LocalBlockProver::new(0)
-        .prove_without_batch_verification(proposed_block)
+        .prove_dummy(proposed_block)
         .context("failed to prove block")?;
     let actual_block_note_tree = proven_block.build_output_note_tree();
 
@@ -394,7 +394,7 @@ fn proven_block_succeeds_with_empty_batches() -> anyhow::Result<()> {
         ProposedBlock::new(block_inputs, Vec::new()).context("failed to propose block")?;
 
     let proven_block = LocalBlockProver::new(MIN_PROOF_SECURITY_LEVEL)
-        .prove_without_batch_verification(proposed_block)
+        .prove_dummy(proposed_block)
         .context("failed to prove proposed block")?;
 
     // Nothing should be created or updated.

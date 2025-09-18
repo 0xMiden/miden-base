@@ -53,7 +53,7 @@ fn p2id_script_multiple_assets() -> anyhow::Result<()> {
         .execute_blocking()?;
 
     // vault delta
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset_1, fungible_asset_2]).unwrap(),
         target_account.storage().clone(),
@@ -113,7 +113,7 @@ fn prove_consume_note_with_new_account() -> anyhow::Result<()> {
         .execute_blocking()?;
 
     // Apply delta to the target account to verify it is no longer new
-    let target_account_after: Account = Account::from_parts(
+    let target_account_after: Account = Account::new_existing(
         target_account.id(),
         AssetVault::new(&[fungible_asset]).unwrap(),
         target_account.storage().clone(),
@@ -219,14 +219,14 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
 
     let tx_script_src = &format!(
         "
-            use.miden::tx
+            use.miden::output_note
             begin
                 push.{recipient_1}
                 push.{note_execution_hint_1}
                 push.{note_type_1}
                 push.0              # aux
                 push.{tag_1}
-                call.tx::create_note
+                call.output_note::create
 
                 push.{asset_1}
                 call.::miden::contracts::wallets::basic::move_asset_to_note
@@ -237,7 +237,7 @@ fn test_create_consume_multiple_notes() -> anyhow::Result<()> {
                 push.{note_type_2}
                 push.0              # aux
                 push.{tag_2}
-                call.tx::create_note
+                call.output_note::create
 
                 push.{asset_2}
                 call.::miden::contracts::wallets::basic::move_asset_to_note

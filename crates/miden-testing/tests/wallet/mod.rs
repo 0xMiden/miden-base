@@ -29,8 +29,7 @@ fn wallet_creation() {
     let account_type = AccountType::RegularAccountImmutableCode;
     let storage_mode = AccountStorageMode::Private;
 
-    let (wallet, _) =
-        create_basic_wallet(init_seed, auth_scheme, account_type, storage_mode).unwrap();
+    let wallet = create_basic_wallet(init_seed, auth_scheme, account_type, storage_mode).unwrap();
 
     let expected_code = AccountCode::from_components(
         &[AuthRpoFalcon512::new(pub_key).into(), BasicWallet.into()],

@@ -10,7 +10,7 @@ use miden_crypto::merkle::{
     SmtProof,
 };
 
-use crate::account::StorageMap;
+use crate::account::{StorageMap, StorageMapWitness};
 
 /// A partial representation of a [`StorageMap`], containing only proofs for a subset of the
 /// key-value pairs.
@@ -76,9 +76,9 @@ impl PartialStorageMap {
     // MUTATORS
     // --------------------------------------------------------------------------------------------
 
-    /// Adds an [`SmtProof`] to this [`PartialStorageMap`].
-    pub fn add(&mut self, proof: SmtProof) -> Result<(), MerkleError> {
-        self.partial_smt.add_proof(proof)
+    /// Adds a [`StorageMapWitness`] to this [`PartialStorageMap`].
+    pub fn add(&mut self, witness: StorageMapWitness) -> Result<(), MerkleError> {
+        self.partial_smt.add_proof(SmtProof::from(witness))
     }
 }
 

@@ -1,14 +1,11 @@
-use alloc::boxed::Box;
 use alloc::collections::{BTreeMap, BTreeSet};
 use alloc::string::ToString;
 use alloc::vec::Vec;
 
 use anyhow::Context;
 use miden_block_prover::{LocalBlockProver, ProvenBlockError};
-use miden_lib::note::{create_p2id_note, create_p2ide_note};
 use miden_objects::account::delta::AccountUpdateDetails;
-use miden_objects::account::{Account, AccountId, AuthSecretKey, StorageSlot};
-use miden_objects::asset::Asset;
+use miden_objects::account::{Account, AccountId, AuthSecretKey, PartialAccount};
 use miden_objects::batch::{ProposedBatch, ProvenBatch};
 use miden_objects::block::{
     AccountTree,
@@ -22,31 +19,29 @@ use miden_objects::block::{
     ProposedBlock,
     ProvenBlock,
 };
-use miden_objects::crypto::merkle::SmtProof;
-use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, NoteType, Nullifier};
+use miden_objects::note::{Note, NoteHeader, NoteId, NoteInclusionProof, Nullifier};
 use miden_objects::transaction::{
     AccountInputs,
     ExecutedTransaction,
     InputNote,
     InputNotes,
-    OrderedTransactionHeaders,
     OutputNote,
     PartialBlockchain,
     ProvenTransaction,
-    TransactionHeader,
     TransactionInputs,
 };
-use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH, NoteError};
-use miden_processor::crypto::RpoRandomCoin;
+use miden_objects::{MAX_BATCHES_PER_BLOCK, MAX_OUTPUT_NOTES_PER_BATCH};
 use miden_processor::{DeserializationError, Word};
+use miden_tx::LocalTransactionProver;
 use miden_tx::auth::BasicAuthenticator;
 use miden_tx::utils::{ByteReader, Deserializable, Serializable};
+use miden_tx_batch_prover::LocalBatchProver;
 use rand::SeedableRng;
 use rand_chacha::ChaCha20Rng;
 use winterfell::ByteWriter;
 
 use super::note::MockChainNote;
-use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
+use crate::{MockChainBuilder, TransactionContextBuilder};
 
 // MOCK CHAIN
 // ================================================================================================
@@ -59,18 +54,11 @@ use crate::{MockChainBuilder, ProvenTransactionExt, TransactionContextBuilder};
 /// note creation in a test setting. Once entities are set up, [`TransactionContextBuilder`] objects
 /// can be obtained in order to execute transactions accordingly.
 ///
-/// On a high-level, there are two ways to interact with the mock chain:
-/// - Generating transactions yourself and adding them to the mock chain "mempool" using
-///   [`MockChain::add_pending_executed_transaction`] or
-///   [`MockChain::add_pending_proven_transaction`]. Once some transactions have been added, they
-///   can be proven into a block using [`MockChain::prove_next_block`], which commits them to the
-///   chain state.
-/// - Using any of the other pending APIs to _magically_ add new notes, accounts or nullifiers in
-///   the next block. For example, [`MockChain::add_pending_p2id_note`] will create a new P2ID note
-///   in the next proven block, without actually containing a transaction that creates that note.
-///
-/// Both approaches can be mixed in the same block, within limits. In particular, avoid modification
-/// of the _same_ entities using both regular transactions and the magic pending APIs.
+/// The primary way to interact with the mock chain is by generating transactions yourself and
+/// adding them to the mock chain "mempool" using [`MockChain::add_pending_executed_transaction`]
+/// or [`MockChain::add_pending_proven_transaction`]. Once some transactions have been added, they
+/// can be proven into a block using [`MockChain::prove_next_block`], which commits them to the
+/// chain state.
 ///
 /// The mock chain uses the batch and block provers underneath to process pending transactions, so
 /// the generated blocks are realistic and indistinguishable from a real node. The only caveat is
@@ -192,9 +180,9 @@ pub struct MockChain {
     /// remain at the last observed state.
     committed_accounts: BTreeMap<AccountId, Account>,
 
-    /// AccountId |-> AccountCredentials mapping to store the seed and authenticator for accounts
-    /// to simplify transaction creation.
-    account_credentials: BTreeMap<AccountId, AccountCredentials>,
+    /// AccountId |-> AccountAuthenticator mapping to store the authenticator for accounts to
+    /// simplify transaction creation.
+    account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
 
     // The RNG used to generate note serial numbers, account seeds or cryptographic keys.
     rng: ChaCha20Rng,
@@ -228,7 +216,7 @@ impl MockChain {
     pub(super) fn from_genesis_block(
         genesis_block: ProvenBlock,
         account_tree: AccountTree,
-        account_credentials: BTreeMap<AccountId, AccountCredentials>,
+        account_authenticators: BTreeMap<AccountId, AccountAuthenticator>,
     ) -> anyhow::Result<Self> {
         let mut chain = MockChain {
             chain: Blockchain::default(),
@@ -239,7 +227,7 @@ impl MockChain {
             pending_transactions: Vec::new(),
             committed_notes: BTreeMap::new(),
             committed_accounts: BTreeMap::new(),
-            account_credentials,
+            account_authenticators,
             // Initialize RNG with default seed.
             rng: ChaCha20Rng::from_seed(Default::default()),
         };
@@ -482,37 +470,8 @@ impl MockChain {
         &self,
         proposed_batch: ProposedBatch,
     ) -> anyhow::Result<ProvenBatch> {
-        let (
-            transactions,
-            block_header,
-            _partial_blockchain,
-            _unauthenticated_note_proofs,
-            id,
-            account_updates,
-            input_notes,
-            output_notes,
-            batch_expiration_block_num,
-        ) = proposed_batch.into_parts();
-
-        // SAFETY: This satisfies the requirements of the ordered tx headers.
-        let tx_headers = OrderedTransactionHeaders::new_unchecked(
-            transactions
-                .iter()
-                .map(AsRef::as_ref)
-                .map(TransactionHeader::from)
-                .collect::<Vec<_>>(),
-        );
-
-        Ok(ProvenBatch::new(
-            id,
-            block_header.commitment(),
-            block_header.block_num(),
-            account_updates,
-            input_notes,
-            output_notes,
-            batch_expiration_block_num,
-            tx_headers,
-        )?)
+        let batch_prover = LocalBatchProver::new(0);
+        Ok(batch_prover.prove_dummy(proposed_batch)?)
     }
 
     // BLOCK APIS
@@ -565,7 +524,7 @@ impl MockChain {
         &self,
         proposed_block: ProposedBlock,
     ) -> Result<ProvenBlock, ProvenBlockError> {
-        LocalBlockProver::new(0).prove_without_batch_verification(proposed_block)
+        LocalBlockProver::new(0).prove_dummy(proposed_block)
     }
 
     // TRANSACTION APIS
@@ -578,17 +537,13 @@ impl MockChain {
     ///   from the chain for the public account identified by the ID.
     /// - [`TxContextInput::Account`]: Initialize the builder with [`TransactionInputs`] where the
     ///   account is passed as-is to the inputs.
-    /// - [`TxContextInput::ExecutedTransaction`]: Initialize the builder with [`TransactionInputs`]
-    ///   where the account passed to the inputs is the final account of the executed transaction.
-    ///   This is the initial account of the transaction with the account delta applied.
     ///
-    /// In all cases, if the chain contains a seed or authenticator for the account, they are added
-    /// to the builder.
+    /// In all cases, if the chain contains authenticator for the account, they are added to the
+    /// builder.
     ///
-    /// [`TxContextInput::Account`] and [`TxContextInput::ExecutedTransaction`] can be used to build
-    /// a chain of transactions against the same account that build on top of each other. For
-    /// example, transaction A modifies an account from state 0 to 1, and transaction B modifies
-    /// it from state 1 to 2.
+    /// [`TxContextInput::Account`] can be used to build a chain of transactions against the same
+    /// account that build on top of each other. For example, transaction A modifies an account
+    /// from state 0 to 1, and transaction B modifies it from state 1 to 2.
     pub fn build_tx_context_at(
         &self,
         reference_block: impl Into<BlockNumber>,
@@ -599,10 +554,9 @@ impl MockChain {
         let input = input.into();
         let reference_block = reference_block.into();
 
-        let credentials = self.account_credentials.get(&input.id());
+        let authenticator = self.account_authenticators.get(&input.id());
         let authenticator =
-            credentials.and_then(|credentials| credentials.authenticator().cloned());
-        let seed = credentials.and_then(|credentials| credentials.seed());
+            authenticator.and_then(|authenticator| authenticator.authenticator().cloned());
 
         anyhow::ensure!(
             reference_block.as_usize() < self.blocks.len(),
@@ -626,29 +580,14 @@ impl MockChain {
                     .clone()
             },
             TxContextInput::Account(account) => account,
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                let mut initial_account = executed_transaction.initial_account().clone();
-                initial_account
-                    .apply_delta(executed_transaction.account_delta())
-                    .context("could not apply delta from previous transaction")?;
-
-                initial_account
-            },
         };
 
         let tx_inputs = self
-            .get_transaction_inputs_at(
-                reference_block,
-                account.clone(),
-                seed,
-                note_ids,
-                unauthenticated_notes,
-            )
+            .get_transaction_inputs_at(reference_block, &account, note_ids, unauthenticated_notes)
             .context("failed to gather transaction inputs")?;
 
         let tx_context_builder = TransactionContextBuilder::new(account)
             .authenticator(authenticator)
-            .account_seed(seed)
             .tx_inputs(tx_inputs);
 
         Ok(tx_context_builder)
@@ -676,8 +615,7 @@ impl MockChain {
     pub fn get_transaction_inputs_at(
         &self,
         reference_block: BlockNumber,
-        account: Account,
-        account_seed: Option<Word>,
+        account: impl Into<PartialAccount>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
@@ -735,7 +673,6 @@ impl MockChain {
 
         Ok(TransactionInputs::new(
             account,
-            account_seed,
             ref_block.clone(),
             partial_blockchain,
             input_notes,
@@ -745,19 +682,12 @@ impl MockChain {
     /// Returns a valid [`TransactionInputs`] for the specified entities.
     pub fn get_transaction_inputs(
         &self,
-        account: Account,
-        account_seed: Option<Word>,
+        account: impl Into<PartialAccount>,
         notes: &[NoteId],
         unauthenticated_notes: &[Note],
     ) -> anyhow::Result<TransactionInputs> {
         let latest_block_num = self.latest_block_header().block_num();
-        self.get_transaction_inputs_at(
-            latest_block_num,
-            account,
-            account_seed,
-            notes,
-            unauthenticated_notes,
-        )
+        self.get_transaction_inputs_at(latest_block_num, account, notes, unauthenticated_notes)
     }
 
     /// Returns inputs for a transaction batch for all the reference blocks of the provided
@@ -795,16 +725,9 @@ impl MockChain {
         let account_witness = self.account_tree().open(account_id);
         assert_eq!(account_witness.state_commitment(), account.commitment());
 
-        let mut storage_map_proofs = vec![];
-        for slot in account.storage().slots() {
-            // if there are storage maps, we populate the merkle store and advice map
-            if let StorageSlot::Map(map) = slot {
-                let proofs: Vec<SmtProof> = map.entries().map(|(key, _)| map.open(key)).collect();
-                storage_map_proofs.extend(proofs);
-            }
-        }
+        let partial_account = PartialAccount::from(account);
 
-        Ok(AccountInputs::new(account.into(), account_witness))
+        Ok(AccountInputs::new(partial_account, account_witness))
     }
 
     /// Gets the inputs for a block for the provided batches.
@@ -904,16 +827,15 @@ impl MockChain {
     pub fn add_pending_executed_transaction(
         &mut self,
         transaction: &ExecutedTransaction,
-    ) -> anyhow::Result<Account> {
-        let mut account = transaction.initial_account().clone();
-        account.apply_delta(transaction.account_delta())?;
-
-        // This essentially transforms an executed tx into a proven tx with a dummy proof.
-        let proven_tx = ProvenTransaction::from_executed_transaction_mocked(transaction.clone());
+    ) -> anyhow::Result<()> {
+        // Transform the executed tx into a proven tx with a dummy proof.
+        let proven_tx = LocalTransactionProver::default()
+            .prove_dummy(transaction.clone())
+            .context("failed to dummy-prove executed transaction into proven transaction")?;
 
         self.pending_transactions.push(proven_tx);
 
-        Ok(account)
+        Ok(())
     }
 
     /// Adds the given [`ProvenTransaction`] to the list of pending transactions.
@@ -930,63 +852,6 @@ impl MockChain {
     /// state, e.g. using [`MockChain::prove_next_block`].
     pub fn add_pending_note(&mut self, note: OutputNote) {
         self.pending_output_notes.push(note);
-    }
-
-    /// Adds a plain P2ID [`OutputNote`] to the list of pending notes.
-    ///
-    /// The note is immediately spendable by `target_account_id` and carries no
-    /// additional reclaim or timelock conditions.
-    pub fn add_pending_p2id_note(
-        &mut self,
-        sender_account_id: AccountId,
-        target_account_id: AccountId,
-        asset: &[Asset],
-        note_type: NoteType,
-    ) -> Result<Note, NoteError> {
-        let mut rng = RpoRandomCoin::new(Word::empty());
-
-        let note = create_p2id_note(
-            sender_account_id,
-            target_account_id,
-            asset.to_vec(),
-            note_type,
-            Default::default(),
-            &mut rng,
-        )?;
-
-        self.add_pending_note(OutputNote::Full(note.clone()));
-        Ok(note)
-    }
-
-    /// Adds a P2IDE [`OutputNote`] (pay‑to‑ID‑extended) to the list of pending notes.
-    ///
-    /// A P2IDE note can include an optional `timelock_height` and/or an optional
-    /// `reclaim_height` after which the `sender_account_id` may reclaim the
-    /// funds.
-    pub fn add_pending_p2ide_note(
-        &mut self,
-        sender_account_id: AccountId,
-        target_account_id: AccountId,
-        asset: &[Asset],
-        note_type: NoteType,
-        reclaim_height: Option<BlockNumber>,
-        timelock_height: Option<BlockNumber>,
-    ) -> Result<Note, NoteError> {
-        let mut rng = RpoRandomCoin::new(Word::empty());
-
-        let note = create_p2ide_note(
-            sender_account_id,
-            target_account_id,
-            asset.to_vec(),
-            reclaim_height,
-            timelock_height,
-            note_type,
-            Default::default(),
-            &mut rng,
-        )?;
-
-        self.add_pending_note(OutputNote::Full(note.clone()));
-        Ok(note)
     }
 
     // PRIVATE HELPERS
@@ -1217,7 +1082,7 @@ impl Serializable for MockChain {
         self.pending_transactions.write_into(target);
         self.committed_accounts.write_into(target);
         self.committed_notes.write_into(target);
-        self.account_credentials.write_into(target);
+        self.account_authenticators.write_into(target);
     }
 }
 
@@ -1231,7 +1096,8 @@ impl Deserializable for MockChain {
         let pending_transactions = Vec::<ProvenTransaction>::read_from(source)?;
         let committed_accounts = BTreeMap::<AccountId, Account>::read_from(source)?;
         let committed_notes = BTreeMap::<NoteId, MockChainNote>::read_from(source)?;
-        let account_credentials = BTreeMap::<AccountId, AccountCredentials>::read_from(source)?;
+        let account_authenticators =
+            BTreeMap::<AccountId, AccountAuthenticator>::read_from(source)?;
 
         Ok(Self {
             chain,
@@ -1242,7 +1108,7 @@ impl Deserializable for MockChain {
             pending_transactions,
             committed_notes,
             committed_accounts,
-            account_credentials,
+            account_authenticators,
             rng: ChaCha20Rng::from_os_rng(),
         })
     }
@@ -1258,49 +1124,42 @@ pub enum AccountState {
     Exists,
 }
 
-// ACCOUNT CREDENTIALS
+// ACCOUNT AUTHENTICATOR
 // ================================================================================================
 
-/// A wrapper around the seed and authenticator of an account.
+/// A wrapper around the authenticator of an account.
 #[derive(Debug, Clone)]
-pub(super) struct AccountCredentials {
-    seed: Option<Word>,
+pub(super) struct AccountAuthenticator {
     authenticator: Option<BasicAuthenticator<ChaCha20Rng>>,
 }
 
-impl AccountCredentials {
-    pub fn new(seed: Option<Word>, authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
-        Self { seed, authenticator }
+impl AccountAuthenticator {
+    pub fn new(authenticator: Option<BasicAuthenticator<ChaCha20Rng>>) -> Self {
+        Self { authenticator }
     }
 
     pub fn authenticator(&self) -> Option<&BasicAuthenticator<ChaCha20Rng>> {
         self.authenticator.as_ref()
     }
-
-    pub fn seed(&self) -> Option<Word> {
-        self.seed
-    }
 }
 
-impl PartialEq for AccountCredentials {
+impl PartialEq for AccountAuthenticator {
     fn eq(&self, other: &Self) -> bool {
-        let authenticator_eq = match (&self.authenticator, &other.authenticator) {
+        match (&self.authenticator, &other.authenticator) {
             (Some(a), Some(b)) => {
                 a.keys().keys().zip(b.keys().keys()).all(|(a_key, b_key)| a_key == b_key)
             },
             (None, None) => true,
             _ => false,
-        };
-        authenticator_eq && self.seed == other.seed
+        }
     }
 }
 
 // SERIALIZATION
 // ================================================================================================
 
-impl Serializable for AccountCredentials {
+impl Serializable for AccountAuthenticator {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.seed.write_into(target);
         self.authenticator
             .as_ref()
             .map(|auth| auth.keys().iter().collect::<Vec<_>>())
@@ -1308,15 +1167,14 @@ impl Serializable for AccountCredentials {
     }
 }
 
-impl Deserializable for AccountCredentials {
+impl Deserializable for AccountAuthenticator {
     fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
-        let seed = Option::<Word>::read_from(source)?;
         let authenticator = Option::<Vec<(Word, AuthSecretKey)>>::read_from(source)?;
 
         let authenticator = authenticator
             .map(|keys| BasicAuthenticator::new_with_rng(&keys, ChaCha20Rng::from_os_rng()));
 
-        Ok(Self { seed, authenticator })
+        Ok(Self { authenticator })
     }
 }
 
@@ -1325,11 +1183,11 @@ impl Deserializable for AccountCredentials {
 
 /// Helper type to abstract over the inputs to [`MockChain::build_tx_context`]. See that method's
 /// docs for details.
+#[allow(clippy::large_enum_variant)]
 #[derive(Debug, Clone)]
 pub enum TxContextInput {
     AccountId(AccountId),
     Account(Account),
-    ExecutedTransaction(Box<ExecutedTransaction>),
 }
 
 impl TxContextInput {
@@ -1338,9 +1196,6 @@ impl TxContextInput {
         match self {
             TxContextInput::AccountId(account_id) => *account_id,
             TxContextInput::Account(account) => account.id(),
-            TxContextInput::ExecutedTransaction(executed_transaction) => {
-                executed_transaction.account_id()
-            },
         }
     }
 }
@@ -1357,12 +1212,6 @@ impl From<Account> for TxContextInput {
     }
 }
 
-impl From<ExecutedTransaction> for TxContextInput {
-    fn from(tx: ExecutedTransaction) -> Self {
-        Self::ExecutedTransaction(Box::new(tx))
-    }
-}
-
 // TESTS
 // ================================================================================================
 
@@ -1370,7 +1219,8 @@ impl From<ExecutedTransaction> for TxContextInput {
 mod tests {
     use miden_lib::account::wallets::BasicWallet;
     use miden_objects::account::{AccountBuilder, AccountStorageMode};
-    use miden_objects::asset::FungibleAsset;
+    use miden_objects::asset::{Asset, FungibleAsset};
+    use miden_objects::note::NoteType;
     use miden_objects::testing::account_id::{
         ACCOUNT_ID_PRIVATE_FUNGIBLE_FAUCET,
         ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET,
@@ -1489,6 +1339,6 @@ mod tests {
         assert_eq!(chain.pending_transactions, deserialized.pending_transactions);
         assert_eq!(chain.committed_accounts, deserialized.committed_accounts);
         assert_eq!(chain.committed_notes, deserialized.committed_notes);
-        assert_eq!(chain.account_credentials, deserialized.account_credentials);
+        assert_eq!(chain.account_authenticators, deserialized.account_authenticators);
     }
 }

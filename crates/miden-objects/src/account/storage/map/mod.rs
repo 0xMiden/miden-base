@@ -4,21 +4,24 @@ use miden_core::EMPTY_WORD;
 use miden_crypto::merkle::EmptySubtreeRoots;
 
 use super::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable, Word};
-use crate::Hasher;
 use crate::account::StorageMapDelta;
-use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf, SmtProof};
+use crate::crypto::merkle::{InnerNodeInfo, LeafIndex, SMT_DEPTH, Smt, SmtLeaf};
 use crate::errors::StorageMapError;
+use crate::{Felt, Hasher};
 
 mod partial;
 pub use partial::PartialStorageMap;
+
+mod witness;
+pub use witness::StorageMapWitness;
 
 // ACCOUNT STORAGE MAP
 // ================================================================================================
 
 /// Empty storage map root.
-pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::TREE_DEPTH, 0);
+pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::DEPTH, 0);
 
-/// An account storage map is a sparse merkle tree of depth [`Self::TREE_DEPTH`] (64).
+/// An account storage map is a sparse merkle tree of depth [`Self::DEPTH`].
 ///
 /// It can be used to store a large amount of data in an account than would be otherwise possible
 /// using just the account's storage slots. This works by storing the root of the map's underlying
@@ -50,8 +53,8 @@ impl StorageMap {
     // CONSTANTS
     // --------------------------------------------------------------------------------------------
 
-    /// Depth of the storage tree.
-    pub const TREE_DEPTH: u8 = SMT_DEPTH;
+    /// The depth of the SMT that represents the storage map.
+    pub const DEPTH: u8 = SMT_DEPTH;
 
     /// The default value of empty leaves.
     pub const EMPTY_VALUE: Word = Smt::EMPTY_VALUE;
@@ -116,9 +119,9 @@ impl StorageMap {
     /// Returns an opening of the leaf associated with `key`.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    pub fn open(&self, key: &Word) -> SmtProof {
+    pub fn open(&self, key: &Word) -> StorageMapWitness {
         let key = Self::hash_key(*key);
-        self.smt.open(&key)
+        StorageMapWitness::new(self.smt.open(&key))
     }
 
     // ITERATORS
@@ -175,6 +178,13 @@ impl StorageMap {
     /// Hashes the given key to get the key of the SMT.
     pub fn hash_key(key: Word) -> Word {
         Hasher::hash_elements(key.as_elements())
+    }
+
+    // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
+    /// Returns the leaf index of a map key.
+    pub fn hashed_map_key_to_leaf_index(hashed_map_key: Word) -> Felt {
+        // The third element in an SMT key is the index.
+        hashed_map_key[3]
     }
 }
 

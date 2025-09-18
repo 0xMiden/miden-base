@@ -8,6 +8,7 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_SENDER,
 };
 use miden_testing::{Auth, MockChain, TxContextInput};
+use miden_tx::auth::UnreachableAuth;
 use miden_tx::{NoteConsumptionChecker, TransactionExecutor};
 use serde::{Deserialize, Serialize};
 
@@ -64,7 +65,7 @@ pub struct MixedNotesSetup {
 pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<MixedNotesSetup> {
     // Create a mock chain with an account.
     let mut builder = MockChain::builder();
-    let account = builder.add_existing_wallet(Auth::BasicAuth)?;
+    let account = builder.add_existing_wallet(Auth::IncrNonce)?;
     let target_account_id = account.id();
 
     // Create the first successful note (P2ID note that the account can consume).
@@ -87,7 +88,6 @@ pub fn setup_mixed_notes_benchmark(config: MixedNotesConfig) -> anyhow::Result<M
             .code("begin push.0 div end") // Division by zero - will fail.
             .build()?;
         failing_notes.push(failing_note);
-        // &miden_lib::transaction::TransactionKernel::with_kernel_library(Arc::new(DefaultSourceManager::default()))
     }
 
     // Create the second successful note.
@@ -125,23 +125,21 @@ pub async fn run_mixed_notes_check(setup: &MixedNotesSetup) -> anyhow::Result<()
         .build_tx_context(TxContextInput::AccountId(setup.target_account_id), &[], &setup.notes)?
         .build()?;
 
-    let input_notes = tx_context.input_notes().clone();
     let block_ref = tx_context.tx_inputs().block_header().block_num();
     let tx_args = tx_context.tx_args().clone();
 
     // Create executor and checker.
-    let executor = TransactionExecutor::new(&tx_context)
-        .with_authenticator(tx_context.authenticator().unwrap());
+    let executor = TransactionExecutor::<'_, '_, _, UnreachableAuth>::new(&tx_context);
     let checker = NoteConsumptionChecker::new(&executor);
 
     let result = checker
-        .check_notes_consumability(setup.target_account_id, block_ref, input_notes, tx_args)
+        .check_notes_consumability(setup.target_account_id, block_ref, setup.notes.clone(), tx_args)
         .await?;
 
     // Validate that we got the expected number of successful notes.
     assert_eq!(
-        result.successful.len(),
         setup.expected_successful_count,
+        result.successful.len(),
         "Expected {} successful notes, got {}",
         setup.expected_successful_count,
         result.successful.len()

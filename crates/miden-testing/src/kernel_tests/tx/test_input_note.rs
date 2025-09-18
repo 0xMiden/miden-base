@@ -33,7 +33,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             # => [ASSETS_COMMITMENT, num_assets]
 
             # assert the correctness of the assets hash
-            push.{COMPUTED_ASSETS_COMMITMENT}
+            push.{assets_commitment}
             assert_eqw.err="note {note_index} has incorrect assets hash"
             # => [num_assets]
 
@@ -41,10 +41,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
             push.{assets_number}
             assert_eq.err="note {note_index} has incorrect assets number"
             # => []
-        "#,
-            note_index = note_index,
-            COMPUTED_ASSETS_COMMITMENT = assets_commitment,
-            assets_number = assets_number,
+        "#
         )
     }
 
@@ -94,7 +91,7 @@ fn test_get_asset_info() -> anyhow::Result<()> {
 }
 
 /// Check that recipient and metadata of a note with one asset obtained from the
-/// `input_note::get_recipient` procedure is correct.
+/// `input_note::get_recipient` and `input_note::get_metadata` procedures are correct.
 #[test]
 fn test_get_recipient_and_metadata() -> anyhow::Result<()> {
     let TestSetup {
@@ -234,6 +231,142 @@ fn test_get_assets() -> anyhow::Result<()> {
             &[],
             &[p2id_note_0_assets, p2id_note_1_asset, p2id_note_2_assets],
         )?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}
+
+/// Check that the number of the inputs and their commitment of a note with one asset
+/// obtained from the `input_note::get_inputs_info` procedure is correct.
+#[test]
+fn test_get_inputs_info() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the inputs commitment and length from the input note with index 0 (the only one 
+            # we have)
+            push.0
+            exec.input_note::get_inputs_info
+            # => [NOTE_INPUTS_COMMITMENT, inputs_num]
+
+            # assert the correctness of the inputs commitment
+            push.{INPUTS_COMMITMENT}
+            assert_eqw.err="note 0 has incorrect inputs commitment"
+            # => [inputs_num]
+
+            # assert the inputs have correct length
+            push.{inputs_num}
+            assert_eq.err="note 0 has incorrect inputs length"
+            # => []
+        end
+    "#,
+        INPUTS_COMMITMENT = p2id_note_1_asset.inputs().commitment(),
+        inputs_num = p2id_note_1_asset.inputs().num_values(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}
+
+/// Check that the script root of a note with one asset obtained from the
+/// `input_note::get_script_root` procedure is correct.
+#[test]
+fn test_get_script_root() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the script root from the input note with index 0 (the only one we have)
+            push.0
+            exec.input_note::get_script_root
+            # => [SCRIPT_ROOT]
+
+            # assert the correctness of the script root
+            push.{SCRIPT_ROOT}
+            assert_eqw.err="note 0 has incorrect script root"
+            # => []
+        end
+    "#,
+        SCRIPT_ROOT = p2id_note_1_asset.script().root(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
+        .tx_script(tx_script)
+        .build()?;
+
+    tx_context.execute_blocking()?;
+
+    Ok(())
+}
+
+/// Check that the serial number of a note with one asset obtained from the
+/// `input_note::get_serial_number` procedure is correct.
+#[test]
+fn test_get_serial_number() -> anyhow::Result<()> {
+    let TestSetup {
+        mock_chain,
+        account,
+        p2id_note_0_assets: _,
+        p2id_note_1_asset,
+        p2id_note_2_assets: _,
+    } = setup_test()?;
+
+    let code = format!(
+        r#"
+        use.miden::input_note
+
+        begin
+            # get the serial number from the input note with index 0 (the only one we have)
+            push.0
+            exec.input_note::get_serial_number
+            # => [SERIAL_NUMBER]
+
+            # assert the correctness of the serial number
+            push.{SERIAL_NUMBER}
+            assert_eqw.err="note 0 has incorrect serial number"
+            # => []
+        end
+    "#,
+        SERIAL_NUMBER = p2id_note_1_asset.serial_num(),
+    );
+
+    let tx_script = ScriptBuilder::default().compile_tx_script(code)?;
+
+    let tx_context = mock_chain
+        .build_tx_context(TxContextInput::AccountId(account.id()), &[], &[p2id_note_1_asset])?
         .tx_script(tx_script)
         .build()?;
 

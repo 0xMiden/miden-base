@@ -8,9 +8,10 @@ use miden_objects::block::{BlockInputs, BlockNumber, ProposedBlock};
 use miden_objects::crypto::merkle::SparseMerklePath;
 use miden_objects::note::NoteInclusionProof;
 use miden_objects::testing::account_id::ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET;
-use miden_objects::transaction::{OutputNote, ProvenTransaction};
+use miden_objects::transaction::OutputNote;
 use miden_objects::{MAX_BATCHES_PER_BLOCK, ProposedBlockError};
 use miden_processor::crypto::MerklePath;
+use miden_tx::LocalTransactionProver;
 
 use super::utils::{
     TestSetup,
@@ -26,7 +27,6 @@ use super::utils::{
     generate_untracked_note,
     setup_chain,
 };
-use crate::ProvenTransactionExt;
 use crate::utils::create_spawn_note;
 
 /// Tests that too many batches produce an error.
@@ -281,8 +281,8 @@ fn proposed_block_fails_on_duplicate_output_note() -> anyhow::Result<()> {
 
     // Create two different notes that will create the same output note. Their IDs will be different
     // due to having a different serial number generated from contained RNG.
-    let note0 = create_spawn_note(account.id(), vec![&output_note])?;
-    let note1 = create_spawn_note(account.id(), vec![&output_note])?;
+    let note0 = create_spawn_note([&output_note])?;
+    let note1 = create_spawn_note([&output_note])?;
 
     chain.add_pending_note(OutputNote::Full(note0.clone()));
     chain.add_pending_note(OutputNote::Full(note1.clone()));
@@ -538,7 +538,7 @@ fn proposed_block_fails_on_conflicting_transactions_updating_same_account() -> a
       first_batch_id,
       second_batch_id
     } if account_id == account1.id() &&
-      initial_state_commitment == account1.init_commitment() &&
+      initial_state_commitment == account1.initial_commitment() &&
       first_batch_id == batch0.id() &&
       second_batch_id == batch1.id()
     );
@@ -582,7 +582,7 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     );
 
     let account0 = accounts.remove(&0).unwrap();
-    let account1 = accounts.remove(&1).unwrap();
+    let mut account1 = accounts.remove(&1).unwrap();
 
     let note0 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
     let note1 = generate_tracked_note_with_asset(&mut chain, account0.id(), account1.id(), asset);
@@ -595,18 +595,20 @@ fn proposed_block_fails_on_inconsistent_account_state_transition() -> anyhow::Re
     let executed_tx0 =
         generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note0.id()]);
 
+    account1.apply_delta(executed_tx0.account_delta())?;
     // Builds a tx on top of the account state from tx0.
     let executed_tx1 =
-        generate_executed_tx_with_authenticated_notes(&chain, executed_tx0.clone(), &[note1.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note1.id()]);
 
+    account1.apply_delta(executed_tx1.account_delta())?;
     // Builds a tx on top of the account state from tx1.
     let executed_tx2 =
-        generate_executed_tx_with_authenticated_notes(&chain, executed_tx1.clone(), &[note2.id()]);
+        generate_executed_tx_with_authenticated_notes(&chain, account1.clone(), &[note2.id()]);
 
     // We will only include tx0 and tx2 and leave out tx1, which will trigger the error condition
     // that there is no transition from tx0 -> tx2.
-    let tx0 = ProvenTransaction::from_executed_transaction_mocked(executed_tx0.clone());
-    let tx2 = ProvenTransaction::from_executed_transaction_mocked(executed_tx2.clone());
+    let tx0 = LocalTransactionProver::default().prove_dummy(executed_tx0.clone())?;
+    let tx2 = LocalTransactionProver::default().prove_dummy(executed_tx2.clone())?;
 
     let batch0 = generate_batch(&mut chain, vec![tx0]);
     let batch1 = generate_batch(&mut chain, vec![tx2]);

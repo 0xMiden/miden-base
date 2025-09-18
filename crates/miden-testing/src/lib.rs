@@ -13,7 +13,6 @@ pub use mock_chain::{
     MockChain,
     MockChainBuilder,
     MockChainNote,
-    ProvenTransactionExt,
     TxContextInput,
 };
 

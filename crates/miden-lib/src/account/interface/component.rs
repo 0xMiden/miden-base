@@ -174,7 +174,7 @@ impl AccountComponentInterface {
     ///
     /// ```masm
     ///     push.{note_information}
-    ///     call.::miden::tx::create_note
+    ///     call.::miden::output_note::create
     ///
     ///     push.{note asset}
     ///     call.::miden::contracts::wallets::basic::move_asset_to_note dropw
@@ -248,7 +248,7 @@ impl AccountComponentInterface {
                     // stack => []
                 },
                 AccountComponentInterface::BasicWallet => {
-                    body.push_str("call.::miden::tx::create_note\n");
+                    body.push_str("call.::miden::output_note::create\n");
                     // stack => [note_idx]
 
                     for asset in partial_note.assets().iter() {

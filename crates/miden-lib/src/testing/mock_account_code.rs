@@ -52,6 +52,17 @@ const MOCK_ACCOUNT_CODE: &str = "
         # => [VALUE, pad(12)]
     end
 
+    # Stack:  [index, pad(15)]
+    # Output: [VALUE, pad(12)]
+    export.get_item_init
+        exec.account::get_item_init
+        # => [VALUE, pad(15)]
+
+        # truncate the stack
+        movup.8 drop movup.8 drop movup.8 drop
+        # => [VALUE, pad(12)]
+    end
+
     # Stack:  [index, KEY, VALUE, pad(7)]
     # Output: [OLD_MAP_ROOT, OLD_MAP_VALUE, pad(8)]
     export.set_map_item
@@ -63,6 +74,12 @@ const MOCK_ACCOUNT_CODE: &str = "
     # Output: [VALUE, pad(12)]
     export.get_map_item
         exec.account::get_map_item
+    end
+
+    # Stack:  [index, KEY, pad(11)]
+    # Output: [VALUE, pad(12)]
+    export.get_map_item_init
+        exec.account::get_map_item_init
     end
 
     # Stack:  [pad(16)]

@@ -8,6 +8,8 @@ use super::TransactionEventError;
 // TRANSACTION EVENT
 // ================================================================================================
 
+const ACCOUNT_BEFORE_FOREIGN_LOAD: u32 = 0x2_0020; // 131104
+
 const ACCOUNT_VAULT_BEFORE_ADD_ASSET: u32 = 0x2_0000; // 131072
 const ACCOUNT_VAULT_AFTER_ADD_ASSET: u32 = 0x2_0001; // 131073
 
@@ -16,6 +18,8 @@ const ACCOUNT_VAULT_AFTER_REMOVE_ASSET: u32 = 0x2_0003; // 131075
 
 const ACCOUNT_STORAGE_BEFORE_SET_ITEM: u32 = 0x2_0004; // 131076
 const ACCOUNT_STORAGE_AFTER_SET_ITEM: u32 = 0x2_0005; // 131077
+
+const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT: u32 = 0x2_001f; // 131103
 
 const ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM: u32 = 0x2_0006; // 131078
 const ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM: u32 = 0x2_0007; // 131079
@@ -47,7 +51,7 @@ const TX_SCRIPT_PROCESSING_END: u32 = 0x2_0017; // 131095
 
 const EPILOGUE_START: u32 = 0x2_0018; // 131096
 const EPILOGUE_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
-const EPILOGUE_TX_FEE_COMPUTED: u32 = 0x2_001a; // 131098
+const EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT: u32 = 0x2_001a; // 131098
 const EPILOGUE_END: u32 = 0x2_001b; // 131099
 
 const LINK_MAP_SET_EVENT: u32 = 0x2_001c; // 131100
@@ -65,6 +69,8 @@ const UNAUTHORIZED_EVENT: u32 = 0x2_001e; // 131102
 #[repr(u32)]
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum TransactionEvent {
+    AccountBeforeForeignLoad = ACCOUNT_BEFORE_FOREIGN_LOAD,
+
     AccountVaultBeforeAddAsset = ACCOUNT_VAULT_BEFORE_ADD_ASSET,
     AccountVaultAfterAddAsset = ACCOUNT_VAULT_AFTER_ADD_ASSET,
 
@@ -73,6 +79,8 @@ pub enum TransactionEvent {
 
     AccountStorageBeforeSetItem = ACCOUNT_STORAGE_BEFORE_SET_ITEM,
     AccountStorageAfterSetItem = ACCOUNT_STORAGE_AFTER_SET_ITEM,
+
+    AccountStorageBeforeGetMapItem = ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT,
 
     AccountStorageBeforeSetMapItem = ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM,
     AccountStorageAfterSetMapItem = ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM,
@@ -104,7 +112,7 @@ pub enum TransactionEvent {
 
     EpilogueStart = EPILOGUE_START,
     EpilogueTxCyclesObtained = EPILOGUE_TX_CYCLES_OBTAINED,
-    EpilogueTxFeeComputed = EPILOGUE_TX_FEE_COMPUTED,
+    EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
     EpilogueEnd = EPILOGUE_END,
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
@@ -140,6 +148,8 @@ impl TryFrom<u32> for TransactionEvent {
         }
 
         match value {
+            ACCOUNT_BEFORE_FOREIGN_LOAD => Ok(TransactionEvent::AccountBeforeForeignLoad),
+
             ACCOUNT_VAULT_BEFORE_ADD_ASSET => Ok(TransactionEvent::AccountVaultBeforeAddAsset),
             ACCOUNT_VAULT_AFTER_ADD_ASSET => Ok(TransactionEvent::AccountVaultAfterAddAsset),
 
@@ -150,6 +160,10 @@ impl TryFrom<u32> for TransactionEvent {
 
             ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
             ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEvent::AccountStorageAfterSetItem),
+
+            ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT => {
+                Ok(TransactionEvent::AccountStorageBeforeGetMapItem)
+            },
 
             ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM => {
                 Ok(TransactionEvent::AccountStorageBeforeSetMapItem)
@@ -185,7 +199,9 @@ impl TryFrom<u32> for TransactionEvent {
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
             EPILOGUE_TX_CYCLES_OBTAINED => Ok(TransactionEvent::EpilogueTxCyclesObtained),
-            EPILOGUE_TX_FEE_COMPUTED => Ok(TransactionEvent::EpilogueTxFeeComputed),
+            EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT => {
+                Ok(TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount)
+            },
             EPILOGUE_END => Ok(TransactionEvent::EpilogueEnd),
 
             LINK_MAP_SET_EVENT => Ok(TransactionEvent::LinkMapSetEvent),

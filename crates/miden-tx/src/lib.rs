@@ -13,6 +13,7 @@ pub use executor::{
     DataStore,
     ExecutionOptions,
     FailedNote,
+    MAX_NUM_CHECKER_NOTES,
     MastForestStore,
     NoteConsumptionChecker,
     NoteConsumptionInfo,
@@ -40,6 +41,7 @@ pub use errors::{
     DataStoreError,
     NoteCheckerError,
     TransactionExecutorError,
+    TransactionKernelError,
     TransactionProverError,
     TransactionVerifierError,
 };

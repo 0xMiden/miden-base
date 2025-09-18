@@ -32,7 +32,7 @@ const.AUTH_TRIGGER_PROCS_MAP_SLOT=2
 #! Outputs: [pad(16)]
 #!
 #! Invocation: call
-export.auth__tx_rpo_falcon512_acl.2
+export.auth_tx_rpo_falcon512_acl.2
     dropw
     # => [pad(16)]
 

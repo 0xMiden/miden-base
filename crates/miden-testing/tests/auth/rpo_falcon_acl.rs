@@ -3,7 +3,6 @@ use core::slice;
 use assert_matches::assert_matches;
 use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::note::NoteBuilder;
-use miden_lib::transaction::TransactionKernelError;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     AccountBuilder,
@@ -18,7 +17,7 @@ use miden_objects::transaction::OutputNote;
 use miden_objects::{Felt, FieldElement, Word};
 use miden_processor::ExecutionError;
 use miden_testing::{Auth, MockChain};
-use miden_tx::TransactionExecutorError;
+use miden_tx::{TransactionExecutorError, TransactionKernelError};
 
 // CONSTANTS
 // ================================================================================================

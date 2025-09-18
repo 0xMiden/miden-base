@@ -56,8 +56,7 @@ use crate::{Auth, MockChain, TransactionContextBuilder};
 fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account(Auth::Noop)?;
-    let p2any_note =
-        builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), &[])?;
+    let p2any_note = builder.add_p2any_note(AccountId::try_from(ACCOUNT_ID_SENDER).unwrap(), [])?;
     let mock_chain = builder.build()?;
 
     let executed_tx = mock_chain
@@ -77,7 +76,7 @@ fn empty_account_delta_commitment_is_empty_word() -> anyhow::Result<()> {
 /// Tests that a noop transaction with [`Auth::IncrNonce`] results in a nonce delta of 1.
 #[test]
 fn delta_nonce() -> anyhow::Result<()> {
-    let TestSetup { mock_chain, account_id } = setup_test([], [])?;
+    let TestSetup { mock_chain, account_id, .. } = setup_test([], [], [])?;
 
     let executed_tx = mock_chain
         .build_tx_context(account_id, &[], &[])
@@ -113,7 +112,7 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
     let slot_3_tmp_value = Word::from([2, 3, 4, 5u32]);
     let slot_3_final_value = slot_3_init_value;
 
-    let TestSetup { mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
             StorageSlot::Value(slot_0_init_value),
             StorageSlot::Value(slot_1_init_value),
@@ -121,55 +120,49 @@ fn storage_delta_for_value_slots() -> anyhow::Result<()> {
             StorageSlot::Value(slot_3_init_value),
         ],
         [],
+        [],
     )?;
 
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{tmp_slot_0_value}
+          push.{slot_0_tmp_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_0_value}
+          push.{slot_0_final_value}
           push.0
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_1_value}
+          push.{slot_1_final_value}
           push.1
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_2_value}
+          push.{slot_2_final_value}
           push.2
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{tmp_slot_3_value}
+          push.{slot_3_tmp_value}
           push.3
           # => [index, VALUE]
           exec.set_item
           # => []
 
-          push.{final_slot_3_value}
+          push.{slot_3_final_value}
           push.3
           # => [index, VALUE]
           exec.set_item
           # => []
       end
-      ",
-        // Set slot 0 to some other value initially.
-        tmp_slot_0_value = slot_0_tmp_value,
-        final_slot_0_value = slot_0_final_value,
-        final_slot_1_value = slot_1_final_value,
-        final_slot_2_value = slot_2_final_value,
-        tmp_slot_3_value = slot_3_tmp_value,
-        final_slot_3_value = slot_3_final_value,
+      "
     ))?;
 
     let executed_tx = mock_chain
@@ -244,7 +237,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
     let mut map2 = StorageMap::new();
     map2.insert(key5, key5_init_value);
 
-    let TestSetup { mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, .. } = setup_test(
         vec![
             StorageSlot::Map(map0),
             StorageSlot::Map(map1),
@@ -255,12 +248,13 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
             StorageSlot::Map(StorageMap::new()),
         ],
         [],
+        [],
     )?;
 
     let tx_script = compile_tx_script(format!(
         "
       begin
-          push.{key0_value}.{key0}.0
+          push.{key0_final_value}.{key0}.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -270,17 +264,17 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
-          push.{key1_value}.{key1}.0
+          push.{key1_final_value}.{key1}.0
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key2_value}.{key2}.1
+          push.{key2_final_value}.{key2}.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
 
-          push.{key3_value}.{key3}.1
+          push.{key3_final_value}.{key3}.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -290,7 +284,7 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
-          push.{key4_value}.{key4}.1
+          push.{key4_final_value}.{key4}.1
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
@@ -300,27 +294,12 @@ fn storage_delta_for_map_slots() -> anyhow::Result<()> {
           exec.set_map_item
           # => []
 
-          push.{key5_value}.{key5}.2
+          push.{key5_final_value}.{key5}.2
           # => [index, KEY, VALUE]
           exec.set_map_item
           # => []
       end
-      ",
-        key0 = key0,
-        key1 = key1,
-        key2 = key2,
-        key3 = key3,
-        key4 = key4,
-        key5 = key5,
-        key0_value = key0_final_value,
-        key1_tmp_value = key1_tmp_value,
-        key1_value = key1_final_value,
-        key2_value = key2_final_value,
-        key3_value = key3_final_value,
-        key4_tmp_value = key4_tmp_value,
-        key4_value = key4_final_value,
-        key5_tmp_value = key5_tmp_value,
-        key5_value = key5_final_value,
+      "
     ))?;
 
     let executed_tx = mock_chain
@@ -392,24 +371,11 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     let removed_asset2 = FungibleAsset::new(faucet2, 100)?;
     let removed_asset3 = FungibleAsset::new(faucet3, FungibleAsset::MAX_AMOUNT)?;
 
-    let TestSetup { mut mock_chain, account_id } = setup_test(
+    let TestSetup { mock_chain, account_id, notes } = setup_test(
         [],
         [original_asset0, original_asset1, original_asset2, original_asset3].map(Asset::from),
+        [added_asset0, added_asset1, added_asset2, added_asset4].map(Asset::from),
     )?;
-
-    let mut added_notes = vec![];
-    for added_asset in [added_asset0, added_asset1, added_asset2, added_asset4] {
-        let added_note = mock_chain
-            .add_pending_p2id_note(
-                account_id,
-                account_id,
-                &[Asset::from(added_asset)],
-                NoteType::Public,
-            )
-            .context("failed to add note with asset")?;
-        added_notes.push(added_note);
-    }
-    mock_chain.prove_next_block()?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -431,7 +397,7 @@ fn fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
+        .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
         .execute_blocking()
@@ -499,22 +465,8 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     let asset2 = NonFungibleAssetBuilder::new(faucet2.prefix(), &mut rng)?.build()?;
     let asset3 = NonFungibleAssetBuilder::new(faucet3.prefix(), &mut rng)?.build()?;
 
-    let TestSetup { mut mock_chain, account_id } =
-        setup_test([], [asset1, asset3].map(Asset::from))?;
-
-    let mut added_notes = vec![];
-    for added_asset in [asset0, asset2] {
-        let added_note = mock_chain
-            .add_pending_p2id_note(
-                account_id,
-                account_id,
-                &[Asset::from(added_asset)],
-                NoteType::Public,
-            )
-            .context("failed to add note with asset")?;
-        added_notes.push(added_note);
-    }
-    mock_chain.prove_next_block()?;
+    let TestSetup { mock_chain, account_id, notes } =
+        setup_test([], [asset1, asset3].map(Asset::from), [asset0, asset2].map(Asset::from))?;
 
     let tx_script = compile_tx_script(format!(
         "
@@ -538,7 +490,7 @@ fn non_fungible_asset_delta() -> anyhow::Result<()> {
     ))?;
 
     let executed_tx = mock_chain
-        .build_tx_context(account_id, &added_notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
+        .build_tx_context(account_id, &notes.iter().map(Note::id).collect::<Vec<_>>(), &[])?
         .tx_script(tx_script)
         .build()?
         .execute_blocking()
@@ -637,7 +589,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
             # create the note
-            call.tx::create_note
+            call.output_note::create
             # => [note_idx, pad(15)]
 
             # move an asset to the created note to partially deplete fungible asset balance
@@ -659,7 +611,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
     let tx_script_src = format!(
         "\
         use.mock::account
-        use.miden::tx
+        use.miden::output_note
 
         ## TRANSACTION SCRIPT
         ## ========================================================================================
@@ -667,7 +619,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             ## Update account storage item
             ## ------------------------------------------------------------------------------------
             # push a new value for the storage slot onto the stack
-            push.{UPDATED_SLOT_VALUE}
+            push.{updated_slot_value}
             # => [13, 11, 9, 7]
 
             # get the index of account storage slot
@@ -680,11 +632,11 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             ## Update account storage map
             ## ------------------------------------------------------------------------------------
             # push a new VALUE for the storage map onto the stack
-            push.{UPDATED_MAP_VALUE}
+            push.{updated_map_value}
             # => [18, 19, 20, 21]
 
             # push a new KEY for the storage map onto the stack
-            push.{UPDATED_MAP_KEY}
+            push.{updated_map_key}
             # => [14, 15, 16, 17, 18, 19, 20, 21]
 
             # get the index of account storage slot
@@ -701,10 +653,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
 
             dropw dropw dropw dropw
         end
-    ",
-        UPDATED_SLOT_VALUE = updated_slot_value,
-        UPDATED_MAP_VALUE = updated_map_value,
-        UPDATED_MAP_KEY = updated_map_key,
+    "
     );
 
     let tx_script = ScriptBuilder::with_mock_libraries()?.compile_tx_script(tx_script_src)?;
@@ -720,7 +669,7 @@ fn asset_and_storage_delta() -> anyhow::Result<()> {
             FungibleAsset::new(faucet_id_3, CONSUMED_ASSET_3_AMOUNT)?.into();
         let nonfungible_asset_1: Asset = NonFungibleAsset::mock(&NON_FUNGIBLE_ASSET_DATA_2);
 
-        create_p2any_note(account.id(), &[fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
+        create_p2any_note(account.id(), [fungible_asset_1, fungible_asset_3, nonfungible_asset_1])
     };
 
     let tx_context = TransactionContextBuilder::new(account)
@@ -823,22 +772,36 @@ fn adding_amount_zero_fungible_asset_to_account_vault_works() -> anyhow::Result<
 struct TestSetup {
     mock_chain: MockChain,
     account_id: AccountId,
+    notes: Vec<Note>,
 }
 
 fn setup_test(
     storage_slots: impl IntoIterator<Item = StorageSlot>,
-    assets: impl IntoIterator<Item = Asset>,
+    vault_assets: impl IntoIterator<Item = Asset>,
+    note_assets: impl IntoIterator<Item = Asset>,
 ) -> anyhow::Result<TestSetup> {
     let mut builder = MockChain::builder();
     let account = builder.add_existing_mock_account_with_storage_and_assets(
         Auth::IncrNonce,
         storage_slots,
-        assets,
+        vault_assets,
     )?;
+
+    let mut notes = vec![];
+    for note_asset in note_assets {
+        let added_note = builder
+            .add_p2id_note(account.id(), account.id(), &[note_asset], NoteType::Public)
+            .context("failed to add note with asset")?;
+        notes.push(added_note);
+    }
 
     let mock_chain = builder.build()?;
 
-    Ok(TestSetup { mock_chain, account_id: account.id() })
+    Ok(TestSetup {
+        mock_chain,
+        account_id: account.id(),
+        notes,
+    })
 }
 
 fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript> {
@@ -857,7 +820,7 @@ fn compile_tx_script(code: impl AsRef<str>) -> anyhow::Result<TransactionScript>
 
 const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
       use.mock::account
-      use.miden::tx
+      use.miden::output_note
 
       #! Inputs:  [index, VALUE]
       #! Outputs: []
@@ -910,7 +873,7 @@ const TEST_ACCOUNT_CONVENIENCE_WRAPPERS: &str = "
           repeat.8 push.0 movdn.8 end
           # => [tag, aux, note_type, execution_hint, RECIPIENT, pad(8)]
 
-          call.tx::create_note
+          call.output_note::create
           # => [note_idx, pad(15)]
 
           repeat.15 swap drop end

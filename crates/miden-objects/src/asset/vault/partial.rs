@@ -4,7 +4,7 @@ use miden_crypto::merkle::{InnerNodeInfo, MerkleError, PartialSmt, SmtLeaf, SmtP
 
 use super::AssetVault;
 use crate::Word;
-use crate::asset::Asset;
+use crate::asset::{Asset, AssetWitness};
 use crate::errors::PartialAssetVaultError;
 use crate::utils::{ByteReader, ByteWriter, Deserializable, DeserializationError, Serializable};
 
@@ -58,6 +58,23 @@ impl PartialVault {
     /// Each item returned is a tuple containing the leaf index and a reference to the leaf.
     pub fn leaves(&self) -> impl Iterator<Item = &SmtLeaf> {
         self.partial_smt.leaves().map(|(_, leaf)| leaf)
+    }
+
+    /// Returns an opening of the leaf associated with `vault_key`.
+    ///
+    /// The `vault_key` can be obtained with [`Asset::vault_key`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the key is not tracked by this partial vault.
+    pub fn open(&self, vault_key: Word) -> Result<AssetWitness, PartialAssetVaultError> {
+        let smt_proof = self
+            .partial_smt
+            .open(&vault_key)
+            .map_err(PartialAssetVaultError::UntrackedAsset)?;
+        // SAFETY: The partial vault should only contain valid assets.
+        Ok(AssetWitness::new_unchecked(smt_proof))
     }
 
     /// Returns the [`Asset`] associated with the given `vault_key`.

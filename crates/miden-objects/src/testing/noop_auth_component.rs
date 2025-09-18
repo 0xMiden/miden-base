@@ -6,7 +6,7 @@ use crate::utils::sync::LazyLock;
 // ================================================================================================
 
 const NOOP_AUTH_CODE: &str = "
-    export.auth__noop
+    export.auth_noop
         push.0 drop
     end
 ";
@@ -19,7 +19,7 @@ static NOOP_AUTH_LIBRARY: LazyLock<Library> = LazyLock::new(|| {
 
 /// Creates a mock authentication [`AccountComponent`] for testing purposes.
 ///
-/// The component defines an `auth__noop` procedure that does nothing (always succeeds).
+/// The component defines an `auth_noop` procedure that does nothing (always succeeds).
 pub struct NoopAuthComponent;
 
 impl From<NoopAuthComponent> for AccountComponent {
