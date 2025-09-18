@@ -13,6 +13,7 @@ use miden_crypto::merkle::{
 };
 
 use crate::account::{StorageMap, StorageMapWitness};
+use crate::utils::serde::{ByteReader, DeserializationError};
 
 /// A partial representation of a [`StorageMap`], containing only proofs for a subset of the
 /// key-value pairs.
@@ -20,6 +21,14 @@ use crate::account::{StorageMap, StorageMapWitness};
 /// A partial storage map carries only the Merkle authentication data a transaction will need.
 /// Every included entry pairs a value with its proof, letting the transaction kernel verify reads
 /// (and prepare writes) without needing the complete tree.
+///
+/// ## Guarantees
+///
+/// This type guarantees that the original key-value pairs it contains are all present in the
+/// contained partial SMT. Note that the inverse is not necessarily true. The SMT may contain more
+/// entries than the map because to prove inclusion of a given original key A an
+/// [`SmtLeaf::Multiple`] may be present that contains both keys hash(A) and hash(B). However, B may
+/// not be present in the key-value pairs and this is a valid state.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PartialStorageMap {
     partial_smt: PartialSmt,
@@ -110,19 +119,29 @@ impl From<StorageMap> for PartialStorageMap {
 impl Serializable for PartialStorageMap {
     fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.partial_smt);
-        target.write_many(self.map.iter());
+        target.write_usize(self.map.len());
+        target.write_many(self.map.keys());
     }
 }
 
 impl Deserializable for PartialStorageMap {
-    fn read_from<R: miden_core::utils::ByteReader>(
-        source: &mut R,
-    ) -> Result<Self, miden_processor::DeserializationError> {
-        let storage: PartialSmt = source.read()?;
-        let map_keys: BTreeMap<Word, Word> = source.read()?;
+    fn read_from<R: ByteReader>(source: &mut R) -> Result<Self, DeserializationError> {
+        let mut map = BTreeMap::new();
 
-        // TODO: Validate.
+        let partial_smt: PartialSmt = source.read()?;
+        let num_entries: usize = source.read()?;
 
-        Ok(PartialStorageMap { partial_smt: storage, map: map_keys })
+        for _ in 0..num_entries {
+            let key: Word = source.read()?;
+            let hashed_map_key = StorageMap::hash_key(key);
+            let value = partial_smt.get_value(&hashed_map_key).map_err(|err| {
+                DeserializationError::InvalidValue(format!(
+                    "failed to find map key {key} in partial SMT: {err}"
+                ))
+            })?;
+            map.insert(key, value);
+        }
+
+        Ok(PartialStorageMap { partial_smt, map })
     }
 }

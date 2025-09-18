@@ -10,8 +10,20 @@ use crate::errors::StorageMapError;
 ///
 /// It proves inclusion of a certain storage item in the map.
 ///
-/// TODO: Add guarantees.
-/// TODO: Add limitations of map_keys.
+/// ## Guarantees
+///
+/// This type guarantees that the original key-value pairs it contains are all present in the
+/// contained SMT proof. Note that the inverse is not necessarily true. The proof may contain more
+/// entries than the map because a proof for a given original key A may actually contain an SMT leaf
+/// that contains both hash(A) and hash(B). However, B may not be present in the key-value pairs and
+/// this is a valid state.
+///
+/// This type guarantees that the original key-value pairs it contains are all present in the
+/// contained SMT proof. Note that the inverse is not necessarily true. The proof may contain more
+/// entries than the map because to prove inclusion of a given original key A an
+/// [`SmtLeaf::Multiple`](miden_crypto::merkle::SmtLeaf::Multiple) may be present that contains both
+/// keys hash(A) and hash(B). However, B may not be present in the key-value pairs and this is a
+/// valid state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageMapWitness {
     proof: SmtProof,
@@ -22,7 +34,12 @@ impl StorageMapWitness {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Creates a new [`StorageMapWitness`] from an SMT proof.
+    /// Creates a new [`StorageMapWitness`] from an SMT proof and a provided set of map keys.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - Any of the map keys is not contained in the proof.
     pub fn new(
         proof: SmtProof,
         map_keys: impl IntoIterator<Item = Word>,
@@ -70,7 +87,9 @@ impl StorageMapWitness {
             .find_map(|(key, value)| if *key == hashed_map_key { Some(*value) } else { None })
     }
 
-    /// TODO
+    /// Returns an iterator over the key-value pairs in this witness.
+    ///
+    /// Note that the returned key is the original map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
         self.map.iter()
     }
