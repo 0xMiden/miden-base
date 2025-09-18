@@ -5,7 +5,6 @@
 ### Features
 
 - Added `prove_dummy` APIs on `LocalTransactionProver` ([#1674](https://github.com/0xMiden/miden-base/pull/1674)).
-- Added `update_signers_and_threshold` procedure to update owner public keys and threshold config in multisig authentication component ([#1707](https://github.com/0xMiden/miden-base/issues/1707)).
 - Added `add_signature` helper to simplify loading signatures into advice map ([#1725](https://github.com/0xMiden/miden-base/pull/1725)).
 - [BREAKING] Enabled lazy loading of storage map entries during transaction execution ([#1857](https://github.com/0xMiden/miden-base/pull/1857)).
 - Added `get_native_id` and `get_native_nonce` procedures to the `miden` library ([#1844](https://github.com/0xMiden/miden-base/pull/1844)).
@@ -15,12 +14,10 @@
 - [BREAKING] Enabled lazy loading of foreign accounts during transaction execution ([#1873](https://github.com/0xMiden/miden-base/pull/1873)).
 - Added lazy loading of the native asset ([#1855](https://github.com/0xMiden/miden-base/pull/1855)).
 - Added `build_recipient` procedure to `miden::note` module ([#1807](https://github.com/0xMiden/miden-base/pull/1807)).
-- Added Serialize and Deserialize Traits on `SigningInputs` ([#1858](https://github.com/0xMiden/miden-base/pull/1858))
-- Added `get_item_init` and `get_map_item_init` procedures to `miden::account` module for accessing initial storage state ([#1883](https://github.com/0xMiden/miden-base/pull/1883)).
-- Updated `rpo_falcon512::verify_signatures` to use `account::get_map_item_init` ([#1885](https://github.com/0xMiden/miden-base/issues/1885))
 - [BREAKING] Move account seed into `PartialAccount` ([#1875](https://github.com/0xMiden/miden-base/pull/1875)).
 - Added `get_item_init` and `get_map_item_init` procedures to `miden::account` module for accessing initial storage state ([#1883](https://github.com/0xMiden/miden-base/pull/1883)).
 - Updated `rpo_falcon512::verify_signatures` to use `account::get_map_item_init` ([#1885](https://github.com/0xMiden/miden-base/issues/1885))
+- Added `update_signers_and_threshold` procedure to update owner public keys and threshold config in multisig authentication component ([#1707](https://github.com/0xMiden/miden-base/issues/1707)).
 
 ### Changes
 
