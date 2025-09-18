@@ -64,7 +64,7 @@ end
 #! Returns the nonce of the current account.
 #!
 #! This procedure always returns the initial account nonce, as the nonce can only be incremented
-#! in the authentication procedure when signing the transaction after all user code has been 
+#! in the authentication procedure when signing the transaction after all user code has been
 #! executed.
 #!
 #! Inputs:  []
@@ -264,6 +264,38 @@ export.get_item
     # => [VALUE]
 end
 
+#! Gets the initial item from the account storage slot as it was at the beginning of the transaction.
+#!
+#! Inputs:  [index]
+#! Outputs: [INIT_VALUE]
+#!
+#! Where:
+#! - index is the index of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the index of the requested item is out of bounds.
+#!
+#! Invocation: exec
+export.get_item_init
+    push.0.0 movup.2
+    # => [index, 0, 0]
+
+    exec.kernel_proc_offsets::account_get_item_init_offset
+    # => [offset, index, 0, 0]
+
+    # pad the stack
+    padw swapw padw padw swapdw
+    # => [offset, index, pad(14)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_VALUE, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_VALUE]
+end
+
 #! Sets an item in the account storage. Panics if the index is out of bounds.
 #!
 #! Inputs:  [index, VALUE]
@@ -358,9 +390,40 @@ export.set_map_item
     # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
 end
 
+#! Gets the initial VALUE from the account storage map as it was at the beginning of the transaction.
+#!
+#! Inputs:  [index, KEY]
+#! Outputs: [INIT_VALUE]
+#!
+#! Where:
+#! - index is the index of the map where the KEY VALUE should be read.
+#! - KEY is the key of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the index for the map is out of bounds, meaning > 255.
+#! - the slot item at index is not a map.
+#!
+#! Invocation: exec
+export.get_map_item_init
+    exec.kernel_proc_offsets::account_get_map_item_init_offset
+    # => [offset, index, KEY]
+
+    # pad the stack
+    push.0.0 movdn.7 movdn.7 padw padw swapdw
+    # => [offset, index, KEY, pad(10)]
+
+    syscall.exec_kernel_proc
+    # => [INIT_VALUE, pad(12)]
+
+    # clean the stack
+    swapdw dropw dropw swapw dropw
+    # => [INIT_VALUE]
+end
+
 #! Gets the account code commitment of the current account.
 #!
-#! Notice that the account code cannot be changed during the user code execution, so the code 
+#! Notice that the account code cannot be changed during the user code execution, so the code
 #! commitment doesn't change during transaction execution: commitment returned by this procedure
 #! could be used as both the initial and the current.
 #!
@@ -414,7 +477,7 @@ end
 
 #! Computes the latest account storage commitment of the current account.
 #!
-#! Notice that this procedure always returns the latest commitment, but it doesn't actually always 
+#! Notice that this procedure always returns the latest commitment, but it doesn't actually always
 #! recompute it: recomputation is performed only if the account's storage has been changed,
 #! otherwise the cached value is returned.
 #!
