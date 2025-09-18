@@ -246,6 +246,14 @@ where
                 self.on_account_vault_after_remove_asset(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
             },
 
+            TransactionEvent::AccountVaultBeforeGetBalanceEvent => {
+                Self::on_account_vault_before_get_balance(process)
+            },
+
+            TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent => {
+                Self::on_account_vault_before_has_non_fungible_asset(process)
+            }
+
             TransactionEvent::AccountStorageBeforeGetMapItem => {
                 Self::on_account_storage_before_get_map_item(process)
             }
@@ -599,10 +607,15 @@ where
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let map_key = process.get_stack_word(0);
-        let map_root = process.get_stack_word(1);
+        let current_map_root = process.get_stack_word(1);
         let slot_index = process.get_stack_item(8);
 
-        Self::on_account_storage_before_get_or_set_map_item(slot_index, map_root, map_key, process)
+        Self::on_account_storage_before_get_or_set_map_item(
+            slot_index,
+            current_map_root,
+            map_key,
+            process,
+        )
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
@@ -619,20 +632,25 @@ where
             process.get_stack_item(2),
             process.get_stack_item(1),
         ]);
-        let map_root = Word::from([
+        let current_map_root = Word::from([
             process.get_stack_item(12),
             process.get_stack_item(11),
             process.get_stack_item(10),
             process.get_stack_item(9),
         ]);
-        Self::on_account_storage_before_get_or_set_map_item(slot_index, map_root, map_key, process)
+        Self::on_account_storage_before_get_or_set_map_item(
+            slot_index,
+            current_map_root,
+            map_key,
+            process,
+        )
     }
 
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     fn on_account_storage_before_get_or_set_map_item(
         slot_index: Felt,
-        map_root: Word,
+        current_map_root: Word,
         map_key: Word,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
@@ -641,7 +659,9 @@ where
         let leaf_index = StorageMap::hashed_map_key_to_leaf_index(hashed_map_key);
 
         if Self::advice_provider_has_merkle_path::<{ StorageMap::DEPTH }>(
-            process, map_root, leaf_index,
+            process,
+            current_map_root,
+            leaf_index,
         )? {
             // If the merkle path is already in the store there is nothing to do.
             Ok(TransactionEventHandling::Handled(Vec::new()))
@@ -652,7 +672,7 @@ where
                     current_account_id,
                     // Slot index should always fit into a usize.
                     slot_index: slot_index.as_int() as usize,
-                    map_root,
+                    current_map_root,
                     map_key,
                 },
             ))
@@ -759,7 +779,7 @@ where
                 "vault root ptr should fit into a u32, but was {vault_root_ptr}"
             ))
         })?;
-        let vault_root = process
+        let current_vault_root = process
             .get_mem_word(process.ctx(), vault_root_ptr)
             .map_err(|_err| {
                 TransactionKernelError::other(format!(
@@ -772,24 +792,7 @@ where
                 ))
             })?;
 
-        let current_account_id = Self::get_current_account_id(process)?;
-        let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
-
-        if Self::advice_provider_has_merkle_path::<{ AssetVault::DEPTH }>(
-            process, vault_root, leaf_index,
-        )? {
-            // If the merkle path is already in the store there is nothing to do.
-            Ok(TransactionEventHandling::Handled(Vec::new()))
-        } else {
-            // If the merkle path is not in the store return the data to request it.
-            Ok(TransactionEventHandling::Unhandled(
-                TransactionEventData::AccountVaultAssetWitness {
-                    current_account_id,
-                    vault_root,
-                    asset,
-                },
-            ))
-        }
+        Self::on_account_vault_asset_accessed(process, asset, current_vault_root)
     }
 
     /// Extracts the asset that is being removed from the account's vault from the process state
@@ -812,6 +815,83 @@ where
             .remove_asset(asset)
             .map_err(TransactionKernelError::AccountDeltaRemoveAssetFailed)?;
         Ok(())
+    }
+
+    /// Checks if the necessary witness for accessing the asset is already in the merkle store,
+    /// and if not, extracts all necessary data for requesting it.
+    ///
+    /// Expected stack state: `[faucet_id_prefix, faucet_id_suffix, vault_root_ptr]`
+    pub fn on_account_vault_before_get_balance(
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let stack_top = process.get_stack_word(0);
+        let faucet_id = AccountId::try_from([stack_top[3], stack_top[2]]).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                "failed to convert faucet ID word into faucet ID",
+                err,
+            )
+        })?;
+        let vault_root_ptr = stack_top[1];
+        let vault_root = Self::get_vault_root(process, vault_root_ptr)?;
+
+        // Construct the fungible asset so we can easily fetch the vault key.
+        // TODO: Replace this once we have a AssetKey type that can be constructed from a faucet ID
+        // directly: https://github.com/0xMiden/miden-base/issues/1890.
+        let asset = FungibleAsset::new(faucet_id, 0).map_err(|err| {
+            TransactionKernelError::other_with_source(
+                "provided faucet ID is not valid for fungible assets",
+                err,
+            )
+        })?;
+
+        Self::on_account_vault_asset_accessed(process, asset.into(), vault_root)
+    }
+
+    /// Checks if the necessary witness for accessing the asset is already in the merkle store,
+    /// and if not, extracts all necessary data for requesting it.
+    ///
+    /// Expected stack state: `[ASSET, vault_root_ptr]`
+    pub fn on_account_vault_before_has_non_fungible_asset(
+        process: &ProcessState,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let asset_word = process.get_stack_word(0);
+        let asset = Asset::try_from(asset_word).map_err(|err| {
+            TransactionKernelError::other_with_source("provided asset is not a valid asset", err)
+        })?;
+
+        let vault_root_ptr = process.get_stack_item(4);
+        let vault_root = Self::get_vault_root(process, vault_root_ptr)?;
+
+        Self::on_account_vault_asset_accessed(process, asset, vault_root)
+    }
+
+    /// Checks if the necessary witness for accessing the provided asset is already in the merkle
+    /// store, and if not, extracts all necessary data for requesting it.
+    fn on_account_vault_asset_accessed(
+        process: &ProcessState,
+        asset: Asset,
+        current_vault_root: Word,
+    ) -> Result<TransactionEventHandling, TransactionKernelError> {
+        let leaf_index = AssetVault::vault_key_to_leaf_index(asset.vault_key());
+        let current_account_id = Self::get_current_account_id(process)?;
+
+        if Self::advice_provider_has_merkle_path::<{ AssetVault::DEPTH }>(
+            process,
+            current_vault_root,
+            leaf_index,
+        )? {
+            // If the merkle path is already in the store there is nothing to do.
+            Ok(TransactionEventHandling::Handled(Vec::new()))
+        } else {
+            // If the merkle path is not in the store return the data to request it.
+            Ok(TransactionEventHandling::Unhandled(
+                TransactionEventData::AccountVaultAssetWitness {
+                    current_account_id,
+                    current_vault_root,
+                    asset,
+                },
+            ))
+        }
     }
 
     // HELPER FUNCTIONS
@@ -878,6 +958,30 @@ where
                 TransactionKernelError::other(
                     "current account id ptr should point to a valid account ID",
                 )
+            })
+    }
+
+    /// Returns the vault root at the provided pointer.
+    fn get_vault_root(
+        process: &ProcessState,
+        vault_root_ptr: Felt,
+    ) -> Result<Word, TransactionKernelError> {
+        let vault_root_ptr = u32::try_from(vault_root_ptr).map_err(|_err| {
+            TransactionKernelError::other(format!(
+                "vault root ptr should fit into a u32, but was {vault_root_ptr}"
+            ))
+        })?;
+        process
+            .get_mem_word(process.ctx(), vault_root_ptr)
+            .map_err(|_err| {
+                TransactionKernelError::other(format!(
+                    "vault root ptr {vault_root_ptr} is not word-aligned"
+                ))
+            })?
+            .ok_or_else(|| {
+                TransactionKernelError::other(format!(
+                    "vault root ptr {vault_root_ptr} was not initialized"
+                ))
             })
     }
 
@@ -1036,8 +1140,8 @@ pub(super) enum TransactionEventData {
     AccountVaultAssetWitness {
         /// The account ID for whose vault a witness is requested.
         current_account_id: AccountId,
-        /// The vault root identifying the asset vault from which a witness is requested.
-        vault_root: Word,
+        /// The current vault root identifying the asset vault from which a witness is requested.
+        current_vault_root: Word,
         /// The asset for which a witness is requested.
         asset: Asset,
     },
@@ -1047,8 +1151,8 @@ pub(super) enum TransactionEventData {
         current_account_id: AccountId,
         /// The index of the slot that contains the map root.
         slot_index: usize,
-        /// The root of the storage map in the account.
-        map_root: Word,
+        /// The current root of the storage map in the account.
+        current_map_root: Word,
         /// The unhashed map key for which a witness is requested.
         map_key: Word,
     },
