@@ -20,24 +20,28 @@ use crate::{Auth, MockChain};
 fn proposed_block_fails_on_too_many_batches() -> anyhow::Result<()> {
     let count = MAX_BATCHES_PER_BLOCK + 1;
 
-    let mut builder = MockChain::builder();
-    let mut accounts = Vec::new();
-    let mut notes = Vec::new();
-    for _ in 0..count {
-        let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
-        let note = builder.add_p2any_note(account.id(), [FungibleAsset::mock(42)])?;
+    let (chain, batches) = {
+        let mut builder = MockChain::builder();
+        let mut accounts = Vec::new();
+        let mut notes = Vec::new();
+        for _ in 0..count {
+            let account = builder.add_existing_mock_account(Auth::IncrNonce)?;
+            let note = builder.add_p2any_note(account.id(), [FungibleAsset::mock(42)])?;
 
-        accounts.push(account);
-        notes.push(note);
-    }
+            accounts.push(account);
+            notes.push(note);
+        }
 
-    let chain = builder.build()?;
+        let chain = builder.build()?;
 
-    let mut batches = Vec::with_capacity(count);
-    for i in 0..count {
-        let proven_tx = chain.create_authenticated_notes_tx(accounts[i].id(), [notes[i].id()]);
-        batches.push(chain.create_batch(vec![proven_tx]));
-    }
+        let mut batches = Vec::with_capacity(count);
+        for i in 0..count {
+            let proven_tx = chain.create_authenticated_notes_tx(accounts[i].id(), [notes[i].id()]);
+            batches.push(chain.create_batch(vec![proven_tx]));
+        }
+
+        (chain, batches)
+    };
 
     let block_inputs = BlockInputs::new(
         chain.latest_block_header(),
@@ -378,7 +382,12 @@ fn proposed_block_fails_on_invalid_proof_or_missing_note_inclusion_reference_blo
         .expect("block2 should have been fetched");
 
     let error = ProposedBlock::new(invalid_block_inputs, batches.clone()).unwrap_err();
-    assert_matches!(error, ProposedBlockError::UnauthenticatedInputNoteBlockNotInPartialBlockchain { block_number, note_id } if block_number == block2.header().block_num() && note_id == p2id_note.id());
+    assert_matches!(error, ProposedBlockError::UnauthenticatedInputNoteBlockNotInPartialBlockchain {
+      block_number, note_id
+    } => {
+        assert_eq!(block_number, block2.header().block_num());
+        assert_eq!(note_id, p2id_note.id());
+    });
 
     // Error: Invalid note inclusion proof.
     // --------------------------------------------------------------------------------------------
