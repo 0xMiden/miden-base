@@ -1,6 +1,6 @@
 use.miden::account
 use.miden::account_id
-use.miden::note
+use.miden::active_note
 use.miden::tx
 
 # ERRORS
@@ -56,7 +56,7 @@ proc.reclaim_note
     # => [account_id_prefix, account_id_suffix]
 
     # if current account is not the target, we need to ensure it is the sender
-    exec.note::get_sender
+    exec.active_note::get_sender
     # => [sender_account_id_prefix, sender_account_id_suffix, account_id_prefix, account_id_suffix]
 
     # ensure current account ID = sender account ID
@@ -64,7 +64,7 @@ proc.reclaim_note
     # => []
 
     # add note assets to account
-    exec.note::add_assets_to_account
+    exec.active_note::add_assets_to_account
     # => []
 end
 
@@ -101,7 +101,7 @@ end
 #!   greater than 2^63.
 begin
     # store the note inputs to memory starting at address 0
-    push.0 exec.note::get_inputs
+    push.0 exec.active_note::get_inputs
     # => [num_inputs, inputs_ptr]
 
     # make sure the number of inputs is 4
@@ -130,7 +130,7 @@ begin
 
     if.true
         # we can safely consume the note since the current account is the target of the note
-        dropw exec.note::add_assets_to_account
+        dropw exec.active_note::add_assets_to_account
         # => []
 
     else

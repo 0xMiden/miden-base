@@ -1,13 +1,12 @@
+use.$kernel::account_delta
+use.$kernel::account_id
+use.$kernel::asset_vault
+use.$kernel::constants
+use.$kernel::memory
 use.std::collections::mmr
 use.std::collections::smt
 use.std::crypto::hashes::rpo
 use.std::mem
-
-use.$kernel::account_id
-use.$kernel::asset_vault
-use.$kernel::account_delta
-use.$kernel::constants
-use.$kernel::memory
 
 # ERRORS
 # =================================================================================================
@@ -199,10 +198,10 @@ end
 
 #! Computes the account commitment of the current account.
 #!
-#! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire 
-#! account. Assuming that the storage commitment is current, computing account commitment is 
+#! Notice that there is no caching (and, hence, dirty flag) for the commitment of the entire
+#! account. Assuming that the storage commitment is current, computing account commitment is
 #! relatively cheap — essentially is consists of just 2 permutations of the hash function and takes
-#! relatively small number of cycles, so it would not be worth adding a separate caching mechanism 
+#! relatively small number of cycles, so it would not be worth adding a separate caching mechanism
 #! for this.
 #!
 #! Inputs:  []
@@ -466,8 +465,29 @@ export.get_item
     # => [acct_storage_slots_section_offset, index]
 
     # get the item from storage
-    swap mul.8 add padw movup.4 mem_loadw
+    exec.get_item_raw
     # => [VALUE]
+end
+
+#! Gets an item from the account storage at its initial state (beginning of transaction).
+#!
+#! Note:
+#! - We assume that index has been validated and is within bounds.
+#!
+#! Inputs:  [index]
+#! Outputs: [INIT_VALUE]
+#!
+#! Where:
+#! - index is the index of the item to get.
+#! - INIT_VALUE is the initial value of the item at the beginning of the transaction.
+export.get_item_init
+    # get account initial storage slots section offset
+    exec.memory::get_account_initial_storage_slots_ptr
+    # => [account_initial_storage_slots_ptr, index]
+
+    # get the item from initial storage
+    exec.get_item_raw
+    # => [INIT_VALUE]
 end
 
 #! Sets an item in the account storage.
@@ -529,15 +549,7 @@ end
 #! Panics if:
 #! - the requested storage slot type is not map.
 export.get_map_item
-    # get the storage slot type
-    dup exec.get_storage_slot_type
-    # => [slot_type, index, KEY]
-
-    # check if storage slot type is map
-    exec.constants::get_storage_slot_type_map eq
-    assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
-    # => [index, KEY]
-
+    # duplicate index for later use
     dup movdn.5
     # => [index, KEY, index]
 
@@ -545,23 +557,34 @@ export.get_map_item
     exec.get_item swapw
     # => [KEY, ROOT, index]
 
-    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
-    # => [KEY, ROOT, index]
+    exec.get_map_item_raw
+end
 
-    # see hash_map_key's docs for why this is done
-    exec.hash_map_key
-    # => [HASHED_KEY, ROOT, index]
+#! Returns the VALUE located under the specified KEY within the map contained in the given
+#! account storage slot at its initial state (beginning of transaction).
+#!
+#! Inputs:  [index, KEY]
+#! Outputs: [INIT_VALUE]
+#!
+#! Note:
+#! - We assume that index has been validated and is within bounds.
+#!
+#! Where:
+#! - index is the index of the storage slot that contains the map root.
+#! - INIT_VALUE is the initial value of the map item at KEY at the beginning of the transaction.
+#!
+#! Panics if:
+#! - the requested storage slot type is not map.
+export.get_map_item_init
+    # duplicate index for later use
+    dup movdn.5
+    # => [index, KEY, index]
 
-    # fetch the VALUE located under HASHED_KEY in the tree
-    exec.smt::get
-    # => [VALUE, ROOT, index]
+    # fetch the initial account storage item, which is ROOT of the map
+    exec.get_item_init swapw
+    # => [KEY, INIT_ROOT, index]
 
-    # remove the ROOT from the stack
-    swapw dropw
-    # => [VALUE, index]
-
-    movup.4 drop
-    # => [VALUE]
+    exec.get_map_item_raw
 end
 
 #! Stores NEW_VALUE under the specified KEY within the map contained in the given account storage slot.
@@ -859,7 +882,7 @@ end
 #!
 #! Panics if:
 #! - the asset is not valid.
-#! - the total value of the fungible asset is greater than or equal to 2^63 after the new asset was 
+#! - the total value of the fungible asset is greater than or equal to 2^63 after the new asset was
 #!   added.
 #! - the vault already contains the same non-fungible asset.
 export.add_asset_to_vault
@@ -1144,8 +1167,68 @@ export.save_account_procedure_data
     # OS => []
 end
 
-# HELPER PROCEDURES
+# HELPER PROCEDURES
 # =================================================================================================
+
+#! Gets an item from storage using the provided storage slots pointer and index.
+#!
+#! Note:
+#! - We assume that index has been validated and is within bounds.
+#!
+#! Inputs:  [storage_slots_ptr, index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - storage_slots_ptr is the pointer to the storage slots section.
+#! - index is the index of the item to get.
+#! - VALUE is the value of the item.
+export.get_item_raw
+    # get the item from storage
+    swap mul.8 add padw movup.4 mem_loadw
+    # => [VALUE]
+end
+
+#! Shared procedure for getting a map item from a storage slot.
+#!
+#! Inputs:  [KEY, ROOT, index]
+#! Outputs: [VALUE]
+#!
+#! Where:
+#! - KEY is the key to look up in the map.
+#! - ROOT is the root of the map.
+#! - index is the index of the storage slot that contains the map root.
+#! - VALUE is the value of the map item at KEY.
+#!
+#! Panics if:
+#! - the requested storage slot type is not map.
+proc.get_map_item_raw
+    # check storage slot type
+    dup.8 exec.get_storage_slot_type
+    # => [slot_type, KEY, ROOT, index]
+
+    # check if storage slot type is map
+    exec.constants::get_storage_slot_type_map eq
+    assert.err=ERR_ACCOUNT_READING_MAP_VALUE_FROM_NON_MAP_SLOT
+    # => [KEY, ROOT, index]
+
+    emit.ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT
+    # => [KEY, ROOT, index]
+
+    # see hash_map_key's docs for why this is done
+    exec.hash_map_key
+    # => [HASHED_KEY, ROOT, index]
+
+    # fetch the VALUE located under HASHED_KEY in the tree
+    exec.smt::get
+    # => [VALUE, ROOT, index]
+
+    # remove the ROOT from the stack
+    swapw dropw
+    # => [VALUE, index]
+
+    movup.4 drop
+    # => [VALUE]
+end
 
 #! Sets an item in the account storage. Doesn't emit any events.
 #!
@@ -1344,10 +1427,10 @@ end
 
 #! Makes the account storage commitment up-to-date.
 #!
-#! Notice that the account storage commitment got updated only if it is outdated: if the account 
+#! Notice that the account storage commitment got updated only if it is outdated: if the account
 #! storage changes, its commitment will be recomputed by hashing the storage slots. Then this newly
 #! computed storage commitment updates the storage commitment in memory. If the storage commitment
-#! is up-to-date, this procedure does nothing. 
+#! is up-to-date, this procedure does nothing.
 #!
 #! Inputs:  []
 #! Outputs: []
@@ -1359,7 +1442,7 @@ proc.refresh_storage_commitment
     # => [should_recompute_storage_commitment]
 
     if.true
-        # dirty flag being equal 1 ensures that we have at least one storage slot, so we have to 
+        # dirty flag being equal 1 ensures that we have at least one storage slot, so we have to
         # hash the storage anyway
 
         # get number of storage slots
@@ -1391,7 +1474,7 @@ proc.refresh_storage_commitment
         # => []
 
         # update the storage commitment dirty flag, indicating that the commitment is up-to-date
-        push.0 
+        push.0
         exec.memory::set_native_account_storage_commitment_dirty_flag
         # => []
     end
