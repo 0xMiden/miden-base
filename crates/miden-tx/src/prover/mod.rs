@@ -16,7 +16,6 @@ use miden_objects::account::{
 };
 use miden_objects::asset::{Asset, AssetVault};
 use miden_objects::block::BlockNumber;
-use miden_objects::crypto::merkle::SmtLeaf;
 use miden_objects::transaction::{
     ExecutedTransaction,
     InputNote,
@@ -234,9 +233,7 @@ fn partial_storage_to_full(partial_storage: PartialStorage) -> AccountStorage {
 
 fn partial_storage_map_to_storage_map(partial_storage_map: PartialStorageMap) -> StorageMap {
     let mut storage_map = StorageMap::new();
-    for (key, value) in
-        partial_storage_map.leaves().map(|(_, leaf)| leaf).flat_map(SmtLeaf::entries)
-    {
+    for (key, value) in partial_storage_map.entries() {
         storage_map.insert(*key, *value);
     }
     storage_map

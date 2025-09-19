@@ -131,12 +131,12 @@ impl Deserializable for PartialStorage {
 mod tests {
     use anyhow::Context;
     use miden_core::Word;
-    use miden_crypto::merkle::PartialSmt;
 
     use crate::account::{
         AccountStorage,
         AccountStorageHeader,
         PartialStorage,
+        PartialStorageMap,
         StorageMap,
         StorageSlot,
     };
@@ -156,10 +156,10 @@ mod tests {
         // Create partial storage with validation of one map key
         let storage_header = AccountStorageHeader::from(&storage);
         let witness = map_1.open(&map_key_present);
-        let partial_smt = PartialSmt::from_proofs([witness.into()])?;
 
-        let partial_storage = PartialStorage::new(storage_header, [partial_smt.into()])
-            .context("creating partial storage")?;
+        let partial_storage =
+            PartialStorage::new(storage_header, [PartialStorageMap::from_witnesses([witness])?])
+                .context("creating partial storage")?;
 
         let retrieved_map = partial_storage.maps.get(&partial_storage.header.slot(0)?.1).unwrap();
         assert!(retrieved_map.open(&map_key_absent).is_err());
