@@ -1,5 +1,8 @@
+use miden_lib::account::components::multisig_library;
+use miden_lib::account::interface::get_public_keys_from_account;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
+use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -16,7 +19,9 @@ use miden_objects::testing::account_id::{
     ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE,
 };
 use miden_objects::transaction::OutputNote;
+use miden_objects::vm::AdviceMap;
 use miden_objects::{Felt, Word};
+use miden_processor::AdviceInputs;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;
 use miden_tx::auth::{BasicAuthenticator, SigningInputs, TransactionAuthenticator};
@@ -94,10 +99,8 @@ fn create_multisig_account(
 /// - 1 Multisig Contract
 #[tokio::test]
 async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
-    // Setup keys and authenticators
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
-    // Create multisig account
     let multisig_starting_balance = 10u64;
     let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
 
@@ -299,7 +302,7 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
     mock_chain.add_pending_executed_transaction(&executed_tx)?;
     mock_chain.prove_next_block()?;
 
-    // Now attempt to execute the same transaction again - should fail due to replay protection
+    // Attempt to execute the same transaction again - should fail due to replay protection
     let tx_context_replay = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .add_signature(public_keys[0], msg, sig_1)
@@ -307,9 +310,163 @@ async fn test_multisig_replay_protection() -> anyhow::Result<()> {
         .auth_args(salt)
         .build()?;
 
-    // This should fail - due to replay protection
+    // This should fail due to replay protection
     let result = tx_context_replay.execute().await;
     assert_transaction_executor_error!(result, ERR_TX_ALREADY_EXECUTED);
+
+    Ok(())
+}
+
+/// Tests multisig signer update functionality.
+///
+/// This test verifies that a multisig account can:
+/// 1. Execute a transaction script to update signers and threshold
+/// 2. Create a second transaction signed by the new owners
+/// 3. Properly handle multisig authentication with the updated signers
+///
+/// **Roles:**
+/// - 2 Original Approvers (multisig signers)
+/// - 4 New Approvers (updated multisig signers)
+/// - 1 Multisig Contract
+/// - 1 Transaction Script calling multisig procedures
+#[tokio::test]
+async fn test_multisig_update_signers() -> anyhow::Result<()> {
+    let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
+
+    let multisig_account = create_multisig_account(2, &public_keys, 0)?;
+
+    let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
+    let mut mock_chain = mock_chain_builder.build().unwrap();
+
+    let salt = Word::from([Felt::new(1); 4]);
+
+    // Get the multisig library
+    let multisig_lib: miden_assembly::Library = multisig_library();
+
+    // Setup new signers
+    let mut advice_map = AdviceMap::default();
+    let (_new_secret_keys, new_public_keys, _new_authenticators) =
+        setup_keys_and_authenticators(4, 4)?;
+
+    // Add new public keys to advice map
+    for (i, public_key) in new_public_keys.iter().enumerate() {
+        let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
+        let value_word: Word = (*public_key).into();
+        advice_map.insert(key_word, value_word.to_vec());
+    }
+
+    // Create a transaction script that calls the update_signers procedure
+    let tx_script_code = "
+        begin
+            call.::update_signers_and_threshold
+        end
+    ";
+
+    let tx_script = ScriptBuilder::new(true)
+        .with_dynamically_linked_library(&multisig_lib)?
+        .compile_tx_script(tx_script_code)?;
+
+    let advice_inputs = AdviceInputs {
+        map: advice_map.clone(),
+        ..Default::default()
+    };
+
+    let threshold = 3u64;
+    let num_of_approvers = 4u64;
+
+    let tx_script_args: Word =
+        [Felt::new(threshold), Felt::new(num_of_approvers), Felt::new(0), Felt::new(0)].into();
+
+    // Execute transaction without signatures first to get tx summary
+    let tx_context_init = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .tx_script(tx_script.clone())
+        .tx_script_args(tx_script_args)
+        .auth_args(salt)
+        .extend_advice_inputs(advice_inputs.clone())
+        .build()?;
+
+    let tx_summary = match tx_context_init.execute().await.unwrap_err() {
+        TransactionExecutorError::Unauthorized(tx_effects) => tx_effects,
+        error => panic!("expected abort with tx effects: {error:?}"),
+    };
+
+    // Get signatures from both approvers
+    let msg = tx_summary.as_ref().to_commitment();
+    let tx_summary = SigningInputs::TransactionSummary(tx_summary);
+
+    let sig_1 = authenticators[0].get_signature(public_keys[0].into(), &tx_summary).await?;
+    let sig_2 = authenticators[1].get_signature(public_keys[1].into(), &tx_summary).await?;
+
+    // Execute transaction with signatures - should succeed
+    let tx_context_execute = mock_chain
+        .build_tx_context(multisig_account.id(), &[], &[])?
+        .tx_script(tx_script)
+        .tx_script_args(tx_script_args)
+        .add_signature(public_keys[0], msg, sig_1)
+        .add_signature(public_keys[1], msg, sig_2)
+        .auth_args(salt)
+        .extend_advice_inputs(advice_inputs)
+        .build()?
+        .execute()
+        .await
+        .unwrap();
+
+    // Verify the transaction executed successfully
+    assert_eq!(tx_context_execute.account_delta().nonce_delta(), Felt::new(1));
+
+    mock_chain.add_pending_executed_transaction(&tx_context_execute)?;
+    mock_chain.prove_next_block()?;
+
+    // Apply the delta to get the updated account with new signers
+    let mut updated_multisig_account = multisig_account.clone();
+    updated_multisig_account.apply_delta(tx_context_execute.account_delta())?;
+
+    // Verify that the public keys were actually updated in storage
+    for (i, expected_key) in new_public_keys.iter().enumerate() {
+        let storage_key = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(0)].into();
+        let storage_item = updated_multisig_account.storage().get_map_item(1, storage_key).unwrap();
+
+        let expected_word: Word = (*expected_key).into();
+
+        assert_eq!(storage_item, expected_word, "Public key {} doesn't match expected value", i);
+    }
+
+    // Verify the threshold was updated by checking storage slot 0
+    let threshold_storage = updated_multisig_account.storage().get_item(0).unwrap();
+
+    // The threshold should be stored in the first element of slot 0
+    assert_eq!(
+        threshold_storage[0],
+        Felt::new(threshold),
+        "Threshold was not updated correctly"
+    );
+
+    // Extract public keys using the interface function
+    let extracted_pub_keys = get_public_keys_from_account(&updated_multisig_account);
+
+    // Verify that we have the expected number of public keys (4 new ones)
+    assert_eq!(
+        extracted_pub_keys.len(),
+        4,
+        "get_public_keys_from_account should return 4 public keys after update"
+    );
+
+    // Verify that the extracted public keys match the new ones we set
+    for (i, expected_key) in new_public_keys.iter().enumerate() {
+        let expected_word: Word = (*expected_key).into();
+
+        // Find the matching key in extracted keys (order might be different)
+        let found_key = extracted_pub_keys.iter().find(|&key| *key == expected_word);
+
+        assert!(
+            found_key.is_some(),
+            "Public key {} not found in extracted keys: expected {:?}, got {:?}",
+            i,
+            expected_word,
+            extracted_pub_keys
+        );
+    }
 
     Ok(())
 }

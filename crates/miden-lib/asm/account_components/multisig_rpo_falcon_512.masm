@@ -70,6 +70,60 @@ proc.assert_new_tx
     # => []
 end
 
+#! Update threshold config and add / remove owners
+#!
+#! Inputs:  [NEW_THRESHOLD_CONFIG]
+#! Outputs: []
+#!
+export.update_signers_and_threshold
+    dupw
+    # => [NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
+
+    push.THRESHOLD_CONFIG_SLOT
+    # => [slot, NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
+
+    exec.account::set_item
+    # => [OLD_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
+
+    dropw
+    # => [NEW_THRESHOLD_CONFIG]
+    # => [?, ?, num_approvers, ?]
+
+    drop drop swap drop
+    # => [num_approvers]
+
+    dup neq.0
+    while.true
+        sub.1
+
+        dup
+        # @dev using key [1,0,0,n] since [0,0,0,0] key is reserved
+        push.0.0.1
+        # => [[1, 0, 0, i-1], i-1]
+
+        adv.push_mapval
+        # => [[1, 0, 0, i-1], i-1]
+
+        padw adv_loadw
+        # => [PUB_KEY, [1, 0, 0, i-1], i-1]
+
+        swapw drop push.0
+        # => [[0, 0, 0, i-1], PUB_KEY, i-1]
+
+        push.PUBLIC_KEYS_MAP_SLOT
+        # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1]
+
+        exec.account::set_map_item
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1]
+
+        dropw dropw
+        # => [i-1]
+
+        dup neq.0
+        # => [is_zero]
+    end
+end
+
 #! Authenticate a transaction using the Falcon signature scheme with multi-signature support.
 #!
 #! This procedure implements multi-signature authentication by:
@@ -123,7 +177,7 @@ export.auth_tx_rpo_falcon512_multisig
     push.THRESHOLD_CONFIG_SLOT
     # => [index, TX_SUMMARY_COMMITMENT]
 
-    exec.account::get_item
+    exec.account::get_item_init
     # => [0, 0, num_of_approvers, threshold, TX_SUMMARY_COMMITMENT]
 
     drop drop
@@ -156,4 +210,5 @@ export.auth_tx_rpo_falcon512_multisig
 
     exec.assert_new_tx
     # => [TX_SUMMARY_COMMITMENT]
+
 end
