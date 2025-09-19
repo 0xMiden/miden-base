@@ -1,7 +1,13 @@
 use alloc::collections::BTreeMap;
 
 use miden_objects::Word;
-use miden_objects::account::{AccountStorageDelta, AccountStorageHeader};
+use miden_objects::account::{
+    AccountStorageDelta,
+    AccountStorageHeader,
+    PartialAccount,
+    StorageMap,
+    StorageSlotType,
+};
 
 /// Keeps track of the initial storage of an account during transaction execution.
 ///
@@ -30,12 +36,46 @@ impl StorageDeltaTracker {
     // CONSTRUCTORS
     // --------------------------------------------------------------------------------------------
 
-    /// Constructs a new initial account storage from a storage header.
-    pub fn new(storage_header: AccountStorageHeader) -> Self {
+    /// Constructs a new initial storage delta from the provided account.
+    ///
+    /// TODO: Document.
+    pub fn new(account: &PartialAccount) -> Self {
+        let mut delta = AccountStorageDelta::new();
+
+        let initial_storage_header = if account.is_new() {
+            (0..u8::MAX).zip(account.storage().header().slots()).for_each(
+                |(slot_idx, (slot_type, value))| match slot_type {
+                    StorageSlotType::Value => {
+                        // Note that we can insert the value unconditionally as the delta will be
+                        // normalized before the commitment is computed.
+                        delta.set_item(slot_idx, *value);
+                    },
+                    StorageSlotType::Map => {
+                        // TODO: For now do nothing for maps.
+                        // TODO: Add a test that executes this branch.
+                    },
+                },
+            );
+
+            // TODO: Move into fn AccountStorage::initial_header?
+            let slots = account
+                .storage()
+                .header()
+                .slots()
+                .map(|(slot_type, _)| match slot_type {
+                    StorageSlotType::Value => (*slot_type, Word::empty()),
+                    StorageSlotType::Map => (*slot_type, StorageMap::EMPTY_VALUE),
+                })
+                .collect();
+            AccountStorageHeader::new(slots)
+        } else {
+            account.storage().header().clone()
+        };
+
         Self {
-            storage_header,
+            storage_header: initial_storage_header,
             init_maps: BTreeMap::new(),
-            delta: AccountStorageDelta::new(),
+            delta,
         }
     }
 
