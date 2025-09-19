@@ -87,9 +87,7 @@ export.update_signers_and_threshold
 
     dropw
     # => [NEW_THRESHOLD_CONFIG]
-
-    # TODO assert threshold <= num_approvers
-    # TODO only enter loop if pub keys exist in AdviceMap
+    # => [?, ?, num_approvers, ?]
 
     drop drop swap drop
     # => [num_approvers]
