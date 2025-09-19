@@ -415,13 +415,19 @@ impl Account {
 impl TryFrom<Account> for AccountDelta {
     type Error = AccountError;
 
+    /// Converts an [`Account`] into an [`AccountDelta`].
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - the account has a seed. Accounts with seeds have a nonce of 0. Representing such accounts
+    ///   as deltas is not possible because deltas with a non-empty state change need a nonce_delta
+    ///   greater than 0.
     fn try_from(account: Account) -> Result<Self, Self::Error> {
         let Account { id, vault, storage, code, nonce, seed } = account;
-        // TODO: Remove seed in build_executed_transaction?
+
         if seed.is_some() {
-            panic!(
-                "account should not be converted to delta if seed is present, indicating it was not yet registered on chain"
-            );
+            return Err(AccountError::DeltaFromAccountWithSeed);
         }
 
         let mut value_slots = BTreeMap::new();
@@ -461,12 +467,15 @@ impl TryFrom<Account> for AccountDelta {
         }
         let vault_delta = AccountVaultDelta::new(fungible_delta, non_fungible_delta);
 
-        // TODO
+        // The nonce of the account is the nonce delta since adding the nonce_delta to 0 would
+        // result in the nonce.
         let nonce_delta = nonce;
 
-        let mut delta =
-            AccountDelta::new(id, storage_delta, vault_delta, nonce_delta).expect("TODO");
-        delta.set_code(code);
+        // SAFETY: As checked earlier, the nonce delta should be greater than 0 allowing for
+        // non-empty state changes.
+        let delta = AccountDelta::new(id, storage_delta, vault_delta, nonce_delta)
+            .expect("nonce_delta should be greater than 0")
+            .with_code(Some(code));
 
         Ok(delta)
     }

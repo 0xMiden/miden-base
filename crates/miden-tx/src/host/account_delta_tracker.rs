@@ -84,13 +84,8 @@ impl AccountDeltaTracker {
         let storage_delta = self.storage.into_delta();
         let vault_delta = self.vault;
 
-        let mut delta = AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta)
-            .expect("account delta created in delta tracker should be valid");
-
-        if let Some(code) = self.code {
-            delta.set_code(code);
-        }
-
-        delta
+        AccountDelta::new(account_id, storage_delta, vault_delta, nonce_delta)
+            .expect("account delta created in delta tracker should be valid")
+            .with_code(self.code)
     }
 }

@@ -134,6 +134,10 @@ pub enum AccountError {
     ExistingAccountWithSeed,
     #[error("account ID seed was not provided for a new account")]
     NewAccountMissingSeed,
+    #[error(
+        "an account with a seed cannot be converted into a delta since it represents an unregistered account"
+    )]
+    DeltaFromAccountWithSeed,
     #[error("seed converts to an invalid account ID")]
     SeedConvertsToInvalidAccountId(#[source] AccountIdError),
     #[error("storage map root {0} not found in the account storage")]

@@ -31,15 +31,20 @@ pub use vault::{
 /// The [`AccountDelta`] stores the differences between two account states, which can result from
 /// one or more transaction.
 ///
-/// TODO: Explain "full state" vs "partial state".
-///
 /// The differences are represented as follows:
-/// - storage: an [AccountStorageDelta] that contains the changes to the account storage.
-/// - vault: an [AccountVaultDelta] object that contains the changes to the account vault.
+/// - storage: an [`AccountStorageDelta`] that contains the changes to the account storage.
+/// - vault: an [`AccountVaultDelta`] object that contains the changes to the account vault.
 /// - nonce: if the nonce of the account has changed, the _delta_ of the nonce is stored, i.e. the
 ///   value by which the nonce increased.
+/// - code: an [`AccountCode`] for new accounts and `None` for others.
 ///
-/// TODO: add ability to trace account code updates.
+/// The presence of the code in a delta signals if the delta is a _full state_ or _partial state_
+/// delta. A full state delta must be coverted into an [`Account`] object, while a partial state
+/// delta must be applied to an existing [`Account`].
+///
+/// TODO: The ability to track account code updates is an outstanding feature. For that reason, the
+/// account code is not considered as part of the "nonce must be incremented if state changed"
+/// check.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct AccountDelta {
     /// The ID of the account to which this delta applies. If the delta is created during
@@ -49,7 +54,7 @@ pub struct AccountDelta {
     storage: AccountStorageDelta,
     /// The delta of the account's asset vault.
     vault: AccountVaultDelta,
-    /// TODO
+    /// The code of a new account (`Some`) or `None` for existing accounts.
     code: Option<AccountCode>,
     /// The value by which the nonce was incremented. Must be greater than zero if storage or vault
     /// are non-empty.
@@ -64,8 +69,7 @@ impl AccountDelta {
     ///
     /// # Errors
     ///
-    /// - Returns an error if storage or vault were updated, but the nonce was either not updated or
-    ///   set to 0.
+    /// - Returns an error if storage or vault were updated, but the nonce_delta is 0.
     pub fn new(
         account_id: AccountId,
         storage: AccountStorageDelta,
@@ -114,9 +118,10 @@ impl AccountDelta {
         &mut self.vault
     }
 
-    /// TODO
-    pub fn set_code(&mut self, code: AccountCode) {
-        self.code = Some(code);
+    /// Sets the [`AccountCode`] of the delta.
+    pub fn with_code(mut self, code: Option<AccountCode>) -> Self {
+        self.code = code;
+        self
     }
 
     // PUBLIC ACCESSORS
