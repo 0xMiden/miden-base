@@ -28,7 +28,7 @@ use miden_tx::{
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{Auth, MockChain, TransactionContextBuilder, TxContextInput};
 
 #[tokio::test]
@@ -84,7 +84,7 @@ async fn check_note_consumability_well_known_notes_success() -> anyhow::Result<(
 }
 
 #[rstest::rstest]
-#[case::one(vec![create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)])])]
+#[case::one(vec![create_public_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)])])]
 #[tokio::test]
 async fn check_note_consumability_custom_notes_success(
     #[case] notes: Vec<Note>,

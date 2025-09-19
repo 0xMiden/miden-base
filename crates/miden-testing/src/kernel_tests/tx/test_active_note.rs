@@ -24,7 +24,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::{EMPTY_WORD, Felt, ONE, WORD_SIZE, Word};
 
-use crate::utils::create_p2any_note;
+use crate::utils::create_public_p2any_note;
 use crate::{
     Auth,
     MockChain,
@@ -78,8 +78,10 @@ fn test_active_note_get_sender() -> anyhow::Result<()> {
     let tx_context = {
         let account =
             Account::mock(ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE, Auth::IncrNonce);
-        let input_note =
-            create_p2any_note(ACCOUNT_ID_SENDER.try_into().unwrap(), [FungibleAsset::mock(100)]);
+        let input_note = create_public_p2any_note(
+            ACCOUNT_ID_SENDER.try_into().unwrap(),
+            [FungibleAsset::mock(100)],
+        );
         TransactionContextBuilder::new(account)
             .extend_input_notes(vec![input_note])
             .build()?

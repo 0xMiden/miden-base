@@ -115,7 +115,7 @@ use crate::{MockChainBuilder, TransactionContextBuilder};
 /// let sender = builder.add_existing_wallet(Auth::IncrNonce)?;
 /// let fungible_asset = FungibleAsset::mock(10).unwrap_fungible();
 ///
-/// // Add a pending P2ID note to the chain.
+/// // Add a P2ID note to the chain.
 /// let note = builder.add_p2id_note(
 ///     sender.id(),
 ///     receiver.id(),
@@ -844,14 +844,6 @@ impl MockChain {
     /// [`MockChain::prove_next_block`].
     pub fn add_pending_proven_transaction(&mut self, transaction: ProvenTransaction) {
         self.pending_transactions.push(transaction);
-    }
-
-    /// Adds the given [`OutputNote`] to the list of pending notes.
-    ///
-    /// A block has to be created to add the note to that block and make it available in the chain
-    /// state, e.g. using [`MockChain::prove_next_block`].
-    pub fn add_pending_note(&mut self, note: OutputNote) {
-        self.pending_output_notes.push(note);
     }
 
     // PRIVATE HELPERS
