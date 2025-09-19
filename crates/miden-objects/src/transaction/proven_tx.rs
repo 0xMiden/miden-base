@@ -388,10 +388,8 @@ impl ProvenTransactionBuilder {
     ///   type [`AccountUpdateDetails::Private`].
     /// - The transaction was executed against an account with public state and the update is of
     ///   type [`AccountUpdateDetails::Private`].
-    /// - The transaction was executed against an _existing_ account with public state and the
-    ///   update is of type [`AccountUpdateDetails::New`].
     /// - The transaction creates a _new_ account with public state and the update is of type
-    ///   [`AccountUpdateDetails::Delta`].
+    ///   [`AccountUpdateDetails::Delta`] where the account delta is a full state delta.
     pub fn build(self) -> Result<ProvenTransaction, ProvenTransactionError> {
         let input_notes =
             InputNotes::new(self.input_notes).map_err(ProvenTransactionError::InputNotesError)?;

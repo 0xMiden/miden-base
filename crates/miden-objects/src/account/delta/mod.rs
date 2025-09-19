@@ -39,7 +39,7 @@ pub use vault::{
 /// - code: an [`AccountCode`] for new accounts and `None` for others.
 ///
 /// The presence of the code in a delta signals if the delta is a _full state_ or _partial state_
-/// delta. A full state delta must be coverted into an [`Account`] object, while a partial state
+/// delta. A full state delta must be converted into an [`Account`] object, while a partial state
 /// delta must be applied to an existing [`Account`].
 ///
 /// TODO: The ability to track account code updates is an outstanding feature. For that reason, the

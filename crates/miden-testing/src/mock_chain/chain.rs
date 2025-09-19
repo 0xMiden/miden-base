@@ -885,7 +885,7 @@ impl MockChain {
             match account_update.details() {
                 AccountUpdateDetails::Delta(account_delta) => {
                     if account_delta.is_full_state() {
-                        let account = Account::try_from(account_delta.clone())
+                        let account = Account::try_from(account_delta)
                             .context("failed to convert full state delta into full account")?;
                         self.committed_accounts.insert(account.id(), account.clone());
                     } else {
