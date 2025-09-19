@@ -116,7 +116,7 @@ export.update_signers_and_threshold
         # => [pub_key_slot_idx, [0, 0, 0, i-1], PUB_KEY, i-1]
 
         exec.account::set_map_item
-        # => [OLD_MAP_ROOT, OLD_MAP_VALUE]
+        # => [OLD_MAP_ROOT, OLD_MAP_VALUE, i-1]
 
         dropw dropw
         # => [i-1]
