@@ -396,7 +396,7 @@ impl MockChainBuilder {
         Ok(())
     }
 
-    // NOTE METHODS
+    // NOTE ADD METHODS
     // ----------------------------------------------------------------------------------------
 
     /// Adds the provided note to the initial chain state.
@@ -562,8 +562,13 @@ impl MockChainBuilder {
         Ok(note)
     }
 
-    /// Creates a new P2ID note from the provided parameters _without_ adding it to the list of
-    /// genesis notes.
+    // NOTE CREATE METHODS
+    // ----------------------------------------------------------------------------------------
+
+    /// Creates a new P2ID note from the provided parameters.
+    ///
+    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
+    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
     ///
     /// This is a convenience wrapper around [`create_p2id_note`].
     pub fn create_p2id_note(
@@ -585,10 +590,12 @@ impl MockChainBuilder {
         Ok(note)
     }
 
-    /// Creates a new P2ANY note from the provided parameters _without_ adding it to the list of
-    /// genesis notes.
+    /// Creates a new P2ANY note from the provided parameters.
     ///
     /// This note is similar to a P2ID note but can be consumed by any account.
+    ///
+    /// The note is _not_ added to the list of genesis notes. It must be created by the caller to
+    /// make it available in the mock chain, e.g. using [`Self::add_spawn_note`].
     pub fn create_p2any_note(
         &mut self,
         sender_account_id: AccountId,
