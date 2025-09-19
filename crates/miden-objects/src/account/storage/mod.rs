@@ -39,7 +39,7 @@ pub use partial::PartialStorage;
 /// - [StorageSlot::Map]: contains a [StorageMap] which is a key-value map where both keys and
 ///   values are [Word]s. The value of a storage slot containing a map is the commitment to the
 ///   underlying map.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct AccountStorage {
     slots: Vec<StorageSlot>,
 }

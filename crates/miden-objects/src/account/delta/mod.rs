@@ -103,8 +103,15 @@ impl AccountDelta {
             });
         }
 
-        if self.is_full_state() && other.is_full_state() {
-            panic!("TODO: cannot merge two full state deltas")
+        // TODO: This should go away once we have proper account code updates in deltas. Then, the
+        // two code updates can be merged. For now, code cannot be merged and this should never
+        // happen.
+        assert!(
+            !(self.is_full_state() && other.is_full_state()),
+            "cannot merge two full state deltas"
+        );
+        if let Some(code) = other.code {
+            self.code = Some(code);
         }
 
         self.nonce_delta = new_nonce_delta;
@@ -132,10 +139,14 @@ impl AccountDelta {
         self.storage.is_empty() && self.vault.is_empty() && self.nonce_delta == ZERO
     }
 
-    /// Returns `true` if this delta is a "full state delta".
+    /// Returns `true` if this delta is a "full state" delta, `false` otherwise, i.e. if it is a
+    /// "partial state" delta.
     ///
-    /// This indicates whether the delta can be converted into a full [`Account`].
+    /// See the type-level docs for more on this distinction.
     pub fn is_full_state(&self) -> bool {
+        // TODO: Change this to another detection mechanism once we have code upgrade support,
+        // at which point the presence of code may not be enough of an indication that a delta can
+        // be converted to a full account.
         self.code.is_some()
     }
 
@@ -157,6 +168,11 @@ impl AccountDelta {
     /// Returns the account ID to which this delta applies.
     pub fn id(&self) -> AccountId {
         self.account_id
+    }
+
+    /// Returns a reference to the account code of this delta, if present.
+    pub fn code(&self) -> Option<&AccountCode> {
+        self.code.as_ref()
     }
 
     /// Converts this storage delta into individual delta components.
@@ -295,27 +311,38 @@ impl AccountDelta {
     }
 }
 
-// TODO: Change to TryFrom<&AccountDelta>?
-impl TryFrom<AccountDelta> for Account {
+impl TryFrom<&AccountDelta> for Account {
     type Error = AccountError;
 
-    /// TODO
-    fn try_from(account_delta: AccountDelta) -> Result<Self, Self::Error> {
-        let id = account_delta.id();
-        let (storage_delta, vault_delta, code, nonce_delta) = account_delta.into_parts();
-        // TODO: Change this to another detection mechanism once we have code upgrade support,
-        // at which point the presence of code may not be enough indication that a delta can be
-        // converted to a full account.
-        let Some(code) = code else {
-            return Err(AccountError::AccountConversion);
+    /// Converts an [`AccountDelta`] into an [`Account`].
+    ///
+    /// Conceptually, this applies the delta onto an empty account.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if:
+    /// - If the delta is not a full state delta. See [`AccountDelta`] for details.
+    /// - If any vault delta operation removes an asset that doesn't exist or adds one that would
+    ///   overflow the maximum representable amount.
+    /// - If any storage delta update violates account storage constraints.
+    fn try_from(delta: &AccountDelta) -> Result<Self, Self::Error> {
+        if !delta.is_full_state() {
+            return Err(AccountError::PartialStateDeltaToAccount);
+        }
+
+        let Some(code) = delta.code().cloned() else {
+            return Err(AccountError::PartialStateDeltaToAccount);
         };
 
         let mut vault = AssetVault::default();
-        vault.apply_delta(&vault_delta).expect("TODO");
+        vault.apply_delta(delta.vault()).map_err(AccountError::AssetVaultUpdateError)?;
 
+        // TODO: Once we support addition and removal of storage slots, we may be able to change
+        // this to create an empty account and use `Account::apply_delta` instead.
+        // For now, we need to create the initial storage of the account with the same slot types.
         let mut empty_storage_slots = Vec::new();
         for slot_idx in 0..u8::MAX {
-            let slot = match storage_delta.slot_type(slot_idx) {
+            let slot = match delta.storage().slot_type(slot_idx) {
                 Some(StorageSlotType::Value) => StorageSlot::empty_value(),
                 Some(StorageSlotType::Map) => StorageSlot::empty_map(),
                 None => break,
@@ -324,13 +351,13 @@ impl TryFrom<AccountDelta> for Account {
         }
         let mut storage = AccountStorage::new(empty_storage_slots)
             .expect("storage delta should contain a valid number of slots");
-        storage.apply_delta(&storage_delta).expect("TODO");
+        storage.apply_delta(delta.storage())?;
 
         // The nonce of the account is the initial nonce of 0 plus the nonce_delta, so the
         // nonce_delta itself.
-        let nonce = nonce_delta;
+        let nonce = delta.nonce_delta();
 
-        Account::new(id, vault, storage, code, nonce, None)
+        Account::new(delta.id(), vault, storage, code, nonce, None)
     }
 }
 

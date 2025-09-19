@@ -166,7 +166,7 @@ pub enum AccountError {
         component_index: usize,
     },
     #[error("only account deltas representing a full account can be converted to a full account")]
-    AccountConversion,
+    PartialStateDeltaToAccount,
     /// This variant can be used by methods that are not inherent to the account but want to return
     /// this error type.
     #[error("{error_msg}")]
@@ -665,8 +665,8 @@ pub enum ProvenTransactionError {
     PrivateAccountWithDetails(AccountId),
     #[error("account {0} with public state is missing its account details")]
     PublicStateAccountMissingDetails(AccountId),
-    #[error("new account {0} with public state is missing its account details")]
-    NewPublicStateAccountRequiresFullDetails(AccountId),
+    #[error("new account {id} with public state must be accompanied by a full state delta")]
+    NewPublicStateAccountRequiresFullStateDelta { id: AccountId, source: AccountError },
     #[error(
         "existing account {0} with public state should only provide delta updates instead of full details"
     )]

@@ -180,8 +180,12 @@ impl ProvenTransaction {
                         // This will fail if it is not a full state delta, which means we validate
                         // that the full state for the account can be constructed from the delta,
                         // which must be the case for a new account.
-                        let account = Account::try_from(delta.clone()).expect("TODO");
-                        // TODO: ProvenTransactionError::NewPublicStateAccountRequiresFullDetails
+                        let account = Account::try_from(delta).map_err(|err| {
+                            ProvenTransactionError::NewPublicStateAccountRequiresFullStateDelta {
+                                id: delta.id(),
+                                source: err,
+                            }
+                        })?;
 
                         if account.id() != self.account_id() {
                             return Err(ProvenTransactionError::AccountIdMismatch {
