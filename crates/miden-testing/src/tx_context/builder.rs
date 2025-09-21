@@ -298,7 +298,7 @@ impl TransactionContextBuilder {
             // Note that we use self.account instead of account, because we cannot do the same
             // operation on a partial vault.
             let mut partial_vault = PartialVault::default();
-            partial_vault.add(self.account.vault().open(Word::empty()).into())?;
+            partial_vault.add(self.account.vault().open(Word::empty()))?;
 
             // Construct a partial storage that tracks the empty word in all storage maps, but none
             // of the other keys, following the same rationale as the partial vault above.
