@@ -109,7 +109,8 @@ impl PartialVault {
     /// - the vault key of the proven asset does not match the vault key derived from the asset.
     /// - the new root after the insertion of the leaf and the path does not match the existing root
     ///   (except when the first leaf is added).
-    pub fn add(&mut self, proof: SmtProof) -> Result<(), PartialAssetVaultError> {
+    pub fn add(&mut self, witness: AssetWitness) -> Result<(), PartialAssetVaultError> {
+        let proof = SmtProof::from(witness);
         Self::validate_entries(proof.leaf().entries())?;
 
         self.partial_smt
@@ -118,7 +119,7 @@ impl PartialVault {
     }
 
     // HELPER FUNCTIONS
-    // --------------------------------------------------------------------------------------------
+    // -------------------------------------------------s-------------------------------------------
 
     /// Validates that the provided entries are valid vault keys and assets.
     ///
@@ -190,7 +191,7 @@ mod tests {
             assert_eq!(entry, invalid_asset);
         });
 
-        let err = PartialVault::default().add(proof).unwrap_err();
+        let err = PartialVault::default().add(AssetWitness::new_unchecked(proof)).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::InvalidAssetInSmt { entry, .. } => {
             assert_eq!(entry, invalid_asset);
         });
@@ -212,7 +213,7 @@ mod tests {
             assert_eq!(expected, asset.vault_key());
         });
 
-        let err = PartialVault::default().add(proof).unwrap_err();
+        let err = PartialVault::default().add(AssetWitness::new_unchecked(proof)).unwrap_err();
         assert_matches!(err, PartialAssetVaultError::VaultKeyMismatch { expected, actual } => {
             assert_eq!(actual, invalid_vault_key);
             assert_eq!(expected, asset.vault_key());
