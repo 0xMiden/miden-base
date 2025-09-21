@@ -278,14 +278,15 @@ where
             return Ok(());
         }
 
-        // TODO: ideally, we should prepare the inputs only once for the whole note consumption
-        // check (rather than doing this every time when we try to execute some subset of notes),
-        // but we currently cannot do this because transaction preparation includes input notes;
-        // we should refactor the preparation process to separate input note preparation from the
-        // rest, and then we can prepare the rest of the inputs once for the whole check.
+        let (account, ref_block, mmr) = self
+            .0
+            .something(account_id, block_ref, &notes, tx_args)
+            .await
+            .map_err(TransactionCheckerError::TransactionPreparation)?;
+
         let (mut host, _, stack_inputs, advice_inputs) = self
             .0
-            .prepare_transaction(account_id, block_ref, notes, tx_args, None)
+            .prepare_transaction(account, ref_block, mmr, notes, tx_args, None)
             .await
             .map_err(TransactionCheckerError::TransactionPreparation)?;
 

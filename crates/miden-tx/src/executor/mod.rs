@@ -3,7 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::AccountId;
+use miden_objects::account::{AccountId, PartialAccount};
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::debuginfo::SourceManagerSync;
 use miden_objects::asset::Asset;
@@ -13,6 +13,7 @@ use miden_objects::transaction::{
     ExecutedTransaction,
     InputNote,
     InputNotes,
+    PartialBlockchain,
     TransactionArgs,
     TransactionInputs,
     TransactionScript,
@@ -181,8 +182,11 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
+        let (account, ref_block, mmr) =
+            self.something(account_id, block_ref, &notes, &tx_args).await?;
+
         let (mut host, tx_inputs, stack_inputs, advice_inputs) =
-            self.prepare_transaction(account_id, block_ref, notes, &tx_args, None).await?;
+            self.prepare_transaction(account, ref_block, mmr, notes, &tx_args, None).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let (stack_outputs, advice_provider) = processor
@@ -223,14 +227,12 @@ where
         let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
 
+        let notes = InputNotes::default();
+        let (account, ref_block, mmr) =
+            self.something(account_id, block_ref, &notes, &tx_args).await?;
+
         let (mut host, _, stack_inputs, advice_inputs) = self
-            .prepare_transaction(
-                account_id,
-                block_ref,
-                InputNotes::default(),
-                &tx_args,
-                Some(advice_inputs),
-            )
+            .prepare_transaction(account, ref_block, mmr, notes, &tx_args, Some(advice_inputs))
             .await?;
 
         let processor =
@@ -246,14 +248,35 @@ where
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
+    async fn something(
+        &self,
+        account_id: AccountId,
+        block_ref: BlockNumber,
+        notes: &InputNotes<InputNote>,
+        tx_args: &TransactionArgs,
+    ) -> Result<(PartialAccount, BlockHeader, PartialBlockchain), TransactionExecutorError> {
+        let mut ref_blocks = validate_input_notes(notes, block_ref)?;
+        ref_blocks.insert(block_ref);
+
+        let (account, ref_block, mmr) = self
+            .data_store
+            .get_transaction_inputs(account_id, ref_blocks)
+            .await
+            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
+
+        validate_account_inputs(tx_args, &ref_block)?;
+        Ok((account, ref_block, mmr))
+    }
+
     /// Prepares the data needed for transaction execution.
     ///
     /// Preparation includes loading transaction inputs from the data store, validating them, and
     /// instantiating a transaction host.
     async fn prepare_transaction(
         &self,
-        account_id: AccountId,
-        block_ref: BlockNumber,
+        account: PartialAccount,
+        ref_block: BlockHeader,
+        mmr: PartialBlockchain,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
         init_advice_inputs: Option<AdviceInputs>,
@@ -266,17 +289,6 @@ where
         ),
         TransactionExecutorError,
     > {
-        let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
-        ref_blocks.insert(block_ref);
-
-        let (account, ref_block, mmr) = self
-            .data_store
-            .get_transaction_inputs(account_id, ref_blocks)
-            .await
-            .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
-
-        validate_account_inputs(tx_args, &ref_block)?;
-
         let tx_inputs = TransactionInputs::new(account, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
