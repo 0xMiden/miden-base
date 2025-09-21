@@ -183,7 +183,7 @@ where
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
         let (account, ref_block, mmr) =
-            self.something(account_id, block_ref, &notes, &tx_args).await?;
+            self.validate_transaction_notes(account_id, block_ref, &notes, &tx_args).await?;
 
         let (mut host, tx_inputs, stack_inputs, advice_inputs) =
             self.prepare_transaction(account, ref_block, mmr, notes, &tx_args, None).await?;
@@ -229,7 +229,7 @@ where
 
         let notes = InputNotes::default();
         let (account, ref_block, mmr) =
-            self.something(account_id, block_ref, &notes, &tx_args).await?;
+            self.validate_transaction_notes(account_id, block_ref, &notes, &tx_args).await?;
 
         let (mut host, _, stack_inputs, advice_inputs) = self
             .prepare_transaction(account, ref_block, mmr, notes, &tx_args, Some(advice_inputs))
@@ -248,24 +248,25 @@ where
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
-    async fn something(
+    // ...
+    async fn validate_transaction_notes(
         &self,
         account_id: AccountId,
         block_ref: BlockNumber,
-        notes: &InputNotes<InputNote>,
+        input_notes: &InputNotes<InputNote>,
         tx_args: &TransactionArgs,
     ) -> Result<(PartialAccount, BlockHeader, PartialBlockchain), TransactionExecutorError> {
-        let mut ref_blocks = validate_input_notes(notes, block_ref)?;
+        let mut ref_blocks = validate_input_notes(input_notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
-        let (account, ref_block, mmr) = self
+        let (account, block_header, mmr) = self
             .data_store
             .get_transaction_inputs(account_id, ref_blocks)
             .await
             .map_err(TransactionExecutorError::FetchTransactionInputsFailed)?;
 
-        validate_account_inputs(tx_args, &ref_block)?;
-        Ok((account, ref_block, mmr))
+        validate_account_inputs(tx_args, &block_header)?;
+        Ok((account, block_header, mmr))
     }
 
     /// Prepares the data needed for transaction execution.

@@ -3,10 +3,10 @@ use alloc::vec::Vec;
 
 use miden_lib::note::well_known_note::WellKnownNote;
 use miden_lib::transaction::TransactionKernel;
-use miden_objects::account::AccountId;
-use miden_objects::block::BlockNumber;
+use miden_objects::account::{AccountId, PartialAccount};
+use miden_objects::block::{BlockHeader, BlockNumber};
 use miden_objects::note::Note;
-use miden_objects::transaction::{InputNote, InputNotes, TransactionArgs};
+use miden_objects::transaction::{InputNote, InputNotes, PartialBlockchain, TransactionArgs};
 use miden_processor::fast::FastProcessor;
 
 use super::TransactionExecutor;
@@ -116,8 +116,15 @@ where
         // Ensure well-known notes are ordered first.
         notes.sort_unstable_by_key(|note| WellKnownNote::from_note(note).is_none());
 
+        let notes = InputNotes::from(notes);
+        let (account, ref_block, mmr) = self
+            .0
+            .validate_transaction_notes(target_account_id, block_ref, &notes, &tx_args)
+            .await
+            .map_err(NoteCheckerError::TransactionPreparation)?;
+
         // Attempt to find an executable set of notes.
-        self.find_executable_notes_by_elimination(target_account_id, block_ref, notes, tx_args)
+        self.find_executable_notes_by_elimination(account, ref_block, mmr, notes, tx_args)
             .await
     }
 
@@ -130,12 +137,13 @@ where
     /// succeeded or failed to execute.
     async fn find_executable_notes_by_elimination(
         &self,
-        target_account_id: AccountId,
-        block_ref: BlockNumber,
-        notes: Vec<Note>,
+        account: PartialAccount,
+        ref_block: BlockHeader,
+        mmr: PartialBlockchain,
+        notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<NoteConsumptionInfo, NoteCheckerError> {
-        let mut candidate_notes = notes;
+        let mut candidate_notes = notes.into_iter().map(InputNote::into_note).collect::<Vec<_>>();
         let mut failed_notes = Vec::new();
 
         // Attempt to execute notes in a loop. Reduce the set of notes based on failures until
@@ -145,8 +153,9 @@ where
             // Execute the candidate notes.
             match self
                 .try_execute_notes(
-                    target_account_id,
-                    block_ref,
+                    account.clone(),
+                    ref_block.clone(),
+                    mmr.clone(),
                     candidate_notes.clone().into(),
                     &tx_args,
                 )
@@ -171,8 +180,9 @@ where
                 Err(TransactionCheckerError::EpilogueExecution(_)) => {
                     let consumption_info = self
                         .find_largest_executable_combination(
-                            target_account_id,
-                            block_ref,
+                            account,
+                            ref_block,
+                            mmr,
                             candidate_notes,
                             failed_notes,
                             &tx_args,
@@ -198,8 +208,9 @@ where
     /// set.
     async fn find_largest_executable_combination(
         &self,
-        target_account_id: AccountId,
-        block_ref: BlockNumber,
+        account: PartialAccount,
+        ref_block: BlockHeader,
+        mmr: PartialBlockchain,
         input_notes: Vec<Note>,
         mut failed_notes: Vec<FailedNote>,
         tx_args: &TransactionArgs,
@@ -221,15 +232,10 @@ where
 
                 match self
                     .try_execute_notes(
-                        target_account_id,
-                        block_ref,
-                        InputNotes::<InputNote>::new_unchecked(
-                            successful_notes
-                                .iter()
-                                .cloned()
-                                .map(InputNote::unauthenticated)
-                                .collect::<Vec<_>>(),
-                        ),
+                        account.clone(),
+                        ref_block.clone(),
+                        mmr.clone(),
+                        successful_notes.clone().into(),
                         tx_args,
                     )
                     .await
@@ -269,20 +275,15 @@ where
     /// or a specific [`NoteExecutionError`] indicating where and why the execution failed.
     async fn try_execute_notes(
         &self,
-        account_id: AccountId,
-        block_ref: BlockNumber,
+        account: PartialAccount,
+        ref_block: BlockHeader,
+        mmr: PartialBlockchain,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
     ) -> Result<(), TransactionCheckerError> {
         if notes.is_empty() {
             return Ok(());
         }
-
-        let (account, ref_block, mmr) = self
-            .0
-            .something(account_id, block_ref, &notes, tx_args)
-            .await
-            .map_err(TransactionCheckerError::TransactionPreparation)?;
 
         let (mut host, _, stack_inputs, advice_inputs) = self
             .0
