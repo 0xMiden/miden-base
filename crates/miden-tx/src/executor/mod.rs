@@ -181,8 +181,10 @@ where
         notes: InputNotes<InputNote>,
         tx_args: TransactionArgs,
     ) -> Result<ExecutedTransaction, TransactionExecutorError> {
-        let (mut host, tx_inputs, stack_inputs, advice_inputs) =
-            self.prepare_transaction(account_id, block_ref, notes, &tx_args, None).await?;
+        let tx_inputs =
+            self.prepare_transaction_notes(account_id, notes, &tx_args, block_ref).await?;
+        let (mut host, stack_inputs, advice_inputs) =
+            self.prepare_transaction(&tx_inputs, &tx_args, None).await?;
 
         let processor = FastProcessor::new_debug(stack_inputs.as_slice(), advice_inputs);
         let (stack_outputs, advice_provider) = processor
@@ -223,15 +225,11 @@ where
         let tx_args = TransactionArgs::new(Default::default(), foreign_account_inputs)
             .with_tx_script(tx_script);
 
-        let (mut host, _, stack_inputs, advice_inputs) = self
-            .prepare_transaction(
-                account_id,
-                block_ref,
-                InputNotes::default(),
-                &tx_args,
-                Some(advice_inputs),
-            )
+        let tx_inputs = self
+            .prepare_transaction_notes(account_id, InputNotes::default(), &tx_args, block_ref)
             .await?;
+        let (mut host, stack_inputs, advice_inputs) =
+            self.prepare_transaction(&tx_inputs, &tx_args, Some(advice_inputs)).await?;
 
         let processor =
             FastProcessor::new_with_advice_inputs(stack_inputs.as_slice(), advice_inputs);
@@ -246,26 +244,13 @@ where
     // HELPER METHODS
     // --------------------------------------------------------------------------------------------
 
-    /// Prepares the data needed for transaction execution.
-    ///
-    /// Preparation includes loading transaction inputs from the data store, validating them, and
-    /// instantiating a transaction host.
-    async fn prepare_transaction(
+    async fn prepare_transaction_notes(
         &self,
         account_id: AccountId,
-        block_ref: BlockNumber,
         notes: InputNotes<InputNote>,
         tx_args: &TransactionArgs,
-        init_advice_inputs: Option<AdviceInputs>,
-    ) -> Result<
-        (
-            TransactionExecutorHost<'store, 'auth, STORE, AUTH>,
-            TransactionInputs,
-            StackInputs,
-            AdviceInputs,
-        ),
-        TransactionExecutorError,
-    > {
+        block_ref: BlockNumber,
+    ) -> Result<TransactionInputs, TransactionExecutorError> {
         let mut ref_blocks = validate_input_notes(&notes, block_ref)?;
         ref_blocks.insert(block_ref);
 
@@ -280,8 +265,24 @@ where
         let tx_inputs = TransactionInputs::new(account, ref_block, mmr, notes)
             .map_err(TransactionExecutorError::InvalidTransactionInputs)?;
 
+        Ok(tx_inputs)
+    }
+
+    /// Prepares the data needed for transaction execution.
+    ///
+    /// Preparation includes loading transaction inputs from the data store, validating them, and
+    /// instantiating a transaction host.
+    async fn prepare_transaction(
+        &self,
+        tx_inputs: &TransactionInputs,
+        tx_args: &TransactionArgs,
+        init_advice_inputs: Option<AdviceInputs>,
+    ) -> Result<
+        (TransactionExecutorHost<'store, 'auth, STORE, AUTH>, StackInputs, AdviceInputs),
+        TransactionExecutorError,
+    > {
         let (stack_inputs, tx_advice_inputs) =
-            TransactionKernel::prepare_inputs(&tx_inputs, tx_args, init_advice_inputs)
+            TransactionKernel::prepare_inputs(tx_inputs, tx_args, init_advice_inputs)
                 .map_err(TransactionExecutorError::ConflictingAdviceMapEntry)?;
 
         // This reverses the stack inputs (even though it doesn't look like it does) because the
@@ -317,7 +318,7 @@ where
 
         let advice_inputs = tx_advice_inputs.into_advice_inputs();
 
-        Ok((host, tx_inputs, stack_inputs, advice_inputs))
+        Ok((host, stack_inputs, advice_inputs))
     }
 }
 
