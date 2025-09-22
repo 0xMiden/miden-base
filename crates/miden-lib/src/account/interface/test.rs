@@ -32,10 +32,10 @@ use crate::account::interface::{
     AccountComponentInterface,
     AccountInterface,
     NoteAccountCompatibility,
-    get_public_keys_from_account,
 };
 use crate::account::wallets::BasicWallet;
 use crate::note::{create_p2id_note, create_p2ide_note, create_swap_note};
+use crate::testing::account_interface::get_public_keys_from_account;
 use crate::transaction::TransactionKernel;
 use crate::utils::ScriptBuilder;
 

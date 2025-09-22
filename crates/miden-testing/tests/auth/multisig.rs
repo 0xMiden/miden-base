@@ -1,7 +1,7 @@
 use miden_lib::account::components::multisig_library;
-use miden_lib::account::interface::get_public_keys_from_account;
 use miden_lib::account::wallets::BasicWallet;
 use miden_lib::errors::tx_kernel_errors::ERR_TX_ALREADY_EXECUTED;
+use miden_lib::testing::account_interface::get_public_keys_from_account;
 use miden_lib::utils::ScriptBuilder;
 use miden_objects::account::{
     Account,
