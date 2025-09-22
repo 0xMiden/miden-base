@@ -27,6 +27,7 @@ use miden_objects::account::{
     Account,
     AccountBuilder,
     AccountComponent,
+    AccountId,
     AccountProcedureInfo,
     AccountStorage,
     AccountStorageMode,
@@ -35,6 +36,11 @@ use miden_objects::account::{
 };
 use miden_objects::assembly::DefaultSourceManager;
 use miden_objects::assembly::diagnostics::NamedSource;
+use miden_objects::asset::{Asset, FungibleAsset, NonFungibleAsset, NonFungibleAssetDetails};
+use miden_objects::testing::account_id::{
+    ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1,
+    ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET,
+};
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::AccountInputs;
 use miden_processor::{AdviceInputs, Felt};
@@ -633,6 +639,126 @@ fn test_fpi_execute_foreign_procedure() -> anyhow::Result<()> {
     mock_chain
         .build_tx_context(native_account.id(), &[], &[])
         .expect("failed to build tx context")
+        .foreign_accounts([foreign_account_inputs])
+        .enable_lazy_loading()
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute_blocking()?;
+
+    Ok(())
+}
+
+/// Test that a foreign account can get the balance of a fungible asset and check the presence of a
+/// non-fungible asset.
+#[test]
+fn foreign_account_can_get_balance_and_presence_of_asset() -> anyhow::Result<()> {
+    let fungible_faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_FUNGIBLE_FAUCET_1)?;
+    let non_fungible_faucet_id = AccountId::try_from(ACCOUNT_ID_PUBLIC_NON_FUNGIBLE_FAUCET)?;
+
+    // Create two different assets.
+    let fungible_asset = Asset::Fungible(FungibleAsset::new(fungible_faucet_id, 1)?);
+    let non_fungible_asset = Asset::NonFungible(NonFungibleAsset::new(
+        &NonFungibleAssetDetails::new(non_fungible_faucet_id.prefix(), vec![1, 2, 3])?,
+    )?);
+
+    let foreign_account_code_source = format!(
+        "
+        use.miden::account
+
+        export.get_asset_balance
+            # get balance of first asset
+            push.{fungible_faucet_id_suffix}.{fungible_faucet_id_prefix}
+            exec.account::get_balance
+            # => [balance]
+
+            # check presence of non fungible asset
+            push.{non_fungible_asset_word}
+            exec.account::has_non_fungible_asset
+            # => [has_asset, balance]
+
+            # add the balance and the bool
+            add
+            # => [has_asset_balance]
+
+            # keep only the result on stack
+            swap drop
+            # => [has_asset_balance]
+        end
+        ",
+        fungible_faucet_id_prefix = fungible_faucet_id.prefix().as_felt(),
+        fungible_faucet_id_suffix = fungible_faucet_id.suffix(),
+        non_fungible_asset_word = Word::from(non_fungible_asset),
+    );
+
+    let source_manager = Arc::new(DefaultSourceManager::default());
+    let foreign_account_component = AccountComponent::compile(
+        NamedSource::new("foreign_account_code", foreign_account_code_source),
+        TransactionKernel::with_kernel_library(source_manager.clone()),
+        vec![],
+    )?
+    .with_supports_all_types();
+
+    let foreign_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(foreign_account_component.clone())
+        .with_assets(vec![fungible_asset, non_fungible_asset])
+        .build_existing()?;
+
+    let native_account = AccountBuilder::new(ChaCha20Rng::from_os_rng().random())
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_empty_slots())
+        .storage_mode(AccountStorageMode::Public)
+        .build_existing()?;
+
+    let mut mock_chain =
+        MockChainBuilder::with_accounts([native_account.clone(), foreign_account.clone()])?
+            .build()?;
+    mock_chain.prove_next_block()?;
+
+    let code = format!(
+        "
+        use.std::sys
+
+        use.miden::tx
+        use.miden::account
+
+        begin
+            # Get the added balance of two assets from foreign account
+            # pad the stack for the `execute_foreign_procedure` execution
+            padw padw padw push.0.0.0
+            # => [pad(15)]
+
+            # get the hash of the `get_asset_balance` procedure
+            procref.::foreign_account_code::get_asset_balance
+
+            # push the foreign account ID
+            push.{foreign_suffix}.{foreign_prefix}
+            # => [foreign_account_id_prefix, foreign_account_id_suffix, FOREIGN_PROC_ROOT, pad(15)]
+
+            exec.tx::execute_foreign_procedure
+            # => [has_asset_balance]
+
+            # assert that the non fungible asset exists and the fungible asset has balance 1
+            push.2 assert_eq.err=\"Total balance should be 2\"
+            # => []
+
+            # truncate the stack
+            exec.sys::truncate_stack
+        end
+        ",
+        foreign_prefix = foreign_account.id().prefix().as_felt(),
+        foreign_suffix = foreign_account.id().suffix(),
+    );
+
+    let tx_script = ScriptBuilder::with_source_manager(source_manager.clone())
+        .with_dynamically_linked_library(foreign_account_component.library())?
+        .compile_tx_script(code)?;
+
+    let foreign_account_inputs = mock_chain.get_foreign_account_inputs(foreign_account.id())?;
+
+    mock_chain
+        .build_tx_context(native_account.id(), &[], &[])?
         .foreign_accounts([foreign_account_inputs])
         .enable_lazy_loading()
         .tx_script(tx_script)

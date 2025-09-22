@@ -16,10 +16,14 @@ const ACCOUNT_VAULT_AFTER_ADD_ASSET: u32 = 0x2_0001; // 131073
 const ACCOUNT_VAULT_BEFORE_REMOVE_ASSET: u32 = 0x2_0002; // 131074
 const ACCOUNT_VAULT_AFTER_REMOVE_ASSET: u32 = 0x2_0003; // 131075
 
+const ACCOUNT_VAULT_BEFORE_GET_BALANCE: u32 = 0x2_0021; // 131105
+
+const ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET: u32 = 0x2_0022; // 131106
+
 const ACCOUNT_STORAGE_BEFORE_SET_ITEM: u32 = 0x2_0004; // 131076
 const ACCOUNT_STORAGE_AFTER_SET_ITEM: u32 = 0x2_0005; // 131077
 
-const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT: u32 = 0x2_001f; // 131103
+const ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM: u32 = 0x2_001f; // 131103
 
 const ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM: u32 = 0x2_0006; // 131078
 const ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM: u32 = 0x2_0007; // 131079
@@ -50,7 +54,7 @@ const TX_SCRIPT_PROCESSING_START: u32 = 0x2_0016; // 131094
 const TX_SCRIPT_PROCESSING_END: u32 = 0x2_0017; // 131095
 
 const EPILOGUE_START: u32 = 0x2_0018; // 131096
-const EPILOGUE_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
+const EPILOGUE_AFTER_TX_CYCLES_OBTAINED: u32 = 0x2_0019; // 131097
 const EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT: u32 = 0x2_001a; // 131098
 const EPILOGUE_END: u32 = 0x2_001b; // 131099
 
@@ -58,6 +62,9 @@ const LINK_MAP_SET_EVENT: u32 = 0x2_001c; // 131100
 const LINK_MAP_GET_EVENT: u32 = 0x2_001d; // 131101
 
 const UNAUTHORIZED_EVENT: u32 = 0x2_001e; // 131102
+
+const EPILOGUE_AUTH_PROC_START: u32 = 0x2_0023; // 131107
+const EPILOGUE_AUTH_PROC_END: u32 = 0x2_0024; // 131108
 
 /// Events which may be emitted by a transaction kernel.
 ///
@@ -77,10 +84,14 @@ pub enum TransactionEvent {
     AccountVaultBeforeRemoveAsset = ACCOUNT_VAULT_BEFORE_REMOVE_ASSET,
     AccountVaultAfterRemoveAsset = ACCOUNT_VAULT_AFTER_REMOVE_ASSET,
 
+    AccountVaultBeforeGetBalanceEvent = ACCOUNT_VAULT_BEFORE_GET_BALANCE,
+
+    AccountVaultBeforeHasNonFungibleAssetEvent = ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET,
+
     AccountStorageBeforeSetItem = ACCOUNT_STORAGE_BEFORE_SET_ITEM,
     AccountStorageAfterSetItem = ACCOUNT_STORAGE_AFTER_SET_ITEM,
 
-    AccountStorageBeforeGetMapItem = ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT,
+    AccountStorageBeforeGetMapItem = ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM,
 
     AccountStorageBeforeSetMapItem = ACCOUNT_STORAGE_BEFORE_SET_MAP_ITEM,
     AccountStorageAfterSetMapItem = ACCOUNT_STORAGE_AFTER_SET_MAP_ITEM,
@@ -111,9 +122,13 @@ pub enum TransactionEvent {
     TxScriptProcessingEnd = TX_SCRIPT_PROCESSING_END,
 
     EpilogueStart = EPILOGUE_START,
-    EpilogueTxCyclesObtained = EPILOGUE_TX_CYCLES_OBTAINED,
-    EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
     EpilogueEnd = EPILOGUE_END,
+
+    EpilogueAuthProcStart = EPILOGUE_AUTH_PROC_START,
+    EpilogueAuthProcEnd = EPILOGUE_AUTH_PROC_END,
+
+    EpilogueAfterTxCyclesObtained = EPILOGUE_AFTER_TX_CYCLES_OBTAINED,
+    EpilogueBeforeTxFeeRemovedFromAccount = EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT,
 
     LinkMapSetEvent = LINK_MAP_SET_EVENT,
     LinkMapGetEvent = LINK_MAP_GET_EVENT,
@@ -158,10 +173,18 @@ impl TryFrom<u32> for TransactionEvent {
             },
             ACCOUNT_VAULT_AFTER_REMOVE_ASSET => Ok(TransactionEvent::AccountVaultAfterRemoveAsset),
 
+            ACCOUNT_VAULT_BEFORE_GET_BALANCE => {
+                Ok(TransactionEvent::AccountVaultBeforeGetBalanceEvent)
+            },
+
+            ACCOUNT_VAULT_BEFORE_HAS_NON_FUNGIBLE_ASSET => {
+                Ok(TransactionEvent::AccountVaultBeforeHasNonFungibleAssetEvent)
+            },
+
             ACCOUNT_STORAGE_BEFORE_SET_ITEM => Ok(TransactionEvent::AccountStorageBeforeSetItem),
             ACCOUNT_STORAGE_AFTER_SET_ITEM => Ok(TransactionEvent::AccountStorageAfterSetItem),
 
-            ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM_EVENT => {
+            ACCOUNT_STORAGE_BEFORE_GET_MAP_ITEM => {
                 Ok(TransactionEvent::AccountStorageBeforeGetMapItem)
             },
 
@@ -198,7 +221,11 @@ impl TryFrom<u32> for TransactionEvent {
             TX_SCRIPT_PROCESSING_END => Ok(TransactionEvent::TxScriptProcessingEnd),
 
             EPILOGUE_START => Ok(TransactionEvent::EpilogueStart),
-            EPILOGUE_TX_CYCLES_OBTAINED => Ok(TransactionEvent::EpilogueTxCyclesObtained),
+            EPILOGUE_AUTH_PROC_START => Ok(TransactionEvent::EpilogueAuthProcStart),
+            EPILOGUE_AUTH_PROC_END => Ok(TransactionEvent::EpilogueAuthProcEnd),
+            EPILOGUE_AFTER_TX_CYCLES_OBTAINED => {
+                Ok(TransactionEvent::EpilogueAfterTxCyclesObtained)
+            },
             EPILOGUE_BEFORE_TX_FEE_REMOVED_FROM_ACCOUNT => {
                 Ok(TransactionEvent::EpilogueBeforeTxFeeRemovedFromAccount)
             },

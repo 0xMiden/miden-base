@@ -214,15 +214,17 @@ dependencies = [
 ]
 
 [[package]]
-name = "bench-prover"
+name = "bench-transaction"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "criterion 0.6.0",
+ "miden-lib",
  "miden-objects",
  "miden-processor",
  "miden-testing",
  "miden-tx",
+ "rand_chacha",
  "serde",
  "serde_json",
 ]
@@ -1105,21 +1107,6 @@ dependencies = [
  "semver 1.0.26",
  "smallvec",
  "thiserror",
-]
-
-[[package]]
-name = "miden-bench-tx"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "miden-lib",
- "miden-objects",
- "miden-processor",
- "miden-testing",
- "miden-tx",
- "rand_chacha",
- "serde",
- "serde_json",
 ]
 
 [[package]]
