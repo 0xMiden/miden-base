@@ -1661,6 +1661,7 @@ export.set_empty_initial_storage_slots
             padw movup.4 mem_loadw
             # => [MAP_ROOT, slot_idx, slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
 
+            # add map entries to the in-kernel delta
             exec.add_storage_map_entries_to_delta
             # => [slot_idx, current_slots_ptr, init_slots_ptr, num_slots]
         end
@@ -1679,9 +1680,13 @@ export.set_empty_initial_storage_slots
     # => []
 end
 
-#! TODO
+#! Inserts the entries of the provided storage map root into the account delta.
 #!
-#! Inputs:  [MAP_ROOT, slot_idx]
+#! These entries must be present in the advice provider with the map root as the key.
+#!
+#! Inputs:
+#!   Operand stack: [MAP_ROOT, slot_idx],
+#!   Advice map: { MAP_ROOT: [MAP_ENTIRES] },
 #! Outputs: []
 proc.add_storage_map_entries_to_delta
     adv.push_mapvaln
