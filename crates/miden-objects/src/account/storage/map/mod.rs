@@ -115,21 +115,21 @@ impl StorageMap {
 
     /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
     /// associated with a value.
-    pub fn get(&self, key: &Word) -> Word {
-        self.entries.get(key).copied().unwrap_or_default()
+    pub fn get(&self, raw_key: &Word) -> Word {
+        self.entries.get(raw_key).copied().unwrap_or_default()
     }
 
-    /// Returns an opening of the leaf associated with `key`.
+    /// Returns an opening of the leaf associated with raw key.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    pub fn open(&self, map_key: &Word) -> StorageMapWitness {
-        let hashed_map_key = Self::hash_key(*map_key);
+    pub fn open(&self, raw_key: &Word) -> StorageMapWitness {
+        let hashed_map_key = Self::hash_key(*raw_key);
         let smt_proof = self.smt.open(&hashed_map_key);
-        let value = self.entries.get(map_key).copied().unwrap_or_default();
+        let value = self.entries.get(raw_key).copied().unwrap_or_default();
 
         // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
         // open its hashed version and because of the guarantees of the storage map.
-        StorageMapWitness::new_unchecked(smt_proof, [(*map_key, value)])
+        StorageMapWitness::new_unchecked(smt_proof, [(*raw_key, value)])
     }
 
     // ITERATORS
@@ -159,15 +159,15 @@ impl StorageMap {
     /// [`Self::EMPTY_VALUE`] if no entry was previously present.
     ///
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
-    pub fn insert(&mut self, key: Word, value: Word) -> Word {
+    pub fn insert(&mut self, raw_key: Word, value: Word) -> Word {
         if value == EMPTY_WORD {
-            self.entries.remove(&key);
+            self.entries.remove(&raw_key);
         } else {
-            self.entries.insert(key, value);
+            self.entries.insert(raw_key, value);
         }
 
-        let key = Self::hash_key(key);
-        self.smt.insert(key, value) // Delegate to Smt's insert method
+        let hashed_key = Self::hash_key(raw_key);
+        self.smt.insert(hashed_key, value)
     }
 
     /// Applies the provided delta to this account storage.

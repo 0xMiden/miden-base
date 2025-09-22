@@ -73,16 +73,15 @@ impl StorageMapWitness {
     // PUBLIC ACCESSORS
     // --------------------------------------------------------------------------------------------
 
-    /// Returns the underlying [`SmtProof`].
+    /// Returns a reference to the underlying [`SmtProof`].
     pub fn as_proof(&self) -> &SmtProof {
         &self.proof
     }
 
-    /// Searches for a value in the witness with the given unhashed `map_key`.
-    pub fn find(&self, map_key: Word) -> Option<Word> {
-        let hashed_map_key = StorageMap::hash_key(map_key);
-        self.hashed_entries()
-            .find_map(|(key, value)| if *key == hashed_map_key { Some(*value) } else { None })
+    /// Returns the value corresponding to the key or [`Word::empty`] if the key is not
+    /// associated with a value.
+    pub fn get(&self, raw_key: &Word) -> Word {
+        self.entries.get(raw_key).copied().unwrap_or_default()
     }
 
     /// Returns an iterator over the key-value pairs in this witness.
@@ -90,14 +89,6 @@ impl StorageMapWitness {
     /// Note that the returned key is the raw map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
         self.entries.iter()
-    }
-
-    /// Returns an iterator over the key-value pairs in this witness.
-    ///
-    /// Note that the returned key is the hashed map key.
-    pub(crate) fn hashed_entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
-        // Convert &(Word, Word) into (&Word, &Word) as it is more flexible.
-        self.proof.leaf().entries().into_iter().map(|(key, value)| (key, value))
     }
 
     /// Returns an iterator over every inner node of this witness' merkle path.

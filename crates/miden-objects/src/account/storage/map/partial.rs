@@ -60,15 +60,26 @@ impl PartialStorageMap {
         Ok(PartialStorageMap { partial_smt, entries: map })
     }
 
+    // ACCESSORS
+    // --------------------------------------------------------------------------------------------
+
+    /// Returns a reference to the underlying [`PartialSmt`].
     pub fn partial_smt(&self) -> &PartialSmt {
         &self.partial_smt
     }
 
+    /// Returns the root of the underlying [`PartialSmt`].
     pub fn root(&self) -> Word {
         self.partial_smt.root()
     }
 
-    /// Returns an opening of the leaf associated with `key`.
+    /// Returns the value corresponding to the key or [`Word::empty`] if the key is not
+    /// associated with a value.
+    pub fn get(&self, raw_key: &Word) -> Word {
+        self.entries.get(raw_key).copied().unwrap_or_default()
+    }
+
+    /// Returns an opening of the leaf associated with the raw key.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
     ///
@@ -76,14 +87,14 @@ impl PartialStorageMap {
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial storage map.
-    pub fn open(&self, map_key: &Word) -> Result<StorageMapWitness, MerkleError> {
-        let hashed_key = StorageMap::hash_key(*map_key);
+    pub fn open(&self, raw_key: &Word) -> Result<StorageMapWitness, MerkleError> {
+        let hashed_key = StorageMap::hash_key(*raw_key);
         let smt_proof = self.partial_smt.open(&hashed_key)?;
-        let value = self.entries.get(map_key).copied().unwrap_or_default();
+        let value = self.entries.get(raw_key).copied().unwrap_or_default();
 
         // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
         // open its hashed version and because of the guarantees of the partial storage map.
-        Ok(StorageMapWitness::new_unchecked(smt_proof, [(*map_key, value)]))
+        Ok(StorageMapWitness::new_unchecked(smt_proof, [(*raw_key, value)]))
     }
 
     // ITERATORS
