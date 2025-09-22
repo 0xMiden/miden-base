@@ -78,8 +78,10 @@ end
 #! from the provided account storage map slot, verifies their signatures against the transaction message,
 #! and returns the number of successfully verified signatures.
 #!
-#! Note: Calls `account::get_map_item_init` to access the transaction’s initial storage state,
-#! enabling validation of updates to the owner public key mapping.
+#! Note: Calls `account::get_map_item_init` to access the transaction's initial storage state
+#! rather than the current state. This is crucial when validating transactions that update
+#! the owner public key mapping - the previous signers must authorize the change to
+#! the new signers, not the new signers authorizing themselves.
 #!
 #! Inputs:  [pub_key_slot_idx, num_of_approvers, MSG]
 #! Outputs: [num_verified_signatures, MSG]
@@ -107,7 +109,7 @@ export.verify_signatures.16
         sub.1 dup push.0.0.0 loc_load.PUB_KEY_MAP_IDX_LOC
         # => [owner_key_slot, [0, 0, 0, i-1], i-1, MSG]
 
-        # Get public key from initial storage map state
+        # Get public key from initial storage state
         exec.account::get_map_item_init
         # => [OWNER_PUB_KEY, i-1, MSG]
 
