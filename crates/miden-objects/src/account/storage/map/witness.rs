@@ -105,3 +105,31 @@ impl From<StorageMapWitness> for SmtProof {
         witness.proof
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use assert_matches::assert_matches;
+
+    use super::*;
+    use crate::account::StorageMap;
+
+    #[test]
+    fn creating_witness_fails_on_missing_key() {
+        // Create a storage map with one key-value pair
+        let key1 = Word::from([1, 2, 3, 4u32]);
+        let value1 = Word::from([10, 20, 30, 40u32]);
+        let entries = [(key1, value1)];
+        let storage_map = StorageMap::with_entries(entries).unwrap();
+
+        // Create a proof for the existing key
+        let proof = storage_map.open(&key1).into();
+
+        // Try to create a witness for a different key that's not in the proof
+        let missing_key = Word::from([5, 6, 7, 8u32]);
+        let result = StorageMapWitness::new(proof, [missing_key]);
+
+        assert_matches!(result, Err(StorageMapError::MissingKey { raw_key }) => {
+            assert_eq!(raw_key, missing_key);
+        });
+    }
+}
