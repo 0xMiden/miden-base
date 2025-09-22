@@ -8,9 +8,9 @@ use miden_objects::transaction::TransactionMeasurements;
 mod context_setups;
 use context_setups::{tx_consume_single_p2id, tx_consume_two_p2id_notes, tx_create_single_p2id};
 
-mod execution_benchmarks;
-use execution_benchmarks::ExecutionBenchmark;
-use execution_benchmarks::utils::write_bench_results_to_json;
+mod cycle_counting_benchmarks;
+use cycle_counting_benchmarks::ExecutionBenchmark;
+use cycle_counting_benchmarks::utils::write_bench_results_to_json;
 
 fn main() -> Result<()> {
     // create a template file for benchmark results

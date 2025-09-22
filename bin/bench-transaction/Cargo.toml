@@ -12,8 +12,8 @@ version                = "0.1.0"
 
 [[bench]]
 harness = false
-name    = "proving_benchmarks"
-path    = "src/proving_benchmarks/prove.rs"
+name    = "time_counting_benchmarks"
+path    = "src/time_counting_benchmarks/prove.rs"
 
 [dependencies]
 # Workspace dependencies

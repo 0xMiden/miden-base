@@ -9,7 +9,7 @@ use miden_objects::transaction::TransactionMeasurements;
 use serde::Serialize;
 use serde_json::{Value, from_str, to_string_pretty};
 
-use crate::execution_benchmarks::ExecutionBenchmark;
+use super::ExecutionBenchmark;
 
 // MEASUREMENTS PRINTER
 // ================================================================================================
