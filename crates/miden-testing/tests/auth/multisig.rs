@@ -53,7 +53,7 @@ fn setup_keys_and_authenticators(
         public_keys.push(pub_key);
     }
 
-    // Create authenticators only for the signers we'll actually use
+    // Create authenticators for required signers
     for i in 0..threshold {
         let authenticator = BasicAuthenticator::<ChaCha20Rng>::new_with_rng(
             &[(public_keys[i].into(), AuthSecretKey::RpoFalcon512(secret_keys[i].clone()))],
@@ -111,7 +111,7 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
     let mut mock_chain_builder =
         MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
 
-    // Create output note using add_p2id_note for spawn note
+    // Create output note for spawn note
     let output_note = mock_chain_builder.add_p2id_note(
         multisig_account.id(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -119,7 +119,7 @@ async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
         NoteType::Public,
     )?;
 
-    // Create spawn note that will create the output note
+    // Create spawn note to generate the output note
     let input_note = mock_chain_builder.add_spawn_note([&output_note])?;
 
     let mut mock_chain = mock_chain_builder.build().unwrap();
@@ -342,7 +342,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     let output_note_asset = FungibleAsset::mock(0);
 
-    // Create output note using add_p2id_note for spawn note
+    // Create output note for spawn note
     let output_note = mock_chain_builder.add_p2id_note(
         multisig_account.id(),
         ACCOUNT_ID_REGULAR_PUBLIC_ACCOUNT_UPDATABLE_CODE.try_into().unwrap(),
@@ -354,7 +354,6 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
     let salt = Word::from([Felt::new(3); 4]);
 
-    // Get the multisig library
     let multisig_lib: miden_assembly::Library = multisig_library();
 
     // Setup new signers
@@ -365,8 +364,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let threshold = 3u64;
     let num_of_approvers = 4u64;
 
-    // Create vector of public keys (each public key is 4 field elements)
-    // First add the threshold configuration [threshold, num_approvers, 0, 0]
+    // Create vector with threshold config and public keys (4 field elements each)
     let mut config_and_pubkeys_vector = Vec::new();
     config_and_pubkeys_vector.extend_from_slice(&[
         Felt::new(threshold),
@@ -375,17 +373,16 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         Felt::new(0),
     ]);
 
-    // Then add each public key
+    // Add each public key to the vector
     for public_key in new_public_keys.iter().rev() {
         let key_word: Word = (*public_key).into();
         config_and_pubkeys_vector.extend_from_slice(key_word.as_elements());
     }
 
-    // Hash the vector to create MULTISIG_CONFIG_HASH
+    // Hash the vector to create config hash
     let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
 
-    // Insert the vector of config and public keys into the advice map using MULTISIG_CONFIG_HASH as
-    // the key
+    // Insert config and public keys into advice map
     advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create a transaction script that calls the update_signers procedure
@@ -582,7 +579,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
 
 /// Tests that newly added approvers cannot sign transactions before the signer update is executed.
 ///
-/// This is a regression test to ensure that attackers cannot add their own public keys
+/// This is a regression test to ensure that unauthorized parties cannot add their own public keys
 /// to the multisig configuration and immediately use them to sign transactions before
 /// the current approvers have validated and executed the signer update.
 ///
@@ -615,8 +612,7 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     let threshold = 3u64;
     let num_of_approvers = 4u64;
 
-    // Create vector of public keys (each public key is 4 field elements)
-    // First add the threshold configuration [threshold, num_approvers, 0, 0]
+    // Create vector with threshold config and public keys (4 field elements each)
     let mut config_and_pubkeys_vector = Vec::new();
     config_and_pubkeys_vector.extend_from_slice(&[
         Felt::new(threshold),
@@ -625,17 +621,16 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         Felt::new(0),
     ]);
 
-    // Then add each public key
+    // Add each public key to the vector
     for public_key in new_public_keys.iter().rev() {
         let key_word: Word = (*public_key).into();
         config_and_pubkeys_vector.extend_from_slice(key_word.as_elements());
     }
 
-    // Hash the vector to create MULTISIG_CONFIG_HASH
+    // Hash the vector to create config hash
     let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
 
-    // Insert the vector of config and public keys into the advice map using MULTISIG_CONFIG_HASH as
-    // the key
+    // Insert config and public keys into advice map
     advice_map.insert(multisig_config_hash, config_and_pubkeys_vector);
 
     // Create a transaction script that calls the update_signers procedure
@@ -693,19 +688,14 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
         .extend_advice_inputs(advice_inputs.clone())
         .build()?;
 
-    // This should fail because the new approvers are not yet authorized
+    // Should fail - new approvers not yet authorized
     let result = tx_context_with_new_sigs.execute().await;
-    println!("Result of transaction with new signatures: {:?}", result);
 
-    // Check if the transaction failed as expected
-    if result.is_ok() {
-        println!("WARNING: Transaction succeeded when it should have failed!");
-        println!("This suggests that new approvers can sign transactions before being authorized.");
-        println!("This might be a security issue that needs investigation.");
-        // For now, let's make the test pass but log this issue
-    } else {
-        println!("Good: Transaction failed as expected when signed by unauthorized approvers");
-    }
+    // Transaction must fail when signed by unauthorized approvers
+    assert!(
+        result.is_err(),
+        "Transaction should fail when signed by unauthorized approvers before signer update is executed"
+    );
 
     Ok(())
 }
