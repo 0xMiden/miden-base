@@ -64,6 +64,7 @@ use miden_lib::transaction::memory::{
     TX_SCRIPT_ROOT_PTR,
     VERIFICATION_BASE_FEE_IDX,
 };
+use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -90,7 +91,7 @@ use miden_objects::transaction::{
 };
 use miden_objects::{EMPTY_WORD, LexicographicWord, ONE, WORD_SIZE};
 use miden_processor::{AdviceInputs, Process, Word};
-use miden_tx::TransactionExecutorError;
+use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -833,6 +834,13 @@ fn create_account_with_storage_map() -> anyhow::Result<()> {
     assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
 
+    // The delta should be present on the proven tx.
+    let proven_tx = LocalTransactionProver::default().prove(tx.clone().into())?;
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+    assert_eq!(delta, tx.account_delta());
+
     Ok(())
 }
 
@@ -862,6 +870,13 @@ fn create_account_with_storage_values() -> anyhow::Result<()> {
 
     assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));
+
+    // The delta should be present on the proven tx.
+    let proven_tx = LocalTransactionProver::default().prove(tx.clone().into())?;
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+    assert_eq!(delta, tx.account_delta());
 
     Ok(())
 }
