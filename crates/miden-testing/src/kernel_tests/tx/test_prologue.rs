@@ -797,10 +797,9 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
     Ok(())
 }
 
-/// TODO
+/// Tests that an account with a storage map can be created.
 ///
-/// Tests that a account can be created in a complete transaction execution (not using
-/// [`TransactionContext::execute_code`]).
+/// In particular, this tests the account delta logic for storage maps for _new_ accounts.
 #[test]
 fn create_account_with_storage_map() -> anyhow::Result<()> {
     let map_entries = [
@@ -830,6 +829,36 @@ fn create_account_with_storage_map() -> anyhow::Result<()> {
                 .map(|(key, value)| { (LexicographicWord::new(key), value) })
         )
     );
+
+    assert!(tx.account_delta().vault().is_empty());
+    assert_eq!(tx.final_account().nonce(), Felt::new(1));
+
+    Ok(())
+}
+
+/// Tests that an account with storage values can be created.
+///
+/// In particular, this tests the account delta logic for storage values for _new_ accounts.
+#[test]
+fn create_account_with_storage_values() -> anyhow::Result<()> {
+    let slot0 = StorageSlot::Value(Word::from([1, 2, 3, 4u32]));
+    let slot1 = StorageSlot::Value(Word::from([10, 20, 30, 40u32]));
+
+    let account = AccountBuilder::new([7; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![slot0.clone(), slot1.clone()]))
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .build()?
+        .execute_blocking()
+        .context("failed to execute account-creating transaction")?;
+
+    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
+
+    assert_eq!(tx.account_delta().storage().values().get(&0).unwrap(), &slot0.value());
+    assert_eq!(tx.account_delta().storage().values().get(&1).unwrap(), &slot1.value());
 
     assert!(tx.account_delta().vault().is_empty());
     assert_eq!(tx.final_account().nonce(), Felt::new(1));

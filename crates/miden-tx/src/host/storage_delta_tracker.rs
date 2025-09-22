@@ -39,7 +39,8 @@ impl StorageDeltaTracker {
 
     /// Constructs a new initial storage delta from the provided account.
     ///
-    /// TODO: Document.
+    /// If the account is new, inserts the storage entries into the delta analogously to the
+    /// transaction kernel delta.
     pub fn new(account: &PartialAccount) -> Self {
         let mut delta = AccountStorageDelta::new();
 
