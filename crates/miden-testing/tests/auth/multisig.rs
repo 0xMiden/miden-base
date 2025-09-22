@@ -99,8 +99,10 @@ fn create_multisig_account(
 /// - 1 Multisig Contract
 #[tokio::test]
 async fn test_multisig_2_of_2_with_note_creation() -> anyhow::Result<()> {
+    // Setup keys and authenticators
     let (_secret_keys, public_keys, authenticators) = setup_keys_and_authenticators(2, 2)?;
 
+    // Create multisig account
     let multisig_starting_balance = 10u64;
     let mut multisig_account = create_multisig_account(2, &public_keys, multisig_starting_balance)?;
 
