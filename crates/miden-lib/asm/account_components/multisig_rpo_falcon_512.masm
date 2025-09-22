@@ -216,6 +216,8 @@ export.auth_tx_rpo_falcon512_multisig
     movup.5
     # => [threshold, num_verified_signatures, TX_SUMMARY_COMMITMENT]
 
+    push.111 debug.stack drop
+
     u32assert2 u32lt
     # => [is_unauthorized, TX_SUMMARY_COMMITMENT]
 

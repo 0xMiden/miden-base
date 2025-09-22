@@ -39,7 +39,8 @@ fn setup_keys_and_authenticators(
     num_approvers: usize,
     threshold: usize,
 ) -> anyhow::Result<MultisigTestSetup> {
-    let mut rng = ChaCha20Rng::from_seed([0u8; 32]);
+    let seed: [u8; 32] = rand::random();
+    let mut rng = ChaCha20Rng::from_seed(seed);
 
     let mut secret_keys = Vec::new();
     let mut public_keys = Vec::new();
@@ -691,10 +692,10 @@ async fn test_multisig_new_approvers_cannot_sign_before_update() -> anyhow::Resu
     // Should fail - new approvers not yet authorized
     let result = tx_context_with_new_sigs.execute().await;
 
-    // Transaction must fail when signed by unauthorized approvers
+    // Assert that the transaction fails as expected
     assert!(
         result.is_err(),
-        "Transaction should fail when signed by unauthorized approvers before signer update is executed"
+        "Transaction should fail when signed by unauthorized new approvers"
     );
 
     Ok(())
