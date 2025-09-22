@@ -42,6 +42,8 @@ const.IS_EXECUTED_FLAG=[1, 0, 0, 0]
 # ERRORS
 const.ERR_TX_ALREADY_EXECUTED="failed to approve multisig transaction as it was already executed"
 
+const.MALFORMED_MULTISIG_CONFIG="number of approvers must be equal to or greater than threshold"
+
 #! Check if transaction has already been executed and add it to executed transactions for replay protection.
 #!
 #! Inputs:  [MSG]
@@ -72,10 +74,25 @@ end
 
 #! Update threshold config and add / remove owners
 #!
-#! Inputs:  [NEW_THRESHOLD_CONFIG]
-#! Outputs: []
+#! Inputs:
+#!   Operand stack: [MULTISIG_CONFIG_HASH] - the hash of the threshold and new public key vector
+#!   Advice map: {
+#!     MULTISIG_CONFIG_HASH => [CONFIG, PUB_KEY_0, PUB_KEY_1, PUB_KEY_N]
+#!   }
+#! Outputs:
+#!   Operand stack: []
+#!
+#! Where:
+#! - CONFIG is [threshold, num_approvers, 0, 0]
+#! - PUB_KEY_i is the public key of the i-th signer
 #!
 export.update_signers_and_threshold
+    adv.push_mapval
+    # => [MULTISIG_CONFIG_HASH]
+
+    adv_loadw
+    # => [NEW_THRESHOLD_CONFIG]
+
     dupw
     # => [NEW_THRESHOLD_CONFIG, NEW_THRESHOLD_CONFIG]
 
@@ -87,27 +104,29 @@ export.update_signers_and_threshold
 
     dropw
     # => [NEW_THRESHOLD_CONFIG]
-    # => [?, ?, num_approvers, ?]
+    # => [0, 0, num_approvers, threshold]
 
-    drop drop swap drop
+    drop drop dup movdn.2
+    # => [num_approvers, threshold, num_approvers]
+
+    u32assert2 u32gt
+    # => [invalid_config]
+
+    assertz.err=MALFORMED_MULTISIG_CONFIG
     # => [num_approvers]
 
     dup neq.0
     while.true
         sub.1
+        # => [i-1]
 
-        dup
-        # @dev using key [1,0,0,n] since [0,0,0,0] key is reserved
-        push.0.0.1
-        # => [[1, 0, 0, i-1], i-1]
-
-        adv.push_mapval
-        # => [[1, 0, 0, i-1], i-1]
+        dup push.0.0.0
+        # => [[0, 0, 0, i-1], i-1]
 
         padw adv_loadw
-        # => [PUB_KEY, [1, 0, 0, i-1], i-1]
+        # => [PUB_KEY, [0, 0, 0, i-1], i-1]
 
-        swapw drop push.0
+        swapw
         # => [[0, 0, 0, i-1], PUB_KEY, i-1]
 
         push.PUBLIC_KEYS_MAP_SLOT
@@ -120,7 +139,7 @@ export.update_signers_and_threshold
         # => [i-1]
 
         dup neq.0
-        # => [is_zero]
+        # => [is_zero, i-1]
     end
 end
 

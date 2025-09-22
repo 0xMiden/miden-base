@@ -20,7 +20,7 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::transaction::OutputNote;
 use miden_objects::vm::AdviceMap;
-use miden_objects::{Felt, Word};
+use miden_objects::{Felt, Hasher, Word};
 use miden_processor::AdviceInputs;
 use miden_testing::{Auth, MockChainBuilder, assert_transaction_executor_error};
 use miden_tx::TransactionExecutorError;
@@ -338,7 +338,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let mock_chain_builder = MockChainBuilder::with_accounts([multisig_account.clone()]).unwrap();
     let mut mock_chain = mock_chain_builder.build().unwrap();
 
-    let salt = Word::from([Felt::new(1); 4]);
+    let salt = Word::from([Felt::new(3); 4]);
 
     // Get the multisig library
     let multisig_lib: miden_assembly::Library = multisig_library();
@@ -348,12 +348,31 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let (_new_secret_keys, new_public_keys, _new_authenticators) =
         setup_keys_and_authenticators(4, 4)?;
 
-    // Add new public keys to advice map
-    for (i, public_key) in new_public_keys.iter().enumerate() {
-        let key_word: Word = [Felt::new(i as u64), Felt::new(0), Felt::new(0), Felt::new(1)].into();
-        let value_word: Word = (*public_key).into();
-        advice_map.insert(key_word, value_word.to_vec());
+    let threshold = 3u64;
+    let num_of_approvers = 4u64;
+
+    // Create vector of public keys (each public key is 4 field elements)
+    // First add the threshold configuration [threshold, num_approvers, 0, 0]
+    let mut config_and_pubkeys_vector = Vec::new();
+    config_and_pubkeys_vector.extend_from_slice(&[
+        Felt::new(threshold),
+        Felt::new(num_of_approvers),
+        Felt::new(0),
+        Felt::new(0),
+    ]);
+
+    // Then add each public key
+    for public_key in new_public_keys.iter().rev() {
+        let key_word: Word = (*public_key).into();
+        config_and_pubkeys_vector.extend_from_slice(&key_word.as_elements());
     }
+
+    // Hash the vector to create MULTISIG_CONFIG_HASH
+    let multisig_config_hash = Hasher::hash_elements(&config_and_pubkeys_vector);
+
+    // Insert the vector of config and public keys into the advice map using MULTISIG_CONFIG_HASH as
+    // the key
+    advice_map.insert(multisig_config_hash.into(), config_and_pubkeys_vector);
 
     // Create a transaction script that calls the update_signers procedure
     let tx_script_code = "
@@ -371,19 +390,16 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
         ..Default::default()
     };
 
-    let threshold = 3u64;
-    let num_of_approvers = 4u64;
-
-    let tx_script_args: Word =
-        [Felt::new(threshold), Felt::new(num_of_approvers), Felt::new(0), Felt::new(0)].into();
+    // Pass the MULTISIG_CONFIG_HASH as the tx_script_args
+    let tx_script_args: Word = multisig_config_hash.into();
 
     // Execute transaction without signatures first to get tx summary
     let tx_context_init = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script.clone())
         .tx_script_args(tx_script_args)
-        .auth_args(salt)
         .extend_advice_inputs(advice_inputs.clone())
+        .auth_args(salt)
         .build()?;
 
     let tx_summary = match tx_context_init.execute().await.unwrap_err() {
@@ -402,7 +418,7 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     let tx_context_execute = mock_chain
         .build_tx_context(multisig_account.id(), &[], &[])?
         .tx_script(tx_script)
-        .tx_script_args(tx_script_args)
+        .tx_script_args(multisig_config_hash)
         .add_signature(public_keys[0], msg, sig_1)
         .add_signature(public_keys[1], msg, sig_2)
         .auth_args(salt)
@@ -433,12 +449,16 @@ async fn test_multisig_update_signers() -> anyhow::Result<()> {
     }
 
     // Verify the threshold was updated by checking storage slot 0
-    let threshold_storage = updated_multisig_account.storage().get_item(0).unwrap();
+    let threshold_config_storage = updated_multisig_account.storage().get_item(0).unwrap();
 
-    // The threshold should be stored in the first element of slot 0
     assert_eq!(
-        threshold_storage[0],
+        threshold_config_storage[0],
         Felt::new(threshold),
+        "Threshold was not updated correctly"
+    );
+    assert_eq!(
+        threshold_config_storage[1],
+        Felt::new(num_of_approvers),
         "Threshold was not updated correctly"
     );
 
