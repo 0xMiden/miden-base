@@ -63,8 +63,8 @@ const LINK_MAP_GET_EVENT: u32 = 0x2_001d; // 131101
 
 const UNAUTHORIZED_EVENT: u32 = 0x2_001e; // 131102
 
-const EPILOGUE_AUTH_PROC_START: u32 = 0x2_0021; // 131105
-const EPILOGUE_AUTH_PROC_END: u32 = 0x2_0022; // 131106
+const EPILOGUE_AUTH_PROC_START: u32 = 0x2_0023; // 131107
+const EPILOGUE_AUTH_PROC_END: u32 = 0x2_0024; // 131108
 
 /// Events which may be emitted by a transaction kernel.
 ///
