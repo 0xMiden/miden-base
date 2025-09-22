@@ -56,10 +56,10 @@ This command will run both the cycle counting and the time counting benchmarks.
 
 ```bash
 # Run the cycle counting benchmarks
-cargo run --bin bench-transaction
+cargo run --bin bench-transaction --features concurrent
 
 # Run the time counting benchmarks
-cargo bench --bin bench-transaction --bench time_counting_benchmarks
+cargo bench --bin bench-transaction --bench time_counting_benchmarks --features concurrent
 ```
 
 ## License
