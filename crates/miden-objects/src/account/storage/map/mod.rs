@@ -42,11 +42,11 @@ pub const EMPTY_STORAGE_MAP_ROOT: Word = *EmptySubtreeRoots::entry(StorageMap::D
 pub struct StorageMap {
     /// The SMT where each key is the hashed original key.
     smt: Smt,
-    /// The entries of the map where the key is the original user-chosen one.
+    /// The entries of the map where the key is the raw user-chosen one.
     ///
     /// It is an invariant of this type that the map's entries are always consistent with the SMT's
     /// entries and vice-versa.
-    map: BTreeMap<Word, Word>,
+    entries: BTreeMap<Word, Word>,
 }
 
 impl StorageMap {
@@ -66,7 +66,10 @@ impl StorageMap {
     ///
     /// All leaves in the returned tree are set to [Self::EMPTY_VALUE].
     pub fn new() -> Self {
-        StorageMap { smt: Smt::new(), map: BTreeMap::new() }
+        StorageMap {
+            smt: Smt::new(),
+            entries: BTreeMap::new(),
+        }
     }
 
     /// Creates a new [`StorageMap`] from the provided key-value entries.
@@ -94,12 +97,12 @@ impl StorageMap {
     }
 
     /// Creates a new [`StorageMap`] from the given map. For internal use.
-    fn from_btree_map(map: BTreeMap<Word, Word>) -> Self {
-        let hashed_keys_iter = map.iter().map(|(key, value)| (Self::hash_key(*key), *value));
+    fn from_btree_map(entries: BTreeMap<Word, Word>) -> Self {
+        let hashed_keys_iter = entries.iter().map(|(key, value)| (Self::hash_key(*key), *value));
         let smt = Smt::with_entries(hashed_keys_iter)
             .expect("btree maps should not contain duplicate keys");
 
-        StorageMap { smt, map }
+        StorageMap { smt, entries }
     }
 
     // PUBLIC ACCESSORS
@@ -113,7 +116,7 @@ impl StorageMap {
     /// Returns the value corresponding to the key or [`Self::EMPTY_VALUE`] if the key is not
     /// associated with a value.
     pub fn get(&self, key: &Word) -> Word {
-        self.map.get(key).copied().unwrap_or_default()
+        self.entries.get(key).copied().unwrap_or_default()
     }
 
     /// Returns an opening of the leaf associated with `key`.
@@ -122,7 +125,7 @@ impl StorageMap {
     pub fn open(&self, map_key: &Word) -> StorageMapWitness {
         let hashed_map_key = Self::hash_key(*map_key);
         let smt_proof = self.smt.open(&hashed_map_key);
-        let value = self.map.get(map_key).copied().unwrap_or_default();
+        let value = self.entries.get(map_key).copied().unwrap_or_default();
 
         // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
         // open its hashed version and because of the guarantees of the storage map.
@@ -137,9 +140,11 @@ impl StorageMap {
         self.smt.leaves() // Delegate to Smt's leaves method
     }
 
-    /// Returns an iterator over the key value pairs of the map.
+    /// Returns an iterator over the key-value pairs in this storage map.
+    ///
+    /// Note that the returned key is the raw map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
-        self.map.iter()
+        self.entries.iter()
     }
 
     /// Returns an iterator over the inner nodes of the underlying [`Smt`].
@@ -156,9 +161,9 @@ impl StorageMap {
     /// If the provided `value` is [`Self::EMPTY_VALUE`] the entry will be removed.
     pub fn insert(&mut self, key: Word, value: Word) -> Word {
         if value == EMPTY_WORD {
-            self.map.remove(&key);
+            self.entries.remove(&key);
         } else {
-            self.map.insert(key, value);
+            self.entries.insert(key, value);
         }
 
         let key = Self::hash_key(key);
@@ -177,12 +182,12 @@ impl StorageMap {
 
     /// Consumes the map and returns the underlying map of entries.
     pub fn into_entries(self) -> BTreeMap<Word, Word> {
-        self.map
+        self.entries
     }
 
     /// Hashes the given key to get the key of the SMT.
-    pub fn hash_key(key: Word) -> Word {
-        Hasher::hash_elements(key.as_elements())
+    pub fn hash_key(raw_key: Word) -> Word {
+        Hasher::hash_elements(raw_key.as_elements())
     }
 
     // TODO: Replace with https://github.com/0xMiden/crypto/issues/515 once implemented.
@@ -204,7 +209,7 @@ impl Default for StorageMap {
 
 impl Serializable for StorageMap {
     fn write_into<W: ByteWriter>(&self, target: &mut W) {
-        self.map.write_into(target);
+        self.entries.write_into(target);
     }
 
     fn get_size_hint(&self) -> usize {

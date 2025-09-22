@@ -12,16 +12,20 @@ use crate::errors::StorageMapError;
 ///
 /// ## Guarantees
 ///
-/// This type guarantees that the original key-value pairs it contains are all present in the
+/// This type guarantees that the raw key-value pairs it contains are all present in the
 /// contained SMT proof. Note that the inverse is not necessarily true. The proof may contain more
-/// entries than the map because to prove inclusion of a given original key A an
+/// entries than the map because to prove inclusion of a given raw key A an
 /// [`SmtLeaf::Multiple`](miden_crypto::merkle::SmtLeaf::Multiple) may be present that contains both
 /// keys hash(A) and hash(B). However, B may not be present in the key-value pairs and this is a
 /// valid state.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct StorageMapWitness {
     proof: SmtProof,
-    map: BTreeMap<Word, Word>,
+    /// The entries of the map where the key is the raw user-chosen one.
+    ///
+    /// It is an invariant of this type that the map's entries are always consistent with the SMT's
+    /// entries and vice-versa.
+    entries: BTreeMap<Word, Word>,
 }
 
 impl StorageMapWitness {
@@ -36,21 +40,21 @@ impl StorageMapWitness {
     /// - Any of the map keys is not contained in the proof.
     pub fn new(
         proof: SmtProof,
-        map_keys: impl IntoIterator<Item = Word>,
+        raw_keys: impl IntoIterator<Item = Word>,
     ) -> Result<Self, StorageMapError> {
-        let mut map = BTreeMap::new();
+        let mut entries = BTreeMap::new();
 
-        for map_key in map_keys.into_iter() {
-            let hashed_map_key = StorageMap::hash_key(map_key);
+        for raw_key in raw_keys.into_iter() {
+            let hashed_map_key = StorageMap::hash_key(raw_key);
             let value =
-                proof.get(&hashed_map_key).ok_or(StorageMapError::MissingKey { map_key })?;
-            map.insert(map_key, value);
+                proof.get(&hashed_map_key).ok_or(StorageMapError::MissingKey { raw_key })?;
+            entries.insert(raw_key, value);
         }
 
-        Ok(Self { proof, map })
+        Ok(Self { proof, entries })
     }
 
-    /// Creates a new [`StorageMapWitness`] from an SMT proof and a set of key value pairs.
+    /// Creates a new [`StorageMapWitness`] from an SMT proof and a set of raw key value pairs.
     ///
     /// # Warning
     ///
@@ -58,11 +62,11 @@ impl StorageMapWitness {
     /// details.
     pub fn new_unchecked(
         proof: SmtProof,
-        key_values: impl IntoIterator<Item = (Word, Word)>,
+        raw_key_values: impl IntoIterator<Item = (Word, Word)>,
     ) -> Self {
         Self {
             proof,
-            map: key_values.into_iter().collect(),
+            entries: raw_key_values.into_iter().collect(),
         }
     }
 
@@ -83,15 +87,15 @@ impl StorageMapWitness {
 
     /// Returns an iterator over the key-value pairs in this witness.
     ///
-    /// Note that the returned key is the original map key.
+    /// Note that the returned key is the raw map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
-        self.map.iter()
+        self.entries.iter()
     }
 
     /// Returns an iterator over the key-value pairs in this witness.
     ///
     /// Note that the returned key is the hashed map key.
-    pub fn hashed_entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
+    pub(crate) fn hashed_entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
         // Convert &(Word, Word) into (&Word, &Word) as it is more flexible.
         self.proof.leaf().entries().into_iter().map(|(key, value)| (key, value))
     }

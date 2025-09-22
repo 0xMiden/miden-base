@@ -24,15 +24,19 @@ use crate::utils::serde::{ByteReader, DeserializationError};
 ///
 /// ## Guarantees
 ///
-/// This type guarantees that the original key-value pairs it contains are all present in the
+/// This type guarantees that the raw key-value pairs it contains are all present in the
 /// contained partial SMT. Note that the inverse is not necessarily true. The SMT may contain more
-/// entries than the map because to prove inclusion of a given original key A an
+/// entries than the map because to prove inclusion of a given raw key A an
 /// [`SmtLeaf::Multiple`] may be present that contains both keys hash(A) and hash(B). However, B may
 /// not be present in the key-value pairs and this is a valid state.
 #[derive(Clone, Debug, PartialEq, Eq, Default)]
 pub struct PartialStorageMap {
     partial_smt: PartialSmt,
-    map: BTreeMap<Word, Word>,
+    /// The entries of the map where the key is the raw user-chosen one.
+    ///
+    /// It is an invariant of this type that the map's entries are always consistent with the
+    /// partial SMT's entries and vice-versa.
+    entries: BTreeMap<Word, Word>,
 }
 
 impl PartialStorageMap {
@@ -53,7 +57,7 @@ impl PartialStorageMap {
             partial_smt.add_proof(smt_proof)?;
         }
 
-        Ok(PartialStorageMap { partial_smt, map })
+        Ok(PartialStorageMap { partial_smt, entries: map })
     }
 
     pub fn partial_smt(&self) -> &PartialSmt {
@@ -75,7 +79,7 @@ impl PartialStorageMap {
     pub fn open(&self, map_key: &Word) -> Result<StorageMapWitness, MerkleError> {
         let hashed_key = StorageMap::hash_key(*map_key);
         let smt_proof = self.partial_smt.open(&hashed_key)?;
-        let value = self.map.get(map_key).copied().unwrap_or_default();
+        let value = self.entries.get(map_key).copied().unwrap_or_default();
 
         // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
         // open its hashed version and because of the guarantees of the partial storage map.
@@ -90,9 +94,11 @@ impl PartialStorageMap {
         self.partial_smt.leaves()
     }
 
-    /// Returns an iterator over the key value pairs of the map.
+    /// Returns an iterator over the key-value pairs in this storage map.
+    ///
+    /// Note that the returned key is the raw map key.
     pub fn entries(&self) -> impl Iterator<Item = (&Word, &Word)> {
-        self.map.iter()
+        self.entries.iter()
     }
 
     /// Returns an iterator over the inner nodes of the underlying [`PartialSmt`].
@@ -105,7 +111,7 @@ impl PartialStorageMap {
 
     /// Adds a [`StorageMapWitness`] for the specific key-value pair to this [`PartialStorageMap`].
     pub fn add(&mut self, witness: StorageMapWitness) -> Result<(), MerkleError> {
-        self.map.extend(witness.entries().map(|(key, value)| (*key, *value)));
+        self.entries.extend(witness.entries().map(|(key, value)| (*key, *value)));
         self.partial_smt.add_proof(SmtProof::from(witness))
     }
 }
@@ -113,17 +119,17 @@ impl PartialStorageMap {
 impl From<StorageMap> for PartialStorageMap {
     fn from(value: StorageMap) -> Self {
         let smt = value.smt;
-        let map = value.map;
+        let map = value.entries;
 
-        PartialStorageMap { partial_smt: smt.into(), map }
+        PartialStorageMap { partial_smt: smt.into(), entries: map }
     }
 }
 
 impl Serializable for PartialStorageMap {
     fn write_into<W: miden_core::utils::ByteWriter>(&self, target: &mut W) {
         target.write(&self.partial_smt);
-        target.write_usize(self.map.len());
-        target.write_many(self.map.keys());
+        target.write_usize(self.entries.len());
+        target.write_many(self.entries.keys());
     }
 }
 
@@ -145,6 +151,6 @@ impl Deserializable for PartialStorageMap {
             map.insert(key, value);
         }
 
-        Ok(PartialStorageMap { partial_smt, map })
+        Ok(PartialStorageMap { partial_smt, entries: map })
     }
 }
