@@ -5,6 +5,7 @@ use miden_objects::account::{
     AccountStorageDelta,
     AccountStorageHeader,
     PartialAccount,
+    PartialStorageMap,
     StorageMap,
     StorageSlotType,
 };
@@ -51,8 +52,15 @@ impl StorageDeltaTracker {
                         delta.set_item(slot_idx, *value);
                     },
                     StorageSlotType::Map => {
-                        // TODO: For now do nothing for maps.
-                        // TODO: Add a test that executes this branch.
+                        let storage_map = account
+                            .storage()
+                            .maps()
+                            .find(|map| map.root() == *value)
+                            .expect("storage map should be present in partial storage");
+
+                        storage_map.entries().for_each(|(key, value)| {
+                            delta.set_map_item(slot_idx, *key, *value);
+                        });
                     },
                 },
             );

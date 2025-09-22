@@ -1,5 +1,6 @@
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+use std::fs::DirEntry;
 
 use anyhow::Context;
 use miden_lib::account::wallets::BasicWallet;
@@ -87,7 +88,7 @@ use miden_objects::transaction::{
     TransactionArgs,
     TransactionScript,
 };
-use miden_objects::{EMPTY_WORD, ONE, WORD_SIZE};
+use miden_objects::{EMPTY_WORD, LexicographicWord, ONE, WORD_SIZE};
 use miden_processor::{AdviceInputs, Process, Word};
 use miden_tx::TransactionExecutorError;
 use rand::{Rng, SeedableRng};
@@ -792,6 +793,46 @@ fn test_get_blk_timestamp() -> anyhow::Result<()> {
     let process = tx_context.execute_code(code)?;
 
     assert_eq!(process.stack.get(0), tx_context.tx_inputs().block_header().timestamp().into());
+
+    Ok(())
+}
+
+/// TODO
+///
+/// Tests that a account can be created in a complete transaction execution (not using
+/// [`TransactionContext::execute_code`]).
+#[test]
+fn create_account_with_storage_map() -> anyhow::Result<()> {
+    let map_entries = [
+        (Word::from([1, 2, 3, 4u32]), Word::from([5, 6, 7, 8u32])),
+        (Word::from([10, 20, 30, 40u32]), Word::from([50, 60, 70, 80u32])),
+    ];
+    let map_slot = StorageSlot::Map(StorageMap::with_entries(map_entries)?);
+
+    let account = AccountBuilder::new([6; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(vec![map_slot]))
+        .build()?;
+
+    let tx = TransactionContextBuilder::new(account)
+        .build()?
+        .execute_blocking()
+        .context("failed to execute account-creating transaction")?;
+
+    assert_eq!(tx.account_delta().nonce_delta(), Felt::new(1));
+
+    assert_eq!(
+        tx.account_delta().storage().maps().get(&0).unwrap().entries(),
+        &BTreeMap::from_iter(
+            map_entries
+                .into_iter()
+                .map(|(key, value)| { (LexicographicWord::new(key), value) })
+        )
+    );
+
+    assert!(tx.account_delta().vault().is_empty());
+    assert_eq!(tx.final_account().nonce(), Felt::new(1));
 
     Ok(())
 }

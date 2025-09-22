@@ -461,7 +461,7 @@ proc.process_account_data
     # process conditional logic depending on whether the account is new or existing
     if.true
         # set the initial slot values to be empty depending on their type
-        exec.memory::set_empty_initial_storage_slots
+        exec.account::set_empty_initial_storage_slots
         # => []
 
         # set the initial account commitment

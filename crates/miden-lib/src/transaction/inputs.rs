@@ -68,6 +68,19 @@ impl TransactionAdviceInputs {
             inputs.add_map_entry(account_id_key, seed.to_vec());
         }
 
+        // if the account is new, insert the storage map entries into the advice provider.
+        if partial_native_acc.is_new() {
+            for storage_map in partial_native_acc.storage().maps() {
+                let map_entries = storage_map
+                    .entries()
+                    .flat_map(|(key, value)| {
+                        value.as_elements().iter().chain(key.as_elements().iter()).copied()
+                    })
+                    .collect();
+                inputs.add_map_entry(storage_map.root(), map_entries);
+            }
+        }
+
         // --- foreign account injection --------------------------------------
         inputs.add_foreign_accounts(tx_args.foreign_account_inputs())?;
 
