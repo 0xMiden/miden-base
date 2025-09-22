@@ -292,13 +292,15 @@ impl StorageMapDelta {
     }
 
     /// Returns a reference to the updated entries in this storage map delta.
+    ///
+    /// Note that the returned key is the raw map key.
     pub fn entries(&self) -> &BTreeMap<LexicographicWord, Word> {
         &self.0
     }
 
     /// Inserts an item into the storage map delta.
-    pub fn insert(&mut self, key: Word, value: Word) {
-        self.0.insert(LexicographicWord::new(key), value);
+    pub fn insert(&mut self, raw_key: Word, value: Word) {
+        self.0.insert(LexicographicWord::new(raw_key), value);
     }
 
     /// Returns true if storage map delta contains no updates.
