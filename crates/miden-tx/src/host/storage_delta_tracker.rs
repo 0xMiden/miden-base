@@ -66,7 +66,6 @@ impl StorageDeltaTracker {
                 },
             );
 
-            // TODO: Move into fn AccountStorage::initial_header?
             let slots = account
                 .storage()
                 .header()
