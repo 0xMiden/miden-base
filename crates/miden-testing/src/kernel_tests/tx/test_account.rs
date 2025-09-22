@@ -16,7 +16,7 @@ use miden_lib::testing::account_component::MockAccountComponent;
 use miden_lib::testing::mock_account::MockAccountExt;
 use miden_lib::transaction::TransactionKernel;
 use miden_lib::utils::ScriptBuilder;
-use miden_objects::StarkField;
+use miden_objects::account::delta::AccountUpdateDetails;
 use miden_objects::account::{
     Account,
     AccountBuilder,
@@ -41,8 +41,9 @@ use miden_objects::testing::account_id::{
 };
 use miden_objects::testing::storage::STORAGE_LEAVES_2;
 use miden_objects::transaction::{ExecutedTransaction, TransactionScript};
+use miden_objects::{LexicographicWord, StarkField};
 use miden_processor::{EMPTY_WORD, ExecutionError, Word};
-use miden_tx::TransactionExecutorError;
+use miden_tx::{LocalTransactionProver, TransactionExecutorError};
 use rand::{Rng, SeedableRng};
 use rand_chacha::ChaCha20Rng;
 
@@ -961,6 +962,82 @@ fn test_compute_storage_commitment() -> anyhow::Result<()> {
         "#,
     );
     tx_context.execute_code(&code)?;
+
+    Ok(())
+}
+
+/// Tests that the storage map updates for a _new public_ account in an executed and proven
+/// transaction match up.
+///
+/// This is an interesting test case because for new public accounts the prover converts the partial
+/// account into a full account as a temporary measure. Because of the additional hashing of map
+/// keys in storage maps, this test ensures that the partial storage map is correctly converted into
+/// a full storage map. If we end up representing new public accounts as account deltas, this test
+/// can likely go away.
+#[test]
+fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result<()> {
+    // Build a public account so the proven transaction includes the account update.
+    let mock_slots = AccountStorage::mock_storage_slots();
+    let mut account = AccountBuilder::new([1; 32])
+        .storage_mode(AccountStorageMode::Public)
+        .with_auth_component(Auth::IncrNonce)
+        .with_component(MockAccountComponent::with_slots(mock_slots.clone()))
+        .build()?;
+
+    // The index of the mock map in account storage is 2.
+    let map_index = 2u8;
+    // Fetch a random existing key from the map.
+    let StorageSlot::Map(mock_map) = &mock_slots[map_index as usize] else {
+        panic!("expected map");
+    };
+    let existing_key = mock_map.entries().next().unwrap().0;
+
+    let value0 = Word::from([3, 4, 5, 6u32]);
+
+    let code = format!(
+        "
+      use.mock::account
+
+      begin
+          # Update an existing key.
+          push.{value0}
+          push.{existing_key}
+          push.{map_index}
+          # => [index, KEY, VALUE]
+          call.account::set_map_item
+
+          exec.::std::sys::truncate_stack
+      end
+      "
+    );
+
+    let builder = ScriptBuilder::with_mock_libraries()?;
+    let source_manager = builder.source_manager();
+    let tx_script = builder.compile_tx_script(code)?;
+
+    let tx = TransactionContextBuilder::new(account.clone())
+        .tx_script(tx_script)
+        .with_source_manager(source_manager)
+        .build()?
+        .execute_blocking()?;
+
+    let map_delta = tx.account_delta().storage().maps().get(&map_index).unwrap();
+    assert_eq!(
+        map_delta.entries().get(&LexicographicWord::new(*existing_key)).unwrap(),
+        &value0
+    );
+
+    let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
+
+    let AccountUpdateDetails::New(new_account) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
+
+    account.apply_delta(tx.account_delta())?;
+
+    for (idx, slot) in new_account.storage().slots().iter().enumerate() {
+        assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
+    }
 
     Ok(())
 }

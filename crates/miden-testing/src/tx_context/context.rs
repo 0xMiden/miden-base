@@ -227,20 +227,48 @@ impl DataStore for TransactionContext {
         vault_root: Word,
         vault_key: Word,
     ) -> impl FutureMaybeSend<Result<AssetWitness, DataStoreError>> {
-        assert_eq!(
-            account_id,
-            self.account.id(),
-            "only native account vault witnesses can be requested (for now)"
-        );
-        assert_eq!(
-            vault_root,
-            self.account.vault().root(),
-            "vault root should match the native account's root (for now)"
-        );
+        async move {
+            if account_id == self.account().id() {
+                if self.account().vault().root() != vault_root {
+                    return Err(DataStoreError::other(format!(
+                        "native account {account_id} has vault root {} but {vault_root} was requested",
+                        self.account().vault().root()
+                    )));
+                }
 
-        let asset_witness = self.account().vault().open(vault_key);
+                Ok(self.account().vault().open(vault_key))
+            } else {
+                let foreign_account_inputs = self
+                    .foreign_account_inputs
+                    .iter()
+                    .find_map(
+                        |(id, account_inputs)| {
+                            if account_id == *id { Some(account_inputs) } else { None }
+                        },
+                    )
+                    .ok_or_else(|| {
+                        DataStoreError::other(format!(
+                            "failed to find foreign account {account_id} in foreign account inputs"
+                        ))
+                    })?;
 
-        async { Ok(asset_witness) }
+                if foreign_account_inputs.account().vault().root() != vault_root {
+                    return Err(DataStoreError::other(format!(
+                        "foreign account {account_id} has vault root {} but {vault_root} was requested",
+                        foreign_account_inputs.account().vault().root()
+                    )));
+                }
+
+                foreign_account_inputs.account().vault().open(vault_key).map_err(|err| {
+                    DataStoreError::other_with_source(
+                        format!(
+                            "failed to open vault_key {vault_key} in foreign account {account_id}"
+                        ),
+                        err,
+                    )
+                })
+            }
+        }
     }
 
     fn get_storage_map_witness(
@@ -249,32 +277,59 @@ impl DataStore for TransactionContext {
         map_root: Word,
         map_key: Word,
     ) -> impl FutureMaybeSend<Result<StorageMapWitness, DataStoreError>> {
-        assert_eq!(
-            account_id,
-            self.account.id(),
-            "only native account storage map witnesses can be requested (for now)"
-        );
-
         async move {
-            // Iterate the account storage to find the map with the requested root.
-            let storage_map = self
-                .account()
-                .storage()
-                .slots()
-                .iter()
-                .find_map(|slot| match slot {
-                    StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
-                        Some(storage_map)
-                    },
-                    _ => None,
-                })
-                .ok_or_else(|| {
-                    DataStoreError::other(format!(
-                        "failed to find storage map with root {map_root} in account storage"
-                    ))
-                })?;
+            if account_id == self.account().id() {
+                // Iterate the account storage to find the map with the requested root.
+                let storage_map = self
+                    .account()
+                    .storage()
+                    .slots()
+                    .iter()
+                    .find_map(|slot| match slot {
+                        StorageSlot::Map(storage_map) if storage_map.root() == map_root => {
+                            Some(storage_map)
+                        },
+                        _ => None,
+                    })
+                    .ok_or_else(|| {
+                        DataStoreError::other(format!(
+                            "failed to find storage map with root {map_root} in account storage"
+                        ))
+                    })?;
 
-            Ok(storage_map.open(&map_key))
+                Ok(storage_map.open(&map_key))
+            } else {
+                let foreign_account_inputs = self
+                    .foreign_account_inputs
+                    .iter()
+                    .find_map(
+                        |(id, account_inputs)| {
+                            if account_id == *id { Some(account_inputs) } else { None }
+                        },
+                    )
+                    .ok_or_else(|| {
+                        DataStoreError::other(format!(
+                            "failed to find foreign account {account_id} in foreign account inputs"
+                        ))
+                    })?;
+
+                let map = foreign_account_inputs
+                    .account()
+                    .storage()
+                    .maps()
+                    .find(|map| map.root() == map_root)
+                    .ok_or_else(|| {
+                        DataStoreError::other(format!(
+                            "failed to find storage map with root {map_root} in foreign account {account_id}"
+                        ))
+                    })?;
+
+                map.open(&map_key).map_err(|err| {
+                  DataStoreError::other_with_source(format!(
+                        "failed to open {map_key} in storage map of foreign account {account_id}"
+                    ), err)
+                })
+            }
         }
     }
 }
