@@ -74,7 +74,7 @@ impl StorageMapWitness {
     // --------------------------------------------------------------------------------------------
 
     /// Returns a reference to the underlying [`SmtProof`].
-    pub fn as_proof(&self) -> &SmtProof {
+    pub fn proof(&self) -> &SmtProof {
         &self.proof
     }
 
