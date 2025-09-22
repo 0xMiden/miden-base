@@ -179,7 +179,7 @@ fn setting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let non_existent_key = Word::from([5, 5, 5, 5u32]);
     assert!(
-        mock_map.open(&non_existent_key).find(non_existent_key).is_none(),
+        mock_map.open(&non_existent_key).get(&non_existent_key) == Word::empty(),
         "test setup requires that the non existent key does not exist"
     );
 
@@ -243,7 +243,7 @@ fn getting_map_item_with_lazy_loading_succeeds() -> anyhow::Result<()> {
 
     let non_existent_key = Word::from([5, 5, 5, 5u32]);
     assert!(
-        mock_map.open(&non_existent_key).find(non_existent_key).is_none(),
+        mock_map.open(&non_existent_key).get(&non_existent_key) == Word::empty(),
         "test setup requires that the non existent key does not exist"
     );
 
