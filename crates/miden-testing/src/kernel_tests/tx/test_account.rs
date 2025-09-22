@@ -1029,15 +1029,16 @@ fn proven_tx_storage_map_matches_executed_tx_for_new_account() -> anyhow::Result
 
     let proven_tx = LocalTransactionProver::default().prove_dummy(tx.clone())?;
 
-    // let AccountUpdateDetails::New(new_account) = proven_tx.account_update().details() else {
-    //     panic!("expected delta");
-    // };
+    let AccountUpdateDetails::Delta(delta) = proven_tx.account_update().details() else {
+        panic!("expected delta");
+    };
 
-    // account.apply_delta(tx.account_delta())?;
+    let new_account = Account::try_from(delta)?;
+    account.apply_delta(tx.account_delta())?;
 
-    // for (idx, slot) in new_account.storage().slots().iter().enumerate() {
-    //     assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
-    // }
+    for (idx, slot) in new_account.storage().slots().iter().enumerate() {
+        assert_eq!(slot, &account.storage().slots()[idx], "slot {idx} did not match");
+    }
 
     Ok(())
 }

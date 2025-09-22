@@ -5,7 +5,6 @@ use miden_objects::account::{
     AccountStorageDelta,
     AccountStorageHeader,
     PartialAccount,
-    PartialStorageMap,
     StorageMap,
     StorageSlotType,
 };
@@ -42,30 +41,7 @@ impl StorageDeltaTracker {
     /// If the account is new, inserts the storage entries into the delta analogously to the
     /// transaction kernel delta.
     pub fn new(account: &PartialAccount) -> Self {
-        let mut delta = AccountStorageDelta::new();
-
         let initial_storage_header = if account.is_new() {
-            (0..u8::MAX).zip(account.storage().header().slots()).for_each(
-                |(slot_idx, (slot_type, value))| match slot_type {
-                    StorageSlotType::Value => {
-                        // Note that we can insert the value unconditionally as the delta will be
-                        // normalized before the commitment is computed.
-                        delta.set_item(slot_idx, *value);
-                    },
-                    StorageSlotType::Map => {
-                        let storage_map = account
-                            .storage()
-                            .maps()
-                            .find(|map| map.root() == *value)
-                            .expect("storage map should be present in partial storage");
-
-                        storage_map.entries().for_each(|(key, value)| {
-                            delta.set_map_item(slot_idx, *key, *value);
-                        });
-                    },
-                },
-            );
-
             let slots = account
                 .storage()
                 .header()
@@ -80,11 +56,34 @@ impl StorageDeltaTracker {
             account.storage().header().clone()
         };
 
-        Self {
+        let mut storage_delta_tracker = Self {
             storage_header: initial_storage_header,
             init_maps: BTreeMap::new(),
-            delta,
-        }
+            delta: AccountStorageDelta::new(),
+        };
+
+        (0..u8::MAX).zip(account.storage().header().slots()).for_each(
+            |(slot_idx, (slot_type, value))| match slot_type {
+                StorageSlotType::Value => {
+                    // Note that we can insert the value unconditionally as the delta will be
+                    // normalized before the commitment is computed.
+                    storage_delta_tracker.set_item(slot_idx, Word::empty(), *value);
+                },
+                StorageSlotType::Map => {
+                    let storage_map = account
+                        .storage()
+                        .maps()
+                        .find(|map| map.root() == *value)
+                        .expect("storage map should be present in partial storage");
+
+                    storage_map.entries().for_each(|(key, value)| {
+                        storage_delta_tracker.set_map_item(slot_idx, *key, Word::empty(), *value);
+                    });
+                },
+            },
+        );
+
+        storage_delta_tracker
     }
 
     // PUBLIC MUTATORS
