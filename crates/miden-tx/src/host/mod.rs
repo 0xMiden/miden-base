@@ -36,6 +36,7 @@ use miden_objects::account::{
     AccountStorageHeader,
     PartialAccount,
     StorageMap,
+    StorageSlotType,
 };
 use miden_objects::asset::{Asset, AssetVault, FungibleAsset};
 use miden_objects::note::NoteId;
@@ -255,7 +256,7 @@ where
             }
 
             TransactionEvent::AccountStorageBeforeGetMapItem => {
-                Self::on_account_storage_before_get_map_item(process)
+                self.on_account_storage_before_get_map_item(process)
             }
 
             TransactionEvent::AccountStorageBeforeSetItem => Ok(TransactionEventHandling::Handled(Vec::new())),
@@ -264,7 +265,7 @@ where
             },
 
             TransactionEvent::AccountStorageBeforeSetMapItem => {
-                Self::on_account_storage_before_set_map_item(process)
+                self.on_account_storage_before_set_map_item(process)
             },
             TransactionEvent::AccountStorageAfterSetMapItem => {
                 self.on_account_storage_after_set_map_item(process).map(|_| TransactionEventHandling::Handled(Vec::new()))
@@ -604,13 +605,14 @@ where
     ///
     /// Expected stack state: `[KEY, ROOT, index]`
     pub fn on_account_storage_before_get_map_item(
+        &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let map_key = process.get_stack_word(0);
         let current_map_root = process.get_stack_word(1);
         let slot_index = process.get_stack_item(8);
 
-        Self::on_account_storage_before_get_or_set_map_item(
+        self.on_account_storage_before_get_or_set_map_item(
             slot_index,
             current_map_root,
             map_key,
@@ -623,6 +625,7 @@ where
     ///
     /// Expected stack state: `[index, KEY, NEW_VALUE, OLD_ROOT]`
     pub fn on_account_storage_before_set_map_item(
+        &self,
         process: &ProcessState,
     ) -> Result<TransactionEventHandling, TransactionKernelError> {
         let slot_index = process.get_stack_item(0);
@@ -638,7 +641,8 @@ where
             process.get_stack_item(10),
             process.get_stack_item(9),
         ]);
-        Self::on_account_storage_before_get_or_set_map_item(
+
+        self.on_account_storage_before_get_or_set_map_item(
             slot_index,
             current_map_root,
             map_key,
@@ -649,6 +653,7 @@ where
     /// Checks if the necessary witness for accessing the map item is already in the merkle store,
     /// and if not, extracts all necessary data for requesting it.
     fn on_account_storage_before_get_or_set_map_item(
+        &self,
         slot_index: Felt,
         current_map_root: Word,
         map_key: Word,
@@ -666,13 +671,37 @@ where
             // If the merkle path is already in the store there is nothing to do.
             Ok(TransactionEventHandling::Handled(Vec::new()))
         } else {
+            // For the native account we need to explicitly request the initial map root, while for
+            // foreign accounts the current map root is always the initial one.
+            let map_root = if current_account_id == self.initial_account_header().id() {
+                // For native accounts, we have to request witnesses against the initial root
+                // instead of the _current_ one, since the data store only has
+                // witnesses for initial one.
+                let (slot_type, slot_value) = self
+                    .initial_account_storage_header()
+                    // Slot index should always fit into a usize.
+                    .slot(slot_index.as_int() as usize)
+                    .map_err(|err| {
+                        TransactionKernelError::other_with_source(
+                            "failed to access storage map in storage header",
+                            err,
+                        )
+                    })?;
+                if *slot_type != StorageSlotType::Map {
+                    return Err(TransactionKernelError::other(format!(
+                        "expected map slot type at slot index {slot_index}"
+                    )));
+                }
+                *slot_value
+            } else {
+                current_map_root
+            };
+
             // If the merkle path is not in the store return the data to request it.
             Ok(TransactionEventHandling::Unhandled(
                 TransactionEventData::AccountStorageMapWitness {
                     current_account_id,
-                    // Slot index should always fit into a usize.
-                    slot_index: slot_index.as_int() as usize,
-                    current_map_root,
+                    map_root,
                     map_key,
                 },
             ))
@@ -1149,10 +1178,8 @@ pub(super) enum TransactionEventData {
     AccountStorageMapWitness {
         /// The account ID for whose storage a witness is requested.
         current_account_id: AccountId,
-        /// The index of the slot that contains the map root.
-        slot_index: usize,
-        /// The current root of the storage map in the account.
-        current_map_root: Word,
+        /// The root of the storage map in the account at the beginning of the transaction.
+        map_root: Word,
         /// The unhashed map key for which a witness is requested.
         map_key: Word,
     },

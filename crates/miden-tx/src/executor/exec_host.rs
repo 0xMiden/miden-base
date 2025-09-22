@@ -3,13 +3,7 @@ use alloc::sync::Arc;
 use alloc::vec::Vec;
 
 use miden_lib::transaction::{TransactionAdviceInputs, TransactionEvent};
-use miden_objects::account::{
-    AccountCode,
-    AccountDelta,
-    AccountId,
-    PartialAccount,
-    StorageSlotType,
-};
+use miden_objects::account::{AccountCode, AccountDelta, AccountId, PartialAccount};
 use miden_objects::assembly::debuginfo::Location;
 use miden_objects::assembly::{SourceFile, SourceManagerSync, SourceSpan};
 use miden_objects::asset::{Asset, AssetWitness, FungibleAsset};
@@ -282,35 +276,9 @@ where
     async fn on_account_storage_map_witness_requested(
         &self,
         current_account_id: AccountId,
-        slot_index: usize,
-        current_map_root: Word,
+        map_root: Word,
         map_key: Word,
     ) -> Result<Vec<AdviceMutation>, TransactionKernelError> {
-        // For the native account we need to explicitly request the initial map root, while for
-        // foreign accounts the current map root is always the initial one.
-        let map_root = if current_account_id == self.base_host.initial_account_header().id() {
-            // For native accounts, we have to request witnesses against the initial root instead of
-            // the _current_ one, since the data store only has witnesses for initial
-            // one.
-            let (slot_type, slot_value) =
-                self.base_host.initial_account_storage_header().slot(slot_index).map_err(
-                    |err| {
-                        TransactionKernelError::other_with_source(
-                            "failed to access storage map in storage header",
-                            err,
-                        )
-                    },
-                )?;
-            if *slot_type != StorageSlotType::Map {
-                return Err(TransactionKernelError::other(format!(
-                    "expected map slot type at slot index {slot_index}"
-                )));
-            }
-            *slot_value
-        } else {
-            current_map_root
-        };
-
         let storage_map_witness = self
             .base_host
             .store()
@@ -496,16 +464,10 @@ where
                     .map_err(EventError::from),
                 TransactionEventData::AccountStorageMapWitness {
                     current_account_id,
-                    slot_index,
-                    current_map_root,
+                    map_root,
                     map_key,
                 } => self
-                    .on_account_storage_map_witness_requested(
-                        current_account_id,
-                        slot_index,
-                        current_map_root,
-                        map_key,
-                    )
+                    .on_account_storage_map_witness_requested(current_account_id, map_root, map_key)
                     .await
                     .map_err(EventError::from),
             }
