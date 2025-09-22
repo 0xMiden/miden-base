@@ -122,8 +122,7 @@ impl StorageMap {
     pub fn open(&self, map_key: &Word) -> StorageMapWitness {
         let hashed_map_key = Self::hash_key(*map_key);
         let smt_proof = self.smt.open(&hashed_map_key);
-
-        let value = self.map.get(map_key).copied().unwrap_or(Word::empty());
+        let value = self.map.get(map_key).copied().unwrap_or_default();
 
         // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
         // open its hashed version and because of the guarantees of the storage map.

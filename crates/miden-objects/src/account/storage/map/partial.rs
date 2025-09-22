@@ -67,16 +67,19 @@ impl PartialStorageMap {
     /// Returns an opening of the leaf associated with `key`.
     ///
     /// Conceptually, an opening is a Merkle path to the leaf, as well as the leaf itself.
-    /// The key needs to be hashed to have a behavior in line with [`StorageMap`]. For more details
-    /// as to why this is needed, refer to the docs for that struct.
     ///
     /// # Errors
     ///
     /// Returns an error if:
     /// - the key is not tracked by this partial storage map.
-    pub fn open(&self, key: &Word) -> Result<SmtProof, MerkleError> {
-        let key = StorageMap::hash_key(*key);
-        self.partial_smt.open(&key)
+    pub fn open(&self, map_key: &Word) -> Result<StorageMapWitness, MerkleError> {
+        let hashed_key = StorageMap::hash_key(*map_key);
+        let smt_proof = self.partial_smt.open(&hashed_key)?;
+        let value = self.map.get(map_key).copied().unwrap_or_default();
+
+        // SAFETY: The key value pair is guaranteed to be present in the provided proof since we
+        // open its hashed version and because of the guarantees of the partial storage map.
+        Ok(StorageMapWitness::new_unchecked(smt_proof, [(*map_key, value)]))
     }
 
     // ITERATORS
